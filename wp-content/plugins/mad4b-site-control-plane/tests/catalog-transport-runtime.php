@@ -109,6 +109,16 @@ $directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
 $expired = reset( $directory ); $key = array_key_first( $directory ); $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY][$key]['expires'] = time()-1;
 MAD4B_SCP_Catalog_Object_Store::collect_expired(); check( ! isset( $GLOBALS['options'][$expired['option']] ), 'Expired payload not collected' );
 
+// A newly published schema may share older blocks. Its advertised retention must cover every block.
+foreach ( $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY] as $key => $entry ) {
+ if ( is_string( $GLOBALS['options'][$entry['option']] ?? null ) ) $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY][$key]['expires'] = time() + 302400 + 600;
+}
+$GLOBALS['abilities']['shared'] = new FixtureAbility( str_repeat( 'محتوى', 20000 ) . 'new-tail' );
+$shared_manifest = request( array() ); check( ! is_wp_error( $shared_manifest ), 'Shared-block publication failed' );
+$shared_item = array_values( array_filter( $shared_manifest['items'], static fn($v) => $v['ability_name'] === 'shared' ) )[0];
+$descriptor_key = hash( 'sha256', ':schema:' . $shared_item['schema_sha256'] );
+$directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]; $shared_descriptor = $GLOBALS['options'][$directory[$descriptor_key]['option']];
+foreach ( $shared_descriptor['blocks'] as $block ) check( $directory[hash( 'sha256', ':block:' . $block )]['expires'] >= $shared_descriptor['retain_until'], 'Shared block expires before advertised schema retention' );
 class WireFixtureDTO { function toArray() { return array( 'name' => 'object-tool', 'inputSchema' => (object) array( 'type' => 'object', 'properties' => new stdClass() ), 'outputSchema' => (object) array( 'type' => 'object' ) ); } }
 class WireFixtureBuilder { static function build( $ability ) { return array( 'tool' => new WireFixtureDTO() ); } }
 class_alias( 'WireFixtureBuilder', 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' );

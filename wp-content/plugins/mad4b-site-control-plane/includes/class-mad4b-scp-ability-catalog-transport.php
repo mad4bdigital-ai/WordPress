@@ -81,10 +81,11 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		$fingerprint = hash( 'sha256', self::encode( array( $definitions, $generation ) ) ); $current_key = self::key( $scope, 'current', '' ); $current = $store->get( $current_key );
 		if ( ! $force && is_array( $current ) && $current['fingerprint'] === $fingerprint && $current['retain_until'] > time() + self::ttl() ) $items = $current['items'];
 		else {
-			$items = array();
+			$items = array(); $retain_until = time() + self::retention();
 			foreach ( $abilities as $name => $a ) {
 				try {
 					$source = self::publish_schema( array( 'inputSchema' => $a->get_input_schema(), 'outputSchema' => $a->get_output_schema() ), $store, $force );
+					$retain_until = min( $retain_until, $source['retain_until'] );
 					$row = array( 'ability_name' => $name, 'label' => (string) $a->get_label(), 'schema_sha256' => $source['sha256'], 'schema_bytes' => $source['bytes'], 'source' => array( 'sha256' => $source['sha256'], 'bytes' => $source['bytes'] ), 'classification_sha256' => $definitions[ $name ] );
 					try {
 						if ( class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) ) {
@@ -97,7 +98,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 					$items[] = $row;
 				} catch ( Throwable $e ) { $items[] = array( 'ability_name' => $name, 'unavailable' => true, 'reason' => 'schema_serialization_failed' ); }
 			}
-			$store->put( $current_key, array( 'fingerprint' => $fingerprint, 'items' => $items, 'retain_until' => time() + self::retention() ), self::retention() );
+			$store->put( $current_key, array( 'fingerprint' => $fingerprint, 'items' => $items, 'retain_until' => $retain_until ), self::retention() );
 		}
 		$id = hash( 'sha256', self::encode( array( self::CONTRACT, $items ) ) ); $data = array( 'items' => $items );
 		$store->put( self::key( $scope, 'snapshot', $id ), $data, self::ttl() ); $store->flush(); return array( $id, $data );
