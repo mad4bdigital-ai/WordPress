@@ -73,6 +73,8 @@ $created_user_id = 0;
 $created_agent_id = 0;
 $created_grant_id = 0;
 $ticket_id = '';
+$cimd_cache_key = '';
+$cimd_cache_before = false;
 
 try {
 	$username = 'mad4b-breakglass-ci';
@@ -120,6 +122,77 @@ try {
 	update_option( MAD4B_SCP_Governed_Runtime_Gates::OPTION, $gate, false );
 	wp_cache_delete( MAD4B_SCP_Governed_Runtime_Gates::OPTION, 'options' );
 	if ( ! MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled() ) $fail( 'Disposable Breakglass runtime gate did not become effective.' );
+	if ( ! MAD4B_SCP_OAuth_Resource_Bridge::breakglass_scope_available() ) $fail( 'Exact governed Staging runtime did not expose the raw Breakglass OAuth scope.' );
+
+	// Prove the ordinary Authorization Code request validator accepts the scope.
+	// The CIMD document is cached locally only for this disposable fixture so the
+	// test remains deterministic and performs no external network dependency.
+	$resource = MAD4B_SCP_Local_OAuth_Server::resource_identifier();
+	$redirect_uri = 'https://chatgpt.com/mad4b-breakglass-ci-callback';
+	$cimd_cache_key = 'mad4b_oauth_cimd_' . substr( hash( 'sha256', MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ), 0, 32 );
+	$cimd_cache_before = get_transient( $cimd_cache_key );
+	set_transient( $cimd_cache_key, array(
+		'client_id' => MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID,
+		'client_name' => 'ChatGPT Breakglass CI',
+		'redirect_uris' => array( $redirect_uri ),
+		'application_type' => 'web',
+		'registration_mode' => 'cimd',
+	), 300 );
+
+	$validate_authorization = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'validate_authorization_request' );
+	$validate_authorization->setAccessible( true );
+	$authorization_params = array(
+		'client_id' => MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID,
+		'redirect_uri' => $redirect_uri,
+		'response_type' => 'code',
+		'resource' => $resource,
+		'code_challenge' => str_repeat( 'A', 43 ),
+		'code_challenge_method' => 'S256',
+		'scope' => implode( ' ', array(
+			MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE,
+			MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE,
+			MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE,
+		) ),
+		'state' => 'breakglass-ci',
+	);
+	$validated_authorization = $validate_authorization->invoke( null, $authorization_params );
+	if ( is_wp_error( $validated_authorization ) ) $fail( 'Normal OAuth authorization request rejected the exact raw Breakglass scope.', $validated_authorization->get_error_code() );
+	if ( ! in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $validated_authorization['scopes'] ?? array(), true ) ) {
+		$fail( 'Normal OAuth authorization request lost the exact raw Breakglass scope.', $validated_authorization );
+	}
+
+	$missing_step_up = $authorization_params;
+	$missing_step_up['scope'] = MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE . ' ' . MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE;
+	$missing_step_up_result = $validate_authorization->invoke( null, $missing_step_up );
+	if ( ! is_wp_error( $missing_step_up_result ) || 'invalid_scope' !== $missing_step_up_result->get_error_code() ) {
+		$fail( 'Raw Breakglass OAuth scope was accepted without authority step-up.', $missing_step_up_result );
+	}
+
+	$wrong_resource = $authorization_params;
+	$wrong_resource['resource'] = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' );
+	$wrong_resource_result = $validate_authorization->invoke( null, $wrong_resource );
+	if ( ! is_wp_error( $wrong_resource_result ) || 'invalid_scope' !== $wrong_resource_result->get_error_code() ) {
+		$fail( 'Raw Breakglass OAuth scope was accepted for the wrong protected resource.', $wrong_resource_result );
+	}
+
+	$advertised_scopes = MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource );
+	if ( ! in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $advertised_scopes, true ) ) {
+		$fail( 'Protected-resource metadata did not advertise the currently available raw Breakglass scope.', $advertised_scopes );
+	}
+
+	$gate_disabled = $gate;
+	$gate_disabled['raw_sql_breakglass_enabled'] = false;
+	update_option( MAD4B_SCP_Governed_Runtime_Gates::OPTION, $gate_disabled, false );
+	wp_cache_delete( MAD4B_SCP_Governed_Runtime_Gates::OPTION, 'options' );
+	$disabled_result = $validate_authorization->invoke( null, $authorization_params );
+	if ( ! is_wp_error( $disabled_result ) || 'invalid_scope' !== $disabled_result->get_error_code() ) {
+		$fail( 'Raw Breakglass OAuth scope remained issuable after its runtime gate was disabled.', $disabled_result );
+	}
+	if ( in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource ), true ) ) {
+		$fail( 'Protected-resource metadata advertised raw Breakglass while its runtime gate was disabled.' );
+	}
+	update_option( MAD4B_SCP_Governed_Runtime_Gates::OPTION, $gate, false );
+	wp_cache_delete( MAD4B_SCP_Governed_Runtime_Gates::OPTION, 'options' );
 
 	$issuer = MAD4B_SCP_Local_OAuth_Server::issuer();
 	$subject_fingerprint = hash( 'sha256', 'oauth' . "\0" . $issuer . "\0" . 'user:' . $breakglass_user_id );
@@ -195,7 +268,6 @@ try {
 
 	$mint = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'mint_access_token' );
 	$mint->setAccessible( true );
-	$resource = MAD4B_SCP_Local_OAuth_Server::resource_identifier();
 	$read = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, $breakglass_user_id, $resource, array( 'mad4b:read' ) );
 	$step = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, $breakglass_user_id, $resource, array( 'mad4b:read', MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) );
 	$authorized = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, $breakglass_user_id, $resource, array( 'mad4b:read', MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, 'server:mad4b-breakglass' ) );
@@ -223,7 +295,7 @@ try {
 	list( $replay_status, $replay_body ) = $call( $authorized, $authorized_session, $arguments );
 	if ( $replay_status >= 500 || ! $denied( $replay_body ) ) $fail( 'One-time Breakglass approval replay was accepted.', $replay_body );
 
-	fwrite( STDOUT, "mad4b.breakglass-independent-http.v1: PASS exact_surface exact_scope exact_grant one_time_approval\n" );
+	fwrite( STDOUT, "mad4b.breakglass-independent-http.v1: PASS oauth_authorize_scope exact_surface exact_scope exact_grant one_time_approval\n" );
 } finally {
 	wp_set_current_user( $admin_id );
 	if ( false === $projection_before ) delete_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );
@@ -233,6 +305,10 @@ try {
 	if ( false === $profile_before ) delete_option( MAD4B_SCP_Site_Profile::OPTION );
 	else update_option( MAD4B_SCP_Site_Profile::OPTION, $profile_before, false );
 	MAD4B_SCP_Site_Profile::reset_cache();
+	if ( '' !== $cimd_cache_key ) {
+		if ( false === $cimd_cache_before ) delete_transient( $cimd_cache_key );
+		else set_transient( $cimd_cache_key, $cimd_cache_before, 300 );
+	}
 
 	if ( '' !== $ticket_id ) $wpdb->delete( $tables['approvals'], array( 'ticket_id' => $ticket_id ), array( '%s' ) );
 	if ( $created_grant_id > 0 ) $wpdb->delete( $tables['grants'], array( 'id' => $created_grant_id ), array( '%d' ) );
