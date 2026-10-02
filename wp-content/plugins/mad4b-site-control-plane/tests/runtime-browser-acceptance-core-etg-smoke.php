@@ -1,6 +1,7 @@
 <?php
 /** Exact runtime proof for the generic MAD4B Browser Acceptance Core with ETG provider discovery. */
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
+require_once __DIR__ . '/prepared-dispatch-runtime-helper.php';
 
 $check = static function ( $condition, $message ) {
 	if ( ! $condition ) throw new RuntimeException( $message );
@@ -19,9 +20,9 @@ $direct_chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
 $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
 $check( is_object( $read_dispatch ) && method_exists( $read_dispatch, 'execute' ), 'Governed ChatGPT readonly dispatcher is unavailable.' );
 $dispatch_read = static function ( $ability_name, array $input = array() ) use ( $check, $read_dispatch ) {
-	$info = wp_get_ability( 'mad4b/tool-info' )->execute( array( 'ability_name' => $ability_name ) );
-	$check( ! is_wp_error( $info ) && ! empty( $info['input_schema_sha256'] ), 'Target schema preparation failed for ' . $ability_name );
-	$result = $read_dispatch->execute( array( 'ability_name' => (string) $ability_name, 'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( (string) $ability_name )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( (string) $ability_name )['classification_sha256'], 'expected_input_schema_sha256' => $info['input_schema_sha256'], 'input' => $input ) );
+	$identity = mad4b_test_prepared_dispatch_identity( $ability_name );
+	$check( ! is_wp_error( $identity ), 'Target signed preparation failed for ' . $ability_name );
+	$result = $read_dispatch->execute( array_merge( array( 'ability_name' => (string) $ability_name, 'input' => $input ), $identity ) );
 	$check( ! is_wp_error( $result ), 'Readonly dispatcher failed for ' . $ability_name . ( is_wp_error( $result ) ? ': ' . $result->get_error_code() : '' ) );
 	$check( 'mad4b.chatgpt-read-execute.v1' === (string) ( $result['contract'] ?? '' ), 'Unexpected readonly dispatcher contract for ' . $ability_name );
 	$check( ! empty( $result['read_only'] ) && empty( $result['mutation_performed'] ), 'Readonly dispatcher authority boundary drifted for ' . $ability_name );
