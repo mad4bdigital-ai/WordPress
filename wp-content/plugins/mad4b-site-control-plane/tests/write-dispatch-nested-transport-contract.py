@@ -169,7 +169,7 @@ if ( ! MAD4B_SCP_Authorization::execution_boundary_verified( new ProvenanceAbili
 $spoof_inner = static function () { return true; };
 $spoof_outer = static function () use ( $spoof_inner ) { return call_user_func( $spoof_inner ); };
 if ( MAD4B_SCP_Authorization::propagate_trusted_execution_boundary( 'mad4b/provenance-fixture', $spoof_outer, $spoof_inner ) ) exit( 20 );
-if ( MAD4B_SCP_Authorization::execution_boundary_verified( new ProvenanceAbilityFixture( $spoof_outer ) ) exit( 21 );
+if ( MAD4B_SCP_Authorization::execution_boundary_verified( new ProvenanceAbilityFixture( $spoof_outer ) ) ) exit( 21 );
 
 echo "mad4b.authorization-permission-wrapper.runtime.v2: PASS\\n";
 """), encoding="utf-8")
