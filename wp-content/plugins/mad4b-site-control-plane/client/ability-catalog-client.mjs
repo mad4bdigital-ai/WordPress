@@ -90,8 +90,12 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     state.namespace = namespace; state.chunkBytes = size;
     if (!(state.chunks instanceof Map)) throw new CatalogError('Invalid resume chunk cache');
     const serverRecommended = catalog.transferPolicy?.recommended_parallel_schema_fetches;
+    let serverParallelCeiling = base && Number.isInteger(serverRecommended)
+      ? Math.max(1, Math.min(maxParallelSchemaFetches, serverRecommended))
+      : maxParallelSchemaFetches;
+    if (state.parallelism !== undefined && (!Number.isInteger(state.parallelism) || state.parallelism < 1 || state.parallelism > maxParallelSchemaFetches)) throw new CatalogError('Invalid resume parallelism');
     let activeParallel = base
-      ? Math.max(1, Math.min(maxParallelSchemaFetches, Number.isInteger(serverRecommended) ? serverRecommended : parallelFetches))
+      ? Math.max(1, Math.min(serverParallelCeiling, state.parallelism ?? parallelFetches))
       : 1;
     state.parallelism = activeParallel;
     const count = Math.ceil(descriptor.bytes / size);
@@ -145,7 +149,10 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
           if (fresh.authority_scope_sha256 !== catalog.authority_scope_sha256 || item?.[format]?.sha256 !== descriptor.sha256) throw new CatalogError('Schema changed; replan');
           snapshot = fresh.snapshot; renewed = true;
           const refreshedRecommendation = fresh.transferPolicy?.recommended_parallel_schema_fetches;
-          if (base && Number.isInteger(refreshedRecommendation)) activeParallel = Math.max(1, Math.min(maxParallelSchemaFetches, refreshedRecommendation));
+          if (base && Number.isInteger(refreshedRecommendation)) {
+            serverParallelCeiling = Math.max(1, Math.min(maxParallelSchemaFetches, refreshedRecommendation));
+            activeParallel = Math.min(activeParallel, serverParallelCeiling);
+          }
           state.parallelism = activeParallel;
           continue;
         }
@@ -161,7 +168,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
         chunkBytes = averageElapsed < targetLatencyMs / 2 ? Math.min(maxChunkBytes, size * 2) : averageElapsed > targetLatencyMs ? Math.max(minChunkBytes, Math.floor(size / 2)) : size;
         if (base) {
           activeParallel = averageElapsed < targetLatencyMs / 2
-            ? Math.min(maxParallelSchemaFetches, activeParallel + 1)
+            ? Math.min(serverParallelCeiling, activeParallel + 1)
             : averageElapsed > targetLatencyMs ? Math.max(1, activeParallel - 1) : activeParallel;
           parallelFetches = activeParallel; state.parallelism = activeParallel;
         }
