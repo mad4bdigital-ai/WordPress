@@ -310,7 +310,16 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	}
 
 	public static function status() {
-		return ! empty( self::$status ) ? self::$status : self::inspect_status();
+		if ( empty( self::$status ) ) return self::inspect_status();
+		$state = isset( self::$status['state'] ) ? sanitize_key( (string) self::$status['state'] ) : '';
+		// A deferred/inspection-only snapshot is request-local scheduling evidence,
+		// not authoritative runtime provenance. Re-inspect read-only so a later
+		// lifecycle phase (or a recovered next request) cannot be hidden by stale
+		// deferred state cached earlier in the same request.
+		if ( in_array( $state, array( 'inspection_pending', 'repair_deferred_request_hotpath', 'repair_deferred_protocol_hotpath' ), true ) ) {
+			return self::inspect_status();
+		}
+		return self::$status;
 	}
 
 	/**
