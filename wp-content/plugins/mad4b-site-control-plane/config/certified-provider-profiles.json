@@ -169,6 +169,116 @@
           "breaking_runtime_class_set_recognized": true,
           "mutation_authority": false
         }
+      },
+      "0.6.1": {
+        "label": "MCP Adapter",
+        "plugin_file": "mcp-adapter/mcp-adapter.php",
+        "archive": "mcp-adapter.zip",
+        "version": "0.6.1",
+        "archive_sha256": "1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676",
+        "contract_mode": "official_wordpress_mcp_adapter",
+        "verified_contracts": [
+          "create_server",
+          "mcp_adapter_default_server_config",
+          "default_server_public_exposure_filtering"
+        ],
+        "release_asset_bytes": 455463,
+        "known_upstream_constraints": [
+          {
+            "issue": "WordPress/mcp-adapter#305",
+            "constraint": "mcp_adapter_validation_enabled filter call arity is inconsistent in v0.6.1",
+            "mad4b_policy": "Do not register a callback for mcp_adapter_validation_enabled until upstream resolves or the exact behavior is re-certified."
+          },
+          {
+            "issue": "WordPress/mcp-adapter#297",
+            "constraint": "Unknown meta.mcp.type values are coerced to tool in v0.6.1",
+            "mad4b_policy": "MAD4B abilities set meta.mcp.type=tool explicitly and never depend on unknown-type fallback."
+          }
+        ],
+        "require_runtime_integrity": true,
+        "critical_files": {
+          "README.md": "b111b31f853ca4b4d6c36d7eefc5c577be08bd6822b7b0ff665bde2c35d8f669",
+          "includes/Abilities/DiscoverAbilitiesAbility.php": "0c4de588848b3e386626ca7a9c3b5916aaf9724fccfad18585da15cee546af49",
+          "includes/Abilities/ExecuteAbilityAbility.php": "ec099c463eb4c62ee3afe1ba89e3e30affac429b0ff4646ad2cb8acc7319e0ab",
+          "includes/Abilities/GetAbilityInfoAbility.php": "5c0766571bad8696cf93f7213b4080b1a369bc56ee51878b3ea182f680e4c9fb",
+          "includes/Abilities/McpAbilityExposure.php": "df7b7dc39a0519ff9dcc21764c45dc1e472ba75eea0c76959333a6ca6766d0d7",
+          "includes/Abilities/McpAbilityHelperTrait.php": "7e17e8e93d691e6f375e46b031fababc8faff2896febe4d246a613f1f48ce006",
+          "includes/Cli/McpCommand.php": "3991d7de5e626be2db96e9f9367df7237892a413a3ffea5bdb0ce829825c1a69",
+          "includes/Cli/StdioServerBridge.php": "8393915abdc2f4a20391057678e449f96a9e98207432d172edcbc6c42d1f2946",
+          "includes/Core/McpAdapter.php": "adad49e18edbe1ca668e80a634d3de4089473421bc58152856574adb2f840fba",
+          "includes/Core/McpComponentRegistry.php": "9d078fd4008a047389b3fa55b80687c3970e406ba88d7027f9f25e50700bee6a",
+          "includes/Core/McpServer.php": "5ecab0dc1f3e65c6b14cba9f13d60df401975b110521995997e6365d77b5cb3a",
+          "includes/Core/McpTransportFactory.php": "b9579036f6b8b39342cb3cbbe18d66c96a18d3483b4e3af1ef90baf2a41896f8",
+          "includes/Domain/Utils/AbilityArgumentNormalizer.php": "ae8c9fcdec9eee095a433700106080a5653d6fedab61a8e99d8cd94e36410328",
+          "includes/Servers/DefaultServerFactory.php": "3b562a64af3019180d36c5f2ab2d6afb85332fd122204861524f50388d7c7553",
+          "includes/Transport/Infrastructure/HttpRequestHandler.php": "27efb5353e78a234faec3246b9603c050c87f46e2497ffe4d4c1757f7a11f375",
+          "includes/Transport/Infrastructure/HttpSessionValidator.php": "2f1a06b7b39fb8619d43cf41a6efdb4dc187309bf834c0696801aa754becba88",
+          "includes/Transport/Infrastructure/RequestRouter.php": "e91c1dd049a525183e8fbf31edd70967308e2dd7fa8131d4898b246362ea710d",
+          "includes/Transport/Infrastructure/SessionManager.php": "70cc27038911811810a0a7186e2b24a968266b7cd63f94ef0ccfc13a71147b7c",
+          "mcp-adapter.php": "1252c764e058f1d651d08c732118584dc180dd075f2af1f9666b2e6af0cd3ba7",
+          "vendor/composer/autoload_classmap.php": "800cc0ac4be053e49637ba3bbea5fe1ad36ad0f4b2010e40c5461ddf4f1cf5ce",
+          "vendor/composer/autoload_static.php": "49326f1de94f9a4c94aa89968f7e1e3f907596caaa5cd8f2c5494e8f98a4a8cb",
+          "vendor/composer/jetpack_autoload_classmap.php": "ce02a42824d55c95e3f4fa6d914950cfca4ce37136b8b0b2fbf1410173540015",
+          "includes/Domain/Tools/McpToolValidator.php": "91163ffdc7c70881cd34ca3503f67774ce20cc1cbb5e3969758237d1ea00df6a",
+          "includes/Domain/Tools/RegisterAbilityAsMcpTool.php": "d71d815c75fb4784954015dc7f15dc9a5bd9b40299a59cbaaca62277e0590276",
+          "includes/Domain/Utils/McpAnnotationMapper.php": "1416e23e35ccc92bb5d202d1b98f6c3c007dd5e3efd783c99fa3613f99d8ea75",
+          "includes/Domain/Utils/McpValidator.php": "64d4b238d8e887e0b8d393e3e2f7cf62a45a5e4790dc2383a38800ee562d60a6",
+          "includes/Domain/Utils/SchemaTransformer.php": "eba29a2fb8906557cbd8004e8503e1bced0cbfd4343e2274f5824d2fd1f78cb4",
+          "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/Tool.php": "ac1f244e1a3eed92e08250f7d9c5e26d90977da771bf5e8da796a27f98e5a056",
+          "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolInputSchema.php": "0fd3a6c1b81521e8084bdbce55a5c8a017871ff235f8710d4523d74cd367a61a",
+          "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolOutputSchema.php": "3b0509eebca5b2dd013a7f84a8ef616624441e947b966a10df3757995aa541c8",
+          "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php": "b2c6dd20e3844cc2a41b0095a5ad2e71ccd7e2baacd686b6d0681476b45c8627",
+          "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php": "c6291f9f9ce024a207015879be0cdbf9e6f80f2790f39ec34d8429f10125f532",
+          "includes/Autoloader.php": "f3219d240546689e7368051f5576f6c9aaf2eceb0ee0c2cf6be20a8e9fde5c25",
+          "includes/Plugin.php": "cf89f5ee122e3d0e1fd8eefb04669f09f822035288e3351e32d950a05ca704f1",
+          "vendor/autoload_packages.php": "a9711b19ac96e97b3c13d1716d481dc3d66368c6343ad6f80ea08c22e6d2f953"
+        },
+        "runtime_critical_classes": {
+          "adapter": {
+            "class": "WP\\MCP\\Core\\McpAdapter",
+            "file": "includes/Core/McpAdapter.php"
+          },
+          "ability_builder": {
+            "class": "WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool",
+            "file": "includes/Domain/Tools/RegisterAbilityAsMcpTool.php"
+          },
+          "tool_validator": {
+            "class": "WP\\MCP\\Domain\\Tools\\McpToolValidator",
+            "file": "includes/Domain/Tools/McpToolValidator.php"
+          },
+          "schema_transformer": {
+            "class": "WP\\MCP\\Domain\\Utils\\SchemaTransformer",
+            "file": "includes/Domain/Utils/SchemaTransformer.php"
+          },
+          "annotation_mapper": {
+            "class": "WP\\MCP\\Domain\\Utils\\McpAnnotationMapper",
+            "file": "includes/Domain/Utils/McpAnnotationMapper.php"
+          },
+          "validator_utils": {
+            "class": "WP\\MCP\\Domain\\Utils\\McpValidator",
+            "file": "includes/Domain/Utils/McpValidator.php"
+          },
+          "tool_dto": {
+            "class": "WP\\McpSchema\\Server\\Tools\\DTO\\Tool",
+            "file": "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/Tool.php"
+          },
+          "tool_input_schema_dto": {
+            "class": "WP\\McpSchema\\Server\\Tools\\DTO\\ToolInputSchema",
+            "file": "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolInputSchema.php"
+          },
+          "tool_output_schema_dto": {
+            "class": "WP\\McpSchema\\Server\\Tools\\DTO\\ToolOutputSchema",
+            "file": "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolOutputSchema.php"
+          },
+          "tool_annotations_dto": {
+            "class": "WP\\McpSchema\\Server\\Tools\\DTO\\ToolAnnotations",
+            "file": "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php"
+          },
+          "tool_execution_dto": {
+            "class": "WP\\McpSchema\\Server\\Tools\\DTO\\ToolExecution",
+            "file": "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php"
+          }
+        }
       }
     }
   },
