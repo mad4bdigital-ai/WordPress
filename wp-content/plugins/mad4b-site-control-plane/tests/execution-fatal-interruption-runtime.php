@@ -126,7 +126,8 @@ foreach($expected as $stageName=>$expectedState){
 	$ready=mad4b_fatal_test_wait_ready($proc,$pipes[1],$pipes[2],10);
 	$check(!empty($ready['ready']),'child did not reach crash point',array('stage'=>$stageName,'stdout'=>$ready['stdout'],'stderr'=>$ready['stderr']));
 	$killed=mad4b_fatal_test_terminate($proc,5);
-	fclose($pipes[1]);fclose($pipes[2]);
+	if(isset($pipes[1])&&is_resource($pipes[1]))fclose($pipes[1]);
+	if(isset($pipes[2])&&is_resource($pipes[2]))fclose($pipes[2]);
 	$check($killed,'unable to terminate child process within bounded wait',array('stage'=>$stageName));
 	MAD4B_SCP_Audit::$path=$path;
 	$rows=file($path,FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES)?:array();

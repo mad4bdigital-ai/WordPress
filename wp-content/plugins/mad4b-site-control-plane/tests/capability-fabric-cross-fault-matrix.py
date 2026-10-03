@@ -30,7 +30,7 @@ if set(matrix.get("required_dimensions", [])) != required_dimensions:
 
 registry = {
     "request_generation": ["php", str(tests_dir / "request-generation-runtime.php")],
-    "execution_fence_recursion": ["php", str(tests_dir / "runtime-execution-fence-recursion.php")],
+    "hook_order_contract": ["python3", str(tests_dir / "execution-hook-order-contract.py")],
     "clone_quarantine": ["python3", str(tests_dir / "clone-authority-quarantine-contract.py")],
     "restore_replay": ["php", str(tests_dir / "runtime-restore-replay-quarantine.php")],
     "subject_lifecycle": ["php", str(tests_dir / "subject-lifecycle-commit-guard-runtime.php")],

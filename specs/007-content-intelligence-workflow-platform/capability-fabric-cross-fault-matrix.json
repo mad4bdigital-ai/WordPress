@@ -23,7 +23,7 @@
       ],
       "test_ids": [
         "request_generation",
-        "execution_fence_recursion",
+        "hook_order_contract",
         "clone_quarantine",
         "restore_replay",
         "subject_lifecycle"
