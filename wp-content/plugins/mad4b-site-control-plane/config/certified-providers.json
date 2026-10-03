@@ -73,7 +73,7 @@
         "includes/Transport/Infrastructure/RequestRouter.php": "a4f1b49ac452c1843a4fe1eb8b86c9f7dde3a73b91a558e63fef43cce5a072c2",
         "includes/Transport/Infrastructure/SessionManager.php": "70cc27038911811810a0a7186e2b24a968266b7cd63f94ef0ccfc13a71147b7c"
       },
-      "runtime_critical_classes": {
+      "runtime_classes": {
         "adapter": {
           "class": "WP\\MCP\\Core\\McpAdapter",
           "file": "includes/Core/McpAdapter.php"
