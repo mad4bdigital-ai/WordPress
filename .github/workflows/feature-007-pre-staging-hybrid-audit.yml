@@ -341,8 +341,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/fixtures/projection-hotset-abilities.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-hotset-ci.php"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          rm -f "$WP_PATH/wp-content/mu-plugins/mad4b-projection-hotset-ci.php"
 
       - name: Prove durable provider circuit breaker state machine
         shell: bash

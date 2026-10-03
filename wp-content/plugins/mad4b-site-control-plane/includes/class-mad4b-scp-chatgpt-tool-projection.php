@@ -266,6 +266,16 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( '' === $name ) {
 			return new WP_Error( 'mad4b_projection_ability_identity_missing', 'Dynamic projected execution requires an exact Ability identity.' );
 		}
+		// Arm the final callback boundary before any projection/binding/policy
+		// check can return a denial. WordPress filters at the same priority may
+		// replace an earlier WP_Error, but they cannot mint the private execution
+		// seal. A stale/cached MCP tool therefore remains fail-closed even if a
+		// later filter attempts to erase this guard's result.
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) ) {
+			return new WP_Error( 'mad4b_projection_execution_fence_unavailable', 'Projected execution fence is unavailable.' );
+		}
+		$requirement = MAD4B_SCP_Execution_Fence::require_projected_call_seal( $name );
+		if ( is_wp_error( $requirement ) ) return $requirement;
 		$state = self::raw_state();
 		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Dynamic projection is not bound to this enrolled Staging runtime.' );
 		$row = self::effective_row( $name, $state, true );
@@ -291,8 +301,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) {
 			return new WP_Error( 'mad4b_projection_final_execution_admission_required', 'Projected Ability is missing the final execution-admission wrapper.' );
 		}
-		$requirement = MAD4B_SCP_Execution_Fence::require_projected_call_seal( $name );
-		if ( is_wp_error( $requirement ) ) return $requirement;
 		$seal = MAD4B_SCP_Execution_Fence::seal_projected_call( $name, $args, $tool, $server );
 		if ( is_wp_error( $seal ) ) return $seal;
 		if ( class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) MAD4B_SCP_Projection_Hotset_Recommender::record_usage( $name, 'direct_projection' );

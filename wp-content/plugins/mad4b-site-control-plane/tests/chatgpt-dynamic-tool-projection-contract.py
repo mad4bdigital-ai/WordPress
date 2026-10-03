@@ -49,6 +49,15 @@ for marker in [
     require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
 require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
 
+# A pre-tool denial must arm the final callback seal requirement before any
+# same-priority filter can overwrite the returned WP_Error.
+for marker in [
+    "Arm the final callback boundary before any projection/binding/policy",
+    "require_projected_call_seal( $name )",
+    "mad4b_projection_execution_fence_unavailable",
+]:
+    require(marker in PROJECTION, f"final projected execution latch missing: {marker}")
+
 # Projection is schema-pinned and exact-plan fenced.
 for marker in [
     "expected_plan_sha256",
