@@ -100,7 +100,7 @@ final class MAD4B_Test_Schema_WPDB {
 			'verified_at', 'closed_at', 'bucket_key', 'metric_name', 'bucket_start',
 			'count_value', 'sum_value', 'min_value', 'max_value',
 			'object_sha256', 'object_kind', 'wire_generation', 'payload_blob', 'payload_bytes', 'retain_until',
-			'generation_id', 'authority_scope_sha256', 'object_key_sha256', 'object_expires_at', 'directory_sha256',
+			'generation_id', 'storage_scope_sha256', 'object_key_sha256', 'object_expires_at', 'directory_sha256',
 			'fencing_token', 'previous_generation_id', 'published_at',
 		);
 	}

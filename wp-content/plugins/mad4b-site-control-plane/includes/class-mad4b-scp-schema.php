@@ -764,20 +764,20 @@ final class MAD4B_SCP_Schema {
 		$sql[] = "CREATE TABLE {$t['catalog_generations']} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			generation_id char(64) NOT NULL,
-			authority_scope_sha256 char(64) NOT NULL,
+			storage_scope_sha256 char(64) NOT NULL,
 			object_key_sha256 char(64) NOT NULL,
 			object_sha256 char(64) NOT NULL,
 			object_expires_at datetime NOT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY generation_object_key (generation_id,object_key_sha256),
-			KEY scope_generation (authority_scope_sha256,generation_id),
+			KEY scope_generation (storage_scope_sha256,generation_id),
 			KEY object_sha256 (object_sha256),
 			KEY generation_expiry (generation_id,object_expires_at)
 		) $charset;";
 
 		$sql[] = "CREATE TABLE {$t['catalog_heads']} (
-			authority_scope_sha256 char(64) NOT NULL,
+			storage_scope_sha256 char(64) NOT NULL,
 			generation_id char(64) NOT NULL,
 			directory_sha256 char(64) NOT NULL,
 			fencing_token bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -785,7 +785,7 @@ final class MAD4B_SCP_Schema {
 			published_at datetime NOT NULL,
 			expires_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
-			PRIMARY KEY  (authority_scope_sha256),
+			PRIMARY KEY  (storage_scope_sha256),
 			KEY generation_id (generation_id),
 			KEY expires_at (expires_at)
 		) $charset;";
@@ -945,8 +945,8 @@ final class MAD4B_SCP_Schema {
 			'recovery_cases' => array( 'recovery_id', 'operation_id', 'operation_binding_sha256', 'journal_head_sha256', 'current_state_sha256', 'provider_state_digest', 'pipeline_settings_sha256', 'policy_sha256', 'environment', 'plan_sha256', 'status', 'plan_json', 'generated_at', 'expires_at' ),
 			'metric_buckets' => array( 'bucket_key', 'metric_name', 'bucket_start', 'count_value', 'sum_value', 'updated_at' ),
 			'catalog_objects' => array( 'object_sha256', 'object_kind', 'wire_generation', 'payload_blob', 'payload_sha256', 'payload_bytes', 'expires_at', 'retain_until', 'created_at' ),
-			'catalog_generations' => array( 'id', 'generation_id', 'authority_scope_sha256', 'object_key_sha256', 'object_sha256', 'object_expires_at', 'created_at' ),
-			'catalog_heads' => array( 'authority_scope_sha256', 'generation_id', 'directory_sha256', 'fencing_token', 'previous_generation_id', 'published_at', 'expires_at', 'updated_at' ),
+			'catalog_generations' => array( 'id', 'generation_id', 'storage_scope_sha256', 'object_key_sha256', 'object_sha256', 'object_expires_at', 'created_at' ),
+			'catalog_heads' => array( 'storage_scope_sha256', 'generation_id', 'directory_sha256', 'fencing_token', 'previous_generation_id', 'published_at', 'expires_at', 'updated_at' ),
 		);
 	}
 	private static function required_durable_indexes() {
@@ -964,7 +964,7 @@ final class MAD4B_SCP_Schema {
 			'operation_heads' => array(),
 			'recovery_cases' => array( 'operation_plan' => true ),
 			'metric_buckets' => array(),
-			'catalog_objects' => array( 'object_sha256' => true, 'kind_expiry' => false, 'expires_at' => false, 'retain_until' => false ),
+			'catalog_objects' => array( 'kind_expiry' => false, 'expires_at' => false, 'retain_until' => false ),
 			'catalog_generations' => array( 'generation_object_key' => true, 'scope_generation' => false, 'object_sha256' => false, 'generation_expiry' => false ),
 			'catalog_heads' => array( 'generation_id' => false, 'expires_at' => false ),
 		);

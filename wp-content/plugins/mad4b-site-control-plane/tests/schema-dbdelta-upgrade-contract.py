@@ -108,11 +108,11 @@ EXPECTED_FIELDS = {
         "payload_bytes", "expires_at", "retain_until", "created_at",
     ),
     "catalog_generations": (
-        "id", "generation_id", "authority_scope_sha256", "object_key_sha256",
+        "id", "generation_id", "storage_scope_sha256", "object_key_sha256",
         "object_sha256", "object_expires_at", "created_at",
     ),
     "catalog_heads": (
-        "authority_scope_sha256", "generation_id", "directory_sha256", "fencing_token",
+        "storage_scope_sha256", "generation_id", "directory_sha256", "fencing_token",
         "previous_generation_id", "published_at", "expires_at", "updated_at",
     ),
 }
@@ -268,8 +268,8 @@ def main():
         "recovery_cases": ("recovery_id", "operation_id", "journal_head_sha256", "current_state_sha256", "plan_sha256", "expires_at"),
         "metric_buckets": ("bucket_key", "metric_name", "bucket_start", "count_value", "sum_value"),
         "catalog_objects": ("object_sha256", "payload_sha256", "payload_bytes", "expires_at", "retain_until"),
-        "catalog_generations": ("generation_id", "authority_scope_sha256", "object_key_sha256", "object_sha256", "object_expires_at"),
-        "catalog_heads": ("authority_scope_sha256", "generation_id", "directory_sha256", "fencing_token", "expires_at"),
+        "catalog_generations": ("generation_id", "storage_scope_sha256", "object_key_sha256", "object_sha256", "object_expires_at"),
+        "catalog_heads": ("storage_scope_sha256", "generation_id", "directory_sha256", "fencing_token", "expires_at"),
     }
     for table, required in durable_required.items():
         fields, _ = visible_dbdelta_tokens(table_body(table))
