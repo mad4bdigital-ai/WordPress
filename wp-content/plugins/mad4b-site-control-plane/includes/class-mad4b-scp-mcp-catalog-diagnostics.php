@@ -408,8 +408,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( empty( $abilities ) && ! empty( self::$registered_classification ) ) $abilities = array_column( self::$registered_classification, 'ability' );
 		elseif ( empty( $abilities ) && class_exists( 'MAD4B_SCP_Servers', false ) ) {
 			$abilities = array_merge(
-				MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools(),
-				class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array()
+				class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),
+				MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()
 			);
 		}
 		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
