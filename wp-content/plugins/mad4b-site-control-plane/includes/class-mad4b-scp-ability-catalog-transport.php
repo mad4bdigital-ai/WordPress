@@ -261,10 +261,26 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 			$from = max( 0, $start - $n * self::BLOCK_BYTES ); $take = min( strlen( $bytes ) - $from, $start + $length - ( $n * self::BLOCK_BYTES + $from ) ); $raw .= substr( $bytes, $from, $take );
 		}
 		if ( ! $chunk && ! hash_equals( $digest, hash( 'sha256', $raw ) ) ) return self::error( 'mad4b_catalog_schema_corrupt', 503 );
-		$out = array( 'contract' => self::CONTRACT, 'snapshot' => $id, 'schema_sha256' => $digest, 'schema_bytes' => $d['bytes'], 'schema_format' => $format, 'read_only' => true );
-		if ( $binary ) return $out + array( 'raw' => $raw, 'chunk_sha256' => hash( 'sha256', $raw ), 'chunk_count' => $count );
+		$out = array(
+			'contract' => self::CONTRACT,
+			'wire_generation' => self::wire_generation(),
+			'snapshot' => $id,
+			'schema_sha256' => $digest,
+			'schema_bytes' => $d['bytes'],
+			'schema_format' => $format,
+			'compression' => 'none',
+			'read_only' => true,
+		);
+		$chunk_meta = $chunk ? array(
+			'chunk_index' => $index,
+			'chunk_bytes' => $size,
+			'chunk_offset' => $start,
+			'chunk_payload_bytes' => strlen( $raw ),
+			'chunk_count' => $count,
+		) : array( 'chunk_count' => $count );
+		if ( $binary ) return $out + $chunk_meta + array( 'raw' => $raw, 'chunk_sha256' => hash( 'sha256', $raw ) );
 		if ( ! $chunk ) return $out + array( 'encoding' => 'utf-8', 'schema' => json_decode( $raw, false, 512, JSON_THROW_ON_ERROR ) );
-		return $out + array( 'encoding' => 'base64', 'chunk_index' => $index, 'chunk_bytes' => $size, 'chunk_count' => $count, 'chunk_sha256' => hash( 'sha256', $raw ), 'data' => base64_encode( $raw ), 'next_chunk_index' => $index + 1 < $count ? $index + 1 : null );
+		return $out + $chunk_meta + array( 'encoding' => 'base64', 'chunk_sha256' => hash( 'sha256', $raw ), 'data' => base64_encode( $raw ), 'next_chunk_index' => $index + 1 < $count ? $index + 1 : null );
 	}
 	public static function routes() { foreach ( array( 'capabilities', 'manifest', 'schemas/(?P<schema_sha256>[a-f0-9]{64})', 'schemas/(?P<schema_sha256>[a-f0-9]{64})/chunks/(?P<chunk_index>[0-9]+)' ) as $route ) register_rest_route( 'mad4b/v1', '/ability-catalog/' . $route, array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'rest_read' ), 'permission_callback' => array( __CLASS__, 'rest_permission' ) ) ); }
 	public static function rest_permission( $request ) {
@@ -278,7 +294,22 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( isset( $input['force_refresh'] ) ) $input['force_refresh'] = rest_sanitize_boolean( $input['force_refresh'] );
 		$result = self::handle( $input, isset( $path['schema_sha256'] ) ); if ( is_wp_error( $result ) ) return $result;
 		$headers = array( 'Cache-Control' => 'private, no-store', 'Vary' => 'Authorization, Cookie', 'X-Content-Type-Options' => 'nosniff' );
-		if ( isset( $result['raw'] ) ) $headers += array( 'Content-Type' => 'application/octet-stream', 'X-MAD4B-Content-SHA256' => $result['chunk_sha256'], 'X-MAD4B-Schema-SHA256' => $result['schema_sha256'], 'X-MAD4B-Chunk-Count' => (string) $result['chunk_count'] );
+		if ( isset( $result['raw'] ) ) {
+			$headers += array(
+				'Content-Type' => 'application/octet-stream',
+				'X-MAD4B-Content-SHA256' => $result['chunk_sha256'],
+				'X-MAD4B-Schema-SHA256' => $result['schema_sha256'],
+				'X-MAD4B-Snapshot' => $result['snapshot'],
+				'X-MAD4B-Wire-Generation' => $result['wire_generation'],
+				'X-MAD4B-Compression' => $result['compression'],
+				'X-MAD4B-Chunk-Count' => (string) $result['chunk_count'],
+			);
+			if ( isset( $result['chunk_index'] ) ) {
+				$headers['X-MAD4B-Chunk-Index'] = (string) $result['chunk_index'];
+				$headers['X-MAD4B-Chunk-Offset'] = (string) $result['chunk_offset'];
+				$headers['X-MAD4B-Chunk-Payload-Bytes'] = (string) $result['chunk_payload_bytes'];
+			}
+		}
 		return new WP_REST_Response( $result['raw'] ?? $result, 200, $headers );
 	}
 	public static function serve_binary( $served, $response, $request, $server ) {
