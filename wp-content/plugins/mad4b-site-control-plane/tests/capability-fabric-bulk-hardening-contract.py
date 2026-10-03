@@ -159,3 +159,6 @@ need("bind_operation_descriptors" in operation_registry and "capability_descript
 need("MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'authorization' )" in authorization, "Authorization does not consume canonical descriptor identity")
 need("MAD4B_SCP_Capability_Descriptor_Registry::assert_binding" in commit_guard and "'capability_descriptor'" in commit_guard, "Commit Guard does not revalidate descriptor identity")
 need("capability_descriptor_authorizing' => false" in authorization, "descriptor binding accidentally became an authority grant")
+
+need("descriptor_bindings" in (ROOT/"includes/class-mad4b-scp-capability-traits.php").read_text(encoding="utf-8") and "descriptor_generation_sha256" in (ROOT/"includes/class-mad4b-scp-capability-traits.php").read_text(encoding="utf-8"), "Capability Traits do not consume descriptor generation roots")
+need("capability_descriptor_evidence" in (ROOT/"includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8") and "capability_descriptor_binding_unavailable" in (ROOT/"includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8"), "Servers do not fail closed on descriptor binding drift")

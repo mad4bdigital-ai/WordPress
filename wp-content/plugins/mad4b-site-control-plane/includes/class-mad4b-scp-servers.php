@@ -951,9 +951,50 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled by the database-backed governed runtime gate policy.', $breakglass_tools, array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-breakglass', $target_server_id ) );
 	}
 
+	private static function capability_descriptor_evidence( $server_id, array $tools ) {
+		$bindings = array();
+		$blockers = array();
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ) {
+			$blockers[] = 'capability_descriptor_registry_unavailable';
+		} else {
+			foreach ( array_values( array_unique( array_map( 'strval', $tools ) ) ) as $ability_name ) {
+				$binding = MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'servers' );
+				if ( is_wp_error( $binding ) ) {
+					$blockers[] = $ability_name . ':' . $binding->get_error_code();
+					continue;
+				}
+				$bindings[ $ability_name ] = $binding;
+			}
+		}
+		ksort( $bindings, SORT_STRING );
+		$blockers = array_values( array_unique( $blockers ) );
+		sort( $blockers, SORT_STRING );
+		return array(
+			'contract' => 'mad4b.server-capability-descriptor-bindings.v1',
+			'server_id' => (string) $server_id,
+			'ready' => empty( $blockers ) && count( $bindings ) === count( array_values( array_unique( array_map( 'strval', $tools ) ) ) ),
+			'bindings' => $bindings,
+			'blockers' => $blockers,
+			'authorizing' => false,
+			'authority_effect' => 'none',
+		);
+	}
+
 	private function create( $adapter, $id, $name, $description, array $tools, $permission, $transport, $error_handler, $observability, $materialized = true ) {
 		$preflight = null;
 		$requested_tools = $tools;
+		$descriptor_evidence = $materialized ? self::capability_descriptor_evidence( $id, $tools ) : array( 'contract' => 'mad4b.server-capability-descriptor-bindings.v1', 'server_id' => (string) $id, 'ready' => true, 'bindings' => array(), 'blockers' => array(), 'authorizing' => false, 'authority_effect' => 'none' );
+		if ( $materialized && empty( $descriptor_evidence['ready'] ) ) {
+			self::$registrations[ $id ] = array(
+				'registered' => false,
+				'error' => 'capability_descriptor_binding_unavailable',
+				'materialized' => false,
+				'tool_count' => 0,
+				'requested_tool_count' => count( $requested_tools ),
+				'capability_descriptor_evidence' => $descriptor_evidence,
+			);
+			return;
+		}
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
 			$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 				? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()
@@ -978,7 +1019,7 @@ final class MAD4B_SCP_Servers {
 			error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() );
 			return;
 		}
-		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '', 'materialized' => (bool) $materialized, 'tool_count' => count( $tools ) );
+		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '', 'materialized' => (bool) $materialized, 'tool_count' => count( $tools ), 'capability_descriptor_evidence' => $descriptor_evidence );
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
 			$server = method_exists( $adapter, 'get_server' ) ? $adapter->get_server( $id ) : null;
 			$evidence = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, $tools );
