@@ -60,4 +60,32 @@ $proof=array('postcondition_verified'=>true,'provider_effect_state'=>'no_effect'
 $settled=MAD4B_SCP_Remote_Work_Queue::complete($job,'worker4',$cl['lease_token'],$proof);
 $check('cancelled_no_effect'===$settled['state'],'verified no-effect reconciliation did not settle cancelled-no-effect');
 
+
+$e=MAD4B_SCP_Remote_Work_Queue::enqueue('frontend_performance_sampling',array('probe'=>'e'),$id,3600);
+$job=$e['job']['job_id'];$cl=MAD4B_SCP_Remote_Work_Queue::claim($job,'worker5',60,$id);
+$c=MAD4B_SCP_Remote_Work_Queue::cancel($job,'operator_cancel');
+$signal=MAD4B_SCP_Remote_Work_Queue::cancellation_signal($job,'worker5',$cl['lease_token']);
+$check(is_array($signal)&&!empty($signal['cancel_requested'])&&'not_entered'===$signal['provider_checkpoint']&&!empty($signal['provider_cancel_required']),'cancel signal was not propagated before provider entry');
+$entry=MAD4B_SCP_Remote_Work_Queue::provider_checkpoint($job,'worker5',$cl['lease_token'],'provider_entered');
+$check('mad4b_remote_work_cancel_before_provider_entry'===$code($entry),'provider entry was admitted after durable pre-entry cancellation');
+$badAck=MAD4B_SCP_Remote_Work_Queue::acknowledge_cancellation($job,'worker5',$cl['lease_token'],$signal['cancel_generation']+1);
+$check('mad4b_remote_work_cancel_ack_generation_mismatch'===$code($badAck),'stale/wrong cancellation generation was acknowledged');
+$ack=MAD4B_SCP_Remote_Work_Queue::acknowledge_cancellation($job,'worker5',$cl['lease_token'],$signal['cancel_generation']);
+$check('cancelled_no_effect'===$ack['state']&&!$ack['job']['reconciliation_required']&&!$ack['job']['provider_side_effect_possible'],'pre-entry cancellation acknowledgement did not prove no-effect');
+
+$e=MAD4B_SCP_Remote_Work_Queue::enqueue('frontend_performance_sampling',array('probe'=>'f'),$id,3600);
+$job=$e['job']['job_id'];$cl=MAD4B_SCP_Remote_Work_Queue::claim($job,'worker6',60,$id);
+$entered=MAD4B_SCP_Remote_Work_Queue::provider_checkpoint($job,'worker6',$cl['lease_token'],'provider_entered');
+$check(is_array($entered)&&'provider_entered'===$entered['job']['provider_checkpoint']&&!empty($entered['job']['provider_side_effect_possible']),'provider entry checkpoint was not durable');
+$c=MAD4B_SCP_Remote_Work_Queue::cancel($job,'operator_cancel');
+$signal=MAD4B_SCP_Remote_Work_Queue::cancellation_signal($job,'worker6',$cl['lease_token']);
+$check(!empty($signal['cancel_requested'])&&!empty($signal['provider_side_effect_possible'])&&!empty($signal['reconciliation_required']),'post-entry cancellation lost possible-side-effect semantics');
+$ack=MAD4B_SCP_Remote_Work_Queue::acknowledge_cancellation($job,'worker6',$cl['lease_token'],$signal['cancel_generation']);
+$check('mad4b_remote_work_reconciliation_required'===$code($ack),'post-entry cancellation was falsely acknowledged as no-effect');
+$returned=MAD4B_SCP_Remote_Work_Queue::provider_checkpoint($job,'worker6',$cl['lease_token'],'provider_returned');
+$check(is_array($returned)&&'provider_returned'===$returned['job']['provider_checkpoint'],'provider return checkpoint was not persisted during reconciliation');
+$proof=array('postcondition_verified'=>true,'provider_effect_state'=>'applied','provider_execution_ref'=>'provider:fixture:3','evidence_sha256'=>str_repeat('f',64));
+$done=MAD4B_SCP_Remote_Work_Queue::complete($job,'worker6',$cl['lease_token'],$proof);
+$check('completed'===$done['state']&&!$done['job']['reconciliation_required'],'post-entry cancellation did not require and consume postcondition proof');
+
 echo "mad4b.remote-work-queue-cancellation.runtime.v1: PASS\n";
