@@ -166,6 +166,22 @@ final class MAD4B_SCP_Site_Profile {
 		return '' !== $current && hash_equals( $stored, $current );
 	}
 
+	/** Cheap MU-routing proof; not an authorization credential. */
+	public static function diagnostic_mu_proof() {
+		$profile = self::exact_stored_profile();
+		if ( empty( $profile['site_uuid'] ) || empty( $profile['revision'] ) ) return '';
+		$secret = '';
+		foreach ( array( 'NONCE_SALT', 'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT' ) as $constant ) {
+			if ( defined( $constant ) && is_string( constant( $constant ) ) && strlen( constant( $constant ) ) >= 32 ) {
+				$secret = (string) constant( $constant );
+				break;
+			}
+		}
+		if ( '' === $secret ) return '';
+		$material = "mad4b-mcp-diagnostic-mu-v1\0" . (string) $profile['site_uuid'] . "\0" . (string) absint( $profile['revision'] );
+		return hash_hmac( 'sha256', $material, $secret );
+	}
+
 	public static function current_environment() {
 		$wordpress = self::wordpress_environment();
 		$bound = self::exact_stored_profile();
