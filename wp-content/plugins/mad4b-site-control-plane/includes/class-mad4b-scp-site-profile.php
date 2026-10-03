@@ -827,15 +827,49 @@ final class MAD4B_SCP_Site_Profile {
 		$next['features']['production_write_confirmed'] = false;
 		$next['updated_at'] = gmdate( 'c' );
 
-		$committed = self::commit_record_with_audit(
-			$before,
-			$next,
-			'mad4b/site-profile-write-disabled',
-			array( 'write_enabled' => false ),
-			'mad4b_site_profile_disable_authority'
-		);
-		if ( is_wp_error( $committed ) ) return $committed;
-		return self::status();
+		// Revocation is safety-reducing, so it must not be blocked or rolled back
+		// merely because audit storage is degraded. Commit the exact disabled
+		// generation atomically first; audit failure is reported truthfully while
+		// the reduced authority remains in force.
+		if ( ! self::persist_record_compare_and_swap( $before, $next ) ) {
+			return new WP_Error( 'mad4b_site_profile_disable_authority_conflict', 'Site Profile changed concurrently before write authority could be disabled.' );
+		}
+		self::reset_cache();
+		if ( function_exists( 'do_action' ) ) do_action( 'mad4b_scp_site_profile_saved' );
+
+		$status = self::status();
+		$audit_ready = class_exists( 'MAD4B_SCP_Audit' ) && ! empty( MAD4B_SCP_Audit::storage_status()['ready'] );
+		if ( ! $audit_ready ) {
+			return new WP_Error(
+				'mad4b_site_profile_disable_authority_audit_unavailable',
+				'Write authority was disabled atomically, but append-only audit storage is unavailable.',
+				array(
+					'authority_disabled' => true,
+					'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
+					'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
+				)
+			);
+		}
+		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-disabled', array(
+			'site_uuid' => isset( $status['site_uuid'] ) ? (string) $status['site_uuid'] : '',
+			'previous_revision' => $current_revision,
+			'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
+			'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
+			'write_enabled' => false,
+		), 'ok' );
+		if ( is_wp_error( $audit ) ) {
+			return new WP_Error(
+				'mad4b_site_profile_disable_authority_audit_failed',
+				'Write authority was disabled atomically, but the mandatory audit event could not be appended.',
+				array(
+					'authority_disabled' => true,
+					'audit_error' => $audit->get_error_code(),
+					'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
+					'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
+				)
+			);
+		}
+		return $status;
 	}
 
 	public static function validate_record_for_test( array $record, $environment, $origin ) {
