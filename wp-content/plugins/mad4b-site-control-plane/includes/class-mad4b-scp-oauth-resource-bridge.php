@@ -675,6 +675,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	private static function validate_claims( array $claims, $issuer, $resource ) {
 		if ( ! isset( $claims['iss'] ) || ! is_string( $claims['iss'] ) || ! hash_equals( $issuer, $claims['iss'] ) ) return new WP_Error( 'mad4b_oauth_issuer_mismatch', 'Access token issuer does not match selected authority.' );
+		$site_identity = self::validate_local_site_identity_claim( $claims, $issuer );
+		if ( is_wp_error( $site_identity ) ) return $site_identity;
 		$subject = isset( $claims['sub'] ) && is_string( $claims['sub'] ) ? trim( $claims['sub'] ) : '';
 		if ( '' === $subject || strlen( $subject ) > self::MAX_SUBJECT_BYTES ) return new WP_Error( 'mad4b_oauth_subject_missing', 'Access token subject is missing.' );
 		$resource = untrailingslashit( trim( (string) $resource ) );
@@ -712,6 +714,34 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'client_fingerprint' => '' !== $client_id ? hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id ) : '',
 			'session_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
 		);
+	}
+
+	/**
+	 * Locally issued tokens are bound to the current Site/portable identity.
+	 * External issuers keep their own claim contract and are not required to emit
+	 * a MAD4B-local claim.
+	 */
+	private static function validate_local_site_identity_claim( array $claims, $issuer ) {
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) || ! method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'issuer' ) ) return true;
+		$local_issuer = rtrim( trim( (string) MAD4B_SCP_Local_OAuth_Server::issuer() ), '/' );
+		$issuer = rtrim( trim( (string) $issuer ), '/' );
+		if ( '' === $local_issuer || ! hash_equals( $local_issuer, $issuer ) ) return true;
+
+		$expected = '';
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() ) {
+			$expected = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
+		} elseif ( class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective() ) {
+			$expected = strtolower( trim( (string) MAD4B_SCP_Portable_Readonly_Connection::connection_uuid() ) );
+		}
+		$token_uuid = isset( $claims['mad4b_site_uuid'] ) && is_string( $claims['mad4b_site_uuid'] )
+			? strtolower( trim( $claims['mad4b_site_uuid'] ) )
+			: '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', $expected )
+			|| 1 !== preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', $token_uuid )
+			|| ! hash_equals( $expected, $token_uuid ) ) {
+			return new WP_Error( 'mad4b_oauth_site_identity_mismatch', 'Locally issued access token belongs to a different Site Profile identity.' );
+		}
+		return true;
 	}
 
 	private static function extract_scopes( array $claims ) {
