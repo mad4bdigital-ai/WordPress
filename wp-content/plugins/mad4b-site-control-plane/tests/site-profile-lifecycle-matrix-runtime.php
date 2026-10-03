@@ -64,6 +64,7 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
  journey_check( ! MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::oauth_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled(), 'fresh install granted authority' );
  MAD4B_SCP_MCP_Runtime_Recovery::schedule(); journey_check( empty( $scheduled ), 'fresh install scheduled repair' );
  $input=array( 'environment'=>$selected, 'expected_revision'=>0, 'oauth_user_ids'=>array(7), 'oauth_enabled'=>true, 'skills_enabled'=>true, 'managed_runtime_enabled'=>true, 'write_enabled'=>false );
+ if(!$explicit && 'production'===$wordpress && 'production'!==$selected){$input['nonproduction_override_confirmed']=true;$input['nonproduction_override_confirmation']=MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION;}
  $result=MAD4B_SCP_Site_Profile::save_current_site( $input );
  // Without a WP declaration, only the implicit Production default can be overridden.
  $conflict=$explicit && $wordpress!==$selected;
@@ -107,7 +108,7 @@ $wordpress='production'; $selected='staging'; $explicit=false; $home='https://te
 foreach(array('shared_lease','foreign_lease','lease_lost','status_dropped','profile_dropped','http_staging','http_local','invalid_user','non_admin') as $fault) {
  $label=$fault; $options=array('active_plugins'=>array('mcp-adapter/mcp-adapter.php','mad4b-site-control-plane/mad4b-site-control-plane.php')); $scheduled=array(); $admin=true; $audit_ready=true; $audit_fail=false; $saved_hooks=0; $drop_option=''; $integrity=true; $lose_lease=false; $protocol=false;
  if(file_exists($destination))unlink($destination); MAD4B_SCP_Site_Profile::reset_cache();
- $input=array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'managed_runtime_enabled'=>true);
+ $input=array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'managed_runtime_enabled'=>true,'nonproduction_override_confirmed'=>true,'nonproduction_override_confirmation'=>MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION);
  if('http_staging'===$fault || 'http_local'===$fault) {$home='http://localhost:8080';$input['environment']='http_local'===$fault?'local':'staging';}
  else $home='https://tenant.example';
  if('invalid_user'===$fault)$input['oauth_user_ids']=array(999);
