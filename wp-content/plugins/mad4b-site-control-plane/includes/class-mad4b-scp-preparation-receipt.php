@@ -13,10 +13,11 @@ final class MAD4B_SCP_Preparation_Receipt {
 		if ( is_wp_error( $budget ) ) return $budget;
 		if ( empty( $row['execution_eligible'] ) || empty( $row['descriptor_sha256'] ) ) return '';
 		$now = self::now_epoch();
-		try {
-			$nonce = bin2hex( random_bytes( 16 ) );
-		} catch ( Throwable $error ) {
-			return '';
+		if ( class_exists( 'MAD4B_SCP_Entropy' ) ) {
+			$nonce = MAD4B_SCP_Entropy::hex( 'preparation_receipt_nonce', 16 );
+			if ( is_wp_error( $nonce ) ) return '';
+		} else {
+			try { $nonce = bin2hex( random_bytes( 16 ) ); } catch ( Throwable $error ) { return ''; }
 		}
 		$payload = array(
 			'contract' => self::CONTRACT,
