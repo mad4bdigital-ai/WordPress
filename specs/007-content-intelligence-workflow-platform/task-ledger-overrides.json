@@ -1595,6 +1595,90 @@
         "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
       "reason": "Activation/deactivation/update/uninstall/network-activation lifecycle coverage proves governance retention, catalog cleanup/rollback compatibility and multisite scope isolation across the certified runtime matrix."
+    },
+    "T3741": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php"
+      ],
+      "reason": "W3C traceparent-compatible context is propagated through discovery, preparation, policy, approval, commit guard, provider execution, readback, reconciliation, catalog rebuild and network fan-out with causal parent/link semantics."
+    },
+    "T3742": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Trace/span identity, sampling, bounded attribute cardinality, tenant hashing, recursive redaction and default exclusion of raw secrets/provider payloads are runtime certified."
+    },
+    "T3743": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php"
+      ],
+      "reason": "Stage metrics expose P50/P95/P99 for the governed execution stages and catalog/network paths rather than only hard budget thresholds."
+    },
+    "T3744": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php"
+      ],
+      "reason": "Stage SLOs are bound to short/long error-budget burn-rate classification and operator evidence while remaining explicitly non-authorizing."
+    },
+    "T3745": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Optional telemetry backend failure cannot block safe reads, while mandatory audit/execution evidence failure semantics for governed writes remain fail closed."
+    },
+    "T3746": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php"
+      ],
+      "reason": "Cross-provider/network tracing preserves causal continuity through tenant forks without reusing cross-tenant trace IDs, leaking tenant identity or admitting unbounded labels."
     }
   }
 }

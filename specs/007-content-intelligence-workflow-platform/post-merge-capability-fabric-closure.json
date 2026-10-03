@@ -242,7 +242,7 @@
     },
     {
       "id": "tracing_slo_observability",
-      "status": "OPEN",
+      "status": "DONE",
       "task_ids": [
         "T3741",
         "T3742",
@@ -260,7 +260,16 @@
         "durable_multisite_network"
       ],
       "interim_behavior": "Telemetry is non-authorizing; mandatory audit/evidence failure for governed writes remains fail closed.",
-      "evidence_strategy": "Trace propagation/privacy, percentile SLO and observability-outage evidence."
+      "evidence_strategy": "Closed: W3C-compatible tenant-safe tracing, bounded/redacted span attributes, stage percentiles, error-budget burn-rate evidence, optional telemetry outage semantics and cross-provider/network causal continuity all pass the exact-head Feature 007 audit.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ]
     },
     {
       "id": "impact_approval_receipt_routing",

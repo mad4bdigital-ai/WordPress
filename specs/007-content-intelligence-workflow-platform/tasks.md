@@ -797,12 +797,12 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3740 P1 Add activate/deactivate/update/uninstall/network-activate lifecycle tests proving governance retention, bounded catalog cleanup, multisite isolation and rollback compatibility.
 
 ### 37H — Distributed tracing, SLOs and observability failure semantics
-- [ ] T3741 P1 Propagate a standards-compatible trace context across discovery, preparation, policy, approval, commit guard, provider call, readback, reconciliation and network fan-out.
-- [ ] T3742 P1 Define tenant-safe trace/span identity, sampling, cardinality ceilings and recursive payload redaction; raw inputs/tokens/secrets/provider payloads are excluded by default.
-- [ ] T3743 P1 Measure stage-level P50/P95/P99 for discovery, prepare, authorization, provider execution, readback, reconciliation and catalog rebuild, not only hard budgets.
-- [ ] T3744 P1 Bind stage SLOs to error-budget/burn-rate policies and operator evidence without converting telemetry into authority.
-- [ ] T3745 P1 Define observability-backend outage semantics: optional telemetry failure cannot block safe reads, while mandatory audit/evidence persistence for governed writes remains fail closed.
-- [ ] T3746 P1 GATE Cross-provider/network traces must preserve causal continuity without cross-tenant correlation leakage or unbounded high-cardinality labels.
+- [x] T3741 P1 Propagate a standards-compatible trace context across discovery, preparation, policy, approval, commit guard, provider call, readback, reconciliation and network fan-out.
+- [x] T3742 P1 Define tenant-safe trace/span identity, sampling, cardinality ceilings and recursive payload redaction; raw inputs/tokens/secrets/provider payloads are excluded by default.
+- [x] T3743 P1 Measure stage-level P50/P95/P99 for discovery, prepare, authorization, provider execution, readback, reconciliation and catalog rebuild, not only hard budgets.
+- [x] T3744 P1 Bind stage SLOs to error-budget/burn-rate policies and operator evidence without converting telemetry into authority.
+- [x] T3745 P1 Define observability-backend outage semantics: optional telemetry failure cannot block safe reads, while mandatory audit/evidence persistence for governed writes remains fail closed.
+- [x] T3746 P1 GATE Cross-provider/network traces must preserve causal continuity without cross-tenant correlation leakage or unbounded high-cardinality labels.
 
 ### 37I — Impact-bound approvals, explainability, execution receipts and semantic routing
 - [ ] T3747 P0 Extend approval identity with exact input digest, constrained resource set, dependency generation and blast-radius/impact digest.
