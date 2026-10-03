@@ -16,15 +16,17 @@ $check = static function ( $condition, $message, $context = null ) use ( $fail )
 
 $scope = MAD4B_SCP_Catalog_Backend_Controller::storage_scope();
 $backend = new MAD4B_SCP_Catalog_Table_Backend( $scope );
-foreach ( array( 'worker-a', 'worker-b' ) as $worker_id ) {
+$hosts = array( 'worker-a' => 'host-a', 'worker-b' => 'host-b' );
+foreach ( $hosts as $worker_id => $host_id ) {
 	$key = 'ci.catalog-table.concurrent.' . $run_id . '.' . $worker_id;
 	$value = $backend->get( $key );
 	$check(
 		is_array( $value )
 			&& 'ci.catalog-table-concurrent-payload.v1' === ( isset( $value['contract'] ) ? $value['contract'] : '' )
 			&& $run_id === ( isset( $value['run_id'] ) ? $value['run_id'] : '' )
-			&& $worker_id === ( isset( $value['worker_id'] ) ? $value['worker_id'] : '' ),
-		'Concurrent generation lost or replaced a worker payload.',
+			&& $worker_id === ( isset( $value['worker_id'] ) ? $value['worker_id'] : '' )
+			&& $host_id === ( isset( $value['host_id'] ) ? $value['host_id'] : '' ),
+		'Concurrent host-equivalent worker generation lost, crossed or replaced a payload.',
 		array( 'worker_id' => $worker_id, 'value' => $value )
 	);
 }

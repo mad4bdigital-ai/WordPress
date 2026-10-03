@@ -3,7 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 $run_id = isset( $args[0] ) ? sanitize_key( (string) $args[0] ) : '';
 $worker_id = isset( $args[1] ) ? sanitize_key( (string) $args[1] ) : '';
-if ( '' === $run_id || '' === $worker_id ) {
+$host_id = isset( $args[2] ) ? sanitize_key( (string) $args[2] ) : '';
+if ( '' === $run_id || '' === $worker_id || '' === $host_id ) {
 	fwrite( STDERR, "FAIL runtime-catalog-table-worker: missing run/worker identity\n" );
 	exit( 2 );
 }
@@ -13,7 +14,8 @@ $value = array(
 	'contract' => 'ci.catalog-table-concurrent-payload.v1',
 	'run_id' => $run_id,
 	'worker_id' => $worker_id,
-	'payload_sha256' => hash( 'sha256', $run_id . '|' . $worker_id ),
+	'host_id' => $host_id,
+	'payload_sha256' => hash( 'sha256', $run_id . '|' . $worker_id . '|' . $host_id ),
 );
 $backend = new MAD4B_SCP_Catalog_Table_Backend( $scope );
 $backend->put( $key, $value, 1200 );
@@ -31,6 +33,7 @@ echo wp_json_encode( array(
 	'contract' => 'mad4b.catalog-table-concurrency-worker.v1',
 	'run_id' => $run_id,
 	'worker_id' => $worker_id,
+	'host_id' => $host_id,
 	'key' => $key,
 	'generation_id' => (string) $head['generation_id'],
 	'fencing_token' => (int) $head['fencing_token'],

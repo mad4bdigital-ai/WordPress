@@ -265,9 +265,9 @@ jobs:
         run: |
           set -euo pipefail
           RUN_ID="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-a --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-a.json &
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-a host-a --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-a.json &
           PID_A=$!
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-b --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-b.json &
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-b host-b --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-b.json &
           PID_B=$!
           wait "$PID_A"
           wait "$PID_B"
