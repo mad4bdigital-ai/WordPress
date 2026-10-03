@@ -171,6 +171,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php

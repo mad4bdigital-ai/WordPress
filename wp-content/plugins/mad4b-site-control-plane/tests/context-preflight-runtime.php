@@ -1,7 +1,10 @@
 <?php
 
+$GLOBALS['mad4b_context_crypto_tmp'] = sys_get_temp_dir() . '/mad4b-context-crypto-' . getmypid();
+@mkdir( $GLOBALS['mad4b_context_crypto_tmp'] . '/keys', 0777, true );
 define( 'ABSPATH', '/srv/wordpress/' );
 define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
+define( 'MAD4B_SCP_CRYPTO_KEYRING_DIR', $GLOBALS['mad4b_context_crypto_tmp'] . '/keys' );
 
 class WP_Error {
 	private $code;
@@ -17,8 +20,9 @@ function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-
 function sanitize_text_field( $value ) { return trim( preg_replace( '/[\r\n\t]+/', ' ', (string) $value ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
-$GLOBALS['context_receipt_signing_salt'] = 'context-receipt-test-salt';
-function wp_salt( $scheme ) { return $GLOBALS['context_receipt_signing_salt']; }
+function wp_mkdir_p( $dir ) { return is_dir( $dir ) || mkdir( $dir, 0777, true ); }
+function trailingslashit( $value ) { return rtrim( (string) $value, '/\\' ) . '/'; }
+function wp_normalize_path( $value ) { return str_replace( '\\', '/', (string) $value ); }
 
 final class MAD4B_SCP_Context_Authority {
 	public static $assets = array();
@@ -92,6 +96,8 @@ final class MAD4B_SCP_Audit {
 	}
 }
 
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-time-policy.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-crypto-profile.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-semantic-content-field-contracts.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-preflight.php';
 
@@ -145,7 +151,14 @@ mad4b_context_preflight_assert( empty( $ready['blockers'] ), 'Ready preflight mu
 mad4b_context_preflight_assert( 'mad4b.context-envelope.v1' === $ready['envelope']['contract'], 'Context envelope contract mismatch.', $ready );
 mad4b_context_preflight_assert( 'mad4b.content-context-receipt.v1' === $ready['receipt']['contract'], 'Context receipt contract mismatch.', $ready );
 mad4b_context_preflight_assert( preg_match( '/^[a-f0-9]{64}$/', $ready['receipt']['receipt_sha256'] ), 'Context receipt must carry deterministic SHA256.', $ready );
-mad4b_context_preflight_assert( preg_match( '/^[a-f0-9]{64}$/', $ready['receipt']['receipt_signature'] ), 'Context receipt must carry runtime-issued HMAC proof.', $ready );
+mad4b_context_preflight_assert(
+	is_array( $ready['receipt']['receipt_signature'] )
+	&& 'mad4b.detached-signature.v1' === $ready['receipt']['receipt_signature']['contract']
+	&& 'context-receipt-rs256-v1' === $ready['receipt']['receipt_signature']['profile_id']
+	&& preg_match( '/^[a-f0-9]{64}$/', $ready['receipt']['receipt_signature']['kid'] ),
+	'Context receipt must carry a versioned purpose-bound detached signature.',
+	$ready
+);
 $ready_receipt_json = wp_json_encode( $ready['receipt'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 mad4b_context_preflight_assert( is_string( $ready_receipt_json ) && strlen( $ready_receipt_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Ready Context Receipt must fit the governed dispatcher transport budget.', strlen( (string) $ready_receipt_json ) );
 
@@ -214,7 +227,7 @@ $validation = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $site_union
 mad4b_context_preflight_assert( is_array( $validation ) && ! empty( $validation['ready'] ), 'Fresh exact Context Receipt must validate against live Skill and Authority state.', $validation );
 
 $tampered_signature = $site_union['receipt'];
-$tampered_signature['receipt_signature'] = str_repeat( '0', 64 );
+$tampered_signature['receipt_signature']['signature_b64url'] = 'AA';
 $tampered_signature_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $tampered_signature );
 mad4b_context_preflight_assert( is_wp_error( $tampered_signature_result ) && 'mad4b_context_receipt_signature_invalid' === $tampered_signature_result->get_error_code(), 'Tampered Context Receipt signature must fail closed.', $tampered_signature_result );
 
@@ -226,11 +239,19 @@ $self_rehash['receipt_sha256'] = $digest_method->invoke( null, $self_rehash );
 $self_rehash_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $self_rehash );
 mad4b_context_preflight_assert( is_wp_error( $self_rehash_result ) && 'mad4b_context_receipt_signature_invalid' === $self_rehash_result->get_error_code(), 'Client-side self-rehash must not mint a trusted Context Receipt.', $self_rehash_result );
 
-$original_context_receipt_salt = $GLOBALS['context_receipt_signing_salt'];
-$GLOBALS['context_receipt_signing_salt'] = 'rotated-context-receipt-test-salt';
-$rotated_key_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $site_union['receipt'] );
-mad4b_context_preflight_assert( is_wp_error( $rotated_key_result ) && 'mad4b_context_receipt_signature_invalid' === $rotated_key_result->get_error_code(), 'Context Receipt must fail after signing-key rotation.', $rotated_key_result );
-$GLOBALS['context_receipt_signing_salt'] = $original_context_receipt_salt;
+$old_context_signature = $site_union['receipt']['receipt_signature'];
+$context_profile = (string) $old_context_signature['profile_id'];
+$old_context_kid = (string) $old_context_signature['kid'];
+$context_rotation = MAD4B_SCP_Crypto_Profile::rotate( $context_profile );
+mad4b_context_preflight_assert( is_array( $context_rotation ) && $old_context_kid !== $context_rotation['current_kid'], 'Context Receipt key rotation did not advance kid.', $context_rotation );
+$overlap_validation = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $site_union['receipt'] );
+mad4b_context_preflight_assert( is_array( $overlap_validation ) && ! empty( $overlap_validation['ready'] ), 'Pre-rotation Context Receipt must remain valid during certified overlap.', $overlap_validation );
+$context_revocation = MAD4B_SCP_Crypto_Profile::revoke( $context_profile, $old_context_kid );
+mad4b_context_preflight_assert( is_array( $context_revocation ), 'Context Receipt key revocation failed.', $context_revocation );
+$revoked_key_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $site_union['receipt'] );
+mad4b_context_preflight_assert( is_wp_error( $revoked_key_result ) && 'mad4b_context_receipt_signature_invalid' === $revoked_key_result->get_error_code(), 'Revoked Context Receipt signing key remained valid.', $revoked_key_result );
+$site_union = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x' );
+mad4b_context_preflight_assert( ! empty( $site_union['ready'] ), 'Fresh Context Receipt could not be minted with rotated key.', $site_union );
 
 $missing_receipt = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 	'mad4b/content-update-post',
