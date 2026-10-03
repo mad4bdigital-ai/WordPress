@@ -519,11 +519,26 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( is_object( $data ) && method_exists( $data, 'toArray' ) ) {
 			try { $data = $data->toArray(); } catch ( Throwable $error ) { $data = null; }
 		}
-		// Adapter success results can still be official DTOs at this WordPress filter seam.
-		if ( is_array( $data ) && isset( $data['result'] ) && is_object( $data['result'] ) && method_exists( $data['result'], 'toArray' ) ) {
-			try { $data['result'] = $data['result']->toArray(); } catch ( Throwable $error ) { $data['result'] = null; }
+		// Adapter generations expose nested response records differently:
+		// 0.6.x may surface DTO/stdClass values while 0.7.x returns exact-revision
+		// JsonSerializable Records. Normalize only record envelopes here; protocol
+		// payload values are never copied into diagnostic headers/logs.
+		if ( is_array( $data ) && isset( $data['result'] ) && is_object( $data['result'] ) ) {
+			try {
+				$normalized = class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' )
+					? MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $data['result'] )
+					: null;
+				$data['result'] = is_wp_error( $normalized ) || ! is_array( $normalized ) ? null : $normalized;
+			} catch ( Throwable $error ) { $data['result'] = null; }
 		}
-		if ( is_array( $data ) && isset( $data['result'] ) && $data['result'] instanceof stdClass ) $data['result'] = (array) $data['result'];
+		if ( is_array( $data ) && isset( $data['error'] ) && is_object( $data['error'] ) ) {
+			try {
+				$normalized_error = class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' )
+					? MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $data['error'] )
+					: null;
+				if ( ! is_wp_error( $normalized_error ) && is_array( $normalized_error ) ) $data['error'] = $normalized_error;
+			} catch ( Throwable $error ) {}
+		}
 		$status = (int) $response->get_status();
 		$outcome = $status >= 400 ? 'http_error' : ( ! is_array( $data ) || isset( $data['error'] ) || ! isset( $data['result'] ) || ! is_array( $data['result'] ) ? 'rpc_error' : 'ready' );
 		if ( 'ready' === $outcome && 'initialize' === $method ) {
