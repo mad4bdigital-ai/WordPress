@@ -134,6 +134,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cli.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identifiers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abuse-budget.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-runtime-gates.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';

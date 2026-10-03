@@ -8,6 +8,9 @@ final class MAD4B_SCP_Preparation_Receipt {
 	private static function key() { return hash_hmac( 'sha256', self::CONTRACT, wp_salt( 'auth' ), true ); }
 	private static function failure() { return new WP_Error( 'mad4b_preparation_receipt_invalid', 'Preparation changed or expired. Prepare the capability again; live authority is still required.' ); }
 	public static function issue( array $row ) {
+		if ( ! class_exists( 'MAD4B_SCP_Abuse_Budget' ) ) return new WP_Error( 'mad4b_abuse_budget_unavailable', 'Preparation abuse-budget runtime is unavailable.' );
+		$budget = MAD4B_SCP_Abuse_Budget::admit( 'prepare', $row );
+		if ( is_wp_error( $budget ) ) return $budget;
 		if ( empty( $row['execution_eligible'] ) || empty( $row['descriptor_sha256'] ) ) return '';
 		$now = self::now_epoch();
 		try {

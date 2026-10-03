@@ -367,6 +367,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function tool_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$items = array();
@@ -408,6 +410,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function read_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$request_scope = self::request_scope_admit( 'read_execute' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
@@ -485,6 +489,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function developer_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 20, absint( $input['limit'] ) ) ) : 10;
 		$items = array();
@@ -554,6 +560,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function developer_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$request_scope = self::request_scope_admit( 'developer_execute' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
@@ -685,6 +693,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function write_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$items = array();
@@ -895,6 +905,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function write_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$request_scope = self::request_scope_admit( 'write_execute' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
@@ -1151,6 +1163,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function enrollment_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
 		return MAD4B_SCP_Enrollment_Dispatch::discover( is_array( $input ) ? $input : array() );
 	}
@@ -1161,6 +1175,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function enrollment_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$request_scope = self::request_scope_admit( 'enrollment_execute' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
