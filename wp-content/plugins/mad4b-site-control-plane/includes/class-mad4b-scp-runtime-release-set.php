@@ -183,8 +183,11 @@ final class MAD4B_SCP_Runtime_Release_Set {
 	}
 
 	public static function chatgpt_step_up_tools() {
-		$access = self::can_bootstrap_apply();
-		return is_wp_error( $access ) || ! $access ? array() : array( self::BOOTSTRAP_APPLY_ABILITY );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( self::breakglass_active() ) return array();
+		return array( self::BOOTSTRAP_APPLY_ABILITY );
 	}
 
 	public static function bootstrap_apply( $input ) {
