@@ -581,6 +581,7 @@ jobs:
               '.github/workflows/mad4b-governed-execution-fence.yml',
               '.github/workflows/mad4b-approval-decision-contract.yml',
               '.github/workflows/mad4b-oauth-resource-bridge.yml',
+              '.github/workflows/mad4b-runtime-release-set.yml',
           ]
           critical_workflow_guard_jobs = {
               '.github/workflows/mad4b-site-control-plane.yml': [
@@ -611,6 +612,9 @@ jobs:
               ],
               '.github/workflows/mad4b-oauth-resource-bridge.yml': [
                   'OAuth bridge runtime (latest)',
+              ],
+              '.github/workflows/mad4b-runtime-release-set.yml': [
+                  'Runtime release-set contract',
               ],
           }
           if set(critical_workflow_guard_jobs) != set(critical_trigger_workflows):
@@ -1547,6 +1551,31 @@ jobs:
           asset_path = Path('/tmp') / asset_name
           shutil.copyfile(control, asset_path)
 
+          adapter_meta = install.get('mcp_adapter') or {}
+          adapter_version = str(adapter_meta.get('version') or '')
+          adapter_sha = str(adapter_meta.get('sha256') or '').lower()
+          adapter_bytes = int(adapter_meta.get('archive_bytes') or 0)
+          adapter_url = str(adapter_meta.get('package_url') or '')
+          if not re.fullmatch(r'[0-9A-Za-z._+\-]{1,64}', adapter_version):
+              raise SystemExit('MCP Adapter runtime release-set version invalid')
+          if not re.fullmatch(r'[0-9a-f]{64}', adapter_sha) or adapter_bytes < 1:
+              raise SystemExit('MCP Adapter runtime release-set identity invalid')
+          expected_adapter_url = f'https://github.com/WordPress/mcp-adapter/releases/download/v{adapter_version}/mcp-adapter.zip'
+          if adapter_url != expected_adapter_url:
+              raise SystemExit('MCP Adapter runtime release-set URL mismatch')
+
+          runtime_release_set = {
+              'contract': 'mad4b.runtime-release-set.v1',
+              'mcp_adapter': {
+                  'version': adapter_version,
+                  'archive_sha256': adapter_sha,
+                  'archive_bytes': adapter_bytes,
+                  'package_url': adapter_url,
+              },
+              'pair_certification_required': True,
+              'production_auto_apply': False,
+          }
+
           manifest = {
               'contract': 'mad4b.control-plane-update-channel.v1',
               'repository': repo,
@@ -1567,6 +1596,7 @@ jobs:
               'requires_php': '7.4',
               'tested': '7.1',
               'production_auto_update_enabled': False,
+              'runtime_release_set': runtime_release_set,
           }
           exact_manifest_name = f'mad4b-site-control-plane-update-{source}.json'
           exact_manifest_path = Path('/tmp') / exact_manifest_name
