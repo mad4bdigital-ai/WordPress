@@ -228,6 +228,21 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove table catalog multi-worker publication fencing
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-a --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-a.json &
+          PID_A=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-b --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-b.json &
+          PID_B=$!
+          wait "$PID_A"
+          wait "$PID_B"
+          cat /tmp/catalog-worker-a.json
+          cat /tmp/catalog-worker-b.json
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Prove explicit offline catalog retirement preserves authority
         shell: bash
         run: |
