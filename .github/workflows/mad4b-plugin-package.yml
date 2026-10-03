@@ -40,6 +40,50 @@ jobs:
           php "$root/tests/dependency-mcp-adapter-integrity-runtime.php"
           python3 "$root/tests/dependency-certified-runtime-contract.py"
 
+      - name: Resolve exact certified MCP Adapter package
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "$(python3 - <<'PY'
+          import json, shlex
+          from pathlib import Path
+          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
+          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
+          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
+          if policy.get('contract')!='mad4b.runtime-release-policy.v1':
+              raise SystemExit('runtime release policy contract mismatch')
+          version=str(policy.get('target_adapter_version') or '')
+          profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
+          if profile.get('version')!=version:
+              raise SystemExit('target MCP Adapter profile missing')
+          sha=str(profile.get('archive_sha256') or '').lower()
+          size=int(profile.get('archive_bytes') or 0)
+          url=str(profile.get('package_url') or '')
+          if len(sha)!=64 or size<1 or not url.startswith('https://github.com/WordPress/mcp-adapter/releases/download/v'):
+              raise SystemExit('target MCP Adapter profile identity invalid')
+          values={
+              'MCP_ADAPTER_VERSION':version,
+              'MCP_ADAPTER_SHA':sha,
+              'MCP_ADAPTER_BYTES':str(size),
+              'MCP_ADAPTER_URL':url,
+              'MCP_ADAPTER_STAGE_PATH':'/tmp/mad4b-plugin-package-mcp-adapter.zip',
+          }
+          for key,value in values.items():
+              print(f'{key}={shlex.quote(value)}')
+          PY
+          )"
+          {
+            echo "MCP_ADAPTER_VERSION=$MCP_ADAPTER_VERSION"
+            echo "MCP_ADAPTER_SHA=$MCP_ADAPTER_SHA"
+            echo "MCP_ADAPTER_BYTES=$MCP_ADAPTER_BYTES"
+            echo "MCP_ADAPTER_URL=$MCP_ADAPTER_URL"
+            echo "MCP_ADAPTER_STAGE_PATH=$MCP_ADAPTER_STAGE_PATH"
+          } >> "$GITHUB_ENV"
+          curl --fail --location --silent --show-error "$MCP_ADAPTER_URL" --output "$MCP_ADAPTER_STAGE_PATH"
+          test "$(stat -c '%s' "$MCP_ADAPTER_STAGE_PATH")" = "$MCP_ADAPTER_BYTES"
+          echo "$MCP_ADAPTER_SHA  $MCP_ADAPTER_STAGE_PATH" | sha256sum --check --strict
+          unzip -tqq "$MCP_ADAPTER_STAGE_PATH"
+
       - name: Verify general-distribution package contract
         shell: bash
         run: |
@@ -48,12 +92,11 @@ jobs:
           main="$root/mad4b-site-control-plane.php"
           bootstrap="$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
           certified="$root/config/certified-providers.json"
-          dependency_source='wp-content/plugins/mcp-adapter.zip'
 
           test -f "$main"
           test -f "$bootstrap"
           test -f "$certified"
-          test -f "$dependency_source"
+          test -f "$MCP_ADAPTER_STAGE_PATH"
           grep -Fq 'Plugin Name: MAD4B Site Control Plane' "$main"
           grep -Fq 'MAD4B_SCP_Dependency_Manager::boot();' "$main"
           grep -Fq "const BUNDLED_ARCHIVE = 'dependencies/mcp-adapter.zip';" "$root/includes/class-mad4b-scp-dependency-manager.php"
@@ -81,12 +124,10 @@ jobs:
           fi
 
           expected_sha="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo strtolower((string)($j["providers"]["mcp_adapter"]["archive_sha256"]??""));' "$certified")"
-          observed_sha="$(sha256sum "$dependency_source" | awk '{print $1}')"
           test -n "$expected_sha"
-          if [ "$expected_sha" != "$observed_sha" ]; then
-            printf 'Certified MCP Adapter archive digest mismatch. expected=%s observed=%s\n' "$expected_sha" "$observed_sha" >&2
-            exit 1
-          fi
+          test "$expected_sha" = "$MCP_ADAPTER_SHA"
+          observed_sha="$(sha256sum "$MCP_ADAPTER_STAGE_PATH" | awk '{print $1}')"
+          test "$observed_sha" = "$MCP_ADAPTER_SHA"
 
       - name: Generate exact functional-gap repository evidence
         shell: bash
@@ -135,7 +176,7 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane dist/stage/mad4b-site-control-plane
           rm -rf dist/stage/mad4b-site-control-plane/tests
           mkdir -p dist/stage/mad4b-site-control-plane/dependencies
-          cp wp-content/plugins/mcp-adapter.zip dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip
+          cp "$MCP_ADAPTER_STAGE_PATH" dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip
 
           expected_sha="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo strtolower((string)($j["providers"]["mcp_adapter"]["archive_sha256"]??""));' dist/stage/mad4b-site-control-plane/config/certified-providers.json)"
           embedded_sha="$(sha256sum dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip | awk '{print $1}')"
