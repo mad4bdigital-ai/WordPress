@@ -534,20 +534,23 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function finalize_execution_claim( array $claim, $result ) {
-		if ( empty( $claim['approval_required'] ) || empty( $claim['approval_ticket_id'] ) ) return true;
 		$status = is_wp_error( $result ) ? 'failed' : 'used';
-		$execution_error_code = is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : '';
-		$final = MAD4B_SCP_Approval_Tickets::finalize_claim( $claim['approval_ticket_id'], $status, $execution_error_code );
-		if ( is_wp_error( $final ) ) {
-			self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
-				'allowed' => false,
-				'reason_code' => $final->get_error_code(),
-				'approval_ticket_id' => isset( $claim['approval_ticket_id'] ) ? $claim['approval_ticket_id'] : '',
-				'execution_result' => $status,
-			), 'failed' );
-			return $final;
+		$approval_required = ! empty( $claim['approval_required'] ) && ! empty( $claim['approval_ticket_id'] );
+		if ( $approval_required ) {
+			$execution_error_code = is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : '';
+			$final = MAD4B_SCP_Approval_Tickets::finalize_claim( $claim['approval_ticket_id'], $status, $execution_error_code );
+			if ( is_wp_error( $final ) ) {
+				self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
+					'allowed' => false,
+					'reason_code' => $final->get_error_code(),
+					'approval_ticket_id' => isset( $claim['approval_ticket_id'] ) ? $claim['approval_ticket_id'] : '',
+					'execution_result' => $status,
+				), 'failed' );
+				return $final;
+			}
 		}
-		if ( 'used' === $status && class_exists( 'MAD4B_SCP_Provider_Canary_Execution' ) && method_exists( 'MAD4B_SCP_Provider_Canary_Execution', 'persist_authorized_evidence' ) ) {
+
+		if ( 'used' === $status && class_exists( 'MAD4B_SCP_Provider_Canary_Execution' ) && method_exists( 'MAD4B_SCP_Provider_Canary_Execution', 'persist_authorized_evidence' ) && $approval_required ) {
 			$evidence = MAD4B_SCP_Provider_Canary_Execution::persist_authorized_evidence( $claim, $result );
 			if ( is_wp_error( $evidence ) ) {
 				self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
@@ -559,6 +562,27 @@ final class MAD4B_SCP_Authorization {
 				), 'failed' );
 				return $evidence;
 			}
+		}
+
+		if ( 'used' === $status ) {
+			if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
+				return new WP_Error( 'mad4b_execution_terminal_evidence_policy_unavailable', 'Terminal success evidence policy is unavailable after provider execution.', array( 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+			}
+			$material = MAD4B_SCP_Execution_Evidence_Policy::terminal_success_material( $claim, $result );
+			if ( is_wp_error( $material ) ) return $material;
+			$audit_entry = self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', $material, 'completed' );
+			if ( is_wp_error( $audit_entry ) ) {
+				return MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
+					$audit_entry->get_error_code(),
+					'Provider execution completed but terminal audit evidence could not be persisted. Reconcile provider state before any retry.',
+					array(
+						'result_sha256' => isset( $material['result_sha256'] ) ? $material['result_sha256'] : '',
+						'terminal_material_sha256' => isset( $material['terminal_material_sha256'] ) ? $material['terminal_material_sha256'] : '',
+					)
+				);
+			}
+			$receipt = MAD4B_SCP_Execution_Evidence_Policy::terminal_receipt( $material, is_array( $audit_entry ) ? $audit_entry : array() );
+			if ( is_wp_error( $receipt ) ) return $receipt;
 		}
 		return true;
 	}
@@ -669,7 +693,8 @@ final class MAD4B_SCP_Authorization {
 		return new WP_Error( $code, $message );
 	}
 	private static function audit( $ability_name, array $summary, $status ) {
-		if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/authorization:' . (string) $ability_name, $summary, $status );
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_authorization_audit_unavailable', 'Authorization audit service is unavailable.' );
+		return MAD4B_SCP_Audit::record( 'mad4b/authorization:' . (string) $ability_name, $summary, $status );
 	}
 }
 

@@ -5,6 +5,7 @@ define( 'ABSPATH', __DIR__ . '/' );
 $GLOBALS['mad4b_finalization_events'] = array();
 $GLOBALS['mad4b_finalize_ticket_error'] = false;
 $GLOBALS['mad4b_canary_persist_error'] = false;
+$GLOBALS['mad4b_terminal_audit_error'] = false;
 
 function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
@@ -23,7 +24,14 @@ class WP_Error {
 final class MAD4B_SCP_Audit {
 	public static function record( $ability, $summary, $status = 'ok' ) {
 		$GLOBALS['mad4b_finalization_events'][] = 'authorization-audit:' . (string) $status;
-		return true;
+		if ( 'completed' === (string) $status && ! empty( $GLOBALS['mad4b_terminal_audit_error'] ) ) {
+			return new WP_Error( 'mad4b_audit_append_failed', 'Synthetic terminal audit persistence failure.' );
+		}
+		return array(
+			'contract' => 'mad4b.audit.v2',
+			'event_id' => '33333333-3333-4333-8333-333333333333',
+			'entry_hash' => str_repeat( 'a', 64 ),
+		);
 	}
 }
 
@@ -45,6 +53,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 	}
 }
 
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-execution-evidence-policy.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-authorization.php';
 
 function mad4b_finalize_assert( $condition, $message ) {
@@ -73,7 +82,7 @@ $provider_result = array( 'contract' => 'mad4b.provider-canary-execution.v1' );
 $GLOBALS['mad4b_finalization_events'] = array();
 $result = MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $provider_result );
 mad4b_finalize_same( true, $result, 'successful canary finalization should succeed' );
-mad4b_finalize_same( array( 'ticket:used', 'canary:persist' ), $GLOBALS['mad4b_finalization_events'], 'authorization must consume approval before durable canary correlation' );
+mad4b_finalize_same( array( 'ticket:used', 'canary:persist', 'authorization-audit:completed' ), $GLOBALS['mad4b_finalization_events'], 'authorization must consume approval, persist provider correlation, then persist terminal success evidence' );
 
 $GLOBALS['mad4b_finalization_events'] = array();
 $GLOBALS['mad4b_canary_persist_error'] = true;
@@ -105,7 +114,17 @@ $no_approval = $claim;
 $no_approval['approval_required'] = false;
 $no_approval['approval_ticket_id'] = '';
 $result = MAD4B_SCP_Authorization::finalize_execution_claim( $no_approval, $provider_result );
-mad4b_finalize_same( true, $result, 'non-approved execution path should remain a no-op for approval finalization' );
-mad4b_finalize_same( array(), $GLOBALS['mad4b_finalization_events'], 'no approval means no ticket or canary correlation side effects' );
+mad4b_finalize_same( true, $result, 'non-approved governed execution should persist terminal success evidence without ticket/canary correlation' );
+mad4b_finalize_same( array( 'authorization-audit:completed' ), $GLOBALS['mad4b_finalization_events'], 'no approval still requires durable terminal success evidence' );
+
+$GLOBALS['mad4b_finalization_events'] = array();
+$GLOBALS['mad4b_terminal_audit_error'] = true;
+$result = MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $provider_result );
+mad4b_finalize_assert( is_wp_error( $result ), 'terminal audit persistence failure after provider side effect must suppress success' );
+mad4b_finalize_same( 'mad4b_execution_terminal_evidence_persist_failed', $result->get_error_code(), 'terminal audit persistence failure code must be canonical' );
+$data = $result->get_error_data();
+mad4b_finalize_assert( is_array( $data ) && ! empty( $data['reconciliation_required'] ) && empty( $data['blind_retry_allowed'] ), 'terminal audit failure must require reconciliation and prohibit blind retry' );
+mad4b_finalize_same( array( 'ticket:used', 'canary:persist', 'authorization-audit:completed' ), $GLOBALS['mad4b_finalization_events'], 'terminal audit failure must occur only after approval consumption and provider correlation' );
+$GLOBALS['mad4b_terminal_audit_error'] = false;
 
 echo "MAD4B provider canary authorization finalization contract passed.\n";

@@ -59,4 +59,26 @@ $tooSmall=MAD4B_SCP_Execution_Evidence_Policy::compact_audit_summary(array(
 ),512);
 $check('mad4b_execution_evidence_mandatory_exceeds_bound'===$code($tooSmall),'mandatory evidence overflow was silently truncated');
 
+$claim=array(
+	'ability'=>'fixture/mutate',
+	'provider'=>'core',
+	'server_id'=>'mad4b-write',
+	'request_id'=>'request-terminal-fixture',
+	'approval_ticket_id'=>'11111111-1111-4111-8111-111111111111',
+	'target_fingerprint'=>str_repeat('d',64),
+	'context_receipt_sha256'=>str_repeat('e',64),
+	'commit_guard_receipt'=>array('material_sha256'=>str_repeat('f',64)),
+);
+$material=MAD4B_SCP_Execution_Evidence_Policy::terminal_success_material($claim,array('updated'=>true,'id'=>9));
+$check(is_array($material)&&'success'===$material['terminal_outcome']&&1===preg_match('/^[a-f0-9]{64}$/',$material['result_sha256']),'terminal success material invalid');
+$auditEntry=array('event_id'=>'22222222-2222-4222-8222-222222222222','entry_hash'=>str_repeat('a',64));
+$receipt=MAD4B_SCP_Execution_Evidence_Policy::terminal_receipt($material,$auditEntry);
+$check(is_array($receipt)&&!empty($receipt['durable'])&&'durable_receipt_committed'===$receipt['crash_point']&&1===preg_match('/^[a-f0-9]{64}$/',$receipt['receipt_sha256']),'terminal receipt invalid');
+$invalidReceipt=MAD4B_SCP_Execution_Evidence_Policy::terminal_receipt($material,array());
+$check('mad4b_execution_terminal_evidence_persist_failed'===$code($invalidReceipt),'invalid durable audit receipt failed open');
+$persistError=MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error('disk_full','fixture');
+$check('mad4b_execution_terminal_evidence_persist_failed'===$code($persistError),'terminal persistence failure code invalid');
+$persistData=$persistError->get_error_data();
+$check(!empty($persistData['reconciliation_required'])&&empty($persistData['blind_retry_allowed'])&&'RECONCILING'===$persistData['state'],'post-side-effect persistence failure was not reconciling');
+
 echo "mad4b.execution-evidence-policy.runtime.v1: PASS\n";

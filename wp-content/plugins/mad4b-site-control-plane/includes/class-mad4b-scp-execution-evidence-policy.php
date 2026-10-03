@@ -11,6 +11,8 @@ final class MAD4B_SCP_Execution_Evidence_Policy {
 	const CONTRACT = 'mad4b.execution-evidence-policy.v1';
 	const CRASH_CONTRACT = 'mad4b.execution-crash-point.v1';
 	const COMPACT_CONTRACT = 'mad4b.audit-evidence-compact.v1';
+	const TERMINAL_EVIDENCE_CONTRACT = 'mad4b.execution-terminal-evidence.v1';
+	const TERMINAL_RECEIPT_CONTRACT = 'mad4b.execution-terminal-receipt.v1';
 	const MAX_MANDATORY_PATHS = 128;
 	const MAX_PATH_BYTES = 191;
 	const MAX_VALUE_BYTES = 500;
@@ -55,6 +57,78 @@ final class MAD4B_SCP_Execution_Evidence_Policy {
 				'authorizing' => false,
 			),
 			$points[ $point ]
+		);
+	}
+
+	public static function terminal_success_material( array $claim, $result ) {
+		$ability = isset( $claim['ability'] ) ? trim( (string) $claim['ability'] ) : '';
+		$provider = isset( $claim['provider'] ) ? sanitize_key( (string) $claim['provider'] ) : 'core';
+		if ( '' === $ability ) return new WP_Error( 'mad4b_execution_terminal_identity_missing', 'Terminal execution evidence requires the governed ability identity.' );
+		$result_sha256 = self::canonical_digest( 'mad4b.execution-result.v1', $result );
+		if ( is_wp_error( $result_sha256 ) ) return $result_sha256;
+		$material = array(
+			'contract' => self::TERMINAL_EVIDENCE_CONTRACT,
+			'reason_code' => 'execution_completed',
+			'terminal_outcome' => 'success',
+			'ability' => $ability,
+			'provider_id' => '' === $provider ? 'core' : $provider,
+			'server_id' => isset( $claim['server_id'] ) ? sanitize_key( (string) $claim['server_id'] ) : '',
+			'request_id' => isset( $claim['request_id'] ) ? substr( (string) $claim['request_id'], 0, 100 ) : '',
+			'approval_ticket_id' => isset( $claim['approval_ticket_id'] ) ? strtolower( trim( (string) $claim['approval_ticket_id'] ) ) : '',
+			'target_fingerprint' => isset( $claim['target_fingerprint'] ) ? strtolower( trim( (string) $claim['target_fingerprint'] ) ) : '',
+			'context_receipt_sha256' => isset( $claim['context_receipt_sha256'] ) ? strtolower( trim( (string) $claim['context_receipt_sha256'] ) ) : '',
+			'commit_guard_material_sha256' => isset( $claim['commit_guard_receipt']['material_sha256'] ) ? strtolower( trim( (string) $claim['commit_guard_receipt']['material_sha256'] ) : '',
+			'result_sha256' => $result_sha256,
+			'provider_side_effect_possible' => true,
+			'authorizing' => false,
+		);
+		$material['terminal_material_sha256'] = self::canonical_digest( self::TERMINAL_EVIDENCE_CONTRACT, $material );
+		if ( is_wp_error( $material['terminal_material_sha256'] ) ) return $material['terminal_material_sha256'];
+		return $material;
+	}
+
+	public static function terminal_receipt( array $material, array $audit_entry ) {
+		$event_id = isset( $audit_entry['event_id'] ) ? strtolower( trim( (string) $audit_entry['event_id'] ) ) : '';
+		$entry_hash = isset( $audit_entry['entry_hash'] ) ? strtolower( trim( (string) $audit_entry['entry_hash'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $event_id ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $entry_hash ) ) {
+			return self::terminal_persistence_error( 'audit_receipt_invalid', 'Audit persistence did not return a verifiable durable event identity.', array(
+				'audit_event_id' => $event_id,
+				'audit_entry_hash' => $entry_hash,
+			) );
+		}
+		$receipt = array(
+			'contract' => self::TERMINAL_RECEIPT_CONTRACT,
+			'terminal_outcome' => 'success',
+			'terminal_material_sha256' => isset( $material['terminal_material_sha256'] ) ? (string) $material['terminal_material_sha256'] : '',
+			'result_sha256' => isset( $material['result_sha256'] ) ? (string) $material['result_sha256'] : '',
+			'audit_event_id' => $event_id,
+			'audit_entry_hash' => $entry_hash,
+			'crash_point' => 'durable_receipt_committed',
+			'durable' => true,
+			'authorizing' => false,
+		);
+		$receipt['receipt_sha256'] = self::canonical_digest( self::TERMINAL_RECEIPT_CONTRACT, $receipt );
+		if ( is_wp_error( $receipt['receipt_sha256'] ) ) return $receipt['receipt_sha256'];
+		return $receipt;
+	}
+
+	public static function terminal_persistence_error( $reason_code, $message, array $extra = array() ) {
+		$state = self::crash_point( 'provider_returned' );
+		if ( is_wp_error( $state ) ) $state = array(
+			'state' => 'RECONCILING',
+			'reconciliation_required' => true,
+			'blind_retry_allowed' => false,
+			'client_action' => 'reconcile_provider_state_before_any_retry',
+			'authorizing' => false,
+		);
+		return new WP_Error(
+			'mad4b_execution_terminal_evidence_persist_failed',
+			(string) $message,
+			array_merge( $state, array(
+				'reason_code' => sanitize_key( (string) $reason_code ),
+				'terminal_success' => false,
+				'receipt_durable' => false,
+			), $extra )
 		);
 	}
 
@@ -158,6 +232,45 @@ final class MAD4B_SCP_Execution_Evidence_Policy {
 		if ( is_bool( $value ) || null === $value || is_int( $value ) || is_float( $value ) ) return $value;
 		$value = (string) $value;
 		return strlen( $value ) > self::MAX_VALUE_BYTES ? substr( $value, 0, self::MAX_VALUE_BYTES ) : $value;
+	}
+
+	private static function canonical_digest( $domain, $value ) {
+		$canonical = self::canonicalize( $value );
+		if ( is_wp_error( $canonical ) ) return $canonical;
+		$json = self::encode( array( 'domain' => (string) $domain, 'value' => $canonical ) );
+		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_execution_terminal_digest_failed', 'Terminal execution evidence could not be canonically encoded.' );
+		return hash( 'sha256', $json );
+	}
+
+	private static function canonicalize( $value ) {
+		if ( is_array( $value ) ) {
+			$keys = array_keys( $value );
+			$is_list = $keys === range( 0, count( $value ) - 1 );
+			if ( $is_list ) {
+				$out = array();
+				foreach ( $value as $item ) {
+					$normalized = self::canonicalize( $item );
+					if ( is_wp_error( $normalized ) ) return $normalized;
+					$out[] = $normalized;
+				}
+				return $out;
+			}
+			sort( $keys, SORT_STRING );
+			$out = array();
+			foreach ( $keys as $key ) {
+				$normalized = self::canonicalize( $value[ $key ] );
+				if ( is_wp_error( $normalized ) ) return $normalized;
+				$out[ (string) $key ] = $normalized;
+			}
+			return $out;
+		}
+		if ( is_object( $value ) ) {
+			if ( $value instanceof WP_Error ) return new WP_Error( 'mad4b_execution_terminal_result_invalid', 'WP_Error cannot be represented as terminal success evidence.' );
+			return self::canonicalize( get_object_vars( $value ) );
+		}
+		if ( is_string( $value ) || is_int( $value ) || is_bool( $value ) || null === $value ) return $value;
+		if ( is_float( $value ) && is_finite( $value ) ) return $value;
+		return new WP_Error( 'mad4b_execution_terminal_result_invalid', 'Terminal success result contains an unsupported evidence value.' );
 	}
 
 	private static function encode( $value ) {
