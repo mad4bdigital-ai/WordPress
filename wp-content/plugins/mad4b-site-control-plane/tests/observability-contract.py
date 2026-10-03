@@ -37,3 +37,13 @@ for marker in ["run_stage( 'approval'", "claim_exact_impl(", "'phase'=>'authoriz
     if marker not in approval: raise SystemExit("FAIL approval observability stage missing "+marker)
 for marker in ["run_stage( 'provider_execution'", "execute_read_impl(", "execute_mutation_impl(", "target_sha256"]:
     if marker not in connector: raise SystemExit("FAIL provider-execution observability stage missing "+marker)
+
+reversible=(root/"includes/class-mad4b-scp-reversible-adapter-mutations.php").read_text(encoding="utf-8")
+network=(root/"includes/class-mad4b-scp-network-operation-journal.php").read_text(encoding="utf-8")
+catalog=(root/"includes/class-mad4b-scp-catalog-table-backend.php").read_text(encoding="utf-8")
+for marker in ["run_stage( 'readback'", "run_stage( 'reconciliation'", "target_sha256"]:
+    if marker not in reversible: raise SystemExit("FAIL mutation readback/reconciliation observability missing "+marker)
+for marker in ["run_stage( 'network_fanout'", "target_trace_link(", "causal_link_sha256", "cross_tenant_trace_id_reused'=>false"]:
+    if marker not in network: raise SystemExit("FAIL network fan-out observability missing "+marker)
+for marker in ["run_stage( 'catalog_rebuild'", "flush_impl("]:
+    if marker not in catalog: raise SystemExit("FAIL catalog rebuild observability missing "+marker)

@@ -128,6 +128,13 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 	}
 
 	public function flush() {
+		$call = function() { return $this->flush_impl(); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'catalog_rebuild', $call, '', array( 'storage_scope_sha256'=>$this->scope ) )
+			: $call();
+	}
+
+	private function flush_impl() {
 		global $wpdb;
 		if ( ! self::ready() ) return new WP_Error( 'mad4b_catalog_table_backend_unready', 'Catalog table backend schema is unavailable.' );
 		$transaction = MAD4B_SCP_Database_Transaction_Guard::begin( 'catalog_table_publish', array( 'catalog_objects','catalog_generations','catalog_heads' ), false );

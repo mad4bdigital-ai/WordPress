@@ -126,7 +126,16 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			return self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $result, $result->get_error_code() );
 		}
 
-		$after_state = $adapter->read_reversible_state( $ability_name, $before['target'] );
+		$readback_call = static function() use ( $adapter, $ability_name, $before ) {
+			return $adapter->read_reversible_state( $ability_name, $before['target'] );
+		};
+		$after_state = class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'readback', $readback_call, '', array(
+				'ability'=>(string)$ability_name,
+				'provider_id'=>sanitize_key((string)$provider),
+				'target_sha256'=>hash('sha256',(string)$before['target_id']),
+			) )
+			: $readback_call();
 		if ( is_wp_error( $after_state ) ) {
 			self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) );
 			$error = new WP_Error( 'mad4b_reversible_readback_failed', 'Provider write completed but reversible readback failed.', array( 'provider_error' => $after_state->get_error_code() ) );
@@ -238,7 +247,17 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 
 	private static function finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, array $before, $before_hash, $error, $error_code ) {
 		$declared_not_started = self::provider_declared_not_started( $error );
-		$observed = $adapter->read_reversible_state( $ability_name, $before['target'] );
+		$reconcile_call = static function() use ( $adapter, $ability_name, $before ) {
+			return $adapter->read_reversible_state( $ability_name, $before['target'] );
+		};
+		$observed = class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'reconciliation', $reconcile_call, '', array(
+				'ability'=>(string)$ability_name,
+				'provider_id'=>sanitize_key((string)$provider),
+				'target_sha256'=>hash('sha256',(string)$before['target_id']),
+				'failure_code'=>sanitize_key((string)$error_code),
+			) )
+			: $reconcile_call();
 		$after_hash = is_array( $observed ) ? self::state_hash( $observed ) : '';
 		$declared_not_started_verified = $declared_not_started
 			&& is_array( $observed )

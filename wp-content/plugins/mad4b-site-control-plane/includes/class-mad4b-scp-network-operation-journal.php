@@ -88,6 +88,19 @@ final class MAD4B_SCP_Network_Operation_Journal {
 	}
 
 	public static function claim_target( $network_operation_id, $target_blog_id, $worker_id, array $observed_context ) {
+		$target_site_uuid = isset( $observed_context['target_site_uuid'] ) ? (string)$observed_context['target_site_uuid'] : '';
+		$call = static function() use ( $network_operation_id, $target_blog_id, $worker_id, $observed_context ) {
+			return self::claim_target_impl( $network_operation_id, $target_blog_id, $worker_id, $observed_context );
+		};
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'network_fanout', $call, $target_site_uuid, array(
+				'target_blog_id'=>(int)$target_blog_id,
+				'network_operation_sha256'=>hash('sha256',(string)$network_operation_id),
+			) )
+			: $call();
+	}
+
+	private static function claim_target_impl( $network_operation_id, $target_blog_id, $worker_id, array $observed_context ) {
 		global $wpdb;
 		$network_operation_id=self::canonical_operation_id($network_operation_id); $target_blog_id=absint($target_blog_id); $worker_id=self::bounded_token($worker_id,191);
 		if(''===$network_operation_id||$target_blog_id<1||''===$worker_id)return self::error('mad4b_network_claim_identity_invalid','Network target claim identity is invalid.');
@@ -117,7 +130,11 @@ final class MAD4B_SCP_Network_Operation_Journal {
 			));
 			if(1!==(int)$ok)throw new RuntimeException('network_target_claim_cas_conflict');
 			$state=self::derive_operation_state_locked($network_operation_id,false);
-			$event=self::append_event_locked($network_operation_id,$target_blog_id,'target_claimed',$state,'',array('claim_epoch'=>$epoch,'worker_id_sha256'=>hash('sha256',$worker_id),'claim_ttl_seconds'=>self::CLAIM_TTL_SECONDS));
+			$trace_link=self::target_trace_link(isset($op['origin_site_uuid'])?(string)$op['origin_site_uuid']:'',isset($target['target_site_uuid'])?(string)$target['target_site_uuid']:'');
+			$event=self::append_event_locked($network_operation_id,$target_blog_id,'target_claimed',$state,'',array_merge(
+				array('claim_epoch'=>$epoch,'worker_id_sha256'=>hash('sha256',$worker_id),'claim_ttl_seconds'=>self::CLAIM_TTL_SECONDS),
+				$trace_link
+			));
 			if(is_wp_error($event))throw new RuntimeException($event->get_error_code());
 			$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx); if(is_wp_error($committed))return $committed;
 			$target=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE id=%d LIMIT 1",(int)$target['id']),ARRAY_A);
@@ -352,6 +369,25 @@ final class MAD4B_SCP_Network_Operation_Journal {
 		foreach(array('origin_sha256','authority_scope_sha256','catalog_sha256','plan_sha256','preparation_sha256','context_sha256','credential_binding_sha256','receipt_binding_sha256') as $field)$out[$field]=self::digest_value(isset($target[$field])?$target[$field]:'');
 		foreach($out as $field=>$value)if('target_site_uuid'!==$field&&'approval_ticket_id'!==$field&&''===$value)return self::error('mad4b_network_target_context_invalid','Target context digest is incomplete.',array('field'=>$field));
 		if(''===$site)return self::error('mad4b_network_target_site_invalid','Target Site UUID is invalid.');return $out;
+	}
+
+	private static function target_trace_link( $origin_site_uuid, $target_site_uuid ) {
+		if ( ! class_exists( 'MAD4B_SCP_Observability' ) ) return array();
+		$origin_site_uuid=self::uuidv4($origin_site_uuid);$target_site_uuid=self::uuidv4($target_site_uuid);
+		if(''===$origin_site_uuid||''===$target_site_uuid)return array();
+		$origin=MAD4B_SCP_Observability::current($origin_site_uuid);
+		if(is_wp_error($origin)||!is_array($origin))return array();
+		$target=MAD4B_SCP_Observability::fork_for_tenant($origin,$target_site_uuid);
+		if(is_wp_error($target)||!is_array($target))return array();
+		return array(
+			'observability_contract'=>MAD4B_SCP_Observability::TRACE_CONTRACT,
+			'trace_id'=>(string)$target['trace_id'],
+			'span_id'=>(string)$target['span_id'],
+			'causal_link_sha256'=>(string)$target['causal_link_sha256'],
+			'tenant_scope_sha256'=>(string)$target['tenant_scope_sha256'],
+			'cross_tenant_trace_id_reused'=>false,
+			'observability_authorizing'=>false
+		);
 	}
 
 	private static function target_set_sha256( array $targets ) {

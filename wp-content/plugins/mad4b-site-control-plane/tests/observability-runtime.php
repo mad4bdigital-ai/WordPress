@@ -37,10 +37,14 @@ $check(is_wp_error($invalid),'All-zero traceparent was accepted.',$invalid);
 
 $child=MAD4B_SCP_Observability::child('authorization','site-a',array('site_uuid'=>'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','authorization'=>'Bearer secret','ability'=>'demo/read'));
 $check(!is_wp_error($child)&&$root['trace_id']===$child['trace_id']&&$root['span_id']===$child['parent_span_id'],'Same-tenant child lost causal trace.',$child);
+$inherited=MAD4B_SCP_Observability::child('approval','',array('phase'=>'inheritance-test'));
+$check(!is_wp_error($inherited)&&$root['trace_id']===$inherited['trace_id']&&$root['tenant_scope_sha256']===$inherited['tenant_scope_sha256'],'Omitted tenant scope forked away from the current tenant.',$inherited);
 $check(isset($child['attributes']['site_uuid_sha256'])&&'[REDACTED]'===$child['attributes']['authorization'],'Trace attributes leaked sensitive/tenant values.',$child['attributes']);
 
 $fork=MAD4B_SCP_Observability::fork_for_tenant($child,'site-b');
 $check(!is_wp_error($fork)&&$fork['trace_id']!==$child['trace_id']&&!empty($fork['causal_link_sha256'])&&empty($fork['cross_tenant_trace_id_reused']),'Cross-tenant fan-out reused the trace id or lost causal link.',$fork);
+$current_after_fork=MAD4B_SCP_Observability::current();
+$check($root['trace_id']===$current_after_fork['trace_id']&&$root['tenant_scope_sha256']===$current_after_fork['tenant_scope_sha256'],'Cross-tenant fork contaminated the request-global origin trace.',$current_after_fork);
 $denied=MAD4B_SCP_Observability::propagation_headers($child,'site-b');
 $check(is_wp_error($denied)&&'mad4b_observability_cross_tenant_propagation_denied'===$denied->get_error_code(),'Cross-tenant trace header export was admitted.',$denied);
 
@@ -48,6 +52,8 @@ $redacted=MAD4B_SCP_Observability::redact(array('nested'=>array('client_secret'=
 $check('[REDACTED]'===$redacted['nested']['client_secret']&&'[REDACTED]'===$redacted['raw_payload']&&strlen($redacted['long'])<560,'Recursive redaction/bounds failed.',$redacted);
 
 $GLOBALS['obs_metric_fail']=true;
+$callback_result=MAD4B_SCP_Observability::run_stage('discovery',static function(){return array('safe_read'=>'unchanged');},'',array('safe'=>'yes'));
+$check(is_array($callback_result)&&'unchanged'===$callback_result['safe_read'],'Telemetry outage changed an observed callback result.',$callback_result);
 $optional=MAD4B_SCP_Observability::record_stage('discovery',17,true,array('safe'=>'yes'));
 $check(is_array($optional)&&empty($optional['recorded'])&&empty($optional['safe_read_blocked'])&&'ci_metric_backend_down'===$optional['telemetry_error_code'],'Optional telemetry outage became blocking.',$optional);
 $GLOBALS['obs_metric_fail']=false;
