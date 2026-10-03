@@ -483,7 +483,7 @@ final class MAD4B_SCP_Site_Profile {
 				if ( ! add_option( self::OPTION, $record, '', false ) ) return false;
 			} else {
 				$sql = $wpdb->prepare(
-					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
 					maybe_serialize( $record ),
 					self::OPTION,
 					maybe_serialize( $expected )
@@ -518,13 +518,13 @@ final class MAD4B_SCP_Site_Profile {
 		if ( $database_cas ) {
 			if ( null === $previous ) {
 				$sql = $wpdb->prepare(
-					"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+					"DELETE FROM {$wpdb->options} WHERE option_name = %s AND BINARY option_value = BINARY %s",
 					self::OPTION,
 					maybe_serialize( $expected_current )
 				);
 			} else {
 				$sql = $wpdb->prepare(
-					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
 					maybe_serialize( $previous ),
 					self::OPTION,
 					maybe_serialize( $expected_current )
