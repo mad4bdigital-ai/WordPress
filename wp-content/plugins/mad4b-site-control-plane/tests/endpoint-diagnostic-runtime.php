@@ -55,6 +55,26 @@ class MAD4B_SCP_Developer_Runtime { static function tool_names( $breakglass ) { 
 class MAD4B_SCP_Provider_Contracts { static function runtime_status( ...$args ) { throw new RuntimeException( 'Full provider certification ran' ); } }
 class MAD4B_SCP_MCP_Peer_Governance { static function status() { throw new RuntimeException( 'Foreign inventory ran' ); } }
 class MAD4B_SCP_External_Handshake_Evidence { static function status() { throw new RuntimeException( 'Full external certification ran' ); } }
+class MAD4B_SCP_Capability_Descriptor_Registry {
+	const CONTRACT = 'mad4b.capability-descriptor.v2';
+	const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
+	public static function binding( $name, $consumer ) {
+		$name = (string) $name;
+		return array(
+			'contract' => self::CONSUMER_BINDING_CONTRACT,
+			'consumer' => (string) $consumer,
+			'descriptor_contract' => self::CONTRACT,
+			'generation_contract' => 'mad4b.capability-generation-roots.v1',
+			'ability_name' => $name,
+			'input_schema_sha256' => hash( 'sha256', 'endpoint-schema:' . $name ),
+			'classification_sha256' => hash( 'sha256', 'endpoint-classification:' . $name ),
+			'execution_lane' => 'read',
+			'descriptor_sha256' => hash( 'sha256', 'endpoint-descriptor:' . $name ),
+			'generation_roots' => array( 'contract_root' => str_repeat( 'a', 64 ), 'site_root' => str_repeat( 'b', 64 ) ),
+			'authorizing' => false,
+		);
+	}
+}
 class JobAdapter { public $tools = array(); function create_server( ...$args ) { $this->tools[$args[0]] = $args[9]; return true; } }
 class JobRest { function get_routes() { return array( '/mcp/mad4b-developer-breakglass' => array() ); } }
 function rest_get_server() { $GLOBALS['rest_calls']++; $GLOBALS['wp_rest_server'] = new JobRest(); try { do_action( 'rest_api_init' ); } catch ( Throwable $error ) { fwrite( STDERR, (string) $error . "\n" ); throw $error; } return $GLOBALS['wp_rest_server']; }

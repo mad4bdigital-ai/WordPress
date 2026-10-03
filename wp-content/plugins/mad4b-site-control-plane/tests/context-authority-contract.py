@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import subprocess
 import sys
 
@@ -14,6 +15,8 @@ audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8"
 registry = (root / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 preflight = (root / "includes/class-mad4b-scp-context-preflight.php").read_text(encoding="utf-8")
+semantic_fields = (root / "includes/class-mad4b-scp-semantic-content-field-contracts.php").read_text(encoding="utf-8")
+semantic_field_catalog = json.loads((root / "config/semantic-content-field-contracts.json").read_text(encoding="utf-8"))
 skill_registry = (root / "includes/class-mad4b-scp-skill-registry.php").read_text(encoding="utf-8")
 skill_abilities = (root / "includes/class-mad4b-scp-skill-abilities.php").read_text(encoding="utf-8")
 skill_snapshot = (root / "includes/class-mad4b-scp-skill-snapshot-identity.php").read_text(encoding="utf-8")
@@ -429,18 +432,28 @@ require(preflight, "intended_ability", "exact Context Receipt mutation binding")
 require(preflight, "mad4b_content_context_receipt_ability_binding_required", "unbound Brand Context receipt denied")
 require(preflight, "mad4b_content_context_receipt_ability_mismatch", "horizontal Context receipt replay denied")
 require(preflight, "mad4b_content_context_receipt_policy_not_authorizing", "no-context receipt cannot authorize Brand-bearing mutation")
-require(preflight, "mad4b/content-create-post", "core post creation receipt enforcement")
-require(preflight, "mad4b/taxonomy-create-term", "core taxonomy creation receipt enforcement")
-require(preflight, "media/update-metadata", "media text metadata receipt enforcement")
-require(preflight, "mad4b/content-import-bundle", "content bundle receipt enforcement")
-require(preflight, "mad4b/taxonomy-update-term", "taxonomy copy receipt enforcement")
-require(preflight, "seo/update-meta", "SEO copy receipt enforcement")
-require(preflight, "woocommerce/update-product", "product copy receipt enforcement")
-require(preflight, "elementor/update-widget-settings", "Elementor copy receipt enforcement")
-require(preflight, "jetengine/update-post-meta", "JetEngine copy receipt enforcement")
-require(preflight, "mad4b/content-set-meta", "post meta copy receipt enforcement")
-require(preflight, "content_paths_in_value", "nested widget content detection")
-require(preflight, "editor|html|wysiwyg", "rich-text field-name detection")
+require(main, "class-mad4b-scp-semantic-content-field-contracts.php", "semantic content-field registry wiring")
+require(preflight, "MAD4B_SCP_Semantic_Content_Field_Contracts::classify", "central provider semantic field classifier")
+require(preflight, "mad4b_content_field_classification_required", "unknown semantic field review gate")
+require(semantic_fields, "fallback_evidence_authorizing", "heuristic evidence cannot authorize mutation")
+require(semantic_fields, "review_required", "unknown brand-bearing field review state")
+assert semantic_field_catalog.get("contract") == "mad4b.semantic-content-field-contracts.v1", "semantic content-field catalog contract drift"
+assert semantic_field_catalog.get("fallback_evidence_authorizing") is False, "fallback semantic evidence must remain non-authorizing"
+expected_semantic_abilities = {
+    "mad4b/content-create-post",
+    "mad4b/content-update-post",
+    "mad4b/content-import-bundle",
+    "mad4b/taxonomy-create-term",
+    "mad4b/taxonomy-update-term",
+    "seo/update-meta",
+    "woocommerce/update-product",
+    "media/update-metadata",
+    "mad4b/content-set-meta",
+    "jetengine/update-post-meta",
+    "elementor/update-widget-settings",
+}
+assert expected_semantic_abilities.issubset(set((semantic_field_catalog.get("abilities") or {}).keys())), "provider semantic field catalog lost required Brand-bearing Ability families"
+assert "editor|html|wysiwyg" in json.dumps(semantic_field_catalog, sort_keys=True), "rich-text provider semantic classification missing"
 assert "'context_receipt' => $receipt" not in preflight, "Full Context receipt must not be duplicated into append-only audit payload"
 
 # Skill exposure must be Context-bound; portable export may not bypass it.
