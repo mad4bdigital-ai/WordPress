@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+global $wpdb;
 
 $fail = static function ( $message, $context = null ) {
 	fwrite( STDERR, 'FAIL runtime-catalog-table-backend: ' . $message . ( null === $context ? '' : ' ' . wp_json_encode( $context ) ) . PHP_EOL );
