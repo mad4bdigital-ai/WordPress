@@ -328,8 +328,36 @@ jobs:
           PHP
 
           # Model the deployed site: WordPress has an implicit Production default,
-          # while its exact enrolled Site Profile selects Staging.
+          # while its exact enrolled Site Profile selects Staging. Because this
+          # profile was originally created under explicit Staging, re-save the
+          # exact generation with the mandatory downgrade attestation after the
+          # host declaration is removed. This is the valid production-shaped
+          # state; retaining an unattested Staging profile must remain fail-closed.
           php /tmp/wp-cli.phar config delete WP_ENVIRONMENT_TYPE --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval '
+          $before = MAD4B_SCP_Site_Profile::status();
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "environment" => "staging",
+              "expected_revision" => (int) $before["revision"],
+              "expected_profile_digest" => (string) $before["profile_digest"],
+              "display_name" => "MAD4B Connection Governance",
+              "oauth_user_ids" => MAD4B_SCP_Site_Profile::oauth_user_ids(),
+              "oauth_enabled" => false,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => true,
+              "acceptance_enabled" => false,
+              "nonproduction_override_confirmed" => true,
+              "nonproduction_override_confirmation" => MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          $after = MAD4B_SCP_Site_Profile::status();
+          if ( empty( $after["authority_ready"] ) || empty( $after["implicit_nonproduction_override_confirmed"] ) ) {
+              throw new RuntimeException( "implicit-production Staging fixture did not commit exact downgrade attestation" );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
 
           # Request 1: official Adapter entrypoint + preclaimed foreign validator
           # must classify as a mixed class set. PHP classes are not swapped in the
