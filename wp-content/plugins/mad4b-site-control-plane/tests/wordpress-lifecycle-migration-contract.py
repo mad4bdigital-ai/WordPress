@@ -5,14 +5,14 @@ config=(root/"config/wordpress-lifecycle-migration-profile.json").read_text(enco
 authorization=(root/"includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 fence=(root/"includes/class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
 projection=(root/"includes/class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
-wpability=(root.parents[3]/"wp-includes/abilities-api/class-wp-ability.php").read_text(encoding="utf-8")
+wpability=(root.parents[2]/"wp-includes/abilities-api/class-wp-ability.php").read_text(encoding="utf-8")
 lifecycle=(root/"includes/class-mad4b-scp-plugin-lifecycle.php").read_text(encoding="utf-8")
 retention=(root/"tests/plugin-lifecycle-data-retention-contract.py").read_text(encoding="utf-8")
 continuity=(root/"tests/runtime-plugin-lifecycle-data-continuity.php").read_text(encoding="utf-8")
 update=(root/"tests/post-update-continuation-guards-runtime.php").read_text(encoding="utf-8")
 catalog=(root/"tests/catalog-lifecycle-runtime.php").read_text(encoding="utf-8")
 backend=(root/"tests/runtime-catalog-table-backend.php").read_text(encoding="utf-8")
-workflow=(root.parents[3]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").read_text(encoding="utf-8")
+workflow=(root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").read_text(encoding="utf-8")
 
 for hook in ["wp_ability_invoked","wp_pre_execute_ability","wp_ability_permission_result","wp_ability_execute_result"]:
     if hook not in wpability or hook not in config:

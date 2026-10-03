@@ -29,7 +29,7 @@ $complete=array(
 );
 $cert=MAD4B_SCP_WordPress_Lifecycle_Migration_Profile::evaluate_parity($complete);
 $check(is_array($cert)&&!empty($cert['parity_certified'])&&!empty($cert['cutover_eligible']),'Complete exact parity evidence did not certify.',$cert);
-$check(!empty($cert['legacy_provenance_authoritative'])&&empty($cert['replacement_performed'])&&empty($cert['authority_effect']),'Parity certification replaced or authorized provenance unexpectedly.',$cert);
+$check(!empty($cert['legacy_provenance_authoritative'])&&empty($cert['replacement_performed'])&&'none'===(isset($cert['authority_effect'])?$cert['authority_effect']:''),'Parity certification replaced or authorized provenance unexpectedly.',$cert);
 
 $tampered=$complete; $tampered['native_shadow_behavior_sha256']=hash('sha256','different');
 $cert=MAD4B_SCP_WordPress_Lifecycle_Migration_Profile::evaluate_parity($tampered);
