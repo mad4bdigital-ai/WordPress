@@ -193,7 +193,7 @@ final class MAD4B_SCP_Runtime_Release_Set {
 	public static function bootstrap_apply( $input ) {
 		$access = self::can_bootstrap_apply( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
-		$result = self::apply_internal( $input, true );
+		$result = self::apply_internal( $input, false, true );
 		if ( is_wp_error( $result ) ) return $result;
 		if ( is_array( $result ) ) {
 			$result['bootstrap_contract'] = self::BOOTSTRAP_APPLY_CONTRACT;
@@ -392,10 +392,10 @@ final class MAD4B_SCP_Runtime_Release_Set {
 	public static function apply( $input ) {
 		$access = self::can_apply( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
-		return self::apply_internal( $input, false );
+		return self::apply_internal( $input, false, false );
 	}
 
-	private static function apply_internal( $input, $local_admin ) {
+	private static function apply_internal( $input, $local_admin, $bootstrap_step_up = false ) {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
 		$confirmation = isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '';
@@ -431,11 +431,19 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		if ( 'update_control_plane' === $operation ) {
 			$transaction = self::begin_transaction( $plan, 'control_plane_update_pending' );
 			if ( is_wp_error( $transaction ) ) return $transaction;
+			if ( $bootstrap_step_up ) {
+				$revalidate = self::can_bootstrap_apply( $input );
+				if ( is_wp_error( $revalidate ) || ! $revalidate ) {
+					self::fail_transaction( $transaction, 'control_plane_bootstrap_revalidation_failed', is_wp_error( $revalidate ) ? $revalidate->get_error_code() : 'bootstrap_revalidation_failed' );
+					return is_wp_error( $revalidate ) ? $revalidate : new WP_Error( 'mad4b_runtime_release_set_bootstrap_revalidation_failed', 'Runtime release-set bootstrap became ineligible before Control Plane mutation.' );
+				}
+			}
 			$cp = MAD4B_SCP_Self_Update::native_apply(
 				array(
 					'reason' => $reason,
 					'expected_plan_sha256' => (string) $plan['control_plane']['plan_sha256'],
-				)
+				),
+				(bool) $bootstrap_step_up
 			);
 			if ( is_wp_error( $cp ) ) {
 				self::fail_transaction( $transaction, 'control_plane_apply_failed', $cp->get_error_code() );
@@ -452,6 +460,13 @@ final class MAD4B_SCP_Runtime_Release_Set {
 				? self::read_transaction()
 				: self::begin_transaction( $plan, 'adapter_update_pending' );
 			if ( is_wp_error( $transaction ) ) return $transaction;
+			if ( $bootstrap_step_up ) {
+				$revalidate = self::can_bootstrap_apply( $input );
+				if ( is_wp_error( $revalidate ) || ! $revalidate ) {
+					self::fail_transaction( $transaction, 'mcp_adapter_bootstrap_revalidation_failed', is_wp_error( $revalidate ) ? $revalidate->get_error_code() : 'bootstrap_revalidation_failed' );
+					return is_wp_error( $revalidate ) ? $revalidate : new WP_Error( 'mad4b_runtime_release_set_bootstrap_revalidation_failed', 'Runtime release-set bootstrap became ineligible before MCP Adapter mutation.' );
+				}
+			}
 			$target_version = (string) $plan['mcp_adapter']['target_version'];
 			$component = self::with_component_context(
 				'mcp_adapter',
@@ -745,7 +760,8 @@ final class MAD4B_SCP_Runtime_Release_Set {
 				'expected_plan_sha256' => $plan['plan_sha256'],
 				'confirmation' => self::CONFIRMATION,
 			),
-			true
+			true,
+			false
 		);
 		if ( is_wp_error( $result ) ) self::redirect_admin_result( 'apply_error', $result->get_error_code() );
 		$state = isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : 'success';
