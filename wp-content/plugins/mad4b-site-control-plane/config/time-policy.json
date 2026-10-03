@@ -49,6 +49,13 @@
       "max_ttl_seconds": 0,
       "max_future_skew_seconds": 30,
       "max_age_seconds": 0
+    },
+    "context_receipt": {
+      "default_ttl_seconds": 1800,
+      "min_ttl_seconds": 60,
+      "max_ttl_seconds": 1800,
+      "max_future_skew_seconds": 60,
+      "max_age_seconds": 1800
     }
   },
   "offline_authorization": {

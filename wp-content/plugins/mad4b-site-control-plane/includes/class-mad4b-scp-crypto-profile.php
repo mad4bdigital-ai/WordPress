@@ -21,7 +21,13 @@ final class MAD4B_SCP_Crypto_Profile {
 		if ( is_wp_error( $catalog ) ) return $catalog;
 		$purpose = sanitize_key( (string) $purpose );
 		$id = isset( $catalog['default_profiles'][ $purpose ] ) ? sanitize_key( (string) $catalog['default_profiles'][ $purpose ] ) : '';
-		return '' === $id ? new WP_Error( 'mad4b_crypto_default_profile_missing', 'No default cryptographic profile is configured for this purpose.' ) : $id;
+		if ( '' === $purpose || '' === $id ) return new WP_Error( 'mad4b_crypto_default_profile_missing', 'No default cryptographic profile is configured for this purpose.' );
+		$profile = self::profile( $id );
+		if ( is_wp_error( $profile ) ) return $profile;
+		if ( ! hash_equals( $purpose, sanitize_key( isset( $profile['purpose'] ) ? (string) $profile['purpose'] : '' ) ) ) {
+			return new WP_Error( 'mad4b_crypto_default_profile_purpose_mismatch', 'Default cryptographic profile is not bound to the requested receipt purpose.' );
+		}
+		return $id;
 	}
 
 	public static function profile( $profile_id ) {
@@ -125,6 +131,12 @@ final class MAD4B_SCP_Crypto_Profile {
 		return self::status( $profile_id );
 	}
 
+	public static function sign_digest_for_purpose( $purpose, $payload_sha256 ) {
+		$profile_id = self::default_profile( $purpose );
+		if ( is_wp_error( $profile_id ) ) return $profile_id;
+		return self::sign_digest( $profile_id, $payload_sha256 );
+	}
+
 	public static function sign_digest( $profile_id, $payload_sha256 ) {
 		$profile = self::profile( $profile_id );
 		if ( is_wp_error( $profile ) ) return $profile;
@@ -183,12 +195,34 @@ final class MAD4B_SCP_Crypto_Profile {
 		if ( empty( $manifest['keys'][ $kid ] ) ) return new WP_Error( 'mad4b_crypto_signature_key_unknown', 'Receipt signature key is unknown.' );
 		$key = $manifest['keys'][ $kid ];
 		if ( ! empty( $key['revoked_at'] ) ) return new WP_Error( 'mad4b_crypto_signature_key_revoked', 'Receipt signature key is revoked.' );
+		if ( isset( $key['state'] ) && 'retired' === (string) $key['state'] ) return new WP_Error( 'mad4b_crypto_signature_key_retired', 'Receipt signature key has been retired from the active verification set.' );
 		$signed_at = isset($signature['signed_at'])?(int)$signature['signed_at']:0;
 		if(class_exists('MAD4B_SCP_Time_Policy')){$tc=MAD4B_SCP_Time_Policy::assert_timestamp('crypto_signature',$signed_at);if(is_wp_error($tc))return$tc;}
 		if ( $signed_at < (int)$key['not_before'] || ( ! empty($key['signing_not_after']) && $signed_at > (int)$key['signing_not_after'] ) ) {
 			return new WP_Error( 'mad4b_crypto_signature_time_invalid', 'Receipt signature time is outside the key signing interval.' );
 		}
+		$current_kid = isset( $manifest['current_kid'] ) ? strtolower( trim( (string) $manifest['current_kid'] ) ) : '';
+		if ( '' !== $current_kid && ! hash_equals( $current_kid, $kid ) && ! empty( $key['signing_not_after'] ) ) {
+			$overlap_until = isset( $key['overlap_until'] ) ? (int) $key['overlap_until'] : 0;
+			if ( $overlap_until < 1 || self::now_epoch() > $overlap_until ) {
+				return new WP_Error( 'mad4b_crypto_signature_overlap_expired', 'Receipt signature key rotation overlap window has expired.' );
+			}
+		}
 		return self::verify_with_public_key( $signature, $payload_sha256, self::public_key_block_from_key( $key, $profile ) );
+	}
+
+	public static function verify_digest_for_purpose( array $signature, $payload_sha256, $purpose ) {
+		$purpose = sanitize_key( (string) $purpose );
+		$profile_id = sanitize_key( isset( $signature['profile_id'] ) ? (string) $signature['profile_id'] : '' );
+		$profile = self::profile( $profile_id );
+		if ( is_wp_error( $profile ) ) return $profile;
+		if ( '' === $purpose || ! hash_equals( $purpose, sanitize_key( isset( $profile['purpose'] ) ? (string) $profile['purpose'] : '' ) ) ) {
+			return new WP_Error( 'mad4b_crypto_signature_purpose_mismatch', 'Receipt signature profile is not valid for the requested receipt purpose.' );
+		}
+		$verified = self::verify_digest( $signature, $payload_sha256 );
+		if ( is_wp_error( $verified ) ) return $verified;
+		$verified['purpose'] = $purpose;
+		return $verified;
 	}
 
 	public static function verify_with_public_key( array $signature, $payload_sha256, array $public_key ) {
