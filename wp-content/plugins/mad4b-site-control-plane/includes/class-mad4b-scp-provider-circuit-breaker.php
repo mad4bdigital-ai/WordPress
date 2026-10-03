@@ -22,7 +22,7 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 	const HALF_OPEN_LEASE_SECONDS = 45;
 
 	public static function begin_for_target( $surface, $target ) {
-		$context = self::resolve_target_context( $surface, $target );
+		$context = self::target_context( $surface, $target );
 		if ( is_wp_error( $context ) ) return $context;
 		if ( empty( $context['applicable'] ) ) return $context;
 		return self::begin_attempt( $context['provider_id'], $context['site_uuid'], $context['certification_generation_sha256'], 'read' === sanitize_key( (string) $surface ) );
@@ -190,7 +190,7 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 		));
 	}
 
-	private static function resolve_target_context( $surface, $target ) {
+	public static function target_context( $surface, $target ) {
 		$surface=sanitize_key((string)$surface);$target=trim((string)$target);
 		if(''===$target||!class_exists('MAD4B_SCP_Servers')||!class_exists('MAD4B_SCP_Provider_Compatibility_Certification')){
 			return array('contract'=>self::CONTRACT,'applicable'=>false,'transport_eligible'=>true,'authority_effect'=>'none','authorizing'=>false);

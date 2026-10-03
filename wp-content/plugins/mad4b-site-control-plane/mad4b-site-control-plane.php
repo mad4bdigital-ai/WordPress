@@ -140,6 +140,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-circuit-breaker.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-eligibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-health-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-traits.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-addon-registry.php';

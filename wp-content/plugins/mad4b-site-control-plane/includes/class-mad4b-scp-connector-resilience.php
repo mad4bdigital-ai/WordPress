@@ -261,8 +261,16 @@ final class MAD4B_SCP_Connector_Resilience {
 	public static function execute_mutation( $surface, $target, $callback ) {
 		$surface = sanitize_key( (string) $surface );
 		$target = sanitize_text_field( (string) $target );
-		$breaker = class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ? MAD4B_SCP_Provider_Circuit_Breaker::begin_for_target( $surface, $target ) : array( 'applicable'=>false );
+		$eligibility = class_exists( 'MAD4B_SCP_Provider_Transport_Eligibility' )
+			? MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation( $surface, $target )
+			: array( 'applicable'=>false, 'transport_eligible'=>true );
+		if ( is_wp_error( $eligibility ) ) return $eligibility;
+		$breaker = class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ? MAD4B_SCP_Provider_Circuit_Breaker::begin_for_target( $surface, $target ) : array( 'applicable'=>false, 'transport_eligible'=>true );
 		if ( is_wp_error( $breaker ) ) return $breaker;
+		if ( class_exists( 'MAD4B_SCP_Provider_Transport_Eligibility' ) ) {
+			$eligibility = MAD4B_SCP_Provider_Transport_Eligibility::finalize_breaker( $eligibility, is_array( $breaker ) ? $breaker : array() );
+			if ( is_wp_error( $eligibility ) ) return $eligibility;
+		}
 		$started = microtime( true );
 		try {
 			$result = call_user_func( $callback );

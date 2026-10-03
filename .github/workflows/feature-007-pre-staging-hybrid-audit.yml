@@ -125,11 +125,13 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py
 
-      - name: Durable provider circuit breaker contract
+      - name: Durable provider circuit breaker and eligibility precedence contracts
         shell: bash
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py
           node wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs
 
       - name: MCP protocol and adaptive projection contracts
