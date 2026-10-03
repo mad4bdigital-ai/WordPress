@@ -37,6 +37,8 @@ $check('mad4b_remote_work_job_not_claimable'===$code(MAD4B_SCP_Remote_Work_Queue
 $e=MAD4B_SCP_Remote_Work_Queue::enqueue('frontend_performance_sampling',array('probe'=>'b'),$id,3600);
 $job=$e['job']['job_id'];$cl=MAD4B_SCP_Remote_Work_Queue::claim($job,'worker',60,$id);
 $check(is_array($cl)&&'claimed'===$cl['state'],'claim fixture failed');
+$entered=MAD4B_SCP_Remote_Work_Queue::provider_checkpoint($job,'worker',$cl['lease_token'],'provider_entered');
+$check(is_array($entered)&&'provider_entered'===$entered['job']['provider_checkpoint'],'provider entry fixture was not durable');
 $c=MAD4B_SCP_Remote_Work_Queue::cancel($job,'operator_cancel');
 $check('reconciling'===$c['state']&&!empty($c['job']['reconciliation_required'])&&empty($c['job']['blind_retry_allowed']),'claimed cancellation became terminal');
 $weak=MAD4B_SCP_Remote_Work_Queue::complete($job,'worker',$cl['lease_token'],array('verification'=>'weak'));
