@@ -1,6 +1,6 @@
 <?php
 /** Exercise the shipped MU loader before regular plugins, in fresh PHP processes. */
-$cases = array( 'implicit', 'implicit_unconfirmed', 'cli_generic', 'cli_opt_in', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof', 'transaction_pending', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
+$cases = array( 'implicit', 'implicit_unconfirmed', 'renamed_plugins', 'ambiguous_plugin_identity', 'cli_generic', 'cli_opt_in', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof', 'transaction_pending', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) {
 		passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code );
@@ -49,10 +49,18 @@ if ( 'disabled' === $case ) $profile['features']['managed_runtime'] = false;
 if ( 'reenrollment' === $case ) $profile['migration_requires_reenrollment'] = true;
 if ( 'production' === $case ) $profile['environment'] = 'production';
 if ( in_array( $case, array( 'local', 'development' ), true ) ) $profile['environment'] = $case;
-$options = array( 'mad4b_scp_site_profile_v2' => $profile, 'active_plugins' => array( 'mcp-adapter/mcp-adapter.php', 'mad4b-site-control-plane/mad4b-site-control-plane.php' ) );
+$control_slug = 'renamed_plugins' === $case ? 'control-plane-renamed' : 'mad4b-site-control-plane';
+$adapter_slug = 'renamed_plugins' === $case ? 'mcp-runtime-renamed' : 'mcp-adapter';
+$control_entry = $control_slug . '/mad4b-site-control-plane.php';
+$adapter_entry = $adapter_slug . '/mcp-adapter.php';
+$options = array( 'mad4b_scp_site_profile_v2' => $profile, 'active_plugins' => array( $adapter_entry, $control_entry ) );
+if ( 'ambiguous_plugin_identity' === $case ) {
+	$options['active_plugins'][] = 'duplicate-mcp/mcp-adapter.php';
+	$options['active_plugins'][] = 'duplicate-control/mad4b-site-control-plane.php';
+}
 if ( 'transaction_pending' === $case ) $options['mad4b_scp_mcp_mu_refresh_transaction_v1'] = array( 'contract'=>'mad4b.mcp-mu-filesystem-transaction.v1', 'state'=>'replaced_pending_audit', 'target_sha256'=>str_repeat('a',64) );
-if ( 'adapter_inactive' === $case ) $options['active_plugins'] = array( 'mad4b-site-control-plane/mad4b-site-control-plane.php' );
-if ( 'control_plane_inactive' === $case ) $options['active_plugins'] = array( 'mcp-adapter/mcp-adapter.php' );
+if ( 'adapter_inactive' === $case ) $options['active_plugins'] = array( $control_entry );
+if ( 'control_plane_inactive' === $case ) $options['active_plugins'] = array( $adapter_entry );
 // Network-only activation is deliberately not mistaken for per-site activation.
 if ( 'network_only' === $case ) $options['active_plugins'] = array();
 $_SERVER['REQUEST_URI'] = '/wp-json/mcp/mad4b-chatgpt';
@@ -67,8 +75,8 @@ if ( in_array( $case, array( 'diagnostic_get', 'diagnostic_array' ), true ) ) { 
 if ( 'developer' === $case ) $_SERVER['REQUEST_URI'] = '/wp-json/mcp/mad4b-developer';
 if ( 'developer_breakglass' === $case ) $_SERVER['REQUEST_URI'] = '/wp-json/mcp/mad4b-developer-breakglass';
 $source = dirname( __DIR__ );
-mkdir( WP_PLUGIN_DIR . '/mad4b-site-control-plane/includes', 0777, true );
-copy( $source . '/includes/class-mad4b-scp-site-profile.php', WP_PLUGIN_DIR . '/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php' );
+mkdir( WP_PLUGIN_DIR . '/' . $control_slug . '/includes', 0777, true );
+copy( $source . '/includes/class-mad4b-scp-site-profile.php', WP_PLUGIN_DIR . '/' . $control_slug . '/includes/class-mad4b-scp-site-profile.php' );
 require $source . '/includes/class-mad4b-scp-mcp-class-provenance.php';
 $map = array(); $manifest = array();
 foreach ( MAD4B_SCP_MCP_Class_Provenance::critical_classes() as $spec ) $map[ $spec['class'] ] = $spec['file'];
@@ -79,26 +87,28 @@ foreach ( $map as $symbol => $file ) {
 	$body = 'namespace ' . substr( $symbol, 0, $cut ) . '; class ' . substr( $symbol, $cut + 1 ) . ' {';
 	if ( 'WP\\MCP\\Core\\McpAdapter' === $symbol ) $body .= ' public static function instance() { $GLOBALS["instance_armed"] = true; return new self; }';
 	$body .= '}';
-	$path = WP_PLUGIN_DIR . '/mcp-adapter/' . $file;
+	$path = WP_PLUGIN_DIR . '/' . $adapter_slug . '/' . $file;
 	if ( ! is_dir( dirname( $path ) ) ) mkdir( dirname( $path ), 0777, true );
 	file_put_contents( $path, '<?php ' . $body );
 	$manifest[ $file ] = hash_file( 'sha256', $path );
 }
-$autoload = WP_PLUGIN_DIR . '/mcp-adapter/vendor/autoload_packages.php';
+$autoload = WP_PLUGIN_DIR . '/' . $adapter_slug . '/vendor/autoload_packages.php';
 if ( ! is_dir( dirname( $autoload ) ) ) mkdir( dirname( $autoload ), 0777, true );
-file_put_contents( $autoload, '<?php spl_autoload_register( function( $c ) { if ( isset( $GLOBALS["map"][ $c ] ) ) require_once WP_PLUGIN_DIR . "/mcp-adapter/" . $GLOBALS["map"][ $c ]; } ); return true;' );
+file_put_contents( $autoload, '<?php spl_autoload_register( function( $c ) { if ( isset( $GLOBALS["map"][ $c ] ) ) require_once WP_PLUGIN_DIR . "/' . $adapter_slug . '/" . $GLOBALS["map"][ $c ]; } ); return true;' );
 $manifest['vendor/autoload_packages.php'] = hash_file( 'sha256', $autoload );
-mkdir( WP_PLUGIN_DIR . '/mad4b-site-control-plane/config', 0777, true );
-file_put_contents( WP_PLUGIN_DIR . '/mad4b-site-control-plane/config/certified-providers.json', json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'critical_files' => $manifest ) ) ) ) );
-if ( 'missing_manifest' === $case ) unlink( WP_PLUGIN_DIR . '/mad4b-site-control-plane/config/certified-providers.json' );
-if ( 'missing_baseline' === $case ) { unset( $manifest['vendor/autoload_packages.php'] ); file_put_contents( WP_PLUGIN_DIR . '/mad4b-site-control-plane/config/certified-providers.json', json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'critical_files' => $manifest ) ) ) ) ); }
+mkdir( WP_PLUGIN_DIR . '/' . $control_slug . '/config', 0777, true );
+$baseline_path = WP_PLUGIN_DIR . '/' . $control_slug . '/config/certified-providers.json';
+file_put_contents( $baseline_path, json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'critical_files' => $manifest ) ) ) ) );
+if ( 'missing_manifest' === $case ) unlink( $baseline_path );
+if ( 'missing_baseline' === $case ) { unset( $manifest['vendor/autoload_packages.php'] ); file_put_contents( $baseline_path, json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'critical_files' => $manifest ) ) ) ) ); }
 if ( 'tampered_autoloader' === $case ) file_put_contents( $autoload, '<?php $GLOBALS["tampered_executed"] = true; return true;' );
-if ( 'tampered_validator' === $case ) file_put_contents( WP_PLUGIN_DIR . '/mcp-adapter/includes/Domain/Tools/McpToolValidator.php', '<?php $GLOBALS["tampered_executed"] = true;' );
+if ( 'tampered_validator' === $case ) file_put_contents( WP_PLUGIN_DIR . '/' . $adapter_slug . '/includes/Domain/Tools/McpToolValidator.php', '<?php $GLOBALS["tampered_executed"] = true;' );
 if ( 'preclaimed' === $case ) eval( 'namespace WP\\MCP\\Domain\\Tools; class McpToolValidator {}' );
 require $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 $status = $GLOBALS['mad4b_scp_mcp_mu_bootstrap'];
-if ( in_array( $case, array( 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'transaction_pending', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
+if ( in_array( $case, array( 'ambiguous_plugin_identity', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'transaction_pending', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 	boundary_check( ! $status['eligible'] && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'ineligible binding loaded a provider class' );
+	if ( 'ambiguous_plugin_identity' === $case ) boundary_check( ! empty( $status['plugin_identity_ambiguous'] ), 'ambiguous main-file identity was not reported' );
 	if ( in_array( $case, array( 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 		boundary_check( ! MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::oauth_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled(), 'malformed profile gained regular-plugin authority' );
 	}
@@ -111,6 +121,10 @@ if ( in_array( $case, array( 'explicit_constant', 'explicit_environment', 'expli
 } else {
 	boundary_check( $status['eligible'] && $profile['environment'] === $status['environment'] && wp_get_environment_type() === $status['wordpress_environment'], 'implicit production default did not use exact staging binding' );
 	boundary_check( $status['critical_class_set_pinned'] && 11 === $status['critical_class_pin_count'], 'certified class set not pinned' );
+	if ( 'renamed_plugins' === $case ) {
+		boundary_check( $adapter_entry === $status['official_plugin_file'] && $control_entry === $status['control_plane_plugin_file'], 'renamed plugin roots were not discovered from active main-file identity' );
+		boundary_check( empty( $status['plugin_identity_ambiguous'] ), 'unique renamed plugin identity became ambiguous' );
+	}
 	if ( 'diagnostic' === $case ) boundary_check( 'canonical_runtime_pinned_diagnostic_deferred' === $status['state'] && empty( $GLOBALS['instance_armed'] ), 'diagnostic armed singleton before authorization' );
 	else boundary_check( ! empty( $GLOBALS['instance_armed'] ), 'owned protocol did not arm adapter' );
 }
