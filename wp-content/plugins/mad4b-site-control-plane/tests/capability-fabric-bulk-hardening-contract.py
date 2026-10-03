@@ -33,6 +33,10 @@ def need(cond,msg):
 
 need("serialize( $definition )" not in catalog, "security-sensitive catalog fingerprint still has PHP serialize fallback")
 need("mad4b.catalog-definition-unavailable.v1" in catalog and "$definition_failures" in catalog, "catalog canonical failure marker missing")
+need("mad4b.catalog-object-envelope.v1" in catalog and "OBJECT_VERSION = 1" in catalog, "catalog persisted object envelope missing")
+need("wire_generation()" in catalog and "mad4b_scp_catalog_wire_generation" in catalog, "catalog wire generation contract missing")
+need("unwrap_object" in catalog and "mad4b_catalog_object_generation_mismatch" in catalog, "catalog does not reject unknown/future persisted object generations")
+need("object_envelope( 'current'" in catalog and "object_envelope( 'snapshot'" in catalog and "object_envelope( 'schema'" in catalog, "catalog current/snapshot/schema objects are not versioned")
 need("public static function transactional_storage_status" in schema, "transactional storage readiness contract missing")
 need("'innodb' !== $engine" in schema, "transactional storage does not fail closed on non-InnoDB engine")
 need("identity_comparison_policy" in schema, "database identity comparison policy missing")
