@@ -41,9 +41,15 @@ class MAD4B_SCP_Execution_Receipt {
 class MAD4B_SCP_Audit {
 	public static $mode = 'ok';
 	public static $calls = 0;
+	public static $events = array();
+	public static $chain_valid = true;
+	public static $head_consistent = true;
 	public static function reset( $mode = 'ok' ) {
 		self::$mode = (string) $mode;
 		self::$calls = 0;
+		self::$events = array();
+		self::$chain_valid = true;
+		self::$head_consistent = true;
 	}
 	public static function record( $ability, array $summary, $status ) {
 		self::$calls++;
@@ -53,9 +59,27 @@ class MAD4B_SCP_Audit {
 		if ( 'fail_second' === self::$mode && 2 === self::$calls ) {
 			return new WP_Error( 'fixture_receipt_audit_store_unavailable', 'fixture' );
 		}
-		return array(
+		$entry = array(
 			'event_id' => sprintf( '11111111-1111-4111-8111-%012d', self::$calls ),
 			'entry_hash' => hash( 'sha256', 'audit|' . self::$calls . '|' . (string) $status ),
+			'ability' => (string) $ability,
+			'status' => (string) $status,
+			'summary' => $summary,
+		);
+		self::$events[] = $entry;
+		return $entry;
+	}
+	public static function execution_checkpoint_events( $attempt, $limit = 20 ) {
+		$events = array_values( array_filter( self::$events, static function ( $entry ) use ( $attempt ) {
+			return isset( $entry['summary']['execution_attempt_sha256'] )
+				&& hash_equals( strtolower( (string) $attempt ), strtolower( (string) $entry['summary']['execution_attempt_sha256'] ) )
+				&& in_array( sanitize_key( (string) ( $entry['summary']['reason_code'] ?? '' ) ), array( 'execution_checkpoint', 'unified_execution_receipt_committed' ), true );
+		} ) );
+		if ( count( $events ) > $limit ) $events = array_slice( $events, -$limit );
+		return array(
+			'events' => $events,
+			'chain_valid' => self::$chain_valid,
+			'head_consistent' => self::$head_consistent,
 		);
 	}
 }
@@ -98,6 +122,9 @@ $result = array( 'updated' => true, 'id' => 7 );
 MAD4B_SCP_Audit::reset();
 $entry_checkpoint = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_entry_possible' );
 $check( is_array( $entry_checkpoint ) && 'provider_entry_possible' === $entry_checkpoint['crash_point'] && 'RECONCILING' === $entry_checkpoint['state'], 'provider-entry checkpoint contract invalid', $entry_checkpoint );
+$attempt = $entry_checkpoint['execution_attempt_sha256'];
+$restart_view = MAD4B_SCP_Authorization::execution_attempt_state( $attempt );
+$check( is_array( $restart_view ) && 'RECONCILING' === $restart_view['state'] && ! empty( $restart_view['reconciliation_required'] ), 'restart view inferred safe retry after provider entry', $restart_view );
 
 MAD4B_SCP_Audit::reset( 'fail_first' );
 $entry_checkpoint_failure = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_entry_possible' );
@@ -138,5 +165,15 @@ MAD4B_SCP_Audit::reset();
 $ok = MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $result );
 $check( true === $ok, 'fully durable terminal evidence path did not succeed', $ok );
 $check( 2 === MAD4B_SCP_Audit::$calls, 'success path did not persist both audit layers', MAD4B_SCP_Audit::$calls );
+$terminal_attempt = '';
+foreach ( MAD4B_SCP_Audit::$events as $entry ) {
+	if ( 'unified_execution_receipt_committed' === ( $entry['summary']['reason_code'] ?? '' ) ) $terminal_attempt = (string) ( $entry['summary']['execution_attempt_sha256'] ?? '' );
+}
+$check( 1 === preg_match( '/^[a-f0-9]{64}$/', $terminal_attempt ), 'terminal receipt audit lost execution attempt correlation', $terminal_attempt );
+$terminal_view = MAD4B_SCP_Authorization::execution_attempt_state( $terminal_attempt );
+$check( is_array( $terminal_view ) && 'COMMITTED' === $terminal_view['state'] && ! empty( $terminal_view['terminal'] ), 'durable receipt did not recover as COMMITTED', $terminal_view );
+MAD4B_SCP_Audit::$chain_valid = false;
+$corrupt_view = MAD4B_SCP_Authorization::execution_attempt_state( $terminal_attempt );
+$check( is_array( $corrupt_view ) && 'RECONCILING' === $corrupt_view['state'] && empty( $corrupt_view['terminal'] ), 'invalid audit chain still recovered terminal success', $corrupt_view );
 
-echo "mad4b.terminal-evidence-fault.runtime.v1: PASS\n";
+echo "mad4b.terminal-evidence-fault.runtime.v2: PASS\n";
