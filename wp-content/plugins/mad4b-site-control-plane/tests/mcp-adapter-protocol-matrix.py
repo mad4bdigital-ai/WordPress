@@ -39,12 +39,13 @@ with zipfile.ZipFile(archive_path) as zf:
         return zf.read(name).decode("utf-8", errors="strict")
 
     plugin = source("mcp-adapter.php")
-    version_lines = [
-        line.strip() for line in plugin.splitlines()
-        if line.lstrip().startswith("* Version:")
-    ]
-    if version_lines != ["* Version: 0.7.0"]:
-        fail(f"unexpected plugin version header: {version_lines}")
+    version_values = []
+    for line in plugin.splitlines():
+        match = re.match(r"^\s*\*\s*Version:\s*([^\s]+)\s*$", line)
+        if match:
+            version_values.append(match.group(1))
+    if version_values != ["0.7.0"]:
+        fail(f"unexpected plugin version header: {version_values}")
 
     negotiator = source("includes/Core/McpVersionNegotiator.php")
     orchestrator = source("includes/Transport/Infrastructure/McpWireOrchestrator.php")
