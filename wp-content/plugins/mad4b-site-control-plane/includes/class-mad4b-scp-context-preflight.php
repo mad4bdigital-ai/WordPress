@@ -396,19 +396,8 @@ final class MAD4B_SCP_Context_Preflight {
 	}
 
 	public static function brand_bearing_mutation_abilities() {
-		return array(
-			'mad4b/content-create-post',
-			'mad4b/content-update-post',
-			'mad4b/content-import-bundle',
-			'mad4b/taxonomy-create-term',
-			'mad4b/taxonomy-update-term',
-			'seo/update-meta',
-			'woocommerce/update-product',
-			'media/update-metadata',
-			'mad4b/content-set-meta',
-			'jetengine/update-post-meta',
-			'elementor/update-widget-settings',
-		);
+		if ( ! class_exists( 'MAD4B_SCP_Semantic_Content_Field_Contracts' ) ) return array();
+		return MAD4B_SCP_Semantic_Content_Field_Contracts::declared_abilities();
 	}
 
 	private static function normalize_mutation_abilities( $abilities ) {
@@ -539,6 +528,19 @@ final class MAD4B_SCP_Context_Preflight {
 		$ability_name = (string) $ability_name;
 		$input = is_array( $input ) ? $input : array();
 		$requirement = self::content_mutation_requirement( $ability_name, $input );
+		if ( is_wp_error( $requirement ) ) return $requirement;
+		if ( ! empty( $requirement['review_required'] ) ) {
+			return new WP_Error(
+				'mad4b_content_field_classification_required',
+				'Potentially brand-bearing provider fields are not covered by the current semantic field contract and require explicit classification before mutation.',
+				array(
+					'ability' => $ability_name,
+					'fallback_evidence_fields' => isset( $requirement['fallback_evidence_fields'] ) ? $requirement['fallback_evidence_fields'] : array(),
+					'classification_sha256' => isset( $requirement['classification_sha256'] ) ? (string) $requirement['classification_sha256'] : '',
+					'fallback_evidence_authorizing' => false,
+				)
+			);
+		}
 		$requires_receipt = ! empty( $requirement['required'] );
 
 		$receipt = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
@@ -567,72 +569,10 @@ final class MAD4B_SCP_Context_Preflight {
 	}
 
 	public static function content_mutation_requirement( $ability_name, $input ) {
-		$ability_name = (string) $ability_name;
-		$input = is_array( $input ) ? $input : array();
-		$matched = array();
-
-		if ( in_array( $ability_name, array( 'mad4b/content-create-post', 'mad4b/content-update-post' ), true ) ) {
-			foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
-			return self::content_requirement_result( $matched, 'post_text_fields' );
+		if ( ! class_exists( 'MAD4B_SCP_Semantic_Content_Field_Contracts' ) ) {
+			return new WP_Error( 'mad4b_semantic_content_field_registry_unavailable', 'Semantic content-field classification registry is unavailable; content mutation fails closed.' );
 		}
-
-		if ( 'mad4b/content-import-bundle' === $ability_name ) {
-			$posts = isset( $input['bundle']['posts'] ) && is_array( $input['bundle']['posts'] ) ? $input['bundle']['posts'] : array();
-			foreach ( $posts as $index => $post ) {
-				if ( ! is_array( $post ) ) continue;
-				foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) {
-					if ( array_key_exists( $field, $post ) && '' !== trim( (string) $post[ $field ] ) ) $matched[] = 'bundle.posts.' . (int) $index . '.' . $field;
-				}
-			}
-			return self::content_requirement_result( $matched, 'content_bundle_text' );
-		}
-
-		if ( in_array( $ability_name, array( 'mad4b/taxonomy-create-term', 'mad4b/taxonomy-update-term' ), true ) ) {
-			foreach ( array( 'name', 'description' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
-			return self::content_requirement_result( $matched, 'taxonomy_text_fields' );
-		}
-
-		if ( 'seo/update-meta' === $ability_name ) {
-			$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
-			foreach ( array( 'title', 'description', 'focus_keyword' ) as $field ) if ( array_key_exists( $field, $fields ) ) $matched[] = 'fields.' . $field;
-			return self::content_requirement_result( $matched, 'seo_text_fields' );
-		}
-
-		if ( 'woocommerce/update-product' === $ability_name ) {
-			$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
-			foreach ( array( 'name', 'description', 'short_description' ) as $field ) if ( array_key_exists( $field, $fields ) ) $matched[] = 'fields.' . $field;
-			return self::content_requirement_result( $matched, 'product_text_fields' );
-		}
-
-		if ( 'media/update-metadata' === $ability_name ) {
-			foreach ( array( 'title', 'caption', 'description', 'alt' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
-			return self::content_requirement_result( $matched, 'media_text_metadata' );
-		}
-
-		if ( 'mad4b/content-set-meta' === $ability_name ) {
-			$key = isset( $input['key'] ) ? (string) $input['key'] : '';
-			if ( self::content_field_name( $key ) || self::value_looks_like_content( isset( $input['value'] ) ? $input['value'] : null ) ) $matched[] = 'key:' . $key;
-			return self::content_requirement_result( $matched, 'post_meta_text' );
-		}
-
-		if ( 'jetengine/update-post-meta' === $ability_name ) {
-			$field = isset( $input['field'] ) ? (string) $input['field'] : '';
-			if ( self::content_field_name( $field ) || self::value_looks_like_content( isset( $input['value'] ) ? $input['value'] : null ) ) $matched[] = 'field:' . $field;
-			return self::content_requirement_result( $matched, 'jetengine_text_meta' );
-		}
-
-		if ( 'elementor/update-widget-settings' === $ability_name ) {
-			$settings = isset( $input['settings'] ) && is_array( $input['settings'] ) ? $input['settings'] : array();
-			$matched = self::content_paths_in_value( $settings, 'settings', 0 );
-			return self::content_requirement_result( $matched, 'elementor_text_settings' );
-		}
-
-		return array(
-			'contract' => 'mad4b.content-context-requirement.v1',
-			'required' => false,
-			'reason' => 'not_content_bearing',
-			'matched_fields' => array(),
-		);
+		return MAD4B_SCP_Semantic_Content_Field_Contracts::classify( $ability_name, $input );
 	}
 
 	private static function content_requirement_result( array $matched, $reason ) {

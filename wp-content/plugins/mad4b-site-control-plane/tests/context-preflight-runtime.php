@@ -1,6 +1,7 @@
 <?php
 
 define( 'ABSPATH', '/srv/wordpress/' );
+define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
 
 class WP_Error {
 	private $code;
@@ -91,6 +92,7 @@ final class MAD4B_SCP_Audit {
 	}
 }
 
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-semantic-content-field-contracts.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-preflight.php';
 
 function mad4b_context_preflight_assert( $condition, $message, $context = null ) {
@@ -404,9 +406,19 @@ $long_unlabeled_meta = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 	)
 );
 mad4b_context_preflight_assert(
-	is_wp_error( $long_unlabeled_meta ) && 'mad4b_content_context_receipt_required' === $long_unlabeled_meta->get_error_code(),
-	'Long natural-language meta must require Context even when the custom field key is not semantically named.',
+	is_wp_error( $long_unlabeled_meta ) && 'mad4b_content_field_classification_required' === $long_unlabeled_meta->get_error_code(),
+	'Long natural-language meta with an unclassified provider field must require explicit semantic classification instead of inheriting mutation eligibility.',
 	$long_unlabeled_meta
+);
+
+$future_provider_field = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+	'future-seo/update-object',
+	array( 'object_id' => 77, 'marketing_headline' => 'A newly introduced brand-facing headline that is not yet registered in the semantic provider contract.' )
+);
+mad4b_context_preflight_assert(
+	is_wp_error( $future_provider_field ) && 'mad4b_content_field_classification_required' === $future_provider_field->get_error_code(),
+	'Unknown future provider brand-bearing fields must fail closed for semantic review.',
+	$future_provider_field
 );
 
 $tampered = $site_union['receipt'];
