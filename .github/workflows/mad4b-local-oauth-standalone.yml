@@ -68,7 +68,7 @@ jobs:
           pwsh -NoLogo -NoProfile -File "$root/tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1" -SelfTest
 
   runtime:
-    name: Local OAuth runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }})
+    name: Local OAuth runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.adapter }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -76,8 +76,13 @@ jobs:
         include:
           - wordpress: '6.9'
             php: '7.4'
+            adapter: 'bundled-0.6.1'
           - wordpress: 'latest'
             php: '8.3'
+            adapter: 'bundled-0.6.1'
+          - wordpress: 'latest'
+            php: '8.3'
+            adapter: 'target-0.7.0'
 
     services:
       mysql:
@@ -130,14 +135,51 @@ jobs:
 
       - name: Install exact MCP Adapter and control plane without implicit authority
         shell: bash
+        env:
+          ADAPTER_PROFILE: ${{ matrix.adapter }}
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
-          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          ADAPTER_ARCHIVE=wp-content/plugins/mcp-adapter.zip
+          EXPECTED_ADAPTER_VERSION=0.6.1
+
+          if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
+            python3 - <<'PY' > /tmp/mad4b-target-adapter.env
+          import json, shlex
+          from pathlib import Path
+          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
+          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
+          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
+          version=str(policy['target_adapter_version'])
+          profile=profiles['providers']['mcp_adapter'][version]
+          for key,value in {
+              'TARGET_VERSION':version,
+              'TARGET_SHA':profile['archive_sha256'],
+              'TARGET_BYTES':str(profile['archive_bytes']),
+              'TARGET_URL':profile['package_url'],
+          }.items():
+              print(f'{key}={shlex.quote(str(value))}')
+          PY
+            source /tmp/mad4b-target-adapter.env
+            test "$TARGET_VERSION" = "0.7.0"
+            curl --fail --location --silent --show-error "$TARGET_URL" -o /tmp/mcp-adapter-target.zip
+            test "$(stat -c '%s' /tmp/mcp-adapter-target.zip)" = "$TARGET_BYTES"
+            echo "$TARGET_SHA  /tmp/mcp-adapter-target.zip" | sha256sum --check --strict
+            ADAPTER_ARCHIVE=/tmp/mcp-adapter-target.zip
+            EXPECTED_ADAPTER_VERSION="$TARGET_VERSION"
+          fi
+
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "$ADAPTER_ARCHIVE" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          INSTALLED_ADAPTER_VERSION="$(php /tmp/wp-cli.phar eval '
+          require_once ABSPATH . "wp-admin/includes/plugin.php";
+          $data = get_plugin_data( WP_PLUGIN_DIR . "/mcp-adapter/mcp-adapter.php", false, false );
+          echo isset( $data["Version"] ) ? (string) $data["Version"] : "";
+          ' --path="$WP_PATH")"
+          test "$INSTALLED_ADAPTER_VERSION" = "$EXPECTED_ADAPTER_VERSION"
           php /tmp/wp-cli.phar eval '
           $s = MAD4B_SCP_Site_Profile::status();
           if ( ! empty( $s["configured"] ) || MAD4B_SCP_Staging_Write_Authority::eligible() ) {
