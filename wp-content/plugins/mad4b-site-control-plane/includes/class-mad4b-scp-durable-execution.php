@@ -906,18 +906,23 @@ final class MAD4B_SCP_Durable_Execution {
 			'updated_at' => $now,
 		) );
 		if ( false === $ok ) {
-			if ( '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_outbox_idempotency_conflict', 'Outbox persistence failed.', 'outbox_insert', (string) $wpdb->last_error );
+			$insert_error = trim( (string) $wpdb->last_error );
 			$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
 			if ( is_wp_error( $same_writer ) ) return $same_writer;
 			$wpdb->last_error = '';
 			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE provider_id=%s AND idempotency_key=%s LIMIT 1", $provider_id, $idempotency_key ), ARRAY_A );
-			if ( is_array( $existing )
-				&& hash_equals( (string) $existing['request_sha256'], $request_sha256 )
-				&& hash_equals( (string) $existing['job_id'], $job_id )
-				&& (int) $existing['expected_job_revision'] === $expected_job_revision
-				&& hash_equals( (string) $existing['capability_id'], $capability_id )
-				&& hash_equals( (string) $existing['workflow_plan_sha256'], $workflow_plan_sha256 ) ) return $existing;
-			return new WP_Error( 'mad4b_outbox_idempotency_conflict', 'Provider outbox idempotency key conflicts with a different logical request.' );
+			$read_error = trim( (string) $wpdb->last_error );
+			if ( '' !== $read_error ) return self::authoritative_read_failure( 'outbox_duplicate_read', $read_error );
+			if ( is_array( $existing ) ) {
+				$exact = hash_equals( (string) $existing['request_sha256'], $request_sha256 )
+					&& hash_equals( (string) $existing['job_id'], $job_id )
+					&& (int) $existing['expected_job_revision'] === $expected_job_revision
+					&& hash_equals( (string) $existing['capability_id'], $capability_id )
+					&& hash_equals( (string) $existing['workflow_plan_sha256'], $workflow_plan_sha256 );
+				if ( $exact ) return $existing;
+				return new WP_Error( 'mad4b_outbox_idempotency_conflict', 'Provider outbox idempotency key conflicts with a different logical request.', array( 'blind_retry_allowed' => false ) );
+			}
+			return self::database_write_failure( 'mad4b_outbox_persistence_failed', 'Outbox insert failed and no authoritative idempotency record exists.', 'outbox_insert', $insert_error );
 		}
 		$same_writer = self::same_writer_after_write( $topology, 'outbox_insert' );
 		if ( is_wp_error( $same_writer ) ) return $same_writer;
@@ -959,13 +964,14 @@ final class MAD4B_SCP_Durable_Execution {
 			if ( is_wp_error( $same_writer ) ) return $same_writer;
 			return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => false, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id );
 		}
-		if ( '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_inbox_accept_failed', 'Provider inbox persistence failed.', 'inbox_insert', (string) $wpdb->last_error );
+		$insert_error = trim( (string) $wpdb->last_error );
 		$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
 		if ( is_wp_error( $same_writer ) ) return $same_writer;
 		$wpdb->last_error = '';
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['inbox']} WHERE provider_id=%s AND provider_event_id=%s LIMIT 1", $provider_id, $provider_event_id ), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'inbox_duplicate_read', (string) $wpdb->last_error );
-		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_inbox_accept_failed', 'Unable to accept or read provider event.' );
+		$read_error = trim( (string) $wpdb->last_error );
+		if ( '' !== $read_error ) return self::authoritative_read_failure( 'inbox_duplicate_read', $read_error );
+		if ( ! is_array( $row ) ) return self::database_write_failure( 'mad4b_inbox_accept_failed', 'Provider inbox insert failed and no authoritative event record exists.', 'inbox_insert', $insert_error );
 		if ( ! hash_equals( (string) $row['payload_sha256'], $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_event_conflict', 'Duplicate provider event ID carries a different payload hash.' );
 		if ( ! hash_equals( (string) $row['job_id'], $job_id ) ) return new WP_Error( 'mad4b_inbox_job_conflict', 'Duplicate provider event ID is already bound to a different job.' );
 		$stored_execution_ref = isset( $row['provider_execution_ref'] ) ? (string) $row['provider_execution_ref'] : '';
