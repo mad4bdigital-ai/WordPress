@@ -82,6 +82,11 @@
             "issue": "WordPress/mcp-adapter v0.7.0 release",
             "constraint": "MCP 2026-07-28 uses exact-revision schemas while older clients are projected through the supported compatibility revision.",
             "mad4b_policy": "Endpoint acceptance must prove requested/served revision compatibility rather than assuming one global DTO schema."
+          },
+          {
+            "issue": "WordPress/mcp-adapter v0.7.0 HttpTransportPermissionTest",
+            "constraint": "A custom transport permission callback WP_Error is logged and collapsed to false before WordPress REST serializes the response.",
+            "mad4b_policy": "Preserve bounded MAD4B admission code/stage/blocker at rest_request_before_callbacks before the Adapter permission callback; keep Adapter fail-closed behavior unchanged."
           }
         ],
         "runtime_classes": {
@@ -168,6 +173,24 @@
           "source_tag": "v0.7.0",
           "breaking_runtime_class_set_recognized": true,
           "mutation_authority": false
+        },
+        "transport_compatibility": {
+          "legacy_session_revisions": [
+            "2024-11-05",
+            "2025-06-18",
+            "2025-11-25"
+          ],
+          "modern_per_request_revisions": [
+            "2026-07-28"
+          ],
+          "permission_callback_wp_error_passthrough": false,
+          "mad4b_transport_admission_bridge_required": true,
+          "authenticated_tools_call_revalidation_required": true,
+          "recovery_read_tools": [
+            "mad4b/site-profile-status",
+            "mad4b/session-safe-diagnostics",
+            "mad4b/site-info"
+          ]
         }
       }
     }
