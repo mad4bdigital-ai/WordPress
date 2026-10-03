@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Private central transport. No execution and no authority grants. */
 final class MAD4B_SCP_Ability_Catalog_Transport {
 	const CONTRACT = 'mad4b.ability-catalog-transport.v2';
+	const OBJECT_CONTRACT = 'mad4b.catalog-object-envelope.v1';
+	const OBJECT_VERSION = 1;
 	const BLOCK_BYTES = 32768;
 	public static function boot() {
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
@@ -13,6 +15,12 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	public static function schedule_gc() { if ( ! wp_next_scheduled( 'mad4b_catalog_gc' ) ) wp_schedule_event( time() + 3600, 'hourly', 'mad4b_catalog_gc' ); }
 	private static function ttl() { return max( 60, (int) apply_filters( 'mad4b_scp_catalog_snapshot_ttl', 3600 ) ); }
 	private static function retention() { return max( self::ttl() + 600, (int) apply_filters( 'mad4b_scp_catalog_retention_seconds', 604800 ) ); }
+	public static function wire_generation() {
+		$default = self::CONTRACT . ':' . ( defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '' );
+		$value = apply_filters( 'mad4b_scp_catalog_wire_generation', $default );
+		if ( ! is_string( $value ) || '' === trim( $value ) || strlen( $value ) > 191 ) return $default;
+		return trim( $value );
+	}
 	public static function current_authority_scope() { return self::scope(); }
 	private static function scope() {
 		$context = apply_filters( 'mad4b_scp_authenticated_subject_context', array() );
@@ -37,6 +45,26 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	}
 	private static function encode( $value ) { return json_encode( self::canonical( $value ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ); }
 	private static function error( $code, $status = 400 ) { return new WP_Error( $code, 'Catalog request unavailable. Refresh discovery if its revision expired.', array( 'status' => $status ) ); }
+	private static function object_envelope( $kind, array $payload ) {
+		return array(
+			'contract' => self::OBJECT_CONTRACT,
+			'version' => self::OBJECT_VERSION,
+			'kind' => sanitize_key( (string) $kind ),
+			'wire_generation' => self::wire_generation(),
+			'payload' => $payload,
+		);
+	}
+	private static function unwrap_object( $value, $kind ) {
+		if ( ! is_array( $value )
+			|| self::OBJECT_CONTRACT !== ( isset( $value['contract'] ) ? (string) $value['contract'] : '' )
+			|| self::OBJECT_VERSION !== (int) ( isset( $value['version'] ) ? $value['version'] : 0 )
+			|| sanitize_key( (string) $kind ) !== ( isset( $value['kind'] ) ? sanitize_key( (string) $value['kind'] ) : '' )
+			|| ! isset( $value['wire_generation'] )
+			|| ! hash_equals( self::wire_generation(), (string) $value['wire_generation'] )
+			|| ! isset( $value['payload'] )
+			|| ! is_array( $value['payload'] ) ) return false;
+		return $value['payload'];
+	}
 	/** The pinned Adapter carries tool errors as text. Preserve a bounded contract. */
 	public static function mcp_result( $result ) {
 		if ( ! is_wp_error( $result ) ) return $result;
@@ -56,6 +84,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( 2 !== count( $parts ) || ! hash_equals( hash_hmac( 'sha256', $parts[0], wp_salt( 'auth' ) ), $parts[1] ) ) return self::error( 'mad4b_catalog_cursor_invalid' );
 		$p = json_decode( base64_decode( strtr( $parts[0], '-_', '+/' ), true ), true );
 		if ( ! is_array( $p ) || ( $p['scope'] ?? '' ) !== $scope || ( $p['contract'] ?? '' ) !== self::CONTRACT || ( $p['expires'] ?? 0 ) <= time() ) return self::error( 'mad4b_catalog_cursor_expired', 410 );
+		if ( ! isset( $p['wire_generation'] ) || ! hash_equals( self::wire_generation(), (string) $p['wire_generation'] ) ) return self::error( 'mad4b_catalog_cursor_generation_mismatch', 410 );
 		return $p;
 	}
 	private static function publish_schema( $schema, $store, $force ) {
@@ -72,7 +101,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 			$store->put( self::key( '', 'block', $hash ), $bytes, $retention, $retain_until );
 		}
 		$out = array( 'sha256' => $digest, 'bytes' => strlen( $json ), 'blocks' => $blocks, 'retain_until' => $retain_until );
-		$store->put( $key, $out, $retention, $retain_until );
+		$store->put( $key, self::object_envelope( 'schema', $out ), $retention, $retain_until );
 		return $out;
 	}
 	private static function snapshot( $scope, $store, $force ) {
@@ -112,8 +141,8 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 				$definitions[ $name ] = hash( 'sha256', $marker );
 			}
 		}
-		$generation = apply_filters( 'mad4b_scp_catalog_wire_generation', self::CONTRACT . ':' . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) );
-		$fingerprint = hash( 'sha256', self::encode( array( $definitions, $generation ) ) ); $current_key = self::key( $scope, 'current', '' ); $current = $store->get( $current_key );
+		$generation = self::wire_generation();
+		$fingerprint = hash( 'sha256', self::encode( array( $definitions, $generation ) ) ); $current_key = self::key( $scope, 'current', '' ); $current = self::unwrap_object( $store->get( $current_key ), 'current' );
 		$force_interval = max( 1, min( 300, (int) apply_filters( 'mad4b_scp_catalog_force_refresh_interval', 30 ) ) );
 		if ( is_array( $current ) && (int) ( $current['built_at'] ?? 0 ) > time() - $force_interval ) $force = false;
 		if ( ! $force && is_array( $current ) && $current['fingerprint'] === $fingerprint && $current['retain_until'] > time() + self::ttl() ) $items = $current['items'];
@@ -148,12 +177,12 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 					$items[] = $row;
 				} catch ( Throwable $e ) { $items[] = array( 'ability_name' => $name, 'unavailable' => true, 'reason' => 'schema_serialization_failed' ); }
 			}
-			$store->put( $current_key, array( 'fingerprint' => $fingerprint, 'items' => $items, 'retain_until' => $retain_until, 'built_at' => time() ), self::retention() );
+			$store->put( $current_key, self::object_envelope( 'current', array( 'fingerprint' => $fingerprint, 'items' => $items, 'retain_until' => $retain_until, 'built_at' => time() ) ), self::retention() );
 		}
 		$id = hash( 'sha256', self::encode( array( self::CONTRACT, $items ) ) ); $data = array( 'items' => $items );
 		if ( microtime( true ) >= $deadline ) return self::error( 'mad4b_catalog_build_time_budget', 503 );
 		if ( ! MAD4B_SCP_Distributed_Lock::owns( $lock ) ) return self::error( 'mad4b_catalog_build_lock_lost', 503 );
-		$store->put( self::key( $scope, 'snapshot', $id ), $data, self::ttl() ); $store->flush(); return array( $id, $data );
+		$store->put( self::key( $scope, 'snapshot', $id ), self::object_envelope( 'snapshot', $data ), self::ttl() ); $store->flush(); return array( $id, $data );
 	}
 	/** Prepare only the selected Ability; no full-universe serialization. */
 	public static function prepare_ability( $name ) {
@@ -172,12 +201,12 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 				}
 			} catch ( Throwable $e ) { $item['wire_unavailable'] = true; }
 			$id = hash( 'sha256', self::encode( array( self::CONTRACT, $item ) ) ); $key = self::key( $scope, 'snapshot', $id );
-			$store->put( $key, array( 'items' => array( $item ) ), self::ttl() ); $store->flush();
+			$store->put( $key, self::object_envelope( 'snapshot', array( 'items' => array( $item ) ) ), self::ttl() ); $store->flush();
 			return array( 'contract' => self::CONTRACT, 'snapshot' => $id, 'expires_at' => $store->expires( $key ), 'authority_scope_sha256' => $scope, 'item' => $item );
 		} catch ( Throwable $e ) { return self::error( 'mad4b_catalog_storage_unavailable', 503 ); }
 	}
 	public static function capabilities() {
-		return array( 'contract' => self::CONTRACT, 'authority_scope_sha256' => self::scope(), 'rest_base_url' => rest_url( 'mad4b/v1/ability-catalog/' ), 'transports' => array( 'authenticated_rest_binary', 'mcp_base64' ), 'schema_formats' => array( 'source', 'wire' ), 'block_bytes' => self::BLOCK_BYTES, 'snapshot_ttl_seconds' => self::ttl(), 'rest_auth_modes' => array( 'oauth_bearer', 'authenticated_wordpress_session' ), 'remote_client_auth_mode' => 'oauth_bearer', 'build_policy' => array( 'single_flight' => true, 'force_refresh_min_interval_seconds' => 30, 'default_max_abilities' => 5000, 'default_max_seconds' => 10, 'default_max_bytes' => 33554432 ), 'dispatch' => array( 'read' => 'mad4b/read-execute', 'write' => 'mad4b/write-execute', 'developer' => 'mad4b/developer-execute', 'enrollment' => 'mad4b/enrollment-execute' ), 'authority_effect' => 'none' );
+		return array( 'contract' => self::CONTRACT, 'authority_scope_sha256' => self::scope(), 'rest_base_url' => rest_url( 'mad4b/v1/ability-catalog/' ), 'transports' => array( 'authenticated_rest_binary', 'mcp_base64' ), 'schema_formats' => array( 'source', 'wire' ), 'block_bytes' => self::BLOCK_BYTES, 'snapshot_ttl_seconds' => self::ttl(), 'wire_generation' => self::wire_generation(), 'object_envelope' => array( 'contract' => self::OBJECT_CONTRACT, 'version' => self::OBJECT_VERSION ), 'rest_auth_modes' => array( 'oauth_bearer', 'authenticated_wordpress_session' ), 'remote_client_auth_mode' => 'oauth_bearer', 'build_policy' => array( 'single_flight' => true, 'force_refresh_min_interval_seconds' => 30, 'default_max_abilities' => 5000, 'default_max_seconds' => 10, 'default_max_bytes' => 33554432 ), 'dispatch' => array( 'read' => 'mad4b/read-execute', 'write' => 'mad4b/write-execute', 'developer' => 'mad4b/developer-execute', 'enrollment' => 'mad4b/enrollment-execute' ), 'authority_effect' => 'none' );
 	}
 	public static function handle( array $input, $binary = false ) {
 		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return self::error( 'mad4b_catalog_blog_switch_denied', 409 );
@@ -200,17 +229,17 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	private static function manifest( $input, $scope, $store ) {
 		if ( ! empty( $input['cursor'] ) ) {
 			$p = self::decode_cursor( $input['cursor'], $scope ); if ( is_wp_error( $p ) ) return $p;
-			$id = $p['snapshot']; $data = $store->get( self::key( $scope, 'snapshot', $id ) ); if ( ! is_array( $data ) ) return self::error( 'mad4b_catalog_snapshot_expired', 410 );
+			$id = $p['snapshot']; $data = self::unwrap_object( $store->get( self::key( $scope, 'snapshot', $id ) ), 'snapshot' ); if ( ! is_array( $data ) ) return self::error( 'mad4b_catalog_object_generation_mismatch', 410 );
 		} else {
 			$snapshot = self::snapshot( $scope, $store, ! empty( $input['force_refresh'] ) );
 			if ( is_wp_error( $snapshot ) ) return $snapshot;
 			list( $id, $data ) = $snapshot;
 			$lease = $store->expires( self::key( $scope, 'snapshot', $id ) );
-			$p = array( 'contract' => self::CONTRACT, 'scope' => $scope, 'snapshot' => $id, 'offset' => 0, 'limit' => max( 1, min( 100, (int) ( $input['limit'] ?? 50 ) ) ), 'query' => strtolower( trim( $input['query'] ?? '' ) ), 'known_snapshot' => $input['known_snapshot'] ?? '', 'expires' => $lease );
+			$p = array( 'contract' => self::CONTRACT, 'wire_generation' => self::wire_generation(), 'scope' => $scope, 'snapshot' => $id, 'offset' => 0, 'limit' => max( 1, min( 100, (int) ( $input['limit'] ?? 50 ) ) ), 'query' => strtolower( trim( $input['query'] ?? '' ) ), 'known_snapshot' => $input['known_snapshot'] ?? '', 'expires' => $lease );
 		}
 		$filter = static function( $items ) use ( $p ) { return array_column( array_values( array_filter( $items, static function( $item ) use ( $p ) { return '' === $p['query'] || false !== strpos( strtolower( $item['ability_name'] . ' ' . ( $item['label'] ?? '' ) ), $p['query'] ); } ) ), null, 'ability_name' ); };
 		$after = $filter( $data['items'] ); $before = array(); $delta = '' !== $p['known_snapshot'];
-		if ( $delta ) { $old = $store->get( self::key( $scope, 'snapshot', $p['known_snapshot'] ) ); if ( ! is_array( $old ) ) return self::error( 'mad4b_catalog_delta_base_expired', 410 ); $before = $filter( $old['items'] ); }
+		if ( $delta ) { $old = self::unwrap_object( $store->get( self::key( $scope, 'snapshot', $p['known_snapshot'] ) ), 'snapshot' ); if ( ! is_array( $old ) ) return self::error( 'mad4b_catalog_delta_base_expired', 410 ); $before = $filter( $old['items'] ); }
 		$events = array(); foreach ( $before as $name => $item ) if ( ! isset( $after[ $name ] ) ) $events[ $name ] = array( 'removed' => $name );
 		foreach ( $after as $name => $item ) if ( ! isset( $before[ $name ] ) || $before[ $name ] !== $item ) $events[ $name ] = array( 'item' => $item );
 		ksort( $events, SORT_STRING ); $page = array_slice( array_values( $events ), $p['offset'], $p['limit'] ); $p['offset'] += count( $page );
@@ -218,10 +247,10 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	}
 	private static function schema( $input, $scope, $store, $binary ) {
 		$id = $input['snapshot'] ?? ''; $digest = $input['schema_sha256'] ?? ''; $format = $input['schema_format'] ?? 'source';
-		$snapshot = $store->get( self::key( $scope, 'snapshot', $id ) ); if ( ! is_array( $snapshot ) ) return self::error( 'mad4b_catalog_snapshot_expired', 410 );
+		$snapshot = self::unwrap_object( $store->get( self::key( $scope, 'snapshot', $id ) ), 'snapshot' ); if ( ! is_array( $snapshot ) ) return self::error( 'mad4b_catalog_object_generation_mismatch', 410 );
 		$found = false; foreach ( $snapshot['items'] as $item ) if ( ( $item[ $format ]['sha256'] ?? '' ) === $digest ) $found = true;
 		if ( ! $found ) return self::error( 'mad4b_catalog_schema_not_in_snapshot', 403 );
-		$d = $store->get( self::key( '', 'schema', $digest ) ); if ( ! is_array( $d ) ) return self::error( 'mad4b_catalog_schema_unavailable', 410 );
+		$d = self::unwrap_object( $store->get( self::key( '', 'schema', $digest ) ), 'schema' ); if ( ! is_array( $d ) ) return self::error( 'mad4b_catalog_object_generation_mismatch', 410 );
 		$chunk = 'chunk' === $input['transport_action']; $size = max( 1024, min( 1048576, (int) ( $input['chunk_bytes'] ?? self::BLOCK_BYTES ) ) ); $index = (int) ( $input['chunk_index'] ?? 0 );
 		$count = (int) ceil( $d['bytes'] / $size ); if ( $chunk && $index >= $count ) return self::error( 'mad4b_catalog_chunk_invalid' );
 		$start = $chunk ? $index * $size : 0; $length = $chunk ? min( $size, $d['bytes'] - $start ) : $d['bytes']; $raw = '';
