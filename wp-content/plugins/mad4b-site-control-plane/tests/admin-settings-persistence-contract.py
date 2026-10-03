@@ -181,10 +181,13 @@ assert policy.index("self::review_policy()") < policy.index("if ( 'human_and_ai'
 assert "current['persistence_verified'] = true" in policy
 assert "Changing delegated AI Agent review requires explicit administrator confirmation." in policy
 
-# Re-enrollment and write enablement must use the same verified Site Profile
-# persistence primitive rather than raw update_option semantics.
-assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" in enrollment
-assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" in write_enable
+# Re-enrollment, App Mapping and write enablement use the same
+# audit-committed CAS primitive; none may expose a final authority record before
+# its append-only audit succeeds.
+assert enrollment.count("MAD4B_SCP_Site_Profile::commit_record_with_audit(") >= 2
+assert "MAD4B_SCP_Site_Profile::commit_record_with_audit(" in write_enable
+assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" not in enrollment
+assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" not in write_enable
 
 # Production read-only OAuth is a setting, not authority. It may use AJAX but
 # must verify persisted readback; normal Production write authority remains
