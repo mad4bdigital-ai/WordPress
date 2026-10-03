@@ -558,9 +558,22 @@ final class MAD4B_SCP_Authorization {
 			try {
 				$result = call_user_func( $original, $input );
 			} catch ( \Throwable $throwable ) {
-				MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_returned', array( 'provider_exception' => true ) );
-				MAD4B_SCP_Authorization::finalize_execution_claim( $claim, new WP_Error( 'mad4b_execution_exception', 'Governed mutation threw before a successful verified result.' ) );
-				throw $throwable;
+				$exception_checkpoint = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_returned', array(
+					'provider_exception' => true,
+					'exception_class' => get_class( $throwable ),
+				) );
+				$exception_error = class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' )
+					? MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
+						is_wp_error( $exception_checkpoint ) ? $exception_checkpoint->get_error_code() : 'provider_exception_after_entry',
+						'Governed provider threw after execution entry. Provider side effects are possible; reconcile provider state before any retry.',
+						array(
+							'execution_attempt_sha256'=>isset($claim['execution_attempt_sha256'])?(string)$claim['execution_attempt_sha256']:'',
+							'provider_exception_class'=>get_class($throwable),
+						)
+					)
+					: new WP_Error( 'mad4b_execution_exception_reconciliation_required', 'Governed provider threw after execution entry.', array( 'reconciliation_required'=>true, 'blind_retry_allowed'=>false ) );
+				MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $exception_error );
+				return $exception_error;
 			}
 			$provider_returned = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_returned' );
 			if ( is_wp_error( $provider_returned ) ) {
