@@ -139,6 +139,7 @@
           "mcp-adapter.php": "715ed306fdb355e645f238129abe8a840e0223704c9613cea6a3c7e4d0a4e558",
           "includes/Autoloader.php": "238bbaf41ebc50cc25daf893fa57490d05615ad033d0f03110bf8e4dc6062868",
           "includes/Plugin.php": "16b5065c7149bb33b18d0d133d1c4e7b27ab25a1c43a4214ca54ec2c720e8301",
+          "vendor/autoload_packages.php": "7573a0276deea71e175eeb3b99eb966d76dfc3a740574f9723d7b3783a775e4b",
           "includes/Abilities/DiscoverAbilitiesAbility.php": "0c4de588848b3e386626ca7a9c3b5916aaf9724fccfad18585da15cee546af49",
           "includes/Abilities/ExecuteAbilityAbility.php": "ec099c463eb4c62ee3afe1ba89e3e30affac429b0ff4646ad2cb8acc7319e0ab",
           "includes/Abilities/GetAbilityInfoAbility.php": "14eff70bab65cc9c06d59160211468beb5410fd1c843b623ebe9556567d0b19b",
