@@ -28,6 +28,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-lifecycle-matrix-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-recovery-boundaries-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-runtime.php'
@@ -96,6 +99,9 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-lifecycle-matrix-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-recovery-boundaries-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php
 
       - name: Run tenant-bound multi-user OAuth runtime contract
         shell: bash

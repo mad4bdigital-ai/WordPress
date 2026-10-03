@@ -61,6 +61,14 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 );
+		// Bind catalog definitions independently from update/resource lifecycle boot.
+		// Passive AJAX jobs skip those writers; their authorized catalog still needs
+		// every declared planner and the compact session diagnostic. Registration
+		// runs only in WordPress' lazy Abilities action and executes no tools.
+		foreach ( array( 'MAD4B_SCP_Plugin_Package', 'MAD4B_SCP_Remote_Plugin_Update', 'MAD4B_SCP_Self_Update' ) as $catalog ) {
+			if ( class_exists( $catalog, false ) ) add_action( 'wp_abilities_api_init', array( $catalog, 'register_abilities' ), 34 );
+		}
+		if ( class_exists( 'MAD4B_SCP_Read_Consistency', false ) ) add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Read_Consistency', 'register_session_safe_report' ), 27 );
 		add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 );
 
 

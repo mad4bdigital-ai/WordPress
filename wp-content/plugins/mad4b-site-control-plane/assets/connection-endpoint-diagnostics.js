@@ -42,7 +42,7 @@
       const response = await env.fetch(config.url, {
         method: 'POST', credentials: 'same-origin', signal: controller.signal,
         headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
-        body: new URLSearchParams({action: config.action, nonce: config.nonce, server_id: serverId, build: config.build}).toString()
+        body: new URLSearchParams({action: config.action, nonce: config.nonce, server_id: serverId, build: config.build, mu_proof: config.muProof || ''}).toString()
       });
       const content = await readBody(response);
       let payload;

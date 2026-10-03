@@ -468,6 +468,27 @@ for marker in (
     if marker not in managed_apply:
         raise SystemExit(f"post-update convergence rollback invariant missing: {marker}")
 
+# A successful disk replacement is still not a committed governed update until
+# the mandatory success audit is appended. Audit failure must rollback and
+# quarantine continuation/convergence rather than returning readback_verified.
+for marker in (
+    "$success_audit = self::audit( $channel, $target, true",
+    "if ( is_wp_error( $success_audit ) )",
+    "$rollback = self::rollback( $backup, $before, $runtime_php_files );",
+    "MAD4B_SCP_Post_Update_Continuation::cancel( 'self_update_success_audit_failed'",
+    "MAD4B_SCP_Runtime_Convergence::block_post_update( 'self_update_success_audit_failed'",
+    "mad4b_self_update_success_audit_failed",
+    "'convergence_quarantined' => ! is_wp_error( $convergence_block )",
+    "return MAD4B_SCP_Audit::record( 'mad4b/control-plane-self-update'",
+):
+    if marker not in managed_apply and marker not in self_update:
+        raise SystemExit(f"mandatory self-update audit invariant missing: {marker}")
+success_audit = managed_apply.find("$success_audit = self::audit( $channel, $target, true")
+success_audit_fail = managed_apply.find("if ( is_wp_error( $success_audit ) )", success_audit)
+final_success = managed_apply.find("'readback_verified' => true", success_audit)
+if min(success_audit, success_audit_fail, final_success) < 0 or not (success_audit < success_audit_fail < final_success):
+    raise SystemExit("self-update final success can be published before mandatory success-audit result is handled")
+
 # Same-request replacement must verify the new on-disk plugin header and canonical
 # control_plane_version, never the stale MAD4B_SCP_VERSION loaded before replacement.
 if "get_file_data( $path, array( 'Version' => 'Version' ), 'plugin' )" not in self_update:

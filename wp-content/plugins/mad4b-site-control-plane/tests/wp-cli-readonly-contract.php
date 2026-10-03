@@ -2,6 +2,7 @@
 
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'WP_CLI', true );
+define( 'MAD4B_SCP_MCP_CLI_REQUEST', true );
 
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_get_environment_type() { return 'staging'; }

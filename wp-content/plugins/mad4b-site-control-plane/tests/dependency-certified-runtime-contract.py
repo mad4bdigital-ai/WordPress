@@ -17,8 +17,16 @@ for marker in (
     "'critical_file_missing'",
     "'invalid_certified_critical_file'",
     "'installed_critical_integrity' => $installed_integrity",
-    "self::installed_mcp_adapter_integrity( $certified )",
+    "self::installed_mcp_adapter_integrity( $certified, $mcp_plugin_file )",
     "self::redirect_result( 'integrity_mismatch' )",
+    "'multisite_network_activation_unsupported'",
+    "'network_activation_supported' => false",
+    "'site_scoped_activation_supported' => true",
+    "activate_plugin( self::MCP_PLUGIN_FILE, '', false )",
+    "resolve_mcp_plugin_file",
+    "'mcp_adapter_plugin_identity_ambiguous'",
+    "'plugin_directory_renamed'",
+    "'renamed_mcp_adapter_repair_requires_manual_normalization'",
 ):
     assert marker in dep, marker
 assert "elseif ( ! $active ) $hard_blockers[] = 'mcp_adapter_inactive';" not in dep

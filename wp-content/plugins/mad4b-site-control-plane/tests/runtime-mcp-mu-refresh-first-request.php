@@ -15,6 +15,11 @@ $_SERVER['REQUEST_METHOD'] = 'POST';
 $_SERVER['REQUEST_URI'] = '/wp-cron.php';
 require $wp_path . '/wp-load.php';
 
+// Generic wp-cron is intentionally passive. Execute only the dedicated governed
+// recovery hook; Runtime_Recovery::run() proves the exact lifecycle and lease
+// before MU filesystem reconciliation.
+do_action( MAD4B_SCP_MCP_Runtime_Recovery::HOOK );
+
 $fail = static function ( $message ) {
 	fwrite( STDERR, 'FAIL mcp-mu-refresh-first-request: ' . $message . PHP_EOL );
 	exit( 1 );
