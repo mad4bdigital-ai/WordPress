@@ -218,7 +218,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		}
 		$transaction = self::reconcile_transaction( $destination );
 		if ( is_wp_error( $transaction ) ) {
-			$status['blocker'] = $transaction_id->get_error_code();
+			$status['blocker'] = $transaction->get_error_code();
 			$status['transaction_pending'] = true;
 			self::$status = $status;
 			return $status;
@@ -283,7 +283,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$transaction_id = self::begin_transaction( 'refresh', $status['destination_sha256_before'], $status['source_sha256'] );
 		if ( is_wp_error( $transaction_id ) ) {
 			@unlink( $temp );
-			$status['blocker'] = $transaction->get_error_code();
+			$status['blocker'] = $transaction_id->get_error_code();
 			self::$status = $status;
 			return $status;
 		}
