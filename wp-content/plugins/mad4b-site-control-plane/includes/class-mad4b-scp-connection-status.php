@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Connection_Status {
 	const CONTRACT = 'mad4b.connection-readiness.v4';
 	const PREVIOUS_CONTRACT = 'mad4b.connection-readiness.v3';
+	const MAX_DIAGNOSTIC_TOOLS = 500;
 
 	public static function status( $force_deep = false ) {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
@@ -395,7 +396,7 @@ final class MAD4B_SCP_Connection_Status {
 					if ( method_exists( $server, 'get_transport_permission_callback' ) ) $permission = $server->get_transport_permission_callback();
 					if ( method_exists( $server, 'get_server_version' ) ) $server_version = (string) $server->get_server_version();
 					if ( '' !== $only_server_id && method_exists( $server, 'get_tools' ) && class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) {
-						$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
+						$tools = MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools( $server, self::MAX_DIAGNOSTIC_TOOLS );
 						if ( is_array( $tools ) ) $observed_tool_count = count( $tools );
 					}
 				} catch ( Throwable $e ) { $permission = null; }
