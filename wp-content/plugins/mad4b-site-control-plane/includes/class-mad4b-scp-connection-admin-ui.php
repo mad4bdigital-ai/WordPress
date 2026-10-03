@@ -27,6 +27,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		wp_localize_script( 'mad4b-scp-endpoint-diagnostics', 'mad4bEndpointDiagnostics', array(
 			'url' => admin_url( 'admin-ajax.php' ), 'action' => MAD4B_SCP_Endpoint_Diagnostic::ACTION,
 			'nonce' => wp_create_nonce( 'mad4b_connection_deep_endpoints' ), 'build' => MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint(),
+			'muProof' => MAD4B_SCP_Site_Profile::diagnostic_mu_proof(),
 			'servers' => $ids, 'timeoutMs' => 15000,
 			'labels' => array( 'notChecked' => __( 'Not checked', 'mad4b-site-control-plane' ), 'running' => __( 'Checking', 'mad4b-site-control-plane' ), 'complete' => __( 'Endpoint checks complete. External certification and foreign transport review were not performed.', 'mad4b-site-control-plane' ), 'stopped' => __( 'Diagnostic stopped', 'mad4b-site-control-plane' ), 'timeout' => __( 'The request exceeded 15 seconds. No further requests were started. A server callback may still be running; do not immediately retry.', 'mad4b-site-control-plane' ) ),
 		) );
