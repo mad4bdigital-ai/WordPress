@@ -1,0 +1,24 @@
+{
+  "contract": "mad4b.crypto-profiles.v1",
+  "default_profiles": {
+    "execution_receipt": "execution-receipt-rs256-v1"
+  },
+  "profiles": {
+    "execution-receipt-rs256-v1": {
+      "purpose": "execution_receipt",
+      "algorithm": "RS256",
+      "key_bits": 3072,
+      "overlap_seconds": 86400,
+      "max_active_keys": 2,
+      "enabled": true
+    },
+    "execution-receipt-rs512-v2": {
+      "purpose": "execution_receipt",
+      "algorithm": "RS512",
+      "key_bits": 3072,
+      "overlap_seconds": 86400,
+      "max_active_keys": 2,
+      "enabled": true
+    }
+  }
+}
