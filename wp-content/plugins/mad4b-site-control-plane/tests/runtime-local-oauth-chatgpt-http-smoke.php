@@ -712,6 +712,23 @@ foreach ( array(
 update_option( MAD4B_SCP_Site_Profile::OPTION, $original_profile, false );
 MAD4B_SCP_Site_Profile::reset_cache();
 
+// The negative alias loop intentionally clears bearer identity before every
+// denial. Restore the original Site UUID, then prove the same valid token can
+// establish the shared bridge context again; the final assertions must not
+// depend on request-local state left behind by an earlier dispatch.
+wp_set_current_user( 0 );
+MAD4B_SCP_OAuth_Resource_Bridge::reset_verified_bearer_context( true );
+$restored_context_request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
+$restored_context_request->set_header( 'Authorization', 'Bearer ' . $token );
+$restored_context = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, rest_get_server(), $restored_context_request );
+if ( null !== $restored_context || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() || 1 !== get_current_user_id() ) {
+	$fail( 'Current Site UUID bearer did not restore shared OAuth context after prior-identity denial regression.', array(
+		'response_status' => $restored_context instanceof WP_REST_Response ? $restored_context->get_status() : null,
+		'user_id' => get_current_user_id(),
+		'verified' => MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active(),
+	) );
+}
+
 remove_filter( 'pre_http_request', $http_spy, 9999 );
 
 if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) $fail( 'Verified bearer context was not active after MCP dispatch.' );
