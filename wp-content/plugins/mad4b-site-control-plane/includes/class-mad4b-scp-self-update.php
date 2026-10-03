@@ -1188,8 +1188,12 @@ final class MAD4B_SCP_Self_Update {
 				'mad4b_control_plane_refresh_update'
 			);
 			$reason = ! empty( $ui['blockers'] ) ? implode( ', ', $ui['blockers'] ) : 'manifest_unavailable';
-			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-error notice-alt"><p>'
-				. esc_html__( 'MAD4B could not verify the governed update channel.', 'mad4b-site-control-plane' )
+			$uncached = array( 'mad4b_self_update_manifest_not_cached' ) === array_values( (array) $ui['blockers'] );
+			$channel_message = $uncached
+				? __( 'Governed update channel has not been checked yet. Run the explicit update check before choosing an update.', 'mad4b-site-control-plane' )
+				: __( 'MAD4B could not verify the governed update channel.', 'mad4b-site-control-plane' );
+			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline ' . ( $uncached ? 'notice-info' : 'notice-error' ) . ' notice-alt"><p>'
+				. esc_html( $channel_message )
 				. ' ' . esc_html( $reason ) . ' <a href="' . esc_url( $url ) . '">'
 				. esc_html__( 'Retry update check', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
 			return;

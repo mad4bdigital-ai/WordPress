@@ -887,6 +887,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 			if ( class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) && method_exists( 'MAD4B_SCP_Schema_Lifecycle', 'mark_current_package_applied' ) ) {
 				MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' );
 			}
+			if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) {
+				$mcp_recovery = MAD4B_SCP_MCP_Runtime_Recovery::run( $lock );
+				if ( is_wp_error( $mcp_recovery ) ) return $mcp_recovery;
+				$changed[] = 'mcp_runtime_bootstrap';
+			}
 			$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 			$skills_pending = false;
 			$skills_persisted = array();

@@ -72,6 +72,10 @@ jobs:
           python3 "$root/tests/mcp-provider-isolation-contract.py"
           python3 "$root/tests/mcp-registration-bridge-contract.py"
           python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
+          php "$root/tests/mcp-mu-recovery-boundaries-runtime.php"
+          php "$root/tests/mcp-runtime-recovery-runtime.php"
+          php "$root/tests/site-profile-general-distribution-runtime.php"
+          node "$root/tests/admin-settings-persistence-runtime.mjs"
           php "$root/tests/upgrade-continuity-runtime.php"
           php "$root/tests/reconnect-hardening-runtime.php"
           php "$root/tests/connector-resilience-runtime.php"
@@ -296,6 +300,10 @@ jobs:
           }
           PHP
 
+          # Model the deployed site: WordPress has an implicit Production default,
+          # while its exact enrolled Site Profile selects Staging.
+          php /tmp/wp-cli.phar config delete WP_ENVIRONMENT_TYPE --type=constant --path="$WP_PATH"
+
           # Request 1: official Adapter entrypoint + preclaimed foreign validator
           # must classify as a mixed class set. PHP classes are not swapped in the
           # current request; the governed 000-* MU repair is armed for next request.
@@ -306,6 +314,8 @@ jobs:
           # converges to a single canonical runtime.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
 
+          MAD4B_TEST_WP_PATH="$WP_PATH" php "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-ajax-recovered.php"
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           rm -f "$FOREIGN_VALIDATOR"
 
       - name: Prove passive exact-profile OAuth identity projection is request-local

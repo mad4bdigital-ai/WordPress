@@ -73,11 +73,8 @@ for forbidden in (
     forbid(repair_lifecycle, forbidden, 'diagnostics-remain-read-only')
 
 for marker in (
-    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v4'",
-    "get_option( 'mad4b_scp_site_profile_v2', array() )",
-    "'mad4b.site-profile.v2' === (string) $mad4b_mcp_mu_profile['contract']",
-    "! empty( $mad4b_mcp_mu_features['managed_runtime'] )",
-    "in_array( $mad4b_mcp_mu_status['environment'], array( 'local', 'development', 'staging' ), true )",
+    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v5'",
+    "MAD4B_SCP_Site_Profile::early_managed_runtime_binding()",
     "in_array( 'mcp-adapter/mcp-adapter.php'",
     "in_array( 'mad4b-site-control-plane/mad4b-site-control-plane.php'",
     "'WP\\\\MCP\\\\Autoloader'",
@@ -126,7 +123,7 @@ for forbidden in (
     'WP\\MCP\\Plugin::instance()',
     'update_option(', 'add_option(', 'delete_option(', 'deactivate_plugins(',
     'activate_plugin(', 'delete_plugins(', 'wp_remote_get(', 'wp_remote_post(',
-    'curl_exec(', '$_GET', '$_POST', '$_REQUEST',
+    'curl_exec(', '$_GET', '$_REQUEST',
 ):
     forbid(mu_bootstrap, forbidden, 'mu-bootstrap-fail-closed')
 
@@ -185,3 +182,8 @@ for marker in (
     require(diagnostics, marker, 'diagnostics-evidence')
 
 print('mad4b.site-control-plane.mcp-runtime-conflict-guard-contract.v5: PASS')
+
+# The only POST read in MU scope classifies the diagnostic route; it cannot arm a singleton.
+assert "'mad4b_connection_endpoint_diagnostic' === $_POST['action']" in mu_bootstrap
+assert "canonical_runtime_pinned_diagnostic_deferred" in mu_bootstrap
+assert mu_bootstrap.index("Validate every executable pin") < mu_bootstrap.index("foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once")

@@ -61,11 +61,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			MAD4B_SCP_Site_Profile::reset_cache();
 			$status = MAD4B_SCP_Site_Profile::status();
 			$profile = MAD4B_SCP_Site_Profile::profile();
-			$verified = is_array( $profile )
-				&& ! empty( $profile )
-				&& isset( $status['revision'] )
-				&& (int) $status['revision'] > (int) $input['expected_revision']
-				&& hash_equals( (string) MAD4B_SCP_Site_Profile::profile_digest(), (string) ( isset( $status['profile_digest'] ) ? $status['profile_digest'] : MAD4B_SCP_Site_Profile::profile_digest() ) );
+			$verified = self::persisted_readback_matches( $input, $result, $status, $profile );
 			if ( ! $verified ) {
 				wp_send_json_error( array(
 					'code' => 'mad4b_site_profile_readback_mismatch',
@@ -77,6 +73,9 @@ final class MAD4B_SCP_Site_Profile_Admin {
 				'persistence_verified' => true,
 				'readback' => array(
 					'revision' => (int) $status['revision'],
+					'environment' => (string) $status['configured_environment'],
+					'effective_environment' => (string) $status['environment'],
+					'site_uuid' => (string) $status['site_uuid'],
 					'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
 					'display_name' => MAD4B_SCP_Site_Profile::display_name(),
 					'chatgpt_app_id' => MAD4B_SCP_Site_Profile::chatgpt_app_id(),
@@ -86,6 +85,17 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		}
 		if ( is_wp_error( $result ) ) self::redirect( $result->get_error_code() );
 		self::redirect( 'saved' );
+	}
+
+	/** Revision may reset to 1 on an identity rebind; compare the committed identity. */
+	public static function persisted_readback_matches( array $input, array $committed, array $status, array $profile ) {
+		if ( empty( $profile ) || empty( $committed['profile_digest'] ) || empty( $status['profile_digest'] ) ) return false;
+		foreach ( array( 'revision', 'profile_digest', 'site_uuid', 'configured_environment', 'canonical_origin' ) as $field ) {
+			if ( ! isset( $committed[ $field ], $status[ $field ] ) || (string) $committed[ $field ] !== (string) $status[ $field ] ) return false;
+		}
+		$requested = sanitize_key( (string) ( $input['environment'] ?? '' ) );
+		return ( '' === $requested || hash_equals( $requested, (string) $status['configured_environment'] ) )
+			&& hash_equals( (string) MAD4B_SCP_Site_Profile::profile_digest(), (string) $status['profile_digest'] );
 	}
 
 	public static function handle_disable() {
@@ -101,6 +111,10 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	}
 
 	private static function require_save_request() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			if ( self::is_ajax_request() ) wp_send_json_error( array( 'code' => 'mad4b_site_profile_post_required', 'message' => __( 'Use the Site Profile save form.', 'mad4b-site-control-plane' ) ), 405 );
+			wp_die( esc_html__( 'Use the Site Profile save form.', 'mad4b-site-control-plane' ), '', array( 'response' => 405 ) );
+		}
 		if ( ! current_user_can( 'manage_options' ) ) {
 			if ( self::is_ajax_request() ) wp_send_json_error( array( 'code' => 'mad4b_site_profile_admin_required', 'message' => __( 'Administrator capability is required.', 'mad4b-site-control-plane' ) ), 403 );
 			wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
@@ -132,7 +146,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$users = MAD4B_SCP_Site_Profile::oauth_user_ids();
 		$state = isset( $_GET['mad4b_site_profile'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_site_profile'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
-		<div class="wrap">
+		<div class="wrap" id="mad4b-site-profile-workspace">
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Enroll this exact WordPress origin before remote OAuth or governed write authority can become active. Unknown sites remain fail-closed after installation.', 'mad4b-site-control-plane' ); ?></p>
 			<?php if ( '' !== $state ) : ?><div class="notice notice-info"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
@@ -149,7 +163,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 				</tbody>
 			</table>
 
-			<form id="mad4b-site-profile-settings" class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-site-profile-settings" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form id="mad4b-site-profile-settings" class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-site-profile-workspace" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
 				<input type="hidden" name="expected_revision" value="<?php echo esc_attr( (string) ( isset( $status['revision'] ) ? absint( $status['revision'] ) : 0 ) ); ?>" />
 				<?php wp_nonce_field( self::ACTION_SAVE ); ?>
@@ -177,12 +191,13 @@ final class MAD4B_SCP_Site_Profile_Admin {
 						<?php self::checkbox( 'managed_runtime_enabled', 'Managed MCP runtime pinning', ! empty( $features['managed_runtime'] ) ); ?>
 						<?php self::checkbox( 'acceptance_enabled', 'External acceptance evidence', ! empty( $features['acceptance'] ) ); ?>
 						<?php self::checkbox( 'write_enabled', 'Governed write authority', ! empty( $features['write'] ) ); ?>
-						<?php if ( 'production' === MAD4B_SCP_Site_Profile::current_environment() ) : ?>
-							<?php self::checkbox( 'production_write_confirmed', 'I explicitly authorize governed writes on this Production origin', ! empty( $features['production_write_confirmed'] ) ); ?>
+						<div data-mad4b-production-confirmation>
+							<p class="description"><?php esc_html_e( 'Required only when the selected environment is Production and governed write is enabled. To save Production without writes, clear Governed write authority.', 'mad4b-site-control-plane' ); ?></p>
+							<?php self::checkbox( 'production_write_confirmed', 'I explicitly authorize governed writes on this Production origin', false ); ?>
 							<label style="display:block;margin:.6em 0" for="mad4b-production-write-confirmation"><?php esc_html_e( 'Type the exact confirmation phrase when Production write is enabled:', 'mad4b-site-control-plane' ); ?></label>
 							<code><?php echo esc_html( MAD4B_SCP_Site_Profile::PRODUCTION_WRITE_CONFIRMATION ); ?></code><br />
 							<input class="regular-text" autocomplete="off" id="mad4b-production-write-confirmation" name="production_write_confirmation" value="" data-mad4b-one-time-confirm />
-						<?php endif; ?>
+						</div>
 					</td></tr>
 				</table>
 				<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>

@@ -87,7 +87,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		}
 		$status['managed'] = false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v2" )
 			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v3" )
-			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v4" );
+			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v4" )
+			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v5" );
 		if ( ! $status['managed'] ) {
 			$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 			self::$status = $status;
@@ -176,19 +177,15 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	}
 
 	private static function repair_lifecycle_allowed() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active() ) return true;
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
 		if ( is_admin() ) {
-			// Deep Connection diagnostics are an explicit POST + nonce lifecycle.
-			if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
-				&& MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return true;
 
 			global $pagenow;
 			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
-			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
 			$lifecycle_screen = in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true );
-			$lifecycle_action = in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
-			if ( ( $lifecycle_screen || $lifecycle_action )
+			if ( $lifecycle_screen
 				&& function_exists( 'current_user_can' )
 				&& current_user_can( 'update_plugins' ) ) return true;
 		}

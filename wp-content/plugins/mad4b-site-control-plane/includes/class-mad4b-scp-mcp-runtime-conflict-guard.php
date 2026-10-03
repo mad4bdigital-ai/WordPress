@@ -22,7 +22,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 
 	private static $status = array();
 
-	public static function bootstrap() {
+	public static function bootstrap( $preventive = false ) {
 		$status = self::base_status();
 		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
 
@@ -75,15 +75,17 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 
-		if ( ! empty( $status['runtime_from_official_plugin'] ) ) {
-			if ( ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] ) ) {
+		$mixed = ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] );
+		$preventive = $preventive && class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active();
+		if ( ! empty( $status['runtime_from_official_plugin'] ) || ( $preventive && empty( $status['runtime_class_loaded'] ) ) ) {
+			if ( $mixed || $preventive ) {
 				// PHP classes cannot be safely replaced after declaration. Keep the
 				// current request fail-closed, but arm the governed MU bootstrap so the
 				// next request pins every certified builder/validator/DTO class before
 				// normal plugins can register competing Jetpack packages.
-				$status['state'] = 'mixed_runtime_class_set';
-				$status['collision_risk_detected'] = true;
-				$status['runtime_provenance_mismatch'] = true;
+				$status['state'] = $mixed ? 'mixed_runtime_class_set' : 'class_set_repair_requested';
+				$status['collision_risk_detected'] = $mixed;
+				$status['runtime_provenance_mismatch'] = $mixed;
 				$status['blocker'] = 'mcp_adapter_class_provenance_mismatch';
 				$status['next_request_required'] = true;
 
@@ -110,6 +112,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 						'host' => isset( $status['host'] ) ? $status['host'] : '',
 						'runtime_source' => isset( $status['runtime_source'] ) ? sanitize_text_field( (string) $status['runtime_source'] ) : '',
 						'class_provenance_state' => isset( $status['runtime_class_provenance_state'] ) ? sanitize_key( (string) $status['runtime_class_provenance_state'] ) : '',
+						'preventive' => (bool) $preventive,
 						'class_provenance_failure_count' => isset( $status['runtime_class_provenance_failure_count'] ) ? max( 0, (int) $status['runtime_class_provenance_failure_count'] ) : 0,
 						'mu_bootstrap_installed' => $mu_installed,
 						'current_request_runtime_replacement_attempted' => false,
@@ -129,7 +132,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				$status['state'] = $mu_installed ? 'mu_bootstrap_installed_for_class_set_next_request' : 'class_set_repair_armed_for_next_request';
 				$status['repair_applied'] = $mu_installed;
 				$status['next_request_required'] = true;
-				$status['blocker'] = 'mcp_adapter_class_provenance_mismatch';
+				$status['blocker'] = $mixed ? 'mcp_adapter_class_provenance_mismatch' : '';
 				self::$status = $status;
 				return $status;
 			}
@@ -337,6 +340,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	}
 
 	private static function repair_lifecycle_allowed() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active() ) return true;
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
 		if ( is_admin() ) {
@@ -345,10 +349,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			// WordPress plugin lifecycle surfaces, WP-CLI or cron.
 			global $pagenow;
 			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
-			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
 			$lifecycle_screen = in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true );
-			$lifecycle_action = in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
-			if ( ( $lifecycle_screen || $lifecycle_action )
+			if ( $lifecycle_screen
 				&& function_exists( 'current_user_can' )
 				&& current_user_can( 'update_plugins' ) ) return true;
 		}
@@ -380,6 +382,11 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$status['blocker'] = '';
 		if ( ! defined( 'WPMU_PLUGIN_DIR' ) || ! defined( 'MAD4B_SCP_DIR' ) ) {
 			$status['blocker'] = 'mu_bootstrap_directory_unavailable';
+			return $status;
+		}
+		$integrity = class_exists( 'MAD4B_SCP_Dependency_Manager', false ) ? MAD4B_SCP_Dependency_Manager::mcp_adapter_disk_integrity() : array();
+		if ( empty( $integrity['ready'] ) ) {
+			$status['blocker'] = 'mcp_adapter_integrity_mismatch';
 			return $status;
 		}
 		$source = trailingslashit( MAD4B_SCP_DIR ) . self::MU_BOOTSTRAP_SOURCE;

@@ -203,4 +203,31 @@ $prod['production_write_confirmation']=MAD4B_SCP_Site_Profile::PRODUCTION_WRITE_
 $allowed=MAD4B_SCP_Site_Profile::save_current_site($prod);
 ok(!is_wp_error($allowed)&&!empty($allowed['write_enabled']),'exact explicit v2 production confirmation succeeds');
 
+// Environment rebinding must persist, and AJAX must verify the new identity,
+// even when its revision resets below the previous environment's revision.
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile-admin.php';
+reset_state();
+$GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://staging.client.test/';
+$staging=array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'write_enabled'=>true,'managed_runtime_enabled'=>true);
+$first=MAD4B_SCP_Site_Profile::save_current_site($staging);
+$staging['expected_revision']=1;$second=MAD4B_SCP_Site_Profile::save_current_site($staging);
+$before=MAD4B_SCP_Site_Profile::profile();
+$transition=$staging;$transition['expected_revision']=2;$transition['environment']='production';
+$blocked=MAD4B_SCP_Site_Profile::save_current_site($transition);
+ok(is_wp_error($blocked)&&$before===MAD4B_SCP_Site_Profile::profile(),'Production write transition without confirmation leaves exact staging identity intact');
+$transition['write_enabled']=false;
+$production=MAD4B_SCP_Site_Profile::save_current_site($transition);
+ok(!is_wp_error($production)&&'production'===$production['configured_environment']&&1===(int)$production['revision'],'Production without writes saves with a new identity');
+ok($production['site_uuid']!==$second['site_uuid'],'environment rebind cannot reuse staging authority identity');
+ok(MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($transition,$production,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'AJAX accepts exact rebind readback even when revision resets');
+ok(!MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($transition,$second,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'AJAX rejects stale environment identity readback');
+$back=$staging;$back['expected_revision']=1;
+$again=MAD4B_SCP_Site_Profile::save_current_site($back);
+ok(!is_wp_error($again)&&'staging'===$again['configured_environment'],'Production to Staging saves without Production write confirmation');
+ok(empty(MAD4B_SCP_Site_Profile::profile()['features']['production_write_confirmed']),'Production write acknowledgement is not carried into staging');
+$transition['write_enabled']=true;$transition['production_write_confirmed']=true;$transition['production_write_confirmation']=MAD4B_SCP_Site_Profile::PRODUCTION_WRITE_CONFIRMATION;$transition['expected_revision']=1;
+$confirmed=MAD4B_SCP_Site_Profile::save_current_site($transition);
+ok(!is_wp_error($confirmed)&&!empty($confirmed['write_enabled']),'explicitly confirmed Staging to Production write transition saves');
+ok(empty(MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible']),'Production profile disables managed runtime recovery');
+
 fwrite(STDOUT,"MAD4B Site Profile v2 general distribution runtime: PASS\n");

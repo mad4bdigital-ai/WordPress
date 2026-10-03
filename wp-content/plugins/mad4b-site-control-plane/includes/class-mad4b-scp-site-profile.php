@@ -149,6 +149,22 @@ final class MAD4B_SCP_Site_Profile {
 		return $wordpress;
 	}
 
+	/** Pure MU-phase binding: no profile migration, persistence or runtime boot. */
+	public static function early_managed_runtime_binding() {
+		$profile = self::exact_stored_profile();
+		$environment = self::current_environment();
+		return array(
+			'eligible' => ! empty( $profile )
+				&& empty( $profile['migration_requires_reenrollment'] )
+				&& hash_equals( (string) $profile['environment'], $environment )
+				&& in_array( $environment, array( 'local', 'development', 'staging' ), true )
+				&& ! empty( $profile['features']['managed_runtime'] ),
+			'environment' => $environment,
+			'wordpress_environment' => self::wordpress_environment(),
+			'wordpress_environment_explicit' => self::wordpress_environment_explicit(),
+		);
+	}
+
 	/**
 	 * Advisory enrollment default only. Hostname hints never grant authority.
 	 */
@@ -443,11 +459,11 @@ final class MAD4B_SCP_Site_Profile {
 		foreach ( $user_ids as $user_id ) if ( ! get_userdata( $user_id ) ) return new WP_Error( 'mad4b_site_profile_user_invalid', 'Every enrolled OAuth user must exist on this WordPress site.' );
 
 		$write = ! empty( $input['write_enabled'] );
-		$production_confirmed = ! empty( $input['production_write_confirmed'] );
+		$production_confirmed = 'production' === $environment && $write && ! empty( $input['production_write_confirmed'] );
 		$production_confirmation = isset( $input['production_write_confirmation'] ) ? trim( sanitize_text_field( (string) $input['production_write_confirmation'] ) ) : '';
 		if ( 'production' === $environment && $write ) {
 			if ( ! $production_confirmed || ! hash_equals( self::PRODUCTION_WRITE_CONFIRMATION, $production_confirmation ) ) {
-				return new WP_Error( 'mad4b_site_profile_production_write_confirmation_required', 'Production governed write requires the exact typed confirmation phrase.' );
+				return new WP_Error( 'mad4b_site_profile_production_write_confirmation_required', 'To save Production with governed write enabled, select its authorization checkbox and type ENABLE GOVERNED PRODUCTION WRITE. To save without writes, clear Governed write authority.' );
 			}
 		}
 		if ( $write && ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) ) {
@@ -521,6 +537,7 @@ final class MAD4B_SCP_Site_Profile {
 				return new WP_Error( 'mad4b_site_profile_audit_failed', 'Site profile change was rolled back because append-only audit evidence could not be recorded.', array( 'audit_error' => $audit->get_error_code() ) );
 			}
 		}
+		if ( function_exists( 'do_action' ) ) do_action( 'mad4b_scp_site_profile_saved' );
 		return self::status();
 	}
 

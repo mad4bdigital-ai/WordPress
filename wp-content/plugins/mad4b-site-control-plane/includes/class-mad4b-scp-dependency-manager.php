@@ -239,6 +239,11 @@ final class MAD4B_SCP_Dependency_Manager {
 		return is_array( $decoded ) && ! empty( $decoded['providers']['mcp_adapter'] ) && is_array( $decoded['providers']['mcp_adapter'] ) ? $decoded['providers']['mcp_adapter'] : array();
 	}
 
+	/** Disk-only certification for lifecycle recovery; does not claim PHP symbols. */
+	public static function mcp_adapter_disk_integrity() {
+		return self::installed_mcp_adapter_integrity( self::certified_mcp_adapter() );
+	}
+
 	private static function installed_mcp_adapter_integrity( array $certified ) {
 		$out = array(
 			'contract' => 'mad4b.mcp-adapter-installed-integrity.v1',

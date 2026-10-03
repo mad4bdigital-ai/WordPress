@@ -41,12 +41,36 @@
 		if (current && next) current.replaceWith(next);
 	}
 
+	function syncProductionConfirmation() {
+		var form = document.querySelector("#mad4b-site-profile-settings");
+		if (!form) return;
+		var environment = form.querySelector('[name="environment"]');
+		var write = form.querySelector('[name="write_enabled"]');
+		var section = form.querySelector("[data-mad4b-production-confirmation]");
+		if (!section || !environment || !write) return;
+		var needed = environment.value === "production" && write.checked;
+		section.hidden = !needed;
+		section.querySelectorAll("input").forEach(function (field) {
+			field.disabled = !needed;
+			field.required = needed;
+			if (!needed) {
+				if (field.type === "checkbox") field.checked = false;
+				else field.value = "";
+			}
+		});
+	}
+	document.addEventListener("change", syncProductionConfirmation);
+	document.addEventListener("mad4b:settings-persisted", syncProductionConfirmation);
+	syncProductionConfirmation();
+
 	document.addEventListener("submit", async function (event) {
 		var form = event.target.closest(".mad4b-settings-ajax-form");
 		if (!form) return;
 		event.preventDefault();
 		if (form.dataset.mad4bBusy === "1") return;
 
+		// FormData excludes disabled controls; capture before locking the form.
+		var body = new URLSearchParams(new FormData(form));
 		form.dataset.mad4bBusy = "1";
 		form.setAttribute("aria-busy", "true");
 		var controls = Array.prototype.slice.call(form.querySelectorAll("button,input,select,textarea"));
@@ -55,7 +79,6 @@
 		setFeedback(form, cfg().saving || "Saving…", true, "");
 
 		try {
-			var body = new URLSearchParams(new FormData(form));
 			var response = await fetch(cfg().ajaxUrl || window.ajaxurl, {
 				method: "POST",
 				credentials: "same-origin",

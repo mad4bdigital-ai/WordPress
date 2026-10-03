@@ -260,6 +260,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-runtime-recovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-rescue-v1.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php';
@@ -403,6 +404,7 @@ if ( ! $mad4b_passive_admin_read ) {
 // Registration/transport hooks are cheap and request-local. Keep them available
 // so passive pages can project expected gateway readiness without materializing
 // provider registries or replaying REST lifecycle.
+MAD4B_SCP_MCP_Runtime_Recovery::boot();
 MAD4B_SCP_MCP_Registration_Bridge::boot_early();
 MAD4B_SCP_MCP_Provider_Isolation::boot_early();
 MAD4B_SCP_Context_Admin_UI::boot();
