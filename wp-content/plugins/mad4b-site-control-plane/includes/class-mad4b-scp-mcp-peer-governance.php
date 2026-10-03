@@ -2,6 +2,8 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+require_once __DIR__ . '/class-mad4b-scp-mcp-adapter-compatibility.php';
+
 final class MAD4B_SCP_MCP_Peer_Governance {
 	const CONTRACT = 'mad4b.mcp-peer-governance.v2';
 	const MAX_SERVERS = 100;
@@ -49,8 +51,8 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		$transport_inventory = array();
 		try { foreach ( $servers as $server ) {
 			if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) ) return self::unavailable( 'mcp_transport_identity_unavailable' );
-			$tools = $server->get_tools();
-			if ( ! is_array( $tools ) ) return self::unavailable( 'mcp_tool_identity_unavailable' );
+			$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
+			if ( is_wp_error( $tools ) || ! is_array( $tools ) ) return self::unavailable( 'mcp_tool_identity_unavailable' );
 			if ( count( $tools ) > self::MAX_TOOLS_PER_SERVER ) return self::unavailable( 'mcp_tool_inventory_overflow' );
 			$entries = array();
 			foreach ( array_keys( $tools ) as $name ) {
@@ -262,12 +264,12 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) ) return array( 'server_id' => 'uninspectable', 'governed' => false, 'tool_count' => 0, 'risk_count' => 1, 'risks' => array( array( 'reason' => 'uninspectable_mcp_server' ) ) );
 		try {
 			$server_id = (string) $server->get_server_id();
-			$tools = $server->get_tools();
+			$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
 		} catch ( Throwable $e ) {
 			return array( 'server_id' => 'uninspectable', 'governed' => false, 'tool_count' => 0, 'risk_count' => 1, 'risks' => array( array( 'reason' => 'mcp_server_inspection_exception' ) ) );
 		}
 		$governed = in_array( $server_id, $expected, true );
-		if ( ! is_array( $tools ) ) return array( 'server_id' => $server_id, 'governed' => $governed, 'tool_count' => 0, 'risk_count' => $governed ? 0 : 1, 'risks' => $governed ? array() : array( array( 'reason' => 'invalid_tool_inventory' ) ) );
+		if ( is_wp_error( $tools ) || ! is_array( $tools ) ) return array( 'server_id' => $server_id, 'governed' => $governed, 'tool_count' => 0, 'risk_count' => $governed ? 0 : 1, 'risks' => $governed ? array() : array( array( 'reason' => 'invalid_tool_inventory' ) ) );
 		$tool_count = count( $tools );
 		if ( $governed ) return array( 'server_id' => $server_id, 'governed' => true, 'tool_count' => $tool_count, 'risk_count' => 0, 'risks' => array() );
 		$risks = array();
