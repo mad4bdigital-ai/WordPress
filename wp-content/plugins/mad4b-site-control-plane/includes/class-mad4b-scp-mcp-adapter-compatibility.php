@@ -106,30 +106,58 @@ final class MAD4B_SCP_MCP_Adapter_Compatibility {
 
 	public static function wire_data( $wire ) {
 		try {
-			if ( is_array( $wire ) ) return $wire;
-			// Convert only the top-level record/object to an associative array.
-			// Nested stdClass values (notably empty JSON Schema objects such as
-			// properties:{}) must remain objects or their wire shape changes to [].
-			if ( $wire instanceof stdClass ) return get_object_vars( $wire );
+			if ( is_array( $wire ) ) return self::normalize_wire_array( $wire );
+			// A raw stdClass is already a JSON object. Preserve that object identity
+			// for schema-shaped values such as properties:{} while normalizing any
+			// nested generated Records it may contain.
+			if ( $wire instanceof stdClass ) return self::normalize_wire_array( get_object_vars( $wire ) );
 			if ( is_object( $wire ) && method_exists( $wire, 'toArray' ) ) {
 				$data = $wire->toArray();
-				if ( is_array( $data ) ) return $data;
-				if ( $data instanceof stdClass ) return get_object_vars( $data );
+				if ( is_array( $data ) ) return self::normalize_wire_array( $data );
+				if ( $data instanceof stdClass ) return self::normalize_wire_array( get_object_vars( $data ) );
 			}
-			if ( is_object( $wire ) && method_exists( $wire, 'jsonSerialize' ) ) {
+			if ( $wire instanceof JsonSerializable || ( is_object( $wire ) && method_exists( $wire, 'jsonSerialize' ) ) ) {
 				$data = $wire->jsonSerialize();
-				if ( is_array( $data ) ) return $data;
-				if ( $data instanceof stdClass ) return get_object_vars( $data );
-			}
-			if ( $wire instanceof JsonSerializable ) {
-				$data = $wire->jsonSerialize();
-				if ( is_array( $data ) ) return $data;
-				if ( $data instanceof stdClass ) return get_object_vars( $data );
+				if ( is_array( $data ) ) return self::normalize_wire_array( $data );
+				if ( $data instanceof stdClass ) return self::normalize_wire_array( get_object_vars( $data ) );
 			}
 		} catch ( Throwable $error ) {
 			return new WP_Error( 'mad4b_mcp_wire_serialization_failed', 'MCP wire representation could not be serialized.' );
 		}
 		return new WP_Error( 'mad4b_mcp_wire_contract_unknown', 'MCP wire representation contract is unknown.' );
+	}
+
+	private static function normalize_wire_array( array $data ) {
+		$out = array();
+		foreach ( $data as $key => $value ) $out[ $key ] = self::normalize_wire_value( $value );
+		return $out;
+	}
+
+	private static function normalize_wire_value( $value ) {
+		if ( is_array( $value ) ) return self::normalize_wire_array( $value );
+
+		// Raw stdClass values are intentionally preserved as JSON objects. This is
+		// required for empty schema objects (for example properties:{}) that would
+		// otherwise become [] and change wire semantics.
+		if ( $value instanceof stdClass ) {
+			$copy = new stdClass();
+			foreach ( get_object_vars( $value ) as $key => $nested ) {
+				$copy->{$key} = self::normalize_wire_value( $nested );
+			}
+			return $copy;
+		}
+
+		// Generated php-mcp-schema Records implement JsonSerializable and return a
+		// stdClass. They are semantic records, not raw JSON-Schema object values, so
+		// normalize their declared fields to an associative array before structural
+		// validation while recursively preserving any nested stdClass schemas.
+		if ( $value instanceof JsonSerializable || ( is_object( $value ) && method_exists( $value, 'jsonSerialize' ) ) ) {
+			$serialized = $value->jsonSerialize();
+			if ( is_array( $serialized ) ) return self::normalize_wire_array( $serialized );
+			if ( $serialized instanceof stdClass ) return self::normalize_wire_array( get_object_vars( $serialized ) );
+		}
+
+		return $value;
 	}
 
 	public static function wire_name( $wire ) {
