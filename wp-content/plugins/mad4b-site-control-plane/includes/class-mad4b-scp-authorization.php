@@ -154,6 +154,10 @@ final class MAD4B_SCP_Authorization {
 		if ( is_wp_error( $resolved_server_id ) ) return $resolved_server_id;
 		$server_id = sanitize_key( (string) $resolved_server_id );
 		if ( '' === $server_id ) return self::error( 'mad4b_transport_server_unresolved', 'The effective MCP mutation server could not be resolved.' );
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ) return self::error( 'mad4b_capability_descriptor_registry_unavailable', 'Canonical Capability Descriptor Registry is unavailable at authorization admission.' );
+		$capability_descriptor = MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'authorization' );
+		if ( is_wp_error( $capability_descriptor ) ) return $capability_descriptor;
+		if ( 'none' === (string) $capability_descriptor['execution_lane'] ) return self::error( 'mad4b_capability_descriptor_execution_ineligible', 'Canonical Capability Descriptor does not admit execution for this Ability.' );
 
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
@@ -306,6 +310,10 @@ final class MAD4B_SCP_Authorization {
 			'declared_server_id' => $declared_server_id,
 			'transport_bound' => $server_id !== $declared_server_id,
 			'ability' => (string) $ability_name,
+			'capability_descriptor' => $capability_descriptor,
+			'capability_descriptor_sha256' => (string) $capability_descriptor['descriptor_sha256'],
+			'capability_generation_roots' => $capability_descriptor['generation_roots'],
+			'capability_descriptor_authorizing' => false,
 			'provider' => $provider,
 			'grant_id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
 			'scopes_present' => ! empty( $scopes ),

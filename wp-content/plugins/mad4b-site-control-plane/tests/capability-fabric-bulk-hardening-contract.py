@@ -30,6 +30,10 @@ abilities=(ROOT/"includes/class-mad4b-scp-abilities.php").read_text(encoding="ut
 mcp_scope=(ROOT/"includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
 remote_work_queue=(ROOT/"includes/class-mad4b-scp-remote-work-queue.php").read_text(encoding="utf-8")
 remote_operation_parity=(ROOT/"includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
+descriptor_registry=(ROOT/"includes/class-mad4b-scp-capability-descriptor-registry.php").read_text(encoding="utf-8")
+operation_registry=(ROOT/"includes/class-mad4b-scp-operation-registry.php").read_text(encoding="utf-8")
+authorization=(ROOT/"includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+commit_guard=(ROOT/"includes/class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
 
 def need(cond,msg):
     if not cond:
@@ -147,3 +151,11 @@ need("reconcile_restored_security_state" in restore_epoch and "status='revoked'"
 
 
 need("MAD4B_SCP_Restore_Epoch::ensure_bound()" in authorization.split("public static function claim_mutation",1)[1].split("public static function wrap_execution_boundary",1)[0], "governed authorization claim does not preflight restore epoch before mutation admission")
+
+
+# Canonical Capability Descriptor consumer ownership.
+need("mad4b.capability-descriptor-consumer-binding.v1" in descriptor_registry and "public static function assert_binding(" in descriptor_registry, "canonical descriptor consumer binding primitive missing")
+need("bind_operation_descriptors" in operation_registry and "capability_descriptor_bindings" in operation_registry, "Operation Registry is not bound to canonical descriptors")
+need("MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'authorization' )" in authorization, "Authorization does not consume canonical descriptor identity")
+need("MAD4B_SCP_Capability_Descriptor_Registry::assert_binding" in commit_guard and "'capability_descriptor'" in commit_guard, "Commit Guard does not revalidate descriptor identity")
+need("capability_descriptor_authorizing' => false" in authorization, "descriptor binding accidentally became an authority grant")

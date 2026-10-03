@@ -53,7 +53,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( ! self::same( $expected_material, $current, 'provider' ) ) {
 			return self::error( 'RECERTIFICATION_REQUIRED', 'Provider capability or artifact evidence changed before commit.' );
 		}
-		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'restore_epoch', 'candidate', 'database_storage', 'persisted_contracts', 'runtime_generation', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
+		foreach ( array( 'capability_descriptor', 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'restore_epoch', 'candidate', 'database_storage', 'persisted_contracts', 'runtime_generation', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
 			if ( ! self::same( $expected_material, $current, $dependency ) ) {
 				return self::error( 'REAPPROVAL_REQUIRED', 'A material authorization dependency changed before commit.', array( 'dependency' => $dependency ) );
 			}
@@ -82,6 +82,12 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( '' === $ability || '' === $server_id || '' === $agent_public_id ) {
 			return self::error( 'DENIED', 'Execution claim is missing stable ability/server/agent identity.' );
 		}
+
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ) return self::error( 'DENIED', 'Canonical Capability Descriptor Registry is unavailable at commit guard.' );
+		$expected_descriptor = isset( $claim['capability_descriptor'] ) && is_array( $claim['capability_descriptor'] ) ? $claim['capability_descriptor'] : array();
+		if ( empty( $expected_descriptor ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Authorized claim is missing its canonical Capability Descriptor binding.' );
+		$capability_descriptor = MAD4B_SCP_Capability_Descriptor_Registry::assert_binding( $ability, $expected_descriptor, 'authorization' );
+		if ( is_wp_error( $capability_descriptor ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Canonical Capability Descriptor changed before commit.', array( 'cause' => $capability_descriptor->get_error_code(), 'dependency' => 'capability_descriptor' ) );
 
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability )
@@ -231,6 +237,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 
 		return array(
 			'plan' => array( 'plan_sha256' => strtolower( $filtered_plan ) ),
+			'capability_descriptor' => $capability_descriptor,
 			'target' => $target,
 			'grant' => array(
 				'grant_id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,

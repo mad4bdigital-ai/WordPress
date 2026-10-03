@@ -303,12 +303,33 @@ final class MAD4B_SCP_Operation_Registry {
 		return is_wp_error( $catalog ) || empty( $catalog['aliases'] ) || ! is_array( $catalog['aliases'] ) ? array() : $catalog['aliases'];
 	}
 
+	private static function descriptor_binding( $ability_name, $consumer ) {
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ) return new WP_Error( 'mad4b_operation_descriptor_registry_unavailable', 'Canonical Capability Descriptor Registry is unavailable.' );
+		return MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, $consumer );
+	}
+
+	private static function bind_operation_descriptors( array $row ) {
+		$planner = isset( $row['planner'] ) ? (string) $row['planner'] : '';
+		$executor = isset( $row['executor'] ) ? (string) $row['executor'] : '';
+		$planner_binding = self::descriptor_binding( $planner, 'operation_registry_planner' );
+		if ( is_wp_error( $planner_binding ) ) return $planner_binding;
+		$executor_binding = 'exact_executor_from_plan' === $executor
+			? array( 'contract' => MAD4B_SCP_Capability_Descriptor_Registry::CONSUMER_BINDING_CONTRACT, 'consumer' => 'operation_registry_executor', 'state' => 'deferred_exact_executor_from_plan', 'authorizing' => false )
+			: self::descriptor_binding( $executor, 'operation_registry_executor' );
+		if ( is_wp_error( $executor_binding ) ) return $executor_binding;
+		$row['capability_descriptor_contract'] = MAD4B_SCP_Capability_Descriptor_Registry::CONTRACT;
+		$row['capability_descriptor_bindings'] = array( 'planner' => $planner_binding, 'executor' => $executor_binding );
+		$row['descriptor_binding_ready'] = true;
+		$row['descriptor_authority_effect'] = 'none';
+		return $row;
+	}
+
 	public static function operation( $operation_id ) {
 		$operation_id = strtolower( trim( (string) $operation_id ) );
 		$catalog = self::catalog();
 		if ( is_wp_error( $catalog ) ) return $catalog;
 		foreach ( $catalog['operations'] as $row ) {
-			if ( isset( $row['id'] ) && $operation_id === strtolower( trim( (string) $row['id'] ) ) ) return $row;
+			if ( isset( $row['id'] ) && $operation_id === strtolower( trim( (string) $row['id'] ) ) ) return self::bind_operation_descriptors( $row );
 		}
 		return new WP_Error( 'mad4b_operation_not_registered', 'Requested operation is not present in the governed operation registry.' );
 	}
@@ -365,6 +386,7 @@ final class MAD4B_SCP_Operation_Registry {
 		$missing = array();
 		$optional_unavailable = array();
 		$projection_missing = array();
+		$descriptor_blockers = array();
 		foreach ( $catalog['operations'] as $row ) {
 			$planner = (string) $row['planner'];
 			$executor = (string) $row['executor'];
@@ -380,10 +402,21 @@ final class MAD4B_SCP_Operation_Registry {
 					$optional_unavailable[] = $target;
 				}
 			}
-			$items[] = array_merge( $row, array(
+			$item = array_merge( $row, array(
 				'planner_registered' => $planner_registered,
 				'executor_registered' => $executor_registered,
 			) );
+			if ( true === $planner_registered && true === $executor_registered ) {
+				$bound = self::bind_operation_descriptors( $row );
+				if ( is_wp_error( $bound ) ) {
+					$item['descriptor_binding_ready'] = false;
+					$item['descriptor_binding_error'] = $bound->get_error_code();
+					if ( $required_runtime ) $descriptor_blockers[] = (string) $row['id'] . ':' . $bound->get_error_code();
+				} else {
+					$item = array_merge( $item, $bound );
+				}
+			}
+			$items[] = $item;
 		}
 		$missing = array_values( array_unique( $missing ) );
 		sort( $missing, SORT_STRING );
@@ -394,7 +427,9 @@ final class MAD4B_SCP_Operation_Registry {
 		}
 		$projection_missing = array_values( array_unique( $projection_missing ) );
 		sort( $projection_missing, SORT_STRING );
-		$ready = empty( $missing ) && empty( $projection_missing );
+		$descriptor_blockers = array_values( array_unique( $descriptor_blockers ) );
+		sort( $descriptor_blockers, SORT_STRING );
+		$ready = empty( $missing ) && empty( $projection_missing ) && empty( $descriptor_blockers );
 		$encoded_catalog = wp_json_encode( $catalog, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return array(
 			'contract' => self::CONTRACT,
@@ -407,6 +442,7 @@ final class MAD4B_SCP_Operation_Registry {
 			'operations' => $items,
 			'missing_registered_abilities' => $missing,
 			'projection_missing_registered_abilities' => $projection_missing,
+			'capability_descriptor_blockers' => $descriptor_blockers,
 			'optional_unavailable_operations' => array_values( array_unique( $optional_unavailable ) ),
 			'catalog_sha256' => is_string( $encoded_catalog ) ? hash( 'sha256', $encoded_catalog ) : '',
 			'read_projection' => array(
@@ -466,6 +502,9 @@ final class MAD4B_SCP_Operation_Registry {
 		$executor = (string) $row['executor'];
 		if ( function_exists( 'wp_has_ability' ) && ! wp_has_ability( $planner ) ) return new WP_Error( 'mad4b_operation_planner_unregistered', 'Registered operation planner is unavailable in the current runtime.', array( 'planner' => $planner ) );
 		if ( 'exact_executor_from_plan' !== $executor && function_exists( 'wp_has_ability' ) && ! wp_has_ability( $executor ) ) return new WP_Error( 'mad4b_operation_executor_unregistered', 'Registered operation executor is unavailable in the current runtime.', array( 'executor' => $executor ) );
+		$bound_row = self::bind_operation_descriptors( $row );
+		if ( is_wp_error( $bound_row ) ) return $bound_row;
+		$row = $bound_row;
 
 		$impact = null;
 		if ( ! empty( $row['dependency_impact'] ) && class_exists( 'MAD4B_SCP_Dependency_Impact_Graph' ) ) {

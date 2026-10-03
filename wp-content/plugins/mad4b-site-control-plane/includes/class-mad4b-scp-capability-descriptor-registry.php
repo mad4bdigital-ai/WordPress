@@ -5,6 +5,42 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Capability_Descriptor_Registry {
 	const CONTRACT = 'mad4b.capability-descriptor.v2';
 	const GENERATION_CONTRACT = 'mad4b.capability-generation-roots.v1';
+	const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
+
+	public static function binding( $name, $consumer ) {
+		$consumer = sanitize_key( (string) $consumer );
+		if ( '' === $consumer ) return new WP_Error( 'mad4b_capability_descriptor_consumer_invalid', 'Capability Descriptor consumer identity is required.' );
+		$row = self::describe( $name );
+		if ( is_wp_error( $row ) ) return $row;
+		return array(
+			'contract' => self::CONSUMER_BINDING_CONTRACT,
+			'consumer' => $consumer,
+			'descriptor_contract' => (string) $row['descriptor_contract'],
+			'generation_contract' => (string) $row['generation_contract'],
+			'ability_name' => (string) $row['ability_name'],
+			'input_schema_sha256' => (string) $row['input_schema_sha256'],
+			'classification_sha256' => (string) $row['classification_sha256'],
+			'execution_lane' => (string) $row['execution_lane'],
+			'descriptor_sha256' => (string) $row['descriptor_sha256'],
+			'generation_roots' => $row['generation_roots'],
+			'authority_snapshot_is_grant' => false,
+			'authority_revalidation_required' => true,
+			'authorizing' => false,
+		);
+	}
+
+	public static function assert_binding( $name, array $expected, $consumer ) {
+		$current = self::binding( $name, $consumer );
+		if ( is_wp_error( $current ) ) return $current;
+		foreach ( array( 'contract', 'consumer', 'descriptor_contract', 'generation_contract', 'ability_name', 'input_schema_sha256', 'classification_sha256', 'execution_lane', 'descriptor_sha256' ) as $field ) {
+			$a = isset( $expected[ $field ] ) ? (string) $expected[ $field ] : '';
+			$b = isset( $current[ $field ] ) ? (string) $current[ $field ] : '';
+			if ( '' === $a || ! hash_equals( $a, $b ) ) return new WP_Error( 'mad4b_capability_descriptor_binding_drift', 'Canonical Capability Descriptor binding changed.', array( 'field' => $field, 'ability_name' => (string) $name ) );
+		}
+		$expected_roots = isset( $expected['generation_roots'] ) && is_array( $expected['generation_roots'] ) ? $expected['generation_roots'] : array();
+		if ( $expected_roots !== $current['generation_roots'] ) return new WP_Error( 'mad4b_capability_descriptor_generation_drift', 'Capability Descriptor generation roots changed.', array( 'ability_name' => (string) $name ) );
+		return $current;
+	}
 
 	public static function describe( $name ) {
 		if ( ! class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
