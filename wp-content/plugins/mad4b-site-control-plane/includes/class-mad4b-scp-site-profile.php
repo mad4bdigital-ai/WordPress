@@ -22,6 +22,7 @@ final class MAD4B_SCP_Site_Profile {
 	const LEGACY_VERSION = 1;
 	const PRESET_FILE = 'config/site-profile-presets.json';
 	const PRODUCTION_WRITE_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE';
+	const NONPRODUCTION_OVERRIDE_CONFIRMATION = 'CONFIRM THIS ORIGIN IS NON-PRODUCTION';
 
 	private static $profile = null;
 	private static $status = null;
@@ -139,6 +140,32 @@ final class MAD4B_SCP_Site_Profile {
 	 * explicitly configured WordPress environment remains authoritative and any
 	 * disagreement fails closed. Copied/foreign profiles never influence it.
 	 */
+	/** Optional host identity outside the database; only its SHA-256 persists. */
+	public static function deployment_binding_digest() {
+		$value = '';
+		if ( defined( 'MAD4B_SCP_DEPLOYMENT_BINDING' ) ) {
+			$candidate = constant( 'MAD4B_SCP_DEPLOYMENT_BINDING' );
+			if ( is_string( $candidate ) ) $value = trim( $candidate );
+		}
+		if ( '' === $value && function_exists( 'apply_filters' ) ) {
+			$candidate = apply_filters( 'mad4b_scp_deployment_binding', '' );
+			if ( is_string( $candidate ) ) $value = trim( $candidate );
+		}
+		if ( '' === $value || strlen( $value ) > 1024 ) return '';
+		return hash( 'sha256', $value );
+	}
+
+	private static function record_deployment_binding_matches( array $profile ) {
+		$stored = isset( $profile['deployment_binding_digest'] ) && is_string( $profile['deployment_binding_digest'] )
+			? strtolower( trim( $profile['deployment_binding_digest'] ) )
+			: '';
+		// Backward compatibility: profiles created before deployment binding remain
+		// usable until their next successful save, when the current host binds them.
+		if ( '' === $stored ) return true;
+		$current = self::deployment_binding_digest();
+		return '' !== $current && hash_equals( $stored, $current );
+	}
+
 	public static function current_environment() {
 		$wordpress = self::wordpress_environment();
 		$bound = self::exact_stored_profile();
@@ -162,6 +189,9 @@ final class MAD4B_SCP_Site_Profile {
 			'environment' => $environment,
 			'wordpress_environment' => self::wordpress_environment(),
 			'wordpress_environment_explicit' => self::wordpress_environment_explicit(),
+			'site_uuid' => ! empty( $profile['site_uuid'] ) ? (string) $profile['site_uuid'] : '',
+			'revision' => ! empty( $profile['revision'] ) ? absint( $profile['revision'] ) : 0,
+			'deployment_binding_configured' => '' !== self::deployment_binding_digest(),
 		);
 	}
 
@@ -264,7 +294,7 @@ final class MAD4B_SCP_Site_Profile {
 
 	public static function origin_enrolled() {
 		$status = self::status();
-		return ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] );
+		return ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] ) && ! empty( $status['deployment_binding_match'] );
 	}
 
 	public static function site_urls_match_enrollment() {
@@ -451,10 +481,34 @@ final class MAD4B_SCP_Site_Profile {
 				return new WP_Error( 'mad4b_site_profile_identity_stale', 'Site Profile identity changed since this form was loaded. Reload before saving.' );
 			}
 		}
+		$deployment_binding_digest = self::deployment_binding_digest();
 		$existing_identity_matches = $existing_valid
 			&& hash_equals( (string) $existing_normalized['environment'], $environment )
-			&& hash_equals( (string) $existing_normalized['canonical_origin'], $origin );
+			&& hash_equals( (string) $existing_normalized['canonical_origin'], $origin )
+			&& self::record_deployment_binding_matches( $existing_normalized );
 		$identity_rebound = $existing_valid && ! $existing_identity_matches;
+
+		// WordPress reports Production by default when WP_ENVIRONMENT_TYPE is
+		// absent. Reclassifying that implicit default as non-Production is a
+		// governance downgrade and requires an exact, one-time local attestation.
+		$implicit_nonproduction_override = 'production' === $wordpress_environment
+			&& ! self::wordpress_environment_explicit()
+			&& 'production' !== $environment;
+		$existing_override_confirmed = $existing_identity_matches
+			&& ! empty( $existing_normalized['implicit_production_override_confirmed'] );
+		$override_checkbox = ! empty( $input['nonproduction_override_confirmed'] );
+		$override_phrase = isset( $input['nonproduction_override_confirmation'] )
+			? trim( sanitize_text_field( (string) $input['nonproduction_override_confirmation'] ) )
+			: '';
+		$nonproduction_override_confirmed = $implicit_nonproduction_override
+			&& ( $existing_override_confirmed
+				|| ( $override_checkbox && hash_equals( self::NONPRODUCTION_OVERRIDE_CONFIRMATION, $override_phrase ) ) );
+		if ( $implicit_nonproduction_override && ! $nonproduction_override_confirmed ) {
+			return new WP_Error(
+				'mad4b_site_profile_nonproduction_override_confirmation_required',
+				'WordPress is using its implicit Production default. Confirm this exact origin is non-Production and type CONFIRM THIS ORIGIN IS NON-PRODUCTION.'
+			);
+		}
 		$site_uuid = $existing_identity_matches && ! empty( $existing_normalized['site_uuid'] )
 			? strtolower( (string) $existing_normalized['site_uuid'] )
 			: wp_generate_uuid4();
@@ -499,6 +553,8 @@ final class MAD4B_SCP_Site_Profile {
 			'revision' => $revision,
 			'environment' => $environment,
 			'canonical_origin' => $origin,
+			'deployment_binding_digest' => $deployment_binding_digest,
+			'implicit_production_override_confirmed' => (bool) $nonproduction_override_confirmed,
 			'display_name' => $display_name,
 			'chatgpt_app_id' => $app_id,
 			'oauth_user_ids' => $user_ids,
@@ -529,6 +585,9 @@ final class MAD4B_SCP_Site_Profile {
 				'environment' => $environment,
 				'wordpress_environment' => $wordpress_environment,
 				'wordpress_environment_explicit' => self::wordpress_environment_explicit(),
+				'implicit_nonproduction_override' => $implicit_nonproduction_override,
+				'nonproduction_override_confirmed' => $nonproduction_override_confirmed,
+				'deployment_binding_configured' => '' !== $deployment_binding_digest,
 				'environment_source' => '' !== $requested_environment ? 'explicit_site_profile' : ( $environment === $wordpress_environment ? 'wordpress' : 'suggested_enrollment' ),
 				'canonical_origin' => $origin,
 				'identity_rebound' => $identity_rebound,
@@ -632,19 +691,34 @@ final class MAD4B_SCP_Site_Profile {
 		$configured = self::valid_record( $profile );
 		$environment_match = $configured && hash_equals( (string) $profile['environment'], $environment );
 		$origin_match = $configured && '' !== $origin && hash_equals( (string) $profile['canonical_origin'], $origin );
+		$current_deployment_binding = self::deployment_binding_digest();
+		$stored_deployment_binding = $configured && isset( $profile['deployment_binding_digest'] ) && is_string( $profile['deployment_binding_digest'] )
+			? strtolower( trim( $profile['deployment_binding_digest'] ) )
+			: '';
+		$deployment_binding_match = $configured
+			? ( '' === $stored_deployment_binding || ( '' !== $current_deployment_binding && hash_equals( $stored_deployment_binding, $current_deployment_binding ) ) )
+			: false;
+		$implicit_override = $configured
+			&& 'production' === (string) $resolution['wordpress_environment']
+			&& empty( $resolution['wordpress_environment_explicit'] )
+			&& 'production' !== (string) $profile['environment'];
+		$override_confirmed = $implicit_override && ! empty( $profile['implicit_production_override_confirmed'] );
 		$blockers = array();
 		$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );
 		$binding_state = ! $configured
 			? 'unconfigured'
 			: ( ! $origin_match
 				? 'foreign_origin'
-				: ( ! $environment_match
-					? 'environment_drift'
-					: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) );
+				: ( ! $deployment_binding_match
+					? 'deployment_drift'
+					: ( ! $environment_match
+						? 'environment_drift'
+						: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) ) );
 		$foreign_profile_detected = $configured && ( ! $origin_match || ! $environment_match );
 		if ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
 		if ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
 		if ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
+		if ( $configured && ! $deployment_binding_match ) $blockers[] = 'site_profile_deployment_binding_drift';
 		if ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';
 		return array(
 			'contract' => self::CONTRACT,
@@ -667,13 +741,20 @@ final class MAD4B_SCP_Site_Profile {
 			'canonical_origin' => $configured ? (string) $profile['canonical_origin'] : '',
 			'environment_match' => $environment_match,
 			'origin_match' => $origin_match,
+			'deployment_binding_configured' => '' !== $current_deployment_binding,
+			'deployment_binding_bound' => '' !== $stored_deployment_binding,
+			'deployment_binding_match' => $deployment_binding_match,
+			'same_origin_clone_protection' => '' !== $stored_deployment_binding && $deployment_binding_match,
+			'implicit_nonproduction_override' => $implicit_override,
+			'implicit_nonproduction_override_confirmed' => $override_confirmed,
+			'nonproduction_override_attestation_required' => $implicit_override && ! $override_confirmed,
 			'binding_state' => $binding_state,
 			'foreign_profile_detected' => $foreign_profile_detected,
 			'profile_authority_quarantined' => $foreign_profile_detected,
 			'reenrollment_required' => $reenrollment_required,
-			'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
-			'oauth_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'oauth', $environment ),
-			'skills_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'skills', $environment ),
+			'write_enabled' => $configured && $environment_match && $origin_match && $deployment_binding_match && self::record_feature_enabled( $profile, 'write', $environment ),
+			'oauth_enabled' => $configured && $environment_match && $origin_match && $deployment_binding_match && self::record_feature_enabled( $profile, 'oauth', $environment ),
+			'skills_enabled' => $configured && $environment_match && $origin_match && $deployment_binding_match && self::record_feature_enabled( $profile, 'skills', $environment ),
 			'blockers' => $blockers,
 		);
 	}
@@ -718,6 +799,7 @@ final class MAD4B_SCP_Site_Profile {
 		$stored = self::normalize_record( $stored );
 		$origin = self::current_origin();
 		if ( '' === $origin || ! hash_equals( (string) $stored['canonical_origin'], $origin ) ) return array();
+		if ( ! self::record_deployment_binding_matches( $stored ) ) return array();
 		return $stored;
 	}
 
@@ -746,13 +828,33 @@ final class MAD4B_SCP_Site_Profile {
 		if ( ! in_array( $record['environment'], array( 'local', 'development', 'staging', 'production' ), true ) ) return false;
 		if ( isset( $record['features'] ) ) {
 			if ( ! is_array( $record['features'] ) ) return false;
-			foreach ( $record['features'] as $value ) {
-				if ( ! in_array( $value, array( true, false, 1, 0, '1', '0' ), true ) ) return false;
+			foreach ( $record['features'] as $value ) if ( ! in_array( $value, array( true, false, 1, 0, '1', '0' ), true ) ) return false;
+		}
+		if ( isset( $record['oauth_user_ids'] ) ) {
+			if ( ! is_array( $record['oauth_user_ids'] ) ) return false;
+			foreach ( $record['oauth_user_ids'] as $user_id ) {
+				if ( ! is_int( $user_id ) && ! is_string( $user_id ) ) return false;
+				if ( 1 !== preg_match( '/^[1-9][0-9]*$/D', (string) $user_id ) || false === filter_var( $user_id, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 1 ) ) ) ) return false;
 			}
+		}
+		if ( isset( $record['related_origins'] ) ) {
+			if ( ! is_array( $record['related_origins'] ) ) return false;
+			foreach ( $record['related_origins'] as $key => $value ) {
+				if ( ! is_string( $key ) || ! in_array( $key, array( 'local', 'development', 'staging', 'production' ), true ) || ! is_string( $value ) || '' === self::normalize_origin( $value ) ) return false;
+			}
+		}
+		foreach ( array( 'legacy_zero_touch', 'implicit_production_override_confirmed', 'migration_requires_reenrollment' ) as $field ) {
+			if ( isset( $record[ $field ] ) && ! is_bool( $record[ $field ] ) ) return false;
+		}
+		if ( isset( $record['deployment_binding_digest'] ) ) {
+			if ( ! is_string( $record['deployment_binding_digest'] ) ) return false;
+			$digest = strtolower( trim( $record['deployment_binding_digest'] ) );
+			if ( '' !== $digest && 1 !== preg_match( '/^[a-f0-9]{64}$/D', $digest ) ) return false;
 		}
 		foreach ( array( 'display_name', 'chatgpt_app_id', 'legacy_agent_slug', 'created_at', 'updated_at' ) as $field ) {
 			if ( isset( $record[ $field ] ) && ! is_string( $record[ $field ] ) ) return false;
 		}
+		if ( isset( $record['chatgpt_app_id'] ) && '' !== trim( $record['chatgpt_app_id'] ) && 1 !== preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/D', trim( $record['chatgpt_app_id'] ) ) ) return false;
 		return true;
 	}
 
@@ -763,19 +865,30 @@ final class MAD4B_SCP_Site_Profile {
 		$record['revision'] = max( 1, absint( isset( $record['revision'] ) ? $record['revision'] : 1 ) );
 		$record['environment'] = sanitize_key( isset( $record['environment'] ) ? (string) $record['environment'] : '' );
 		$record['canonical_origin'] = self::normalize_origin( isset( $record['canonical_origin'] ) ? $record['canonical_origin'] : '' );
+		$record['deployment_binding_digest'] = isset( $record['deployment_binding_digest'] ) && is_string( $record['deployment_binding_digest'] ) ? strtolower( trim( $record['deployment_binding_digest'] ) ) : '';
+		$record['implicit_production_override_confirmed'] = isset( $record['implicit_production_override_confirmed'] ) && true === $record['implicit_production_override_confirmed'];
 		$record['display_name'] = isset( $record['display_name'] ) ? substr( sanitize_text_field( (string) $record['display_name'] ), 0, 191 ) : '';
 		$record['chatgpt_app_id'] = isset( $record['chatgpt_app_id'] ) ? trim( (string) $record['chatgpt_app_id'] ) : '';
 		$record['oauth_user_ids'] = self::normalize_user_ids( isset( $record['oauth_user_ids'] ) ? $record['oauth_user_ids'] : array() );
 		$record['related_origins'] = isset( $record['related_origins'] ) && is_array( $record['related_origins'] ) ? array_filter( array_map( array( __CLASS__, 'normalize_origin' ), $record['related_origins'] ) ) : array();
 		$record['features'] = isset( $record['features'] ) && is_array( $record['features'] ) ? array_map( 'boolval', $record['features'] ) : array();
 		$record['legacy_agent_slug'] = isset( $record['legacy_agent_slug'] ) ? sanitize_key( (string) $record['legacy_agent_slug'] ) : '';
-		$record['legacy_zero_touch'] = ! empty( $record['legacy_zero_touch'] );
+		$record['legacy_zero_touch'] = isset( $record['legacy_zero_touch'] ) && true === $record['legacy_zero_touch'];
 		return $record;
 	}
 
 	private static function normalize_user_ids( $value ) {
 		if ( is_string( $value ) ) $value = preg_split( '/[\s,]+/', $value );
-		return array_values( array_unique( array_filter( array_map( 'absint', is_array( $value ) ? $value : array() ) ) ) );
+		if ( ! is_array( $value ) ) return array();
+		$out = array();
+		foreach ( $value as $item ) {
+			if ( ! is_int( $item ) && ! is_string( $item ) ) continue;
+			$item = trim( (string) $item );
+			if ( 1 !== preg_match( '/^[1-9][0-9]*$/D', $item ) ) continue;
+			$validated = filter_var( $item, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 1 ) ) );
+			if ( false !== $validated ) $out[] = (int) $validated;
+		}
+		return array_values( array_unique( $out ) );
 	}
 
 	private static function normalize_origin( $url ) {
