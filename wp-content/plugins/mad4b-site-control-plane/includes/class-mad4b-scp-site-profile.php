@@ -575,6 +575,10 @@ final class MAD4B_SCP_Site_Profile {
 	public static function commit_record_with_audit( array $before, array $next, $audit_action, array $audit_payload = array(), $error_prefix = 'mad4b_site_profile_mutation' ) {
 		$error_prefix = sanitize_key( (string) $error_prefix );
 		if ( '' === $error_prefix ) $error_prefix = 'mad4b_site_profile_mutation';
+		$audit_action = trim( (string) $audit_action );
+		if ( '' === $audit_action || 1 !== preg_match( '#^[a-z0-9_/-]{1,191}$#D', $audit_action ) ) {
+			return new WP_Error( $error_prefix . '_audit_action_invalid', 'Site Profile mutation audit action is invalid.' );
+		}
 		if ( ! self::valid_record( $before ) || ! self::valid_record( $next ) ) {
 			return new WP_Error( $error_prefix . '_record_invalid', 'Site Profile mutation records are invalid.' );
 		}
@@ -605,7 +609,7 @@ final class MAD4B_SCP_Site_Profile {
 			),
 			$audit_payload
 		);
-		$audit = MAD4B_SCP_Audit::record( sanitize_key( (string) $audit_action ), $payload, 'ok' );
+		$audit = MAD4B_SCP_Audit::record( $audit_action, $payload, 'ok' );
 		if ( is_wp_error( $audit ) ) {
 			$restored = self::restore_record_compare_and_swap( $pending, $before );
 			if ( ! $restored ) {
