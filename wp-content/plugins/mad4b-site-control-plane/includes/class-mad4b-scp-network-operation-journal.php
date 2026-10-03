@@ -16,6 +16,8 @@ final class MAD4B_SCP_Network_Operation_Journal {
 	const EVENT_CONTRACT = 'mad4b.network-operation-event.v1';
 	const TARGET_BINDING_DOMAIN = 'mad4b.network-operation-target-binding.v1';
 	const TARGET_IDEMPOTENCY_DOMAIN = 'mad4b.network-operation-target-idempotency.v1';
+	const TARGET_SET_DOMAIN = 'mad4b.network-operation-target-set.v1';
+	const CLAIM_TTL_SECONDS = 120;
 	const MAX_TARGETS = 100;
 
 	public static function create( $network_operation_id, array $input, array $targets ) {
@@ -40,6 +42,8 @@ final class MAD4B_SCP_Network_Operation_Journal {
 			if ( isset($seen_blogs[$row['target_blog_id']]) || isset($seen_sites[$row['target_site_uuid']]) ) return self::error( 'mad4b_network_target_duplicate', 'Network target blog/site identity must be unique.' );
 			$seen_blogs[$row['target_blog_id']]=true; $seen_sites[$row['target_site_uuid']]=true; $normalized_targets[]=$row;
 		}
+		usort($normalized_targets,static function($a,$b){return (int)$a['target_blog_id'] <=> (int)$b['target_blog_id'];});
+		$target_set_sha256=self::target_set_sha256($normalized_targets);
 		$tx = MAD4B_SCP_Database_Transaction_Guard::begin( 'network_operation_create', array('network_operations','network_operation_targets','network_operation_events'), false );
 		if ( is_wp_error($tx) ) return $tx;
 		$t = MAD4B_SCP_Schema::tables();
@@ -49,7 +53,7 @@ final class MAD4B_SCP_Network_Operation_Journal {
 				$origin_site_uuid, $idempotency
 			), ARRAY_A );
 			if ( is_array($existing) ) {
-				foreach ( array('origin_blog_id'=>$origin_blog_id,'authority_scope_sha256'=>$authority,'plan_sha256'=>$plan,'preparation_sha256'=>$preparation) as $field=>$expected ) {
+				foreach ( array('origin_blog_id'=>$origin_blog_id,'authority_scope_sha256'=>$authority,'plan_sha256'=>$plan,'preparation_sha256'=>$preparation,'target_set_sha256'=>$target_set_sha256) as $field=>$expected ) {
 					if ( (string)$existing[$field] !== (string)$expected ) throw new RuntimeException('network_operation_idempotency_conflict');
 				}
 				$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx); if(is_wp_error($committed))return $committed;
@@ -59,9 +63,9 @@ final class MAD4B_SCP_Network_Operation_Journal {
 			}
 			$inserted=$wpdb->query($wpdb->prepare(
 				"INSERT INTO {$t['network_operations']}
-				(network_operation_id,origin_site_uuid,origin_blog_id,authority_scope_sha256,plan_sha256,preparation_sha256,idempotency_key,state,paused,revision,latest_event_sha256,created_at,updated_at)
-				VALUES (%s,%s,%d,%s,%s,%s,%s,'pending',0,0,%s,UTC_TIMESTAMP(),UTC_TIMESTAMP())",
-				$network_operation_id,$origin_site_uuid,$origin_blog_id,$authority,$plan,$preparation,$idempotency,str_repeat('0',64)
+				(network_operation_id,origin_site_uuid,origin_blog_id,authority_scope_sha256,plan_sha256,preparation_sha256,idempotency_key,target_set_sha256,state,paused,revision,latest_event_sha256,created_at,updated_at)
+				VALUES (%s,%s,%d,%s,%s,%s,%s,%s,'pending',0,0,%s,UTC_TIMESTAMP(),UTC_TIMESTAMP())",
+				$network_operation_id,$origin_site_uuid,$origin_blog_id,$authority,$plan,$preparation,$idempotency,$target_set_sha256,str_repeat('0',64)
 			));
 			if(1!==(int)$inserted)throw new RuntimeException('network_operation_insert_failed');
 			foreach($normalized_targets as $target){
@@ -73,7 +77,7 @@ final class MAD4B_SCP_Network_Operation_Journal {
 				));
 				if(1!==(int)$ok)throw new RuntimeException('network_target_insert_failed');
 			}
-			$event=self::append_event_locked($network_operation_id,0,'operation_created','pending','',array('target_count'=>count($normalized_targets)));
+			$event=self::append_event_locked($network_operation_id,0,'operation_created','pending','',array('target_count'=>count($normalized_targets),'target_set_sha256'=>$target_set_sha256));
 			if(is_wp_error($event))throw new RuntimeException($event->get_error_code());
 			$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx); if(is_wp_error($committed))return $committed;
 		}catch(Throwable $error){
@@ -92,7 +96,7 @@ final class MAD4B_SCP_Network_Operation_Journal {
 		$t=MAD4B_SCP_Schema::tables();
 		try{
 			$op=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operations']} WHERE BINARY network_operation_id=BINARY %s FOR UPDATE",$network_operation_id),ARRAY_A);
-			$target=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE BINARY network_operation_id=BINARY %s AND target_blog_id=%d FOR UPDATE",$network_operation_id,$target_blog_id),ARRAY_A);
+			$target=$wpdb->get_row($wpdb->prepare("SELECT t.*, (t.claim_expires_at IS NOT NULL AND t.claim_expires_at>UTC_TIMESTAMP()) AS claim_live FROM {$t['network_operation_targets']} t WHERE BINARY t.network_operation_id=BINARY %s AND t.target_blog_id=%d FOR UPDATE",$network_operation_id,$target_blog_id),ARRAY_A);
 			if(!is_array($op)||!is_array($target))throw new RuntimeException('network_target_unknown');
 			if(!empty($op['paused']))throw new RuntimeException('network_operation_paused');
 			if(in_array((string)$target['state'],array('committed','no_effect'),true)){
@@ -100,42 +104,45 @@ final class MAD4B_SCP_Network_Operation_Journal {
 				return self::target_receipt($target,true);
 			}
 			if('claimed'===(string)$target['state']){
-				if(hash_equals((string)$target['worker_id'],$worker_id)){ $committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx); if(is_wp_error($committed))return $committed; return self::target_receipt($target,false); }
+				if(hash_equals((string)$target['worker_id'],$worker_id)&&!empty($target['claim_live'])){ $committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx); if(is_wp_error($committed))return $committed; return self::target_receipt($target,false); }
+				if(hash_equals((string)$target['worker_id'],$worker_id))throw new RuntimeException('network_target_claim_expired_reconciliation_required');
 				throw new RuntimeException('network_target_already_claimed');
 			}
 			if('pending'!==(string)$target['state'])throw new RuntimeException('network_target_reconciliation_required');
 			$epoch=(int)$target['claim_epoch']+1;
 			$ok=$wpdb->query($wpdb->prepare(
-				"UPDATE {$t['network_operation_targets']} SET state='claimed',claim_epoch=%d,worker_id=%s,updated_at=UTC_TIMESTAMP()
+				"UPDATE {$t['network_operation_targets']} SET state='claimed',claim_epoch=%d,worker_id=%s,claim_expires_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL %d SECOND),updated_at=UTC_TIMESTAMP()
 				WHERE id=%d AND state='pending' AND claim_epoch=%d",
-				$epoch,$worker_id,(int)$target['id'],(int)$target['claim_epoch']
+				$epoch,$worker_id,self::CLAIM_TTL_SECONDS,(int)$target['id'],(int)$target['claim_epoch']
 			));
 			if(1!==(int)$ok)throw new RuntimeException('network_target_claim_cas_conflict');
 			$state=self::derive_operation_state_locked($network_operation_id,false);
-			$event=self::append_event_locked($network_operation_id,$target_blog_id,'target_claimed',$state,'',array('claim_epoch'=>$epoch,'worker_id_sha256'=>hash('sha256',$worker_id)));
+			$event=self::append_event_locked($network_operation_id,$target_blog_id,'target_claimed',$state,'',array('claim_epoch'=>$epoch,'worker_id_sha256'=>hash('sha256',$worker_id),'claim_ttl_seconds'=>self::CLAIM_TTL_SECONDS));
 			if(is_wp_error($event))throw new RuntimeException($event->get_error_code());
 			$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx); if(is_wp_error($committed))return $committed;
-			$target['state']='claimed';$target['claim_epoch']=$epoch;$target['worker_id']=$worker_id;return self::target_receipt($target,false);
+			$target=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE id=%d LIMIT 1",(int)$target['id']),ARRAY_A);
+			return self::target_receipt(is_array($target)?$target:array(),false);
 		}catch(Throwable $error){
 			MAD4B_SCP_Database_Transaction_Guard::rollback($tx);
 			return self::error('mad4b_network_target_claim_denied','Network target claim failed closed.',array('reason_code'=>sanitize_key($error->getMessage())));
 		}
 	}
 
-	public static function record_target_outcome( $network_operation_id, $target_blog_id, $claim_epoch, $outcome, $evidence_ref, $receipt_sha256 = '', $receipt_binding_sha256 = '' ) {
+	public static function record_target_outcome( $network_operation_id, $target_blog_id, $claim_epoch, $worker_id, $outcome, $evidence_ref, $receipt_sha256 = '', $receipt_binding_sha256 = '' ) {
 		global $wpdb;
-		$network_operation_id=self::canonical_operation_id($network_operation_id);$target_blog_id=absint($target_blog_id);$claim_epoch=(int)$claim_epoch;
+		$network_operation_id=self::canonical_operation_id($network_operation_id);$target_blog_id=absint($target_blog_id);$claim_epoch=(int)$claim_epoch;$worker_id=self::bounded_token($worker_id,191);
 		$outcome=sanitize_key((string)$outcome);$evidence_ref=self::bounded_token($evidence_ref,191);
 		$receipt_sha256=''===(string)$receipt_sha256?'':self::digest_value($receipt_sha256);$receipt_binding_sha256=self::digest_value($receipt_binding_sha256);
-		if(''===$network_operation_id||$target_blog_id<1||$claim_epoch<1||!in_array($outcome,array('committed','no_effect','reconciling','failed'),true)||''===$evidence_ref||''===$receipt_binding_sha256)return self::error('mad4b_network_target_outcome_invalid','Network target outcome evidence is incomplete.');
+		if(''===$network_operation_id||$target_blog_id<1||$claim_epoch<1||''===$worker_id||!in_array($outcome,array('committed','no_effect','reconciling','failed'),true)||''===$evidence_ref||''===$receipt_binding_sha256)return self::error('mad4b_network_target_outcome_invalid','Network target outcome evidence is incomplete.');
 		if('committed'===$outcome&&''===$receipt_sha256)return self::error('mad4b_network_target_receipt_required','Committed target requires an exact receipt digest.');
 		$tx=MAD4B_SCP_Database_Transaction_Guard::begin('network_target_outcome',array('network_operations','network_operation_targets','network_operation_events'),false);if(is_wp_error($tx))return $tx;
 		$t=MAD4B_SCP_Schema::tables();
 		try{
 			$op=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operations']} WHERE BINARY network_operation_id=BINARY %s FOR UPDATE",$network_operation_id),ARRAY_A);
-			$target=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE BINARY network_operation_id=BINARY %s AND target_blog_id=%d FOR UPDATE",$network_operation_id,$target_blog_id),ARRAY_A);
+			$target=$wpdb->get_row($wpdb->prepare("SELECT t.*, (t.claim_expires_at IS NOT NULL AND t.claim_expires_at>UTC_TIMESTAMP()) AS claim_live FROM {$t['network_operation_targets']} t WHERE BINARY t.network_operation_id=BINARY %s AND t.target_blog_id=%d FOR UPDATE",$network_operation_id,$target_blog_id),ARRAY_A);
 			if(!is_array($op)||!is_array($target))throw new RuntimeException('network_target_unknown');
 			if(!hash_equals((string)$target['receipt_binding_sha256'],$receipt_binding_sha256))throw new RuntimeException('network_target_receipt_binding_mismatch');
+			if(!hash_equals((string)$target['worker_id'],$worker_id))throw new RuntimeException('network_target_worker_mismatch');
 			if(in_array((string)$target['state'],array('committed','no_effect'),true)){
 				$receipt_match=hash_equals((string)$target['receipt_sha256'],(string)$receipt_sha256);
 				if((string)$target['state']===$outcome&&(int)$target['claim_epoch']===$claim_epoch&&hash_equals((string)$target['evidence_ref'],$evidence_ref)&&$receipt_match){
@@ -145,15 +152,16 @@ final class MAD4B_SCP_Network_Operation_Journal {
 			}
 			if('claimed'!==(string)$target['state'])throw new RuntimeException('network_target_not_claimed');
 			if((int)$target['claim_epoch']!==$claim_epoch)throw new RuntimeException('network_target_claim_epoch_stale');
+			if(empty($target['claim_live']))throw new RuntimeException('network_target_claim_expired_reconciliation_required');
 			$last_error='failed'===$outcome?'provider_failed':('');
 			$ok=$wpdb->query($wpdb->prepare(
-				"UPDATE {$t['network_operation_targets']} SET state=%s,evidence_ref=%s,receipt_sha256=%s,last_error_code=%s,updated_at=UTC_TIMESTAMP()
-				WHERE id=%d AND state='claimed' AND claim_epoch=%d",
-				$outcome,$evidence_ref,$receipt_sha256,$last_error,(int)$target['id'],$claim_epoch
+				"UPDATE {$t['network_operation_targets']} SET state=%s,evidence_ref=%s,receipt_sha256=%s,last_error_code=%s,claim_expires_at=NULL,updated_at=UTC_TIMESTAMP()
+				WHERE id=%d AND state='claimed' AND claim_epoch=%d AND BINARY worker_id=BINARY %s AND claim_expires_at>UTC_TIMESTAMP()",
+				$outcome,$evidence_ref,$receipt_sha256,$last_error,(int)$target['id'],$claim_epoch,$worker_id
 			));
 			if(1!==(int)$ok)throw new RuntimeException('network_target_outcome_cas_conflict');
 			$state=self::derive_operation_state_locked($network_operation_id,!empty($op['paused']));
-			$event=self::append_event_locked($network_operation_id,$target_blog_id,'target_'.$outcome,$state,$evidence_ref,array('claim_epoch'=>$claim_epoch,'receipt_sha256'=>$receipt_sha256));
+			$event=self::append_event_locked($network_operation_id,$target_blog_id,'target_'.$outcome,$state,$evidence_ref,array('claim_epoch'=>$claim_epoch,'worker_id_sha256'=>hash('sha256',$worker_id),'receipt_sha256'=>$receipt_sha256));
 			if(is_wp_error($event))throw new RuntimeException($event->get_error_code());
 			$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx);if(is_wp_error($committed))return $committed;
 			$target['state']=$outcome;$target['evidence_ref']=$evidence_ref;$target['receipt_sha256']=$receipt_sha256;$target['last_error_code']=$last_error;return self::target_receipt($target,false);
@@ -164,7 +172,66 @@ final class MAD4B_SCP_Network_Operation_Journal {
 	}
 
 	public static function pause( $network_operation_id ) { return self::set_paused($network_operation_id,true); }
-	public static function resume( $network_operation_id ) { return self::set_paused($network_operation_id,false); }
+	public static function resume( $network_operation_id ) {
+		$recovered=self::recover_expired_claims($network_operation_id);
+		if(is_wp_error($recovered))return $recovered;
+		return self::set_paused($network_operation_id,false);
+	}
+
+	public static function recover_expired_claims( $network_operation_id ) {
+		global $wpdb;
+		$network_operation_id=self::canonical_operation_id($network_operation_id);
+		if(''===$network_operation_id)return self::error('mad4b_network_operation_id_invalid','NetworkOperation id is invalid.');
+		$tx=MAD4B_SCP_Database_Transaction_Guard::begin('network_claim_recovery',array('network_operations','network_operation_targets','network_operation_events'),false);
+		if(is_wp_error($tx))return $tx;
+		$t=MAD4B_SCP_Schema::tables();
+		try{
+			$op=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operations']} WHERE BINARY network_operation_id=BINARY %s FOR UPDATE",$network_operation_id),ARRAY_A);
+			if(!is_array($op))throw new RuntimeException('network_operation_unknown');
+			$expired=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE BINARY network_operation_id=BINARY %s AND state='claimed' AND claim_expires_at IS NOT NULL AND claim_expires_at<=UTC_TIMESTAMP() ORDER BY target_blog_id ASC FOR UPDATE",$network_operation_id),ARRAY_A);
+			foreach(is_array($expired)?$expired:array() as $target){
+				$ok=$wpdb->query($wpdb->prepare("UPDATE {$t['network_operation_targets']} SET state='reconciling',claim_expires_at=NULL,last_error_code='claim_expired',updated_at=UTC_TIMESTAMP() WHERE id=%d AND state='claimed' AND claim_epoch=%d AND BINARY worker_id=BINARY %s",(int)$target['id'],(int)$target['claim_epoch'],(string)$target['worker_id']));
+				if(1!==(int)$ok)throw new RuntimeException('network_target_expiry_recovery_cas_conflict');
+				$state=self::derive_operation_state_locked($network_operation_id,!empty($op['paused']));
+				$event=self::append_event_locked($network_operation_id,(int)$target['target_blog_id'],'target_claim_expired',$state,'',array('claim_epoch'=>(int)$target['claim_epoch'],'worker_id_sha256'=>hash('sha256',(string)$target['worker_id'])));
+				if(is_wp_error($event))throw new RuntimeException($event->get_error_code());
+			}
+			$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx);if(is_wp_error($committed))return $committed;
+		}catch(Throwable $error){
+			MAD4B_SCP_Database_Transaction_Guard::rollback($tx);
+			return self::error('mad4b_network_claim_recovery_failed','Expired NetworkOperation claims could not be recovered safely.',array('reason_code'=>sanitize_key($error->getMessage())));
+		}
+		return self::reconstruct($network_operation_id);
+	}
+
+	public static function record_reconciliation_outcome( $network_operation_id, $target_blog_id, $claim_epoch, $outcome, $evidence_ref, $evidence_sha256, $receipt_sha256 = '', $receipt_binding_sha256 = '' ) {
+		global $wpdb;
+		$network_operation_id=self::canonical_operation_id($network_operation_id);$target_blog_id=absint($target_blog_id);$claim_epoch=(int)$claim_epoch;
+		$outcome=sanitize_key((string)$outcome);$evidence_ref=self::bounded_token($evidence_ref,191);$evidence_sha256=self::digest_value($evidence_sha256);
+		$receipt_sha256=''===(string)$receipt_sha256?'':self::digest_value($receipt_sha256);$receipt_binding_sha256=self::digest_value($receipt_binding_sha256);
+		if(''===$network_operation_id||$target_blog_id<1||$claim_epoch<1||!in_array($outcome,array('committed','no_effect'),true)||''===$evidence_ref||''===$evidence_sha256||''===$receipt_binding_sha256)return self::error('mad4b_network_reconciliation_outcome_invalid','Network reconciliation evidence is incomplete.');
+		if('committed'===$outcome&&''===$receipt_sha256)return self::error('mad4b_network_target_receipt_required','Committed reconciliation requires an exact receipt digest.');
+		$tx=MAD4B_SCP_Database_Transaction_Guard::begin('network_target_reconciliation',array('network_operations','network_operation_targets','network_operation_events'),false);if(is_wp_error($tx))return $tx;
+		$t=MAD4B_SCP_Schema::tables();
+		try{
+			$op=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operations']} WHERE BINARY network_operation_id=BINARY %s FOR UPDATE",$network_operation_id),ARRAY_A);
+			$target=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE BINARY network_operation_id=BINARY %s AND target_blog_id=%d FOR UPDATE",$network_operation_id,$target_blog_id),ARRAY_A);
+			if(!is_array($op)||!is_array($target))throw new RuntimeException('network_target_unknown');
+			if('reconciling'!==(string)$target['state'])throw new RuntimeException('network_target_not_reconciling');
+			if((int)$target['claim_epoch']!==$claim_epoch)throw new RuntimeException('network_target_claim_epoch_stale');
+			if(!hash_equals((string)$target['receipt_binding_sha256'],$receipt_binding_sha256))throw new RuntimeException('network_target_receipt_binding_mismatch');
+			$ok=$wpdb->query($wpdb->prepare("UPDATE {$t['network_operation_targets']} SET state=%s,evidence_ref=%s,receipt_sha256=%s,last_error_code='',updated_at=UTC_TIMESTAMP() WHERE id=%d AND state='reconciling' AND claim_epoch=%d",$outcome,$evidence_ref,$receipt_sha256,(int)$target['id'],$claim_epoch));
+			if(1!==(int)$ok)throw new RuntimeException('network_target_reconciliation_cas_conflict');
+			$state=self::derive_operation_state_locked($network_operation_id,!empty($op['paused']));
+			$event=self::append_event_locked($network_operation_id,$target_blog_id,'target_reconciled_'.$outcome,$state,$evidence_ref,array('claim_epoch'=>$claim_epoch,'evidence_sha256'=>$evidence_sha256,'receipt_sha256'=>$receipt_sha256));
+			if(is_wp_error($event))throw new RuntimeException($event->get_error_code());
+			$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx);if(is_wp_error($committed))return $committed;
+		}catch(Throwable $error){
+			MAD4B_SCP_Database_Transaction_Guard::rollback($tx);
+			return self::error('mad4b_network_target_reconciliation_denied','Network target reconciliation failed closed.',array('reason_code'=>sanitize_key($error->getMessage())));
+		}
+		return self::reconstruct($network_operation_id);
+	}
 
 	public static function verify_target_context( $network_operation_id, $target_blog_id, array $observed ) {
 		global $wpdb;
@@ -210,7 +277,7 @@ final class MAD4B_SCP_Network_Operation_Journal {
 			'contract'=>self::CONTRACT,'network_operation_id'=>$network_operation_id,'state'=>(string)$op['state'],'paused'=>!empty($op['paused']),
 			'revision'=>(int)$op['revision'],'latest_event_sha256'=>(string)$op['latest_event_sha256'],
 			'origin_site_uuid'=>(string)$op['origin_site_uuid'],'origin_blog_id'=>(int)$op['origin_blog_id'],'authority_scope_sha256'=>(string)$op['authority_scope_sha256'],
-			'plan_sha256'=>(string)$op['plan_sha256'],'preparation_sha256'=>(string)$op['preparation_sha256'],'idempotency_key'=>(string)$op['idempotency_key'],
+			'plan_sha256'=>(string)$op['plan_sha256'],'preparation_sha256'=>(string)$op['preparation_sha256'],'idempotency_key'=>(string)$op['idempotency_key'],'target_set_sha256'=>(string)$op['target_set_sha256'],
 			'sets'=>$sets,'resume_candidates'=>$sets['pending'],'targets'=>$target_rows,'event_count'=>count($events),'event_chain_valid'=>true,
 			'replay_committed_allowed'=>false,'read_only'=>true,'mutation_performed'=>false,'authorizing'=>false
 		);
@@ -287,6 +354,13 @@ final class MAD4B_SCP_Network_Operation_Journal {
 		if(''===$site)return self::error('mad4b_network_target_site_invalid','Target Site UUID is invalid.');return $out;
 	}
 
+	private static function target_set_sha256( array $targets ) {
+		$rows=array();
+		foreach($targets as $row)$rows[]=array('target_blog_id'=>(int)$row['target_blog_id'],'target_site_uuid'=>(string)$row['target_site_uuid'],'target_binding_sha256'=>(string)$row['target_binding_sha256'],'idempotency_key'=>(string)$row['idempotency_key']);
+		usort($rows,static function($a,$b){return (int)$a['target_blog_id'] <=> (int)$b['target_blog_id'];});
+		return hash('sha256',self::TARGET_SET_DOMAIN.'|'.self::canonical_json($rows));
+	}
+
 	private static function target_binding( array $context ) {
 		$material=$context;unset($material['target_blog_id']);ksort($material,SORT_STRING);
 		return hash('sha256',self::TARGET_BINDING_DOMAIN.'|'.self::canonical_json($material));
@@ -314,7 +388,7 @@ final class MAD4B_SCP_Network_Operation_Journal {
 			'preparation_sha256'=>(string)$row['preparation_sha256'],'approval_ticket_id'=>(string)$row['approval_ticket_id'],'context_sha256'=>(string)$row['context_sha256'],
 			'credential_binding_sha256'=>(string)$row['credential_binding_sha256'],'receipt_binding_sha256'=>(string)$row['receipt_binding_sha256'],
 			'target_binding_sha256'=>(string)$row['target_binding_sha256'],'idempotency_key'=>(string)$row['idempotency_key'],'state'=>(string)$row['state'],
-			'claim_epoch'=>(int)$row['claim_epoch'],'worker_id'=>(string)$row['worker_id'],'evidence_ref'=>(string)$row['evidence_ref'],'receipt_sha256'=>(string)$row['receipt_sha256'],
+			'claim_epoch'=>(int)$row['claim_epoch'],'worker_id'=>(string)$row['worker_id'],'claim_expires_at'=>(string)(isset($row['claim_expires_at'])?$row['claim_expires_at']:''),'evidence_ref'=>(string)$row['evidence_ref'],'receipt_sha256'=>(string)$row['receipt_sha256'],
 			'last_error_code'=>(string)$row['last_error_code']
 		);
 	}
