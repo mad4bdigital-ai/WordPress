@@ -261,6 +261,56 @@ final class MAD4B_SCP_Audit {
 
 
 	/**
+	 * Exact, bounded Site Profile mutation lookup used only by the deterministic
+	 * pending-mutation reconciler. It never exposes a generic audit search surface.
+	 */
+	public static function site_profile_mutation_events( $ability, $mutation_id, $profile_digest, $limit = 5 ) {
+		global $wpdb;
+		$ability = trim( (string) $ability );
+		$mutation_id = strtolower( trim( (string) $mutation_id ) );
+		$profile_digest = strtolower( trim( (string) $profile_digest ) );
+		$limit = max( 1, min( 10, absint( $limit ) ) );
+		if ( '' === $ability || 1 !== preg_match( '#^[a-z0-9_/-]{1,191}$#D', $ability ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_action_invalid', 'Site Profile mutation audit action is invalid.' );
+		if ( 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/D', $mutation_id ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_id_invalid', 'Site Profile mutation_id is invalid.' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $profile_digest ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_digest_invalid', 'Site Profile mutation digest is invalid.' );
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$t['audit_events']} WHERE chain_name = %s AND ability = %s AND summary_json LIKE %s ORDER BY sequence DESC LIMIT %d",
+				self::CHAIN,
+				$ability,
+				'%' . $wpdb->esc_like( '"mutation_id":"' . $mutation_id . '"' ) . '%',
+				$limit
+			),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_lookup_failed', 'Site Profile mutation audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( ! is_array( $entry ) ) continue;
+			$summary = isset( $entry['summary'] ) && is_array( $entry['summary'] ) ? $entry['summary'] : array();
+			if ( ! isset( $summary['mutation_id'], $summary['profile_digest'] ) ) continue;
+			if ( ! hash_equals( $mutation_id, strtolower( (string) $summary['mutation_id'] ) ) ) continue;
+			if ( ! hash_equals( $profile_digest, strtolower( (string) $summary['profile_digest'] ) ) ) continue;
+			$events[] = $entry;
+		}
+		return array(
+			'contract' => 'mad4b.site-profile-mutation-audit.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'ability' => $ability,
+			'mutation_id' => $mutation_id,
+			'profile_digest' => $profile_digest,
+			'count' => count( $events ),
+			'events' => $events,
+		);
+	}
+
+
+	/**
 	 * Bounded read-only lookup for Context Review evidence.
 	 *
 	 * Only the exact Human and delegated AI review event types are queryable. Review-note text is not

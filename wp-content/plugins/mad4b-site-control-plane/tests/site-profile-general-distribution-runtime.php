@@ -56,6 +56,16 @@ final class MAD4B_SCP_Audit {
   if(!empty($GLOBALS['mad4b_test_audit_fail']))return new WP_Error('audit_failed','forced');
   $GLOBALS['mad4b_test_audit_events'][]=array($a,$s,$st);return true;
  }
+ public static function site_profile_mutation_events($ability,$mutation_id,$profile_digest,$limit=5){
+  if(empty($GLOBALS['mad4b_test_audit_ready']))return new WP_Error('audit_unavailable','forced');
+  $events=array();
+  foreach($GLOBALS['mad4b_test_audit_events'] as $event){
+   if(($event[0]??'')!==$ability)continue;$summary=$event[1]??array();
+   if(($summary['mutation_id']??'')!==$mutation_id||($summary['profile_digest']??'')!==$profile_digest)continue;
+   $events[]=array('ability'=>$event[0],'summary'=>$summary,'status'=>$event[2]??'');
+  }
+  return array('count'=>count($events),'events'=>$events);
+ }
 }
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-environment.php';
@@ -392,6 +402,43 @@ MAD4B_SCP_Site_Profile::reset_cache();
 $df_status=MAD4B_SCP_Site_Profile::status();
 ok(!empty($df_status['mutation_pending_audit'])&&'mutation_pending_audit'===($df_status['binding_state']??''),'double failure did not persist quarantine state');
 ok(empty($df_status['authority_ready'])&&empty($df_status['oauth_enabled'])&&empty($df_status['skills_enabled'])&&!MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'],'double failure left pending Site Profile executable');
+
+// A stale pending generation with no committed audit evidence can be claimed and
+// rolled back exactly; fresh generations stay inside the writer grace period.
+$df_pending=get_option(MAD4B_SCP_Site_Profile::OPTION,null);
+$df_mutation_id=$df_pending['mutation_id']??'';
+$df_fresh_plan=MAD4B_SCP_Site_Profile::pending_mutation_reconciliation_plan($df_mutation_id);
+ok(!is_wp_error($df_fresh_plan)&&'active_writer_grace_period'===($df_fresh_plan['state']??''),'fresh pending mutation became recoverable before writer grace period elapsed');
+$df_pending['mutation_started_at']='2026-01-01T00:00:00Z';
+update_option(MAD4B_SCP_Site_Profile::OPTION,$df_pending,false);MAD4B_SCP_Site_Profile::reset_cache();
+$df_plan=MAD4B_SCP_Site_Profile::pending_mutation_reconciliation_plan($df_mutation_id);
+ok(!is_wp_error($df_plan)&&'rollback'===($df_plan['recommended_action']??'')&&!empty($df_plan['automatic_reconciliation_allowed']),'stale unaudited pending mutation did not produce exact rollback plan');
+$df_reconciled=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($df_mutation_id,'rollback',$df_plan['pending_record_sha256']);
+ok(!is_wp_error($df_reconciled)&&!empty($df_reconciled['reconciliation_applied'])&&'rollback'===($df_reconciled['reconciliation_decision']??''),'stale unaudited pending mutation rollback failed');
+ok(empty(MAD4B_SCP_Site_Profile::status()['mutation_pending_audit'])&&1===MAD4B_SCP_Site_Profile::revision(),'pending mutation rollback did not restore exact prior generation');
+
+// Simulate audit-committed/finalize-failed: exact audit evidence must select
+// finalize, not rollback, and stale plan bytes must be rejected.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://finalize-fail.client.test/';
+$ff_first=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'oauth_enabled'=>true));
+ok(!is_wp_error($ff_first),'finalize-failure fixture initial save failed');
+$ff_before=MAD4B_SCP_Site_Profile::status();
+$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=true;
+$ff_result=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>(int)$ff_before['revision'],'expected_profile_digest'=>$ff_before['profile_digest'],
+ 'oauth_user_ids'=>array(7),'oauth_enabled'=>true,'skills_enabled'=>true
+));
+$GLOBALS['mad4b_test_drop_profile_writes']=false;$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=false;MAD4B_SCP_Site_Profile::reset_cache();
+ok(is_wp_error($ff_result)&&'mad4b_site_profile_commit_finalize_failed'===$ff_result->get_error_code(),'audit-committed finalize failure did not surface');
+$ff_pending=get_option(MAD4B_SCP_Site_Profile::OPTION,null);$ff_mutation_id=$ff_pending['mutation_id']??'';
+$ff_pending['mutation_started_at']='2026-01-01T00:00:00Z';update_option(MAD4B_SCP_Site_Profile::OPTION,$ff_pending,false);MAD4B_SCP_Site_Profile::reset_cache();
+$ff_plan=MAD4B_SCP_Site_Profile::pending_mutation_reconciliation_plan($ff_mutation_id);
+ok(!is_wp_error($ff_plan)&&'finalize'===($ff_plan['recommended_action']??''),'committed audit evidence did not select finalize');
+$ff_stale=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($ff_mutation_id,'finalize',str_repeat('0',64));
+ok(is_wp_error($ff_stale)&&'mad4b_site_profile_reconciliation_plan_stale'===$ff_stale->get_error_code(),'stale pending digest was accepted');
+$ff_done=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($ff_mutation_id,'finalize',$ff_plan['pending_record_sha256']);
+ok(!is_wp_error($ff_done)&&!empty($ff_done['reconciliation_applied'])&&2===MAD4B_SCP_Site_Profile::revision()&&MAD4B_SCP_Site_Profile::skills_enabled(),'audited pending mutation did not finalize exact target');
 
 
 // Legacy preset migration is opt-in and validates raw data before any coercion.

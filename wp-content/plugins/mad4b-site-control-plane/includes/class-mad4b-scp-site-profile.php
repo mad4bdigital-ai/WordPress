@@ -23,6 +23,8 @@ final class MAD4B_SCP_Site_Profile {
 	const PRESET_FILE = 'config/site-profile-presets.json';
 	const PRODUCTION_WRITE_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE';
 	const NONPRODUCTION_OVERRIDE_CONFIRMATION = 'CONFIRM THIS ORIGIN IS NON-PRODUCTION';
+	const MUTATION_RECONCILIATION_CONTRACT = 'mad4b.site-profile-mutation-reconciliation.v1';
+	const MUTATION_RECONCILE_GRACE_SECONDS = 60;
 
 	private static $profile = null;
 	private static $status = null;
@@ -463,6 +465,45 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 
+	private static function build_pending_record( array $next, $previous, $audit_action ) {
+		$pending = self::build_pending_record( $next, $before, $audit_action );
+		$pending['mutation_audit_action'] = trim( (string) $audit_action );
+		$pending['mutation_started_at'] = gmdate( 'c' );
+		$pending['mutation_target_digest'] = self::digest_record( self::normalize_record( $next ) );
+		if ( is_array( $previous ) && self::valid_record( $previous ) && ! isset( $previous['mutation_state'] ) ) {
+			$pending['mutation_previous_mode'] = 'restore';
+			$pending['mutation_previous_record'] = $previous;
+			$pending['mutation_previous_digest'] = self::digest_record( self::normalize_record( $previous ) );
+		} else {
+			$pending['mutation_previous_mode'] = 'delete';
+			$pending['mutation_previous_record'] = null;
+			$pending['mutation_previous_digest'] = '';
+		}
+		return $pending;
+	}
+
+	private static function pending_target_record( array $pending ) {
+		$target = $pending;
+		foreach ( array(
+			'mutation_state', 'mutation_id', 'mutation_audit_action', 'mutation_started_at',
+			'mutation_target_digest', 'mutation_previous_mode', 'mutation_previous_record',
+			'mutation_previous_digest', 'mutation_reconcile_claim', 'mutation_reconcile_started_at',
+		) as $field ) unset( $target[ $field ] );
+		return self::valid_record( $target ) ? $target : array();
+	}
+
+	private static function pending_previous_record( array $pending ) {
+		$mode = isset( $pending['mutation_previous_mode'] ) ? sanitize_key( (string) $pending['mutation_previous_mode'] ) : '';
+		if ( 'delete' === $mode ) return null;
+		$previous = isset( $pending['mutation_previous_record'] ) && is_array( $pending['mutation_previous_record'] )
+			? $pending['mutation_previous_record']
+			: array();
+		if ( 'restore' !== $mode || empty( $previous ) || isset( $previous['mutation_state'] ) || ! self::valid_record( $previous ) ) return false;
+		$digest = self::digest_record( self::normalize_record( $previous ) );
+		$expected = isset( $pending['mutation_previous_digest'] ) ? strtolower( trim( (string) $pending['mutation_previous_digest'] ) ) : '';
+		return '' !== $expected && hash_equals( $expected, $digest ) ? $previous : false;
+	}
+
 	/**
 	 * Atomically replace the Site Profile only when the database row still
 	 * contains the exact record this worker reviewed. WordPress always provides
@@ -762,11 +803,7 @@ final class MAD4B_SCP_Site_Profile {
 		);
 		$before_digest = $existing_valid ? self::digest_record( $existing_normalized ) : '';
 		$final_digest = self::digest_record( $record );
-		$pending = $record;
-		$pending['mutation_state'] = 'pending_audit';
-		$pending['mutation_id'] = function_exists( 'wp_generate_uuid4' )
-			? strtolower( wp_generate_uuid4() )
-			: substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 32 );
+		$pending = self::build_pending_record( $record, $existing_valid ? $existing : null, 'mad4b/site-profile-updated' );
 		if ( ! self::persist_record_compare_and_swap( $existing, $pending ) ) {
 			return new WP_Error( 'mad4b_site_profile_conflict', 'Site Profile changed concurrently before this save could commit. Reload and review the latest state.' );
 		}
@@ -809,6 +846,148 @@ final class MAD4B_SCP_Site_Profile {
 		}
 		if ( function_exists( 'do_action' ) ) do_action( 'mad4b_scp_site_profile_saved' );
 		return self::status();
+	}
+
+	public static function pending_mutation_reconciliation_plan( $expected_mutation_id = '' ) {
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to inspect pending Site Profile recovery.' );
+		self::clear_option_read_cache( true );
+		$pending = get_option( self::OPTION, null );
+		if ( ! is_array( $pending ) || ! self::valid_record( $pending ) || 'pending_audit' !== ( $pending['mutation_state'] ?? '' ) ) {
+			return array(
+				'contract' => self::MUTATION_RECONCILIATION_CONTRACT,
+				'state' => 'no_pending_mutation',
+				'read_only' => true,
+				'mutation_performed' => false,
+				'recommended_action' => 'none',
+			);
+		}
+		$mutation_id = strtolower( trim( (string) ( $pending['mutation_id'] ?? '' ) ) );
+		$expected_mutation_id = strtolower( trim( (string) $expected_mutation_id ) );
+		if ( '' !== $expected_mutation_id && ! hash_equals( $mutation_id, $expected_mutation_id ) ) {
+			return new WP_Error( 'mad4b_site_profile_reconciliation_mutation_stale', 'Pending Site Profile mutation changed since it was inspected.' );
+		}
+		$pending_digest = hash( 'sha256', serialize( $pending ) );
+		$target = self::pending_target_record( $pending );
+		$target_digest = empty( $target ) ? '' : self::digest_record( self::normalize_record( $target ) );
+		$stored_target_digest = strtolower( trim( (string) ( $pending['mutation_target_digest'] ?? '' ) ) );
+		$previous = self::pending_previous_record( $pending );
+		$metadata_ready = '' !== (string) ( $pending['mutation_audit_action'] ?? '' )
+			&& '' !== (string) ( $pending['mutation_started_at'] ?? '' )
+			&& '' !== $stored_target_digest
+			&& ! empty( $target )
+			&& hash_equals( $stored_target_digest, $target_digest )
+			&& false !== $previous;
+		$started = $metadata_ready ? strtotime( (string) $pending['mutation_started_at'] ) : false;
+		$age = false === $started ? 0 : max( 0, time() - (int) $started );
+		$base = array(
+			'contract' => self::MUTATION_RECONCILIATION_CONTRACT,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'mutation_id' => $mutation_id,
+			'pending_record_sha256' => $pending_digest,
+			'target_profile_digest' => $target_digest,
+			'previous_profile_digest' => isset( $pending['mutation_previous_digest'] ) ? (string) $pending['mutation_previous_digest'] : '',
+			'audit_action' => isset( $pending['mutation_audit_action'] ) ? (string) $pending['mutation_audit_action'] : '',
+			'pending_age_seconds' => $age,
+		);
+		if ( ! $metadata_ready ) return array_merge( $base, array( 'state' => 'legacy_pending_requires_manual_review', 'recommended_action' => 'none', 'automatic_reconciliation_allowed' => false ) );
+		if ( isset( $pending['mutation_reconcile_claim'] ) && '' !== (string) $pending['mutation_reconcile_claim'] ) {
+			return array_merge( $base, array( 'state' => 'reconciliation_claimed', 'recommended_action' => 'none', 'automatic_reconciliation_allowed' => false ) );
+		}
+		if ( $age < self::MUTATION_RECONCILE_GRACE_SECONDS ) {
+			return array_merge( $base, array( 'state' => 'active_writer_grace_period', 'recommended_action' => 'wait', 'automatic_reconciliation_allowed' => false ) );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! method_exists( 'MAD4B_SCP_Audit', 'site_profile_mutation_events' ) ) {
+			return array_merge( $base, array( 'state' => 'audit_evidence_unavailable', 'recommended_action' => 'none', 'automatic_reconciliation_allowed' => false ) );
+		}
+		$evidence = MAD4B_SCP_Audit::site_profile_mutation_events( (string) $pending['mutation_audit_action'], $mutation_id, $target_digest );
+		if ( is_wp_error( $evidence ) ) {
+			return array_merge( $base, array(
+				'state' => 'audit_evidence_unavailable',
+				'recommended_action' => 'none',
+				'automatic_reconciliation_allowed' => false,
+				'audit_error' => $evidence->get_error_code(),
+			) );
+		}
+		$count = isset( $evidence['count'] ) ? (int) $evidence['count'] : 0;
+		if ( $count > 1 ) return array_merge( $base, array( 'state' => 'audit_evidence_ambiguous', 'audit_event_count' => $count, 'recommended_action' => 'none', 'automatic_reconciliation_allowed' => false ) );
+		return array_merge( $base, array(
+			'state' => 1 === $count ? 'audit_committed_finalize_ready' : 'audit_absent_rollback_ready',
+			'audit_event_count' => $count,
+			'recommended_action' => 1 === $count ? 'finalize' : 'rollback',
+			'automatic_reconciliation_allowed' => true,
+		) );
+	}
+
+	public static function reconcile_pending_mutation( $mutation_id, $decision, $expected_pending_digest ) {
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to reconcile pending Site Profile recovery.' );
+		$decision = sanitize_key( (string) $decision );
+		if ( ! in_array( $decision, array( 'finalize', 'rollback' ), true ) ) return new WP_Error( 'mad4b_site_profile_reconciliation_decision_invalid', 'Reconciliation decision must be finalize or rollback.' );
+		$mutation_id = strtolower( trim( (string) $mutation_id ) );
+		$expected_pending_digest = strtolower( trim( (string) $expected_pending_digest ) );
+		$plan = self::pending_mutation_reconciliation_plan( $mutation_id );
+		if ( is_wp_error( $plan ) ) return $plan;
+		if ( empty( $plan['automatic_reconciliation_allowed'] ) || $decision !== ( $plan['recommended_action'] ?? '' ) ) {
+			return new WP_Error( 'mad4b_site_profile_reconciliation_plan_not_actionable', 'Pending Site Profile reconciliation plan is not actionable with the requested decision.', array( 'plan' => $plan ) );
+		}
+		if ( '' === $expected_pending_digest || ! hash_equals( (string) $plan['pending_record_sha256'], $expected_pending_digest ) ) {
+			return new WP_Error( 'mad4b_site_profile_reconciliation_plan_stale', 'Pending Site Profile bytes changed since the plan was inspected.' );
+		}
+		self::clear_option_read_cache( true );
+		$pending = get_option( self::OPTION, null );
+		if ( ! is_array( $pending ) || hash( 'sha256', serialize( $pending ) ) !== $expected_pending_digest ) {
+			return new WP_Error( 'mad4b_site_profile_reconciliation_plan_stale', 'Pending Site Profile bytes changed before reconciliation could claim the generation.' );
+		}
+		$claimed = $pending;
+		$claimed['mutation_reconcile_claim'] = function_exists( 'wp_generate_uuid4' )
+			? strtolower( wp_generate_uuid4() )
+			: substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 32 );
+		$claimed['mutation_reconcile_started_at'] = gmdate( 'c' );
+		if ( ! self::persist_record_compare_and_swap( $pending, $claimed ) ) {
+			return new WP_Error( 'mad4b_site_profile_reconciliation_claim_conflict', 'Pending Site Profile generation changed before reconciliation could claim it.' );
+		}
+
+		$target = self::pending_target_record( $claimed );
+		$previous = self::pending_previous_record( $claimed );
+		$target_digest = empty( $target ) ? '' : self::digest_record( self::normalize_record( $target ) );
+		$evidence = class_exists( 'MAD4B_SCP_Audit' ) && method_exists( 'MAD4B_SCP_Audit', 'site_profile_mutation_events' )
+			? MAD4B_SCP_Audit::site_profile_mutation_events( (string) $claimed['mutation_audit_action'], $mutation_id, $target_digest )
+			: new WP_Error( 'mad4b_site_profile_reconciliation_audit_unavailable', 'Append-only audit evidence is unavailable.' );
+		$count = is_wp_error( $evidence ) ? -1 : (int) ( $evidence['count'] ?? 0 );
+		$actual_decision = 1 === $count ? 'finalize' : ( 0 === $count ? 'rollback' : 'none' );
+		if ( $decision !== $actual_decision || false === $previous || empty( $target ) ) {
+			self::persist_record_compare_and_swap( $claimed, $pending );
+			return new WP_Error(
+				'mad4b_site_profile_reconciliation_evidence_changed',
+				'Audit evidence changed after reconciliation claimed the pending generation; no recovery action was applied.',
+				array( 'audit_event_count' => $count, 'actual_decision' => $actual_decision )
+			);
+		}
+
+		$applied = 'finalize' === $decision
+			? self::persist_record_compare_and_swap( $claimed, $target )
+			: self::restore_record_compare_and_swap( $claimed, $previous );
+		if ( ! $applied ) {
+			self::reset_cache();
+			return new WP_Error( 'mad4b_site_profile_reconciliation_apply_conflict', 'Reconciliation lost exact ownership before the selected recovery action could commit.' );
+		}
+		self::reset_cache();
+		if ( function_exists( 'do_action' ) ) do_action( 'mad4b_scp_site_profile_saved' );
+		$audit_result = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::record( 'mad4b/site-profile-mutation-reconciled', array(
+			'mutation_id' => $mutation_id,
+			'original_audit_action' => (string) $claimed['mutation_audit_action'],
+			'decision' => $decision,
+			'target_profile_digest' => $target_digest,
+			'previous_profile_digest' => isset( $claimed['mutation_previous_digest'] ) ? (string) $claimed['mutation_previous_digest'] : '',
+		), 'ok' ) : new WP_Error( 'mad4b_site_profile_reconciliation_audit_unavailable', 'Append-only audit storage is unavailable.' );
+		$result = self::status();
+		$result['reconciliation_contract'] = self::MUTATION_RECONCILIATION_CONTRACT;
+		$result['reconciliation_mutation_id'] = $mutation_id;
+		$result['reconciliation_decision'] = $decision;
+		$result['reconciliation_applied'] = true;
+		$result['reconciliation_audit_recorded'] = ! is_wp_error( $audit_result );
+		if ( is_wp_error( $audit_result ) ) $result['reconciliation_audit_error'] = $audit_result->get_error_code();
+		return $result;
 	}
 
 	public static function disable_authority( $expected_revision = null ) {
@@ -1099,6 +1278,15 @@ final class MAD4B_SCP_Site_Profile {
 		if ( isset( $record['mutation_state'] ) ) {
 			if ( ! is_string( $record['mutation_state'] ) || 'pending_audit' !== $record['mutation_state'] ) return false;
 			if ( ! isset( $record['mutation_id'] ) || ! is_string( $record['mutation_id'] ) || 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/i', $record['mutation_id'] ) ) return false;
+			if ( isset( $record['mutation_audit_action'] ) && ( ! is_string( $record['mutation_audit_action'] ) || 1 !== preg_match( '#^[a-z0-9_/-]{1,191}$#D', $record['mutation_audit_action'] ) ) ) return false;
+			if ( isset( $record['mutation_started_at'] ) && ! is_string( $record['mutation_started_at'] ) ) return false;
+			foreach ( array( 'mutation_target_digest', 'mutation_previous_digest' ) as $digest_field ) {
+				if ( isset( $record[ $digest_field ] ) && '' !== (string) $record[ $digest_field ] && 1 !== preg_match( '/^[a-f0-9]{64}$/D', strtolower( trim( (string) $record[ $digest_field ] ) ) ) ) return false;
+			}
+			if ( isset( $record['mutation_previous_mode'] ) && ! in_array( $record['mutation_previous_mode'], array( 'restore', 'delete' ), true ) ) return false;
+			if ( isset( $record['mutation_previous_record'] ) && null !== $record['mutation_previous_record'] && ! is_array( $record['mutation_previous_record'] ) ) return false;
+			if ( isset( $record['mutation_reconcile_claim'] ) && ( ! is_string( $record['mutation_reconcile_claim'] ) || 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/i', $record['mutation_reconcile_claim'] ) ) ) return false;
+			if ( isset( $record['mutation_reconcile_started_at'] ) && ! is_string( $record['mutation_reconcile_started_at'] ) ) return false;
 		}
 		foreach ( array( 'legacy_zero_touch', 'implicit_production_override_confirmed', 'migration_requires_reenrollment' ) as $field ) {
 			if ( isset( $record[ $field ] ) && ! is_bool( $record[ $field ] ) ) return false;
@@ -1134,8 +1322,20 @@ final class MAD4B_SCP_Site_Profile {
 		if ( isset( $record['mutation_state'] ) && is_string( $record['mutation_state'] ) && 'pending_audit' === sanitize_key( $record['mutation_state'] ) ) {
 			$record['mutation_state'] = 'pending_audit';
 			$record['mutation_id'] = isset( $record['mutation_id'] ) && is_string( $record['mutation_id'] ) ? strtolower( trim( $record['mutation_id'] ) ) : '';
+			$record['mutation_audit_action'] = isset( $record['mutation_audit_action'] ) && is_string( $record['mutation_audit_action'] ) ? trim( $record['mutation_audit_action'] ) : '';
+			$record['mutation_started_at'] = isset( $record['mutation_started_at'] ) && is_string( $record['mutation_started_at'] ) ? trim( $record['mutation_started_at'] ) : '';
+			$record['mutation_target_digest'] = isset( $record['mutation_target_digest'] ) && is_string( $record['mutation_target_digest'] ) ? strtolower( trim( $record['mutation_target_digest'] ) ) : '';
+			$record['mutation_previous_mode'] = isset( $record['mutation_previous_mode'] ) ? sanitize_key( (string) $record['mutation_previous_mode'] ) : '';
+			$record['mutation_previous_record'] = array_key_exists( 'mutation_previous_record', $record ) ? $record['mutation_previous_record'] : null;
+			$record['mutation_previous_digest'] = isset( $record['mutation_previous_digest'] ) && is_string( $record['mutation_previous_digest'] ) ? strtolower( trim( $record['mutation_previous_digest'] ) ) : '';
+			if ( isset( $record['mutation_reconcile_claim'] ) && is_string( $record['mutation_reconcile_claim'] ) ) $record['mutation_reconcile_claim'] = strtolower( trim( $record['mutation_reconcile_claim'] ) );
+			if ( isset( $record['mutation_reconcile_started_at'] ) && is_string( $record['mutation_reconcile_started_at'] ) ) $record['mutation_reconcile_started_at'] = trim( $record['mutation_reconcile_started_at'] );
 		} else {
-			unset( $record['mutation_state'], $record['mutation_id'] );
+			unset(
+				$record['mutation_state'], $record['mutation_id'], $record['mutation_audit_action'], $record['mutation_started_at'],
+				$record['mutation_target_digest'], $record['mutation_previous_mode'], $record['mutation_previous_record'],
+				$record['mutation_previous_digest'], $record['mutation_reconcile_claim'], $record['mutation_reconcile_started_at']
+			);
 		}
 		return $record;
 	}
