@@ -108,7 +108,8 @@ if ( is_readable( $mad4b_mcp_mu_adapter_main ) ) {
 		}
 	}
 }
-$mad4b_mcp_mu_status['adapter_version'] = substr( sanitize_text_field( $mad4b_mcp_mu_adapter_version ), 0, 64 );
+$mad4b_mcp_mu_adapter_version_status = preg_replace( '/[^A-Za-z0-9._+\-]/', '', (string) $mad4b_mcp_mu_adapter_version );
+$mad4b_mcp_mu_status['adapter_version'] = substr( is_string( $mad4b_mcp_mu_adapter_version_status ) ? $mad4b_mcp_mu_adapter_version_status : '', 0, 64 );
 
 $mad4b_mcp_mu_baseline_catalog = is_readable( $mad4b_mcp_mu_baseline_file )
 	? json_decode( (string) file_get_contents( $mad4b_mcp_mu_baseline_file ), true )
@@ -509,6 +510,7 @@ unset(
 	$mad4b_mcp_mu_profiles_file,
 	$mad4b_mcp_mu_adapter_main,
 	$mad4b_mcp_mu_adapter_version,
+	$mad4b_mcp_mu_adapter_version_status,
 	$mad4b_mcp_mu_adapter_header,
 	$mad4b_mcp_mu_adapter_head,
 	$mad4b_mcp_mu_adapter_match,
