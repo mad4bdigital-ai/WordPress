@@ -684,6 +684,34 @@ if ( 'external_browser_agent' !== ( isset( $browser_value['execution_mode'] ) ? 
 	$fail( 'Browser Acceptance dispatcher result changed execution ownership.', $browser_value );
 }
 
+// A local bearer minted for the previous Site UUID must fail on every
+// ChatGPT-resource alias before WordPress identity or verified context is set.
+$original_profile = get_option( MAD4B_SCP_Site_Profile::OPTION, array() );
+if ( ! is_array( $original_profile ) || empty( $original_profile['site_uuid'] ) ) $fail( 'Site Profile missing before local token rebind regression.' );
+$rebound_profile = $original_profile;
+$rebound_profile['site_uuid'] = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+$rebound_profile['revision'] = isset( $original_profile['revision'] ) ? (int) $original_profile['revision'] + 1 : 2;
+$rebound_profile['updated_at'] = gmdate( 'c' );
+update_option( MAD4B_SCP_Site_Profile::OPTION, $rebound_profile, false );
+MAD4B_SCP_Site_Profile::reset_cache();
+
+foreach ( array(
+	'/mcp/mad4b-chatgpt',
+	'/mad4b/v1/ability-catalog/capabilities',
+	'/mad4b/v1/capability-gateway',
+) as $rebind_route ) {
+	wp_set_current_user( 0 );
+	MAD4B_SCP_OAuth_Resource_Bridge::reset_verified_bearer_context( true );
+	$rebind_request = new WP_REST_Request( 'POST', $rebind_route );
+	$rebind_request->set_header( 'Authorization', 'Bearer ' . $token );
+	$rebind_response = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, rest_get_server(), $rebind_request );
+	if ( ! $rebind_response instanceof WP_REST_Response || 401 !== (int) $rebind_response->get_status() || 0 !== get_current_user_id() || MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) {
+		$fail( 'Previous Site UUID bearer survived shared resource validation.', array( 'route' => $rebind_route, 'status' => $rebind_response instanceof WP_REST_Response ? $rebind_response->get_status() : null, 'user_id' => get_current_user_id() ) );
+	}
+}
+update_option( MAD4B_SCP_Site_Profile::OPTION, $original_profile, false );
+MAD4B_SCP_Site_Profile::reset_cache();
+
 remove_filter( 'pre_http_request', $http_spy, 9999 );
 
 if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) $fail( 'Verified bearer context was not active after MCP dispatch.' );
@@ -705,6 +733,7 @@ fwrite(
 			'unpreempted_http_calls' => count( $unpreempted_http ),
 			'session_established' => true,
 			'bearer_identity_verified' => true,
+			'prior_site_uuid_aliases_denied' => true,
 			'registration_bearer_invariant' => true,
 			'preauth_tool_count' => count( $preauth_names ),
 			'reviewed_direct_step_up_count' => count( $reviewed_step_up_names ),
