@@ -39,7 +39,14 @@ for marker in ["activation_scope","'network'","is_multisite()","network_activati
 for marker in ["uninstall.php","register_uninstall_hook","governance deletion"]:
     if marker not in retention:
         raise SystemExit("FAIL uninstall retention contract missing: "+marker)
-for marker in ["mad4b_scp_agent_grants","mad4b_scp_approval_tickets","mad4b_scp_site_profile_v2","CAPTURED","VERIFIED"]:
+for marker in [
+    "mad4b_scp_agent_grants","mad4b_scp_approval_tickets","mad4b_scp_audit_events","mad4b_scp_audit_heads",
+    "mad4b_catalog_objects","mad4b_catalog_generations","mad4b_catalog_heads",
+    "mad4b_network_operations","mad4b_network_operation_targets","mad4b_network_operation_events",
+    "mad4b_provider_breakers","mad4b_provider_breaker_events",
+    "mad4b_scp_site_profile_v2","mad4b_scp_schema_integrity_v13","mad4b_scp_catalog_backend_state_v1",
+    "CAPTURED","VERIFIED"
+]:
     if marker not in continuity:
         raise SystemExit("FAIL lifecycle governance continuity evidence missing: "+marker)
 for marker in ["rollback invalidates permit","build-only update must auto-rebind","owner_gate"]:

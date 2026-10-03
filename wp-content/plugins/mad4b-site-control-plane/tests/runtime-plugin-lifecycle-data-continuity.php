@@ -29,6 +29,16 @@ $tables = array(
 	'mutations' => $wpdb->prefix . 'mad4b_scp_mutations',
 	'budgets' => $wpdb->prefix . 'mad4b_scp_agent_budgets',
 	'budget_windows' => $wpdb->prefix . 'mad4b_scp_agent_budget_windows',
+	'audit_events' => $wpdb->prefix . 'mad4b_scp_audit_events',
+	'audit_heads' => $wpdb->prefix . 'mad4b_scp_audit_heads',
+	'catalog_objects' => $wpdb->prefix . 'mad4b_catalog_objects',
+	'catalog_generations' => $wpdb->prefix . 'mad4b_catalog_generations',
+	'catalog_heads' => $wpdb->prefix . 'mad4b_catalog_heads',
+	'network_operations' => $wpdb->prefix . 'mad4b_network_operations',
+	'network_operation_targets' => $wpdb->prefix . 'mad4b_network_operation_targets',
+	'network_operation_events' => $wpdb->prefix . 'mad4b_network_operation_events',
+	'provider_breakers' => $wpdb->prefix . 'mad4b_provider_breakers',
+	'provider_breaker_events' => $wpdb->prefix . 'mad4b_provider_breaker_events',
 );
 
 $canonical_rows = static function ( $table ) use ( $wpdb, $fail ) {
@@ -58,7 +68,9 @@ $option_keys = array(
 	'mad4b_scp_write_runtime_certification_v1',
 	'mad4b_scp_approval_candidate_bindings_v1',
 	'mad4b_scp_schema_version',
-	'mad4b_scp_schema_integrity_v5',
+	'mad4b_scp_schema_integrity_v13',
+	'mad4b_scp_catalog_backend_state_v1',
+	'mad4b_scp_post_update_continuation_v1',
 );
 foreach ( $option_keys as $key ) {
 	$row = $wpdb->get_row( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name=%s LIMIT 1", $key ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
