@@ -394,8 +394,8 @@ final class MAD4B_SCP_Connection_Status {
 					if ( method_exists( $server, 'get_server_route' ) ) $route = '/' . ltrim( (string) $server->get_server_route(), '/' );
 					if ( method_exists( $server, 'get_transport_permission_callback' ) ) $permission = $server->get_transport_permission_callback();
 					if ( method_exists( $server, 'get_server_version' ) ) $server_version = (string) $server->get_server_version();
-					if ( '' !== $only_server_id && method_exists( $server, 'get_tools' ) ) {
-						$tools = $server->get_tools();
+					if ( '' !== $only_server_id && method_exists( $server, 'get_tools' ) && class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) {
+						$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
 						if ( is_array( $tools ) ) $observed_tool_count = count( $tools );
 					}
 				} catch ( Throwable $e ) { $permission = null; }
