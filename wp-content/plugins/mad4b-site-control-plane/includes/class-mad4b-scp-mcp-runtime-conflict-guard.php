@@ -121,10 +121,20 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 					'ok'
 				);
 				if ( is_wp_error( $event ) ) {
-					if ( $mu_installed ) self::remove_managed_mu_bootstrap();
+					$rolled_back = ! $mu_installed || self::remove_managed_mu_bootstrap();
+					if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) ) {
+						if ( $rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction();
+						else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_class_repair_rollback_failed' );
+					}
 					$status = array_merge( $status, self::mu_bootstrap_status() );
 					$status['state'] = 'mixed_runtime_class_set';
-					$status['blocker'] = 'audit_failed_runtime_class_repair_rolled_back';
+					$status['blocker'] = $rolled_back ? 'audit_failed_runtime_class_repair_rolled_back' : 'audit_failed_runtime_class_repair_rollback_failed';
+					self::$status = $status;
+					return $status;
+				}
+				if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction() ) {
+					MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed' );
+					$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
 					self::$status = $status;
 					return $status;
 				}
@@ -244,14 +254,24 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'ok'
 		);
 		if ( is_wp_error( $event ) ) {
-			if ( $mu_installed ) self::remove_managed_mu_bootstrap();
+			$mu_rolled_back = ! $mu_installed || self::remove_managed_mu_bootstrap();
+			if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) ) {
+				if ( $mu_rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction();
+				else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_repair_rollback_failed' );
+			}
 			if ( $order_repair_applied ) update_option( 'active_plugins', $before );
 			$status = array_merge( $status, self::mu_bootstrap_status() );
-			$status['blocker'] = 'audit_failed_runtime_repair_rolled_back';
+			$status['blocker'] = $mu_rolled_back ? 'audit_failed_runtime_repair_rolled_back' : 'audit_failed_runtime_repair_rollback_failed';
 			self::$status = $status;
 			return $status;
 		}
 
+		if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction() ) {
+			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed' );
+			$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
+			self::$status = $status;
+			return $status;
+		}
 		$status = array_merge( $status, self::mu_bootstrap_status() );
 		$status['state'] = $mu_installed ? 'mu_bootstrap_installed_for_next_request' : 'repaired_for_next_request';
 		$status['repair_applied'] = true;
@@ -395,6 +415,14 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$status['blocker'] = 'mu_bootstrap_source_unreadable';
 			return $status;
 		}
+		$transaction = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false )
+			? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::reconcile_transaction( $destination )
+			: true;
+		if ( is_wp_error( $transaction ) ) {
+			$status['blocker'] = $transaction->get_error_code();
+			$status['mu_bootstrap_transaction_pending'] = true;
+			return $status;
+		}
 		if ( ! empty( $status['mu_bootstrap_present'] ) ) {
 			if ( empty( $status['mu_bootstrap_integrity'] ) ) $status['blocker'] = 'mu_bootstrap_path_conflict';
 			return $status;
@@ -420,8 +448,15 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$status['blocker'] = 'mu_bootstrap_temp_integrity_failed';
 			return $status;
 		}
+		$transaction = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', $source_hash );
+		if ( is_wp_error( $transaction ) ) {
+			@unlink( $temp );
+			$status['blocker'] = $transaction->get_error_code();
+			return $status;
+		}
 		if ( ! @rename( $temp, $destination ) ) {
 			@unlink( $temp );
+			$reconciled = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::reconcile_transaction( $destination );
 			$race = self::mu_bootstrap_status();
 			if ( ! empty( $race['mu_bootstrap_present'] ) && ! empty( $race['mu_bootstrap_integrity'] ) ) return array_merge( $race, array( 'blocker' => '' ) );
 			$status['blocker'] = 'mu_bootstrap_atomic_install_failed';
@@ -430,7 +465,17 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		clearstatcache( true, $destination );
 		$status = self::mu_bootstrap_status();
 		$status['mu_bootstrap_installed'] = ! empty( $status['mu_bootstrap_present'] ) && ! empty( $status['mu_bootstrap_integrity'] );
+		if ( $status['mu_bootstrap_installed'] ) {
+			$marked = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::mark_transaction_replaced();
+			if ( is_wp_error( $marked ) ) {
+				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $marked->get_error_code() );
+				$status['blocker'] = $marked->get_error_code();
+				return $status;
+			}
+			$status['mu_bootstrap_transaction_pending'] = true;
+		}
 		$status['blocker'] = $status['mu_bootstrap_installed'] ? '' : 'mu_bootstrap_post_install_integrity_failed';
+		if ( ! $status['mu_bootstrap_installed'] ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $status['blocker'] );
 		return $status;
 	}
 
@@ -438,7 +483,9 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$status = self::mu_bootstrap_status();
 		if ( empty( $status['mu_bootstrap_present'] ) || empty( $status['mu_bootstrap_integrity'] ) || ! defined( 'WPMU_PLUGIN_DIR' ) ) return false;
 		$destination = trailingslashit( WPMU_PLUGIN_DIR ) . self::MU_BOOTSTRAP_BASENAME;
-		return @unlink( $destination );
+		if ( ! @unlink( $destination ) ) return false;
+		clearstatcache( true, $destination );
+		return ! is_file( $destination );
 	}
 
 	private static function base_status() {
