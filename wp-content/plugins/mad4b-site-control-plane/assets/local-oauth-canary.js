@@ -48,6 +48,62 @@
 		window.history.replaceState({}, document.title, url.toString());
 	}
 
+	async function decodeMcpResponse(response) {
+		var raw = await response.text();
+		if (!raw) return null;
+		raw = raw.trim();
+		if (raw.indexOf('data:') === 0) {
+			raw = raw.split(/\r?\n/).filter(function (line) {
+				return line.indexOf('data:') === 0;
+			}).map(function (line) {
+				return line.slice(5).trim();
+			}).join('');
+		}
+		try {
+			return JSON.parse(raw);
+		} catch (error) {
+			throw new Error('MCP response was not valid JSON (HTTP ' + response.status + ').');
+		}
+	}
+
+	function diagnosticFailure(stage, response, payload) {
+		var code = response.headers.get('X-MAD4B-MCP-Admission-Code') || '';
+		var admissionStage = response.headers.get('X-MAD4B-MCP-Admission-Stage') || '';
+		if (!code && payload && payload.error && payload.error.code !== undefined) code = String(payload.error.code);
+		var detail = stage + ' failed with HTTP ' + response.status;
+		if (admissionStage) detail += ' at ' + admissionStage;
+		if (code) detail += ' [' + code + ']';
+		return detail + '.';
+	}
+
+	async function mcpRequest(resource, accessToken, payload, sessionId, protocolVersion) {
+		var headers = {
+			'Authorization': 'Bearer ' + accessToken,
+			'Content-Type': 'application/json',
+			'Accept': 'application/json, text/event-stream'
+		};
+		if (sessionId) headers['Mcp-Session-Id'] = sessionId;
+		if (protocolVersion) headers['MCP-Protocol-Version'] = protocolVersion;
+		var response = await window.fetch(resource, {
+			method: 'POST',
+			credentials: 'omit',
+			cache: 'no-store',
+			headers: headers,
+			body: JSON.stringify(payload)
+		});
+		return {response: response, payload: await decodeMcpResponse(response)};
+	}
+
+	function assertMcpSuccess(stage, exchange) {
+		if (!exchange.response.ok || !exchange.payload || exchange.payload.error || !exchange.payload.result) {
+			throw new Error(diagnosticFailure(stage, exchange.response, exchange.payload));
+		}
+		if (exchange.payload.result.isError === true) {
+			throw new Error(stage + ' returned an MCP tool error.');
+		}
+		return exchange.payload.result;
+	}
+
 	async function startCanary() {
 		if (!cfg.canRun) {
 			render('error', 'Canary is not ready.', 'Complete the explicit enrolled-site OAuth configuration and reload this page.');
@@ -161,20 +217,83 @@
 			});
 			if (anonymousProbe.status !== 401) throw new Error('Anonymous MCP ingress must fail closed with HTTP 401; received ' + anonymousProbe.status + '.');
 
-			var probe = await window.fetch(cfg.resource, {
-				method: 'POST',
-				credentials: 'omit',
-				cache: 'no-store',
-				headers: {
-					'Authorization': 'Bearer ' + accessToken,
-					'Content-Type': 'application/json',
-					'Accept': 'application/json, text/event-stream'
+			var initialize = await mcpRequest(
+				cfg.resource,
+				accessToken,
+				{
+					jsonrpc: '2.0',
+					id: 1,
+					method: 'initialize',
+					params: {
+						protocolVersion: '2025-11-25',
+						capabilities: {},
+						clientInfo: {name: 'mad4b-browser-canary', version: '1.0.0'}
+					}
 				},
-				body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'ping'})
+				'',
+				'2025-11-25'
+			);
+			var initializeResult = assertMcpSuccess('initialize', initialize);
+			var sessionId = initialize.response.headers.get('Mcp-Session-Id') || '';
+			if (!sessionId) throw new Error('initialize succeeded without Mcp-Session-Id.');
+			var protocolVersion = typeof initializeResult.protocolVersion === 'string' && initializeResult.protocolVersion
+				? initializeResult.protocolVersion
+				: '2025-11-25';
+
+			var initialized = await mcpRequest(
+				cfg.resource,
+				accessToken,
+				{jsonrpc: '2.0', method: 'notifications/initialized'},
+				sessionId,
+				protocolVersion
+			);
+			if (initialized.response.status !== 202 && !initialized.response.ok) {
+				throw new Error(diagnosticFailure('notifications/initialized', initialized.response, initialized.payload));
+			}
+
+			var toolsList = await mcpRequest(
+				cfg.resource,
+				accessToken,
+				{jsonrpc: '2.0', id: 2, method: 'tools/list', params: {}},
+				sessionId,
+				protocolVersion
+			);
+			var toolsResult = assertMcpSuccess('tools/list', toolsList);
+			var tools = Array.isArray(toolsResult.tools) ? toolsResult.tools : [];
+			var toolNames = tools.map(function (tool) {
+				return tool && typeof tool.name === 'string' ? tool.name : '';
+			}).filter(Boolean);
+			var recoveryTools = [
+				'mad4b-site-profile-status',
+				'mad4b-session-safe-diagnostics',
+				'mad4b-site-info'
+			];
+			recoveryTools.forEach(function (toolName) {
+				if (toolNames.indexOf(toolName) === -1) throw new Error('tools/list omitted required recovery tool ' + toolName + '.');
 			});
-			var denied = [401, 403, 404, 405, 503].indexOf(probe.status) !== -1 || probe.status >= 500;
-			if (denied) throw new Error('Authenticated MCP ingress returned HTTP ' + probe.status + '.');
-			render('success', 'MAD4B Local OAuth Browser Canary: PASS', 'Anonymous ingress was denied with HTTP 401, then Authorization Code + PKCE S256 + token exchange + bearer-only acceptance passed. MCP HTTP status: ' + probe.status + '. External-client certification is still required.');
+
+			for (var i = 0; i < recoveryTools.length; i++) {
+				var toolName = recoveryTools[i];
+				var call = await mcpRequest(
+					cfg.resource,
+					accessToken,
+					{
+						jsonrpc: '2.0',
+						id: 10 + i,
+						method: 'tools/call',
+						params: {name: toolName, arguments: {}}
+					},
+					sessionId,
+					protocolVersion
+				);
+				assertMcpSuccess('tools/call ' + toolName, call);
+			}
+
+			render(
+				'success',
+				'MAD4B Local OAuth Browser Canary: PASS',
+				'Anonymous ingress failed closed with HTTP 401; OAuth PKCE, initialize, tools/list and all three recovery tools executed successfully over the public browser edge. Protocol: ' + protocolVersion + '. External-client certification is still required.'
+			);
 		} catch (error) {
 			render('error', 'MAD4B Local OAuth Browser Canary: FAIL', error && error.message ? error.message : String(error));
 		} finally {

@@ -193,6 +193,43 @@ foreach ( array(
 	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required minimal transport tool.', $required );
 }
 
+// Prove the three direct read tools used for live connector recovery execute
+// through the same bearer/session transport, not merely that their schemas are
+// visible in tools/list.
+foreach ( array(
+	'mad4b-site-profile-status',
+	'mad4b-session-safe-diagnostics',
+	'mad4b-site-info',
+) as $index => $direct_read_tool ) {
+	$direct_read = $dispatch(
+		array(
+			'jsonrpc' => '2.0',
+			'id' => 730 + $index,
+			'method' => 'tools/call',
+			'params' => array(
+				'name' => $direct_read_tool,
+				'arguments' => array(),
+			),
+		),
+		$token,
+		$session_id
+	);
+	if ( ! $direct_read instanceof WP_REST_Response ) {
+		$fail( 'Direct recovery read tools/call did not return WP_REST_Response.', array( 'tool' => $direct_read_tool, 'type' => gettype( $direct_read ) ) );
+	}
+	if ( 200 !== (int) $direct_read->get_status() ) {
+		$fail( 'Direct recovery read tools/call failed at HTTP transport.', array( 'tool' => $direct_read_tool, 'status' => $direct_read->get_status(), 'body' => $direct_read->get_data() ) );
+	}
+	$direct_data = $normalize( $direct_read->get_data() );
+	if ( ! is_array( $direct_data ) || isset( $direct_data['error'] ) || ! isset( $direct_data['result'] ) ) {
+		$fail( 'Direct recovery read tools/call returned a JSON-RPC error.', array( 'tool' => $direct_read_tool, 'body' => $direct_data ) );
+	}
+	$direct_result = is_array( $direct_data['result'] ) ? $direct_data['result'] : array();
+	if ( ! empty( $direct_result['isError'] ) ) {
+		$fail( 'Direct recovery read tool returned an MCP tool error.', array( 'tool' => $direct_read_tool, 'body' => $direct_data ) );
+	}
+}
+
 foreach ( $reviewed_step_up_names as $hidden_step_up ) {
 	if ( in_array( $hidden_step_up, $names, true ) ) {
 		$fail( 'Read-only bearer tools/list exposed a reviewed direct step-up projection before the dedicated scope/client gate.', $hidden_step_up );

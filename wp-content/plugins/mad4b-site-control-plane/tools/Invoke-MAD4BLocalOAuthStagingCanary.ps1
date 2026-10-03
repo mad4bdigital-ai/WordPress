@@ -55,14 +55,47 @@ function Send-LoopbackPage([Net.Sockets.TcpClient]$Client,[string]$Message) {
     $head = [Text.Encoding]::ASCII.GetBytes("HTTP/1.1 200 OK`r`nContent-Type: text/html; charset=utf-8`r`nContent-Length: $($bodyBytes.Length)`r`nCache-Control: no-store`r`nConnection: close`r`n`r`n")
     $stream = $Client.GetStream(); $stream.Write($head,0,$head.Length); $stream.Write($bodyBytes,0,$bodyBytes.Length); $stream.Flush()
 }
-function Get-ProbeStatus([string]$Uri,[string]$Token) {
+function Invoke-McpRequest(
+    [string]$Uri,
+    [string]$Token,
+    [hashtable]$Payload,
+    [string]$SessionId = '',
+    [string]$ProtocolVersion = '2025-11-25'
+) {
+    $headers = @{Authorization="Bearer $Token";Accept='application/json, text/event-stream'}
+    if ($SessionId) { $headers['Mcp-Session-Id'] = $SessionId }
+    if ($ProtocolVersion) { $headers['MCP-Protocol-Version'] = $ProtocolVersion }
     try {
-        $r = Invoke-WebRequest -Method Post -Uri $Uri -Headers @{Authorization="Bearer $Token";Accept='application/json, text/event-stream'} -ContentType 'application/json' -Body '{"jsonrpc":"2.0","id":1,"method":"ping"}' -TimeoutSec 15
-        return [int]$r.StatusCode
+        $response = Invoke-WebRequest -Method Post -Uri $Uri -Headers $headers -ContentType 'application/json' -Body ($Payload | ConvertTo-Json -Depth 20 -Compress) -TimeoutSec 15
     } catch {
         if ($null -eq $_.Exception.Response) { throw }
-        try { return [int]$_.Exception.Response.StatusCode } catch { return [int]$_.Exception.Response.StatusCode.value__ }
+        $status = try { [int]$_.Exception.Response.StatusCode } catch { [int]$_.Exception.Response.StatusCode.value__ }
+        $stage = try { [string]$_.Exception.Response.Headers['X-MAD4B-MCP-Admission-Stage'] } catch { '' }
+        $code = try { [string]$_.Exception.Response.Headers['X-MAD4B-MCP-Admission-Code'] } catch { '' }
+        throw "MCP request failed with HTTP $status$(if($stage){" at $stage"}else{''})$(if($code){" [$code]"}else{''})."
     }
+    $payloadJson = $null
+    if ($response.Content) {
+        $raw = [string]$response.Content
+        if ($raw.TrimStart().StartsWith('data:')) {
+            $raw = (($raw -split "\r?\n") | Where-Object { $_ -like 'data:*' } | ForEach-Object { $_.Substring(5).Trim() }) -join ''
+        }
+        if ($raw) { $payloadJson = $raw | ConvertFrom-Json -Depth 100 }
+    }
+    return [pscustomobject]@{
+        Status = [int]$response.StatusCode
+        Headers = $response.Headers
+        Payload = $payloadJson
+    }
+}
+function Assert-McpSuccess([string]$Stage,$Exchange) {
+    if ($Exchange.Status -lt 200 -or $Exchange.Status -ge 300 -or $null -eq $Exchange.Payload -or $null -ne $Exchange.Payload.error -or $null -eq $Exchange.Payload.result) {
+        $code = try { [string]$Exchange.Headers['X-MAD4B-MCP-Admission-Code'] } catch { '' }
+        $admissionStage = try { [string]$Exchange.Headers['X-MAD4B-MCP-Admission-Stage'] } catch { '' }
+        throw "$Stage failed with HTTP $($Exchange.Status)$(if($admissionStage){" at $admissionStage"}else{''})$(if($code){" [$code]"}else{''})."
+    }
+    if ($Exchange.Payload.result.isError -eq $true) { throw "$Stage returned an MCP tool error." }
+    return $Exchange.Payload.result
 }
 
 if ($SelfTest) {
@@ -112,12 +145,38 @@ try {
 $token = Invoke-RestMethod -Method Post -Uri ([string]$metadata.token_endpoint) -ContentType 'application/x-www-form-urlencoded' -Body @{grant_type='authorization_code';code=$code;client_id=$ClientId;redirect_uri=$RedirectUri;code_verifier=$verifier;resource=$Resource} -TimeoutSec 15
 $accessToken = [string]$token.access_token
 if (-not $accessToken) { throw 'Token endpoint returned no access token.' }
-$status = Get-ProbeStatus $Resource $accessToken
+$initialize = Invoke-McpRequest $Resource $accessToken @{
+    jsonrpc='2.0'; id=1; method='initialize'; params=@{
+        protocolVersion='2025-11-25'
+        capabilities=@{}
+        clientInfo=@{name='mad4b-cli-canary';version='1.0.0'}
+    }
+}
+$initializeResult = Assert-McpSuccess 'initialize' $initialize
+$sessionId = [string]$initialize.Headers['Mcp-Session-Id']
+if (-not $sessionId) { throw 'initialize succeeded without Mcp-Session-Id.' }
+$protocolVersion = if ($initializeResult.protocolVersion) { [string]$initializeResult.protocolVersion } else { '2025-11-25' }
+
+$tools = Invoke-McpRequest $Resource $accessToken @{jsonrpc='2.0';id=2;method='tools/list';params=@{}} $sessionId $protocolVersion
+$toolsResult = Assert-McpSuccess 'tools/list' $tools
+$toolNames = @($toolsResult.tools | ForEach-Object { [string]$_.name })
+$recoveryTools = @('mad4b-site-profile-status','mad4b-session-safe-diagnostics','mad4b-site-info')
+foreach ($toolName in $recoveryTools) {
+    if ($toolNames -notcontains $toolName) { throw "tools/list omitted required recovery tool $toolName." }
+}
+
+$id = 10
+foreach ($toolName in $recoveryTools) {
+    $call = Invoke-McpRequest $Resource $accessToken @{jsonrpc='2.0';id=$id;method='tools/call';params=@{name=$toolName;arguments=@{}}} $sessionId $protocolVersion
+    [void](Assert-McpSuccess "tools/call $toolName" $call)
+    $id++
+}
+
 $accessToken = $null; $token = $null
-if ($status -in @(401,403,404,405,503) -or $status -ge 500) { throw "Authenticated MCP ingress failed with HTTP $status." }
 Write-Host 'MAD4B Local OAuth Governed Canary: PASS'
 Write-Host 'OAuth browser round-trip: PASS'
 Write-Host 'PKCE S256: PASS'
 Write-Host 'Token exchange: PASS'
-Write-Host "Bearer accepted by mad4b-chatgpt: PASS (HTTP $status)"
+Write-Host "MCP initialize/tools/list/tools/call: PASS (protocol $protocolVersion)"
+Write-Host 'Recovery tools: site-profile-status, session-safe-diagnostics, site-info: PASS'
 Write-Host 'The access token was intentionally not printed or persisted.'

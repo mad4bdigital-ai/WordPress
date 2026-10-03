@@ -54,6 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/runtime-release-set-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-compatibility-contract.py
           python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json >/dev/null
           python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json >/dev/null
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php
@@ -87,6 +88,7 @@ jobs:
           curl --fail --location --silent --show-error "$URL" -o /tmp/mcp-adapter.zip
           test "$(stat -c '%s' /tmp/mcp-adapter.zip)" = "$BYTES"
           echo "$SHA  /tmp/mcp-adapter.zip" | sha256sum --check --strict
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py /tmp/mcp-adapter.zip
           python3 - <<'PY'
           import hashlib, json, zipfile
           from pathlib import Path
