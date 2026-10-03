@@ -43,6 +43,8 @@ $mad4b_mcp_mu_status = array(
 	'request_route' => '',
 	'transaction_pending' => false,
 	'diagnostic_mu_proof_valid' => false,
+	'cli_request' => false,
+	'cli_mcp_opt_in' => false,
 );
 
 if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
@@ -93,7 +95,14 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			'/mcp/mad4b-developer',
 			'/mcp/mad4b-developer-breakglass',
 		);
-		$mad4b_mcp_mu_request_requires_mcp = defined( 'WP_CLI' ) && constant( 'WP_CLI' );
+		$mad4b_mcp_mu_is_cli = defined( 'WP_CLI' ) && constant( 'WP_CLI' );
+		$mad4b_mcp_mu_cli_opt_in = $mad4b_mcp_mu_is_cli && (
+			( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) )
+			|| '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' )
+		);
+		$mad4b_mcp_mu_status['cli_request'] = (bool) $mad4b_mcp_mu_is_cli;
+		$mad4b_mcp_mu_status['cli_mcp_opt_in'] = (bool) $mad4b_mcp_mu_cli_opt_in;
+		$mad4b_mcp_mu_request_requires_mcp = (bool) $mad4b_mcp_mu_cli_opt_in;
 		$mad4b_mcp_mu_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
 		$mad4b_mcp_mu_query = '' !== $mad4b_mcp_mu_uri ? wp_parse_url( $mad4b_mcp_mu_uri, PHP_URL_QUERY ) : '';
 		$mad4b_mcp_mu_parsed = array();
@@ -110,7 +119,7 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			? sanitize_key( $mad4b_mcp_mu_parsed['page'] )
 			: '';
 		$mad4b_mcp_mu_admin_path = '' !== $mad4b_mcp_mu_path && 1 === preg_match( '#(?:^|/)wp-admin/admin\.php$#', $mad4b_mcp_mu_path );
-		if ( ! $mad4b_mcp_mu_request_requires_mcp && $mad4b_mcp_mu_admin_path && '' !== $mad4b_mcp_mu_page && 0 === strpos( $mad4b_mcp_mu_page, 'mad4b-control-plane' ) ) {
+		if ( ! $mad4b_mcp_mu_is_cli && ! $mad4b_mcp_mu_request_requires_mcp && $mad4b_mcp_mu_admin_path && '' !== $mad4b_mcp_mu_page && 0 === strpos( $mad4b_mcp_mu_page, 'mad4b-control-plane' ) ) {
 			$mad4b_mcp_mu_request_requires_mcp = true;
 		}
 
@@ -125,7 +134,8 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 		$mad4b_mcp_mu_status['diagnostic_mu_proof_valid'] = '' !== $mad4b_mcp_mu_expected_proof
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_proof )
 			&& hash_equals( $mad4b_mcp_mu_expected_proof, $mad4b_mcp_mu_proof );
-		$mad4b_mcp_mu_diagnostic = 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+		$mad4b_mcp_mu_diagnostic = ! $mad4b_mcp_mu_is_cli
+			&& 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
 			&& 1 === preg_match( '#(?:^|/)wp-admin/admin\\-ajax\\.php$#', $mad4b_mcp_mu_path )
 			&& isset( $_POST['action'] ) && is_string( $_POST['action'] )
 			&& 'mad4b_connection_endpoint_diagnostic' === $_POST['action']
@@ -138,11 +148,11 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 		if ( '' !== $mad4b_mcp_mu_route ) {
 			$mad4b_mcp_mu_route = '/' . ltrim( rtrim( rawurldecode( $mad4b_mcp_mu_route ), '/' ), '/' );
 		}
-		if ( ! $mad4b_mcp_mu_request_requires_mcp && in_array( $mad4b_mcp_mu_route, $mad4b_mcp_mu_allowed_routes, true ) ) {
+		if ( ! $mad4b_mcp_mu_is_cli && ! $mad4b_mcp_mu_request_requires_mcp && in_array( $mad4b_mcp_mu_route, $mad4b_mcp_mu_allowed_routes, true ) ) {
 			$mad4b_mcp_mu_request_requires_mcp = true;
 		}
 
-		if ( ! $mad4b_mcp_mu_request_requires_mcp && '' !== $mad4b_mcp_mu_path ) {
+		if ( ! $mad4b_mcp_mu_is_cli && ! $mad4b_mcp_mu_request_requires_mcp && '' !== $mad4b_mcp_mu_path ) {
 			$mad4b_mcp_mu_rest_prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
 			$mad4b_mcp_mu_needle = '/' . $mad4b_mcp_mu_rest_prefix . '/';
 			$mad4b_mcp_mu_offset = strpos( $mad4b_mcp_mu_path, $mad4b_mcp_mu_needle );
