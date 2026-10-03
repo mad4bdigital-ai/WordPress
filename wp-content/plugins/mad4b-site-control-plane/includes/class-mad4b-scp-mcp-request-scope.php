@@ -192,9 +192,10 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		$mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
 			? $GLOBALS['mad4b_scp_mcp_mu_bootstrap']
 			: array();
-		if ( empty( $mu['diagnostic_mu_proof_valid'] ) ) return '';
-		$candidate = isset( $_POST['server_id'] ) && is_string( $_POST['server_id'] )
-			? sanitize_key( wp_unslash( $_POST['server_id'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- signed routing hint only; worker authorization remains separate.
+		if ( 'mad4b.mcp-adapter-mu-bootstrap.v6' !== ( isset( $mu['contract'] ) ? (string) $mu['contract'] : '' )
+			|| empty( $mu['diagnostic_mu_proof_valid'] ) ) return '';
+		$candidate = isset( $mu['diagnostic_server_id'] ) && is_string( $mu['diagnostic_server_id'] )
+			? trim( $mu['diagnostic_server_id'] )
 			: '';
 		if ( '' === $candidate || ! class_exists( 'MAD4B_SCP_Servers', false ) ) return '';
 		return in_array( $candidate, MAD4B_SCP_Servers::expected_server_ids(), true ) ? $candidate : '';
