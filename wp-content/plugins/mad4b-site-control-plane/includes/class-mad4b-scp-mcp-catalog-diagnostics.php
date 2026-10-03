@@ -2,6 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 require_once __DIR__ . '/class-mad4b-scp-mcp-class-provenance.php';
+require_once __DIR__ . '/class-mad4b-scp-mcp-adapter-compatibility.php';
 
 /** Bounded request-local evidence; never repairs registrations or grants. */
 final class MAD4B_SCP_MCP_Catalog_Diagnostics {
@@ -75,7 +76,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			);
 		}
 
-		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
+		if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 
 		// Entry-point/version provenance is insufficient under Jetpack Autoloader:
 		// a foreign package may own one or more WP\\MCP / WP\\McpSchema classes.
@@ -113,18 +114,27 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				}
 				$stage = 'source_schema_read';
 				$source_fingerprint = hash( 'sha256', serialize( array( $ability->get_input_schema(), $ability->get_output_schema() ) ) );
-				$stage = 'official_dto_build';
-				$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $ability );
-				if ( is_wp_error( $built ) ) { $failure = array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $built->get_error_code() ), 'schema_fingerprint' => '' ); }
-				elseif ( ! is_array( $built ) || ! isset( $built['tool'] ) || ! is_object( $built['tool'] ) || ! method_exists( $built['tool'], 'toArray' ) || ! method_exists( $built['tool'], 'getName' ) ) {
+				$stage = 'official_wire_build';
+				$built = MAD4B_SCP_MCP_Adapter_Compatibility::build_ability_wire( $ability );
+				if ( is_wp_error( $built ) ) {
+					$failure = array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $built->get_error_code() ), 'schema_fingerprint' => '' );
+				} elseif ( ! is_array( $built ) || ! isset( $built['wire'] ) || ! is_object( $built['wire'] ) ) {
 					$failure = array( 'stage' => $stage, 'error_class' => 'Contract', 'error_code' => 'mcp_catalog_builder_contract_invalid', 'schema_fingerprint' => '' );
 				} else {
-					$failure = self::dto_failure( $built['tool'] );
+					$wire = $built['wire'];
+					$wire_name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $wire );
+					$wire_data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $wire );
+					$failure = is_wp_error( $wire_data )
+						? array( 'stage' => 'wire_serialization', 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $wire_data->get_error_code() ), 'schema_fingerprint' => '' )
+						: self::dto_failure( $wire );
 					// Preserve the first failure; serializing it again may throw and
 					// otherwise replace the useful validator evidence with a symptom.
-					$stage = 'dto_serialization';
-					$tool_bytes = $failure ? 0 : strlen( json_encode( $built['tool']->toArray(), JSON_THROW_ON_ERROR ) ) + 1;
-					if ( ! $failure && ( ! isset( $built['adapter_meta']['ability'] ) || $name !== $built['adapter_meta']['ability'] || isset( $names[ $built['tool']->getName() ] ) ) ) $failure = array( 'stage' => 'identity', 'error_class' => 'Contract', 'error_code' => 'mcp_identity_collision', 'schema_fingerprint' => '' );
+					$stage = 'wire_serialization';
+					$tool_bytes = $failure || ! is_array( $wire_data ) ? 0 : strlen( json_encode( $wire_data, JSON_THROW_ON_ERROR ) ) + 1;
+					$adapter_meta = isset( $built['adapter_meta'] ) && is_array( $built['adapter_meta'] ) ? $built['adapter_meta'] : array();
+					if ( ! $failure && ( '' === $wire_name || ! isset( $adapter_meta['ability'] ) || $name !== $adapter_meta['ability'] || isset( $names[ $wire_name ] ) ) ) {
+						$failure = array( 'stage' => 'identity', 'error_class' => 'Contract', 'error_code' => 'mcp_identity_collision', 'schema_fingerprint' => '' );
+					}
 					if ( ! $failure && $catalog_bytes + $tool_bytes > self::MAX_SERIALIZED_TOOL_BYTES ) {
 						$failure = array(
 							'stage' => 'catalog_size',
@@ -136,7 +146,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 							'catalog_bytes_limit' => self::MAX_SERIALIZED_TOOL_BYTES,
 						);
 					}
-					if ( ! $failure ) { $names[ $built['tool']->getName() ] = true; $catalog_bytes += $tool_bytes; }
+					if ( ! $failure ) { $names[ $wire_name ] = true; $catalog_bytes += $tool_bytes; }
 				}
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
