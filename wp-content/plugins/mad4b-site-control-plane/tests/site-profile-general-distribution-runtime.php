@@ -56,6 +56,16 @@ final class MAD4B_SCP_Audit {
   if(!empty($GLOBALS['mad4b_test_audit_fail']))return new WP_Error('audit_failed','forced');
   $GLOBALS['mad4b_test_audit_events'][]=array($a,$s,$st);return true;
  }
+ public static function site_profile_revocation_events($revocation_id,$profile_digest,$limit=5){
+  if(empty($GLOBALS['mad4b_test_audit_ready']))return new WP_Error('audit_unavailable','forced');
+  $events=array();
+  foreach($GLOBALS['mad4b_test_audit_events'] as $event){
+   if(($event[0]??'')!=='mad4b/site-profile-write-disabled')continue;$summary=$event[1]??array();
+   if(($summary['revocation_id']??'')!==$revocation_id||($summary['profile_digest']??'')!==$profile_digest)continue;
+   $events[]=array('ability'=>$event[0],'summary'=>$summary,'status'=>$event[2]??'');
+  }
+  return array('count'=>count($events),'events'=>$events);
+ }
  public static function site_profile_mutation_events($ability,$mutation_id,$profile_digest,$limit=5){
   if(empty($GLOBALS['mad4b_test_audit_ready']))return new WP_Error('audit_unavailable','forced');
   $events=array();
@@ -382,6 +392,22 @@ ok(is_wp_error($disable_failed)&&'mad4b_site_profile_disable_authority_audit_fai
 $disable_error_data=$disable_failed->get_error_data();
 ok(is_array($disable_error_data)&&!empty($disable_error_data['authority_disabled']),'authority disable audit failure did not report committed revocation');
 ok($disable_before!==get_option(MAD4B_SCP_Site_Profile::OPTION,null)&&empty(MAD4B_SCP_Site_Profile::status()['write_enabled'])&&2===MAD4B_SCP_Site_Profile::revision(),'audit failure re-enabled or rolled back disabled authority');
+$disable_error_data=$disable_failed->get_error_data();
+ok(is_array($disable_error_data)&&!empty($disable_error_data['revocation_evidence_pending'])&&!empty($disable_error_data['revocation_id']),'audit failure did not queue durable revocation evidence');
+$outbox_status=MAD4B_SCP_Site_Profile::revocation_audit_outbox_status();
+ok(1===($outbox_status['pending_count']??0)&&!empty($outbox_status['pending']),'revocation outbox did not expose one pending evidence record');
+$flush=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(!is_wp_error($flush)&&1===($flush['recorded']??0)&&0===($flush['remaining']??-1),'revocation outbox did not append and clear recovered evidence');
+ok(0===(MAD4B_SCP_Site_Profile::revocation_audit_outbox_status()['pending_count']??-1),'revocation outbox remained pending after successful flush');
+// Replay deduplication: retain an exact already-audited entry and prove flush
+// removes it without emitting a duplicate append-only event.
+$replay=$disable_error_data;
+$revocation_id=$replay['revocation_id'];
+$recorded_event=end($GLOBALS['mad4b_test_audit_events']);$recorded_summary=$recorded_event[1]??array();
+update_option(MAD4B_SCP_Site_Profile::REVOCATION_AUDIT_OUTBOX_OPTION,array($revocation_id=>$recorded_summary),false);
+$before_event_count=count($GLOBALS['mad4b_test_audit_events']);
+$dedupe=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(!is_wp_error($dedupe)&&1===($dedupe['deduplicated']??0)&&$before_event_count===count($GLOBALS['mad4b_test_audit_events']),'revocation replay duplicated an already committed audit event');
 
 // Double failure: audit fails and rollback persistence fails. The only remaining
 // record is explicitly pending_audit, so a fresh read cannot grant authority.

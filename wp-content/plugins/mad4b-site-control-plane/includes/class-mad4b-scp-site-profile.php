@@ -25,6 +25,8 @@ final class MAD4B_SCP_Site_Profile {
 	const NONPRODUCTION_OVERRIDE_CONFIRMATION = 'CONFIRM THIS ORIGIN IS NON-PRODUCTION';
 	const MUTATION_RECONCILIATION_CONTRACT = 'mad4b.site-profile-mutation-reconciliation.v1';
 	const MUTATION_RECONCILE_GRACE_SECONDS = 60;
+	const REVOCATION_AUDIT_OUTBOX_OPTION = 'mad4b_scp_site_profile_revocation_audit_outbox_v1';
+	const REVOCATION_AUDIT_OUTBOX_CONTRACT = 'mad4b.site-profile-revocation-audit-outbox.v1';
 
 	private static $profile = null;
 	private static $status = null;
@@ -990,7 +992,124 @@ final class MAD4B_SCP_Site_Profile {
 		return $result;
 	}
 
-	public static function disable_authority( $expected_revision = null ) {
+	private static function revocation_outbox_read() {
+		$value = function_exists( 'get_option' ) ? get_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, array() ) : array();
+		return is_array( $value ) ? $value : array();
+	}
+
+	private static function revocation_outbox_compare_and_swap( array $expected, array $replacement ) {
+		global $wpdb;
+		$database_cas = is_object( $wpdb )
+			&& isset( $wpdb->options )
+			&& method_exists( $wpdb, 'prepare' )
+			&& method_exists( $wpdb, 'query' )
+			&& function_exists( 'maybe_serialize' );
+		if ( $database_cas ) {
+			$exists = null !== get_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, null );
+			if ( ! $exists ) {
+				if ( ! empty( $expected ) ) return false;
+				return add_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, $replacement, '', false );
+			}
+			$sql = $wpdb->prepare(
+				"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+				maybe_serialize( $replacement ),
+				self::REVOCATION_AUDIT_OUTBOX_OPTION,
+				maybe_serialize( $expected )
+			);
+			$changed = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+			if ( 1 === (int) $changed ) return true;
+			// A byte-identical replacement is a verified no-op, not a lost CAS.
+			return serialize( get_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, array() ) ) === serialize( $replacement );
+		}
+		$current = self::revocation_outbox_read();
+		if ( serialize( $current ) !== serialize( $expected ) ) return false;
+		if ( serialize( $current ) === serialize( $replacement ) ) return true;
+		return false !== update_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, $replacement, false );
+	}
+
+	private static function enqueue_revocation_audit_event( array $event ) {
+		$revocation_id = isset( $event['revocation_id'] ) ? strtolower( trim( (string) $event['revocation_id'] ) ) : '';
+		if ( 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/D', $revocation_id ) ) return false;
+		for ( $attempt = 0; $attempt < 5; ++$attempt ) {
+			$before = self::revocation_outbox_read();
+			if ( isset( $before[ $revocation_id ] ) ) return serialize( $before[ $revocation_id ] ) === serialize( $event );
+			$after = $before;
+			$after[ $revocation_id ] = $event;
+			ksort( $after, SORT_STRING );
+			if ( self::revocation_outbox_compare_and_swap( $before, $after ) ) return true;
+		}
+		return false;
+	}
+
+	private static function remove_revocation_audit_event( $revocation_id, array $expected_event ) {
+		$revocation_id = strtolower( trim( (string) $revocation_id ) );
+		for ( $attempt = 0; $attempt < 5; ++$attempt ) {
+			$before = self::revocation_outbox_read();
+			if ( ! isset( $before[ $revocation_id ] ) ) return true;
+			if ( serialize( $before[ $revocation_id ] ) !== serialize( $expected_event ) ) return false;
+			$after = $before;
+			unset( $after[ $revocation_id ] );
+			if ( self::revocation_outbox_compare_and_swap( $before, $after ) ) return true;
+		}
+		return false;
+	}
+
+	public static function revocation_audit_outbox_status() {
+		$outbox = self::revocation_outbox_read();
+		return array(
+			'contract' => self::REVOCATION_AUDIT_OUTBOX_CONTRACT,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'pending_count' => count( $outbox ),
+			'pending' => ! empty( $outbox ),
+		);
+	}
+
+	public static function flush_revocation_audit_outbox( $limit = 25 ) {
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to reconcile revocation audit evidence.' );
+		$limit = max( 1, min( 100, absint( $limit ) ) );
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) || ! method_exists( 'MAD4B_SCP_Audit', 'site_profile_revocation_events' ) ) {
+			return new WP_Error( 'mad4b_site_profile_revocation_audit_storage_unavailable', 'Append-only audit storage is not ready for revocation evidence reconciliation.' );
+		}
+		$outbox = self::revocation_outbox_read();
+		$processed = 0;
+		$recorded = 0;
+		$deduplicated = 0;
+		$remaining = count( $outbox );
+		foreach ( $outbox as $revocation_id => $event ) {
+			if ( $processed >= $limit ) break;
+			++$processed;
+			if ( ! is_array( $event ) || ! isset( $event['profile_digest'] ) ) continue;
+			$existing = MAD4B_SCP_Audit::site_profile_revocation_events( $revocation_id, (string) $event['profile_digest'] );
+			if ( is_wp_error( $existing ) ) return $existing;
+			if ( (int) ( $existing['count'] ?? 0 ) > 1 ) {
+				return new WP_Error( 'mad4b_site_profile_revocation_audit_ambiguous', 'Multiple audit events exist for one revocation_id; automatic outbox reconciliation stopped.', array( 'revocation_id' => $revocation_id ) );
+			}
+			if ( 1 === (int) ( $existing['count'] ?? 0 ) ) {
+				++$deduplicated;
+			} else {
+				$payload = $event;
+				$payload['replayed_from_outbox'] = true;
+				$append = MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-disabled', $payload, 'ok' );
+				if ( is_wp_error( $append ) ) return $append;
+				++$recorded;
+			}
+			if ( ! self::remove_revocation_audit_event( $revocation_id, $event ) ) {
+				return new WP_Error( 'mad4b_site_profile_revocation_outbox_remove_conflict', 'Revocation audit was committed, but the exact outbox entry changed before cleanup.', array( 'revocation_id' => $revocation_id ) );
+			}
+			--$remaining;
+		}
+		return array(
+			'contract' => self::REVOCATION_AUDIT_OUTBOX_CONTRACT,
+			'processed' => $processed,
+			'recorded' => $recorded,
+			'deduplicated' => $deduplicated,
+			'remaining' => max( 0, $remaining ),
+			'mutation_performed' => $processed > 0,
+		);
+	}
+
+	public static function disable_authority( $expected_revision = null, $reason = 'manual_disable_authority' ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to change site authority.' );
 		$before = function_exists( 'get_option' ) ? get_option( self::OPTION, null ) : null;
 		if ( ! is_array( $before ) || ! self::valid_record( $before ) ) return self::status();
@@ -1017,37 +1136,42 @@ final class MAD4B_SCP_Site_Profile {
 		if ( function_exists( 'do_action' ) ) do_action( 'mad4b_scp_site_profile_saved' );
 
 		$status = self::status();
-		$audit_ready = class_exists( 'MAD4B_SCP_Audit' ) && ! empty( MAD4B_SCP_Audit::storage_status()['ready'] );
-		if ( ! $audit_ready ) {
-			return new WP_Error(
-				'mad4b_site_profile_disable_authority_audit_unavailable',
-				'Write authority was disabled atomically, but append-only audit storage is unavailable.',
-				array(
-					'authority_disabled' => true,
-					'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
-					'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
-				)
-			);
-		}
-		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-disabled', array(
+		$revocation_id = function_exists( 'wp_generate_uuid4' )
+			? strtolower( wp_generate_uuid4() )
+			: substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 32 );
+		$revocation = array(
+			'contract' => self::REVOCATION_AUDIT_OUTBOX_CONTRACT,
+			'revocation_id' => $revocation_id,
 			'site_uuid' => isset( $status['site_uuid'] ) ? (string) $status['site_uuid'] : '',
 			'previous_revision' => $current_revision,
 			'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
+			'previous_profile_digest' => self::digest_record( self::normalize_record( $before ) ),
 			'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
 			'write_enabled' => false,
-		), 'ok' );
+			'occurred_at' => gmdate( 'c' ),
+			'reason' => substr( sanitize_key( (string) $reason ), 0, 64 ),
+		);
+		$audit_ready = class_exists( 'MAD4B_SCP_Audit' ) && ! empty( MAD4B_SCP_Audit::storage_status()['ready'] );
+		$audit = $audit_ready ? MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-disabled', $revocation, 'ok' ) : new WP_Error( 'mad4b_audit_storage_unavailable', 'Append-only audit storage is unavailable.' );
 		if ( is_wp_error( $audit ) ) {
+			$queued = self::enqueue_revocation_audit_event( $revocation );
 			return new WP_Error(
-				'mad4b_site_profile_disable_authority_audit_failed',
-				'Write authority was disabled atomically, but the mandatory audit event could not be appended.',
+				$audit_ready ? 'mad4b_site_profile_disable_authority_audit_failed' : 'mad4b_site_profile_disable_authority_audit_unavailable',
+				$queued
+					? 'Write authority was disabled atomically; revocation evidence is durably queued for append-only audit reconciliation.'
+					: 'Write authority was disabled atomically, but both append-only audit and the independent revocation evidence outbox failed.',
 				array(
 					'authority_disabled' => true,
 					'audit_error' => $audit->get_error_code(),
+					'revocation_id' => $revocation_id,
+					'revocation_evidence_pending' => $queued,
 					'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
 					'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
 				)
 			);
 		}
+		$status['revocation_id'] = $revocation_id;
+		$status['revocation_evidence_pending'] = false;
 		return $status;
 	}
 
