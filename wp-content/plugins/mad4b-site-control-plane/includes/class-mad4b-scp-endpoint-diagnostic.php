@@ -26,12 +26,40 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 		return hash( 'sha256', implode( "\n", $hashes ) );
 	}
 
+	private static function bounded_mu_bootstrap_evidence() {
+		$runtime = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
+			? $GLOBALS['mad4b_scp_mcp_mu_bootstrap']
+			: array();
+		$out = array(
+			'contract' => isset( $runtime['contract'] ) ? sanitize_text_field( (string) $runtime['contract'] ) : '',
+			'state' => isset( $runtime['state'] ) ? sanitize_key( (string) $runtime['state'] ) : 'not_executed',
+			'executed' => ! empty( $runtime['executed'] ),
+			'eligible' => ! empty( $runtime['eligible'] ),
+			'request_requires_mcp_runtime' => ! empty( $runtime['request_requires_mcp_runtime'] ),
+			'diagnostic_mu_proof_valid' => ! empty( $runtime['diagnostic_mu_proof_valid'] ),
+			'canonical_symbols_pinned' => ! empty( $runtime['canonical_symbols_pinned'] ),
+			'critical_class_baseline_ready' => ! empty( $runtime['critical_class_baseline_ready'] ),
+			'critical_class_set_pinned' => ! empty( $runtime['critical_class_set_pinned'] ),
+			'critical_class_pin_count' => isset( $runtime['critical_class_pin_count'] ) ? max( 0, (int) $runtime['critical_class_pin_count'] ) : 0,
+			'runtime_from_official_plugin' => ! empty( $runtime['runtime_from_official_plugin'] ),
+			'runtime_source' => isset( $runtime['runtime_source'] ) ? sanitize_text_field( (string) $runtime['runtime_source'] ) : '',
+			'runtime_preclaimed' => ! empty( $runtime['runtime_preclaimed'] ),
+			'preclaimed_symbol' => isset( $runtime['preclaimed_symbol'] ) ? sanitize_text_field( (string) $runtime['preclaimed_symbol'] ) : '',
+			'transaction_pending' => ! empty( $runtime['transaction_pending'] ),
+			'adapter_instance_armed' => ! empty( $runtime['adapter_instance_armed'] ),
+			'adapter_init_hook_bound' => ! empty( $runtime['adapter_init_hook_bound'] ),
+		);
+		return $out;
+	}
+
 	public static function ajax() {
 		$result = self::run();
 		if ( is_wp_error( $result ) ) {
 			$data = $result->get_error_data();
 			$status = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 500;
-			wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ) ), $status );
+			$payload = array( 'code' => sanitize_key( $result->get_error_code() ) );
+			if ( is_array( $data ) && isset( $data['runtime_bootstrap'] ) && is_array( $data['runtime_bootstrap'] ) ) $payload['runtime_bootstrap'] = $data['runtime_bootstrap'];
+			wp_send_json_error( $payload, $status );
 		}
 		wp_send_json_success( $result );
 	}
@@ -51,6 +79,35 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 		$build = self::build_fingerprint();
 		if ( '' === $build || ! hash_equals( $build, $input['build'] ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_build_changed', 'Reload after the plugin update.', array( 'status' => 409 ) );
 
+		$proof = isset( $_POST['mu_proof'] ) && is_string( $_POST['mu_proof'] )
+			? strtolower( trim( wp_unslash( $_POST['mu_proof'] ) ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+			: '';
+		$expected_proof = class_exists( 'MAD4B_SCP_Site_Profile', false ) && method_exists( 'MAD4B_SCP_Site_Profile', 'diagnostic_mu_proof' )
+			? strtolower( trim( (string) MAD4B_SCP_Site_Profile::diagnostic_mu_proof() ) )
+			: '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $proof ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_proof ) || ! hash_equals( $expected_proof, $proof ) ) {
+			return new WP_Error( 'mad4b_endpoint_diagnostic_mu_proof_invalid', 'Reload the page after enrollment or plugin changes and start a new diagnostic.', array( 'status' => 409 ) );
+		}
+
+		$runtime_bootstrap = self::bounded_mu_bootstrap_evidence();
+		$managed_nonproduction = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& method_exists( 'MAD4B_SCP_Site_Profile', 'nonproduction_governed' )
+			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
+		if ( $managed_nonproduction ) {
+			$bootstrap_ready = ! empty( $runtime_bootstrap['executed'] )
+				&& ! empty( $runtime_bootstrap['diagnostic_mu_proof_valid'] )
+				&& ! empty( $runtime_bootstrap['canonical_symbols_pinned'] )
+				&& ! empty( $runtime_bootstrap['critical_class_set_pinned'] )
+				&& ! empty( $runtime_bootstrap['runtime_from_official_plugin'] );
+			if ( ! $bootstrap_ready ) {
+				return new WP_Error(
+					'mad4b_endpoint_diagnostic_mu_bootstrap_not_ready',
+					'Managed MCP early bootstrap did not pin the certified runtime for this diagnostic request.',
+					array( 'status' => 409, 'runtime_bootstrap' => $runtime_bootstrap )
+				);
+			}
+		}
+
 		$started = microtime( true );
 		self::$authorized = true;
 		try {
@@ -60,8 +117,9 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 			// Governed jobs match transport bootstrap; preserved callbacks may still stall.
 			rest_get_server();
 			$result = MAD4B_SCP_Connection_Status::endpoint_diagnostic( $input['server_id'] );
+			if ( is_array( $result ) ) $result['runtime_bootstrap'] = $runtime_bootstrap;
 			if ( ! hash_equals( $build, self::build_fingerprint() ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_build_changed', 'Plugin files changed during the diagnostic.', array( 'status' => 409 ) );
-			return array( 'contract' => self::CONTRACT, 'build' => $build, 'server' => $result, 'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ), 'connection_certified' => false, 'certification_performed' => false, 'foreign_transport_inventory_deferred' => true, 'tool_execution_performed' => false, 'outbound_discovery_performed' => false );
+			return array( 'contract' => self::CONTRACT, 'build' => $build, 'server' => $result, 'runtime_bootstrap' => $runtime_bootstrap, 'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ), 'connection_certified' => false, 'certification_performed' => false, 'foreign_transport_inventory_deferred' => true, 'tool_execution_performed' => false, 'outbound_discovery_performed' => false );
 		} catch ( Throwable $error ) {
 			// Never expose provider exception messages or filesystem paths.
 			return new WP_Error( 'mad4b_endpoint_diagnostic_exception', 'Endpoint inspection failed.', array( 'status' => 500 ) );
