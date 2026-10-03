@@ -21,13 +21,16 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
 		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
 		if ( self::PAGE_SLUG !== $page || 'endpoints' !== $tab ) return;
-		wp_enqueue_script( 'mad4b-scp-endpoint-diagnostics', plugins_url( 'assets/connection-endpoint-diagnostics.js', MAD4B_SCP_FILE ), array(), MAD4B_SCP_VERSION, true );
+		$asset_path = MAD4B_SCP_DIR . 'assets/connection-endpoint-diagnostics.js';
+		$asset_hash = is_readable( $asset_path ) ? @hash_file( 'sha256', $asset_path ) : false;
+		$asset_version = is_string( $asset_hash ) && 64 === strlen( $asset_hash ) ? substr( $asset_hash, 0, 16 ) : MAD4B_SCP_VERSION;
+		wp_enqueue_script( 'mad4b-scp-endpoint-diagnostics', plugins_url( 'assets/connection-endpoint-diagnostics.js', MAD4B_SCP_FILE ), array(), $asset_version, true );
 		$ids = MAD4B_SCP_Servers::expected_server_ids();
 		$ids = array_values( array_unique( array_merge( array( 'mad4b-chatgpt' ), $ids ) ) );
 		wp_localize_script( 'mad4b-scp-endpoint-diagnostics', 'mad4bEndpointDiagnostics', array(
 			'url' => admin_url( 'admin-ajax.php' ), 'action' => MAD4B_SCP_Endpoint_Diagnostic::ACTION,
 			'nonce' => wp_create_nonce( 'mad4b_connection_deep_endpoints' ), 'build' => MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint(),
-			'muProof' => MAD4B_SCP_Site_Profile::diagnostic_mu_proof(),
+			'muProof' => MAD4B_SCP_Site_Profile::diagnostic_mu_proof(), 'assetVersion' => $asset_version,
 			'servers' => $ids, 'timeoutMs' => 15000,
 			'labels' => array( 'notChecked' => __( 'Not checked', 'mad4b-site-control-plane' ), 'running' => __( 'Checking', 'mad4b-site-control-plane' ), 'complete' => __( 'Endpoint checks complete. External certification and foreign transport review were not performed.', 'mad4b-site-control-plane' ), 'stopped' => __( 'Diagnostic stopped', 'mad4b-site-control-plane' ), 'timeout' => __( 'The request exceeded 15 seconds. No further requests were started. A server callback may still be running; do not immediately retry.', 'mad4b-site-control-plane' ) ),
 		) );

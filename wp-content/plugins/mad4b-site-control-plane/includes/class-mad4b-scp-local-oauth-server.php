@@ -89,6 +89,66 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( is_wp_error( $key ) ) self::$runtime_error = $key;
 	}
 
+	/**
+	 * Reconcile the durable Local OAuth store only from an explicit lifecycle
+	 * owner (Runtime Convergence / MCP Runtime Recovery). Protocol and passive
+	 * request paths remain migration-free and fail closed until this succeeds.
+	 */
+	public static function converge_store_for_lifecycle() {
+		$contract = 'mad4b.local-oauth-store-convergence.v1';
+		if ( ! self::enabled() || ! self::environment_allowed() ) {
+			return array(
+				'contract' => $contract,
+				'required' => false,
+				'ready' => true,
+				'changed' => false,
+				'expected_version' => class_exists( 'MAD4B_SCP_Local_OAuth_Store' ) ? (int) MAD4B_SCP_Local_OAuth_Store::VERSION : 0,
+				'installed_version' => class_exists( 'MAD4B_SCP_Local_OAuth_Store' ) ? (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 ) : 0,
+			);
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Store' ) ) {
+			return new WP_Error( 'mad4b_local_oauth_store_missing', 'Local OAuth store class is unavailable.' );
+		}
+		$expected = (int) MAD4B_SCP_Local_OAuth_Store::VERSION;
+		$before_version = (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 );
+		MAD4B_SCP_Local_OAuth_Store::reset_readiness_cache();
+		$before_ready = MAD4B_SCP_Local_OAuth_Store::is_ready();
+		if ( $before_version >= $expected && $before_ready ) {
+			return array(
+				'contract' => $contract,
+				'required' => true,
+				'ready' => true,
+				'changed' => false,
+				'expected_version' => $expected,
+				'installed_version' => $before_version,
+				'physical_readback_ready' => true,
+			);
+		}
+
+		$upgrade = MAD4B_SCP_Local_OAuth_Store::install_or_upgrade();
+		if ( is_wp_error( $upgrade ) ) return $upgrade;
+		MAD4B_SCP_Local_OAuth_Store::reset_readiness_cache();
+		$status = MAD4B_SCP_Local_OAuth_Store::status();
+		$ready = ! empty( $status['ready'] )
+			&& isset( $status['installed_version'] )
+			&& (int) $status['installed_version'] >= $expected;
+		if ( ! $ready ) {
+			return new WP_Error(
+				'mad4b_local_oauth_store_convergence_readback_failed',
+				'Local OAuth store migration completed without an exact ready readback.'
+			);
+		}
+		return array(
+			'contract' => $contract,
+			'required' => true,
+			'ready' => true,
+			'changed' => $before_version < $expected || ! $before_ready,
+			'expected_version' => $expected,
+			'installed_version' => (int) $status['installed_version'],
+			'physical_readback_ready' => true,
+		);
+	}
+
 	public static function runtime_identity_status() {
 		$issuer_validation = self::configured_issuer_validation();
 		$issuer_valid = ! is_wp_error( $issuer_validation );
