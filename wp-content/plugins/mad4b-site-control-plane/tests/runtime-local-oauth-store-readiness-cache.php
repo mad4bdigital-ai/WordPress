@@ -11,6 +11,7 @@ class MAD4B_OAuth_Store_WPDB {
 	}
 	public function get_var( $prepared ) {
 		++$this->get_var_calls;
+		if ( false !== strpos( (string) $prepared, 'SHOW COLUMNS' ) ) return 'site_uuid';
 		$parts = explode( '|', (string) $prepared, 2 );
 		$table = isset( $parts[1] ) ? $parts[1] : '';
 		return in_array( $table, $this->missing, true ) ? null : $table;
@@ -29,7 +30,7 @@ function mad4b_store_assert( $condition, $message ) {
 for ( $i = 0; $i < 16; ++$i ) {
 	mad4b_store_assert( MAD4B_SCP_Local_OAuth_Store::is_ready(), 'ready store unexpectedly reported unavailable' );
 }
-mad4b_store_assert( 2 === $GLOBALS['wpdb']->get_var_calls, '16 is_ready calls must perform exactly one two-table readiness probe per request' );
+mad4b_store_assert( 4 === $GLOBALS['wpdb']->get_var_calls, '16 is_ready calls must perform exactly one two-table plus identity-column readiness probe per request' );
 
 MAD4B_SCP_Local_OAuth_Store::reset_readiness_cache();
 $GLOBALS['wpdb']->missing = array( 'wp_mad4b_scp_oauth_refresh_tokens' );

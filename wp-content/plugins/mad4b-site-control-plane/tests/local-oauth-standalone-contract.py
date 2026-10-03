@@ -69,6 +69,7 @@ required_server = [
     'outside the WordPress web root',
     'Refresh token replay detected; token family revoked.',
     'configured_issuer_validation',
+    'mad4b_site_uuid',
     'private static function site_base_url()',
     'private static function protocol_path( $url_or_path )',
     'private static function metadata_url_for_issuer( $issuer )',
@@ -171,6 +172,15 @@ for marker in [
     if marker not in portable:
         raise SystemExit(f'missing portable read-only connection marker: {marker}')
 
+for marker in (
+    "current_site_identity_uuid",
+    "stored_site_identity_matches",
+    "'mad4b_site_uuid' => self::current_site_identity_uuid()",
+    "previous Site Profile identity",
+):
+    if marker not in server:
+        raise SystemExit(f'local OAuth Site Profile identity binding missing: {marker}')
+
 refresh_body = server.split("private static function exchange_refresh_token( array $params )", 1)[1].split("private static function issue_token_response", 1)[0]
 refresh_normalize = "$scopes = self::normalize_scopes( (string) $row['scope'], $resource, $client_id );"
 refresh_rotate = "MAD4B_SCP_Local_OAuth_Store::rotate_refresh_token"
@@ -205,6 +215,9 @@ required_store = [
     'token_hash char(64)',
     'family_id char(36)',
     'client_id varchar(191)',
+    'site_uuid char(36)',
+    'const VERSION = 2;',
+    'valid_site_uuid',
     'const MAX_CLIENT_ID_BYTES = 191;',
     'valid_client_id',
     'valid_sha256_hex',

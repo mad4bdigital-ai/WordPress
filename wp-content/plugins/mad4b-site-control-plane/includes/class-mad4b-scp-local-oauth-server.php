@@ -361,12 +361,15 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$decision = is_wp_error( $decision ) ? 'deny' : sanitize_key( $decision );
 		if ( 'approve' !== $decision ) self::redirect_authorization_error( $validated, 'access_denied' );
 
+		$site_uuid = self::current_site_identity_uuid();
+		if ( '' === $site_uuid ) self::send_oauth_error( 'temporarily_unavailable', 'Local OAuth Site Profile identity is unavailable.', 503 );
 		$code = self::random_token( 32 );
 		if ( is_wp_error( $code ) ) self::send_oauth_error( 'server_error', 'Unable to create authorization code.', 500 );
 		$stored = MAD4B_SCP_Local_OAuth_Store::insert_code(
 			array(
 				'code_hash' => hash( 'sha256', $code ),
 				'client_id' => $validated['client_id'],
+				'site_uuid' => $site_uuid,
 				'wp_user_id' => $user_id,
 				'redirect_uri' => $validated['redirect_uri'],
 				'resource' => $validated['resource'],
@@ -822,6 +825,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$row = MAD4B_SCP_Local_OAuth_Store::get_code( hash( 'sha256', $code ) );
 		if ( ! is_array( $row ) || ! empty( $row['used_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Authorization code is invalid or expired.', 400 );
 		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['redirect_uri'], $redirect_uri ) ) self::send_oauth_error( 'invalid_grant', 'Authorization code binding does not match.', 400 );
+		if ( ! self::stored_site_identity_matches( $row ) ) self::send_oauth_error( 'invalid_grant', 'Authorization code belongs to a previous Site Profile identity.', 400 );
 		if ( ! self::redirect_uri_allowed( $client, $redirect_uri ) ) self::send_oauth_error( 'invalid_grant', 'Client metadata no longer authorizes this redirect URI.', 400 );
 		if ( '' === $resource || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_target', 'Token request resource does not match.', 400 );
 		$challenge = self::base64url_encode( hash( 'sha256', $verifier, true ) );
@@ -850,6 +854,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		}
 		if ( ! empty( $row['revoked_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Refresh token is expired or revoked.', 400 );
 		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token binding does not match.', 400 );
+		if ( ! self::stored_site_identity_matches( $row ) ) {
+			MAD4B_SCP_Local_OAuth_Store::revoke_family( (string) $row['family_id'], gmdate( 'Y-m-d H:i:s' ) );
+			self::send_oauth_error( 'invalid_grant', 'Refresh token belongs to a previous Site Profile identity.', 400 );
+		}
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
 		$scopes = self::normalize_scopes( (string) $row['scope'], $resource, $client_id );
 		if ( is_wp_error( $scopes ) ) self::send_oauth_error( 'invalid_scope', 'Stored scope binding is invalid.', 500 );
@@ -865,6 +873,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 				'token_hash' => $replacement_hash,
 				'family_id' => (string) $row['family_id'],
 				'client_id' => $client_id,
+				'site_uuid' => self::current_site_identity_uuid(),
 				'wp_user_id' => (int) $row['wp_user_id'],
 				'resource' => $resource,
 				'scope' => implode( ' ', $scopes ),
@@ -907,6 +916,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 				'token_hash' => hash( 'sha256', $token ),
 				'family_id' => wp_generate_uuid4(),
 				'client_id' => $client_id,
+				'site_uuid' => self::current_site_identity_uuid(),
 				'wp_user_id' => $wp_user_id,
 				'resource' => $resource,
 				'scope' => implode( ' ', $scopes ),
@@ -949,6 +959,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'scope' => implode( ' ', $scopes ),
 			'client_id' => $client_id,
 			'azp' => $client_id,
+			'mad4b_site_uuid' => self::current_site_identity_uuid(),
 			'jti' => wp_generate_uuid4(),
 			'iat' => $now,
 			'nbf' => $now - self::CLOCK_SKEW,
@@ -1172,6 +1183,24 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 	private static function enabled() {
 		return defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' );
+	}
+
+	private static function current_site_identity_uuid() {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() ) {
+			$value = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
+			if ( 1 === preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', $value ) ) return $value;
+		}
+		if ( class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective() ) {
+			$value = strtolower( trim( (string) MAD4B_SCP_Portable_Readonly_Connection::connection_uuid() ) );
+			if ( 1 === preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', $value ) ) return $value;
+		}
+		return '';
+	}
+
+	private static function stored_site_identity_matches( array $row ) {
+		$current = self::current_site_identity_uuid();
+		$stored = isset( $row['site_uuid'] ) && is_string( $row['site_uuid'] ) ? strtolower( trim( $row['site_uuid'] ) ) : '';
+		return '' !== $current && '' !== $stored && hash_equals( $current, $stored );
 	}
 
 	private static function current_environment() {

@@ -26,14 +26,72 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 		);
 	}
 
+	private static function read_option_strong( $option ) {
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( $option, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		return get_option( $option, array() );
+	}
+
+	private static function compare_and_swap_option( $option, array $expected, $replacement = null ) {
+		self::read_option_strong( $option );
+		// MySQL and WordPress both report an unchanged write as "0/false". A
+		// same-second lease refresh can therefore be a verified no-op rather than
+		// lost ownership. Only admit that case when expected and replacement are
+		// byte-identical, then let the caller's strong readback fence any race.
+		if ( null !== $replacement && serialize( $expected ) === serialize( $replacement ) ) {
+			$current = self::read_option_strong( $option );
+			return serialize( $current ) === serialize( $expected );
+		}
+		global $wpdb;
+		$database_cas = is_object( $wpdb )
+			&& isset( $wpdb->options )
+			&& method_exists( $wpdb, 'prepare' )
+			&& method_exists( $wpdb, 'query' )
+			&& function_exists( 'maybe_serialize' );
+		if ( $database_cas ) {
+			if ( null === $replacement ) {
+				$sql = $wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name = %s AND BINARY option_value = BINARY %s",
+					$option,
+					maybe_serialize( $expected )
+				);
+			} else {
+				$sql = $wpdb->prepare(
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+					maybe_serialize( $replacement ),
+					$option,
+					maybe_serialize( $expected )
+				);
+			}
+			$changed = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+			if ( 1 !== (int) $changed ) return false;
+		} else {
+			$current = self::read_option_strong( $option );
+			if ( serialize( $current ) !== serialize( $expected ) ) return false;
+			if ( null === $replacement ) {
+				if ( false === delete_option( $option ) ) return false;
+			} elseif ( false === update_option( $option, $replacement, false ) ) return false;
+		}
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( $option, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		$readback = get_option( $option, null );
+		return null === $replacement
+			? null === $readback
+			: serialize( $readback ) === serialize( $replacement );
+	}
+
 	public static function acquire( $owner ) {
 		$owner = sanitize_key( (string) $owner );
 		if ( '' === $owner ) return new WP_Error( 'mad4b_runtime_maintenance_owner_invalid', 'Runtime maintenance owner is required.' );
 		$now = time();
 		foreach ( array_merge( array( self::OPTION ), self::legacy_options() ) as $option ) {
-			$current = get_option( $option, array() );
+			$current = self::read_option_strong( $option );
 			if ( ! is_array( $current ) || empty( $current['token'] ) ) {
-				if ( is_array( $current ) && ! empty( $current ) ) delete_option( $option );
+				if ( is_array( $current ) && ! empty( $current ) && ! self::compare_and_swap_option( $option, $current, null ) ) return new WP_Error( 'mad4b_runtime_maintenance_lock_raced', 'Malformed maintenance fence changed while cleanup was attempted.' );
 				continue;
 			}
 			$soft = absint( isset( $current['expires_at'] ) ? $current['expires_at'] : 0 );
@@ -48,7 +106,7 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 					'legacy_expiry_grace_applied' => ! isset( $current['hard_expires_at'] ),
 				) );
 			}
-			delete_option( $option );
+			if ( ! self::compare_and_swap_option( $option, $current, null ) ) return new WP_Error( 'mad4b_runtime_maintenance_lock_raced', 'Expired maintenance fence changed before it could be reclaimed.' );
 		}
 
 		$token = function_exists( 'wp_generate_uuid4' )
@@ -75,40 +133,42 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 	public static function refresh( $token, $owner ) {
 		$token = (string) $token;
 		$owner = sanitize_key( (string) $owner );
-		$current = get_option( self::OPTION, array() );
+		$current = self::read_option_strong( self::OPTION );
 		if ( ! self::record_owned_by( $current, $token, $owner ) ) return new WP_Error( 'mad4b_runtime_maintenance_lease_lost', 'Runtime maintenance lease ownership was lost.' );
 		$now = time();
 		$hard = isset( $current['hard_expires_at'] ) ? absint( $current['hard_expires_at'] ) : 0;
 		if ( $hard <= $now ) return new WP_Error( 'mad4b_runtime_maintenance_lease_hard_expired', 'Runtime maintenance lease reached its hard deadline.' );
-		$current['expires_at'] = min( $hard, $now + self::LEASE_TTL );
-		$current['refreshed_at'] = gmdate( 'c' );
-		update_option( self::OPTION, $current, false );
+		$replacement = $current;
+		$replacement['expires_at'] = min( $hard, $now + self::LEASE_TTL );
+		$replacement['refreshed_at'] = gmdate( 'c' );
+		if ( ! self::compare_and_swap_option( self::OPTION, $current, $replacement ) ) return new WP_Error( 'mad4b_runtime_maintenance_lease_lost', 'Runtime maintenance lease changed before refresh could commit.' );
 		foreach ( self::legacy_options() as $option ) {
-			$legacy = get_option( $option, array() );
+			$legacy = self::read_option_strong( $option );
 			if ( ! self::record_owned_by( $legacy, $token, $owner ) ) return new WP_Error( 'mad4b_runtime_maintenance_fence_lost', 'Cross-version runtime maintenance fence ownership was lost.', array( 'option' => $option ) );
-			$legacy['expires_at'] = $current['expires_at'];
-			$legacy['hard_expires_at'] = $hard;
-			$legacy['refreshed_at'] = $current['refreshed_at'];
-			update_option( $option, $legacy, false );
+			$legacy_replacement = $legacy;
+			$legacy_replacement['expires_at'] = $replacement['expires_at'];
+			$legacy_replacement['hard_expires_at'] = $hard;
+			$legacy_replacement['refreshed_at'] = $replacement['refreshed_at'];
+			if ( ! self::compare_and_swap_option( $option, $legacy, $legacy_replacement ) ) return new WP_Error( 'mad4b_runtime_maintenance_fence_lost', 'Cross-version runtime maintenance fence changed before refresh could commit.', array( 'option' => $option ) );
 		}
-		$readback = get_option( self::OPTION, array() );
+		$readback = self::read_option_strong( self::OPTION );
 		return self::record_owned_by( $readback, $token, $owner ) && absint( $readback['expires_at'] ) > $now
 			? true
 			: new WP_Error( 'mad4b_runtime_maintenance_refresh_readback_failed', 'Runtime maintenance lease refresh could not be verified.' );
 	}
 
 	public static function owned( $token, $owner ) {
-		return self::record_owned_by( get_option( self::OPTION, array() ), (string) $token, sanitize_key( (string) $owner ) );
+		return self::record_owned_by( self::read_option_strong( self::OPTION ), (string) $token, sanitize_key( (string) $owner ) );
 	}
 
 	public static function release( $token, $owner = '' ) {
 		$token = (string) $token;
 		$owner = sanitize_key( (string) $owner );
 		foreach ( array_merge( array( self::OPTION ), self::legacy_options() ) as $option ) {
-			$current = get_option( $option, array() );
+			$current = self::read_option_strong( $option );
 			if ( ! is_array( $current ) || empty( $current['token'] ) || ! hash_equals( (string) $current['token'], $token ) ) continue;
 			if ( '' !== $owner && isset( $current['owner'] ) && ! hash_equals( sanitize_key( (string) $current['owner'] ), $owner ) ) continue;
-			delete_option( $option );
+			self::compare_and_swap_option( $option, $current, null );
 		}
 	}
 
@@ -118,7 +178,7 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 		$shared_active = false;
 
 		foreach ( array_merge( array( self::OPTION ), self::legacy_options() ) as $option ) {
-			$current = get_option( $option, array() );
+			$current = self::read_option_strong( $option );
 			if ( ! is_array( $current ) || empty( $current['token'] ) ) continue;
 
 			$soft = absint( isset( $current['expires_at'] ) ? $current['expires_at'] : 0 );
@@ -196,7 +256,7 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 		$malformed_sources = array();
 
 		foreach ( array_merge( array( self::OPTION ), self::legacy_options() ) as $option ) {
-			$current = get_option( $option, array() );
+			$current = self::read_option_strong( $option );
 			if ( ! is_array( $current ) || empty( $current ) ) continue;
 			$token_present = ! empty( $current['token'] );
 			$owner_present = ! empty( $current['owner'] );

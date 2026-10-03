@@ -171,8 +171,10 @@ http_scope = request_scope[request_scope.index('public static function current_r
 runtime_scope = request_scope[request_scope.index('public static function current_request_requires_mcp_runtime()'):request_scope.index('public static function current_request_is_http_mcp_transport()')]
 if "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;" not in http_scope:
     raise SystemExit('HTTP MCP transport classifier must exclude WP-CLI')
-if "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;" not in runtime_scope:
-    raise SystemExit('MCP runtime ownership must remain available under WP-CLI')
+if "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return self::cli_mcp_opt_in();" not in runtime_scope:
+    raise SystemExit('MCP runtime ownership must require explicit WP-CLI MCP opt-in')
+if "private static function cli_mcp_opt_in()" not in request_scope or "MAD4B_SCP_MCP_CLI_REQUEST" not in request_scope:
+    raise SystemExit('Explicit WP-CLI MCP opt-in contract is missing')
 
 # Provider reconciliation must see the deterministic adapter registry before it
 # derives desired_enabled. This guards the live ETG DFSB failure shape where an

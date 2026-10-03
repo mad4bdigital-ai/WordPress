@@ -21,8 +21,9 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	const MU_BOOTSTRAP_SOURCE = 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 
 	private static $status = array();
+	private static $mu_transaction_id = '';
 
-	public static function bootstrap() {
+	public static function bootstrap( $preventive = false ) {
 		$status = self::base_status();
 		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
 
@@ -56,8 +57,12 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 		$active = array_values( array_map( 'strval', $active ) );
-		$official_index = array_search( self::OFFICIAL_PLUGIN, $active, true );
+		$official_identity = self::official_plugin_identity( $active );
+		$official_plugin = isset( $official_identity['plugin_file'] ) ? (string) $official_identity['plugin_file'] : '';
+		$official_index = '' !== $official_plugin ? array_search( $official_plugin, $active, true ) : false;
 		$hostinger_index = self::hostinger_index( $active );
+		$status['official_plugin_file'] = $official_plugin;
+		$status['official_plugin_identity_ambiguous'] = ! empty( $official_identity['ambiguous'] );
 		$status['official_plugin_active'] = false !== $official_index;
 		$status['hostinger_bundle_active'] = false !== $hostinger_index;
 		$status['official_index'] = false === $official_index ? -1 : (int) $official_index;
@@ -69,21 +74,28 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		// repaired for the next request, while unseen classes remain unmeasured.
 		$status = array_merge( $status, self::runtime_provenance(), self::mu_bootstrap_status() );
 
+		if ( ! empty( $official_identity['ambiguous'] ) ) {
+			$status['blocker'] = 'official_mcp_adapter_identity_ambiguous';
+			self::$status = $status;
+			return $status;
+		}
 		if ( false === $official_index ) {
 			$status['blocker'] = 'official_mcp_adapter_not_active';
 			self::$status = $status;
 			return $status;
 		}
 
-		if ( ! empty( $status['runtime_from_official_plugin'] ) ) {
-			if ( ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] ) ) {
+		$mixed = ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] );
+		$preventive = $preventive && class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active();
+		if ( ! empty( $status['runtime_from_official_plugin'] ) || ( $preventive && empty( $status['runtime_class_loaded'] ) ) ) {
+			if ( $mixed || $preventive ) {
 				// PHP classes cannot be safely replaced after declaration. Keep the
 				// current request fail-closed, but arm the governed MU bootstrap so the
 				// next request pins every certified builder/validator/DTO class before
 				// normal plugins can register competing Jetpack packages.
-				$status['state'] = 'mixed_runtime_class_set';
-				$status['collision_risk_detected'] = true;
-				$status['runtime_provenance_mismatch'] = true;
+				$status['state'] = $mixed ? 'mixed_runtime_class_set' : 'class_set_repair_requested';
+				$status['collision_risk_detected'] = $mixed;
+				$status['runtime_provenance_mismatch'] = $mixed;
 				$status['blocker'] = 'mcp_adapter_class_provenance_mismatch';
 				$status['next_request_required'] = true;
 
@@ -110,6 +122,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 						'host' => isset( $status['host'] ) ? $status['host'] : '',
 						'runtime_source' => isset( $status['runtime_source'] ) ? sanitize_text_field( (string) $status['runtime_source'] ) : '',
 						'class_provenance_state' => isset( $status['runtime_class_provenance_state'] ) ? sanitize_key( (string) $status['runtime_class_provenance_state'] ) : '',
+						'preventive' => (bool) $preventive,
 						'class_provenance_failure_count' => isset( $status['runtime_class_provenance_failure_count'] ) ? max( 0, (int) $status['runtime_class_provenance_failure_count'] ) : 0,
 						'mu_bootstrap_installed' => $mu_installed,
 						'current_request_runtime_replacement_attempted' => false,
@@ -118,18 +131,36 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 					'ok'
 				);
 				if ( is_wp_error( $event ) ) {
-					if ( $mu_installed ) self::remove_managed_mu_bootstrap();
+					$rollback_owner = ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id
+						? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::verify_transaction_owner( self::$mu_transaction_id, 'replaced_pending_audit' )
+						: true;
+					$rolled_back = ! $mu_installed || ( true === $rollback_owner && self::remove_managed_mu_bootstrap() );
+					if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+						if ( $rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( self::$mu_transaction_id );
+						else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_class_repair_rollback_failed', self::$mu_transaction_id );
+						self::$mu_transaction_id = '';
+					}
 					$status = array_merge( $status, self::mu_bootstrap_status() );
 					$status['state'] = 'mixed_runtime_class_set';
-					$status['blocker'] = 'audit_failed_runtime_class_repair_rolled_back';
+					$status['blocker'] = $rolled_back ? 'audit_failed_runtime_class_repair_rolled_back' : 'audit_failed_runtime_class_repair_rollback_failed';
 					self::$status = $status;
 					return $status;
+				}
+				if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+					$transaction_id = self::$mu_transaction_id;
+					self::$mu_transaction_id = '';
+					if ( ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $transaction_id ) ) {
+						MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed', $transaction_id );
+						$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
+						self::$status = $status;
+						return $status;
+					}
 				}
 				$status = array_merge( $status, self::mu_bootstrap_status() );
 				$status['state'] = $mu_installed ? 'mu_bootstrap_installed_for_class_set_next_request' : 'class_set_repair_armed_for_next_request';
 				$status['repair_applied'] = $mu_installed;
 				$status['next_request_required'] = true;
-				$status['blocker'] = 'mcp_adapter_class_provenance_mismatch';
+				$status['blocker'] = $mixed ? 'mcp_adapter_class_provenance_mismatch' : '';
 				self::$status = $status;
 				return $status;
 			}
@@ -176,7 +207,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				self::$status = $status;
 				return $status;
 			}
-			array_splice( $new, (int) $hostinger_index_after_remove, 0, array( self::OFFICIAL_PLUGIN ) );
+			array_splice( $new, (int) $hostinger_index_after_remove, 0, array( $official_plugin ) );
 			$new = array_values( $new );
 			$updated = update_option( 'active_plugins', $new );
 			$stored = get_option( 'active_plugins', array() );
@@ -228,7 +259,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				'contract' => self::CONTRACT,
 				'environment' => isset( $status['environment'] ) ? $status['environment'] : 'unknown',
 				'host' => isset( $status['host'] ) ? $status['host'] : '',
-				'official_plugin' => self::OFFICIAL_PLUGIN,
+				'official_plugin' => $official_plugin,
+				'preferred_official_plugin' => self::OFFICIAL_PLUGIN,
 				'reviewed_conflict_family' => 'hostinger-ai-assistant',
 				'runtime_source' => isset( $status['runtime_source'] ) ? sanitize_text_field( (string) $status['runtime_source'] ) : '',
 				'runtime_version' => isset( $status['runtime_version'] ) ? sanitize_text_field( (string) $status['runtime_version'] ) : '',
@@ -241,14 +273,32 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'ok'
 		);
 		if ( is_wp_error( $event ) ) {
-			if ( $mu_installed ) self::remove_managed_mu_bootstrap();
+			$rollback_owner = ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id
+				? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::verify_transaction_owner( self::$mu_transaction_id, 'replaced_pending_audit' )
+				: true;
+			$mu_rolled_back = ! $mu_installed || ( true === $rollback_owner && self::remove_managed_mu_bootstrap() );
+			if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+				if ( $mu_rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( self::$mu_transaction_id );
+				else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_repair_rollback_failed', self::$mu_transaction_id );
+				self::$mu_transaction_id = '';
+			}
 			if ( $order_repair_applied ) update_option( 'active_plugins', $before );
 			$status = array_merge( $status, self::mu_bootstrap_status() );
-			$status['blocker'] = 'audit_failed_runtime_repair_rolled_back';
+			$status['blocker'] = $mu_rolled_back ? 'audit_failed_runtime_repair_rolled_back' : 'audit_failed_runtime_repair_rollback_failed';
 			self::$status = $status;
 			return $status;
 		}
 
+		if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+			$transaction_id = self::$mu_transaction_id;
+			self::$mu_transaction_id = '';
+			if ( ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $transaction_id ) ) {
+				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed', $transaction_id );
+				$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
+				self::$status = $status;
+				return $status;
+			}
+		}
 		$status = array_merge( $status, self::mu_bootstrap_status() );
 		$status['state'] = $mu_installed ? 'mu_bootstrap_installed_for_next_request' : 'repaired_for_next_request';
 		$status['repair_applied'] = true;
@@ -260,7 +310,104 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	}
 
 	public static function status() {
-		return ! empty( self::$status ) ? self::$status : array_merge( self::base_status(), self::runtime_provenance(), self::mu_bootstrap_status() );
+		if ( empty( self::$status ) ) return self::inspect_status();
+		$state = isset( self::$status['state'] ) ? sanitize_key( (string) self::$status['state'] ) : '';
+		// A deferred/inspection-only snapshot is request-local scheduling evidence,
+		// not authoritative runtime provenance. Re-inspect read-only so a later
+		// lifecycle phase (or a recovered next request) cannot be hidden by stale
+		// deferred state cached earlier in the same request.
+		if ( in_array( $state, array( 'inspection_pending', 'repair_deferred_request_hotpath', 'repair_deferred_protocol_hotpath' ), true ) ) {
+			return self::inspect_status();
+		}
+		return self::$status;
+	}
+
+	/**
+	 * Observe runtime ownership without acquiring repair authority or mutating
+	 * plugin/filesystem state. This keeps diagnostics truthful after repair was
+	 * armed in a previous request: a clean next request can prove convergence
+	 * without calling the privileged Recovery coordinator again.
+	 */
+	private static function inspect_status() {
+		$status = self::base_status();
+		if ( empty( $status['eligible'] ) ) return $status;
+
+		$active = get_option( 'active_plugins', array() );
+		if ( ! is_array( $active ) ) {
+			$status['blocker'] = 'active_plugin_inventory_invalid';
+			return $status;
+		}
+		$active = array_values( array_map( 'strval', $active ) );
+		$official_identity = self::official_plugin_identity( $active );
+		$official_plugin = isset( $official_identity['plugin_file'] ) ? (string) $official_identity['plugin_file'] : '';
+		$official_index = '' !== $official_plugin ? array_search( $official_plugin, $active, true ) : false;
+		$hostinger_index = self::hostinger_index( $active );
+		$status['official_plugin_file'] = $official_plugin;
+		$status['official_plugin_identity_ambiguous'] = ! empty( $official_identity['ambiguous'] );
+		$status['official_plugin_active'] = false !== $official_index;
+		$status['hostinger_bundle_active'] = false !== $hostinger_index;
+		$status['official_index'] = false === $official_index ? -1 : (int) $official_index;
+		$status['hostinger_index'] = false === $hostinger_index ? -1 : (int) $hostinger_index;
+		$status['official_loads_before_hostinger'] = false === $hostinger_index || ( false !== $official_index && $official_index < $hostinger_index );
+		$status = array_merge( $status, self::runtime_provenance(), self::mu_bootstrap_status() );
+
+		if ( ! empty( $official_identity['ambiguous'] ) ) {
+			$status['blocker'] = 'official_mcp_adapter_identity_ambiguous';
+			return $status;
+		}
+		if ( false === $official_index ) {
+			$status['blocker'] = 'official_mcp_adapter_not_active';
+			return $status;
+		}
+
+		$mixed = ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] );
+		if ( ! empty( $status['runtime_from_official_plugin'] ) ) {
+			if ( $mixed ) {
+				$status['state'] = 'mixed_runtime_class_set';
+				$status['collision_risk_detected'] = true;
+				$status['runtime_provenance_mismatch'] = true;
+				$status['next_request_required'] = true;
+				$status['blocker'] = 'mcp_adapter_class_provenance_mismatch';
+				return $status;
+			}
+			$status['state'] = 'canonical_runtime';
+			$status['blocker'] = '';
+			return $status;
+		}
+
+		if ( empty( $status['runtime_class_loaded'] ) ) {
+			$status['state'] = 'runtime_not_loaded_at_guard';
+			$status['blocker'] = '';
+			return $status;
+		}
+
+		$status['collision_risk_detected'] = true;
+		$status['next_request_required'] = true;
+		if ( ! empty( $status['runtime_from_hostinger_bundle'] ) ) {
+			$status['state'] = 'runtime_provenance_mismatch';
+			$status['runtime_provenance_mismatch'] = true;
+			$status['blocker'] = 'mcp_adapter_runtime_provenance_mismatch';
+		} else {
+			$status['state'] = 'runtime_provenance_unreviewed';
+			$status['blocker'] = 'unreviewed_mcp_adapter_runtime_source';
+		}
+		return $status;
+	}
+
+	private static function official_plugin_identity( array $active ) {
+		$matches = array();
+		foreach ( $active as $plugin_file ) {
+			$plugin_file = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( (string) $plugin_file ) : str_replace( '\\', '/', (string) $plugin_file );
+			$plugin_file = ltrim( trim( $plugin_file ), '/' );
+			if ( '' === $plugin_file || false !== strpos( $plugin_file, '../' ) || in_array( '..', explode( '/', $plugin_file ), true ) ) continue;
+			if ( 'mcp-adapter.php' === basename( $plugin_file ) ) $matches[] = $plugin_file;
+		}
+		$matches = array_values( array_unique( $matches ) );
+		return array(
+			'plugin_file' => 1 === count( $matches ) ? $matches[0] : '',
+			'ambiguous' => count( $matches ) > 1,
+			'candidate_count' => count( $matches ),
+		);
 	}
 
 	private static function hostinger_index( array $active ) {
@@ -294,7 +441,11 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$file = $reflection->getFileName();
 			$resolved = $file ? realpath( $file ) : false;
 			$plugin_root = realpath( WP_PLUGIN_DIR );
-			$official_root = realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' );
+			$active = get_option( 'active_plugins', array() );
+			$active = is_array( $active ) ? array_values( array_map( 'strval', $active ) ) : array();
+			$official_identity = self::official_plugin_identity( $active );
+			$official_plugin = isset( $official_identity['plugin_file'] ) ? (string) $official_identity['plugin_file'] : '';
+			$official_root = '' !== $official_plugin ? realpath( trailingslashit( WP_PLUGIN_DIR ) . dirname( $official_plugin ) ) : false;
 			$hostinger_root = realpath( trailingslashit( WP_PLUGIN_DIR ) . 'hostinger-ai-assistant' );
 			if ( $resolved && $plugin_root ) {
 				$normalized = wp_normalize_path( $resolved );
@@ -337,22 +488,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	}
 
 	private static function repair_lifecycle_allowed() {
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
-		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
-		if ( is_admin() ) {
-			// Endpoint diagnostics remain read-only even after nonce/capability
-			// authorization. Runtime repair is deliberately restricted to explicit
-			// WordPress plugin lifecycle surfaces, WP-CLI or cron.
-			global $pagenow;
-			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
-			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
-			$lifecycle_screen = in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true );
-			$lifecycle_action = in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
-			if ( ( $lifecycle_screen || $lifecycle_action )
-				&& function_exists( 'current_user_can' )
-				&& current_user_can( 'update_plugins' ) ) return true;
-		}
-		return false;
+		return class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false )
+			&& MAD4B_SCP_MCP_Runtime_Recovery::active();
 	}
 
 	private static function mu_bootstrap_status() {
@@ -382,10 +519,23 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$status['blocker'] = 'mu_bootstrap_directory_unavailable';
 			return $status;
 		}
+		$integrity = class_exists( 'MAD4B_SCP_Dependency_Manager', false ) ? MAD4B_SCP_Dependency_Manager::mcp_adapter_disk_integrity() : array();
+		if ( empty( $integrity['ready'] ) ) {
+			$status['blocker'] = 'mcp_adapter_integrity_mismatch';
+			return $status;
+		}
 		$source = trailingslashit( MAD4B_SCP_DIR ) . self::MU_BOOTSTRAP_SOURCE;
 		$destination = trailingslashit( WPMU_PLUGIN_DIR ) . self::MU_BOOTSTRAP_BASENAME;
 		if ( ! is_readable( $source ) ) {
 			$status['blocker'] = 'mu_bootstrap_source_unreadable';
+			return $status;
+		}
+		$transaction = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false )
+			? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::reconcile_transaction( $destination )
+			: true;
+		if ( is_wp_error( $transaction ) ) {
+			$status['blocker'] = $transaction->get_error_code();
+			$status['mu_bootstrap_transaction_pending'] = true;
 			return $status;
 		}
 		if ( ! empty( $status['mu_bootstrap_present'] ) ) {
@@ -401,6 +551,12 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 
+		$filesystem_lock = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::acquire_managed_filesystem_lock( $destination );
+		if ( is_wp_error( $filesystem_lock ) ) {
+			$status['blocker'] = $filesystem_lock->get_error_code();
+			return $status;
+		}
+		try {
 		$temp = $destination . '.tmp-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 		if ( ! copy( $source, $temp ) ) {
 			$status['blocker'] = 'mu_bootstrap_temp_write_failed';
@@ -413,25 +569,68 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$status['blocker'] = 'mu_bootstrap_temp_integrity_failed';
 			return $status;
 		}
+		$transaction_id = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', $source_hash );
+		if ( is_wp_error( $transaction_id ) ) {
+			@unlink( $temp );
+			$status['blocker'] = $transaction_id->get_error_code();
+			return $status;
+		}
+		self::$mu_transaction_id = $transaction_id;
+		$owner_before_install = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::verify_transaction_owner( $transaction_id, 'prepared' );
+		if ( is_wp_error( $owner_before_install ) ) {
+			@unlink( $temp );
+			self::$mu_transaction_id = '';
+			$status['blocker'] = $owner_before_install->get_error_code();
+			return $status;
+		}
 		if ( ! @rename( $temp, $destination ) ) {
 			@unlink( $temp );
 			$race = self::mu_bootstrap_status();
-			if ( ! empty( $race['mu_bootstrap_present'] ) && ! empty( $race['mu_bootstrap_integrity'] ) ) return array_merge( $race, array( 'blocker' => '' ) );
+			if ( ! empty( $race['mu_bootstrap_present'] ) && ! empty( $race['mu_bootstrap_integrity'] ) ) {
+				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $transaction_id );
+				self::$mu_transaction_id = '';
+				return array_merge( $race, array( 'blocker' => '' ) );
+			}
+			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_atomic_install_failed', $transaction_id );
+			self::$mu_transaction_id = '';
 			$status['blocker'] = 'mu_bootstrap_atomic_install_failed';
 			return $status;
 		}
 		clearstatcache( true, $destination );
+		$opcode = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::invalidate_managed_opcode_for_lifecycle( $destination );
 		$status = self::mu_bootstrap_status();
+		$status['opcache_invalidation'] = $opcode;
+		$status['runtime_restart_required'] = empty( $opcode['verified'] );
 		$status['mu_bootstrap_installed'] = ! empty( $status['mu_bootstrap_present'] ) && ! empty( $status['mu_bootstrap_integrity'] );
+		if ( $status['mu_bootstrap_installed'] ) {
+			$marked = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::mark_transaction_replaced( $transaction_id );
+			if ( is_wp_error( $marked ) ) {
+				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $marked->get_error_code(), $transaction_id );
+				self::$mu_transaction_id = '';
+				$status['blocker'] = $marked->get_error_code();
+				return $status;
+			}
+			$status['mu_bootstrap_transaction_pending'] = true;
+		}
 		$status['blocker'] = $status['mu_bootstrap_installed'] ? '' : 'mu_bootstrap_post_install_integrity_failed';
+		if ( ! $status['mu_bootstrap_installed'] ) {
+			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $status['blocker'], $transaction_id );
+			self::$mu_transaction_id = '';
+		}
 		return $status;
+		} finally {
+			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::release_managed_filesystem_lock( $filesystem_lock );
+		}
 	}
 
 	private static function remove_managed_mu_bootstrap() {
 		$status = self::mu_bootstrap_status();
 		if ( empty( $status['mu_bootstrap_present'] ) || empty( $status['mu_bootstrap_integrity'] ) || ! defined( 'WPMU_PLUGIN_DIR' ) ) return false;
 		$destination = trailingslashit( WPMU_PLUGIN_DIR ) . self::MU_BOOTSTRAP_BASENAME;
-		return @unlink( $destination );
+		if ( ! @unlink( $destination ) ) return false;
+		clearstatcache( true, $destination );
+		MAD4B_SCP_MCP_MU_Bootstrap_Refresh::invalidate_managed_opcode_for_lifecycle( $destination );
+		return ! is_file( $destination );
 	}
 
 	private static function base_status() {
@@ -452,6 +651,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'state' => $eligible ? 'inspection_pending' : 'ineligible',
 			'blocker' => $blocker,
 			'official_plugin_active' => false,
+			'official_plugin_file' => '',
+			'official_plugin_identity_ambiguous' => false,
 			'hostinger_bundle_active' => false,
 			'official_loads_before_hostinger' => false,
 			'collision_risk_detected' => false,

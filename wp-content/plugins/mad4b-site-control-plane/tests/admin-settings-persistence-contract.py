@@ -97,7 +97,7 @@ for marker in [
     "wp_cache_delete( 'alloptions', 'options' )",
     "wp_cache_flush_group( 'options' )",
     "self::option_values_equal( $readback, $record )",
-    "could not be persisted and verified by readback",
+    "$verified = self::option_values_equal( $readback, $record );",
 ]:
     assert marker in site_profile, marker
 
@@ -110,6 +110,27 @@ for marker in [
     "data-mad4b-settings-feedback",
 ]:
     assert marker in site_admin, marker
+
+# Native admin-post and AJAX must share the same persisted intent/readback proof.
+handle_save = site_admin.split("public static function handle_save()", 1)[1].split("public static function persisted_readback_matches", 1)[0]
+assert handle_save.count("self::persisted_readback_matches( $input, $result, $status, $profile )") >= 2
+native_tail = handle_save.rsplit("if ( is_wp_error( $result ) ) self::redirect", 1)[1]
+assert "MAD4B_SCP_Site_Profile::reset_cache();" in native_tail
+assert "mad4b_site_profile_readback_mismatch" in native_tail
+assert native_tail.index("persisted_readback_matches") < native_tail.index("self::redirect( 'saved' )")
+
+# Site Profile save is now audit-committed: the visible record is first written
+# as pending_audit through byte-exact CAS, then finalized only after audit.
+for marker in [
+    "persist_record_compare_and_swap",
+    "restore_record_compare_and_swap",
+    "BINARY option_value = BINARY %s",
+    "'mutation_state'] = 'pending_audit'",
+    "mad4b_site_profile_conflict",
+    "mad4b_site_profile_commit_finalize_failed",
+    "site_profile_mutation_pending_audit",
+]:
+    assert marker in site_profile, marker
 
 # Disable/revoke/governance actions remain explicit and outside the shared AJAX
 # settings form contract.
@@ -160,10 +181,13 @@ assert policy.index("self::review_policy()") < policy.index("if ( 'human_and_ai'
 assert "current['persistence_verified'] = true" in policy
 assert "Changing delegated AI Agent review requires explicit administrator confirmation." in policy
 
-# Re-enrollment and write enablement must use the same verified Site Profile
-# persistence primitive rather than raw update_option semantics.
-assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" in enrollment
-assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" in write_enable
+# Re-enrollment, App Mapping and write enablement use the same
+# audit-committed CAS primitive; none may expose a final authority record before
+# its append-only audit succeeds.
+assert enrollment.count("MAD4B_SCP_Site_Profile::commit_record_with_audit(") >= 2
+assert "MAD4B_SCP_Site_Profile::commit_record_with_audit(" in write_enable
+assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" not in enrollment
+assert "MAD4B_SCP_Site_Profile::persist_record_exact( $next )" not in write_enable
 
 # Production read-only OAuth is a setting, not authority. It may use AJAX but
 # must verify persisted readback; normal Production write authority remains
@@ -185,5 +209,11 @@ assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
 # consistency. Keep this plugin-local so repository-root workflow governance is
 # unchanged and Feature 007 staging-certification work can evolve independently.
 runpy.run_path(str(root / "tests/truth-projection-invariants.py"), run_name="__main__")
+
+# Pending Site Profile builder is a pure constructor. A prior bulk
+# replacement accidentally made it recursive and exhausted PHP at runtime.
+pending_helper = site_profile.split("private static function build_pending_record", 1)[1].split("private static function pending_target_record", 1)[0]
+if "self::build_pending_record(" in pending_helper:
+    raise SystemExit("FAIL site-profile-pending-helper-recursion: build_pending_record must not call itself")
 
 print("mad4b.admin-settings-persistence.v7: PASS")

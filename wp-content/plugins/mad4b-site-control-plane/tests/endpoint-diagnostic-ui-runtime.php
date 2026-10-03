@@ -8,6 +8,7 @@ function esc_html__( $value, $domain = '' ) { return esc_html( $value ); }
 function sanitize_key( $value ) { return strtolower( $value ); }
 function rest_url( $path ) { return 'https://fixture.test/wp-json/' . $path; }
 function esc_url_raw( $value ) { return $value; }
+function current_user_can( $capability ) { return false; }
 function submit_button( $label, ...$args ) { echo '<input type="submit" value="' . esc_attr( $label ) . '">'; }
 class MAD4B_SCP_Servers { static function expected_server_ids() { return array( 'mad4b-chatgpt', 'mad4b-write' ); } static function registration_status() { return array(); } static function write_tools() { throw new RuntimeException( 'Passive UI built a catalog' ); } }
 class MAD4B_SCP_MCP_Registration_Bridge { static function server_registration_identity_status( $id ) { return array( 'actual_registered' => false, 'identity_ready' => true, 'state' => 'identity_ready_deep_validation_deferred', 'deep_registration_deferred' => true ); } }
