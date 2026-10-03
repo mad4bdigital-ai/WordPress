@@ -45,18 +45,6 @@ foreach ( array( 'internal', 'developer', 'breakglass' ) as $sensitive_lane ) {
 }
 $spoofed = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/spoofed-boundary' );
 if ( is_wp_error( $spoofed ) || $spoofed['execution_boundary_verified'] || $spoofed['execution_eligible'] ) $fail( 'Metadata-only execution boundary admitted.' );
-$late_read_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
-	'mode' => 'replace',
-	'ability_names' => array( 'mad4b-ci/late-read-admission-fixture' ),
-	'include_breakglass' => false,
-) );
-if ( is_wp_error( $late_read_plan ) ) $fail( 'Late-filter read fixture planning failed unexpectedly.', $late_read_plan->get_error_code() );
-$late_read_row = $late_read_plan['desired_abilities'][0] ?? array();
-if ( ! empty( $late_read_plan['ready_for_apply'] )
-	|| ! empty( $late_read_row['projection_eligible'] )
-	|| ! in_array( 'final_execution_admission_required', $late_read_row['projection_blockers'] ?? array(), true ) ) {
-	$fail( 'Later same-priority registration filter removed the final wrapper without blocking projection.', $late_read_plan );
-}
 $plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
 	'ability_names' => array( 'mad4b/diagnostics-health' ),
@@ -184,13 +172,6 @@ if ( is_wp_error( $manifest ) || empty( $manifest['snapshot'] ) || empty( $manif
 $schema = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'schema', 'snapshot' => $manifest['snapshot'], 'schema_sha256' => $manifest['items'][0]['schema_sha256'] ) );
 if ( is_wp_error( $schema ) || ! isset( $schema['schema']->inputSchema ) ) $fail( 'Central schema retrieval failed in real WordPress.' );
 
-// Registration-order tampering is already exercised by
-// mad4b-ci/late-read-admission-fixture from runtime-chatgpt-projection-fixtures.php.
-// That Ability is registered during the real Abilities lifecycle while a
-// later same-priority PHP_INT_MAX filter replaces MAD4B's final wrapper.
-// Planning must therefore keep it unprojectable with
-// final_execution_admission_required rather than relying on filter order alone.
-
 $raw_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
 	'ability_names' => array( 'mad4b/database-raw-query' ),
@@ -254,69 +235,12 @@ try {
 		if ( MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $read_tool ) ) $fail( 'Stale materialized DTO admitted.' );
 	} finally { $schema_property->setValue( $target, $old_schema ); }
 
-	$allowed = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
+	$allowed = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
 	if ( is_wp_error( $allowed ) ) $fail( 'Read projection admission unexpectedly denied.', $allowed->get_error_code() );
-	if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( 'mad4b/diagnostics-health' ) ) {
-		$fail( 'Projected read Ability is missing its final execution-admission wrapper.' );
-	}
-	$tampered = MAD4B_SCP_Execution_Fence::consume_projected_call( 'mad4b/diagnostics-health', array( 'changed_after_guard' => true ) );
-	if ( ! is_wp_error( $tampered ) || 'mad4b_projection_execution_seal_mismatch' !== $tampered->get_error_code() ) {
-		$fail( 'Projected call argument mutation after final guard was not rejected.', $tampered );
-	}
-
-	$metadata_seal = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
-	if ( is_wp_error( $metadata_seal ) ) $fail( 'Metadata-drift seal fixture could not mint a fresh seal.', $metadata_seal->get_error_code() );
-	$metadata_target = wp_get_ability( 'mad4b/diagnostics-health' );
-	$metadata_property = new ReflectionProperty( 'WP_Ability', 'meta' );
-	$metadata_property->setAccessible( true );
-	$metadata_original = $metadata_property->getValue( $metadata_target );
-	try {
-		$metadata_changed = $metadata_original;
-		$metadata_changed['annotations']['readonly'] = false;
-		$metadata_property->setValue( $metadata_target, $metadata_changed );
-		$metadata_tampered = MAD4B_SCP_Execution_Fence::consume_projected_call( 'mad4b/diagnostics-health', null );
-		if ( ! is_wp_error( $metadata_tampered ) ) {
-			$fail( 'Projected metadata mutation after final guard was not rejected.', $metadata_tampered );
-		}
-	} finally {
-		$metadata_property->setValue( $metadata_target, $metadata_original );
-	}
-
-	$request_fixture = new class { public function get_route() { return '/mcp/mad4b-chatgpt'; } };
-	$bound = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', $request_fixture );
-	if ( is_wp_error( $bound ) ) $fail( 'ChatGPT transport fixture could not bind for final execution seal proof.', $bound->get_error_code() );
-	$allowed_again = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
-	if ( is_wp_error( $allowed_again ) ) $fail( 'Second projected admission could not mint a fresh one-time seal.', $allowed_again->get_error_code() );
-	$projected_execution = wp_get_ability( 'mad4b/diagnostics-health' )->execute( null );
-	if ( is_wp_error( $projected_execution ) ) $fail( 'Fresh projected execution seal did not survive the final callback wrapper.', $projected_execution->get_error_code() );
-	$replayed_execution = wp_get_ability( 'mad4b/diagnostics-health' )->execute( null );
-	if ( ! is_wp_error( $replayed_execution ) || 'mad4b_projection_execution_seal_required' !== $replayed_execution->get_error_code() ) {
-		$fail( 'Projected execution seal was reusable or absent final callback enforcement.', $replayed_execution );
-	}
-	MAD4B_SCP_Transport_Context::clear();
-
-	// A later same-priority pre-tool filter may try to erase our denial, but it
-	// cannot mint the private one-time callback seal.
-	$copied_for_late_filter = $fixture_state;
-	$copied_for_late_filter['binding']['origin'] = 'https://late-filter.invalid';
-	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied_for_late_filter, false );
-	$late_pre_tool = static function ( $value ) { return is_wp_error( $value ) ? array() : $value; };
-	add_filter( 'mcp_adapter_pre_tool_call', $late_pre_tool, PHP_INT_MAX, 4 );
-	$overridden = apply_filters( 'mcp_adapter_pre_tool_call', null, '', $read_tool, $server_fixture );
-	if ( is_wp_error( $overridden ) ) $fail( 'Late-filter attack fixture did not override the earlier filter result as intended.' );
-	$bound = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', $request_fixture );
-	if ( is_wp_error( $bound ) ) $fail( 'ChatGPT transport fixture could not bind for late-filter proof.', $bound->get_error_code() );
-	$late_bypass = wp_get_ability( 'mad4b/diagnostics-health' )->execute( null );
-	if ( ! is_wp_error( $late_bypass ) || 'mad4b_projection_execution_seal_required' !== $late_bypass->get_error_code() ) {
-		$fail( 'Later same-priority pre-tool filter bypassed final projected execution admission.', $late_bypass );
-	}
-	MAD4B_SCP_Transport_Context::clear();
-	remove_filter( 'mcp_adapter_pre_tool_call', $late_pre_tool, PHP_INT_MAX );
-	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 	$copied = $fixture_state;
 	$copied['binding']['origin'] = 'https://different.invalid';
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied, false );
-	$denied = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
+	$denied = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
 	if ( ! is_wp_error( $denied ) || 'mad4b_projection_binding_mismatch' !== $denied->get_error_code() ) $fail( 'Copied-site binding did not block a cached tool call.' );
 	if ( MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() ) $fail( 'Copied-site registry remained effective.' );
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
@@ -403,19 +327,6 @@ try {
 } finally {
 	if ( false === $previous ) delete_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );
 	else update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $previous, false );
-}
-
-
-$mad4b_real_runtime_fixture = static function ( $file ) {
-	require $file;
-};
-foreach ( array(
-	'runtime-database-transaction-guard.php',
-	'runtime-request-generation.php',
-	'runtime-execution-fence-recursion.php',
-	'runtime-compatibility-profile.php',
-) as $mad4b_runtime_fixture ) {
-	$mad4b_real_runtime_fixture( __DIR__ . '/' . $mad4b_runtime_fixture );
 }
 
 $status = MAD4B_SCP_ChatGPT_Tool_Projection::status();

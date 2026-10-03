@@ -123,10 +123,6 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 
 	public static function dispatch( array $input, $transport = 'internal' ) {
-		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
-			$request_scope = MAD4B_SCP_Request_Generation::admit( 'capability_gateway' );
-			if ( is_wp_error( $request_scope ) ) return $request_scope;
-		}
 		$valid = self::validate_input( $input );
 		if ( is_wp_error( $valid ) ) return $valid;
 		$permission = self::can_read_rest();

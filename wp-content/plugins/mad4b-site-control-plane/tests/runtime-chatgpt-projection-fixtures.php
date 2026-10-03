@@ -1,25 +1,5 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-// The recursion fixture isolates the final Execution Fence contract from the
-// separate NHI/provider Authorization wrapper. Registration is presented as
-// readonly only while Authorization's priority-190 wrapper runs, then restored
-// to readonly=false before the priority-200/final Execution Fence wrappers.
-add_filter( 'wp_register_ability_args', static function ( $args, $name ) {
-	if ( 'mad4b-ci/recursive-child-fixture' !== (string) $name || ! is_array( $args ) ) return $args;
-	if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
-	if ( ! isset( $args['meta']['annotations'] ) || ! is_array( $args['meta']['annotations'] ) ) $args['meta']['annotations'] = array();
-	$args['meta']['annotations']['readonly'] = true;
-	$args['meta']['mcp']['mad4b_ci_recursion_authorization_isolation'] = true;
-	return $args;
-}, 189, 2 );
-add_filter( 'wp_register_ability_args', static function ( $args, $name ) {
-	if ( 'mad4b-ci/recursive-child-fixture' !== (string) $name || ! is_array( $args ) ) return $args;
-	if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
-	if ( ! isset( $args['meta']['annotations'] ) || ! is_array( $args['meta']['annotations'] ) ) $args['meta']['annotations'] = array();
-	$args['meta']['annotations']['readonly'] = false;
-	return $args;
-}, 191, 2 );
-
 add_action( 'wp_abilities_api_init', static function () {
 // Foreign REST requests deliberately use the zero-touch bootstrap.
 if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return;
@@ -86,57 +66,6 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		) );
 	}
 
-
-	if ( ! wp_has_ability( 'mad4b-ci/recursive-child-fixture' ) ) {
-		wp_register_ability( 'mad4b-ci/recursive-child-fixture', array(
-			'label' => 'Recursive child fixture',
-			'description' => 'Mutating child fixture for explicit governed child permits.',
-			'category' => 'mad4b-read',
-			'execute_callback' => static function ( $input = null ) {
-				$GLOBALS['mad4b_recursive_child_calls'] = (int) ( $GLOBALS['mad4b_recursive_child_calls'] ?? 0 ) + 1;
-				return array( 'ok' => true, 'input' => $input );
-			},
-			'permission_callback' => static function () { return true; },
-			'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => false ) ),
-		) );
-	}
-	if ( ! wp_has_ability( 'mad4b-ci/recursive-parent-fixture' ) ) {
-		wp_register_ability( 'mad4b-ci/recursive-parent-fixture', array(
-			'label' => 'Recursive parent fixture',
-			'description' => 'Readonly parent fixture driving nested child mutation tests.',
-			'category' => 'mad4b-read',
-			'execute_callback' => static function ( $input = null ) {
-				$child_name = 'mad4b-ci/recursive-child-fixture';
-				$mode = is_array( $input ) && isset( $input['mode'] ) ? (string) $input['mode'] : 'direct';
-				$child = wp_get_ability( $child_name );
-				if ( ! $child ) return new WP_Error( 'mad4b_recursive_fixture_child_missing', 'Recursive child fixture is unavailable.' );
-				$child_input = array(
-					'_mad4b_approval_ticket_id' => '00000000-0000-4000-8000-000000000999',
-					'preparation_receipt' => 'fixture-preparation-receipt',
-					'_mad4b_context_receipt' => array( 'receipt_sha256' => str_repeat( 'a', 64 ) ),
-					'idempotency_key' => 'fixture-idempotency-key',
-					'operation_id' => 'fixture-operation',
-					'execution_id' => 'fixture-execution',
-					'claim_epoch' => 7,
-					'request_sha256' => str_repeat( 'b', 64 ),
-					'value' => 1,
-				);
-				if ( 'direct' === $mode ) return $child->execute( $child_input );
-				if ( 'permitted' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { return $child->execute( $child_input ); }, 'fixture' );
-				if ( 'mismatch' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { $changed=$child_input; $changed['value']=2; return $child->execute( $changed ); }, 'fixture' );
-				if ( 'evidence_mismatch' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { $changed=$child_input; $changed['idempotency_key']='fixture-idempotency-key-changed'; return $child->execute( $changed ); }, 'fixture' );
-				if ( 'replay' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { $first=$child->execute( $child_input ); $second=$child->execute( $child_input ); return array( 'first'=>$first, 'second'=>$second ); }, 'fixture' );
-				return new WP_Error( 'fixture_mode_invalid', 'Unknown fixture mode.' );
-			},
-			'permission_callback' => static function () { return true; },
-			'input_schema' => array( 'type' => 'object', 'properties' => array( 'mode' => array( 'type' => 'string' ) ), 'additionalProperties' => true ),
-			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
-		) );
-	}
-
 	if ( ! wp_has_ability( 'mad4b-ci/readonly-projection-fixture' ) ) {
 		wp_register_ability( 'mad4b-ci/readonly-projection-fixture', array(
 			'label' => 'Readonly Projection Fixture',
@@ -170,7 +99,7 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
     // Simulate a later plugin replacing a genuinely wrapped callback while
     // leaving its claimed boundary metadata intact. The actual callback must fail provenance.
     $strip_boundary = static function ( $args, $name ) {
-        if ( in_array( $name, array( 'mad4b-ci/spoofed-boundary', 'mad4b-ci/late-read-admission-fixture' ), true ) ) $args['execute_callback'] = static function () { return array( 'ok' => true ); };
+        if ( 'mad4b-ci/spoofed-boundary' === $name ) $args['execute_callback'] = static function () { return array( 'ok' => true ); };
         return $args;
     };
     add_filter( 'wp_register_ability_args', $strip_boundary, PHP_INT_MAX, 2 );
@@ -179,19 +108,6 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		'execute_callback' => static function() { return array( 'ok' => true ); }, 'permission_callback' => static function() { return true; },
 		'input_schema' => array( 'type' => 'object', 'properties' => array() ), 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 		'meta' => array( 'annotations' => array( 'readonly' => false ), 'mcp' => array( 'type' => 'tool', 'surface' => 'write', 'mad4b_execution_boundary' => MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT ) ),
-	) );
-	wp_register_ability( 'mad4b-ci/late-read-admission-fixture', array(
-		'label' => 'Late read admission fixture',
-		'description' => 'Readonly fixture whose final execution wrapper is intentionally replaced by a later same-priority registration filter.',
-		'category' => 'mad4b-read',
-		'execute_callback' => static function() { return array( 'ok' => true ); },
-		'permission_callback' => static function() { return true; },
-		'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
-		'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-		'meta' => array(
-			'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
-			'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
-		),
 	) );
     remove_filter( 'wp_register_ability_args', $strip_boundary, PHP_INT_MAX );
 }, 99 );

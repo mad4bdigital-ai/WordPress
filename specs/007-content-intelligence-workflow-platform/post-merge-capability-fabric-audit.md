@@ -3,8 +3,7 @@
 Baseline:
 - Repository: `mad4bdigital-ai/WordPress`
 - PR #230 merged head: `6049d0f406639d1113fc7082df6f5ae960faca2d`
-- PR #230 merge commit: `a13252baf4719992027c0f0e324014ee0840f0dc`
-- Current reviewed master baseline: `f03041b8132ea955184fc3af5ad82abf461c7715`
+- Merge commit / reviewed post-merge master baseline: `f03041b8132ea955184fc3af5ad82abf461c7715`
 - Scope: post-merge architecture backlog only; no Production activation, Breakglass widening, generic shell/raw SQL admission, or implicit authority.
 - Source review classified the merged design as technically strong while explicitly retaining long-term migration work in durable network orchestration, provider-specific reconciliation, circuit breaking, resource constraints, impact-bound approvals, unified execution receipts, tracing, catalog storage, maintainability and protocol/lifecycle evolution.
 

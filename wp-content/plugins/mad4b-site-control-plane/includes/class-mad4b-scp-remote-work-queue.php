@@ -78,9 +78,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			if ( ! is_array( $job ) ) { $reclaimable[ $job_id ] = 0; continue; }
 			$status = isset( $job['status'] ) ? (string) $job['status'] : '';
 			$expired = self::now() > (int) ( isset( $job['expires_at_epoch'] ) ? $job['expires_at_epoch'] : 0 );
-			$reclaimable_terminal = in_array( $status, array( 'completed', 'cancelled_no_effect' ), true );
-			$expired_never_claimed = 'pending' === $status && $expired;
-			if ( $reclaimable_terminal || $expired_never_claimed ) {
+			if ( 'completed' === $status || $expired ) {
 				$reclaimable[ $job_id ] = (int) ( isset( $job['created_at_epoch'] ) ? $job['created_at_epoch'] : 0 );
 			}
 		}
@@ -160,14 +158,10 @@ final class MAD4B_SCP_Remote_Work_Queue {
 
 	private static function effective_job( array $job ) {
 		$status = isset( $job['status'] ) ? (string) $job['status'] : '';
-		if ( 'claimed' === $status && self::now() > (int) ( isset( $job['lease_expires_at_epoch'] ) ? $job['lease_expires_at_epoch'] : 0 ) ) {
-			$job['effective_status'] = 'reconciling';
-			$job['lease_expired'] = true;
-			$job['reconciliation_required'] = true;
-			$job['blind_retry_allowed'] = false;
-			$job['client_action'] = 'reconcile_provider_state_before_any_retry';
-		} elseif ( 'pending' === $status && self::now() > (int) ( isset( $job['expires_at_epoch'] ) ? $job['expires_at_epoch'] : 0 ) ) {
+		if ( in_array( $status, array( 'pending', 'claimed' ), true ) && self::now() > (int) ( isset( $job['expires_at_epoch'] ) ? $job['expires_at_epoch'] : 0 ) ) {
 			$job['effective_status'] = 'expired';
+		} elseif ( 'claimed' === $status && self::now() > (int) ( isset( $job['lease_expires_at_epoch'] ) ? $job['lease_expires_at_epoch'] : 0 ) ) {
+			$job['effective_status'] = 'lease_expired';
 		} else {
 			$job['effective_status'] = $status;
 		}
@@ -191,7 +185,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			foreach ( $jobs as $existing ) {
 				if ( ! is_array( $existing ) ) continue;
 				if ( hash_equals( $semantic_digest, (string) ( isset( $existing['semantic_digest'] ) ? $existing['semantic_digest'] : '' ) )
-					&& in_array( (string) ( isset( $existing['status'] ) ? $existing['status'] : '' ), array( 'pending', 'claimed', 'reconciling' ), true )
+					&& in_array( (string) ( isset( $existing['status'] ) ? $existing['status'] : '' ), array( 'pending', 'claimed' ), true )
 					&& self::now() <= (int) ( isset( $existing['expires_at_epoch'] ) ? $existing['expires_at_epoch'] : 0 ) ) {
 					return array( 'state' => 'already_queued', 'job' => self::public_job( $existing ) );
 				}
@@ -220,11 +214,6 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				'lease_expires_at_epoch' => 0,
 				'lease_token_sha256' => '',
 				'completed_at' => '',
-				'cancel_requested_at' => '',
-				'cancel_reason_code' => '',
-				'reconciliation_required' => false,
-				'blind_retry_allowed' => false,
-				'client_action' => '',
 				'result' => array(),
 			);
 			$jobs[ $job_id ] = $job;
@@ -276,23 +265,8 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			if ( self::now() > (int) ( isset( $job['expires_at_epoch'] ) ? $job['expires_at_epoch'] : 0 ) ) return new WP_Error( 'mad4b_remote_work_job_expired', 'Remote work job expired before claim.' );
 			if ( ! self::identity_matches( (array) $job['expected_identity'], $current_identity ) ) return new WP_Error( 'mad4b_remote_work_build_changed', 'Exact build identity changed before work claim.' );
 			$status = isset( $job['status'] ) ? (string) $job['status'] : '';
-			if ( 'claimed' === $status ) {
-				if ( self::now() <= (int) ( isset( $job['lease_expires_at_epoch'] ) ? $job['lease_expires_at_epoch'] : 0 ) ) {
-					return new WP_Error( 'mad4b_remote_work_already_claimed', 'Remote work job currently has an active lease.' );
-				}
-				$job['status'] = 'reconciling';
-				$job['reconciliation_required'] = true;
-				$job['blind_retry_allowed'] = false;
-				$job['client_action'] = 'reconcile_provider_state_before_any_retry';
-				$jobs[ $job_id ] = $job;
-				if ( ! self::save_jobs( $jobs ) ) return new WP_Error( 'mad4b_remote_work_reconciliation_persist_failed', 'Expired claimed work could not be quarantined for reconciliation.' );
-				return new WP_Error( 'mad4b_remote_work_reconciliation_required', 'Expired claimed work may have entered the provider and cannot be replayed before reconciliation.', array(
-					'reconciliation_required' => true,
-					'blind_retry_allowed' => false,
-					'client_action' => 'reconcile_provider_state_before_any_retry',
-				) );
-			}
-			if ( 'pending' !== $status ) return new WP_Error( 'mad4b_remote_work_job_not_claimable', 'Remote work job is not claimable in its current state.' );
+			if ( 'claimed' === $status && self::now() <= (int) ( isset( $job['lease_expires_at_epoch'] ) ? $job['lease_expires_at_epoch'] : 0 ) ) return new WP_Error( 'mad4b_remote_work_already_claimed', 'Remote work job currently has an active lease.' );
+			if ( ! in_array( $status, array( 'pending', 'claimed' ), true ) ) return new WP_Error( 'mad4b_remote_work_job_not_claimable', 'Remote work job is not claimable in its current state.' );
 
 			$token = self::fresh_lease_token();
 			$job['status'] = 'claimed';
@@ -308,52 +282,6 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		} );
 	}
 
-	public static function cancel( $job_id, $reason_code = 'cancel_requested' ) {
-		$job_id = strtolower( trim( (string) $job_id ) );
-		$reason_code = sanitize_key( (string) $reason_code );
-		if ( '' === $reason_code ) $reason_code = 'cancel_requested';
-		if ( strlen( $reason_code ) > 64 ) return new WP_Error( 'mad4b_remote_work_cancel_reason_invalid', 'Remote work cancellation reason code is too long.' );
-
-		return self::with_lock( 'cancel', static function () use ( $job_id, $reason_code ) {
-			$jobs = self::jobs();
-			if ( ! isset( $jobs[ $job_id ] ) || ! is_array( $jobs[ $job_id ] ) ) return new WP_Error( 'mad4b_remote_work_job_missing', 'Remote work job was not found.' );
-			$job = $jobs[ $job_id ];
-			$status = isset( $job['status'] ) ? (string) $job['status'] : '';
-			if ( 'completed' === $status ) return new WP_Error( 'mad4b_remote_work_cancel_completed_denied', 'Completed remote work cannot be retroactively cancelled.' );
-			if ( 'cancelled_no_effect' === $status ) return array( 'contract' => self::CONTRACT, 'state' => 'cancelled_no_effect', 'job' => self::public_job( $job ) );
-			if ( 'reconciling' === $status ) return array( 'contract' => self::CONTRACT, 'state' => 'reconciling', 'job' => self::public_job( $job ) );
-			$job['cancel_requested_at'] = gmdate( 'c' );
-			$job['cancel_reason_code'] = $reason_code;
-			$job['blind_retry_allowed'] = false;
-			if ( 'pending' === $status ) {
-				$job['status'] = 'cancelled_no_effect';
-				$job['reconciliation_required'] = false;
-				$job['client_action'] = 'no_retry_required';
-				$job['lease_token_sha256'] = '';
-				$job['lease_expires_at_epoch'] = 0;
-			} elseif ( 'claimed' === $status ) {
-				$job['status'] = 'reconciling';
-				$job['reconciliation_required'] = true;
-				$job['client_action'] = 'reconcile_provider_state_before_any_retry';
-			} else {
-				return new WP_Error( 'mad4b_remote_work_cancel_state_denied', 'Remote work cannot be cancelled from its current state.' );
-			}
-			$jobs[ $job_id ] = $job;
-			if ( ! self::save_jobs( $jobs ) ) return new WP_Error( 'mad4b_remote_work_cancel_persist_failed', 'Remote work cancellation state could not be durably read back.' );
-			return array( 'contract' => self::CONTRACT, 'state' => (string) $job['status'], 'job' => self::public_job( $job ) );
-		} );
-	}
-
-	private static function reconciliation_completion_valid( array $verified_result ) {
-		$effect = isset( $verified_result['provider_effect_state'] ) ? sanitize_key( (string) $verified_result['provider_effect_state'] ) : '';
-		$ref = isset( $verified_result['provider_execution_ref'] ) ? trim( (string) $verified_result['provider_execution_ref'] ) : '';
-		$sha = isset( $verified_result['evidence_sha256'] ) ? strtolower( trim( (string) $verified_result['evidence_sha256'] ) ) : '';
-		return ! empty( $verified_result['postcondition_verified'] )
-			&& in_array( $effect, array( 'applied', 'no_effect' ), true )
-			&& '' !== $ref && strlen( $ref ) <= 191
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $sha );
-	}
-
 	public static function complete( $job_id, $executor_id, $lease_token, array $verified_result ) {
 		$job_id = strtolower( trim( (string) $job_id ) );
 		$executor_id = sanitize_key( (string) $executor_id );
@@ -364,37 +292,18 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			$jobs = self::jobs();
 			if ( ! isset( $jobs[ $job_id ] ) || ! is_array( $jobs[ $job_id ] ) ) return new WP_Error( 'mad4b_remote_work_job_missing', 'Remote work job was not found.' );
 			$job = $jobs[ $job_id ];
-			$status = isset( $job['status'] ) ? (string) $job['status'] : '';
-			$reconciling = 'reconciling' === $status;
-			if ( ! in_array( $status, array( 'claimed', 'reconciling' ), true ) ) return new WP_Error( 'mad4b_remote_work_job_not_claimed', 'Remote work job has no active claim.' );
-			if ( $reconciling && ! self::reconciliation_completion_valid( $verified_result ) ) {
-				return new WP_Error( 'mad4b_remote_work_reconciliation_required', 'Cancelled or lease-expired claimed work requires explicit provider postcondition evidence before terminalization.', array(
-					'reconciliation_required' => true,
-					'blind_retry_allowed' => false,
-					'client_action' => 'reconcile_provider_state_before_any_retry',
-				) );
-			}
-			if ( ! $reconciling && self::now() > (int) ( isset( $job['lease_expires_at_epoch'] ) ? $job['lease_expires_at_epoch'] : 0 ) ) {
-				return new WP_Error( 'mad4b_remote_work_reconciliation_required', 'Remote work lease expired after claim; provider state must be reconciled before completion or retry.', array(
-					'reconciliation_required' => true,
-					'blind_retry_allowed' => false,
-					'client_action' => 'reconcile_provider_state_before_any_retry',
-				) );
-			}
+			if ( 'claimed' !== ( isset( $job['status'] ) ? (string) $job['status'] : '' ) ) return new WP_Error( 'mad4b_remote_work_job_not_claimed', 'Remote work job has no active claim.' );
+			if ( self::now() > (int) ( isset( $job['lease_expires_at_epoch'] ) ? $job['lease_expires_at_epoch'] : 0 ) ) return new WP_Error( 'mad4b_remote_work_lease_expired', 'Remote work lease expired before completion.' );
 			if ( ! hash_equals( (string) ( isset( $job['executor_id'] ) ? $job['executor_id'] : '' ), $executor_id ) ) return new WP_Error( 'mad4b_remote_work_executor_mismatch', 'Remote work executor does not own the active lease.' );
 			if ( ! hash_equals( (string) ( isset( $job['lease_token_sha256'] ) ? $job['lease_token_sha256'] : '' ), hash( 'sha256', $lease_token ) ) ) return new WP_Error( 'mad4b_remote_work_lease_mismatch', 'Remote work lease token does not match the active claim.' );
-			$resolved_no_effect = $reconciling && 'no_effect' === sanitize_key( isset( $verified_result['provider_effect_state'] ) ? (string) $verified_result['provider_effect_state'] : '' );
-			$job['status'] = $resolved_no_effect ? 'cancelled_no_effect' : 'completed';
+			$job['status'] = 'completed';
 			$job['completed_at'] = gmdate( 'c' );
-			$job['reconciliation_required'] = false;
-			$job['blind_retry_allowed'] = false;
-			$job['client_action'] = $resolved_no_effect ? 'no_retry_required' : 'consume_verified_result';
 			$job['result'] = $verified_result;
 			$job['lease_token_sha256'] = '';
 			$job['lease_expires_at_epoch'] = 0;
 			$jobs[ $job_id ] = $job;
 			if ( ! self::save_jobs( $jobs ) ) return new WP_Error( 'mad4b_remote_work_completion_persist_failed', 'Remote work completion could not be durably read back.' );
-			return array( 'contract' => self::CONTRACT, 'state' => (string) $job['status'], 'job' => self::public_job( $job ) );
+			return array( 'contract' => self::CONTRACT, 'state' => 'completed', 'job' => self::public_job( $job ) );
 		} );
 	}
 }

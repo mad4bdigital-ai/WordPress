@@ -6,25 +6,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class MAD4B_SCP_Policy {
 
-	public static function connection_capability() {
-		$capability = defined( 'MAD4B_MCP_LOCAL_OAUTH_REQUIRED_CAPABILITY' )
-			? sanitize_key( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_REQUIRED_CAPABILITY' ) )
-			: 'manage_options';
-		$capability = apply_filters( 'mad4b_scp_connection_capability', $capability );
-		return is_string( $capability ) ? sanitize_key( $capability ) : '';
-	}
-
 	public static function can_connect_user( $user_id ) {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 ) return false;
 		$user = get_userdata( $user_id );
 		if ( ! $user ) return false;
-		$capability = self::connection_capability();
-		if ( '' === $capability || ! user_can( $user, $capability ) ) return false;
 		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
 			return MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id );
 		}
-		return true;
+		return user_can( $user, 'manage_options' );
 	}
 
 	public static function can_plan_mutations() {

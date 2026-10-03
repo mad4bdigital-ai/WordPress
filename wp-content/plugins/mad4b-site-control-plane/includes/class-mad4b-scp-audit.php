@@ -5,7 +5,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit-integrity.php';
-if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-evidence-policy.php';
 
 final class MAD4B_SCP_Audit {
 	const LEGACY_OPTION = 'mad4b_scp_audit_log';
@@ -439,13 +438,12 @@ final class MAD4B_SCP_Audit {
 		$json = wp_json_encode( $clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $json ) return new WP_Error( 'mad4b_audit_summary_invalid', 'Audit summary could not be encoded.' );
 		if ( strlen( $json ) > self::SUMMARY_MAX_BYTES ) {
-			if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
-				return new WP_Error( 'mad4b_audit_evidence_policy_unavailable', 'Oversized audit evidence cannot be compacted safely.' );
-			}
-			$compacted = MAD4B_SCP_Execution_Evidence_Policy::compact_audit_summary( $clean, self::SUMMARY_MAX_BYTES );
-			if ( is_wp_error( $compacted ) ) return $compacted;
-			$clean = $compacted['summary'];
-			$json = $compacted['json'];
+			$clean = array(
+				'_truncated' => true,
+				'_original_bytes' => strlen( $json ),
+				'_sha256' => hash( 'sha256', $json ),
+			);
+			$json = wp_json_encode( $clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		}
 		return array( 'summary' => $clean, 'json' => $json );
 	}

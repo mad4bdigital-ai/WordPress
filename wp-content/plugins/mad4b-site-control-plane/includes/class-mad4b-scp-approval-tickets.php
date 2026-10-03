@@ -329,26 +329,14 @@ final class MAD4B_SCP_Approval_Tickets {
 		global $wpdb;
 		$validated = self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $validated ) ) return $validated;
-		if ( self::is_governed_remote_mutation( $ticket_class, $server_id ) && class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
-			$restore_ready = MAD4B_SCP_Restore_Epoch::ensure_bound();
-			if ( is_wp_error( $restore_ready ) ) return $restore_ready;
-		}
-		$topology = class_exists( 'MAD4B_SCP_Database_Topology' ) ? MAD4B_SCP_Database_Topology::assert_write_ready( true ) : new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
-		if ( is_wp_error( $topology ) ) return $topology;
 		$ticket = $validated['ticket'];
 		$ticket_id = isset( $ticket['ticket_id'] ) && class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket['ticket_id'] ) : '';
 		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Stored approval ticket id is not canonical.' );
 		$hash = $validated['payload_sha256'];
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'executing' WHERE id = %d AND status = 'approved' AND payload_sha256 = %s AND expires_at >= %s", (int) $ticket['id'], $hash, $now ) );
-		if ( false === $updated ) {
-			return MAD4B_SCP_Database_Failure_Semantics::error( 'mad4b_approval_claim_database_failed', 'Approval claim persistence failed.', 'approval_claim', (string) $wpdb->last_error, null, array( 'ticket_id' => $ticket_id ) );
-		}
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket was already claimed, expired, or changed.', array( 'blind_retry_allowed' => false ) );
-		$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
-		if ( is_wp_error( $same_writer ) ) return new WP_Error( 'mad4b_approval_claim_persistence_uncertain', 'Approval claim succeeded but same-writer readback could not be proven.', array( 'reconciliation_required' => true, 'blind_retry_allowed' => false, 'cause' => $same_writer->get_error_code() ) );
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket was already claimed, expired, or changed.' );
 		MAD4B_SCP_Audit::record( 'mad4b/approval-claimed', array( 'ticket_id' => $ticket_id, 'ability' => $ability_name, 'agent_public_id' => $agent['public_id'] ), 'ok' );
 		$ticket['status'] = 'executing';
 		return $ticket;
@@ -360,22 +348,14 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
-		$topology = class_exists( 'MAD4B_SCP_Database_Topology' ) ? MAD4B_SCP_Database_Topology::assert_write_ready( true ) : new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
-		if ( is_wp_error( $topology ) ) return $topology;
 		$terminal_status = sanitize_key( (string) $terminal_status );
 		$execution_error_code = substr( sanitize_key( (string) $execution_error_code ), 0, 96 );
 		if ( ! in_array( $terminal_status, array( 'used', 'failed' ), true ) ) return new WP_Error( 'mad4b_approval_finalize_status_invalid', 'Approval ticket final status must be used or failed.' );
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$wpdb->last_error = '';
 		if ( 'used' === $terminal_status ) $updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'used', used_at = %s WHERE ticket_id = %s AND status = 'executing'", $now, (string) $ticket_id ) );
 		else $updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'failed' WHERE ticket_id = %s AND status = 'executing'", (string) $ticket_id ) );
-		if ( false === $updated ) {
-			return MAD4B_SCP_Database_Failure_Semantics::error( 'mad4b_approval_finalize_database_failed', 'Approval finalization persistence failed.', 'approval_finalize', (string) $wpdb->last_error, null, array( 'ticket_id' => $ticket_id ) );
-		}
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_finalize_conflict', 'Approval ticket is not in the expected executing state.', array( 'blind_retry_allowed' => false ) );
-		$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
-		if ( is_wp_error( $same_writer ) ) return new WP_Error( 'mad4b_approval_finalize_persistence_uncertain', 'Approval finalization succeeded but same-writer readback could not be proven.', array( 'reconciliation_required' => true, 'blind_retry_allowed' => false, 'cause' => $same_writer->get_error_code() ) );
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_finalize_conflict', 'Approval ticket is not in the expected executing state.' );
 		$event = 'used' === $terminal_status ? 'mad4b/approval-consumed' : 'mad4b/approval-execution-failed';
 		$summary = array( 'ticket_id' => $ticket_id, 'result_status' => $terminal_status );
 		if ( 'failed' === $terminal_status && '' !== $execution_error_code ) $summary['execution_error_code'] = $execution_error_code;

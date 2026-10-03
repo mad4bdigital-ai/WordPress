@@ -200,21 +200,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
 	}
 
-	private static function planning_row( $ability_name ) {
-		$row = self::ability_row( $ability_name );
-		if ( is_wp_error( $row ) ) return $row;
-		$final_verified = class_exists( 'MAD4B_SCP_Execution_Fence' )
-			&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
-		$row['final_execution_admission_verified'] = $final_verified;
-		if ( ! $final_verified ) {
-			$row['projection_eligible'] = false;
-			if ( ! isset( $row['projection_blockers'] ) || ! is_array( $row['projection_blockers'] ) ) $row['projection_blockers'] = array();
-			$row['projection_blockers'][] = 'final_execution_admission_required';
-			$row['projection_blockers'] = array_values( array_unique( $row['projection_blockers'] ) );
-		}
-		return $row;
-	}
-
 	public static function current_binding() {
 		return class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
 			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
@@ -237,13 +222,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$name = isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
 		// Existing base tools retain their independent permission and execution contracts.
 		if ( in_array( $name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ) ) return $args;
-		if ( '' === $name ) {
-			return new WP_Error( 'mad4b_projection_ability_identity_missing', 'Dynamic projected execution requires an exact Ability identity.' );
-		}
-		if ( class_exists( 'MAD4B_SCP_Execution_Fence' ) ) {
-			$requirement = MAD4B_SCP_Execution_Fence::require_projected_call_seal( $name );
-			if ( is_wp_error( $requirement ) ) return $requirement;
-		}
 		$state = self::raw_state();
 		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Dynamic projection is not bound to this enrolled Staging runtime.' );
 		$row = self::effective_row( $name, $state, true );
@@ -266,11 +244,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			$lane = self::execution_server( $name );
 			if ( is_wp_error( $lane ) ) return $lane;
 		}
-		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) {
-			return new WP_Error( 'mad4b_projection_final_execution_admission_required', 'Projected Ability is missing the final execution-admission wrapper.' );
-		}
-		$seal = MAD4B_SCP_Execution_Fence::seal_projected_call( $name, $args, $tool, $server );
-		if ( is_wp_error( $seal ) ) return $seal;
 		return $args;
 	}
 
@@ -431,7 +404,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$include_breakglass = ! empty( $input['include_breakglass'] );
 		$rows = array();
 		foreach ( $desired as $ability_name ) {
-			$row = self::planning_row( $ability_name );
+			$row = self::ability_row( $ability_name );
 			if ( is_wp_error( $row ) ) return $row;
 			if ( ! empty( $row['breakglass'] ) && ! $include_breakglass ) {
 				return new WP_Error( 'mad4b_chatgpt_projection_breakglass_explicit_opt_in_required', 'Breakglass Ability projection requires include_breakglass=true.', array( 'ability_name' => $ability_name ) );

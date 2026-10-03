@@ -7,21 +7,6 @@ final class MAD4B_SCP_Abilities {
 	const MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536;
 	private static $write_dispatch_governance_envelope = array();
 	private static $write_dispatch_governance_binding = '';
-	private static function request_scope_admit( $surface ) {
-		if ( ! class_exists( 'MAD4B_SCP_Request_Generation' ) ) return true;
-		return MAD4B_SCP_Request_Generation::admit( $surface );
-	}
-	public static function request_scope_state() {
-		return array(
-			'write_governance_envelope_pending' => ! empty( self::$write_dispatch_governance_envelope ),
-			'write_governance_binding_pending' => '' !== self::$write_dispatch_governance_binding,
-		);
-	}
-	public static function reset_request_cache() {
-		self::$write_dispatch_governance_envelope = array();
-		self::$write_dispatch_governance_binding = '';
-		return true;
-	}
 	public function register_categories() {
 		foreach (
 			array(
@@ -407,8 +392,6 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function read_execute( $input ) {
-		$request_scope = self::request_scope_admit( 'read_execute' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_read_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -460,8 +443,6 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function can_developer_dispatch( $input = null ) {
-		$request_scope = self::request_scope_admit( 'can_developer_dispatch' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_developer_dispatch_request_invalid', 'Developer dispatch requires an exact target and schema digest.' );
 		$ability = $this->governed_developer_target( $input['ability_name'] );
@@ -546,8 +527,6 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function developer_execute( $input ) {
-		$request_scope = self::request_scope_admit( 'developer_execute' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_developer_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -569,8 +548,7 @@ final class MAD4B_SCP_Abilities {
 			return MAD4B_SCP_Transport_Context::with_developer_dispatch_target(
 				$ability_name,
 				$actual_schema_sha256,
-				static function () use ( $ability, $params ) { return $ability->execute( $params ); },
-				$params
+				static function () use ( $ability, $params ) { return $ability->execute( $params ); }
 			);
 		};
 
@@ -656,8 +634,6 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function can_write_dispatch( $input = null ) {
-		$request_scope = self::request_scope_admit( 'can_write_dispatch' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write target and prepared schema identity are required.' );
@@ -887,8 +863,6 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function write_execute( $input ) {
-		$request_scope = self::request_scope_admit( 'write_execute' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -951,8 +925,7 @@ final class MAD4B_SCP_Abilities {
 							? MAD4B_SCP_Authorization::execution_callback_started( $ability_name )
 							: true;
 					}
-				},
-				$params
+				}
 			);
 		};
 
@@ -1084,8 +1057,6 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function can_enrollment_dispatch( $input = null ) {
-		$request_scope = self::request_scope_admit( 'can_enrollment_dispatch' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
 		$allowed = MAD4B_SCP_Enrollment_Dispatch::can_execute( $input );
 		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
@@ -1107,8 +1078,6 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function enrollment_execute( $input ) {
-		$request_scope = self::request_scope_admit( 'enrollment_execute' );
-		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$allowed = $this->can_enrollment_dispatch( $input );

@@ -1,6 +1,5 @@
 """Prove behavioral CI rejects representative regressions, not just marker loss."""
 from pathlib import Path
-import runpy
 import shutil
 import subprocess
 import tempfile
@@ -76,24 +75,3 @@ with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
         assert 'syntax error' not in result.stderr.lower(), f'Mutation only caused syntax failure: {label}'
         print(f'KILLED {label}')
 print(f'PASS {len(mutations)} representative regression mutations rejected')
-runpy.run_path(str(root / 'tests' / 'capability-fabric-bulk-hardening-contract.py'), run_name='__main__')
-
-
-# Runtime compatibility is intentionally exercised without changing the
-# baseline-owned workflow. These fixtures run in isolated PHP processes so
-# WP_CLI and DOING_CRON constants can be proven independently.
-for compatibility_fixture in (
-    'runtime-compatibility-profile-runtime.php',
-    'runtime-compatibility-profile-cron.php',
-):
-    result = subprocess.run(
-        ['php', str(root / 'tests' / compatibility_fixture)],
-        capture_output=True,
-        text=True,
-        timeout=15,
-    )
-    assert result.returncode == 0, (
-        f'Runtime compatibility fixture failed: {compatibility_fixture}: '
-        f'{result.stdout}\n{result.stderr}'
-    )
-    print(result.stdout.strip())

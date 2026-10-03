@@ -163,7 +163,7 @@
   "tool_execution_contract": "mad4b.governed-tool-execution.v1",
   "cli_host_runner_contract": "mad4b.cli-host-runner.v1",
   "host_provider_validation_profile": "mad4b.host-provider-validation-profile.v1",
-  "baseline_checked_at": "2026-10-02",
+  "baseline_checked_at": "2026-10-03",
   "implementation_closure_document": "implementation-closure.md",
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",

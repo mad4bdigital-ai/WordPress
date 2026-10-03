@@ -113,7 +113,7 @@ final class MAD4B_SCP_Transport_Context {
 	 * authorizes only transport resolution for the exact target/schema already
 	 * selected by the dispatcher; it creates no grant, OAuth scope or approval.
 	 */
-	public static function with_write_dispatch_target( $ability_name, $expected_schema_sha256, $callback, $input = null ) {
+	public static function with_write_dispatch_target( $ability_name, $expected_schema_sha256, $callback ) {
 		$ability_name = trim( (string) $ability_name );
 		$expected_schema_sha256 = strtolower( trim( (string) $expected_schema_sha256 ) );
 		if ( 'mad4b-chatgpt' !== self::current_server_id() ) return new WP_Error( 'mad4b_write_dispatch_transport_invalid', 'Nested governed write dispatch requires the active ChatGPT transport.' );
@@ -131,9 +131,6 @@ final class MAD4B_SCP_Transport_Context {
 		self::$write_dispatch_target = $ability_name;
 		self::$write_dispatch_schema_sha256 = $expected_schema_sha256;
 		try {
-			if ( class_exists( 'MAD4B_SCP_Execution_Fence' ) && MAD4B_SCP_Execution_Fence::has_active_frame() ) {
-				return MAD4B_SCP_Execution_Fence::with_governed_child( $ability_name, $input, $callback, 'write_dispatch' );
-			}
 			return call_user_func( $callback );
 		} finally {
 			self::$write_dispatch_target = '';
@@ -147,7 +144,7 @@ final class MAD4B_SCP_Transport_Context {
 	 * identity exists only for the nested callback and creates no OAuth scope,
 	 * grant, approval or persistent credential.
 	 */
-	public static function with_developer_dispatch_target( $ability_name, $expected_schema_sha256, $callback, $input = null ) {
+	public static function with_developer_dispatch_target( $ability_name, $expected_schema_sha256, $callback ) {
 		$ability_name = trim( (string) $ability_name );
 		$expected_schema_sha256 = strtolower( trim( (string) $expected_schema_sha256 ) );
 		if ( 'mad4b-chatgpt' !== self::current_server_id() ) return new WP_Error( 'mad4b_developer_dispatch_transport_invalid', 'Nested Developer dispatch requires the active ChatGPT transport.' );
@@ -171,18 +168,12 @@ final class MAD4B_SCP_Transport_Context {
 		self::$developer_dispatch_target = $ability_name;
 		self::$developer_dispatch_schema_sha256 = $expected_schema_sha256;
 		try {
-			$scoped_callback = static function () use ( $derived, $callback ) {
-				return MAD4B_SCP_Identity_Context::with_request_subject_override(
-					'oauth_developer',
-					(string) $derived['subject_fingerprint'],
-					'mcp_developer_dispatch',
-					$callback
-				);
-			};
-			if ( class_exists( 'MAD4B_SCP_Execution_Fence' ) && MAD4B_SCP_Execution_Fence::has_active_frame() ) {
-				return MAD4B_SCP_Execution_Fence::with_governed_child( $ability_name, $input, $scoped_callback, 'developer_dispatch' );
-			}
-			return call_user_func( $scoped_callback );
+			return MAD4B_SCP_Identity_Context::with_request_subject_override(
+				'oauth_developer',
+				(string) $derived['subject_fingerprint'],
+				'mcp_developer_dispatch',
+				$callback
+			);
 		} finally {
 			self::$developer_dispatch_target = '';
 			self::$developer_dispatch_schema_sha256 = '';

@@ -13,7 +13,6 @@ final class MAD4B_SCP_Schema {
 
 	private static $critical_ready_cache = null;
 	private static $physical_status_cache = null;
-	private static $transactional_status_cache = array();
 
 	public static function tables() {
 		global $wpdb;
@@ -29,89 +28,6 @@ final class MAD4B_SCP_Schema {
 			'operation_events' => $wpdb->prefix . 'mad4b_dynamic_operation_events', 'operation_heads' => $wpdb->prefix . 'mad4b_dynamic_operation_heads',
 			'recovery_cases' => $wpdb->prefix . 'mad4b_dynamic_recovery_cases', 'metric_buckets' => $wpdb->prefix . 'mad4b_dynamic_metric_buckets',
 		);
-	}
-
-	public static function reset_request_cache() {
-		self::$critical_ready_cache = null;
-		self::$physical_status_cache = null;
-		self::$transactional_status_cache = array();
-	}
-
-	private static function transactional_table_keys() {
-		return array(
-			'approvals', 'mutations', 'audit_events', 'audit_heads',
-			'content_jobs', 'content_job_events', 'work_leases', 'idempotency',
-			'outbox', 'inbox', 'operation_events', 'operation_heads', 'recovery_cases',
-		);
-	}
-
-	public static function transactional_storage_status( array $required_table_keys = array(), $refresh = false ) {
-		global $wpdb;
-		$required = empty( $required_table_keys ) ? self::transactional_table_keys() : array_values( array_unique( array_map( 'sanitize_key', $required_table_keys ) ) );
-		sort( $required, SORT_STRING );
-		$cache_key = hash( 'sha256', implode( '|', $required ) );
-		if ( ! $refresh && isset( self::$transactional_status_cache[ $cache_key ] ) ) return self::$transactional_status_cache[ $cache_key ];
-
-		$tables = self::tables();
-		$engines = array();
-		$collations = array();
-		$blockers = array();
-		$installed_schema_version = (int) get_option( self::OPTION, 0 );
-		if ( self::VERSION !== $installed_schema_version || ! self::is_ready() ) {
-			$blockers[] = $installed_schema_version > self::VERSION
-				? 'future_schema_downgrade_forbidden'
-				: ( $installed_schema_version < self::VERSION ? 'schema_upgrade_required' : 'governance_schema_generation_not_current' );
-		}
-		$topology = class_exists( 'MAD4B_SCP_Database_Topology' )
-			? MAD4B_SCP_Database_Topology::status( (bool) $refresh )
-			: array( 'ready' => false, 'blockers' => array( 'database_topology_service_unavailable' ) );
-		if ( ! is_array( $topology ) || empty( $topology['ready'] ) || empty( $topology['read_your_writes'] ) ) {
-			$blockers = array_merge( $blockers, is_array( $topology ) && isset( $topology['blockers'] ) && is_array( $topology['blockers'] ) ? $topology['blockers'] : array( 'database_topology_not_write_safe' ) );
-		}
-		foreach ( $required as $key ) {
-			if ( ! isset( $tables[ $key ] ) ) {
-				$blockers[] = 'unknown_table:' . $key;
-				continue;
-			}
-			$row = $wpdb->get_row( $wpdb->prepare( 'SHOW TABLE STATUS WHERE Name = %s', $tables[ $key ] ), ARRAY_A );
-			if ( ! is_array( $row ) || empty( $row['Name'] ) ) {
-				$blockers[] = 'table_status_unavailable:' . $key;
-				continue;
-			}
-			$engine = strtolower( trim( isset( $row['Engine'] ) ? (string) $row['Engine'] : '' ) );
-			$collation = strtolower( trim( isset( $row['Collation'] ) ? (string) $row['Collation'] : '' ) );
-			$engines[ $key ] = $engine;
-			$collations[ $key ] = $collation;
-			if ( 'innodb' !== $engine ) $blockers[] = 'nontransactional_engine:' . $key . ':' . ( '' === $engine ? 'unknown' : $engine );
-		}
-		ksort( $engines, SORT_STRING );
-		ksort( $collations, SORT_STRING );
-		$connection_basis = array(
-			'database' => isset( $wpdb->dbname ) ? (string) $wpdb->dbname : '',
-			'host' => isset( $wpdb->dbhost ) ? (string) $wpdb->dbhost : '',
-			'server_version' => method_exists( $wpdb, 'db_version' ) ? (string) $wpdb->db_version() : '',
-		);
-		$connection_fingerprint = is_array( $topology ) && ! empty( $topology['connection_fingerprint'] )
-			? (string) $topology['connection_fingerprint']
-			: hash( 'sha256', self::stable_json( $connection_basis ) );
-		$status = array(
-			'contract' => 'mad4b.database-transactional-storage.v1',
-			'installed_schema_version' => $installed_schema_version,
-			'supported_schema_version' => self::VERSION,
-			'required_table_keys' => $required,
-			'engines' => $engines,
-			'collations' => $collations,
-			'connection_fingerprint' => $connection_fingerprint,
-			'database_topology' => is_array( $topology ) ? $topology : array(),
-			'read_your_writes' => is_array( $topology ) && ! empty( $topology['read_your_writes'] ),
-			'identity_comparison_policy' => 'canonical_application_identity_plus_binary_sql_for_security_keys',
-			'blockers' => array_values( array_unique( $blockers ) ),
-			'ready' => empty( $blockers ),
-			'read_only' => true,
-			'mutation_performed' => false,
-		);
-		self::$transactional_status_cache[ $cache_key ] = $status;
-		return $status;
 	}
 
 	public static function migration_contract() {

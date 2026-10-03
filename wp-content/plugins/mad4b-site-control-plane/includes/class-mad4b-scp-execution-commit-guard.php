@@ -53,7 +53,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( ! self::same( $expected_material, $current, 'provider' ) ) {
 			return self::error( 'RECERTIFICATION_REQUIRED', 'Provider capability or artifact evidence changed before commit.' );
 		}
-		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'restore_epoch', 'candidate', 'database_storage', 'persisted_contracts', 'runtime_generation', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
+		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'site_profile', 'candidate', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
 			if ( ! self::same( $expected_material, $current, $dependency ) ) {
 				return self::error( 'REAPPROVAL_REQUIRED', 'A material authorization dependency changed before commit.', array( 'dependency' => $dependency ) );
 			}
@@ -89,62 +89,6 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
 		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) return self::error( 'DENIED', 'Authenticated subject identity is unavailable at commit guard.' );
-
-		$subject_lifecycle = self::subject_lifecycle_material( $identity );
-		if ( is_wp_error( $subject_lifecycle ) ) return $subject_lifecycle;
-
-		if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) return self::error( 'DENIED', 'Restore/authority epoch contract is unavailable at commit guard.' );
-		$restore_epoch = MAD4B_SCP_Restore_Epoch::material();
-		if ( is_wp_error( $restore_epoch ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Restore/authority epoch is not ready or indicates database rollback.', array( 'cause' => $restore_epoch->get_error_code() ) );
-
-		if ( ! class_exists( 'MAD4B_SCP_Runtime_Compatibility_Profile' ) ) return self::error( 'DENIED', 'Runtime compatibility profile is unavailable at commit guard.' );
-		$compatibility_status = MAD4B_SCP_Runtime_Compatibility_Profile::assert_governed_write_ready( true );
-		if ( is_wp_error( $compatibility_status ) ) {
-			$data = $compatibility_status->get_error_data();
-			return self::error( 'DENIED', 'Runtime infrastructure is not certified for governed mutation.', array(
-				'blockers' => is_array( $data ) && isset( $data['blockers'] ) ? $data['blockers'] : array( $compatibility_status->get_error_code() ),
-			) );
-		}
-		if ( ! class_exists( 'MAD4B_SCP_Persisted_Contract_Compatibility' ) ) return self::error( 'DENIED', 'Persisted-contract compatibility service is unavailable at commit guard.' );
-		$persisted_contracts = MAD4B_SCP_Persisted_Contract_Compatibility::assert_write_compatible();
-		if ( is_wp_error( $persisted_contracts ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Persisted security/governance generation is incompatible with this runtime.', array( 'cause' => $persisted_contracts->get_error_code() ) );
-
-		if ( ! class_exists( 'MAD4B_SCP_Runtime_Generation_Fence' ) ) return self::error( 'DENIED', 'Runtime generation fence is unavailable at commit guard.' );
-		$runtime_generation = MAD4B_SCP_Runtime_Generation_Fence::capture();
-		if ( is_wp_error( $runtime_generation ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Loaded runtime generation is stale or incompatible.', array( 'cause' => $runtime_generation->get_error_code() ) );
-
-		$runtime_compatibility = array(
-			'contract' => isset( $compatibility_status['contract'] ) ? (string) $compatibility_status['contract'] : '',
-			'profile_sha256' => isset( $compatibility_status['profile_sha256'] ) ? (string) $compatibility_status['profile_sha256'] : '',
-			'execution_context' => isset( $compatibility_status['execution_context'] ) ? (string) $compatibility_status['execution_context'] : '',
-			'remote_transport_server_id' => isset( $compatibility_status['remote_transport_server_id'] ) ? (string) $compatibility_status['remote_transport_server_id'] : '',
-			'object_cache' => isset( $compatibility_status['object_cache'] ) && is_array( $compatibility_status['object_cache'] ) ? array(
-				'external' => ! empty( $compatibility_status['object_cache']['external'] ),
-				'contract_verified' => ! empty( $compatibility_status['object_cache']['contract_verified'] ),
-			) : array(),
-			'database_router_present' => ! empty( $compatibility_status['database_topology']['database_dropin_present'] ),
-			'security_firewall_plugins' => isset( $compatibility_status['security_firewall']['plugins'] ) ? $compatibility_status['security_firewall']['plugins'] : array(),
-			'maintenance_active' => ! empty( $compatibility_status['maintenance']['active'] ),
-		);
-
-		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! method_exists( 'MAD4B_SCP_Schema', 'transactional_storage_status' ) ) {
-			return self::error( 'DENIED', 'Transactional governance storage contract is unavailable.' );
-		}
-		$database_storage_status = MAD4B_SCP_Schema::transactional_storage_status( array(), true );
-		if ( ! is_array( $database_storage_status ) || empty( $database_storage_status['ready'] ) ) {
-			return self::error( 'DENIED', 'Transactional governance storage is not ready for commit.', array(
-				'blockers' => is_array( $database_storage_status ) && isset( $database_storage_status['blockers'] ) ? $database_storage_status['blockers'] : array( 'storage_status_unavailable' ),
-			) );
-		}
-		$database_storage = array(
-			'contract' => isset( $database_storage_status['contract'] ) ? (string) $database_storage_status['contract'] : '',
-			'connection_fingerprint' => isset( $database_storage_status['connection_fingerprint'] ) ? (string) $database_storage_status['connection_fingerprint'] : '',
-			'engines' => isset( $database_storage_status['engines'] ) && is_array( $database_storage_status['engines'] ) ? $database_storage_status['engines'] : array(),
-			'collations' => isset( $database_storage_status['collations'] ) && is_array( $database_storage_status['collations'] ) ? $database_storage_status['collations'] : array(),
-			'identity_comparison_policy' => isset( $database_storage_status['identity_comparison_policy'] ) ? (string) $database_storage_status['identity_comparison_policy'] : '',
-			'read_your_writes' => ! empty( $database_storage_status['read_your_writes'] ),
-			'database_topology' => isset( $database_storage_status['database_topology'] ) && is_array( $database_storage_status['database_topology'] ) ? $database_storage_status['database_topology'] : array(),
-		);
 
 		$agent = class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent_public_id ) : null;
 		if ( ! is_array( $agent ) || empty( $agent['id'] ) || 'enabled' !== (string) $agent['status'] ) {
@@ -239,51 +183,12 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'approval' => $approval,
 			'policy' => $policy,
 			'authority' => $authority,
-			'subject_lifecycle' => $subject_lifecycle,
-			'restore_epoch' => $restore_epoch,
 			'site_profile' => $profile,
 			'candidate' => $candidate,
-			'database_storage' => $database_storage,
-			'persisted_contracts' => $persisted_contracts,
-			'runtime_generation' => $runtime_generation,
-			'runtime_compatibility' => $runtime_compatibility,
 			'provider' => $provider_material,
 			'kill_switch' => $kill_switch,
 			'rights' => empty( $rights ) ? array( 'state' => 'not_applicable' ) : self::canonicalize( $rights ),
 			'data_processing' => empty( $data_processing ) ? array( 'state' => 'not_applicable' ) : self::canonicalize( $data_processing ),
-		);
-	}
-
-	private static function subject_lifecycle_material( array $identity ) {
-		$user_id = isset( $identity['wp_user_id'] ) ? absint( $identity['wp_user_id'] ) : 0;
-		if ( $user_id < 1 ) return self::error( 'REAPPROVAL_REQUIRED', 'Authenticated WordPress subject is unavailable before commit.', array( 'dependency' => 'subject_lifecycle' ) );
-		$user = get_userdata( $user_id );
-		if ( ! $user ) return self::error( 'REAPPROVAL_REQUIRED', 'Authenticated WordPress user was deleted before commit.', array( 'dependency' => 'subject_lifecycle', 'wp_user_id' => $user_id ) );
-		$capability = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'connection_capability' )
-			? MAD4B_SCP_Policy::connection_capability()
-			: 'manage_options';
-		$connection_capable = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_connect_user' )
-			? MAD4B_SCP_Policy::can_connect_user( $user_id )
-			: ( '' !== $capability && user_can( $user, $capability ) );
-		$enrolled = ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured()
-			? true
-			: MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id );
-		if ( ! $connection_capable || ! $enrolled ) {
-			return self::error( 'REAPPROVAL_REQUIRED', 'Authenticated WordPress subject is no longer enrolled or connection-capable before commit.', array(
-				'dependency' => 'subject_lifecycle',
-				'wp_user_id' => $user_id,
-				'connection_capability' => $capability,
-			) );
-		}
-		$capabilities = isset( $user->allcaps ) && is_array( $user->allcaps ) ? array_keys( array_filter( $user->allcaps ) ) : array();
-		sort( $capabilities, SORT_STRING );
-		return array(
-			'wp_user_id' => $user_id,
-			'user_exists' => true,
-			'enrolled' => true,
-			'connection_capable' => true,
-			'connection_capability' => $capability,
-			'capabilities_sha256' => self::stable_digest( $capabilities ),
 		);
 	}
 

@@ -1,19 +1,6 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
-if ( ! class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) ) require_once __DIR__ . '/class-mad4b-scp-database-transaction-guard.php';
-if ( ! class_exists( 'MAD4B_SCP_Database_Failure_Semantics' ) ) require_once __DIR__ . '/class-mad4b-scp-database-failure-semantics.php';
-
-if ( ! class_exists( 'MAD4B_SCP_Durable_DB_Boundary_Exception' ) ) {
-	final class MAD4B_SCP_Durable_DB_Boundary_Exception extends RuntimeException {
-		private $wp_error;
-		public function __construct( $wp_error ) {
-			$this->wp_error = $wp_error;
-			parent::__construct( is_wp_error( $wp_error ) ? (string) $wp_error->get_error_code() : 'mad4b_durable_db_boundary_error' );
-		}
-		public function wp_error() { return $this->wp_error; }
-	}
-}
 
 /**
  * Durable execution primitives for Feature 007.
@@ -32,8 +19,6 @@ final class MAD4B_SCP_Durable_Execution {
 	const MAX_RECONCILIATION_OBSERVATIONS = 4;
 
 	public static function begin_idempotency( $scope_key, $idempotency_key, $request_sha256, $ttl_seconds = 86400 ) {
-		$restore_epoch = self::restore_epoch_preflight( 'begin_idempotency' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -42,26 +27,14 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) ) return new WP_Error( 'mad4b_idempotency_scope_invalid', 'Idempotency scope must be a SHA-256 digest.' );
 		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_request_hash_invalid', 'Idempotency request hash must be SHA-256.' );
-		$topology = self::write_topology_preflight();
-		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$expires = gmdate( 'Y-m-d H:i:s', time() + $ttl_seconds );
-		$wpdb->last_error = '';
 		$inserted = $wpdb->query( $wpdb->prepare(
 			"INSERT IGNORE INTO {$t['idempotency']} (scope_key,idempotency_key,request_sha256,claim_epoch,status,result_json,result_sha256,reconciliation_ref,expires_at,created_at,updated_at) VALUES (%s,%s,%s,1,'pending',NULL,'','',%s,%s,%s)",
 			$scope_key, $idempotency_key, $request_sha256, $expires, $now, $now
 		) );
-		if ( false === $inserted && '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_idempotency_claim_failed', 'Unable to claim idempotency record.', 'idempotency_begin_insert', (string) $wpdb->last_error );
-		$same_writer = self::same_writer_after_write( $topology, 'idempotency_begin' );
-		if ( is_wp_error( $same_writer ) ) return $same_writer;
 		if ( 1 === (int) $inserted ) {
-			$wpdb->last_error = '';
-			$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s LIMIT 1", $scope_key, $idempotency_key ), ARRAY_A );
-			if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'idempotency_begin_readback', (string) $wpdb->last_error );
-			if ( ! is_array( $persisted ) || 'pending' !== (string) $persisted['status'] || 1 !== (int) $persisted['claim_epoch'] || ! hash_equals( $request_sha256, (string) $persisted['request_sha256'] ) ) {
-				return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Idempotency claim writeback did not match the authoritative readback.', array( 'phase' => 'idempotency_begin_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
-			}
 			return array(
 				'contract' => self::IDEMPOTENCY_CONTRACT,
 				'claimed' => true,
@@ -73,12 +46,10 @@ final class MAD4B_SCP_Durable_Execution {
 				'expires_at' => $expires,
 			);
 		}
-		$wpdb->last_error = '';
 		$row = $wpdb->get_row( $wpdb->prepare(
 			"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s LIMIT 1",
 			$scope_key, $idempotency_key
 		), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'idempotency_begin_existing_read', (string) $wpdb->last_error );
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_idempotency_claim_failed', 'Unable to claim or read idempotency record.' );
 		if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
 			return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
@@ -86,15 +57,11 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( 'released_verified_no_effect' === (string) $row['status'] ) {
 			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
 			$next_epoch = $current_epoch + 1;
-			$wpdb->last_error = '';
 			$reclaimed = $wpdb->query( $wpdb->prepare(
 				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',reconciliation_ref='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_verified_no_effect'",
 				$next_epoch, $expires, $now, (int) $row['id'], $request_sha256, $current_epoch
 			) );
-			if ( false === $reclaimed ) return self::database_write_failure( 'mad4b_idempotency_in_progress', 'Verified no-effect idempotency reacquire write failed.', 'idempotency_begin_reacquire', (string) $wpdb->last_error );
 			if ( 1 === (int) $reclaimed ) {
-				$same_writer = self::same_writer_after_write( $topology, 'idempotency_begin_reacquire' );
-				if ( is_wp_error( $same_writer ) ) return $same_writer;
 				return array(
 					'contract' => self::IDEMPOTENCY_CONTRACT,
 					'claimed' => true,
@@ -144,8 +111,6 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function complete_idempotency( array $claim, $result ) {
-		$restore_epoch = self::restore_epoch_preflight( 'complete_idempotency' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		if ( empty( $claim['claimed'] ) || empty( $claim['scope_key'] ) || empty( $claim['idempotency_key'] ) || empty( $claim['request_sha256'] ) || empty( $claim['claim_epoch'] ) ) {
 			return new WP_Error( 'mad4b_idempotency_claim_invalid', 'Idempotency completion requires the exact pending claim and claim epoch.' );
@@ -154,28 +119,17 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_idempotency_result_invalid', 'Idempotency result is not serializable.' );
 		if ( strlen( $json ) > 262144 ) return new WP_Error( 'mad4b_idempotency_result_too_large', 'Idempotency result exceeds the bounded storage limit.' );
 		$sha = hash( 'sha256', $json );
-		$topology = self::write_topology_preflight();
-		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
-		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['idempotency']} SET status='completed',result_json=%s,result_sha256=%s,updated_at=%s WHERE scope_key=%s AND idempotency_key=%s AND request_sha256=%s AND claim_epoch=%d AND status='pending' AND expires_at>%s",
 			$json, $sha, gmdate( 'Y-m-d H:i:s' ), (string) $claim['scope_key'], (string) $claim['idempotency_key'], (string) $claim['request_sha256'], absint( $claim['claim_epoch'] ), gmdate( 'Y-m-d H:i:s' )
 		) );
-		if ( false === $updated ) return self::database_write_failure( 'mad4b_idempotency_complete_conflict', 'Idempotency completion persistence failed.', 'idempotency_complete', (string) $wpdb->last_error );
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_idempotency_complete_conflict', 'Idempotency record is no longer pending for this request.', array( 'blind_retry_allowed' => false ) );
-		$same_writer = self::same_writer_after_write( $topology, 'idempotency_complete' );
-		if ( is_wp_error( $same_writer ) ) return $same_writer;
-		$wpdb->last_error = '';
-		$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT status,result_sha256,claim_epoch FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s LIMIT 1", (string) $claim['scope_key'], (string) $claim['idempotency_key'] ), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Idempotency completion readback failed after write.', array( 'phase' => 'idempotency_complete_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
-		if ( ! is_array( $persisted ) || 'completed' !== (string) $persisted['status'] || ! hash_equals( $sha, (string) $persisted['result_sha256'] ) || (int) $persisted['claim_epoch'] !== absint( $claim['claim_epoch'] ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Idempotency completion readback did not match the committed claim.', array( 'phase' => 'idempotency_complete_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
-		return array( 'contract' => self::IDEMPOTENCY_CONTRACT, 'completed' => true, 'result_sha256' => $sha );
+		return 1 === (int) $updated
+			? array( 'contract' => self::IDEMPOTENCY_CONTRACT, 'completed' => true, 'result_sha256' => $sha )
+			: new WP_Error( 'mad4b_idempotency_complete_conflict', 'Idempotency record is no longer pending for this request.' );
 	}
 
 	public static function complete_idempotency_from_reconciliation( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $result ) {
-		$restore_epoch = self::restore_epoch_preflight( 'complete_idempotency_from_reconciliation' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -190,20 +144,18 @@ final class MAD4B_SCP_Durable_Execution {
 		$result_sha256 = hash( 'sha256', $json );
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$transaction = self::begin_owned_transaction( 'durable_idempotency_complete_reconciliation', array( 'idempotency' ) );
-		if ( is_wp_error( $transaction ) ) return $transaction;
+		$wpdb->query( 'START TRANSACTION' );
 		try {
 			$row = $wpdb->get_row( $wpdb->prepare(
 				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
 				$scope_key, $idempotency_key
 			), ARRAY_A );
-			if ( ! empty( $wpdb->last_error ) ) throw new RuntimeException( 'database_locking_read_failed' );
 			if ( ! is_array( $row ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_complete_reconciliation' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot reconcile an unknown idempotency record.' );
 			}
 			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_complete_reconciliation' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 			}
 			if ( 'completed' === (string) $row['status'] ) {
@@ -211,11 +163,11 @@ final class MAD4B_SCP_Durable_Execution {
 				if ( ! empty( $row['result_json'] ) ) {
 					$stored = json_decode( (string) $row['result_json'], true );
 					if ( JSON_ERROR_NONE !== json_last_error() ) {
-						self::rollback_owned_transaction( $transaction, 'durable_idempotency_complete_reconciliation' );
+						$wpdb->query( 'ROLLBACK' );
 						return new WP_Error( 'mad4b_idempotency_result_corrupt', 'Stored idempotency result is corrupt.' );
 					}
 				}
-				self::commit_owned_transaction( $transaction, 'durable_idempotency_complete_reconciliation' );
+				$wpdb->query( 'COMMIT' );
 				return array(
 					'contract' => self::IDEMPOTENCY_CONTRACT,
 					'completed' => true,
@@ -227,7 +179,7 @@ final class MAD4B_SCP_Durable_Execution {
 				);
 			}
 			if ( 'pending' !== (string) $row['status'] ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_complete_reconciliation' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_reconcile_state_denied', 'Only a pending idempotency record can be completed from provider readback.' );
 			}
 			$context = array(
@@ -241,7 +193,7 @@ final class MAD4B_SCP_Durable_Execution {
 			);
 			$verified = self::reconciliation_verified( 'idempotency_completion', $context );
 			if ( is_wp_error( $verified ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_complete_reconciliation' );
+				$wpdb->query( 'ROLLBACK' );
 				return $verified;
 			}
 			$updated = $wpdb->query( $wpdb->prepare(
@@ -249,7 +201,7 @@ final class MAD4B_SCP_Durable_Execution {
 				$json, $result_sha256, $reconciliation_ref, $now, (int) $row['id'], $request_sha256, isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_reconcile_cas_failed' );
-			self::commit_owned_transaction( $transaction, 'durable_idempotency_complete_reconciliation' );
+			$wpdb->query( 'COMMIT' );
 			return array(
 				'contract' => self::IDEMPOTENCY_CONTRACT,
 				'completed' => true,
@@ -260,17 +212,14 @@ final class MAD4B_SCP_Durable_Execution {
 				'result' => $result,
 				'result_sha256' => $result_sha256,
 			);
-		} catch ( MAD4B_SCP_Durable_DB_Boundary_Exception $e ) {
-			return $e->wp_error();
 		} catch ( Throwable $e ) {
-			return self::transaction_failure( $transaction, 'durable_idempotency_complete_reconciliation', 'mad4b_idempotency_reconcile_failed', 'Unable to complete idempotency from verified provider readback.', $e );
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_reconcile_failed', 'Unable to complete idempotency from verified provider readback.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
 
 
 	public static function record_idempotency_reconciliation_observation( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $observation ) {
-		$restore_epoch = self::restore_epoch_preflight( 'record_idempotency_reconciliation_observation' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -288,27 +237,25 @@ final class MAD4B_SCP_Durable_Execution {
 		$t = MAD4B_SCP_Schema::tables();
 		$now_epoch = time();
 		$now = gmdate( 'Y-m-d H:i:s', $now_epoch );
-		$transaction = self::begin_owned_transaction( 'durable_idempotency_observation', array( 'idempotency' ) );
-		if ( is_wp_error( $transaction ) ) return $transaction;
+		$wpdb->query( 'START TRANSACTION' );
 		try {
 			$row = $wpdb->get_row( $wpdb->prepare(
 				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
 				$scope_key, $idempotency_key
 			), ARRAY_A );
-			if ( ! empty( $wpdb->last_error ) ) throw new RuntimeException( 'database_locking_read_failed' );
 			if ( ! is_array( $row ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_observation' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot record reconciliation evidence for an unknown idempotency record.' );
 			}
 			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_observation' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 			}
 			$status = (string) $row['status'];
 			if ( 'released_verified_no_effect' === $status ) {
 				$proof = ! empty( $row['result_json'] ) ? json_decode( (string) $row['result_json'], true ) : array();
 				$proof = is_array( $proof ) ? $proof : array();
-				self::commit_owned_transaction( $transaction, 'durable_idempotency_observation' );
+				$wpdb->query( 'COMMIT' );
 				return array(
 					'contract' => self::RECONCILIATION_OBSERVATIONS_CONTRACT,
 					'recorded' => false,
@@ -323,7 +270,7 @@ final class MAD4B_SCP_Durable_Execution {
 				);
 			}
 			if ( 'pending' !== $status ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_observation' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_observation_state_denied', 'Reconciliation observations may be recorded only while the idempotency record is pending.' );
 			}
 			$context = array(
@@ -337,7 +284,7 @@ final class MAD4B_SCP_Durable_Execution {
 			);
 			$verified = self::reconciliation_verified( 'idempotency_observation', $context );
 			if ( is_wp_error( $verified ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_observation' );
+				$wpdb->query( 'ROLLBACK' );
 				return $verified;
 			}
 
@@ -360,7 +307,7 @@ final class MAD4B_SCP_Durable_Execution {
 				if ( is_array( $existing_observation )
 					&& isset( $existing_observation['provider_scan_generation'] )
 					&& hash_equals( $scan_generation, (string) $existing_observation['provider_scan_generation'] ) ) {
-					self::commit_owned_transaction( $transaction, 'durable_idempotency_observation' );
+					$wpdb->query( 'COMMIT' );
 					return array(
 						'contract' => self::RECONCILIATION_OBSERVATIONS_CONTRACT,
 						'recorded' => false,
@@ -391,7 +338,7 @@ final class MAD4B_SCP_Durable_Execution {
 				$json, $sha, $reconciliation_ref, $now, (int) $row['id'], $request_sha256, isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_observation_cas_failed' );
-			self::commit_owned_transaction( $transaction, 'durable_idempotency_observation' );
+			$wpdb->query( 'COMMIT' );
 			$first_epoch = ! empty( $observations[0]['observed_at_epoch'] ) ? (int) $observations[0]['observed_at_epoch'] : $now_epoch;
 			return array(
 				'contract' => self::RECONCILIATION_OBSERVATIONS_CONTRACT,
@@ -402,17 +349,14 @@ final class MAD4B_SCP_Durable_Execution {
 				'elapsed_seconds' => max( 0, $now_epoch - $first_epoch ),
 				'minimum_interval_seconds' => self::NO_EFFECT_MIN_OBSERVATION_SECONDS,
 			);
-		} catch ( MAD4B_SCP_Durable_DB_Boundary_Exception $e ) {
-			return $e->wp_error();
 		} catch ( Throwable $e ) {
-			return self::transaction_failure( $transaction, 'durable_idempotency_observation', 'mad4b_idempotency_observation_failed', 'Unable to persist verified reconciliation observation.', $e );
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_observation_failed', 'Unable to persist verified reconciliation observation.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
 
 
 	public static function release_idempotency_after_verified_no_effect( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $proof ) {
-		$restore_epoch = self::restore_epoch_preflight( 'release_idempotency_after_verified_no_effect' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -427,24 +371,22 @@ final class MAD4B_SCP_Durable_Execution {
 		$result_sha256 = hash( 'sha256', $json );
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$transaction = self::begin_owned_transaction( 'durable_idempotency_release_no_effect', array( 'idempotency' ) );
-		if ( is_wp_error( $transaction ) ) return $transaction;
+		$wpdb->query( 'START TRANSACTION' );
 		try {
 			$row = $wpdb->get_row( $wpdb->prepare(
 				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
 				$scope_key, $idempotency_key
 			), ARRAY_A );
-			if ( ! empty( $wpdb->last_error ) ) throw new RuntimeException( 'database_locking_read_failed' );
 			if ( ! is_array( $row ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot release an unknown idempotency record.' );
 			}
 			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 			}
 			if ( 'released_verified_no_effect' === (string) $row['status'] ) {
-				self::commit_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'COMMIT' );
 				return array(
 					'contract' => self::IDEMPOTENCY_CONTRACT,
 					'released' => true,
@@ -456,17 +398,17 @@ final class MAD4B_SCP_Durable_Execution {
 				);
 			}
 			if ( 'pending' !== (string) $row['status'] ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_no_effect_state_denied', 'Only a pending idempotency record can be released after verified no-effect reconciliation.' );
 			}
 			$ledger = ! empty( $row['result_json'] ) ? json_decode( (string) $row['result_json'], true ) : null;
 			if ( ! is_array( $ledger ) || self::RECONCILIATION_OBSERVATIONS_CONTRACT !== ( isset( $ledger['contract'] ) ? (string) $ledger['contract'] : '' ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_no_effect_observations_required', 'Verified no-effect release requires durable provider observations.' );
 			}
 			$observations = isset( $ledger['observations'] ) && is_array( $ledger['observations'] ) ? $ledger['observations'] : array();
 			if ( count( $observations ) < 2 ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_no_effect_observations_insufficient', 'At least two distinct complete provider observations are required before retry can be released.', array( 'observation_count' => count( $observations ), 'minimum' => 2 ) );
 			}
 			$generations = array();
@@ -474,34 +416,34 @@ final class MAD4B_SCP_Durable_Execution {
 			$provider_identity_json = '';
 			foreach ( $observations as $observation ) {
 				if ( ! is_array( $observation ) || empty( $observation['provider_scan_generation'] ) || empty( $observation['observed_at_epoch'] ) ) {
-					self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+					$wpdb->query( 'ROLLBACK' );
 					return new WP_Error( 'mad4b_idempotency_no_effect_observation_corrupt', 'Stored no-effect observation is incomplete.' );
 				}
 				$generations[] = (string) $observation['provider_scan_generation'];
 				$epochs[] = (int) $observation['observed_at_epoch'];
 				$current_identity_json = wp_json_encode( isset( $observation['provider_identity'] ) ? $observation['provider_identity'] : array(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 				if ( ! is_string( $current_identity_json ) || '' === $current_identity_json ) {
-					self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+					$wpdb->query( 'ROLLBACK' );
 					return new WP_Error( 'mad4b_idempotency_no_effect_observation_identity_invalid', 'Stored no-effect observation lacks provider identity.' );
 				}
 				if ( '' === $provider_identity_json ) $provider_identity_json = $current_identity_json;
 				elseif ( ! hash_equals( $provider_identity_json, $current_identity_json ) ) {
-					self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+					$wpdb->query( 'ROLLBACK' );
 					return new WP_Error( 'mad4b_idempotency_no_effect_observation_identity_drift', 'Provider identity changed between no-effect observations.' );
 				}
 			}
 			if ( count( array_unique( $generations ) ) < 2 ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_no_effect_distinct_scans_required', 'No-effect release requires at least two distinct provider scan generations.' );
 			}
 			$elapsed = max( $epochs ) - min( $epochs );
 			if ( $elapsed < self::NO_EFFECT_MIN_OBSERVATION_SECONDS ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_no_effect_observation_window_pending', 'Provider no-effect observations are too close together to release a retry safely.', array( 'elapsed_seconds' => $elapsed, 'minimum_interval_seconds' => self::NO_EFFECT_MIN_OBSERVATION_SECONDS ) );
 			}
 			$proof_identity_json = wp_json_encode( isset( $proof['provider_identity'] ) ? $proof['provider_identity'] : array(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			if ( ! is_string( $proof_identity_json ) || ! hash_equals( $provider_identity_json, $proof_identity_json ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_no_effect_proof_identity_drift', 'Final no-effect proof is not bound to the durable provider observations.' );
 			}
 			$proof['durable_observation_count'] = count( $observations );
@@ -509,7 +451,7 @@ final class MAD4B_SCP_Durable_Execution {
 			$proof['durable_scan_generations'] = array_values( array_unique( $generations ) );
 			$json = wp_json_encode( $proof, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			if ( ! is_string( $json ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_no_effect_proof_invalid', 'No-effect reconciliation proof is not serializable after durable observation binding.' );
 			}
 			$result_sha256 = hash( 'sha256', $json );
@@ -524,7 +466,7 @@ final class MAD4B_SCP_Durable_Execution {
 			);
 			$verified = self::reconciliation_verified( 'idempotency_no_effect', $context );
 			if ( is_wp_error( $verified ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+				$wpdb->query( 'ROLLBACK' );
 				return $verified;
 			}
 			$updated = $wpdb->query( $wpdb->prepare(
@@ -532,7 +474,7 @@ final class MAD4B_SCP_Durable_Execution {
 				$json, $result_sha256, $reconciliation_ref, $now, $now, (int) $row['id'], $request_sha256, isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_no_effect_release_cas_failed' );
-			self::commit_owned_transaction( $transaction, 'durable_idempotency_release_no_effect' );
+			$wpdb->query( 'COMMIT' );
 			return array(
 				'contract' => self::IDEMPOTENCY_CONTRACT,
 				'released' => true,
@@ -543,17 +485,14 @@ final class MAD4B_SCP_Durable_Execution {
 				'reconciliation_ref' => $reconciliation_ref,
 				'result_sha256' => $result_sha256,
 			);
-		} catch ( MAD4B_SCP_Durable_DB_Boundary_Exception $e ) {
-			return $e->wp_error();
 		} catch ( Throwable $e ) {
-			return self::transaction_failure( $transaction, 'durable_idempotency_release_no_effect', 'mad4b_idempotency_no_effect_release_failed', 'Unable to release idempotency after verified provider no-effect reconciliation.', $e );
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_no_effect_release_failed', 'Unable to release idempotency after verified provider no-effect reconciliation.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
 
 
 	public static function reclaim_idempotency( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $ttl_seconds = 86400 ) {
-		$restore_epoch = self::restore_epoch_preflight( 'reclaim_idempotency' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -567,29 +506,27 @@ final class MAD4B_SCP_Durable_Execution {
 		$now_ts = time();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
-		$transaction = self::begin_owned_transaction( 'durable_idempotency_reclaim', array( 'idempotency' ) );
-		if ( is_wp_error( $transaction ) ) return $transaction;
+		$wpdb->query( 'START TRANSACTION' );
 		try {
 			$row = $wpdb->get_row( $wpdb->prepare(
 				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
 				$scope_key, $idempotency_key
 			), ARRAY_A );
-			if ( ! empty( $wpdb->last_error ) ) throw new RuntimeException( 'database_locking_read_failed' );
 			if ( ! is_array( $row ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot reclaim unknown idempotency record.' );
 			}
 			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 			}
 			if ( 'pending' !== (string) $row['status'] ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_reclaim_state_denied', 'Only expired pending idempotency records may be reclaimed.' );
 			}
 			$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= $now_ts;
 			if ( ! $expired ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_still_active', 'Pending idempotency record has not expired.' );
 			}
 			$reconciliation = self::reconciliation_verified(
@@ -604,7 +541,7 @@ final class MAD4B_SCP_Durable_Execution {
 				)
 			);
 			if ( is_wp_error( $reconciliation ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_idempotency_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return $reconciliation;
 			}
 			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
@@ -614,7 +551,7 @@ final class MAD4B_SCP_Durable_Execution {
 				$next_epoch, $expires, $reconciliation_ref, $now, (int) $row['id'], $request_sha256, $current_epoch, $now
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_reclaim_cas_failed' );
-			self::commit_owned_transaction( $transaction, 'durable_idempotency_reclaim' );
+			$wpdb->query( 'COMMIT' );
 			return array(
 				'contract' => self::IDEMPOTENCY_CONTRACT,
 				'claimed' => true,
@@ -627,20 +564,15 @@ final class MAD4B_SCP_Durable_Execution {
 				'reconciliation_ref' => $reconciliation_ref,
 				'expires_at' => $expires,
 			);
-		} catch ( MAD4B_SCP_Durable_DB_Boundary_Exception $e ) {
-			return $e->wp_error();
 		} catch ( Throwable $e ) {
-			return self::transaction_failure( $transaction, 'durable_idempotency_reclaim', 'mad4b_idempotency_reclaim_failed', 'Unable to reclaim idempotency record.', $e );
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_reclaim_failed', 'Unable to reclaim idempotency record.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
 
 	public static function scope_key( $site_uuid, $capability, $operation, $target_identity ) {
-		$binding = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) && method_exists( 'MAD4B_SCP_Ability_Contract_Inspector', 'site_binding' )
-			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
-			: array();
 		$material = array(
 			'site_uuid' => strtolower( trim( (string) $site_uuid ) ),
-			'site_binding' => is_array( $binding ) ? $binding : array(),
 			'capability' => trim( (string) $capability ),
 			'operation' => trim( (string) $operation ),
 			'target_identity' => trim( (string) $target_identity ),
@@ -649,8 +581,6 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function acquire_lease( $work_id, $aggregate_type, $aggregate_id, $worker_id, $expected_revision, $ttl_seconds = 120 ) {
-		$restore_epoch = self::restore_epoch_preflight( 'acquire_lease' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$valid = self::validate_lease_identity( $work_id, $aggregate_type, $aggregate_id, $worker_id, $expected_revision );
 		if ( is_wp_error( $valid ) ) return $valid;
@@ -659,11 +589,9 @@ final class MAD4B_SCP_Durable_Execution {
 		$now_ts = time();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
-		$transaction = self::begin_owned_transaction( 'durable_lease_acquire', array( 'work_leases' ) );
-		if ( is_wp_error( $transaction ) ) return $transaction;
+		$wpdb->query( 'START TRANSACTION' );
 		try {
 			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['work_leases']} WHERE work_id=%s FOR UPDATE", $work_id ), ARRAY_A );
-			if ( ! empty( $wpdb->last_error ) ) throw new RuntimeException( 'database_locking_read_failed' );
 			if ( ! $row ) {
 				$ok = $wpdb->insert( $t['work_leases'], array(
 					'work_id' => $work_id,
@@ -681,39 +609,36 @@ final class MAD4B_SCP_Durable_Execution {
 					'updated_at' => $now,
 				), array( '%s','%s','%s','%s','%d','%d','%s','%s','%s','%s','%s','%s','%s' ) );
 				if ( false === $ok ) throw new RuntimeException( 'lease_insert_failed' );
-				self::commit_owned_transaction( $transaction, 'durable_lease_acquire' );
+				$wpdb->query( 'COMMIT' );
 				return self::lease_receipt( $work_id, $aggregate_type, $aggregate_id, $worker_id, 1, $expected_revision, $now, $now, $expires, 'active', '' );
 			}
 			if ( (string) $row['aggregate_type'] !== $aggregate_type || (string) $row['aggregate_id'] !== $aggregate_id ) {
-				self::rollback_owned_transaction( $transaction, 'durable_lease_acquire' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_lease_work_identity_conflict', 'Work ID is already bound to a different aggregate.' );
 			}
 			$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= $now_ts;
 			if ( 'active' === (string) $row['status'] && ! $expired ) {
 				if ( hash_equals( (string) $row['worker_id'], $worker_id ) && (int) $row['expected_aggregate_revision'] === absint( $expected_revision ) ) {
-					self::commit_owned_transaction( $transaction, 'durable_lease_acquire' );
+					$wpdb->query( 'COMMIT' );
 					return self::lease_receipt_from_row( $row );
 				}
-				self::rollback_owned_transaction( $transaction, 'durable_lease_acquire' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_lease_held', 'Work is already held by another active worker.' );
 			}
-			self::rollback_owned_transaction( $transaction, 'durable_lease_acquire' );
+			$wpdb->query( 'ROLLBACK' );
 			return new WP_Error( 'mad4b_lease_reconciliation_required', 'Expired or non-active work requires provider/state reconciliation before reclaim.', array(
 				'work_id' => $work_id,
 				'current_epoch' => (int) $row['lease_epoch'],
 				'status' => (string) $row['status'],
 				'expires_at' => (string) $row['expires_at'],
 			) );
-		} catch ( MAD4B_SCP_Durable_DB_Boundary_Exception $e ) {
-			return $e->wp_error();
 		} catch ( Throwable $e ) {
-			return self::transaction_failure( $transaction, 'durable_lease_acquire', 'mad4b_lease_acquire_failed', 'Unable to acquire durable work lease.', $e );
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_lease_acquire_failed', 'Unable to acquire durable work lease.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
 
 	public static function reclaim_lease( $work_id, $worker_id, $expected_revision, $reconciliation_ref, $ttl_seconds = 120 ) {
-		$restore_epoch = self::restore_epoch_preflight( 'reclaim_lease' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$work_id = strtolower( trim( (string) $work_id ) );
 		$worker_id = trim( (string) $worker_id );
@@ -725,22 +650,20 @@ final class MAD4B_SCP_Durable_Execution {
 		$now_ts = time();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
-		$transaction = self::begin_owned_transaction( 'durable_lease_reclaim', array( 'work_leases' ) );
-		if ( is_wp_error( $transaction ) ) return $transaction;
+		$wpdb->query( 'START TRANSACTION' );
 		try {
 			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['work_leases']} WHERE work_id=%s FOR UPDATE", $work_id ), ARRAY_A );
-			if ( ! empty( $wpdb->last_error ) ) throw new RuntimeException( 'database_locking_read_failed' );
 			if ( ! is_array( $row ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_lease_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_lease_missing', 'Cannot reclaim unknown work.' );
 			}
 			$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= $now_ts;
 			if ( 'active' !== (string) $row['status'] ) {
-				self::rollback_owned_transaction( $transaction, 'durable_lease_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_lease_terminal_reclaim_denied', 'Only an expired active lease may be reclaimed; terminal work requires a new work identity.' );
 			}
 			if ( ! $expired ) {
-				self::rollback_owned_transaction( $transaction, 'durable_lease_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_lease_still_active', 'Active unexpired work cannot be reclaimed.' );
 			}
 			$reconciliation = self::reconciliation_verified(
@@ -759,7 +682,7 @@ final class MAD4B_SCP_Durable_Execution {
 				)
 			);
 			if ( is_wp_error( $reconciliation ) ) {
-				self::rollback_owned_transaction( $transaction, 'durable_lease_reclaim' );
+				$wpdb->query( 'ROLLBACK' );
 				return $reconciliation;
 			}
 			$next_epoch = (int) $row['lease_epoch'] + 1;
@@ -768,56 +691,37 @@ final class MAD4B_SCP_Durable_Execution {
 				$worker_id, $next_epoch, absint( $expected_revision ), $now, $now, $expires, $reconciliation_ref, $now, (int) $row['id'], (int) $row['lease_epoch']
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'lease_reclaim_cas_failed' );
-			self::commit_owned_transaction( $transaction, 'durable_lease_reclaim' );
+			$wpdb->query( 'COMMIT' );
 			return self::lease_receipt( $work_id, (string) $row['aggregate_type'], (string) $row['aggregate_id'], $worker_id, $next_epoch, $expected_revision, $now, $now, $expires, 'active', $reconciliation_ref );
-		} catch ( MAD4B_SCP_Durable_DB_Boundary_Exception $e ) {
-			return $e->wp_error();
 		} catch ( Throwable $e ) {
-			return self::transaction_failure( $transaction, 'durable_lease_reclaim', 'mad4b_lease_reclaim_failed', 'Unable to reclaim durable work lease.', $e );
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_lease_reclaim_failed', 'Unable to reclaim durable work lease.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
 
 	public static function heartbeat( $work_id, $worker_id, $lease_epoch, $ttl_seconds = 120 ) {
-		$restore_epoch = self::restore_epoch_preflight( 'heartbeat' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$work_id = strtolower( trim( (string) $work_id ) );
 		$worker_id = trim( (string) $worker_id );
 		$lease_epoch = absint( $lease_epoch );
 		$ttl_seconds = max( 30, min( 3600, absint( $ttl_seconds ) ) );
-		$topology = self::write_topology_preflight();
-		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now_ts = time();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
-		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['work_leases']} SET heartbeat_at=%s,expires_at=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active' AND expires_at>%s",
 			$now, $expires, $now, $work_id, $worker_id, $lease_epoch, $now
 		) );
-		if ( false === $updated ) return self::database_write_failure( 'mad4b_lease_heartbeat_fenced', 'Lease heartbeat persistence failed.', 'lease_heartbeat', (string) $wpdb->last_error );
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_lease_heartbeat_fenced', 'Heartbeat rejected because worker/epoch is stale, expired or not active.', array( 'blind_retry_allowed' => false ) );
-		$same_writer = self::same_writer_after_write( $topology, 'lease_heartbeat' );
-		if ( is_wp_error( $same_writer ) ) return $same_writer;
-		$wpdb->last_error = '';
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_lease_heartbeat_fenced', 'Heartbeat rejected because worker/epoch is stale, expired or not active.' );
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['work_leases']} WHERE work_id=%s LIMIT 1", $work_id ), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Lease heartbeat readback failed after write.', array( 'phase' => 'lease_heartbeat_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
 		return self::lease_receipt_from_row( $row );
 	}
 
 	public static function assert_fencing_token( $work_id, $worker_id, $lease_epoch, $expected_revision ) {
-		$restore_epoch = self::restore_epoch_preflight( 'assert_fencing_token' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
-		$topology = self::write_topology_preflight();
-		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
-		$wpdb->last_error = '';
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['work_leases']} WHERE work_id=%s LIMIT 1", strtolower( trim( (string) $work_id ) ) ), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'lease_fence_read', (string) $wpdb->last_error );
-		$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
-		if ( is_wp_error( $same_writer ) ) return $same_writer;
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_fence_missing', 'Durable work lease is missing.' );
 		if ( (int) $lease_epoch < (int) $row['lease_epoch'] ) return new WP_Error( 'mad4b_fence_epoch_stale', 'Zombie worker fencing epoch is stale.' );
 		if ( (int) $lease_epoch > (int) $row['lease_epoch'] ) return new WP_Error( 'mad4b_fence_epoch_unknown', 'Provided fencing epoch is ahead of the authoritative lease.' );
@@ -829,33 +733,19 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function complete_lease( $work_id, $worker_id, $lease_epoch, $status = 'completed' ) {
-		$restore_epoch = self::restore_epoch_preflight( 'complete_lease' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$status = sanitize_key( (string) $status );
 		if ( ! in_array( $status, array( 'completed', 'blocked', 'failed', 'cancelled' ), true ) ) return new WP_Error( 'mad4b_lease_terminal_status_invalid', 'Lease terminal status is invalid.' );
-		$topology = self::write_topology_preflight();
-		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['work_leases']} SET status=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active' AND expires_at>%s",
 			$status, $now, strtolower( trim( (string) $work_id ) ), trim( (string) $worker_id ), absint( $lease_epoch ), $now
 		) );
-		if ( false === $updated ) return self::database_write_failure( 'mad4b_lease_complete_fenced', 'Lease completion persistence failed.', 'lease_complete', (string) $wpdb->last_error );
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected because ownership, epoch, status or expiry is no longer authoritative.', array( 'blind_retry_allowed' => false ) );
-		$same_writer = self::same_writer_after_write( $topology, 'lease_complete' );
-		if ( is_wp_error( $same_writer ) ) return $same_writer;
-		$wpdb->last_error = '';
-		$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT status,lease_epoch,worker_id FROM {$t['work_leases']} WHERE work_id=%s LIMIT 1", strtolower( trim( (string) $work_id ) ) ), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) || ! is_array( $persisted ) || (string) $persisted['status'] !== $status || (int) $persisted['lease_epoch'] !== absint( $lease_epoch ) || ! hash_equals( (string) $persisted['worker_id'], trim( (string) $worker_id ) ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Lease completion readback did not match the committed terminal state.', array( 'phase' => 'lease_complete_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
-		return true;
+		return 1 === (int) $updated ? true : new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected because ownership, epoch, status or expiry is no longer authoritative.' );
 	}
 
 	public static function enqueue_outbox( array $record ) {
-		$restore_epoch = self::restore_epoch_preflight( 'enqueue_outbox' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$required = array( 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256' );
 		foreach ( $required as $field ) if ( ! isset( $record[ $field ] ) || '' === trim( (string) $record[ $field ] ) ) return new WP_Error( 'mad4b_outbox_field_missing', 'Outbox record is missing ' . $field . '.' );
@@ -875,8 +765,6 @@ final class MAD4B_SCP_Durable_Execution {
 		$payload = isset( $record['payload'] ) ? $record['payload'] : array();
 		$payload_json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $payload_json ) || strlen( $payload_json ) > 262144 ) return new WP_Error( 'mad4b_outbox_payload_invalid', 'Outbox payload is invalid or exceeds bounded storage.' );
-		$topology = self::write_topology_preflight();
-		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$outbox_id = wp_generate_uuid4();
 		$now = gmdate( 'Y-m-d H:i:s' );
@@ -886,7 +774,6 @@ final class MAD4B_SCP_Durable_Execution {
 			if ( false === $available_ts ) return new WP_Error( 'mad4b_outbox_available_at_invalid', 'Outbox available_at is invalid.' );
 			$available = gmdate( 'Y-m-d H:i:s', $available_ts );
 		}
-		$wpdb->last_error = '';
 		$ok = $wpdb->insert( $t['outbox'], array(
 			'outbox_id' => $outbox_id,
 			'job_id' => $job_id,
@@ -906,10 +793,6 @@ final class MAD4B_SCP_Durable_Execution {
 			'updated_at' => $now,
 		) );
 		if ( false === $ok ) {
-			if ( '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_outbox_idempotency_conflict', 'Outbox persistence failed.', 'outbox_insert', (string) $wpdb->last_error );
-			$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
-			if ( is_wp_error( $same_writer ) ) return $same_writer;
-			$wpdb->last_error = '';
 			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE provider_id=%s AND idempotency_key=%s LIMIT 1", $provider_id, $idempotency_key ), ARRAY_A );
 			if ( is_array( $existing )
 				&& hash_equals( (string) $existing['request_sha256'], $request_sha256 )
@@ -919,17 +802,10 @@ final class MAD4B_SCP_Durable_Execution {
 				&& hash_equals( (string) $existing['workflow_plan_sha256'], $workflow_plan_sha256 ) ) return $existing;
 			return new WP_Error( 'mad4b_outbox_idempotency_conflict', 'Provider outbox idempotency key conflicts with a different logical request.' );
 		}
-		$same_writer = self::same_writer_after_write( $topology, 'outbox_insert' );
-		if ( is_wp_error( $same_writer ) ) return $same_writer;
-		$wpdb->last_error = '';
-		$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE outbox_id=%s LIMIT 1", $outbox_id ), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) || ! is_array( $persisted ) || ! hash_equals( $request_sha256, (string) $persisted['request_sha256'] ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Outbox writeback did not match authoritative readback.', array( 'phase' => 'outbox_insert_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
-		return $persisted;
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE outbox_id=%s LIMIT 1", $outbox_id ), ARRAY_A );
 	}
 
 	public static function accept_inbox( $provider_id, $provider_event_id, $job_id, $payload_sha256, $provider_execution_ref = '' ) {
-		$restore_epoch = self::restore_epoch_preflight( 'accept_inbox' );
-		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$provider_id = sanitize_key( (string) $provider_id );
 		$provider_event_id = trim( (string) $provider_event_id );
@@ -938,11 +814,8 @@ final class MAD4B_SCP_Durable_Execution {
 		$payload_sha256 = strtolower( trim( (string) $payload_sha256 ) );
 		if ( '' === $provider_id || '' === $provider_event_id || strlen( $provider_event_id ) > 191 || ! preg_match( '/^[a-f0-9-]{36}$/', $job_id ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_identity_invalid', 'Provider inbox identity is invalid.' );
 		if ( strlen( $provider_execution_ref ) > 191 ) return new WP_Error( 'mad4b_inbox_execution_ref_invalid', 'Provider execution reference is too long.' );
-		$topology = self::write_topology_preflight();
-		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$wpdb->last_error = '';
 		$inserted = $wpdb->insert( $t['inbox'], array(
 			'provider_id' => $provider_id,
 			'provider_event_id' => $provider_event_id,
@@ -954,171 +827,14 @@ final class MAD4B_SCP_Durable_Execution {
 			'received_at' => $now,
 			'processed_at' => null,
 		) );
-		if ( false !== $inserted ) {
-			$same_writer = self::same_writer_after_write( $topology, 'inbox_insert' );
-			if ( is_wp_error( $same_writer ) ) return $same_writer;
-			return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => false, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id );
-		}
-		if ( '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_inbox_accept_failed', 'Provider inbox persistence failed.', 'inbox_insert', (string) $wpdb->last_error );
-		$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
-		if ( is_wp_error( $same_writer ) ) return $same_writer;
-		$wpdb->last_error = '';
+		if ( false !== $inserted ) return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => false, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id );
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['inbox']} WHERE provider_id=%s AND provider_event_id=%s LIMIT 1", $provider_id, $provider_event_id ), ARRAY_A );
-		if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'inbox_duplicate_read', (string) $wpdb->last_error );
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_inbox_accept_failed', 'Unable to accept or read provider event.' );
 		if ( ! hash_equals( (string) $row['payload_sha256'], $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_event_conflict', 'Duplicate provider event ID carries a different payload hash.' );
 		if ( ! hash_equals( (string) $row['job_id'], $job_id ) ) return new WP_Error( 'mad4b_inbox_job_conflict', 'Duplicate provider event ID is already bound to a different job.' );
 		$stored_execution_ref = isset( $row['provider_execution_ref'] ) ? (string) $row['provider_execution_ref'] : '';
 		if ( '' !== $provider_execution_ref && '' !== $stored_execution_ref && ! hash_equals( $stored_execution_ref, $provider_execution_ref ) ) return new WP_Error( 'mad4b_inbox_execution_ref_conflict', 'Duplicate provider event ID is already bound to a different provider execution reference.' );
 		return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => true, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id, 'status' => (string) $row['status'], 'result_ref' => (string) $row['result_ref'] );
-	}
-
-	private static function restore_epoch_preflight( $surface ) {
-		if ( class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) && method_exists( 'MAD4B_SCP_Database_Transaction_Guard', 'assert_no_external_transaction' ) ) {
-			$ownership = MAD4B_SCP_Database_Transaction_Guard::assert_no_external_transaction();
-			if ( is_wp_error( $ownership ) ) return $ownership;
-		}
-		if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
-			return new WP_Error( 'mad4b_durable_restore_epoch_unavailable', 'Durable execution requires the restore/authority epoch contract.', array( 'surface' => sanitize_key( (string) $surface ), 'blind_retry_allowed' => false ) );
-		}
-		$status = MAD4B_SCP_Restore_Epoch::ensure_bound();
-		if ( is_wp_error( $status ) ) {
-			return new WP_Error(
-				'mad4b_durable_restore_epoch_quarantined',
-				'Durable state is quarantined because the database restore/authority epoch is not current.',
-				array(
-					'surface' => sanitize_key( (string) $surface ),
-					'cause' => $status->get_error_code(),
-					'reconciliation_required' => true,
-					'blind_retry_allowed' => false,
-				)
-			);
-		}
-		return $status;
-	}
-
-	private static function write_topology_preflight() {
-		if ( ! class_exists( 'MAD4B_SCP_Database_Topology' ) ) return new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
-		return MAD4B_SCP_Database_Topology::assert_write_ready( true );
-	}
-
-	private static function same_writer_after_write( array $topology, $phase ) {
-		$same = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
-		if ( ! is_wp_error( $same ) ) return $same;
-		return new WP_Error(
-			'mad4b_durable_persistence_uncertain',
-			'Durable write completed but same-writer readback could not be proven.',
-			array(
-				'phase' => sanitize_key( (string) $phase ),
-				'cause' => $same->get_error_code(),
-				'persistence_state' => 'unknown',
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-				'client_action' => 'reconcile_database_state_before_any_retry',
-			)
-		);
-	}
-
-	private static function database_write_failure( $code, $message, $phase, $db_error, array $extra = array() ) {
-		$failure = MAD4B_SCP_Database_Failure_Semantics::classify( $phase, $db_error, null );
-		$failure = array_merge( $failure, $extra );
-		$final_code = ! empty( $failure['reconciliation_required'] ) ? 'mad4b_durable_persistence_uncertain' : sanitize_key( (string) $code );
-		$failure['original_error_code'] = sanitize_key( (string) $code );
-		if ( '' !== trim( (string) $db_error ) ) $failure['db_error'] = substr( trim( (string) $db_error ), 0, 191 );
-		return new WP_Error( $final_code, (string) $message, $failure );
-	}
-
-	private static function authoritative_read_failure( $phase, $db_error ) {
-		return new WP_Error(
-			'mad4b_durable_authoritative_read_unavailable',
-			'Authoritative durable state could not be read from the certified writer.',
-			array(
-				'phase' => sanitize_key( (string) $phase ),
-				'db_error' => substr( trim( (string) $db_error ), 0, 191 ),
-				'reconciliation_required' => false,
-				'blind_retry_allowed' => false,
-				'fresh_plan_required' => true,
-				'client_action' => 'restore_authoritative_database_read_then_replan',
-			)
-		);
-	}
-
-	private static function begin_owned_transaction( $scope, array $table_keys ) {
-		if ( ! class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) ) {
-			return new WP_Error( 'mad4b_durable_transaction_guard_unavailable', 'Durable execution transaction guard is unavailable.' );
-		}
-		return MAD4B_SCP_Database_Transaction_Guard::begin( $scope, $table_keys, true );
-	}
-
-	private static function commit_owned_transaction( array $transaction, $phase ) {
-		$result = MAD4B_SCP_Database_Transaction_Guard::commit( $transaction );
-		if ( is_wp_error( $result ) ) {
-			$data = $result->get_error_data();
-			$data = is_array( $data ) ? $data : array();
-			throw new MAD4B_SCP_Durable_DB_Boundary_Exception(
-				new WP_Error(
-					'mad4b_durable_persistence_uncertain',
-					'Durable database commit could not be proven; reconcile authoritative state before any retry.',
-					array_merge( $data, array(
-						'phase' => sanitize_key( (string) $phase ),
-						'cause' => $result->get_error_code(),
-						'persistence_state' => 'unknown',
-						'reconciliation_required' => true,
-						'blind_retry_allowed' => false,
-						'client_action' => 'reconcile_database_state_before_any_retry',
-					) )
-				)
-			);
-		}
-		return true;
-	}
-
-	private static function rollback_owned_transaction( array $transaction, $phase ) {
-		$result = MAD4B_SCP_Database_Transaction_Guard::rollback( $transaction );
-		if ( is_wp_error( $result ) ) {
-			$data = $result->get_error_data();
-			$data = is_array( $data ) ? $data : array();
-			throw new MAD4B_SCP_Durable_DB_Boundary_Exception(
-				new WP_Error(
-					'mad4b_durable_rollback_uncertain',
-					'Durable database rollback could not be proven; reconcile authoritative state before any retry.',
-					array_merge( $data, array(
-						'phase' => sanitize_key( (string) $phase ),
-						'cause' => $result->get_error_code(),
-						'persistence_state' => 'unknown',
-						'reconciliation_required' => true,
-						'blind_retry_allowed' => false,
-						'client_action' => 'reconcile_database_state_before_any_retry',
-					) )
-				)
-			);
-		}
-		return true;
-	}
-
-	private static function transaction_failure( array $transaction, $phase, $error_code, $message, $throwable ) {
-		global $wpdb;
-		$db_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
-		$rollback = MAD4B_SCP_Database_Transaction_Guard::rollback( $transaction );
-		$rollback_verified = true === $rollback;
-		$failure = MAD4B_SCP_Database_Failure_Semantics::classify(
-			$phase,
-			trim( $db_error . ' ' . ( $throwable instanceof Throwable ? $throwable->getMessage() : '' ) ),
-			$rollback_verified
-		);
-		if ( is_wp_error( $rollback ) ) {
-			$failure['rollback_error'] = $rollback->get_error_code();
-			$failure['rollback_verified'] = false;
-			if ( empty( $failure['server_transaction_rollback_guaranteed'] ) ) {
-				$failure['persistence_state'] = 'unknown';
-				$failure['reconciliation_required'] = true;
-				$failure['client_action'] = 'reconcile_database_state_before_any_retry';
-			}
-		}
-		$failure['cause'] = $throwable instanceof Throwable ? substr( $throwable->getMessage(), 0, 160 ) : 'database_failure';
-		$failure['original_error_code'] = sanitize_key( (string) $error_code );
-		$final_code = ! empty( $failure['reconciliation_required'] ) ? 'mad4b_durable_persistence_uncertain' : sanitize_key( (string) $error_code );
-		return new WP_Error( $final_code, (string) $message, $failure );
 	}
 
 	private static function reconciliation_verified( $kind, array $context ) {

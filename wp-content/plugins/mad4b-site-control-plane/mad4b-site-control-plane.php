@@ -16,10 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 define( 'MAD4B_SCP_VERSION', '0.4.0-rc.88' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
-define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
-$mad4b_scp_boot_provenance_path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
-define( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256', is_readable( $mad4b_scp_boot_provenance_path ) ? hash_file( 'sha256', $mad4b_scp_boot_provenance_path ) : '' );
-unset( $mad4b_scp_boot_provenance_path );
 
 // Keep this tiny lifecycle hook available even on the foreign REST kernel.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';
@@ -96,18 +92,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-maintenance-lease
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-post-update-continuation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portable-readonly-connection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-manager.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-topology.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-failure-semantics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-persisted-contract-compatibility.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-generation-fence.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-transaction-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-durable-execution.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-canonicalization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-journal.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-evidence-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-metrics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-diff.php';
@@ -155,7 +145,6 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-server.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-oauth-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-consent-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-key-path-policy.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-restore-epoch.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-init-lock.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canary.php';
@@ -193,10 +182,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-brand-context-builder.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-compatibility-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-commit-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy-resolution.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 // The mutation execution-boundary filter must exist before any ability can be
 // materialized. Nested write dispatch calls Ability::execute() directly, so

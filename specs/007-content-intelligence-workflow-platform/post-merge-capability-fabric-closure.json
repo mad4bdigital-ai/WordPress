@@ -289,7 +289,7 @@
     },
     {
       "id": "request_scope_db_hooks",
-      "status": "DONE",
+      "status": "OPEN",
       "task_ids": [
         "T3771",
         "T3772",
@@ -309,23 +309,11 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Stale request/static/replica/hook state cannot authorize or commit; ambiguous DB outcomes reconcile.",
-      "evidence_strategy": "Closed: request-scope isolation, authoritative DB topology/read-your-writes, database failure semantics, final hook-order execution seal, recursive child-permit fencing and infrastructure compatibility profile all pass the certified PHP/MySQL/MariaDB runtime matrix.",
-      "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-failure-semantics.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
-        "workflow_run:37022167154",
-        "workflow_job:110887688410",
-        "workflow_job:110887688518",
-        "workflow_job:110887688583"
-      ]
+      "evidence_strategy": "Long-lived worker, replica, deadlock, hook-priority, reentrancy and infrastructure-profile fixtures."
     },
     {
       "id": "clone_restore_subject_lifecycle",
-      "status": "DONE",
+      "status": "OPEN",
       "task_ids": [
         "T3778",
         "T3779",
@@ -345,22 +333,11 @@
         "impact_approval_receipt_routing"
       ],
       "interim_behavior": "Foreign clones quarantine; restored old state and changed subjects cannot replay previously valid authority artifacts.",
-      "evidence_strategy": "Foreign-clone quarantine, monotonic external restore epoch, same-origin rollback detection, durable replay quarantine, governed post-restore reconciliation, and subject lifecycle invalidation are exact-head certified across the supported WordPress/PHP/MySQL/MariaDB matrix.",
-      "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
-        "workflow_run:37061462626",
-        "workflow_job:111018866439",
-        "workflow_job:111018866648",
-        "workflow_job:111018866869"
-      ]
+      "evidence_strategy": "Clone/restore/replay epoch plus user demotion/deletion/remapping fixtures."
     },
     {
       "id": "contract_mixed_runtime",
-      "status": "DONE",
+      "status": "OPEN",
       "task_ids": [
         "T3784",
         "T3785",
@@ -376,17 +353,11 @@
         "request_scope_db_hooks"
       ],
       "interim_behavior": "Unknown/newer persisted versions and stale code generations fail closed; rollback cannot reinterpret security state.",
-      "evidence_strategy": "Exact-head persisted-contract, downgrade/rollback and rolling N/N-1 worker generation tests pass across the certified PHP/MySQL/MariaDB matrix.",
-      "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
-        "workflow_run:37088812158"
-      ]
+      "evidence_strategy": "N/N-1 rolling deploy, downgrade/rollback and stale-worker generation-fence tests."
     },
     {
       "id": "evidence_failure_ordering",
-      "status": "PARTIAL",
+      "status": "OPEN",
       "task_ids": [
         "T3788",
         "T3789",
@@ -405,13 +376,7 @@
         "contract_mixed_runtime"
       ],
       "interim_behavior": "Provider side effect without required durable evidence can never be terminal success; it becomes reconciliation-required.",
-      "evidence_strategy": "Crash-point state semantics and mandatory bounded evidence compaction are exact-head certified. Storage-exhaustion injection, archival/hash-chain movement and fatal process interruption remain open.",
-      "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
-        "workflow_run:37088812158"
-      ]
+      "evidence_strategy": "Crash-point matrix, storage exhaustion, archival/hash-chain, truncation and fatal-interruption fixtures."
     },
     {
       "id": "cancel_transport_cross_fault",
@@ -437,7 +402,7 @@
     },
     {
       "id": "canonical_db_storage",
-      "status": "DONE",
+      "status": "OPEN",
       "task_ids": [
         "T3796",
         "T3797",
@@ -456,15 +421,7 @@
         "contract_mixed_runtime"
       ],
       "interim_behavior": "Security identity uses canonical encodings only; uncertain collation/storage-engine/transaction ownership blocks governed mutation rather than degrading to alternate identity or non-atomic persistence.",
-      "evidence_strategy": "Canonicalization negatives, binary/collation alias tests, SHOW TABLE STATUS/engine capability evidence and nested transaction/savepoint-or-deny fixtures.",
-      "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-catalog-transport.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
-        "workflow_run:36996652203"
-      ]
+      "evidence_strategy": "Canonicalization negatives, binary/collation alias tests, SHOW TABLE STATUS/engine capability evidence and nested transaction/savepoint-or-deny fixtures."
     }
   ],
   "quality_family_vocabulary": [
