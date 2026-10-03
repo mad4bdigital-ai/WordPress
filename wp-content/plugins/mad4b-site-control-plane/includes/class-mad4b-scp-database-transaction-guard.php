@@ -51,6 +51,14 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		);
 	}
 
+	public static function assert_no_external_transaction() {
+		if ( '' !== self::$owned_token ) return new WP_Error( 'mad4b_database_transaction_reentrant_denied', 'A MAD4B-owned transaction is already active in this process.' );
+		$state = self::transaction_state();
+		if ( is_wp_error( $state ) ) return $state;
+		if ( 0 !== $state ) return new WP_Error( 'mad4b_database_nested_transaction_denied', 'A caller-owned database transaction is already active; MAD4B will not implicitly commit it.' );
+		return true;
+	}
+
 	public static function assert_storage( array $required_table_keys = array(), $refresh = false ) {
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! method_exists( 'MAD4B_SCP_Schema', 'transactional_storage_status' ) ) {
 			return new WP_Error( 'mad4b_database_transactional_storage_unavailable', 'Transactional storage status is unavailable.' );
@@ -63,6 +71,8 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 	}
 
 	public static function preflight( array $required_table_keys = array(), $refresh = false ) {
+		$ownership = self::assert_no_external_transaction();
+		if ( is_wp_error( $ownership ) ) return $ownership;
 		if ( class_exists( 'MAD4B_SCP_Runtime_Generation_Fence' ) ) {
 			$runtime_generation = MAD4B_SCP_Runtime_Generation_Fence::assert_current();
 			if ( is_wp_error( $runtime_generation ) ) return $runtime_generation;
@@ -71,10 +81,6 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		if ( is_wp_error( $topology ) ) return $topology;
 		$storage = self::assert_storage( $required_table_keys, $refresh );
 		if ( is_wp_error( $storage ) ) return $storage;
-		if ( '' !== self::$owned_token ) return new WP_Error( 'mad4b_database_transaction_reentrant_denied', 'A MAD4B-owned transaction is already active in this process.' );
-		$state = self::transaction_state();
-		if ( is_wp_error( $state ) ) return $state;
-		if ( 0 !== $state ) return new WP_Error( 'mad4b_database_nested_transaction_denied', 'A caller-owned database transaction is already active; MAD4B will not implicitly commit it.' );
 		return array(
 			'contract' => self::CONTRACT,
 			'storage_contract' => isset( $storage['contract'] ) ? (string) $storage['contract'] : '',

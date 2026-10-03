@@ -974,6 +974,10 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	private static function restore_epoch_preflight( $surface ) {
+		if ( class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) && method_exists( 'MAD4B_SCP_Database_Transaction_Guard', 'assert_no_external_transaction' ) ) {
+			$ownership = MAD4B_SCP_Database_Transaction_Guard::assert_no_external_transaction();
+			if ( is_wp_error( $ownership ) ) return $ownership;
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
 			return new WP_Error( 'mad4b_durable_restore_epoch_unavailable', 'Durable execution requires the restore/authority epoch contract.', array( 'surface' => sanitize_key( (string) $surface ), 'blind_retry_allowed' => false ) );
 		}

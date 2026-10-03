@@ -356,12 +356,12 @@ final class MAD4B_SCP_Approval_Tickets {
 
 	public static function finalize_claim( $ticket_id, $terminal_status, $execution_error_code = '' ) {
 		global $wpdb;
-		$topology = class_exists( 'MAD4B_SCP_Database_Topology' ) ? MAD4B_SCP_Database_Topology::assert_write_ready( true ) : new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
-		if ( is_wp_error( $topology ) ) return $topology;
 		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
 		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
+		$topology = class_exists( 'MAD4B_SCP_Database_Topology' ) ? MAD4B_SCP_Database_Topology::assert_write_ready( true ) : new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
+		if ( is_wp_error( $topology ) ) return $topology;
 		$terminal_status = sanitize_key( (string) $terminal_status );
 		$execution_error_code = substr( sanitize_key( (string) $execution_error_code ), 0, 96 );
 		if ( ! in_array( $terminal_status, array( 'used', 'failed' ), true ) ) return new WP_Error( 'mad4b_approval_finalize_status_invalid', 'Approval ticket final status must be used or failed.' );
