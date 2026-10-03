@@ -190,7 +190,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( true !== MAD4B_SCP_Policy::can_read() ) return self::error( 'mad4b_catalog_forbidden', 403 );
 		if ( ! is_string( $name ) || ! wp_has_ability( $name ) ) return self::error( 'mad4b_catalog_ability_unavailable', 404 );
 		$scope = self::scope();
-		$store = new MAD4B_SCP_Catalog_Object_Store( $scope );
+		$store = new MAD4B_SCP_Catalog_Object_Store();
 		try {
 			$a = wp_get_ability( $name );
 			$source = self::publish_schema( array( 'inputSchema' => $a->get_input_schema(), 'outputSchema' => $a->get_output_schema() ), $store, false );

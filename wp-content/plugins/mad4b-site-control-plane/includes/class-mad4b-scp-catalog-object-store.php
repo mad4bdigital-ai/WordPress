@@ -11,8 +11,9 @@ final class MAD4B_SCP_Catalog_Object_Store {
 	private $scope = '';
 	private $table_backend = null;
 
-	public function __construct( $authority_scope_sha256 = '' ) {
-		$scope = strtolower( trim( (string) $authority_scope_sha256 ) );
+	public function __construct( $storage_scope_sha256 = '' ) {
+		$scope = strtolower( trim( (string) $storage_scope_sha256 ) );
+		if ( '' === $scope && class_exists( 'MAD4B_SCP_Catalog_Backend_Controller' ) ) $scope = MAD4B_SCP_Catalog_Backend_Controller::storage_scope();
 		$this->scope = 1 === preg_match( '/^[a-f0-9]{64}$/D', $scope ) ? $scope : hash( 'sha256', 'mad4b.catalog-table.default-scope.v1' );
 	}
 
@@ -27,7 +28,7 @@ final class MAD4B_SCP_Catalog_Object_Store {
 
 	public function get( $key ) {
 		$backend = $this->authority_backend();
-		if ( is_wp_error( $backend ) ) return false;
+		if ( is_wp_error( $backend ) ) throw new RuntimeException( $backend->get_error_code() );
 		if ( 'table' === $backend ) return $this->table_backend()->get( $key );
 		if ( isset( $this->pending[ $key ] ) ) return $this->pending[ $key ]['value'];
 		for ( $attempt = 0; $attempt < 2; ++$attempt ) {
@@ -66,7 +67,7 @@ final class MAD4B_SCP_Catalog_Object_Store {
 
 	public function expires( $key ) {
 		$backend = $this->authority_backend();
-		if ( is_wp_error( $backend ) ) return 0;
+		if ( is_wp_error( $backend ) ) throw new RuntimeException( $backend->get_error_code() );
 		if ( 'table' === $backend ) return $this->table_backend()->expires( $key );
 		if ( isset( $this->pending[ $key ] ) ) return $this->pending[ $key ]['expires'];
 		$d = get_option( self::DIRECTORY, array() );

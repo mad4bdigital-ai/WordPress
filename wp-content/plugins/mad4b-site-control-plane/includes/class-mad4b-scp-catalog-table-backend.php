@@ -18,8 +18,8 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 	private $replace = false;
 	private $metrics = array( 'reads'=>0, 'writes'=>0, 'bytes_read'=>0, 'generations_published'=>0 );
 
-	public function __construct( $authority_scope_sha256 ) {
-		$scope = strtolower( trim( (string) $authority_scope_sha256 ) );
+	public function __construct( $storage_scope_sha256 ) {
+		$scope = strtolower( trim( (string) $storage_scope_sha256 ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $scope ) ) $scope = hash( 'sha256', 'mad4b.catalog-table.default-scope.v1' );
 		$this->scope = $scope;
 	}
@@ -53,9 +53,9 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		$row = $wpdb->get_row( $wpdb->prepare(
 			"SELECT g.object_sha256,g.object_expires_at,o.payload_blob,o.payload_sha256,o.wire_generation
 			 FROM {$t['catalog_heads']} h
-			 INNER JOIN {$t['catalog_generations']} g ON g.generation_id=h.generation_id AND g.authority_scope_sha256=h.authority_scope_sha256
+			 INNER JOIN {$t['catalog_generations']} g ON g.generation_id=h.generation_id AND g.storage_scope_sha256=h.storage_scope_sha256
 			 INNER JOIN {$t['catalog_objects']} o ON o.object_sha256=g.object_sha256
-			 WHERE BINARY h.authority_scope_sha256=BINARY %s
+			 WHERE BINARY h.storage_scope_sha256=BINARY %s
 			   AND BINARY g.object_key_sha256=BINARY %s
 			   AND h.expires_at>UTC_TIMESTAMP()
 			   AND g.object_expires_at>UTC_TIMESTAMP()
@@ -79,8 +79,8 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		$value = $wpdb->get_var( $wpdb->prepare(
 			"SELECT UNIX_TIMESTAMP(g.object_expires_at)
 			 FROM {$t['catalog_heads']} h
-			 INNER JOIN {$t['catalog_generations']} g ON g.generation_id=h.generation_id AND g.authority_scope_sha256=h.authority_scope_sha256
-			 WHERE BINARY h.authority_scope_sha256=BINARY %s AND BINARY g.object_key_sha256=BINARY %s LIMIT 1",
+			 INNER JOIN {$t['catalog_generations']} g ON g.generation_id=h.generation_id AND g.storage_scope_sha256=h.storage_scope_sha256
+			 WHERE BINARY h.storage_scope_sha256=BINARY %s AND BINARY g.object_key_sha256=BINARY %s LIMIT 1",
 			$this->scope, self::key_sha( $key )
 		) );
 		return is_numeric( $value ) ? (int) $value : 0;
@@ -88,17 +88,41 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 
 	public function metrics() { return $this->metrics; }
 
+	public function logical_digest_from_head() {
+		global $wpdb;
+		$head = $this->head();
+		if ( is_wp_error( $head ) ) return $head;
+		if ( empty( $head['generation_id'] ) ) return self::logical_digest( array() );
+		$t = MAD4B_SCP_Schema::tables();
+		$rows = $wpdb->get_results( $wpdb->prepare(
+			"SELECT g.object_key_sha256,o.payload_sha256,UNIX_TIMESTAMP(g.object_expires_at) AS object_expires
+			 FROM {$t['catalog_generations']} g
+			 INNER JOIN {$t['catalog_objects']} o ON o.object_sha256=g.object_sha256
+			 WHERE BINARY g.storage_scope_sha256=BINARY %s AND BINARY g.generation_id=BINARY %s",
+			$this->scope, (string)$head['generation_id']
+		), ARRAY_A );
+		$logical = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$logical[ (string)$row['object_key_sha256'] ] = array(
+				'payload_sha256'=>(string)$row['payload_sha256'],
+				'expires'=>(int)$row['object_expires'],
+			);
+		}
+		ksort( $logical, SORT_STRING );
+		return self::logical_digest_rows( $logical );
+	}
+
 	public function head() {
 		global $wpdb;
 		if ( ! self::ready() ) return new WP_Error( 'mad4b_catalog_table_backend_unready', 'Catalog table backend schema is unavailable.' );
 		$t = MAD4B_SCP_Schema::tables();
 		$row = $wpdb->get_row( $wpdb->prepare(
-			"SELECT authority_scope_sha256,generation_id,directory_sha256,fencing_token,previous_generation_id,published_at,expires_at,updated_at
-			 FROM {$t['catalog_heads']} WHERE BINARY authority_scope_sha256=BINARY %s LIMIT 1",
+			"SELECT storage_scope_sha256,generation_id,directory_sha256,fencing_token,previous_generation_id,published_at,expires_at,updated_at
+			 FROM {$t['catalog_heads']} WHERE BINARY storage_scope_sha256=BINARY %s LIMIT 1",
 			$this->scope
 		), ARRAY_A );
 		return is_array( $row ) ? $row : array(
-			'authority_scope_sha256'=>$this->scope,'generation_id'=>'','directory_sha256'=>'','fencing_token'=>0,
+			'storage_scope_sha256'=>$this->scope,'generation_id'=>'','directory_sha256'=>'','fencing_token'=>0,
 			'previous_generation_id'=>'','published_at'=>'','expires_at'=>'','updated_at'=>''
 		);
 	}
@@ -111,7 +135,7 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		$t = MAD4B_SCP_Schema::tables();
 		try {
 			$head = $wpdb->get_row( $wpdb->prepare(
-				"SELECT * FROM {$t['catalog_heads']} WHERE BINARY authority_scope_sha256=BINARY %s FOR UPDATE",
+				"SELECT * FROM {$t['catalog_heads']} WHERE BINARY storage_scope_sha256=BINARY %s FOR UPDATE",
 				$this->scope
 			), ARRAY_A );
 			$expected_fence = is_array( $head ) ? (int) $head['fencing_token'] : 0;
@@ -121,7 +145,7 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 				$rows = $wpdb->get_results( $wpdb->prepare(
 					"SELECT object_key_sha256,object_sha256,UNIX_TIMESTAMP(object_expires_at) AS object_expires
 					 FROM {$t['catalog_generations']}
-					 WHERE BINARY authority_scope_sha256=BINARY %s AND BINARY generation_id=BINARY %s",
+					 WHERE BINARY storage_scope_sha256=BINARY %s AND BINARY generation_id=BINARY %s",
 					$this->scope, $previous_generation
 				), ARRAY_A );
 				foreach ( is_array( $rows ) ? $rows : array() as $row ) {
@@ -170,7 +194,7 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 			foreach ( $directory as $object_key_sha => $entry ) {
 				$ok = $wpdb->query( $wpdb->prepare(
 					"INSERT INTO {$t['catalog_generations']}
-					 (generation_id,authority_scope_sha256,object_key_sha256,object_sha256,object_expires_at,created_at)
+					 (generation_id,storage_scope_sha256,object_key_sha256,object_sha256,object_expires_at,created_at)
 					 VALUES (%s,%s,%s,%s,FROM_UNIXTIME(%d),UTC_TIMESTAMP())",
 					$generation_id, $this->scope, $object_key_sha, $entry['object_sha256'], (int)$entry['expires']
 				) );
@@ -181,14 +205,14 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 				$ok = $wpdb->query( $wpdb->prepare(
 					"UPDATE {$t['catalog_heads']}
 					 SET generation_id=%s,directory_sha256=%s,fencing_token=%d,previous_generation_id=%s,published_at=UTC_TIMESTAMP(),expires_at=FROM_UNIXTIME(%d),updated_at=UTC_TIMESTAMP()
-					 WHERE BINARY authority_scope_sha256=BINARY %s AND fencing_token=%d AND BINARY generation_id=BINARY %s",
+					 WHERE BINARY storage_scope_sha256=BINARY %s AND fencing_token=%d AND BINARY generation_id=BINARY %s",
 					$generation_id, $directory_sha, $next_fence, $previous_generation, $head_expiry, $this->scope, $expected_fence, $previous_generation
 				) );
 				if ( 1 !== (int) $ok ) throw new RuntimeException( 'catalog_table_head_cas_conflict' );
 			} else {
 				$ok = $wpdb->query( $wpdb->prepare(
 					"INSERT INTO {$t['catalog_heads']}
-					 (authority_scope_sha256,generation_id,directory_sha256,fencing_token,previous_generation_id,published_at,expires_at,updated_at)
+					 (storage_scope_sha256,generation_id,directory_sha256,fencing_token,previous_generation_id,published_at,expires_at,updated_at)
 					 VALUES (%s,%s,%s,%d,'',UTC_TIMESTAMP(),FROM_UNIXTIME(%d),UTC_TIMESTAMP())",
 					$this->scope, $generation_id, $directory_sha, $next_fence, $head_expiry
 				) );
@@ -198,7 +222,7 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 			if ( is_wp_error( $committed ) ) return $committed;
 			$this->pending = array(); $this->replace = false; ++$this->metrics['generations_published'];
 			return array(
-				'contract'=>self::CONTRACT,'authority_scope_sha256'=>$this->scope,'generation_id'=>$generation_id,
+				'contract'=>self::CONTRACT,'storage_scope_sha256'=>$this->scope,'generation_id'=>$generation_id,
 				'directory_sha256'=>$directory_sha,'fencing_token'=>$next_fence,'previous_generation_id'=>$previous_generation,
 				'authorizing'=>false
 			);
@@ -206,7 +230,7 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 			MAD4B_SCP_Database_Transaction_Guard::rollback( $transaction );
 			return new WP_Error( 'mad4b_catalog_table_publish_failed', 'Catalog table generation publication failed.', array(
 				'reason_code'=>substr( sanitize_key( $error->getMessage() ), 0, 96 ),
-				'authority_scope_sha256'=>$this->scope,
+				'storage_scope_sha256'=>$this->scope,
 				'authorizing'=>false,
 			) );
 		}
@@ -223,20 +247,23 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 			);
 		}
 		ksort( $rows, SORT_STRING );
+		return self::logical_digest_rows( $rows );
+	}
+	private static function logical_digest_rows( array $rows ) {
 		return hash( 'sha256', self::DIRECTORY_DOMAIN . '|' . wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 
 	public static function status( $scope = '' ) {
 		global $wpdb;
 		$scope = 1 === preg_match( '/^[a-f0-9]{64}$/D', (string)$scope ) ? (string)$scope : hash( 'sha256', 'mad4b.catalog-table.default-scope.v1' );
-		if ( ! self::ready() ) return array( 'contract'=>self::CONTRACT,'ready'=>false,'authority_scope_sha256'=>$scope,'authorizing'=>false );
+		if ( ! self::ready() ) return array( 'contract'=>self::CONTRACT,'ready'=>false,'storage_scope_sha256'=>$scope,'authorizing'=>false );
 		$t = MAD4B_SCP_Schema::tables();
 		$bytes = $wpdb->get_var( "SELECT COALESCE(SUM(payload_bytes),0) FROM {$t['catalog_objects']}" );
 		$objects = $wpdb->get_var( "SELECT COUNT(*) FROM {$t['catalog_objects']}" );
-		$generations = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT generation_id) FROM {$t['catalog_generations']} WHERE BINARY authority_scope_sha256=BINARY %s", $scope ) );
+		$generations = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT generation_id) FROM {$t['catalog_generations']} WHERE BINARY storage_scope_sha256=BINARY %s", $scope ) );
 		$head = ( new self( $scope ) )->head();
 		return array(
-			'contract'=>self::CONTRACT,'ready'=>true,'authority_scope_sha256'=>$scope,
+			'contract'=>self::CONTRACT,'ready'=>true,'storage_scope_sha256'=>$scope,
 			'object_count'=>is_numeric($objects)?(int)$objects:0,'physical_bytes'=>is_numeric($bytes)?(int)$bytes:0,
 			'generation_count'=>is_numeric($generations)?(int)$generations:0,'head'=>is_wp_error($head)?array():$head,'authorizing'=>false
 		);
@@ -249,8 +276,8 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		// Never delete the generation referenced by any current head.
 		$wpdb->query(
 			"DELETE g FROM {$t['catalog_generations']} g
-			 LEFT JOIN {$t['catalog_heads']} h ON h.generation_id=g.generation_id AND h.authority_scope_sha256=g.authority_scope_sha256
-			 WHERE h.authority_scope_sha256 IS NULL AND g.object_expires_at<UTC_TIMESTAMP()
+			 LEFT JOIN {$t['catalog_heads']} h ON h.generation_id=g.generation_id AND h.storage_scope_sha256=g.storage_scope_sha256
+			 WHERE h.storage_scope_sha256 IS NULL AND g.object_expires_at<UTC_TIMESTAMP()
 			 LIMIT 500"
 		);
 		$wpdb->query(
