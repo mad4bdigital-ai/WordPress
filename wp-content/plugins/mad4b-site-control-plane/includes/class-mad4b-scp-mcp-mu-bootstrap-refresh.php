@@ -391,7 +391,10 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			// remains covered by the active() branch above.
 			return defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && true === constant( 'MAD4B_SCP_MCP_CLI_REQUEST' );
 		}
-		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
+		// Generic wp-cron.php is also infrastructure, not mutation authority. The
+		// dedicated recovery hook and Runtime Convergence both set Recovery::active()
+		// before calling bootstrap(), so they are admitted by the first branch.
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return false;
 		if ( is_admin() ) {
 
 			global $pagenow;
