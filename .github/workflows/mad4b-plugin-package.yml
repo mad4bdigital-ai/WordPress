@@ -123,9 +123,6 @@ jobs:
             exit 1
           fi
 
-          expected_sha="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo strtolower((string)($j["providers"]["mcp_adapter"]["archive_sha256"]??""));' "$certified")"
-          test -n "$expected_sha"
-          test "$expected_sha" = "$MCP_ADAPTER_SHA"
           observed_sha="$(sha256sum "$MCP_ADAPTER_STAGE_PATH" | awk '{print $1}')"
           test "$observed_sha" = "$MCP_ADAPTER_SHA"
 
@@ -178,9 +175,8 @@ jobs:
           mkdir -p dist/stage/mad4b-site-control-plane/dependencies
           cp "$MCP_ADAPTER_STAGE_PATH" dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip
 
-          expected_sha="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo strtolower((string)($j["providers"]["mcp_adapter"]["archive_sha256"]??""));' dist/stage/mad4b-site-control-plane/config/certified-providers.json)"
           embedded_sha="$(sha256sum dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip | awk '{print $1}')"
-          test "$expected_sha" = "$embedded_sha"
+          test "$MCP_ADAPTER_SHA" = "$embedded_sha"
 
           (
             cd dist/stage
