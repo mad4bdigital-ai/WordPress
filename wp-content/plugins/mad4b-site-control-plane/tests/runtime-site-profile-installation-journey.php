@@ -59,7 +59,25 @@ try {
  update_option(MAD4B_SCP_Site_Profile::OPTION,$record,false);MAD4B_SCP_Site_Profile::reset_cache();
 
  $recovery=MAD4B_SCP_MCP_Runtime_Recovery::run();
- $check($eligible?!is_wp_error($recovery)&&is_file($destination)&&false===$recovery['connection_certified']:is_wp_error($recovery)&&!is_file($destination),'Recovery changed Production or failed non-production.');
+ $recovery_diagnostic=array(
+  'environment'=>$environment,
+  'declaration'=>$declaration,
+  'error_code'=>is_wp_error($recovery)?$recovery->get_error_code():'',
+  'error_data'=>is_wp_error($recovery)?$recovery->get_error_data():null,
+  'recovery_status'=>get_option(MAD4B_SCP_MCP_Runtime_Recovery::OPTION,array()),
+  'lease_status'=>MAD4B_SCP_Runtime_Maintenance_Lease::status(),
+  'mu_refresh_status'=>MAD4B_SCP_MCP_MU_Bootstrap_Refresh::status(),
+  'conflict_guard_status'=>MAD4B_SCP_MCP_Runtime_Conflict_Guard::status(),
+  'site_profile_status'=>MAD4B_SCP_Site_Profile::status(),
+ );
+ $recovery_diagnostic_json=wp_json_encode($recovery_diagnostic);
+ if($eligible){
+  $check(!is_wp_error($recovery),'Non-production recovery failed: '.$recovery_diagnostic_json);
+  $check(is_file($destination),'Non-production recovery did not install managed MU bootstrap: '.$recovery_diagnostic_json);
+  $check(is_array($recovery)&&array_key_exists('connection_certified',$recovery)&&false===$recovery['connection_certified'],'Recovery returned an invalid certification claim: '.$recovery_diagnostic_json);
+ }else{
+  $check(is_wp_error($recovery)&&'mad4b_mcp_repair_profile_ineligible'===$recovery->get_error_code()&&!is_file($destination),'Production recovery mutated runtime or returned the wrong eligibility gate: '.$recovery_diagnostic_json);
+ }
  $check($record===get_option(MAD4B_SCP_Site_Profile::OPTION)&&$active===get_option('active_plugins')&&$before_authority===$authority_rows(),'Recovery/profile save changed agents, subjects, grants or plugins.');
  $check(!MAD4B_SCP_MCP_Runtime_Recovery::active()&&!MAD4B_SCP_Runtime_Maintenance_Lease::status()['active'],'Recovery leaked lease/privilege.');
  // A copied profile and a related-origin entry cannot authorize the new site.

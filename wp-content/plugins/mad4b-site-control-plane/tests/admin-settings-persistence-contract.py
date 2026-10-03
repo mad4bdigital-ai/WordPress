@@ -97,7 +97,7 @@ for marker in [
     "wp_cache_delete( 'alloptions', 'options' )",
     "wp_cache_flush_group( 'options' )",
     "self::option_values_equal( $readback, $record )",
-    "could not be persisted and verified by readback",
+    "$verified = self::option_values_equal( $readback, $record );",
 ]:
     assert marker in site_profile, marker
 
