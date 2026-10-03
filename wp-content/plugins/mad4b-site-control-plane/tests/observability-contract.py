@@ -27,3 +27,13 @@ for marker in ["run_stage( 'discovery'", "run_stage( 'preparation'"]:
     if marker not in gateway: raise SystemExit("FAIL gateway observability stage missing "+marker)
 for marker in ["run_stage( 'commit_guard'", "capture_impl(", "revalidate_impl("]:
     if marker not in commit_guard: raise SystemExit("FAIL commit-guard observability stage missing "+marker)
+
+authorization=(root/"includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+approval=(root/"includes/class-mad4b-scp-approval-tickets.php").read_text(encoding="utf-8")
+connector=(root/"includes/class-mad4b-scp-connector-resilience.php").read_text(encoding="utf-8")
+for marker in ["run_stage( 'authorization'", "authorize_mutation_impl("]:
+    if marker not in authorization: raise SystemExit("FAIL authorization observability stage missing "+marker)
+for marker in ["run_stage( 'approval'", "claim_exact_impl(", "'phase'=>'authorize'", "'phase'=>'claim'"]:
+    if marker not in approval: raise SystemExit("FAIL approval observability stage missing "+marker)
+for marker in ["run_stage( 'provider_execution'", "execute_read_impl(", "execute_mutation_impl(", "target_sha256"]:
+    if marker not in connector: raise SystemExit("FAIL provider-execution observability stage missing "+marker)

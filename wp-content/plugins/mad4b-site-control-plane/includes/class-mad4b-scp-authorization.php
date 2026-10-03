@@ -143,6 +143,19 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
+		$call = static function() use ( $ability_name, $server_id, $provider, $input ) {
+			return self::authorize_mutation_impl( $ability_name, $server_id, $provider, $input );
+		};
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'authorization', $call, '', array(
+				'ability'=>(string)$ability_name,
+				'server_id'=>sanitize_key((string)$server_id),
+				'provider_id'=>sanitize_key((string)$provider),
+			) )
+			: $call();
+	}
+
+	private static function authorize_mutation_impl( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
 			$request_scope = MAD4B_SCP_Request_Generation::admit( 'authorization' );
 			if ( is_wp_error( $request_scope ) ) return $request_scope;

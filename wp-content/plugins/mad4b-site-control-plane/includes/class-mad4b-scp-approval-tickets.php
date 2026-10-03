@@ -325,10 +325,34 @@ final class MAD4B_SCP_Approval_Tickets {
 	}
 
 	public static function authorize_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
-		return self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+		$call = static function() use ( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+			return self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+		};
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'approval', $call, '', array(
+				'phase'=>'authorize',
+				'ability'=>(string)$ability_name,
+				'provider_id'=>sanitize_key((string)$provider),
+				'ticket_class'=>sanitize_key((string)$ticket_class),
+			) )
+			: $call();
 	}
 
 	public static function claim_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+		$call = static function() use ( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+			return self::claim_exact_impl( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+		};
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'approval', $call, '', array(
+				'phase'=>'claim',
+				'ability'=>(string)$ability_name,
+				'provider_id'=>sanitize_key((string)$provider),
+				'ticket_class'=>sanitize_key((string)$ticket_class),
+			) )
+			: $call();
+	}
+
+	private static function claim_exact_impl( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
 		global $wpdb;
 		$validated = self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $validated ) ) return $validated;

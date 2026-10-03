@@ -218,6 +218,16 @@ final class MAD4B_SCP_Connector_Resilience {
 	}
 
 	public static function execute_read( $target, $callback ) {
+		$call = static function() use ( $target, $callback ) { return self::execute_read_impl( $target, $callback ); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'provider_execution', $call, '', array(
+				'operation'=>'read',
+				'target_sha256'=>hash('sha256',(string)$target),
+			) )
+			: $call();
+	}
+
+	private static function execute_read_impl( $target, $callback ) {
 		$target = sanitize_text_field( (string) $target );
 		$breaker = class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ? MAD4B_SCP_Provider_Circuit_Breaker::begin_for_target( 'read', $target ) : array( 'applicable'=>false );
 		if ( is_wp_error( $breaker ) ) return $breaker;
@@ -259,6 +269,17 @@ final class MAD4B_SCP_Connector_Resilience {
 	}
 
 	public static function execute_mutation( $surface, $target, $callback ) {
+		$call = static function() use ( $surface, $target, $callback ) { return self::execute_mutation_impl( $surface, $target, $callback ); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'provider_execution', $call, '', array(
+				'operation'=>'mutation',
+				'surface'=>sanitize_key((string)$surface),
+				'target_sha256'=>hash('sha256',(string)$target),
+			) )
+			: $call();
+	}
+
+	private static function execute_mutation_impl( $surface, $target, $callback ) {
 		$surface = sanitize_key( (string) $surface );
 		$target = sanitize_text_field( (string) $target );
 		$eligibility = class_exists( 'MAD4B_SCP_Provider_Transport_Eligibility' )
