@@ -10,10 +10,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 $worker = (string) getenv( 'MAD4B_CI_BUDGET_WORKER' );
 $ready_file = (string) getenv( 'MAD4B_CI_BUDGET_READY_FILE' );
 $release_file = (string) getenv( 'MAD4B_CI_BUDGET_RELEASE_FILE' );
-if ( ! in_array( $worker, array( 'one', 'two' ), true )
-	|| 0 !== strpos( $ready_file, '/tmp/mad4b-budget-sync-' )
-	|| 0 !== strpos( $release_file, '/tmp/mad4b-budget-sync-' ) ) {
-	throw new RuntimeException( 'Concurrency worker requires a valid worker id and bounded sync files.' );
+$legacy_barrier = (float) getenv( 'MAD4B_CI_BUDGET_BARRIER' );
+$file_sync = 0 === strpos( $ready_file, '/tmp/mad4b-budget-sync-' )
+	&& 0 === strpos( $release_file, '/tmp/mad4b-budget-sync-' );
+$legacy_sync = $legacy_barrier > microtime( true );
+if ( ! in_array( $worker, array( 'one', 'two' ), true ) || ( ! $file_sync && ! $legacy_sync ) ) {
+	throw new RuntimeException( 'Concurrency worker requires a valid worker id and either bounded sync files or a future trusted-base barrier.' );
 }
 
 $config = get_option( 'mad4b_ci_budget_concurrency', array() );
@@ -44,13 +46,17 @@ add_filter(
 
 if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) ) define( 'MAD4B_MCP_MUTATION_ENABLED', true );
 
-if ( false === @file_put_contents( $ready_file, $worker, LOCK_EX ) ) {
-	throw new RuntimeException( 'Concurrency worker could not publish its ready marker.' );
-}
-$deadline = microtime( true ) + 30.0;
-while ( ! is_file( $release_file ) ) {
-	if ( microtime( true ) >= $deadline ) throw new RuntimeException( 'Concurrency worker timed out waiting for release.' );
-	usleep( 10000 );
+if ( $file_sync ) {
+	if ( false === @file_put_contents( $ready_file, $worker, LOCK_EX ) ) {
+		throw new RuntimeException( 'Concurrency worker could not publish its ready marker.' );
+	}
+	$deadline = microtime( true ) + 30.0;
+	while ( ! is_file( $release_file ) ) {
+		if ( microtime( true ) >= $deadline ) throw new RuntimeException( 'Concurrency worker timed out waiting for release.' );
+		usleep( 10000 );
+	}
+} else {
+	while ( microtime( true ) < $legacy_barrier ) usleep( 10000 );
 }
 
 $result = MAD4B_SCP_Authorization::claim_mutation(

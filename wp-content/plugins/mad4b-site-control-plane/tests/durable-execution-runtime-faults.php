@@ -9,6 +9,15 @@
 
 $root = dirname( __DIR__ );
 require_once $root . '/includes/class-mad4b-scp-schema.php';
+if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+	final class MAD4B_SCP_Restore_Epoch {
+		public static $ensure_calls = 0;
+		public static function ensure_bound() {
+			self::$ensure_calls++;
+			return array( 'ready' => true, 'contract' => 'mad4b.restore-authority-epoch.v1', 'fixture' => true );
+		}
+	}
+}
 require_once $root . '/includes/class-mad4b-scp-durable-execution.php';
 
 $fail = static function ( $message ) {
@@ -59,7 +68,11 @@ $lease_a = MAD4B_SCP_Durable_Execution::acquire_lease(
 	7,
 	30
 );
-$check( is_array( $lease_a ) && 1 === (int) $lease_a['lease_epoch'], 'initial lease acquisition failed' );
+$check(
+	is_array( $lease_a ) && 1 === (int) $lease_a['lease_epoch'],
+	'initial lease acquisition failed' . ( is_wp_error( $lease_a ) ? ': ' . $lease_a->get_error_code() : '' )
+);
+$check( MAD4B_SCP_Restore_Epoch::$ensure_calls >= 2, 'DurableExecution did not invoke restore-epoch admission for both denied and normal lease paths' );
 
 $lease_a_repeat = MAD4B_SCP_Durable_Execution::acquire_lease(
 	$work_id,
