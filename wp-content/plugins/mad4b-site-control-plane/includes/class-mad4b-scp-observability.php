@@ -128,6 +128,11 @@ final class MAD4B_SCP_Observability {
 	public static function run_stage( $stage, $callback, $tenant_scope = '', array $attributes = array() ) {
 		if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_observability_callback_invalid', 'Observed stage requires a callable.' );
 		$span = self::child( $stage, $tenant_scope, $attributes );
+		// child() resolves/creates the parent request context but does not mutate
+		// it. Capture that parent and make the child current only for the callback
+		// scope so nested governed stages inherit an exact causal parent span.
+		$parent = self::$current;
+		if ( ! is_wp_error( $span ) ) self::$current = $span;
 		$started = self::start_clock();
 		try {
 			$result = call_user_func( $callback );
@@ -146,6 +151,8 @@ final class MAD4B_SCP_Observability {
 				'error_class' => get_class( $error ),
 			) );
 			throw $error;
+		} finally {
+			self::$current = $parent;
 		}
 	}
 
@@ -211,11 +218,20 @@ final class MAD4B_SCP_Observability {
 			$error_ratio=$total>0?$errors/$total:0.0;
 			$allowed=max(0.000001,1.0-$objective);
 			$burn=$error_ratio/$allowed;
+			$warning=max(0.0,(float)$profile['burn_rate']['warning_multiplier']);
+			$critical=max($warning,(float)$profile['burn_rate']['critical_multiplier']);
+			$burn_state=$burn >= $critical ? 'critical' : ( $burn >= $warning ? 'warning' : 'healthy' );
+			$operator_action='none';
+			if('critical'===$burn_state)$operator_action='investigate_and_mitigate';
+			elseif('warning'===$burn_state)$operator_action='review_error_budget';
 			$stages[$stage]=array(
 				'ready'=>true,'samples'=>$total,'errors'=>$errors,'error_ratio'=>round($error_ratio,6),
 				'p50_ms'=>$q['p50_ms'],'p95_ms'=>$q['p95_ms'],'p99_ms'=>$q['p99_ms'],
 				'p95_objective_ms'=>(int)$policy['p95_ms'],'availability_objective'=>$objective,
-				'burn_rate'=>round($burn,3),'within_p95_objective'=>0===$total||$q['p95_ms']<=(int)$policy['p95_ms'],
+				'burn_rate'=>round($burn,3),'burn_state'=>$burn_state,
+				'burn_warning_multiplier'=>$warning,'burn_critical_multiplier'=>$critical,
+				'operator_action'=>$operator_action,'operator_action_authorizing'=>false,
+				'within_p95_objective'=>0===$total||$q['p95_ms']<=(int)$policy['p95_ms'],
 				'authority_effect'=>'none'
 			);
 		}
@@ -223,6 +239,36 @@ final class MAD4B_SCP_Observability {
 			'contract'=>self::CONTRACT,'hours'=>$hours,'stages'=>$stages,
 			'error_budget_policy'=>$profile['burn_rate'],'operator_evidence_only'=>true,
 			'telemetry_grants_authority'=>false,'read_only'=>true,'mutation_performed'=>false,'authorizing'=>false
+		);
+	}
+
+	public static function error_budget_status() {
+		$profile=self::profile();
+		if(is_wp_error($profile))return $profile;
+		$short=max(1,(int)$profile['burn_rate']['short_window_hours']);
+		$long=max($short,(int)$profile['burn_rate']['long_window_hours']);
+		$short_report=self::slo_status($short);
+		$long_report=self::slo_status($long);
+		if(is_wp_error($short_report))return $short_report;
+		if(is_wp_error($long_report))return $long_report;
+		$stages=array();
+		foreach(array_keys($profile['stages']) as $stage){
+			$s=isset($short_report['stages'][$stage])?$short_report['stages'][$stage]:array();
+			$l=isset($long_report['stages'][$stage])?$long_report['stages'][$stage]:array();
+			$states=array(isset($s['burn_state'])?$s['burn_state']:'unknown',isset($l['burn_state'])?$l['burn_state']:'unknown');
+			$severity=in_array('critical',$states,true)?'critical':(in_array('warning',$states,true)?'warning':(in_array('unknown',$states,true)?'unknown':'healthy'));
+			$stages[$stage]=array(
+				'short_window_hours'=>$short,'long_window_hours'=>$long,
+				'short_burn_rate'=>isset($s['burn_rate'])?$s['burn_rate']:null,
+				'long_burn_rate'=>isset($l['burn_rate'])?$l['burn_rate']:null,
+				'combined_burn_state'=>$severity,
+				'operator_evidence_only'=>true,'authority_effect'=>'none','authorizing'=>false
+			);
+		}
+		return array(
+			'contract'=>self::CONTRACT,'stages'=>$stages,'burn_rate_policy'=>$profile['burn_rate'],
+			'operator_evidence_only'=>true,'telemetry_grants_authority'=>false,
+			'read_only'=>true,'mutation_performed'=>false,'authorizing'=>false
 		);
 	}
 

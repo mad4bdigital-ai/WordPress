@@ -32,6 +32,28 @@ $root=MAD4B_SCP_Observability::begin_trace('site-a');
 $check(is_array($root)&&32===strlen($root['trace_id'])&&16===strlen($root['span_id'])&&!empty($root['traceparent'])&&empty($root['authorizing']),'Root trace invalid.',$root);
 $parsed=MAD4B_SCP_Observability::parse_traceparent($root['traceparent']);
 $check(!is_wp_error($parsed)&&$root['trace_id']===$parsed['trace_id'],'W3C traceparent round-trip failed.',$parsed);
+$scoped=array();
+$scoped_result=MAD4B_SCP_Observability::run_stage('preparation',static function() use (&$scoped){
+ $scoped['outer']=MAD4B_SCP_Observability::current();
+ $headers=MAD4B_SCP_Observability::propagation_headers($scoped['outer'],'site-a');
+ $scoped['headers']=$headers;
+ return MAD4B_SCP_Observability::run_stage('authorization',static function() use (&$scoped){
+  $scoped['inner']=MAD4B_SCP_Observability::current();
+  return 'nested-ok';
+ },'site-a');
+},'site-a');
+$check('nested-ok'===$scoped_result,'Nested observed stage changed callback result.',$scoped_result);
+$check(
+ is_array($scoped['outer'])&&is_array($scoped['inner'])
+ && $root['trace_id']===$scoped['outer']['trace_id']
+ && $scoped['outer']['trace_id']===$scoped['inner']['trace_id']
+ && $scoped['outer']['span_id']===$scoped['inner']['parent_span_id'],
+ 'Nested stage did not inherit the exact parent span.',
+ $scoped
+);
+$check(is_array($scoped['headers'])&&$scoped['outer']['traceparent']===$scoped['headers']['traceparent'],'Scoped stage traceparent was not exportable for same-tenant provider propagation.',$scoped['headers']);
+$after_scoped=MAD4B_SCP_Observability::current();
+$check($root['span_id']===$after_scoped['span_id'],'Observed stage did not restore the request root context.',$after_scoped);
 $invalid=MAD4B_SCP_Observability::parse_traceparent('00-'.str_repeat('0',32).'-'.str_repeat('0',16).'-01');
 $check(is_wp_error($invalid),'All-zero traceparent was accepted.',$invalid);
 
@@ -66,6 +88,9 @@ $q=MAD4B_SCP_Observability::quantiles(array(10=>50,50=>96,100=>100),100);
 $check(10===$q['p50_ms']&&50===$q['p95_ms']&&100===$q['p99_ms'],'Percentile derivation failed.',$q);
 $slo=MAD4B_SCP_Observability::slo_status(24);
 $check(!is_wp_error($slo)&&!empty($slo['read_only'])&&empty($slo['telemetry_grants_authority'])&&isset($slo['stages']['discovery']['p50_ms'],$slo['stages']['provider_execution']['burn_rate']),'SLO/operator evidence is incomplete.',$slo);
+$check(isset($slo['stages']['provider_execution']['burn_state'],$slo['stages']['provider_execution']['burn_warning_multiplier'],$slo['stages']['provider_execution']['burn_critical_multiplier'])&&empty($slo['stages']['provider_execution']['operator_action_authorizing']),'Burn-rate thresholds are not bound to non-authorizing operator evidence.',$slo['stages']['provider_execution']);
+$budget=MAD4B_SCP_Observability::error_budget_status();
+$check(!is_wp_error($budget)&&!empty($budget['operator_evidence_only'])&&empty($budget['telemetry_grants_authority'])&&isset($budget['stages']['discovery']['short_burn_rate'],$budget['stages']['discovery']['long_burn_rate'],$budget['stages']['discovery']['combined_burn_state']),'Short/long error-budget evidence is incomplete or authorizing.',$budget);
 $sem=MAD4B_SCP_Observability::failure_semantics();
 $check(empty($sem['optional_telemetry_failure_blocks_safe_reads'])&&!empty($sem['mandatory_audit_or_execution_evidence_failure_blocks_governed_write']),'Observability failure semantics drifted.',$sem);
 

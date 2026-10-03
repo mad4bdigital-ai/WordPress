@@ -10,7 +10,7 @@ if sorted(cfg.get("stages",{}))!=sorted(required_stages): raise SystemExit("FAIL
 for marker in [
  "TRACE_CONTRACT","parse_traceparent(","fork_for_tenant(","causal_link_sha256",
  "cross_tenant_trace_id_reused","bounded_attributes(","sensitive_key(","raw_provider_payloads",
- "record_stage(","quantiles(","slo_status(","burn_rate",
+ "record_stage(","quantiles(","slo_status(","error_budget_status(","burn_rate","burn_state",
  "optional_telemetry_failure_blocks_safe_reads","mandatory_audit_or_execution_evidence_failure_blocks_governed_write"
 ]:
  if marker not in impl and marker not in json.dumps(cfg): raise SystemExit("FAIL observability invariant missing "+marker)
@@ -51,3 +51,7 @@ for marker in ["run_stage( 'catalog_rebuild'", "flush_impl("]:
 policy=(root/"includes/class-mad4b-scp-policy-resolution.php").read_text(encoding="utf-8")
 for marker in ["run_stage( 'policy'", "resolve_impl(", "capability_sha256"]:
     if marker not in policy: raise SystemExit("FAIL explicit policy observability stage missing "+marker)
+
+for marker in ["self::$current = $span","finally {","self::$current = $parent","operator_action_authorizing","combined_burn_state"]:
+    if marker not in impl:
+        raise SystemExit("FAIL scoped trace/burn-rate invariant missing "+marker)
