@@ -88,6 +88,12 @@ $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] = array(
 $_POST = array( 'action' => MAD4B_SCP_Endpoint_Diagnostic::ACTION, 'nonce' => 'valid', 'server_id' => 'mad4b-developer-breakglass', 'build' => MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint(), 'mu_proof' => str_repeat( 'a', 64 ) );
 MAD4B_SCP_MCP_Request_Scope::bootstrap();
 check( MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() && ! MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'Unverified action armed runtime or entered lifecycle boot' );
+check( 'mad4b-developer-breakglass' === MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_routing_server_id(), 'Signed diagnostic routing hint was not available before worker authorization' );
+check( '' === MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id(), 'Signed diagnostic routing hint became endpoint authority before worker authorization' );
+$GLOBALS['mad4b_scp_mcp_mu_bootstrap']['diagnostic_mu_proof_valid'] = false;
+check( '' === MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_routing_server_id(), 'Unsigned diagnostic request exposed an early server routing hint' );
+$GLOBALS['mad4b_scp_mcp_mu_bootstrap']['diagnostic_mu_proof_valid'] = true;
+check( 'mad4b-developer-breakglass' === MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_routing_server_id(), 'Routing hint did not recover after restoring signed proof evidence' );
 check( ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed(), 'Raw request grants REST permission' );
 add_action( 'rest_api_init', 'register_initial_settings', 10 ); add_action( 'rest_api_init', 'create_initial_rest_routes', 99 );
 add_action( 'rest_api_init', 'endpoint_foreign_registrar', 10 ); add_action( 'rest_api_init', 'endpoint_preserved_registrar', 10 );
