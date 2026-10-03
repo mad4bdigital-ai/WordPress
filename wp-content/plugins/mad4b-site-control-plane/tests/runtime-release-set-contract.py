@@ -82,6 +82,8 @@ require("0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' )" in remote, 
 
 runtime = (INCLUDES / "class-mad4b-scp-runtime-release-set.php").read_text(encoding="utf-8")
 servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+projection = (INCLUDES / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
+catalog_diag = (INCLUDES / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 for needle in (
     "mad4b.runtime-release-set.v1",
     "update_control_plane",
@@ -110,6 +112,9 @@ require("verified_bearer" not in catalog_projection, "runtime release-set catalo
 require("can_bootstrap_apply" not in catalog_projection, "runtime release-set catalog projection must not execute request-time authorization")
 require("MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY" in servers, "ChatGPT reviewed direct step-up catalog omits runtime release-set bootstrap")
 require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "ChatGPT enrollment candidates omit runtime release-set step-up projection")
+require("array_merge( $optional, $base_optional )" in projection, "explicit dynamic projections must outrank optional direct step-ups in plan budget")
+require("array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() )" in servers, "server materialization must preserve explicit dynamic projection priority")
+require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),\n\t\t\t\tMAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()" in catalog_diag, "shared catalog diagnostics must preserve dynamic-first optional ordering")
 require("self::apply_internal( $input, false, true )" in runtime, "remote bootstrap apply is not separated from local wp-admin apply")
 require("MAD4B_SCP_Self_Update::native_apply(" in runtime and "(bool) $bootstrap_step_up" in runtime, "Control Plane component does not inherit bootstrap revalidation")
 require(runtime.count("$revalidate = self::can_bootstrap_apply( $input );") >= 2, "each remote runtime component must revalidate OAuth step-up immediately before mutation")
