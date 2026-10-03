@@ -517,7 +517,7 @@ if capfab_path.exists() and tasks_path.exists():
     workstream_ids=[r.get("id") for r in rows if isinstance(r,dict)]
     if not rows or None in workstream_ids or len(workstream_ids) != len(set(workstream_ids)): errors.append("capability_fabric_closure:workstream_ids_invalid")
     mapped=[]
-    task_priorities={m.group(1):m.group(2) for m in re.finditer(r"^- \\[\[ x\]\\] (T37\\d{2}) (P[0-2])\\b", task_txt, flags=re.MULTILINE)}
+    task_priorities={m.group(1):m.group(2) for m in re.finditer(r"^- \[[ x]\] (T37\d{2}) (P[0-2])\b", task_txt, flags=re.MULTILINE)}
     expected_status={"OPEN","PARTIAL","DONE","DEFERRED"}
     allowed_status=set(capfab.get("status_vocabulary",[]))
     if allowed_status != expected_status:
