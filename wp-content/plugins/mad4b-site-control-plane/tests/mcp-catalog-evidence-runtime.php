@@ -2,6 +2,8 @@
 define( 'ABSPATH', __DIR__ . '/' );
 function add_filter( ...$args ) {}
 function wp_json_encode( $data ) { return json_encode( $data ); }
+class WP_Error { private $code; function __construct( $code = 'fixture_error' ) { $this->code = $code; } function get_error_code() { return $this->code; } }
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
 final class MAD4B_SCP_OAuth_Resource_Bridge { public static $verified = true; public static function verified_bearer_active() { return self::$verified; } }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-mcp-catalog-diagnostics.php';
 function check( $ok, $message ) { if ( ! $ok ) throw new RuntimeException( $message ); }
