@@ -141,8 +141,27 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		$next['features']['write'] = true;
 		$next['features']['production_write_confirmed'] = 'production' === $environment;
 		$next['updated_at'] = gmdate( 'c' );
-		if ( ! MAD4B_SCP_Site_Profile::persist_record_exact( $next ) ) return new WP_Error( 'mad4b_site_profile_write_enable_save_failed', 'Governed write enablement could not be persisted and verified by readback.' );
-
+		$commit = MAD4B_SCP_Site_Profile::commit_record_with_audit(
+			$before,
+			$next,
+			'mad4b/site-profile-write-enabled',
+			array(
+				'environment' => $environment,
+				'canonical_origin' => isset( $next['canonical_origin'] ) ? (string) $next['canonical_origin'] : '',
+				'oauth_enabled' => true,
+				'acceptance_enabled' => true,
+				'skills_enabled' => true,
+				'write_enabled' => true,
+				'production_write_confirmed' => 'production' === $environment,
+				'production_mutation_authorized' => 'production' === $environment,
+				'source_commit_sha' => $current_sha,
+				'build_fingerprint' => $current_fingerprint,
+				'authority_reconciliation_deferred' => true,
+			),
+			'mad4b_site_profile_write_enable'
+		);
+		if ( is_wp_error( $commit ) ) return $commit;
+		MAD4B_SCP_Site_Profile::reset_cache();
 		$after = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$status = MAD4B_SCP_Site_Profile::status();
 		$post_ok = is_array( $after )
@@ -150,40 +169,11 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 			&& ! empty( $status['configured'] ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
 			&& MAD4B_SCP_Site_Profile::oauth_enabled() && MAD4B_SCP_Site_Profile::acceptance_enabled() && MAD4B_SCP_Site_Profile::skills_enabled() && MAD4B_SCP_Site_Profile::write_enabled()
 			&& ( 'production' === $environment ? ! empty( $after['features']['production_write_confirmed'] ) : empty( $after['features']['production_write_confirmed'] ) );
-		$expected_after = $before;
-		$expected_after['revision'] = $current_revision + 1;
-		$expected_after['features']['write'] = true;
-		$expected_after['features']['production_write_confirmed'] = 'production' === $environment;
+		$expected_after = $next;
 		unset( $expected_after['updated_at'], $after['updated_at'] );
 		$post_ok = $post_ok && $expected_after === $after;
-		if ( ! $post_ok ) {
-			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_write_enable_rollback_failed', 'Postcondition failed and the previous Site Profile could not be restored.' );
-			return new WP_Error( 'mad4b_site_profile_write_enable_postcondition_failed', 'Governed write enablement postconditions failed; the previous Site Profile was restored.' );
-		}
-
-		$after_digest = MAD4B_SCP_Site_Profile::profile_digest();
-		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-enabled', array(
-			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
-			'previous_revision' => $current_revision,
-			'revision' => MAD4B_SCP_Site_Profile::revision(),
-			'previous_profile_digest' => $current_digest,
-			'profile_digest' => $after_digest,
-			'environment' => MAD4B_SCP_Site_Profile::current_environment(),
-			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
-			'oauth_enabled' => true,
-			'acceptance_enabled' => true,
-			'skills_enabled' => true,
-			'write_enabled' => true,
-			'production_write_confirmed' => 'production' === $environment,
-			'production_mutation_authorized' => 'production' === $environment,
-			'source_commit_sha' => $current_sha,
-			'build_fingerprint' => $current_fingerprint,
-			'authority_reconciliation_deferred' => true,
-		), 'ok' );
-		if ( is_wp_error( $audit ) ) {
-			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_write_enable_rollback_failed', 'Audit commit failed and the previous Site Profile could not be restored.' );
-			return new WP_Error( 'mad4b_site_profile_write_enable_audit_failed', 'Governed write enablement was rolled back because append-only audit evidence could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
-		}
+		if ( ! $post_ok ) return new WP_Error( 'mad4b_site_profile_write_enable_postcondition_failed', 'Governed write committed record failed deterministic postcondition readback.' );
+		$after_digest = (string) $commit['profile_digest'];
 
 		return array(
 			'contract' => self::CONTRACT,
