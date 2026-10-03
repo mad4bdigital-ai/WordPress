@@ -10,6 +10,11 @@ $fail = static function ( $message ) {
 if ( ! class_exists( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard' ) ) $fail( 'conflict guard unavailable' );
 if ( ! class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ) $fail( 'registration bridge unavailable' );
 
+// Filesystem repair is never implied by WP-CLI itself. Enter the governed
+// Recovery coordinator so the shared maintenance lease fences the MU install.
+$repair = MAD4B_SCP_MCP_Runtime_Recovery::run( '', true );
+if ( is_wp_error( $repair ) ) $fail( 'governed recovery failed: ' . $repair->get_error_code() );
+
 $guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::status();
 $bridge = MAD4B_SCP_MCP_Registration_Bridge::status();
 $evidence = static function () use ( $guard, $bridge ) {

@@ -9,6 +9,7 @@ if ( '' === $root || ! is_dir( $root ) || ! is_file( $root . '/wp-config.php' ) 
 define( 'ABSPATH', $root . DIRECTORY_SEPARATOR );
 define( 'WP_PLUGIN_DIR', $root . DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'plugins' );
 define( 'WP_CLI', true );
+define( 'MAD4B_SCP_MCP_CLI_REQUEST', true );
 
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_get_environment_type() { return 'staging'; }

@@ -31,6 +31,10 @@ final class MAD4B_SCP_Site_Profile {
 	public static function profile_digest() { return str_repeat( 'a', 64 ); }
 }
 
+final class MAD4B_SCP_Local_OAuth_Server {
+	public static function issuer() { return 'https://client.test/oauth/mcp'; }
+}
+
 final class MAD4B_SCP_Policy {
 	public static function can_connect_user( $user_id ) { return MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) && false !== get_userdata( $user_id ); }
 }
@@ -57,9 +61,10 @@ function mad4b_assert( $condition, $message ) {
 	if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); }
 }
 function mad4b_b64url( $value ) { return rtrim( strtr( base64_encode( $value ), '+/', '-_' ), '=' ); }
-function mad4b_bearer( $subject ) {
+function mad4b_bearer( $subject, $site_uuid = null ) {
 	$header = mad4b_b64url( json_encode( array( 'alg' => 'RS256', 'kid' => 'test' ) ) );
-	$payload = mad4b_b64url( json_encode( array( 'iss' => 'https://client.test/oauth/mcp', 'sub' => $subject ) ) );
+	if ( null === $site_uuid ) $site_uuid = MAD4B_SCP_Site_Profile::site_uuid();
+	$payload = mad4b_b64url( json_encode( array( 'iss' => 'https://client.test/oauth/mcp', 'sub' => $subject, 'mad4b_site_uuid' => $site_uuid ) ) );
 	return 'Bearer ' . $header . '.' . $payload . '.c2ln';
 }
 function mad4b_map( $subject ) {
@@ -75,6 +80,12 @@ $context = MAD4B_SCP_OAuth_Subject_User_Bridge::mapped_context();
 mad4b_assert( 7 === $context['wp_user_id'], 'identity context records exact user 7' );
 mad4b_assert( hash( 'sha256', "oauth\0https://client.test/oauth/mcp\0user:7" ) === $context['subject_fingerprint'], 'identity fingerprint remains exact issuer+subject' );
 mad4b_assert( 4 === $context['site_profile_revision'], 'identity context binds Site Profile revision' );
+
+// A cryptographically verified local token from the previous Site UUID is denied.
+$GLOBALS['mad4b_test_current_user'] = 1;
+$result = MAD4B_SCP_OAuth_Subject_User_Bridge::map_verified_subject( null, null, new MAD4B_Test_Request( mad4b_bearer( 'user:7', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' ) ) );
+mad4b_assert( is_wp_error( $result ) && 'mad4b_oauth_site_identity_mismatch' === $result->get_error_code(), 'old local Site UUID token survived identity rebind' );
+mad4b_assert( 1 === $GLOBALS['mad4b_test_current_user'], 'mismatched local token changed WordPress user' );
 
 // A second enrolled delegated user must not collapse to the trust owner or user 7.
 $result = mad4b_map( 'user:8' );

@@ -60,7 +60,10 @@
         "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolInputSchema.php": "0fd3a6c1b81521e8084bdbce55a5c8a017871ff235f8710d4523d74cd367a61a",
         "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolOutputSchema.php": "3b0509eebca5b2dd013a7f84a8ef616624441e947b966a10df3757995aa541c8",
         "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php": "b2c6dd20e3844cc2a41b0095a5ad2e71ccd7e2baacd686b6d0681476b45c8627",
-        "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php": "c6291f9f9ce024a207015879be0cdbf9e6f80f2790f39ec34d8429f10125f532"
+        "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php": "c6291f9f9ce024a207015879be0cdbf9e6f80f2790f39ec34d8429f10125f532",
+        "includes/Autoloader.php": "f3219d240546689e7368051f5576f6c9aaf2eceb0ee0c2cf6be20a8e9fde5c25",
+        "includes/Plugin.php": "cf89f5ee122e3d0e1fd8eefb04669f09f822035288e3351e32d950a05ca704f1",
+        "vendor/autoload_packages.php": "a9711b19ac96e97b3c13d1716d481dc3d66368c6343ad6f80ea08c22e6d2f953"
       }
     },
     "elementor": {

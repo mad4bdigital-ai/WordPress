@@ -14,7 +14,7 @@ function sanitize_key( $v ){ return strtolower( preg_replace( '/[^a-z0-9_\-]/', 
 function absint( $v ){ return abs( (int) $v ); }
 function get_option( $k, $d = false ){ return array_key_exists( $k, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $k ] : $d; }
 function add_option( $k, $v, $deprecated = '', $autoload = null ){ if ( array_key_exists( $k, $GLOBALS['mad4b_test_options'] ) ) return false; $GLOBALS['mad4b_test_options'][$k]=$v; return true; }
-function update_option( $k, $v, $autoload = null ){ $GLOBALS['mad4b_test_options'][$k]=$v; return true; }
+function update_option( $k, $v, $autoload = null ){ if(array_key_exists($k,$GLOBALS['mad4b_test_options'])&&serialize($GLOBALS['mad4b_test_options'][$k])===serialize($v))return false; $GLOBALS['mad4b_test_options'][$k]=$v; return true; }
 function delete_option( $k ){ unset( $GLOBALS['mad4b_test_options'][$k] ); return true; }
 function wp_generate_uuid4(){ static $n=0; ++$n; return sprintf( '11111111-1111-4111-8111-%012d', $n ); }
 
@@ -57,6 +57,11 @@ ok( ! empty( $soft_preflight['soft_lease_expired'] ), 'soft-expired preflight ev
 $refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' );
 ok( true === $refresh, 'owner must renew lease' );
 ok( MAD4B_SCP_Runtime_Maintenance_Lease::owned( $token, 'runtime_convergence' ), 'renewed token must retain ownership' );
+// A second refresh inside the same second produces byte-identical expiry and
+// timestamp fields. WordPress/MySQL report that no-op as false/0; it must remain
+// a verified owned lease rather than a false lease-lost signal.
+$refresh_same_second = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' );
+ok( true === $refresh_same_second, 'same-second no-op refresh must preserve verified ownership' );
 
 $wrong = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( 'wrong-token', 'runtime_convergence' );
 ok( is_wp_error( $wrong ) && 'mad4b_runtime_maintenance_lease_lost' === $wrong->get_error_code(), 'stale token must be fenced' );
@@ -68,6 +73,28 @@ foreach ( MAD4B_SCP_Runtime_Maintenance_Lease::legacy_options() as $option ) ok(
 $schema = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
 ok( is_string( $schema ) && '' !== $schema, 'next owner must acquire after verified release' );
 MAD4B_SCP_Runtime_Maintenance_Lease::release( $schema, 'schema_lifecycle' );
+
+// An old worker may not delete or refresh a newer generation that reused the
+// same option names after the old worker lost ownership.
+$old = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'old_worker' );
+ok( is_string( $old ) && '' !== $old, 'old-worker fixture could not acquire lease' );
+$new_token = 'newer-worker-token';
+$new_record = array(
+	'contract' => MAD4B_SCP_Runtime_Maintenance_Lease::CONTRACT,
+	'token' => $new_token,
+	'owner' => 'new_worker',
+	'expires_at' => time() + MAD4B_SCP_Runtime_Maintenance_Lease::LEASE_TTL,
+	'hard_expires_at' => time() + MAD4B_SCP_Runtime_Maintenance_Lease::HARD_TTL,
+	'acquired_at' => gmdate( 'c' ),
+);
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Maintenance_Lease::OPTION ] = $new_record;
+foreach ( MAD4B_SCP_Runtime_Maintenance_Lease::legacy_options() as $option ) $GLOBALS['mad4b_test_options'][ $option ] = $new_record;
+MAD4B_SCP_Runtime_Maintenance_Lease::release( $old, 'old_worker' );
+ok( $new_token === get_option( MAD4B_SCP_Runtime_Maintenance_Lease::OPTION, array() )['token'], 'stale owner deleted newer shared lease' );
+$stale_refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $old, 'old_worker' );
+ok( is_wp_error( $stale_refresh ) && 'mad4b_runtime_maintenance_lease_lost' === $stale_refresh->get_error_code(), 'stale owner refreshed newer shared lease' );
+MAD4B_SCP_Runtime_Maintenance_Lease::release( $new_token, 'new_worker' );
+ok( false === get_option( MAD4B_SCP_Runtime_Maintenance_Lease::OPTION, false ), 'new owner could not release replacement lease' );
 
 // A pre-hard-fence runtime may leave only a legacy token with expires_at.
 // New code must not steal it immediately at nominal expiry because the old

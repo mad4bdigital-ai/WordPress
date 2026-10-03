@@ -164,8 +164,25 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$next['features']['acceptance'] = true;
 		$next['features']['skills'] = true;
 		$next['updated_at'] = gmdate( 'c' );
-		if ( ! MAD4B_SCP_Site_Profile::persist_record_exact( $next ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_save_failed', 'Site Profile feature re-enrollment could not be persisted and verified by readback.' );
-
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		$commit = MAD4B_SCP_Site_Profile::commit_record_with_audit(
+			$before,
+			$next,
+			'mad4b/site-profile-feature-reenrolled',
+			array(
+				'environment' => $environment,
+				'canonical_origin' => isset( $next['canonical_origin'] ) ? (string) $next['canonical_origin'] : '',
+				'acceptance_enabled' => true,
+				'skills_enabled' => true,
+				'write_enabled' => false,
+				'production_mutation' => 'production' === $environment,
+				'source_commit_sha' => $current_sha,
+				'build_fingerprint' => $current_fingerprint,
+			),
+			'mad4b_site_profile_feature_reenroll'
+		);
+		if ( is_wp_error( $commit ) ) return $commit;
+		MAD4B_SCP_Site_Profile::reset_cache();
 		$after = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$status = MAD4B_SCP_Site_Profile::status();
 		$post_ok = is_array( $after )
@@ -174,38 +191,11 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 			&& MAD4B_SCP_Site_Profile::acceptance_enabled() && MAD4B_SCP_Site_Profile::skills_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled()
 			&& isset( $before['site_uuid'], $after['site_uuid'] ) && hash_equals( (string) $before['site_uuid'], (string) $after['site_uuid'] )
 			&& isset( $before['canonical_origin'], $after['canonical_origin'] ) && hash_equals( (string) $before['canonical_origin'], (string) $after['canonical_origin'] );
-		$expected_after = $before;
-		$expected_after['revision'] = $current_revision + 1;
-		$expected_after['features']['acceptance'] = true;
-		$expected_after['features']['skills'] = true;
+		$expected_after = $next;
 		unset( $expected_after['updated_at'], $after['updated_at'] );
 		$post_ok = $post_ok && $expected_after === $after;
-		if ( ! $post_ok ) {
-			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_rollback_failed', 'Postcondition failed and the previous Site Profile could not be restored.' );
-			return new WP_Error( 'mad4b_site_profile_feature_reenroll_postcondition_failed', 'Phase A postconditions failed; the previous Site Profile was restored.' );
-		}
-
-		$after_digest = MAD4B_SCP_Site_Profile::profile_digest();
-		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
-		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-feature-reenrolled', array(
-			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
-			'previous_revision' => $current_revision,
-			'revision' => MAD4B_SCP_Site_Profile::revision(),
-			'previous_profile_digest' => $current_digest,
-			'profile_digest' => $after_digest,
-			'environment' => MAD4B_SCP_Site_Profile::current_environment(),
-			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
-			'acceptance_enabled' => true,
-			'skills_enabled' => true,
-			'write_enabled' => false,
-			'production_mutation' => 'production' === $environment,
-			'source_commit_sha' => $current_sha,
-			'build_fingerprint' => $current_fingerprint,
-		), 'ok' );
-		if ( is_wp_error( $audit ) ) {
-			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_rollback_failed', 'Audit commit failed and the previous Site Profile could not be restored.' );
-			return new WP_Error( 'mad4b_site_profile_feature_reenroll_audit_failed', 'Phase A was rolled back because append-only audit evidence could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
-		}
+		if ( ! $post_ok ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_postcondition_failed', 'Phase A committed record failed deterministic postcondition readback.' );
+		$after_digest = (string) $commit['profile_digest'];
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -258,8 +248,24 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$next['revision'] = $current_revision + 1;
 		$next['chatgpt_app_id'] = $app_id;
 		$next['updated_at'] = gmdate( 'c' );
-		if ( ! MAD4B_SCP_Site_Profile::persist_record_exact( $next ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_save_failed', 'ChatGPT App mapping could not be persisted and verified by readback.' );
-
+		$commit = MAD4B_SCP_Site_Profile::commit_record_with_audit(
+			$before,
+			$next,
+			'mad4b/site-profile-app-mapping-bound',
+			array(
+				'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+				'canonical_origin' => isset( $next['canonical_origin'] ) ? (string) $next['canonical_origin'] : '',
+				'chatgpt_app_id_configured' => true,
+				'acceptance_enabled' => false,
+				'skills_enabled' => false,
+				'write_enabled' => false,
+				'source_commit_sha' => $current_sha,
+				'build_fingerprint' => $current_fingerprint,
+			),
+			'mad4b_site_profile_app_mapping'
+		);
+		if ( is_wp_error( $commit ) ) return $commit;
+		MAD4B_SCP_Site_Profile::reset_cache();
 		$after = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$status = MAD4B_SCP_Site_Profile::status();
 		$post_ok = is_array( $after )
@@ -267,36 +273,11 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 			&& ! empty( $status['configured'] ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
 			&& hash_equals( $app_id, MAD4B_SCP_Site_Profile::chatgpt_app_id() )
 			&& ! MAD4B_SCP_Site_Profile::acceptance_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled();
-		$expected_after = $before;
-		$expected_after['revision'] = $current_revision + 1;
-		$expected_after['chatgpt_app_id'] = $app_id;
+		$expected_after = $next;
 		unset( $expected_after['updated_at'], $after['updated_at'] );
 		$post_ok = $post_ok && $expected_after === $after;
-		if ( ! $post_ok ) {
-			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_rollback_failed', 'Postcondition failed and the previous Site Profile could not be restored.' );
-			return new WP_Error( 'mad4b_site_profile_app_mapping_postcondition_failed', 'App mapping postconditions failed; the previous Site Profile was restored.' );
-		}
-
-		$after_digest = MAD4B_SCP_Site_Profile::profile_digest();
-		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-app-mapping-bound', array(
-			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
-			'previous_revision' => $current_revision,
-			'revision' => MAD4B_SCP_Site_Profile::revision(),
-			'previous_profile_digest' => $current_digest,
-			'profile_digest' => $after_digest,
-			'environment' => MAD4B_SCP_Site_Profile::current_environment(),
-			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
-			'chatgpt_app_id_configured' => true,
-			'acceptance_enabled' => false,
-			'skills_enabled' => false,
-			'write_enabled' => false,
-			'source_commit_sha' => $current_sha,
-			'build_fingerprint' => $current_fingerprint,
-		), 'ok' );
-		if ( is_wp_error( $audit ) ) {
-			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_rollback_failed', 'Audit commit failed and the previous Site Profile could not be restored.' );
-			return new WP_Error( 'mad4b_site_profile_app_mapping_audit_failed', 'App mapping was rolled back because append-only audit evidence could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
-		}
+		if ( ! $post_ok ) return new WP_Error( 'mad4b_site_profile_app_mapping_postcondition_failed', 'App mapping committed record failed deterministic postcondition readback.' );
+		$after_digest = (string) $commit['profile_digest'];
 
 		return array(
 			'contract' => self::APP_MAPPING_CONTRACT,

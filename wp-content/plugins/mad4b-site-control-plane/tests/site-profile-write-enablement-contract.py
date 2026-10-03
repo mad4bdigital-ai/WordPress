@@ -30,7 +30,9 @@ required = [
     "'production_mutation_authorized' => 'production' === $environment",
     "$expected_after === $after",
     "mad4b/site-profile-write-enabled",
-    "self::restore_profile( $before )",
+    "MAD4B_SCP_Site_Profile::commit_record_with_audit(",
+    "'mad4b_site_profile_write_enable'",
+    "if ( is_wp_error( $commit ) ) return $commit;",
     "'authority_reconciliation_deferred' => true",
     "'same_invocation_nhi_created' => false",
     "'same_invocation_grants_created' => 0",
@@ -68,6 +70,8 @@ for forbidden in [
     'MAD4B_SCP_Agent_Registry::grant_ability(',
     'MAD4B_SCP_Agent_Registry::disable_agent(',
     "define( 'MAD4B_MCP_MUTATION_ENABLED'",
+    "MAD4B_SCP_Site_Profile::persist_record_exact(",
+    "self::restore_profile(",
 ]:
     if forbidden in impl:
         raise SystemExit(f'generic authority mutation leaked into bounded enablement/repair: {forbidden}')

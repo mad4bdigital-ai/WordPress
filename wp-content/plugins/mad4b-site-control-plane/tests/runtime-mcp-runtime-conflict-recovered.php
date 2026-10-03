@@ -15,8 +15,21 @@ $guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::status();
 $bridge = MAD4B_SCP_MCP_Registration_Bridge::status();
 $mu_runtime = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) ? $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] : array();
 
-if ( empty( $guard['eligible'] ) ) $fail( 'guard must remain eligible on exact Staging origin' );
-if ( 'canonical_runtime' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) ) $fail( 'expected canonical runtime ownership after MU recovery' );
+$evidence = static function () use ( $guard, $bridge, $mu_runtime ) {
+	return ' guard=' . wp_json_encode( $guard ) . ' bridge=' . wp_json_encode( array(
+		'adapter_runtime_from_official_plugin' => isset( $bridge['adapter_runtime_from_official_plugin'] ) ? $bridge['adapter_runtime_from_official_plugin'] : null,
+		'adapter_runtime_source' => isset( $bridge['adapter_runtime_source'] ) ? $bridge['adapter_runtime_source'] : null,
+		'adapter_runtime_version' => isset( $bridge['adapter_runtime_version'] ) ? $bridge['adapter_runtime_version'] : null,
+		'mcp_adapter_init_count' => isset( $bridge['mcp_adapter_init_count'] ) ? $bridge['mcp_adapter_init_count'] : null,
+	) ) . ' mu=' . wp_json_encode( array(
+		'state' => isset( $mu_runtime['state'] ) ? $mu_runtime['state'] : null,
+		'runtime_source' => isset( $mu_runtime['runtime_source'] ) ? $mu_runtime['runtime_source'] : null,
+		'runtime_from_official_plugin' => isset( $mu_runtime['runtime_from_official_plugin'] ) ? $mu_runtime['runtime_from_official_plugin'] : null,
+	) );
+};
+
+if ( empty( $guard['eligible'] ) ) $fail( 'guard must remain eligible on exact Staging origin' . $evidence() );
+if ( 'canonical_runtime' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) ) $fail( 'expected canonical runtime ownership after MU recovery' . $evidence() );
 if ( empty( $guard['official_loads_before_hostinger'] ) ) $fail( 'active_plugins order must remain canonical' );
 if ( ! empty( $guard['runtime_provenance_mismatch'] ) ) $fail( 'runtime provenance mismatch must be closed' );
 if ( ! empty( $guard['repair_applied'] ) ) $fail( 'recovered request must converge without another repair' );

@@ -147,25 +147,22 @@ jobs:
           update_option( "active_plugins", $ordered );
           ' --path="$WP_PATH"
 
-      - name: Seed stale managed MU state without executing Staging WordPress
+      - name: Seed exact historical managed MU artifact without executing Staging WordPress
         shell: bash
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-web-wordpress
+          DEST="$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
+          HISTORICAL_SHA=f03041b8132ea955184fc3af5ad82abf461c7715
+          HISTORICAL_MU_SHA256=6519bc8cbbdd27e4016d69576d309f9acc045faf02cf4ebde826d4e1d7d29848
           mkdir -p "$WP_PATH/wp-content/mu-plugins"
-          cp wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php \
-             "$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
-          # Preserve executable behavior but mark the installed copy as a prior
-          # managed contract and force a byte mismatch. The first governed lifecycle request must
-          # atomically reconcile it to the current source.
-          python3 - "$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php" <<'PY'
-          from pathlib import Path
-          import sys
-          p = Path(sys.argv[1])
-          text = p.read_text('utf-8')
-          text = text.replace('mad4b.mcp-adapter-mu-bootstrap.v3', 'mad4b.mcp-adapter-mu-bootstrap.v2', 1)
-          p.write_text(text + '\n// stale-managed-fixture\n', encoding='utf-8')
-          PY
+
+          # Ownership is exact-byte based. Fetch a real previously shipped MAD4B
+          # artifact instead of fabricating a marker-bearing file that the runtime
+          # must now correctly reject as unmanaged.
+          git fetch --no-tags --depth=1 origin "$HISTORICAL_SHA"
+          git show "$HISTORICAL_SHA:wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php" > "$DEST"
+          test "$(sha256sum "$DEST" | awk '{print $1}')" = "$HISTORICAL_MU_SHA256"
 
           cat > "$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php" <<'PHP'
           <?php

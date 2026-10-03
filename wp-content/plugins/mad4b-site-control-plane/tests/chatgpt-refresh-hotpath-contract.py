@@ -380,7 +380,9 @@ assert "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;" in http_tra
 assert "self::is_mad4b_mcp_route" in http_transport
 
 runtime_scope = request_scope.split("public static function current_request_requires_mcp_runtime()", 1)[1].split("public static function current_request_is_http_mcp_transport()", 1)[0]
-assert "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;" in runtime_scope
+assert "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return self::cli_mcp_opt_in();" in runtime_scope
+assert "private static function cli_mcp_opt_in()" in request_scope
+assert "MAD4B_SCP_MCP_CLI_REQUEST" in request_scope
 
 protocol_hotpath = request_scope.split("public static function current_request_is_protocol_hotpath()", 1)[1].split("private static function is_mad4b_mcp_route", 1)[0]
 assert "self::current_request_is_http_mcp_transport()" in protocol_hotpath
@@ -547,7 +549,7 @@ assert "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();" not in entry, "MU refr
 
 # Runtime conflict repair is also a mutation/recovery transaction and must be
 # deferred on protocol hotpaths before active_plugins or MU/audit repair work.
-conflict_bootstrap = runtime_conflict.split("public static function bootstrap()", 1)[1].split("public static function status()", 1)[0]
+conflict_bootstrap = runtime_conflict.split("public static function bootstrap(", 1)[1].split("public static function status()", 1)[0]
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in conflict_bootstrap
 assert "'repair_deferred_protocol_hotpath'" in conflict_bootstrap
 assert "$status['repair_deferred'] = true;" in conflict_bootstrap

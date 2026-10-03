@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * SHA-256 token hashes and bounded binding metadata are persisted.
  */
 final class MAD4B_SCP_Local_OAuth_Store {
-	const VERSION = 1;
+	const VERSION = 2;
 	const OPTION = 'mad4b_scp_local_oauth_store_version';
 	const MAX_CLIENT_ID_BYTES = 191;
 	private static $readiness_cache = null;
@@ -34,6 +34,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			code_hash char(64) NOT NULL,
 			client_id varchar(191) NOT NULL,
+			site_uuid char(36) NOT NULL DEFAULT '',
 			wp_user_id bigint(20) unsigned NOT NULL,
 			redirect_uri text NOT NULL,
 			resource text NOT NULL,
@@ -53,6 +54,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 			token_hash char(64) NOT NULL,
 			family_id char(36) NOT NULL,
 			client_id varchar(191) NOT NULL,
+			site_uuid char(36) NOT NULL DEFAULT '',
 			wp_user_id bigint(20) unsigned NOT NULL,
 			resource text NOT NULL,
 			scope text NOT NULL,
@@ -84,6 +86,8 @@ final class MAD4B_SCP_Local_OAuth_Store {
 		foreach ( self::tables() as $table ) {
 			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			if ( $found !== $table ) { $ready = false; break; }
+			$site_uuid_column = $wpdb->get_var( "SHOW COLUMNS FROM {$table} LIKE 'site_uuid'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( 'site_uuid' !== $site_uuid_column ) { $ready = false; break; }
 		}
 		self::$readiness_cache = (bool) $ready;
 		return (bool) self::$readiness_cache;
@@ -114,17 +118,23 @@ final class MAD4B_SCP_Local_OAuth_Store {
 		return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $value );
 	}
 
+	private static function valid_site_uuid( $value ) {
+		return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', $value );
+	}
+
 	public static function insert_code( array $record ) {
 		global $wpdb;
 		$t = self::tables();
 		$client_id = isset( $record['client_id'] ) ? (string) $record['client_id'] : '';
 		$code_hash = isset( $record['code_hash'] ) ? (string) $record['code_hash'] : '';
-		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $code_hash ) ) return false;
+		$site_uuid = isset( $record['site_uuid'] ) ? strtolower( (string) $record['site_uuid'] ) : '';
+		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $code_hash ) || ! self::valid_site_uuid( $site_uuid ) ) return false;
 		$inserted = $wpdb->insert(
 			$t['codes'],
 			array(
 				'code_hash' => $code_hash,
 				'client_id' => $client_id,
+				'site_uuid' => $site_uuid,
 				'wp_user_id' => (int) $record['wp_user_id'],
 				'redirect_uri' => (string) $record['redirect_uri'],
 				'resource' => (string) $record['resource'],
@@ -133,7 +143,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 				'expires_at' => (string) $record['expires_at'],
 				'created_at' => (string) $record['created_at'],
 			),
-			array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
 		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		return false !== $inserted;
 	}
@@ -184,7 +194,8 @@ final class MAD4B_SCP_Local_OAuth_Store {
 		$family_id = isset( $record['family_id'] ) ? (string) $record['family_id'] : '';
 		$client_id = isset( $record['client_id'] ) ? (string) $record['client_id'] : '';
 		$token_hash = isset( $record['token_hash'] ) ? (string) $record['token_hash'] : '';
-		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $token_hash ) ) return false;
+		$site_uuid = isset( $record['site_uuid'] ) ? strtolower( (string) $record['site_uuid'] ) : '';
+		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $token_hash ) || ! self::valid_site_uuid( $site_uuid ) ) return false;
 		if ( strlen( $family_id ) > 36 ) return false;
 
 		// Pre-insert guard catches a replay/revocation that completed before this
@@ -197,13 +208,14 @@ final class MAD4B_SCP_Local_OAuth_Store {
 				'token_hash' => $token_hash,
 				'family_id' => $family_id,
 				'client_id' => $client_id,
+				'site_uuid' => $site_uuid,
 				'wp_user_id' => (int) $record['wp_user_id'],
 				'resource' => (string) $record['resource'],
 				'scope' => (string) $record['scope'],
 				'expires_at' => (string) $record['expires_at'],
 				'created_at' => (string) $record['created_at'],
 			),
-			array( '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
 		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $inserted ) return false;
 

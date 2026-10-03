@@ -52,6 +52,24 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 			return self::deny( 'mad4b_oauth_subject_not_approved', 'Verified OAuth subject is outside the configured issuer/subject policy.' );
 		}
 
+		// Signature verification alone is not enough for locally issued tokens after
+		// an environment/identity rebind. The local issuer embeds the Site UUID and
+		// the mapper requires it to match the currently enrolled identity.
+		if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) {
+			$local_issuer = rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' );
+			if ( '' !== $local_issuer && hash_equals( $local_issuer, $issuer ) ) {
+				$expected_site_uuid = $profile_ready
+					? (string) MAD4B_SCP_Site_Profile::site_uuid()
+					: ( $portable_ready ? (string) MAD4B_SCP_Portable_Readonly_Connection::connection_uuid() : '' );
+				$token_site_uuid = isset( $claims['mad4b_site_uuid'] ) && is_string( $claims['mad4b_site_uuid'] )
+					? strtolower( trim( $claims['mad4b_site_uuid'] ) )
+					: '';
+				if ( '' === $expected_site_uuid || '' === $token_site_uuid || ! hash_equals( strtolower( $expected_site_uuid ), $token_site_uuid ) ) {
+					return self::deny( 'mad4b_oauth_site_identity_mismatch', 'Verified local OAuth token belongs to a previous Site Profile identity.' );
+				}
+			}
+		}
+
 		$user_id = absint( $matches[1] );
 		$user_enrolled = $profile_ready
 			? MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id )

@@ -72,6 +72,12 @@ jobs:
           python3 "$root/tests/mcp-provider-isolation-contract.py"
           python3 "$root/tests/mcp-registration-bridge-contract.py"
           python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
+          python3 "$root/tests/audit-scale-contract.py"
+          php "$root/tests/mcp-mu-recovery-boundaries-runtime.php"
+          php "$root/tests/mcp-runtime-recovery-runtime.php"
+          php "$root/tests/site-profile-general-distribution-runtime.php"
+          php "$root/tests/site-profile-lifecycle-matrix-runtime.php"
+          node "$root/tests/admin-settings-persistence-runtime.mjs"
           php "$root/tests/upgrade-continuity-runtime.php"
           php "$root/tests/reconnect-hardening-runtime.php"
           php "$root/tests/connector-resilience-runtime.php"
@@ -143,11 +149,35 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
+      - name: Prove fresh enrollment and update recovery in every WordPress environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          TEST="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-site-profile-installation-journey.php"
+          # Each declaration/environment gets fresh Core/plugin tables, not merely
+          # another save in an already-provisioned Site Profile database.
+          for declaration in explicit implicit; do
+            for environment in local development staging production; do
+              php /tmp/wp-cli.phar config set table_prefix "journey_${declaration}_${environment}_" --type=variable --path="$WP_PATH"
+              if [ "$declaration" = explicit ]; then
+                php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE "$environment" --type=constant --path="$WP_PATH"
+              else
+                php /tmp/wp-cli.phar config delete WP_ENVIRONMENT_TYPE --type=constant --path="$WP_PATH" --quiet || true
+              fi
+              php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-connection.test' --title='Disposable environment journey' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+              php /tmp/wp-cli.phar plugin activate mcp-adapter mad4b-site-control-plane --path="$WP_PATH"
+              MAD4B_TEST_ENVIRONMENT="$environment" MAD4B_TEST_DECLARATION="$declaration" php /tmp/wp-cli.phar eval-file "$TEST" --path="$WP_PATH" --user=mad4b-ci-admin
+            done
+          done
+          php /tmp/wp-cli.phar config set table_prefix wp_ --type=variable --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+
       - name: Prove clean read-only connection readiness
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-connection-readiness-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-connection-readiness-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
       - name: Prove mad4b-write exact transport grant isolation
         shell: bash
@@ -261,14 +291,15 @@ jobs:
           if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
           ' --path="$WP_PATH" --user=mad4b-ci-admin
 
+          # Requests that intentionally exercise the MCP runtime opt in before WordPress/MU bootstrap; generic WP-CLI remains isolated.
           # Request 1 must detect provenance mismatch and install the managed
           # 000-* MU bootstrap. It cannot replace the already-declared class.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
           # Request 2 loads 000-* before the simulated Hostinger preloader,
           # making the canonical 0.6.1 runtime owner and registering all six
           # MAD4B MCP servers through the normal mcp_adapter_init lifecycle.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
       - name: Prove official Adapter plus foreign validator mixed runtime self-heals
         shell: bash
@@ -296,16 +327,56 @@ jobs:
           }
           PHP
 
+          # Model the deployed site: WordPress has an implicit Production default,
+          # while its exact enrolled Site Profile selects Staging. Because this
+          # profile was originally created under explicit Staging, re-save the
+          # exact generation with the mandatory downgrade attestation after the
+          # host declaration is removed. This is the valid production-shaped
+          # state; retaining an unattested Staging profile must remain fail-closed.
+          php /tmp/wp-cli.phar config delete WP_ENVIRONMENT_TYPE --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval '
+          $before = MAD4B_SCP_Site_Profile::status();
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "environment" => "staging",
+              "expected_revision" => (int) $before["revision"],
+              "expected_profile_digest" => (string) $before["profile_digest"],
+              "display_name" => "MAD4B Connection Governance",
+              "oauth_user_ids" => MAD4B_SCP_Site_Profile::oauth_user_ids(),
+              "oauth_enabled" => false,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => true,
+              "acceptance_enabled" => false,
+              "nonproduction_override_confirmed" => true,
+              "nonproduction_override_confirmation" => MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          $after = MAD4B_SCP_Site_Profile::status();
+          if ( empty( $after["authority_ready"] ) || empty( $after["implicit_nonproduction_override_confirmed"] ) ) {
+              throw new RuntimeException( "implicit-production Staging fixture did not commit exact downgrade attestation" );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
           # Request 1: official Adapter entrypoint + preclaimed foreign validator
           # must classify as a mixed class set. PHP classes are not swapped in the
           # current request; the governed 000-* MU repair is armed for next request.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
           # Request 2: managed 000-* executes before 900-*, verifies the exact
           # certified hashes, pins every critical class from mcp-adapter and
           # converges to a single canonical runtime.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
+          # The real admin UI obtains the bounded routing proof on the page request
+          # and submits it with the diagnostic POST. Reproduce that exact handoff:
+          # derive the proof from the already-enrolled profile in a separate normal
+          # request, then start a fresh non-CLI HTTP-style bootstrap carrying it.
+          MU_PROOF="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_Site_Profile::diagnostic_mu_proof();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          [[ "$MU_PROOF" =~ ^[a-f0-9]{64}$ ]]
+          MAD4B_TEST_WP_PATH="$WP_PATH" MAD4B_TEST_MU_PROOF="$MU_PROOF" php "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-ajax-recovered.php"
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           rm -f "$FOREIGN_VALIDATOR"
 
       - name: Prove passive exact-profile OAuth identity projection is request-local

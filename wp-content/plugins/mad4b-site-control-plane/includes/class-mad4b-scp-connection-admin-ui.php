@@ -27,6 +27,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		wp_localize_script( 'mad4b-scp-endpoint-diagnostics', 'mad4bEndpointDiagnostics', array(
 			'url' => admin_url( 'admin-ajax.php' ), 'action' => MAD4B_SCP_Endpoint_Diagnostic::ACTION,
 			'nonce' => wp_create_nonce( 'mad4b_connection_deep_endpoints' ), 'build' => MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint(),
+			'muProof' => MAD4B_SCP_Site_Profile::diagnostic_mu_proof(),
 			'servers' => $ids, 'timeoutMs' => 15000,
 			'labels' => array( 'notChecked' => __( 'Not checked', 'mad4b-site-control-plane' ), 'running' => __( 'Checking', 'mad4b-site-control-plane' ), 'complete' => __( 'Endpoint checks complete. External certification and foreign transport review were not performed.', 'mad4b-site-control-plane' ), 'stopped' => __( 'Diagnostic stopped', 'mad4b-site-control-plane' ), 'timeout' => __( 'The request exceeded 15 seconds. No further requests were started. A server callback may still be running; do not immediately retry.', 'mad4b-site-control-plane' ) ),
 		) );
@@ -252,6 +253,13 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	private static function render_endpoints( array $status ) {
 		echo '<h2>' . esc_html__( 'MAD4B MCP endpoints', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Unmeasured values are shown as Not checked. Select an endpoint to inspect it without leaving this page. All endpoints runs one request at a time and stops on a timeout.', 'mad4b-site-control-plane' ) . '</p></div>';
+		if ( current_user_can( 'update_plugins' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_MCP_Runtime_Recovery::ACTION ) . '">';
+			wp_nonce_field( MAD4B_SCP_MCP_Runtime_Recovery::ACTION, 'nonce' );
+			echo '<input type="hidden" name="build" value="' . esc_attr( MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() ) . '">';
+			submit_button( __( 'Repair MCP runtime for next request', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+			echo '<p class="description">' . esc_html__( 'Installs or refreshes the managed early loader. After the redirect, run the endpoint diagnostic to verify recovery.', 'mad4b-site-control-plane' ) . '</p></form>';
+		}
 		echo '<form id="mad4b-endpoint-diagnostic-form" method="post" style="margin:12px 0 18px">';
 		echo '<label for="mad4b-endpoint-diagnostic-server">' . esc_html__( 'Endpoint', 'mad4b-site-control-plane' ) . '</label> <select id="mad4b-endpoint-diagnostic-server" name="server_id">';
 		foreach ( array_values( array_unique( array_merge( array( 'mad4b-chatgpt' ), MAD4B_SCP_Servers::expected_server_ids() ) ) ) as $id ) echo '<option value="' . esc_attr( $id ) . '">' . esc_html( $id ) . '</option>';

@@ -14,6 +14,8 @@ final class MAD4B_SCP_Audit {
 	const SUMMARY_MAX_ITEMS = 50;
 	const SUMMARY_MAX_BYTES = 65536;
 	const VERIFY_BATCH = 500;
+	const SCALE_CONTRACT = 'mad4b.audit-scale.v1';
+	const HIGH_VOLUME_THRESHOLD_EVENTS = 100000;
 
 	private static $request_id = '';
 	private static $pending_dispatch = array();
@@ -159,8 +161,19 @@ final class MAD4B_SCP_Audit {
 		$status['retention_contract'] = 'mad4b.audit-retention.v1';
 		$status['retention_mode'] = 'append_only_no_automatic_deletion';
 		$status['automatic_deletion_enabled'] = false;
-		$status['retention_review_threshold_events'] = 100000;
-		$status['retention_review_recommended'] = $event_count >= 100000;
+		$status['retention_review_threshold_events'] = self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['retention_review_recommended'] = $event_count >= self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['scale_contract'] = self::SCALE_CONTRACT;
+		$status['append_integrity_mode'] = 'committed_count_head_tail_consistency';
+		$status['append_integrity_event_count_guard'] = true;
+		$status['append_count_index'] = 'chain_sequence';
+		$status['full_chain_verification_mode'] = 'explicit_batched';
+		$status['full_chain_verification_batch_events'] = self::VERIFY_BATCH;
+		$status['full_chain_verification_on_append'] = false;
+		$status['high_volume_threshold_events'] = self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['high_volume_threshold_reached'] = $event_count >= self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['high_volume_load_test_certified'] = false;
+		$status['high_volume_load_test_required'] = $event_count >= self::HIGH_VOLUME_THRESHOLD_EVENTS;
 		$status['redaction_contract'] = 'mad4b.audit-redaction.v1';
 		$status['sensitive_key_redaction_enabled'] = true;
 		$status['summary_max_depth'] = self::SUMMARY_MAX_DEPTH;
@@ -254,6 +267,102 @@ final class MAD4B_SCP_Audit {
 			'chain' => self::CHAIN,
 			'chain_valid' => self::verify_chain(),
 			'head_consistent' => ! empty( $status['head_consistent'] ),
+			'count' => count( $events ),
+			'events' => $events,
+		);
+	}
+
+
+	/**
+	 * Exact bounded revocation lookup for idempotent outbox replay.
+	 */
+	public static function site_profile_revocation_events( $revocation_id, $profile_digest, $limit = 5 ) {
+		global $wpdb;
+		$revocation_id = strtolower( trim( (string) $revocation_id ) );
+		$profile_digest = strtolower( trim( (string) $profile_digest ) );
+		$limit = max( 1, min( 10, absint( $limit ) ) );
+		if ( 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/D', $revocation_id ) ) return new WP_Error( 'mad4b_site_profile_revocation_audit_id_invalid', 'Site Profile revocation_id is invalid.' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $profile_digest ) ) return new WP_Error( 'mad4b_site_profile_revocation_audit_digest_invalid', 'Site Profile revocation digest is invalid.' );
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_site_profile_revocation_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$t['audit_events']} WHERE chain_name = %s AND ability = %s AND summary_json LIKE %s ORDER BY sequence DESC LIMIT %d",
+				self::CHAIN,
+				'mad4b/site-profile-write-disabled',
+				'%' . $wpdb->esc_like( '"revocation_id":"' . $revocation_id . '"' ) . '%',
+				$limit
+			),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_site_profile_revocation_audit_lookup_failed', 'Site Profile revocation audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( ! is_array( $entry ) ) continue;
+			$summary = isset( $entry['summary'] ) && is_array( $entry['summary'] ) ? $entry['summary'] : array();
+			if ( ! isset( $summary['revocation_id'], $summary['profile_digest'] ) ) continue;
+			if ( ! hash_equals( $revocation_id, strtolower( (string) $summary['revocation_id'] ) ) ) continue;
+			if ( ! hash_equals( $profile_digest, strtolower( (string) $summary['profile_digest'] ) ) ) continue;
+			$events[] = $entry;
+		}
+		return array(
+			'contract' => 'mad4b.site-profile-revocation-audit.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'revocation_id' => $revocation_id,
+			'profile_digest' => $profile_digest,
+			'count' => count( $events ),
+			'events' => $events,
+		);
+	}
+
+
+	/**
+	 * Exact, bounded Site Profile mutation lookup used only by the deterministic
+	 * pending-mutation reconciler. It never exposes a generic audit search surface.
+	 */
+	public static function site_profile_mutation_events( $ability, $mutation_id, $profile_digest, $limit = 5 ) {
+		global $wpdb;
+		$ability = trim( (string) $ability );
+		$mutation_id = strtolower( trim( (string) $mutation_id ) );
+		$profile_digest = strtolower( trim( (string) $profile_digest ) );
+		$limit = max( 1, min( 10, absint( $limit ) ) );
+		if ( '' === $ability || 1 !== preg_match( '#^[a-z0-9_/-]{1,191}$#D', $ability ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_action_invalid', 'Site Profile mutation audit action is invalid.' );
+		if ( 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/D', $mutation_id ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_id_invalid', 'Site Profile mutation_id is invalid.' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $profile_digest ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_digest_invalid', 'Site Profile mutation digest is invalid.' );
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$t['audit_events']} WHERE chain_name = %s AND ability = %s AND summary_json LIKE %s ORDER BY sequence DESC LIMIT %d",
+				self::CHAIN,
+				$ability,
+				'%' . $wpdb->esc_like( '"mutation_id":"' . $mutation_id . '"' ) . '%',
+				$limit
+			),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_site_profile_mutation_audit_lookup_failed', 'Site Profile mutation audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( ! is_array( $entry ) ) continue;
+			$summary = isset( $entry['summary'] ) && is_array( $entry['summary'] ) ? $entry['summary'] : array();
+			if ( ! isset( $summary['mutation_id'], $summary['profile_digest'] ) ) continue;
+			if ( ! hash_equals( $mutation_id, strtolower( (string) $summary['mutation_id'] ) ) ) continue;
+			if ( ! hash_equals( $profile_digest, strtolower( (string) $summary['profile_digest'] ) ) ) continue;
+			$events[] = $entry;
+		}
+		return array(
+			'contract' => 'mad4b.site-profile-mutation-audit.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'ability' => $ability,
+			'mutation_id' => $mutation_id,
+			'profile_digest' => $profile_digest,
 			'count' => count( $events ),
 			'events' => $events,
 		);

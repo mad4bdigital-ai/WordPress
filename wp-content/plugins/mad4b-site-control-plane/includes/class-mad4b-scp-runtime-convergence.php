@@ -639,6 +639,30 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 	}
 
+	/** Quarantine an already-persisted self-update checkpoint after a terminal apply failure. */
+	public static function block_post_update( $reason, array $extra = array() ) {
+		$reason = sanitize_key( (string) $reason );
+		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		if ( ! is_array( $checkpoint ) || 'self_update' !== sanitize_key( (string) ( $checkpoint['source'] ?? '' ) ) ) {
+			return new WP_Error( 'mad4b_runtime_convergence_checkpoint_missing', 'Self-update convergence checkpoint is unavailable for quarantine.' );
+		}
+		$checkpoint['state'] = 'blocked';
+		$checkpoint['last_error_code'] = '' !== $reason ? $reason : 'self_update_terminal_failure';
+		$checkpoint['retry_policy'] = 'explicit_resume_required';
+		$checkpoint['automatic_retry_allowed'] = false;
+		$checkpoint['updated_at'] = gmdate( 'c' );
+		foreach ( array( 'rollback_ok', 'audit_error_code' ) as $field ) {
+			if ( array_key_exists( $field, $extra ) ) $checkpoint[ $field ] = $extra[ $field ];
+		}
+		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		$stored = get_option( self::CHECKPOINT_OPTION, array() );
+		return is_array( $stored )
+			&& 'blocked' === sanitize_key( (string) ( $stored['state'] ?? '' ) )
+			&& hash_equals( $checkpoint['last_error_code'], sanitize_key( (string) ( $stored['last_error_code'] ?? '' ) ) )
+			? $stored
+			: new WP_Error( 'mad4b_runtime_convergence_checkpoint_block_failed', 'Self-update convergence checkpoint could not be quarantined.' );
+	}
+
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' );
@@ -886,6 +910,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 			}
 			if ( class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) && method_exists( 'MAD4B_SCP_Schema_Lifecycle', 'mark_current_package_applied' ) ) {
 				MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' );
+			}
+			if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) {
+				$mcp_recovery = MAD4B_SCP_MCP_Runtime_Recovery::run( $lock );
+				if ( is_wp_error( $mcp_recovery ) ) return $mcp_recovery;
+				$changed[] = 'mcp_runtime_bootstrap';
 			}
 			$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 			$skills_pending = false;

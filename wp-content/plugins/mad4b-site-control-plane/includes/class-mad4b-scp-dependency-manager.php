@@ -51,20 +51,26 @@ final class MAD4B_SCP_Dependency_Manager {
 		$expected_version = isset( $certified['version'] ) ? (string) $certified['version'] : '';
 		$expected_sha = isset( $certified['archive_sha256'] ) ? strtolower( (string) $certified['archive_sha256'] ) : '';
 		$plugins = self::plugins();
-		$installed = isset( $plugins[ self::MCP_PLUGIN_FILE ] ) && is_array( $plugins[ self::MCP_PLUGIN_FILE ] );
-		$installed_version = $installed && isset( $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) ? trim( (string) $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) : '';
-		$active = function_exists( 'is_plugin_active' ) ? ( is_plugin_active( self::MCP_PLUGIN_FILE ) || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE ) ) ) : class_exists( 'WP\\MCP\\Core\\McpAdapter' );
+		$mcp_plugin_identity = self::resolve_mcp_plugin_file( $plugins );
+		$mcp_plugin_file = isset( $mcp_plugin_identity['plugin_file'] ) ? (string) $mcp_plugin_identity['plugin_file'] : '';
+		$plugin_identity_ambiguous = ! empty( $mcp_plugin_identity['ambiguous'] );
+		$installed = '' !== $mcp_plugin_file && isset( $plugins[ $mcp_plugin_file ] ) && is_array( $plugins[ $mcp_plugin_file ] );
+		$installed_version = $installed && isset( $plugins[ $mcp_plugin_file ]['Version'] ) ? trim( (string) $plugins[ $mcp_plugin_file ]['Version'] ) : '';
+		$multisite_enabled = function_exists( 'is_multisite' ) && is_multisite();
+		$network_control_plane = $multisite_enabled && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) );
+		$network_mcp_adapter = $multisite_enabled && '' !== $mcp_plugin_file && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $mcp_plugin_file );
+		$active = function_exists( 'is_plugin_active' ) && '' !== $mcp_plugin_file ? ( is_plugin_active( $mcp_plugin_file ) || $network_mcp_adapter ) : class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		$runtime_loaded = class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		$runtime_contract = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' )
 			? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $runtime_loaded )
 			: array();
-		$runtime_provenance = self::mcp_runtime_provenance();
+		$runtime_provenance = self::mcp_runtime_provenance( $mcp_plugin_file );
 		$runtime_from_official_plugin = ! empty( $runtime_provenance['runtime_from_official_plugin'] );
 		$runtime_contract_ok = ! empty( $runtime_contract['runtime_contract_ok'] );
 		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin;
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $expected_sha );
-		$installed_integrity = $installed ? self::installed_mcp_adapter_integrity( $certified ) : array(
+		$installed_integrity = $installed ? self::installed_mcp_adapter_integrity( $certified, $mcp_plugin_file ) : array(
 			'contract' => 'mad4b.mcp-adapter-installed-integrity.v1',
 			'ready' => false,
 			'state' => 'not_installed',
@@ -97,7 +103,9 @@ final class MAD4B_SCP_Dependency_Manager {
 
 		$hard_blockers = array();
 		foreach ( $core as $key => $check ) if ( empty( $check['ready'] ) ) $hard_blockers[] = 'dependency_' . sanitize_key( $key ) . '_unavailable';
-		if ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
+		if ( $network_control_plane || $network_mcp_adapter ) $hard_blockers[] = 'multisite_network_activation_unsupported';
+		if ( $plugin_identity_ambiguous ) $hard_blockers[] = 'mcp_adapter_plugin_identity_ambiguous';
+		elseif ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
 		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
 		elseif ( ! $installed_integrity_ready ) $hard_blockers[] = 'mcp_adapter_integrity_mismatch';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
@@ -132,7 +140,10 @@ final class MAD4B_SCP_Dependency_Manager {
 			'optional_blockers' => $optional_blockers,
 			'core' => $core,
 			'mcp_adapter' => array(
-				'plugin_file' => self::MCP_PLUGIN_FILE,
+				'plugin_file' => $mcp_plugin_file,
+				'preferred_plugin_file' => self::MCP_PLUGIN_FILE,
+				'plugin_identity_ambiguous' => $plugin_identity_ambiguous,
+				'plugin_directory_renamed' => '' !== $mcp_plugin_file && ! hash_equals( self::MCP_PLUGIN_FILE, $mcp_plugin_file ),
 				'expected_version' => $expected_version,
 				'expected_archive_sha256' => $expected_sha,
 				'installed' => $installed,
@@ -151,13 +162,18 @@ final class MAD4B_SCP_Dependency_Manager {
 				'bundled_archive' => $bundle,
 				'install_requires_explicit_admin_action' => true,
 				'auto_downloads_remote_code' => false,
-				'network_activation_matches_control_plane' => ! ( function_exists( 'is_multisite' ) && is_multisite() ) || ! ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) ) ) || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE ) ),
+				'network_activation_matches_control_plane' => ! $network_control_plane || $network_mcp_adapter,
+				'network_activation_supported' => false,
 			),
 			'optional' => $optional,
 			'providers' => self::provider_dependency_summary(),
 			'multisite' => array(
-				'enabled' => function_exists( 'is_multisite' ) && is_multisite(),
-				'network_activation_supported' => true,
+				'enabled' => $multisite_enabled,
+				'network_activation_supported' => false,
+				'site_scoped_activation_supported' => true,
+				'network_control_plane_active' => $network_control_plane,
+				'network_mcp_adapter_active' => $network_mcp_adapter,
+				'authority_scope' => 'site',
 				'per_site_profile_required' => true,
 				'per_site_governance_schema' => true,
 			),
@@ -204,24 +220,37 @@ final class MAD4B_SCP_Dependency_Manager {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		$plugins_before = self::plugins( true );
+		$mcp_plugin_identity = self::resolve_mcp_plugin_file( $plugins_before );
+		$mcp_plugin_file = isset( $mcp_plugin_identity['plugin_file'] ) ? (string) $mcp_plugin_identity['plugin_file'] : '';
+		if ( ! empty( $mcp_plugin_identity['ambiguous'] ) ) self::redirect_result( 'mcp_adapter_plugin_identity_ambiguous' );
 		$network_control_plane = function_exists( 'is_multisite' ) && is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) );
-		$was_network_active = function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE );
-		$was_site_active = is_plugin_active( self::MCP_PLUGIN_FILE );
-		if ( $was_network_active || $was_site_active ) deactivate_plugins( self::MCP_PLUGIN_FILE, true, $was_network_active );
+		$was_network_active = '' !== $mcp_plugin_file && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $mcp_plugin_file );
+		$was_site_active = '' !== $mcp_plugin_file && is_plugin_active( $mcp_plugin_file );
+		if ( '' !== $mcp_plugin_file && ! hash_equals( self::MCP_PLUGIN_FILE, $mcp_plugin_file ) ) {
+			self::redirect_result( 'renamed_mcp_adapter_repair_requires_manual_normalization' );
+		}
+		// Network-wide mutation would affect sites whose Site Profile/authority was
+		// not reviewed by this request. Keep repair site-scoped and fail closed.
+		if ( $network_control_plane || $was_network_active ) self::redirect_result( 'multisite_network_activation_unsupported' );
+		if ( $was_network_active || $was_site_active ) deactivate_plugins( $mcp_plugin_file, true, $was_network_active );
 
 		$skin = new Automatic_Upgrader_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
 		$result = $upgrader->install( (string) $bundle['path'], array( 'overwrite_package' => true ) );
 		if ( is_wp_error( $result ) || ! $result ) {
-			if ( ( $was_network_active || $was_site_active ) && file_exists( WP_PLUGIN_DIR . '/' . self::MCP_PLUGIN_FILE ) ) activate_plugin( self::MCP_PLUGIN_FILE, '', $was_network_active );
+			if ( ( $was_network_active || $was_site_active ) && '' !== $mcp_plugin_file && file_exists( WP_PLUGIN_DIR . '/' . $mcp_plugin_file ) ) activate_plugin( $mcp_plugin_file, '', $was_network_active );
 			self::redirect_result( 'install_failed' );
 		}
-		$activation = activate_plugin( self::MCP_PLUGIN_FILE, '', $network_control_plane || $was_network_active );
+		$activation = activate_plugin( self::MCP_PLUGIN_FILE, '', false );
 		if ( is_wp_error( $activation ) ) self::redirect_result( 'activate_failed' );
 		$plugins = self::plugins( true );
-		$installed_version = isset( $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) ? (string) $plugins[ self::MCP_PLUGIN_FILE ]['Version'] : '';
+		$installed_identity = self::resolve_mcp_plugin_file( $plugins );
+		$installed_plugin_file = isset( $installed_identity['plugin_file'] ) ? (string) $installed_identity['plugin_file'] : '';
+		if ( ! empty( $installed_identity['ambiguous'] ) || '' === $installed_plugin_file ) self::redirect_result( 'post_install_plugin_identity_invalid' );
+		$installed_version = isset( $plugins[ $installed_plugin_file ]['Version'] ) ? (string) $plugins[ $installed_plugin_file ]['Version'] : '';
 		if ( '' === $expected_version || ! hash_equals( $expected_version, $installed_version ) ) self::redirect_result( 'version_mismatch' );
-		$integrity = self::installed_mcp_adapter_integrity( $certified );
+		$integrity = self::installed_mcp_adapter_integrity( $certified, $installed_plugin_file );
 		if ( empty( $integrity['ready'] ) ) self::redirect_result( 'integrity_mismatch' );
 		self::redirect_result( 'success' );
 	}
@@ -239,7 +268,28 @@ final class MAD4B_SCP_Dependency_Manager {
 		return is_array( $decoded ) && ! empty( $decoded['providers']['mcp_adapter'] ) && is_array( $decoded['providers']['mcp_adapter'] ) ? $decoded['providers']['mcp_adapter'] : array();
 	}
 
-	private static function installed_mcp_adapter_integrity( array $certified ) {
+	/** Canonical runtime/update identity for the installed MCP Adapter main file. */
+	public static function mcp_adapter_plugin_identity( $refresh = false ) {
+		return self::resolve_mcp_plugin_file( self::plugins( (bool) $refresh ) );
+	}
+
+	/** Disk-only certification for lifecycle recovery; does not claim PHP symbols. */
+	public static function mcp_adapter_disk_integrity() {
+		$plugins = self::plugins();
+		$identity = self::resolve_mcp_plugin_file( $plugins );
+		if ( ! empty( $identity['ambiguous'] ) ) return array(
+			'contract' => 'mad4b.mcp-adapter-installed-integrity.v1',
+			'ready' => false,
+			'state' => 'plugin_identity_ambiguous',
+			'expected_count' => 0,
+			'verified_count' => 0,
+			'mismatch_count' => 1,
+			'mismatches' => array( array( 'file' => '', 'reason' => 'plugin_identity_ambiguous' ) ),
+		);
+		return self::installed_mcp_adapter_integrity( self::certified_mcp_adapter(), (string) ( $identity['plugin_file'] ?? '' ) );
+	}
+
+	private static function installed_mcp_adapter_integrity( array $certified, $plugin_file = '' ) {
 		$out = array(
 			'contract' => 'mad4b.mcp-adapter-installed-integrity.v1',
 			'ready' => false,
@@ -250,7 +300,12 @@ final class MAD4B_SCP_Dependency_Manager {
 			'mismatches' => array(),
 		);
 		$critical = isset( $certified['critical_files'] ) && is_array( $certified['critical_files'] ) ? $certified['critical_files'] : array();
-		$root = defined( 'WP_PLUGIN_DIR' ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' ) : false;
+		$plugin_file = trim( (string) $plugin_file );
+		if ( '' === $plugin_file ) {
+			$identity = self::resolve_mcp_plugin_file( self::plugins() );
+			$plugin_file = ! empty( $identity['ambiguous'] ) ? '' : (string) ( $identity['plugin_file'] ?? '' );
+		}
+		$root = defined( 'WP_PLUGIN_DIR' ) && '' !== $plugin_file ? realpath( trailingslashit( WP_PLUGIN_DIR ) . dirname( $plugin_file ) ) : false;
 		if ( empty( $critical ) ) {
 			$out['state'] = 'baseline_missing';
 			$out['mismatches'][] = array( 'file' => '', 'reason' => 'critical_file_baseline_missing' );
@@ -320,7 +375,7 @@ final class MAD4B_SCP_Dependency_Manager {
 		);
 	}
 
-	private static function mcp_runtime_provenance() {
+	private static function mcp_runtime_provenance( $plugin_file = '' ) {
 		$out = array(
 			'runtime_class_loaded' => false,
 			'runtime_source' => 'unavailable',
@@ -333,7 +388,11 @@ final class MAD4B_SCP_Dependency_Manager {
 			$reflection = new ReflectionClass( $class );
 			$file = $reflection->getFileName();
 			$resolved = $file ? realpath( $file ) : false;
-			$official_root = defined( 'WP_PLUGIN_DIR' ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' ) : false;
+			if ( '' === trim( (string) $plugin_file ) ) {
+				$identity = self::resolve_mcp_plugin_file( self::plugins() );
+				$plugin_file = ! empty( $identity['ambiguous'] ) ? '' : (string) ( $identity['plugin_file'] ?? '' );
+			}
+			$official_root = defined( 'WP_PLUGIN_DIR' ) && '' !== trim( (string) $plugin_file ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . dirname( (string) $plugin_file ) ) : false;
 			if ( $resolved ) $out['runtime_source'] = wp_normalize_path( $resolved );
 			if ( $resolved && $official_root ) {
 				$runtime_file = wp_normalize_path( $resolved );
@@ -344,6 +403,22 @@ final class MAD4B_SCP_Dependency_Manager {
 			$out['runtime_source'] = 'reflection-unavailable';
 		}
 		return $out;
+	}
+
+	private static function resolve_mcp_plugin_file( array $plugins ) {
+		$matches = array();
+		foreach ( array_keys( $plugins ) as $plugin_file ) {
+			$plugin_file = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( (string) $plugin_file ) : str_replace( '\\', '/', (string) $plugin_file );
+			$plugin_file = ltrim( trim( $plugin_file ), '/' );
+			if ( '' === $plugin_file || false !== strpos( $plugin_file, '../' ) || in_array( '..', explode( '/', $plugin_file ), true ) ) continue;
+			if ( 'mcp-adapter.php' === basename( $plugin_file ) ) $matches[] = $plugin_file;
+		}
+		$matches = array_values( array_unique( $matches ) );
+		return array(
+			'plugin_file' => 1 === count( $matches ) ? $matches[0] : '',
+			'ambiguous' => count( $matches ) > 1,
+			'candidate_count' => count( $matches ),
+		);
 	}
 
 	private static function plugins( $refresh = false ) {

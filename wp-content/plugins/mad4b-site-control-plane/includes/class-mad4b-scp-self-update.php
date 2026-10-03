@@ -1188,8 +1188,12 @@ final class MAD4B_SCP_Self_Update {
 				'mad4b_control_plane_refresh_update'
 			);
 			$reason = ! empty( $ui['blockers'] ) ? implode( ', ', $ui['blockers'] ) : 'manifest_unavailable';
-			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-error notice-alt"><p>'
-				. esc_html__( 'MAD4B could not verify the governed update channel.', 'mad4b-site-control-plane' )
+			$uncached = array( 'mad4b_self_update_manifest_not_cached' ) === array_values( (array) $ui['blockers'] );
+			$channel_message = $uncached
+				? __( 'Governed update channel has not been checked yet. Run the explicit update check before choosing an update.', 'mad4b-site-control-plane' )
+				: __( 'MAD4B could not verify the governed update channel.', 'mad4b-site-control-plane' );
+			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline ' . ( $uncached ? 'notice-info' : 'notice-error' ) . ' notice-alt"><p>'
+				. esc_html( $channel_message )
 				. ' ' . esc_html( $reason ) . ' <a href="' . esc_url( $url ) . '">'
 				. esc_html__( 'Retry update check', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
 			return;
@@ -1852,7 +1856,7 @@ final class MAD4B_SCP_Self_Update {
 				);
 			}
 
-			self::audit( $channel, $target, true, array(
+			$success_audit = self::audit( $channel, $target, true, array(
 				'plan_sha256' => $plan_sha256,
 				'readback' => $readback,
 				'runtime_cache_invalidation' => $runtime_cache,
@@ -1862,6 +1866,28 @@ final class MAD4B_SCP_Self_Update {
 				'core_maintenance_window_used' => true,
 				'pre_replacement_runtime_lease' => true,
 			) );
+			if ( is_wp_error( $success_audit ) ) {
+				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				$continuation_cancel = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) && method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'cancel' )
+					? MAD4B_SCP_Post_Update_Continuation::cancel( 'self_update_success_audit_failed', is_array( $before ) ? $before : array() )
+					: new WP_Error( 'mad4b_self_update_continuation_cancel_unavailable', 'Post-update continuation cancellation is unavailable.' );
+				$convergence_block = class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'block_post_update' )
+					? MAD4B_SCP_Runtime_Convergence::block_post_update( 'self_update_success_audit_failed', array(
+						'rollback_ok' => ! is_wp_error( $rollback ),
+						'audit_error_code' => $success_audit->get_error_code(),
+					) )
+					: new WP_Error( 'mad4b_self_update_convergence_quarantine_unavailable', 'Runtime convergence quarantine is unavailable.' );
+				return new WP_Error(
+					'mad4b_self_update_success_audit_failed',
+					'Control Plane replacement passed disk readback but mandatory success audit failed; the update was rolled back where possible and post-update convergence was quarantined.',
+					array(
+						'audit_error_code' => $success_audit->get_error_code(),
+						'rollback_ok' => ! is_wp_error( $rollback ),
+						'continuation_cancelled' => ! is_wp_error( $continuation_cancel ),
+						'convergence_quarantined' => ! is_wp_error( $convergence_block ),
+					)
+				);
+			}
 			delete_site_transient( 'update_plugins' );
 			// Preserve the already verified release manifest across the immediate
 			// post-update redirect. Deleting it here forced plugins.php to block on
@@ -2509,7 +2535,7 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	private static function audit( $channel, array $target, $success, array $extra = array() ) {
-		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return;
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_self_update_audit_unavailable', 'Control Plane self-update audit storage is unavailable.' );
 		$payload = array_merge(
 			array(
 				'channel' => $channel,
@@ -2522,7 +2548,7 @@ final class MAD4B_SCP_Self_Update {
 			),
 			$extra
 		);
-		MAD4B_SCP_Audit::record( 'mad4b/control-plane-self-update', $payload, $success ? 'success' : 'failure' );
+		return MAD4B_SCP_Audit::record( 'mad4b/control-plane-self-update', $payload, $success ? 'success' : 'failure' );
 	}
 
 	private static function native_plan_schema() {

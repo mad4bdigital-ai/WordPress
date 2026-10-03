@@ -7,7 +7,8 @@ function wp_normalize_path( $value ) { return str_replace( '\\', '/', (string) $
 
 $base = rtrim( sys_get_temp_dir(), '/\\' ) . '/mad4b-dependency-integrity-' . getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 $plugins = $base . '/plugins';
-$adapter = $plugins . '/mcp-adapter';
+$adapter_slug = 'renamed-mcp-runtime';
+$adapter = $plugins . '/' . $adapter_slug;
 if ( ! mkdir( $adapter . '/includes/Domain/Tools', 0777, true ) && ! is_dir( $adapter . '/includes/Domain/Tools' ) ) {
 	throw new RuntimeException( 'Unable to create adapter fixture.' );
 }
@@ -16,10 +17,15 @@ define( 'WP_PLUGIN_DIR', $plugins );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-dependency-manager.php';
 
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
-function integrity( array $certified ) {
+function integrity( array $certified, $plugin_file = 'renamed-mcp-runtime/mcp-adapter.php' ) {
 	$method = new ReflectionMethod( 'MAD4B_SCP_Dependency_Manager', 'installed_mcp_adapter_integrity' );
 	$method->setAccessible( true );
-	return $method->invoke( null, $certified );
+	return $method->invoke( null, $certified, $plugin_file );
+}
+function plugin_identity( array $plugins ) {
+	$method = new ReflectionMethod( 'MAD4B_SCP_Dependency_Manager', 'resolve_mcp_plugin_file' );
+	$method->setAccessible( true );
+	return $method->invoke( null, $plugins );
 }
 function cleanup_tree( $path ) {
 	if ( ! is_dir( $path ) ) return;
@@ -36,6 +42,14 @@ $main = "<?php\n/* Plugin Name: MCP Adapter\nVersion: 0.6.1\n*/\n";
 $validator = "<?php\nnamespace WP\\MCP\\Domain\\Tools;\nclass McpToolValidator {}\n";
 file_put_contents( $adapter . '/mcp-adapter.php', $main );
 file_put_contents( $adapter . '/includes/Domain/Tools/McpToolValidator.php', $validator );
+
+$unique_identity = plugin_identity( array( 'renamed-mcp-runtime/mcp-adapter.php' => array( 'Version' => '0.6.1' ) ) );
+check( empty( $unique_identity['ambiguous'] ) && 'renamed-mcp-runtime/mcp-adapter.php' === $unique_identity['plugin_file'], 'Renamed MCP plugin identity was not discovered.' );
+$ambiguous_identity = plugin_identity( array(
+	'renamed-mcp-runtime/mcp-adapter.php' => array( 'Version' => '0.6.1' ),
+	'another-copy/mcp-adapter.php' => array( 'Version' => '0.6.1' ),
+) );
+check( ! empty( $ambiguous_identity['ambiguous'] ) && '' === $ambiguous_identity['plugin_file'], 'Ambiguous MCP plugin identities did not fail closed.' );
 
 $certified = array(
 	'critical_files' => array(
