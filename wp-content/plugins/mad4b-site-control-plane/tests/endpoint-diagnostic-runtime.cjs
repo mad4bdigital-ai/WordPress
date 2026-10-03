@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const {request, run, mount} = require('../assets/connection-endpoint-diagnostics.js');
-const config = {url: '/wp-admin/admin-ajax.php', action: 'mad4b_connection_endpoint_diagnostic', nonce: 'fixture', build: 'fixture-build', servers: ['mad4b-chatgpt', 'mad4b-read'], timeoutMs: 15};
+const config = {url: '/wp-admin/admin-ajax.php', action: 'mad4b_connection_endpoint_diagnostic', nonce: 'fixture', build: 'fixture-build', muProof: 'a'.repeat(64), servers: ['mad4b-chatgpt', 'mad4b-read'], timeoutMs: 15};
 const valid = id => ({success: true, data: {contract: 'mad4b.endpoint-diagnostic.v1', build: config.build, certification_performed: false, connection_certified: false, tool_execution_performed: false, outbound_discovery_performed: false, server: {server_id: id, registered: true, route_registered: true, permission_callback_match: true, local_endpoint_ready: true, catalog_materialized: true, tool_count: 1, preflight_failures: []}}});
 const response = (payload, status = 200) => ({ok: status === 200, status, text: async () => typeof payload === 'string' ? payload : JSON.stringify(payload)});
 const env = fetch => ({fetch, AbortController, setTimeout, clearTimeout});
@@ -12,7 +12,7 @@ const expectCode = (promise, code) => assert.rejects(promise, error => error.cod
     calls++; active++; peak = Math.max(peak, active);
     assert.equal(options.method, 'POST'); assert.equal(options.credentials, 'same-origin');
     const body = new URLSearchParams(options.body);
-    assert.equal(body.get('nonce'), config.nonce); assert.equal(body.get('build'), config.build);
+    assert.equal(body.get('nonce'), config.nonce); assert.equal(body.get('build'), config.build); assert.equal(body.get('mu_proof'), config.muProof);
     await new Promise(resolve => setTimeout(resolve, 1)); active--;
     return response(valid(body.get('server_id')));
   });
