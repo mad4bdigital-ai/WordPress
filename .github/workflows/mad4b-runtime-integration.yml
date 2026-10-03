@@ -173,15 +173,39 @@ jobs:
             --path=/tmp/mad4b-wordpress \
             --user=mad4b-ci-admin
 
-          BARRIER="$(php -r 'printf("%.6f", microtime(true) + 3.0);')"
-          MAD4B_CI_BUDGET_WORKER=one MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+          SYNC_DIR="/tmp/mad4b-budget-sync-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          READY_ONE="$SYNC_DIR/ready-one"
+          READY_TWO="$SYNC_DIR/ready-two"
+          RELEASE="$SYNC_DIR/release"
+          rm -rf "$SYNC_DIR"
+          mkdir -p "$SYNC_DIR"
+
+          MAD4B_CI_BUDGET_WORKER=one \
+          MAD4B_CI_BUDGET_READY_FILE="$READY_ONE" \
+          MAD4B_CI_BUDGET_RELEASE_FILE="$RELEASE" \
             php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
               --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-one.log 2>&1 &
           PID_ONE=$!
-          MAD4B_CI_BUDGET_WORKER=two MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+
+          MAD4B_CI_BUDGET_WORKER=two \
+          MAD4B_CI_BUDGET_READY_FILE="$READY_TWO" \
+          MAD4B_CI_BUDGET_RELEASE_FILE="$RELEASE" \
             php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
               --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-two.log 2>&1 &
           PID_TWO=$!
+
+          READY_DEADLINE=$((SECONDS + 30))
+          while { [ ! -f "$READY_ONE" ] || [ ! -f "$READY_TWO" ]; }; do
+            if [ "$SECONDS" -ge "$READY_DEADLINE" ]; then
+              echo "Workers did not both reach the ready barrier in time."
+              cat /tmp/mad4b-budget-worker-one.log || true
+              cat /tmp/mad4b-budget-worker-two.log || true
+              kill "$PID_ONE" "$PID_TWO" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 0.05
+          done
+          : > "$RELEASE"
 
           RC_ONE=0
           RC_TWO=0
@@ -236,15 +260,39 @@ jobs:
             "$TEST_ROOT/runtime-audit-concurrency-setup.php" \
             --path="$WP_PATH" --user=mad4b-ci-admin
 
-          BARRIER="$(php -r 'printf("%.6f", microtime(true) + 3.0);')"
-          MAD4B_CI_AUDIT_WORKER=one MAD4B_CI_AUDIT_BARRIER="$BARRIER" \
+          SYNC_DIR="/tmp/mad4b-audit-sync-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          READY_ONE="$SYNC_DIR/ready-one"
+          READY_TWO="$SYNC_DIR/ready-two"
+          RELEASE="$SYNC_DIR/release"
+          rm -rf "$SYNC_DIR"
+          mkdir -p "$SYNC_DIR"
+
+          MAD4B_CI_AUDIT_WORKER=one \
+          MAD4B_CI_AUDIT_READY_FILE="$READY_ONE" \
+          MAD4B_CI_AUDIT_RELEASE_FILE="$RELEASE" \
             php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-audit-concurrency-worker.php" \
               --path="$WP_PATH" --user=mad4b-ci-admin > /tmp/mad4b-audit-worker-one.log 2>&1 &
           PID_ONE=$!
-          MAD4B_CI_AUDIT_WORKER=two MAD4B_CI_AUDIT_BARRIER="$BARRIER" \
+
+          MAD4B_CI_AUDIT_WORKER=two \
+          MAD4B_CI_AUDIT_READY_FILE="$READY_TWO" \
+          MAD4B_CI_AUDIT_RELEASE_FILE="$RELEASE" \
             php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-audit-concurrency-worker.php" \
               --path="$WP_PATH" --user=mad4b-ci-admin > /tmp/mad4b-audit-worker-two.log 2>&1 &
           PID_TWO=$!
+
+          READY_DEADLINE=$((SECONDS + 30))
+          while { [ ! -f "$READY_ONE" ] || [ ! -f "$READY_TWO" ]; }; do
+            if [ "$SECONDS" -ge "$READY_DEADLINE" ]; then
+              echo "Audit workers did not both reach the ready barrier in time."
+              cat /tmp/mad4b-audit-worker-one.log || true
+              cat /tmp/mad4b-audit-worker-two.log || true
+              kill "$PID_ONE" "$PID_TWO" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 0.05
+          done
+          : > "$RELEASE"
 
           RC_ONE=0
           RC_TWO=0
