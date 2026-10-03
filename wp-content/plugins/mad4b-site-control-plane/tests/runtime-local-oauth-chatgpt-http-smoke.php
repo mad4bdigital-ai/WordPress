@@ -50,14 +50,21 @@ if ( is_wp_error( $token ) || ! is_string( $token ) || '' === $token ) {
 if ( MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) $fail( 'Bearer context must be inactive before the first real REST dispatch.' );
 $preauth_server = \WP\MCP\Core\McpAdapter::instance()->get_server( 'mad4b-chatgpt' );
 if ( ! is_object( $preauth_server ) ) $fail( 'ChatGPT MCP server was not materialized before bearer verification.' );
+$preauth_tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $preauth_server );
+if ( is_wp_error( $preauth_tools ) || ! is_array( $preauth_tools ) ) $fail( 'Pre-auth MCP tool inventory projection failed.', is_wp_error( $preauth_tools ) ? $preauth_tools->get_error_code() : gettype( $preauth_tools ) );
 $preauth_names = array();
-foreach ( $preauth_server->get_tools() as $dto ) if ( is_object( $dto ) && method_exists( $dto, 'getName' ) ) $preauth_names[] = $dto->getName();
+foreach ( $preauth_tools as $dto ) {
+	$wire_name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto );
+	if ( '' !== $wire_name ) $preauth_names[] = $wire_name;
+}
 $preauth_names = array_values( array_unique( $preauth_names ) );
 sort( $preauth_names );
 $reviewed_step_up_abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 $reviewed_step_up_names = array();
 $reviewed_step_up_by_ability = array();
-foreach ( $preauth_server->get_tools() as $tool_name => $dto ) {
+foreach ( $preauth_tools as $dto ) {
+	$tool_name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto );
+	if ( '' === $tool_name ) $fail( 'Pre-auth MCP tool wire identity is unavailable.' );
 	$bound = $preauth_server->get_mcp_tool( $tool_name );
 	$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
 	$ability_name = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
@@ -422,11 +429,15 @@ if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAu
 
 // Exercise the real step-up bearer catalog, official per-ability builder and wire DTO serialization.
 $catalog_server = \WP\MCP\Core\McpAdapter::instance()->get_server( 'mad4b-chatgpt' );
+$catalog_tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $catalog_server );
+if ( is_wp_error( $catalog_tools ) || ! is_array( $catalog_tools ) ) $fail( 'Actual packaged Adapter inventory projection failed.', is_wp_error( $catalog_tools ) ? $catalog_tools->get_error_code() : gettype( $catalog_tools ) );
 $catalog_names = array();
-foreach ( $catalog_server->get_tools() as $dto ) {
+foreach ( $catalog_tools as $dto ) {
 	$failure = MAD4B_SCP_MCP_Catalog_Diagnostics::dto_failure( $dto );
 	if ( $failure ) $fail( 'Actual packaged Adapter tool failed serialization preflight.', $failure );
-	$catalog_names[] = $dto->getName();
+	$wire_name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto );
+	if ( '' === $wire_name ) $fail( 'Actual packaged Adapter tool identity is unavailable.' );
+	$catalog_names[] = $wire_name;
 }
 $preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
 if ( empty( $preflight['ready'] ) || ! empty( $preflight['failures'] ) ) $fail( 'Official ability-to-DTO preflight failed.', $preflight );
