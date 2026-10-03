@@ -82,7 +82,7 @@ final class MAD4B_SCP_Execution_Receipt {
 			return new WP_Error( 'mad4b_execution_receipt_signature_missing', 'Execution receipt is missing its required cryptographic signature.' );
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) return new WP_Error( 'mad4b_execution_receipt_crypto_unavailable', 'Execution receipt cryptographic profile runtime is unavailable.' );
-		$sig = MAD4B_SCP_Crypto_Profile::verify_digest( $receipt['signature'], $expected );
+		$sig = MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose( $receipt['signature'], $expected, 'execution_receipt' );
 		if ( is_wp_error( $sig ) ) return $sig;
 		if ( ! hash_equals( (string)$receipt['signature_profile'], (string)$receipt['signature']['profile_id'] ) ) return new WP_Error( 'mad4b_execution_receipt_signature_profile_mismatch', 'Execution receipt signature profile is not bound to the receipt material.' );
 		return array(

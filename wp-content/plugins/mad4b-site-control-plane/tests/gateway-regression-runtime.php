@@ -1,7 +1,11 @@
 <?php
 // Behavioral contracts with external WordPress services replaced, production
 // discovery/classification/dispatch code unchanged. Real WP parity runs in CI too.
+$GLOBALS['mad4b_gateway_crypto_tmp'] = sys_get_temp_dir() . '/mad4b-gateway-crypto-' . getmypid();
+@mkdir( $GLOBALS['mad4b_gateway_crypto_tmp'] . '/keys', 0777, true );
 define( 'ABSPATH', __DIR__ );
+define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
+define( 'MAD4B_SCP_CRYPTO_KEYRING_DIR', $GLOBALS['mad4b_gateway_crypto_tmp'] . '/keys' );
 class WP_Error {
  private $code; private $message; private $data;
  function __construct( $code, $message = '', $data = array() ) { $this->code = $code; $this->message = $message; $this->data = $data; }
@@ -14,6 +18,9 @@ function add_action() {} function add_filter() {}
 function sanitize_key( $value ) { return strtolower( $value ); }
 function absint( $value ) { return abs( (int) $value ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function wp_mkdir_p( $dir ) { return is_dir( $dir ) || mkdir( $dir, 0777, true ); }
+function trailingslashit( $value ) { return rtrim( (string) $value, '/\\' ) . '/'; }
+function wp_normalize_path( $value ) { return str_replace( '\\', '/', (string) $value ); }
 function wp_salt( $scheme ) { return $GLOBALS['signing_salt'] ?? 'test-only-receipt-salt'; }
 function wp_strip_all_tags( $value ) { return strip_tags( $value ); }
 function wp_check_invalid_utf8( $value ) { return iconv( 'UTF-8', 'UTF-8//IGNORE', $value ); }
@@ -122,6 +129,7 @@ $GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = fals
 require __DIR__ . '/../includes/class-mad4b-scp-identifiers.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
+require __DIR__ . '/../includes/class-mad4b-scp-crypto-profile.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';

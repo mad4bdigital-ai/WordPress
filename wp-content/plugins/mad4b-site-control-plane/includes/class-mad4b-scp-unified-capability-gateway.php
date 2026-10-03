@@ -518,9 +518,19 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'execution' => self::execution_descriptor( $row ),
 			);
 			if ( class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
-				$entry['preparation_receipt'] = MAD4B_SCP_Preparation_Receipt::issue( $row );
+				$preparation_receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
 				$entry['descriptor_sha256'] = $row['descriptor_sha256'] ?? '';
 				$entry['generation_roots'] = $row['generation_roots'] ?? array();
+				if ( is_wp_error( $preparation_receipt ) || ! is_string( $preparation_receipt ) || '' === $preparation_receipt ) {
+					$entry['preparation_receipt'] = '';
+					$entry['preparation_receipt_ready'] = false;
+					$entry['preparation_receipt_blocker'] = is_wp_error( $preparation_receipt ) ? sanitize_key( (string) $preparation_receipt->get_error_code() ) : 'preparation_receipt_unavailable';
+					$entry['execution_eligible'] = false;
+				} else {
+					$entry['preparation_receipt'] = $preparation_receipt;
+					$entry['preparation_receipt_ready'] = true;
+					$entry['preparation_receipt_blocker'] = '';
+				}
 			}
 			if ( ! $reusable && 'inline' === $schema_mode && strlen( wp_json_encode( $items ) ) + (int) $item['schema_bytes'] + 4096 < $caps['max_response_bytes'] ) {
 				$schema = MAD4B_SCP_Ability_Catalog_Transport::handle( array( 'transport_action' => 'schema', 'snapshot' => $prepared['snapshot'], 'schema_sha256' => $digest ) );
