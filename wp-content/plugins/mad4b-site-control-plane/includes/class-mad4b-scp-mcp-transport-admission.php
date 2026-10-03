@@ -139,8 +139,10 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 	private static function denial( $error, $server_id, $request ) {
 		$code = sanitize_key( (string) $error->get_error_code() );
 		if ( '' === $code ) $code = 'mad4b_transport_admission_denied';
-		$message = sanitize_text_field( (string) $error->get_error_message() );
-		if ( '' === $message ) $message = 'MAD4B transport admission was denied.';
+		// Never reflect upstream error text. The bounded code/stage/blocker tuple is
+		// sufficient for diagnosis and prevents future provider messages from
+		// exposing paths, identities or request-derived material.
+		$message = 'MAD4B transport admission was denied.';
 
 		$data = $error->get_error_data();
 		$data = is_array( $data ) ? $data : array();
