@@ -73,7 +73,7 @@ for forbidden in (
     forbid(repair_lifecycle, forbidden, 'diagnostics-remain-read-only')
 
 for marker in (
-    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v5'",
+    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v6'",
     "MAD4B_SCP_Site_Profile::early_managed_runtime_binding()",
     "in_array( 'mcp-adapter/mcp-adapter.php'",
     "in_array( 'mad4b-site-control-plane/mad4b-site-control-plane.php'",
@@ -133,12 +133,13 @@ for marker in (
     "MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
-    'mad4b.mcp-adapter-mu-bootstrap.v2',
-    'mad4b.mcp-adapter-mu-bootstrap.v3',
-    'mad4b.mcp-adapter-mu-bootstrap.v4',
     "'unmanaged_mu_bootstrap_path_conflict'",
     "'mad4b/mcp-mu-bootstrap-refreshed'",
     "'managed_mu_refreshed_for_next_request'",
+    'historical_managed_sha256',
+    'TRANSACTION_OPTION',
+    'reconcile_transaction',
+    'replaced_pending_audit',
     "'next_request_required' => true",
 ):
     require(refresh, marker, 'mu-refresh')
@@ -183,7 +184,11 @@ for marker in (
 
 print('mad4b.site-control-plane.mcp-runtime-conflict-guard-contract.v5: PASS')
 
-# The only POST read in MU scope classifies the diagnostic route; it cannot arm a singleton.
+# The diagnostic POST is only an early routing hint after the Site Profile HMAC
+# proof matches; nonce/capability authorization still belongs to the worker.
 assert "'mad4b_connection_endpoint_diagnostic' === $_POST['action']" in mu_bootstrap
+assert "diagnostic_mu_proof_valid" in mu_bootstrap
+assert "MAD4B_SCP_Site_Profile::diagnostic_mu_proof()" in mu_bootstrap
 assert "canonical_runtime_pinned_diagnostic_deferred" in mu_bootstrap
+assert "managed_mu_transaction_pending" in mu_bootstrap
 assert mu_bootstrap.index("Validate every executable pin") < mu_bootstrap.index("foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once")
