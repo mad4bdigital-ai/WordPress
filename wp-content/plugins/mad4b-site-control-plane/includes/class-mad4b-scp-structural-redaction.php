@@ -49,7 +49,7 @@ final class MAD4B_SCP_Structural_Redaction {
 		if ( '' === $v ) return false;
 		if ( preg_match( '/^Bearer\s+[A-Za-z0-9._~+\/-]+=*$/i', $v ) ) return true;
 		if ( preg_match( '/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/', $v ) ) return true;
-		if ( false !== strpos( $v, '-----BEGIN PRIVATE KEY-----' ) || false !== strpos( $v, '-----BEGIN RSA PRIVATE KEY-----' ) ) return true;
+		if ( preg_match( '/^-{5}BEGIN (?:RSA )?PRIVATE KEY-{5}/', $v ) ) return true;
 		if ( preg_match( '/^(?:sk|rk|pk|ghp|github_pat|xox[baprs])-[_A-Za-z0-9-]{16,}$/', $v ) ) return true;
 		if ( preg_match( '#^[a-z][a-z0-9+.-]*://[^/@\s:]+:[^/@\s]+@#i', $v ) ) return true;
 		if ( preg_match( '/\bAKIA[0-9A-Z]{16}\b/', $v ) ) return true;

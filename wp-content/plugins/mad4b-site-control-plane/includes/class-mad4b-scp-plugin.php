@@ -18,6 +18,11 @@ final class MAD4B_SCP_Plugin {
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
+		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) {
+			$profile_id = MAD4B_SCP_Crypto_Profile::default_profile( 'execution_receipt' );
+			$crypto = is_wp_error( $profile_id ) ? $profile_id : MAD4B_SCP_Crypto_Profile::provision_for_lifecycle( $profile_id );
+			if ( is_wp_error( $crypto ) ) self::$schema_error = $crypto;
+		}
 		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) ) {
 			MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'activation' );
 		}

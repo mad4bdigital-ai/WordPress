@@ -134,7 +134,14 @@ final class MAD4B_SCP_Crypto_Profile {
 		if ( is_wp_error( $manifest ) ) return $manifest;
 		$kid = isset( $manifest['current_kid'] ) ? strtolower( trim( (string)$manifest['current_kid'] ) ) : '';
 		if ( '' === $kid || empty( $manifest['keys'][ $kid ] ) || ! empty( $manifest['keys'][ $kid ]['revoked_at'] ) ) {
-			return new WP_Error( 'mad4b_crypto_current_key_unavailable', 'Current receipt signing key is unavailable; lifecycle provisioning is required.' );
+			$provisioned = self::provision_for_lifecycle( $profile_id );
+			if ( is_wp_error( $provisioned ) ) return $provisioned;
+			$manifest = self::manifest( $profile_id );
+			if ( is_wp_error( $manifest ) ) return $manifest;
+			$kid = isset( $manifest['current_kid'] ) ? strtolower( trim( (string)$manifest['current_kid'] ) ) : '';
+			if ( '' === $kid || empty( $manifest['keys'][ $kid ] ) || ! empty( $manifest['keys'][ $kid ]['revoked_at'] ) ) {
+				return new WP_Error( 'mad4b_crypto_current_key_unavailable', 'Current receipt signing key remains unavailable after bounded lifecycle convergence.' );
+			}
 		}
 		$key = $manifest['keys'][ $kid ];
 		if ( ! hash_equals( $profile['algorithm'], (string)$key['algorithm'] ) ) return new WP_Error( 'mad4b_crypto_key_algorithm_mismatch', 'Receipt signing key algorithm does not match its profile.' );
@@ -279,15 +286,38 @@ final class MAD4B_SCP_Crypto_Profile {
 	}
 
 	private static function keyring_dir() {
-		if(!defined('MAD4B_SCP_CRYPTO_KEYRING_DIR'))return new WP_Error('mad4b_crypto_keyring_path_unconfigured','Receipt signing keyring path must be explicitly configured outside the web root.');
-		$path=trim((string)constant('MAD4B_SCP_CRYPTO_KEYRING_DIR'));
-		if(''===$path||1!==preg_match('#^(?:[A-Za-z]:[\\\\/]|/)#',$path))return new WP_Error('mad4b_crypto_keyring_path_invalid','Receipt keyring path must be absolute.');
-		$norm=function_exists('wp_normalize_path')?wp_normalize_path($path):str_replace('\\','/',$path);
-		$wp=function_exists('wp_normalize_path')?wp_normalize_path(ABSPATH):str_replace('\\','/',ABSPATH);
-		if(0===strpos(trailingslashit($norm),trailingslashit($wp)))return new WP_Error('mad4b_crypto_keyring_path_wordpress_exposed','Receipt keyring path must be outside WordPress root.');
-		$doc=isset($_SERVER['DOCUMENT_ROOT'])?trim((string)$_SERVER['DOCUMENT_ROOT']):'';
-		if(''!==$doc){$doc=function_exists('wp_normalize_path')?wp_normalize_path($doc):str_replace('\\','/',$doc);if(0===strpos(trailingslashit($norm),trailingslashit($doc)))return new WP_Error('mad4b_crypto_keyring_path_document_root_exposed','Receipt keyring path must be outside HTTP document root.');}
-		return rtrim($path,'/\\');
+		$doc = isset( $_SERVER['DOCUMENT_ROOT'] ) ? trim( (string) $_SERVER['DOCUMENT_ROOT'] ) : '';
+		if ( defined( 'MAD4B_SCP_CRYPTO_KEYRING_DIR' ) ) {
+			$path = trim( (string) constant( 'MAD4B_SCP_CRYPTO_KEYRING_DIR' ) );
+		} else {
+			$path = '';
+			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' )
+				&& method_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy', 'safe_default_path_for_roots' ) ) {
+				$oauth_path = MAD4B_SCP_Local_OAuth_Key_Path_Policy::safe_default_path_for_roots( ABSPATH, $doc );
+				if ( ! is_wp_error( $oauth_path ) ) {
+					$mad4b_root = dirname( dirname( (string) $oauth_path ) );
+					$path = trailingslashit( $mad4b_root ) . 'crypto/execution-receipts';
+				} elseif ( 'cli' !== PHP_SAPI && 'phpdbg' !== PHP_SAPI ) {
+					return new WP_Error( 'mad4b_crypto_document_root_unknown', 'Receipt keyring safe path cannot be proven outside the HTTP document root.' );
+				}
+			}
+			if ( '' === $path ) {
+				$wp_root = rtrim( (string) ABSPATH, '/\\' );
+				if ( '' !== $doc ) $base = dirname( rtrim( $doc, '/\\' ) );
+				elseif ( 'cli' === PHP_SAPI || 'phpdbg' === PHP_SAPI ) $base = dirname( $wp_root );
+				else return new WP_Error( 'mad4b_crypto_document_root_unknown', 'Receipt keyring safe path cannot be proven outside the HTTP document root.' );
+				$path = trailingslashit( $base ) . '.mad4b/crypto/execution-receipts';
+			}
+		}
+		if ( '' === $path || 1 !== preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', $path ) ) return new WP_Error( 'mad4b_crypto_keyring_path_invalid', 'Receipt keyring path must be absolute.' );
+		$norm = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( $path ) : str_replace( '\\', '/', $path );
+		$wp = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( ABSPATH ) : str_replace( '\\', '/', ABSPATH );
+		if ( 0 === strpos( trailingslashit( $norm ), trailingslashit( $wp ) ) ) return new WP_Error( 'mad4b_crypto_keyring_path_wordpress_exposed', 'Receipt keyring path must be outside WordPress root.' );
+		if ( '' !== $doc ) {
+			$doc = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( $doc ) : str_replace( '\\', '/', $doc );
+			if ( 0 === strpos( trailingslashit( $norm ), trailingslashit( $doc ) ) ) return new WP_Error( 'mad4b_crypto_keyring_path_document_root_exposed', 'Receipt keyring path must be outside HTTP document root.' );
+		}
+		return rtrim( $path, '/\\' );
 	}
 
 	private static function atomic_private_write( $path, $pem ) {
