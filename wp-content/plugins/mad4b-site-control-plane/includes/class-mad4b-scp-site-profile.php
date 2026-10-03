@@ -205,6 +205,7 @@ final class MAD4B_SCP_Site_Profile {
 		$override_ready = ! $implicit_override || ! empty( $profile['implicit_production_override_confirmed'] );
 		return array(
 			'eligible' => ! empty( $profile )
+				&& empty( $profile['mutation_state'] )
 				&& $override_ready
 				&& empty( $profile['migration_requires_reenrollment'] )
 				&& hash_equals( (string) $profile['environment'], $environment )
@@ -462,6 +463,90 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 
+	/**
+	 * Atomically replace the Site Profile only when the database row still
+	 * contains the exact record this worker reviewed. WordPress always provides
+	 * $wpdb in production; the Options-API fallback exists only for isolated
+	 * contract fixtures that do not bootstrap a database.
+	 */
+	private static function persist_record_compare_and_swap( $expected, array $record ) {
+		if ( ! self::valid_record( $record ) ) return false;
+		self::clear_option_read_cache( true );
+		global $wpdb;
+		$database_cas = is_object( $wpdb )
+			&& isset( $wpdb->options )
+			&& method_exists( $wpdb, 'prepare' )
+			&& method_exists( $wpdb, 'query' )
+			&& function_exists( 'maybe_serialize' );
+		if ( $database_cas ) {
+			if ( null === $expected ) {
+				if ( ! add_option( self::OPTION, $record, '', false ) ) return false;
+			} else {
+				$sql = $wpdb->prepare(
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+					maybe_serialize( $record ),
+					self::OPTION,
+					maybe_serialize( $expected )
+				);
+				$changed = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+				if ( 1 !== (int) $changed ) return false;
+			}
+		} else {
+			$current = get_option( self::OPTION, null );
+			if ( ! self::option_values_equal( $current, $expected ) ) return false;
+			if ( null === $expected ) {
+				if ( function_exists( 'add_option' ) ) {
+					if ( ! add_option( self::OPTION, $record, '', false ) ) return false;
+				} elseif ( false === update_option( self::OPTION, $record, false ) ) return false;
+			} elseif ( false === update_option( self::OPTION, $record, false ) ) return false;
+		}
+		self::clear_option_read_cache( true );
+		$readback = get_option( self::OPTION, null );
+		$verified = self::option_values_equal( $readback, $record );
+		if ( $verified ) self::reset_cache();
+		return $verified;
+	}
+
+	private static function restore_record_compare_and_swap( array $expected_current, $previous ) {
+		self::clear_option_read_cache( true );
+		global $wpdb;
+		$database_cas = is_object( $wpdb )
+			&& isset( $wpdb->options )
+			&& method_exists( $wpdb, 'prepare' )
+			&& method_exists( $wpdb, 'query' )
+			&& function_exists( 'maybe_serialize' );
+		if ( $database_cas ) {
+			if ( null === $previous ) {
+				$sql = $wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+					self::OPTION,
+					maybe_serialize( $expected_current )
+				);
+			} else {
+				$sql = $wpdb->prepare(
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+					maybe_serialize( $previous ),
+					self::OPTION,
+					maybe_serialize( $expected_current )
+				);
+			}
+			$changed = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+			if ( 1 !== (int) $changed ) return false;
+		} else {
+			$current = get_option( self::OPTION, null );
+			if ( ! self::option_values_equal( $current, $expected_current ) ) return false;
+			if ( null === $previous ) {
+				if ( false === delete_option( self::OPTION ) ) return false;
+			} elseif ( false === update_option( self::OPTION, $previous, false ) ) return false;
+		}
+		self::clear_option_read_cache( true );
+		$readback = get_option( self::OPTION, null );
+		$verified = self::option_values_equal( $readback, $previous );
+		if ( $verified ) self::reset_cache();
+		return $verified;
+	}
+
+
 	public static function delete_record_verified() {
 		self::clear_option_read_cache( true );
 		if ( false === get_option( self::OPTION, false ) ) {
@@ -496,9 +581,12 @@ final class MAD4B_SCP_Site_Profile {
 		if ( '' === $origin ) return new WP_Error( 'mad4b_site_profile_origin_invalid', 'A canonical WordPress home origin is required for site enrollment.' );
 		if ( 'local' !== $environment && 'https' !== strtolower( (string) wp_parse_url( $origin, PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_https_required', 'Non-local governed sites require HTTPS.' );
 
-		$existing = get_option( self::OPTION, array() );
+		$existing = get_option( self::OPTION, null );
 		$existing_valid = is_array( $existing ) && self::valid_record( $existing );
 		$existing_normalized = $existing_valid ? self::normalize_record( $existing ) : array();
+		if ( $existing_valid && 'pending_audit' === ( $existing_normalized['mutation_state'] ?? '' ) ) {
+			return new WP_Error( 'mad4b_site_profile_mutation_pending', 'A previous Site Profile mutation is pending audit/finalization and remains quarantined.' );
+		}
 		$current_revision = $existing_valid && isset( $existing_normalized['revision'] ) ? absint( $existing_normalized['revision'] ) : 0;
 		$expected_revision = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : $current_revision;
 		if ( $expected_revision !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before saving.' );
@@ -602,15 +690,25 @@ final class MAD4B_SCP_Site_Profile {
 			'created_at' => $existing_identity_matches && ! empty( $existing_normalized['created_at'] ) ? (string) $existing_normalized['created_at'] : gmdate( 'c' ),
 			'updated_at' => gmdate( 'c' ),
 		);
-		$before_digest = is_array( $existing ) && self::valid_record( $existing ) ? self::digest_record( self::normalize_record( $existing ) ) : '';
-		if ( ! self::persist_record_exact( $record ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile could not be persisted and verified by readback.' );
+		$before_digest = $existing_valid ? self::digest_record( $existing_normalized ) : '';
+		$final_digest = self::digest_record( $record );
+		$pending = $record;
+		$pending['mutation_state'] = 'pending_audit';
+		$pending['mutation_id'] = function_exists( 'wp_generate_uuid4' )
+			? strtolower( wp_generate_uuid4() )
+			: substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 32 );
+		if ( ! self::persist_record_compare_and_swap( $existing, $pending ) ) {
+			return new WP_Error( 'mad4b_site_profile_conflict', 'Site Profile changed concurrently before this save could commit. Reload and review the latest state.' );
+		}
+
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 			$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-updated', array(
 				'site_uuid' => $site_uuid,
 				'previous_revision' => $current_revision,
 				'revision' => $revision,
 				'previous_profile_digest' => $before_digest,
-				'profile_digest' => self::profile_digest(),
+				'profile_digest' => $final_digest,
+				'mutation_id' => $pending['mutation_id'],
 				'environment' => $environment,
 				'wordpress_environment' => $wordpress_environment,
 				'wordpress_environment_explicit' => self::wordpress_environment_explicit(),
@@ -622,16 +720,22 @@ final class MAD4B_SCP_Site_Profile {
 				'identity_rebound' => $identity_rebound,
 				'previous_environment' => $existing_valid ? (string) $existing_normalized['environment'] : '',
 				'previous_canonical_origin' => $existing_valid ? (string) $existing_normalized['canonical_origin'] : '',
-				'write_enabled' => self::write_enabled(),
+				'write_enabled' => $write,
 				'oauth_user_count' => count( $user_ids ),
 			), 'ok' );
 			if ( is_wp_error( $audit ) ) {
-				$restored = $current_revision > 0 && is_array( $existing )
-					? self::persist_record_exact( $existing )
-					: self::delete_record_verified();
-				if ( ! $restored ) return new WP_Error( 'mad4b_site_profile_audit_rollback_failed', 'Site profile audit failed and the previous persisted state could not be verified after rollback.', array( 'audit_error' => $audit->get_error_code() ) );
-				return new WP_Error( 'mad4b_site_profile_audit_failed', 'Site profile change was rolled back because append-only audit evidence could not be recorded.', array( 'audit_error' => $audit->get_error_code() ) );
+				$restored = self::restore_record_compare_and_swap( $pending, $existing );
+				if ( ! $restored ) {
+					self::reset_cache();
+					return new WP_Error( 'mad4b_site_profile_audit_rollback_failed', 'Site Profile audit failed and the pending mutation remains quarantined because rollback no longer owned the exact current generation.', array( 'audit_error' => $audit->get_error_code(), 'mutation_id' => $pending['mutation_id'] ) );
+				}
+				return new WP_Error( 'mad4b_site_profile_audit_failed', 'Site Profile change was rolled back because append-only audit evidence could not be recorded.', array( 'audit_error' => $audit->get_error_code() ) );
 			}
+		}
+
+		if ( ! self::persist_record_compare_and_swap( $pending, $record ) ) {
+			self::reset_cache();
+			return new WP_Error( 'mad4b_site_profile_commit_finalize_failed', 'Site Profile audit completed but the pending generation could not be atomically finalized; authority remains quarantined.', array( 'mutation_id' => $pending['mutation_id'] ) );
 		}
 		if ( function_exists( 'do_action' ) ) do_action( 'mad4b_scp_site_profile_saved' );
 		return self::status();
@@ -641,6 +745,7 @@ final class MAD4B_SCP_Site_Profile {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to change site authority.' );
 		$profile = self::profile();
 		if ( empty( $profile ) ) return self::status();
+		if ( 'pending_audit' === ( $profile['mutation_state'] ?? '' ) ) return new WP_Error( 'mad4b_site_profile_mutation_pending', 'Pending Site Profile mutation must be reconciled before authority can be changed.' );
 		$current_revision = self::revision();
 		if ( null !== $expected_revision && absint( $expected_revision ) !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before disabling authority.' );
 		$profile['revision'] = $current_revision + 1;
@@ -735,24 +840,28 @@ final class MAD4B_SCP_Site_Profile {
 		$attestation_required = $implicit_override && ! $override_confirmed;
 		$blockers = array();
 		$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );
-		$authority_ready = $configured && $environment_match && $origin_match && $deployment_binding_match && ! $reenrollment_required && ! $attestation_required;
+		$mutation_pending = $configured && 'pending_audit' === ( $profile['mutation_state'] ?? '' );
+		$authority_ready = $configured && $environment_match && $origin_match && $deployment_binding_match && ! $reenrollment_required && ! $attestation_required && ! $mutation_pending;
 		$binding_state = ! $configured
 			? 'unconfigured'
 			: ( ! $origin_match
 				? 'foreign_origin'
 				: ( ! $deployment_binding_match
 					? 'deployment_drift'
-					: ( $attestation_required
-						? 'nonproduction_override_unconfirmed'
+					: ( $mutation_pending
+						? 'mutation_pending_audit'
+						: ( $attestation_required
+							? 'nonproduction_override_unconfirmed'
 						: ( ! $environment_match
-							? 'environment_drift'
-							: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) ) ) );
+								? 'environment_drift'
+								: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) ) ) ) );
 		$foreign_profile_detected = $configured && ( ! $origin_match || ! $environment_match || ! $deployment_binding_match );
 		if ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
 		if ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
 		if ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
 		if ( $configured && ! $deployment_binding_match ) $blockers[] = 'site_profile_deployment_binding_drift';
 		if ( $attestation_required ) $blockers[] = 'site_profile_nonproduction_override_confirmation_required';
+		if ( $mutation_pending ) $blockers[] = 'site_profile_mutation_pending_audit';
 		if ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';
 		return array(
 			'contract' => self::CONTRACT,
@@ -783,6 +892,8 @@ final class MAD4B_SCP_Site_Profile {
 			'implicit_nonproduction_override_confirmed' => $override_confirmed,
 			'nonproduction_override_attestation_required' => $attestation_required,
 			'authority_ready' => $authority_ready,
+			'mutation_pending_audit' => $mutation_pending,
+			'mutation_id' => $mutation_pending && isset( $profile['mutation_id'] ) ? (string) $profile['mutation_id'] : '',
 			'binding_state' => $binding_state,
 			'foreign_profile_detected' => $foreign_profile_detected,
 			'profile_authority_quarantined' => ! $authority_ready,
@@ -806,6 +917,7 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	private static function matching_preset() {
+		if ( ! self::legacy_preset_migration_enabled() ) return array();
 		$path = defined( 'MAD4B_SCP_LEGACY_SITE_PROFILE_PRESET_FILE' )
 			? trim( (string) constant( 'MAD4B_SCP_LEGACY_SITE_PROFILE_PRESET_FILE' ) )
 			: ( defined( 'MAD4B_SCP_DIR' ) ? trailingslashit( MAD4B_SCP_DIR ) . self::PRESET_FILE : '' );
@@ -817,9 +929,8 @@ final class MAD4B_SCP_Site_Profile {
 		$origin = self::current_origin();
 		$implicit_production_default = 'production' === self::wordpress_environment() && ! self::wordpress_environment_explicit();
 		foreach ( $decoded['profiles'] as $preset ) {
-			if ( ! is_array( $preset ) ) continue;
+			if ( ! is_array( $preset ) || ! self::valid_record( $preset ) ) continue;
 			$preset = self::normalize_record( $preset );
-			if ( ! self::valid_record( $preset ) ) continue;
 			if ( ! hash_equals( (string) $preset['canonical_origin'], $origin ) ) continue;
 			if ( ! hash_equals( (string) $preset['environment'], $environment ) && ! $implicit_production_default ) continue;
 			return $preset;
@@ -878,6 +989,10 @@ final class MAD4B_SCP_Site_Profile {
 				if ( ! is_string( $key ) || ! in_array( $key, array( 'local', 'development', 'staging', 'production' ), true ) || ! is_string( $value ) || '' === self::normalize_origin( $value ) ) return false;
 			}
 		}
+		if ( isset( $record['mutation_state'] ) ) {
+			if ( ! is_string( $record['mutation_state'] ) || 'pending_audit' !== $record['mutation_state'] ) return false;
+			if ( ! isset( $record['mutation_id'] ) || ! is_string( $record['mutation_id'] ) || 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/i', $record['mutation_id'] ) ) return false;
+		}
 		foreach ( array( 'legacy_zero_touch', 'implicit_production_override_confirmed', 'migration_requires_reenrollment' ) as $field ) {
 			if ( isset( $record[ $field ] ) && ! is_bool( $record[ $field ] ) ) return false;
 		}
@@ -909,6 +1024,8 @@ final class MAD4B_SCP_Site_Profile {
 		$record['features'] = isset( $record['features'] ) && is_array( $record['features'] ) ? array_map( 'boolval', $record['features'] ) : array();
 		$record['legacy_agent_slug'] = isset( $record['legacy_agent_slug'] ) ? sanitize_key( (string) $record['legacy_agent_slug'] ) : '';
 		$record['legacy_zero_touch'] = isset( $record['legacy_zero_touch'] ) && true === $record['legacy_zero_touch'];
+		$record['mutation_state'] = isset( $record['mutation_state'] ) && is_string( $record['mutation_state'] ) ? sanitize_key( $record['mutation_state'] ) : '';
+		$record['mutation_id'] = isset( $record['mutation_id'] ) && is_string( $record['mutation_id'] ) ? strtolower( trim( $record['mutation_id'] ) ) : '';
 		return $record;
 	}
 
