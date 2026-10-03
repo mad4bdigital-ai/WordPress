@@ -8,6 +8,7 @@ diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-adm
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
 request_scope = (ROOT / 'includes/class-mad4b-scp-mcp-request-scope.php').read_text('utf-8')
+mu_bootstrap = (ROOT / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text('utf-8')
 staging_authority = (ROOT / 'includes/class-mad4b-scp-staging-write-authority.php').read_text('utf-8')
 build_marker = ROOT / 'MAD4B-RUNTIME-BUILD.txt'
 
@@ -72,6 +73,14 @@ for marker in (
     require(bridge, marker, 'bridge-contract')
 
 require(bridge, "endpoint_diagnostic_routing_server_id()", 'diagnostic-routing-before-registry-materialization')
+for marker in (
+    "'diagnostic_server_id' => ''",
+    "$mad4b_mcp_mu_diagnostic_server_id",
+    "in_array( '/mcp/' . $mad4b_mcp_mu_diagnostic_server_id, $mad4b_mcp_mu_allowed_routes, true )",
+    "$mad4b_mcp_mu_status['diagnostic_server_id'] = $mad4b_mcp_mu_diagnostic_server_id",
+):
+    require(mu_bootstrap, marker, 'mu-bound-diagnostic-target')
+
 for marker in (
     'public static function endpoint_diagnostic_routing_server_id()',
     "'mad4b.mcp-adapter-mu-bootstrap.v6'",
