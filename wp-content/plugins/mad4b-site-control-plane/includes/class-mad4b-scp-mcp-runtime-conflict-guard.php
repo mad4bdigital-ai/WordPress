@@ -131,7 +131,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 					'ok'
 				);
 				if ( is_wp_error( $event ) ) {
-					$rolled_back = ! $mu_installed || self::remove_managed_mu_bootstrap();
+					$rollback_owner = ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id
+						? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::verify_transaction_owner( self::$mu_transaction_id, 'replaced_pending_audit' )
+						: true;
+					$rolled_back = ! $mu_installed || ( true === $rollback_owner && self::remove_managed_mu_bootstrap() );
 					if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
 						if ( $rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( self::$mu_transaction_id );
 						else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_class_repair_rollback_failed', self::$mu_transaction_id );
@@ -270,7 +273,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'ok'
 		);
 		if ( is_wp_error( $event ) ) {
-			$mu_rolled_back = ! $mu_installed || self::remove_managed_mu_bootstrap();
+			$rollback_owner = ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id
+				? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::verify_transaction_owner( self::$mu_transaction_id, 'replaced_pending_audit' )
+				: true;
+			$mu_rolled_back = ! $mu_installed || ( true === $rollback_owner && self::remove_managed_mu_bootstrap() );
 			if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
 				if ( $mu_rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( self::$mu_transaction_id );
 				else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_repair_rollback_failed', self::$mu_transaction_id );
@@ -401,21 +407,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	}
 
 	private static function repair_lifecycle_allowed() {
-		if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active() ) return true;
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
-		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
-		if ( is_admin() ) {
-			// Endpoint diagnostics remain read-only even after nonce/capability
-			// authorization. Runtime repair is deliberately restricted to explicit
-			// WordPress plugin lifecycle surfaces, WP-CLI or cron.
-			global $pagenow;
-			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
-			$lifecycle_screen = in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true );
-			if ( $lifecycle_screen
-				&& function_exists( 'current_user_can' )
-				&& current_user_can( 'update_plugins' ) ) return true;
-		}
-		return false;
+		return class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false )
+			&& MAD4B_SCP_MCP_Runtime_Recovery::active();
 	}
 
 	private static function mu_bootstrap_status() {
@@ -496,6 +489,13 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 		self::$mu_transaction_id = $transaction_id;
+		$owner_before_install = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::verify_transaction_owner( $transaction_id, 'prepared' );
+		if ( is_wp_error( $owner_before_install ) ) {
+			@unlink( $temp );
+			self::$mu_transaction_id = '';
+			$status['blocker'] = $owner_before_install->get_error_code();
+			return $status;
+		}
 		if ( ! @rename( $temp, $destination ) ) {
 			@unlink( $temp );
 			$race = self::mu_bootstrap_status();
@@ -510,7 +510,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 		clearstatcache( true, $destination );
+		$opcode = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::invalidate_managed_opcode_for_lifecycle( $destination );
 		$status = self::mu_bootstrap_status();
+		$status['opcache_invalidation'] = $opcode;
+		$status['runtime_restart_required'] = empty( $opcode['verified'] );
 		$status['mu_bootstrap_installed'] = ! empty( $status['mu_bootstrap_present'] ) && ! empty( $status['mu_bootstrap_integrity'] );
 		if ( $status['mu_bootstrap_installed'] ) {
 			$marked = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::mark_transaction_replaced( $transaction_id );
@@ -536,6 +539,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$destination = trailingslashit( WPMU_PLUGIN_DIR ) . self::MU_BOOTSTRAP_BASENAME;
 		if ( ! @unlink( $destination ) ) return false;
 		clearstatcache( true, $destination );
+		MAD4B_SCP_MCP_MU_Bootstrap_Refresh::invalidate_managed_opcode_for_lifecycle( $destination );
 		return ! is_file( $destination );
 	}
 
