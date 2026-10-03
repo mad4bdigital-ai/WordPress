@@ -714,7 +714,7 @@ final class MAD4B_SCP_Site_Profile {
 					: ( ! $environment_match
 						? 'environment_drift'
 						: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) ) );
-		$foreign_profile_detected = $configured && ( ! $origin_match || ! $environment_match );
+		$foreign_profile_detected = $configured && ( ! $origin_match || ! $environment_match || ! $deployment_binding_match );
 		if ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
 		if ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
 		if ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
