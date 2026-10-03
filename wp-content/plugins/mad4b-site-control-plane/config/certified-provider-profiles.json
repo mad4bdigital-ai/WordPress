@@ -233,7 +233,7 @@
           "includes/Plugin.php": "cf89f5ee122e3d0e1fd8eefb04669f09f822035288e3351e32d950a05ca704f1",
           "vendor/autoload_packages.php": "a9711b19ac96e97b3c13d1716d481dc3d66368c6343ad6f80ea08c22e6d2f953"
         },
-        "runtime_critical_classes": {
+        "runtime_classes": {
           "adapter": {
             "class": "WP\\MCP\\Core\\McpAdapter",
             "file": "includes/Core/McpAdapter.php"
