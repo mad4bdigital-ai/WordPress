@@ -174,4 +174,30 @@ $delegated_resume = MAD4B_SCP_Execution_State_View::idempotency( array(
 $check( 'EXECUTING' === $delegated_resume['canonical_state'], 'Durable resume delegation failed.', $delegated_resume );
 $check( is_wp_error( MAD4B_SCP_Execution_State_View::idempotency( array( 'idempotency_key' => 'missing' ) ) ), 'Durable resume source error was swallowed.' );
 
+
+$prepared_view = MAD4B_SCP_Execution_State_View::normalize_journal_status( array_merge( $base_journal, array( 'lifecycle_state' => 'planned' ) ) );
+$committed_view = MAD4B_SCP_Execution_State_View::normalize_journal_status( array_merge( $base_journal, array( 'lifecycle_state' => 'completed', 'terminal_outcome' => 'committed' ) ) );
+$failed_view = MAD4B_SCP_Execution_State_View::normalize_journal_status( array_merge( $base_journal, array( 'lifecycle_state' => 'terminal_failed', 'terminal_outcome' => 'failed' ) ) );
+$unknown_source = MAD4B_SCP_Execution_State_View::normalize_journal_status( array_merge( $base_journal, array( 'lifecycle_state' => 'future_state' ) ) );
+
+$consensus_committed = MAD4B_SCP_Execution_State_View::combine( array( $committed_view, $committed_view ) );
+$check( 'COMMITTED' === $consensus_committed['canonical_state'] && true === $consensus_committed['terminal'] && false === $consensus_committed['reconciliation_required'], 'Terminal COMMITTED was not consensus-bound.', $consensus_committed );
+
+$contradictory_terminal = MAD4B_SCP_Execution_State_View::combine( array( $committed_view, $failed_view ) );
+$check( 'RECONCILING' === $contradictory_terminal['canonical_state'] && ! empty( $contradictory_terminal['reconciliation_required'] ) && false === $contradictory_terminal['terminal'], 'Conflicting terminal evidence was promoted.', $contradictory_terminal );
+
+$unknown_plus_committed = MAD4B_SCP_Execution_State_View::combine( array( $unknown_source, $committed_view ) );
+$check( 'RECONCILING' === $unknown_plus_committed['canonical_state'] && ! empty( $unknown_plus_committed['evidence']['unknown_never_promotes_terminal'] ), 'Unknown evidence was promoted by a committed source.', $unknown_plus_committed );
+
+$prepared_vs_running = MAD4B_SCP_Execution_State_View::combine( array( $prepared_view, MAD4B_SCP_Execution_State_View::normalize_journal_status( array_merge( $base_journal, array( 'lifecycle_state' => 'running' ) ) ) ) );
+$check( 'RECONCILING' === $prepared_vs_running['canonical_state'], 'Cross-source nonterminal disagreement was silently ordered.', $prepared_vs_running );
+
+$recomputed_a = MAD4B_SCP_Execution_State_View::combine( array( $committed_view, $failed_view, $unknown_source ) );
+$recomputed_b = MAD4B_SCP_Execution_State_View::combine( array( $committed_view, $failed_view, $unknown_source ) );
+$check( $recomputed_a === $recomputed_b, 'Combined Execution State View is not purely recomputable.', array( $recomputed_a, $recomputed_b ) );
+$check( false === $recomputed_a['blind_retry_allowed'] && ! empty( $recomputed_a['read_only'] ) && empty( $recomputed_a['mutation_performed'] ) && empty( $recomputed_a['authority_created'] ), 'Combined state view created authority or mutation.', $recomputed_a );
+
+$empty_combined = MAD4B_SCP_Execution_State_View::combine( array() );
+$check( 'UNKNOWN' === $empty_combined['canonical_state'] && ! empty( $empty_combined['reconciliation_required'] ), 'Missing cross-source evidence did not remain UNKNOWN.', $empty_combined );
+
 echo "mad4b.execution-state-view.v1: PASS\n";

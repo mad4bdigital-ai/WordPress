@@ -47,6 +47,91 @@ final class MAD4B_SCP_Execution_State_View {
 		);
 	}
 
+	public static function combined( $operation_id = '', array $idempotency_identity = array(), $mutation_error = null ) {
+		$views = array();
+		if ( '' !== trim( (string) $operation_id ) {
+			$view = self::operation( $operation_id );
+			if ( is_wp_error( $view ) ) return $view;
+			$views[] = $view;
+		}
+		if ( ! empty( $idempotency_identity ) ) {
+			$view = self::idempotency( $idempotency_identity );
+			if ( is_wp_error( $view ) ) return $view;
+			$views[] = $view;
+		}
+		if ( null !== $mutation_error ) {
+			$view = self::mutation_error( $mutation_error );
+			if ( is_wp_error( $view ) ) return $view;
+			$views[] = $view;
+		}
+		return self::combine( $views );
+	}
+
+	public static function combine( array $views ) {
+		$normalized = array();
+		foreach ( $views as $view ) {
+			if ( ! is_array( $view ) || self::CONTRACT !== ( isset( $view['contract'] ) ? (string) $view['contract'] : '' ) ) {
+				return new WP_Error( 'mad4b_execution_state_view_invalid', 'Combined execution state requires normalized Execution State View records only.' );
+			}
+			$normalized[] = $view;
+		}
+		if ( empty( $normalized ) ) {
+			return self::view( 'combined', self::CONTRACT, '', '', self::UNKNOWN, false, true, false, 'no_execution_evidence', 'conservative', array( 'sources' => array(), 'source_states' => array(), 'precedence' => self::precedence() ) );
+		}
+		$states = array_values( array_unique( array_map( static function( $view ) { return (string) $view['canonical_state']; }, $normalized ) ) );
+		$scopes = array_values( array_unique( array_map( static function( $view ) { return (string) $view['scope']; }, $normalized ) ) );
+		sort( $states, SORT_STRING );
+		sort( $scopes, SORT_STRING );
+		$has_unknown = in_array( self::UNKNOWN, $states, true );
+		$has_reconciling = in_array( self::RECONCILING, $states, true );
+		$disagreement = count( $states ) > 1;
+		if ( $has_reconciling || $has_unknown || $disagreement ) {
+			$state = self::RECONCILING;
+			$terminal = false;
+			$reconciliation = true;
+			$reason = $disagreement ? 'cross_source_state_conflict' : ( $has_reconciling ? 'source_requires_reconciliation' : 'source_state_unknown' );
+			$confidence = $disagreement ? 'contradictory_evidence' : 'conservative';
+		} else {
+			$state = $states[0];
+			$terminal = in_array( $state, array( self::COMMITTED, self::FAILED ), true );
+			$reconciliation = false;
+			$reason = 'cross_source_consensus';
+			$confidence = 'consensus';
+		}
+		$retry = self::PREPARED === $state && count( array_filter( $normalized, static function( $view ) { return ! empty( $view['retry_after_replan_allowed'] ); } ) ) === count( $normalized );
+		return self::view(
+			'combined',
+			self::CONTRACT,
+			implode( '+', $states ),
+			'',
+			$state,
+			$terminal,
+			$reconciliation,
+			$retry,
+			$reason,
+			$confidence,
+			array(
+				'sources' => $scopes,
+				'source_states' => $states,
+				'source_count' => count( $normalized ),
+				'precedence' => self::precedence(),
+				'consensus_required_for_terminal' => true,
+				'unknown_never_promotes_terminal' => true,
+			)
+		);
+	}
+
+	private static function precedence() {
+		return array(
+			'RECONCILING_or_UNKNOWN_source' => 'RECONCILING',
+			'cross_source_disagreement' => 'RECONCILING',
+			'all_COMMITTED' => 'COMMITTED',
+			'all_FAILED' => 'FAILED',
+			'all_EXECUTING' => 'EXECUTING',
+			'all_PREPARED' => 'PREPARED',
+		);
+	}
+
 	public static function normalize_journal_status( array $status ) {
 		$source_contract = isset( $status['contract'] ) ? (string) $status['contract'] : '';
 		if ( 'mad4b.dynamic-operation-status.v1' !== $source_contract ) {
