@@ -610,7 +610,18 @@ final class MAD4B_SCP_Authorization {
 					'execution_result' => 'used',
 					'evidence_correlation' => 'failed_after_side_effect',
 				), 'failed' );
-				return $evidence;
+				if ( class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
+					return MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
+						$evidence->get_error_code(),
+						'Provider execution completed but provider-specific durable evidence could not be persisted. Reconcile provider state before any retry.'
+					);
+				}
+				return new WP_Error( 'mad4b_execution_terminal_evidence_persist_failed', 'Provider execution completed but provider-specific durable evidence could not be persisted.', array(
+					'reason_code' => sanitize_key( (string) $evidence->get_error_code() ),
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+					'terminal_success' => false,
+				) );
 			}
 		}
 
@@ -619,7 +630,12 @@ final class MAD4B_SCP_Authorization {
 				return new WP_Error( 'mad4b_execution_terminal_evidence_policy_unavailable', 'Terminal success evidence policy is unavailable after provider execution.', array( 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
 			}
 			$material = MAD4B_SCP_Execution_Evidence_Policy::terminal_success_material( $claim, $result );
-			if ( is_wp_error( $material ) ) return $material;
+			if ( is_wp_error( $material ) ) {
+				return MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
+					$material->get_error_code(),
+					'Provider execution completed but terminal evidence material could not be canonicalized. Reconcile provider state before any retry.'
+				);
+			}
 			$audit_entry = self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', $material, 'completed' );
 			if ( is_wp_error( $audit_entry ) ) {
 				return MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
@@ -634,7 +650,13 @@ final class MAD4B_SCP_Authorization {
 			$receipt = MAD4B_SCP_Execution_Evidence_Policy::terminal_receipt( $material, is_array( $audit_entry ) ? $audit_entry : array() );
 			if ( is_wp_error( $receipt ) ) return $receipt;
 			$execution_receipt = MAD4B_SCP_Execution_Receipt::build( $claim, $result, $receipt );
-			if ( is_wp_error( $execution_receipt ) ) return $execution_receipt;
+			if ( is_wp_error( $execution_receipt ) ) {
+				return MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
+					$execution_receipt->get_error_code(),
+					'Provider execution completed but the unified execution receipt could not be built durably. Reconcile provider state before any retry.',
+					array( 'terminal_receipt_sha256'=>(string)$receipt['receipt_sha256'] )
+				);
+			}
 			$receipt_audit = self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
 				'reason_code'=>'unified_execution_receipt_committed',
 				'execution_receipt'=>$execution_receipt,
