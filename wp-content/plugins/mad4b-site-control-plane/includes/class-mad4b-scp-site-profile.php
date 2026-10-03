@@ -615,7 +615,7 @@ final class MAD4B_SCP_Site_Profile {
 			if ( ! $restored ) {
 				self::reset_cache();
 				return new WP_Error(
-					$error_prefix . '_audit_rollback_failed',
+					$error_prefix . '_rollback_failed',
 					'Site Profile audit failed and the exact pending generation could not be rolled back; authority remains quarantined.',
 					array( 'audit_error' => $audit->get_error_code(), 'mutation_id' => $pending['mutation_id'] )
 				);
