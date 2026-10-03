@@ -48,8 +48,14 @@ for marker in (
     "MAD4B_SCP_Audit::record(",
     "'mad4b/mcp-runtime-bootstrap-repair'",
     "'next_request_required' => true",
+    "official_plugin_identity",
+    "'official_plugin_identity_ambiguous'",
+    "'official_mcp_adapter_identity_ambiguous'",
+    "dirname( $official_plugin )",
 ):
     require(guard, marker, 'conflict-guard')
+if "realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' )" in guard:
+    raise SystemExit('FAIL conflict-guard: renamed MCP directories regressed to a hardcoded root')
 
 for forbidden in (
     'deactivate_plugins(', 'activate_plugin(', 'delete_plugins(', 'wp_remote_get(',
