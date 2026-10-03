@@ -55,7 +55,17 @@ for marker in [
     "delete tokenPayload.access_token",
     "window.history.replaceState",
     "window.sessionStorage.removeItem(storageKey)",
-    "Anonymous ingress was denied with HTTP 401",
+    "Anonymous ingress failed closed with HTTP 401",
+    "method: 'initialize'",
+    "method: 'tools/list'",
+    "method: 'tools/call'",
+    "Mcp-Session-Id",
+    "MCP-Protocol-Version",
+    "mad4b-site-profile-status",
+    "mad4b-session-safe-diagnostics",
+    "mad4b-site-info",
+    "X-MAD4B-MCP-Admission-Code",
+    "X-MAD4B-MCP-Admission-Stage",
     "External-client certification is still required",
 ]:
     if marker not in js:
