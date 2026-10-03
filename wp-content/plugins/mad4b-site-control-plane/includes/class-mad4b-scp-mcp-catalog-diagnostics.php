@@ -327,12 +327,17 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	/** Freeze reviewed identity/classification once, at server materialization, before OAuth. */
 	public static function capture_classification( $server, array $expected ) {
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
+		if ( count( $expected ) > self::MAX_TOOLS ) throw new RuntimeException( 'mad4b_catalog_capture_budget_exceeded' );
 		$reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 		$dynamic_rows = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? MAD4B_SCP_ChatGPT_Tool_Projection::effective_projection_rows()
 			: array();
-		$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
-		if ( is_wp_error( $tools ) || ! is_array( $tools ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
+		$tools = MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools( $server, self::MAX_TOOLS );
+		if ( is_wp_error( $tools ) || ! is_array( $tools ) ) throw new RuntimeException(
+			is_wp_error( $tools ) && 'mad4b_mcp_tool_inventory_overflow' === $tools->get_error_code()
+				? 'mad4b_catalog_capture_budget_exceeded'
+				: 'mad4b_catalog_capture_unavailable'
+		);
 
 		$captured = array();
 		foreach ( $tools as $key => $dto ) {
@@ -478,12 +483,18 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	public static function inspect( $server, array $expected_abilities ) {
 		$out = array( 'contract' => self::CONTRACT, 'observed' => false, 'ready' => false, 'tool_count' => 0, 'actual_names' => array(), 'actual_abilities' => array(), 'missing_abilities' => array(), 'unexpected_abilities' => array(), 'blocker' => 'mcp_server_not_materialized' );
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) return $out;
+		if ( count( $expected_abilities ) > self::MAX_TOOLS ) { $out['blocker'] = 'mcp_catalog_budget_exceeded'; return $out; }
 		try {
-			$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
-			if ( is_wp_error( $tools ) || ! is_array( $tools ) ) { $out['blocker'] = 'mcp_server_tool_projection_failed'; return $out; }
+			$tools = MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools( $server, self::MAX_TOOLS );
+			if ( is_wp_error( $tools ) ) {
+				$out['blocker'] = 'mad4b_mcp_tool_inventory_overflow' === $tools->get_error_code()
+					? 'mcp_catalog_budget_exceeded'
+					: 'mcp_server_tool_projection_failed';
+				return $out;
+			}
+			if ( ! is_array( $tools ) ) { $out['blocker'] = 'mcp_server_tool_projection_failed'; return $out; }
 			$out['observed'] = true;
 			$out['tool_count'] = count( $tools );
-			if ( count( $tools ) > self::MAX_TOOLS || count( $expected_abilities ) > self::MAX_TOOLS ) { $out['blocker'] = 'mcp_catalog_budget_exceeded'; return $out; }
 			foreach ( $tools as $key => $dto ) {
 				$name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto );
 				if ( '' === $name || ! preg_match( '/^[A-Za-z0-9_.-]{1,128}$/D', $name ) || ( is_string( $key ) && '' !== $key && $key !== $name ) ) { $out['blocker'] = 'mcp_tool_identity_invalid'; return $out; }
