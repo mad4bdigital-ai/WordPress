@@ -52,9 +52,21 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		return substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) . ':' . (int) getmypid() ), 0, 32 );
 	}
 
+	private static function read_transaction_option() {
+		// The database option row is the authority. Persistent object caches
+		// (Redis/Memcached or custom backends) are acceleration only. Evict the
+		// per-option and negative-cache entries before every ownership decision so
+		// stale cache state can only add latency, never grant filesystem authority.
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		return self::read_transaction_option();
+	}
+
 	private static function transaction_record_for_owner( $transaction_id ) {
 		$transaction_id = strtolower( trim( (string) $transaction_id ) );
-		$record = get_option( self::TRANSACTION_OPTION, array() );
+		$record = self::read_transaction_option();
 		if ( ! is_array( $record ) || self::TRANSACTION_CONTRACT !== ( $record['contract'] ?? '' ) ) {
 			return new WP_Error( 'mu_bootstrap_transaction_missing', 'MU filesystem transaction marker is missing.' );
 		}
@@ -89,7 +101,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( ! add_option( self::TRANSACTION_OPTION, $record, '', false ) ) {
 			return new WP_Error( 'mu_bootstrap_transaction_already_pending', 'A prior MU filesystem transaction must be reconciled first.' );
 		}
-		$readback = get_option( self::TRANSACTION_OPTION, array() );
+		$readback = self::read_transaction_option();
 		if ( ! is_array( $readback ) || ! isset( $readback['transaction_id'] ) || ! hash_equals( $transaction_id, (string) $readback['transaction_id'] ) ) {
 			return new WP_Error( 'mu_bootstrap_transaction_persist_failed', 'MU filesystem transaction marker could not be persisted.' );
 		}
@@ -103,7 +115,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$record['state'] = 'replaced_pending_audit';
 		$record['replaced_at'] = time();
 		update_option( self::TRANSACTION_OPTION, $record, false );
-		$readback = get_option( self::TRANSACTION_OPTION, array() );
+		$readback = self::read_transaction_option();
 		return is_array( $readback )
 			&& isset( $readback['transaction_id'], $readback['state'] )
 			&& hash_equals( (string) $record['transaction_id'], (string) $readback['transaction_id'] )
@@ -119,7 +131,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$record['blocker'] = sanitize_key( (string) $blocker );
 		$record['blocked_at'] = time();
 		update_option( self::TRANSACTION_OPTION, $record, false );
-		$readback = get_option( self::TRANSACTION_OPTION, array() );
+		$readback = self::read_transaction_option();
 		return is_array( $readback )
 			&& isset( $readback['transaction_id'], $readback['state'] )
 			&& hash_equals( (string) $record['transaction_id'], (string) $readback['transaction_id'] )
@@ -132,6 +144,10 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$record = self::transaction_record_for_owner( $transaction_id );
 		if ( is_wp_error( $record ) ) return false;
 		delete_option( self::TRANSACTION_OPTION );
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
 		return false === get_option( self::TRANSACTION_OPTION, false );
 	}
 
@@ -141,7 +157,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	}
 
 	public static function reconcile_transaction( $destination ) {
-		$record = get_option( self::TRANSACTION_OPTION, array() );
+		$record = self::read_transaction_option();
 		if ( ! is_array( $record ) || empty( $record ) ) return true;
 		if ( self::TRANSACTION_CONTRACT !== ( $record['contract'] ?? '' ) ) return new WP_Error( 'mu_bootstrap_transaction_invalid', 'Unknown MU filesystem transaction state blocks runtime loading.' );
 		$transaction_id = isset( $record['transaction_id'] ) && is_string( $record['transaction_id'] ) ? strtolower( trim( $record['transaction_id'] ) ) : '';
@@ -403,6 +419,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'integrity_before' => false,
 			'refresh_applied' => false,
 			'transaction_pending' => false,
+			'transaction_store' => 'wp_options_unique_option',
+			'transaction_option_autoload' => false,
+			'persistent_object_cache_authoritative' => false,
+			'filesystem_replace_strategy' => 'same_directory_atomic_rename',
+			'filesystem_replace_atomicity_required' => true,
+			'non_atomic_replace_fallback' => false,
+			'shared_filesystem_certified' => false,
 			'next_request_required' => false,
 			'state' => $eligible ? 'inspection_pending' : 'ineligible',
 			'blocker' => $blocker,
