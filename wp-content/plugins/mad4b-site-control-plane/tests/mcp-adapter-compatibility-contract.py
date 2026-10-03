@@ -23,6 +23,10 @@ for marker in (
     "get_protocol_record",
     "get_protocol_dto",
     "server_tools",
+    "bounded_server_tools",
+    "count_tools",
+    "mad4b_mcp_tool_inventory_overflow",
+    "mad4b_mcp_tool_count_projection_drift",
     "wire_data",
     "wire_name",
 ):
@@ -69,8 +73,10 @@ for marker in (
         fail(f"dynamic projection missing compatibility marker: {marker}")
 
 peer = (INCLUDES / "class-mad4b-scp-mcp-peer-governance.php").read_text(encoding="utf-8")
-if peer.count("MAD4B_SCP_MCP_Adapter_Compatibility::server_tools") < 2:
-    fail("peer governance still contains a schema-generation-specific inventory path")
+if peer.count("MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools") < 2:
+    fail("peer governance does not bound tool inventory through the compatibility seam")
+if "MAD4B_SCP_MCP_Adapter_Compatibility::server_tools" in peer:
+    fail("peer governance bypasses the bounded compatibility inventory path")
 
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 compat_pos = main.find("class-mad4b-scp-mcp-adapter-compatibility.php")
