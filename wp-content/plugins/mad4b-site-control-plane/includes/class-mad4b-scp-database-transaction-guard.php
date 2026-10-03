@@ -2,6 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 if ( ! class_exists( 'MAD4B_SCP_Database_Topology' ) ) require_once __DIR__ . '/class-mad4b-scp-database-topology.php';
 if ( ! class_exists( 'MAD4B_SCP_Database_Failure_Semantics' ) ) require_once __DIR__ . '/class-mad4b-scp-database-failure-semantics.php';
+if ( ! class_exists( 'MAD4B_SCP_Entropy' ) ) require_once __DIR__ . '/class-mad4b-scp-entropy.php';
 
 /**
  * Owns MAD4B database transactions without nesting into or implicitly committing
@@ -17,11 +18,11 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		if ( ! isset( $wpdb ) || ! is_object( $wpdb ) || ! method_exists( $wpdb, 'query' ) ) {
 			return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'Database transaction state is unavailable.' );
 		}
-		try {
-			$probe = 'mad4b_tx_probe_' . substr( bin2hex( random_bytes( 8 ) ), 0, 16 );
-		} catch ( Throwable $error ) {
-			$probe = 'mad4b_tx_probe_' . substr( hash( 'sha256', uniqid( '', true ) ), 0, 16 );
+		$probe_entropy = MAD4B_SCP_Entropy::hex( 'database_transaction_probe', 8 );
+		if ( is_wp_error( $probe_entropy ) ) {
+			return new WP_Error( 'mad4b_database_transaction_probe_entropy_unavailable', 'Database transaction probe entropy is unavailable.' );
 		}
+		$probe = 'mad4b_tx_probe_' . $probe_entropy;
 
 		// SAVEPOINT itself does not commit or roll back a caller transaction.
 		// With no durable current transaction the savepoint does not survive to
@@ -97,9 +98,8 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		if ( is_wp_error( $preflight ) ) return $preflight;
 		$scope = sanitize_key( (string) $scope );
 		if ( '' === $scope ) return new WP_Error( 'mad4b_database_transaction_scope_invalid', 'Database transaction scope is required.' );
-		try {
-			$token = bin2hex( random_bytes( 16 ) );
-		} catch ( Throwable $error ) {
+		$token = MAD4B_SCP_Entropy::hex( 'database_transaction_ownership', 16 );
+		if ( is_wp_error( $token ) ) {
 			return new WP_Error( 'mad4b_database_transaction_token_unavailable', 'Database transaction ownership token could not be generated.' );
 		}
 		$wpdb->last_error = '';

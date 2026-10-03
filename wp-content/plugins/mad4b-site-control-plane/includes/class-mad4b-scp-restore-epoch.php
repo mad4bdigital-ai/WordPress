@@ -1,5 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Entropy' ) ) require_once __DIR__ . '/class-mad4b-scp-entropy.php';
+if ( ! class_exists( 'MAD4B_SCP_Time_Policy' ) ) require_once __DIR__ . '/class-mad4b-scp-time-policy.php';
 
 /**
  * External monotonic restore/authority epoch.
@@ -164,8 +166,9 @@ final class MAD4B_SCP_Restore_Epoch {
 		$required = array( 'approvals', 'idempotency', 'work_leases' );
 		$transaction = MAD4B_SCP_Database_Transaction_Guard::begin( 'restore_epoch_reconciliation', $required, true );
 		if ( is_wp_error( $transaction ) ) return $transaction;
-		$now = gmdate( 'Y-m-d H:i:s' );
-		$expired = gmdate( 'Y-m-d H:i:s', time() - 5 );
+		$now_epoch = self::now_epoch();
+		$now = gmdate( 'Y-m-d H:i:s', $now_epoch );
+		$expired = gmdate( 'Y-m-d H:i:s', $now_epoch - 5 );
 		$ref = 'restore_epoch:' . substr( (string) $external['external_record_sha256'], 0, 64 );
 		try {
 			$wpdb->last_error = '';
@@ -231,8 +234,8 @@ final class MAD4B_SCP_Restore_Epoch {
 	}
 
 	private static function make_record( $site_uuid, $epoch, $previous_sha, $reason ) {
-		try { $nonce = bin2hex( random_bytes( 32 ) ); }
-		catch ( Throwable $error ) { return new WP_Error( 'mad4b_restore_epoch_nonce_unavailable', 'Restore epoch nonce could not be generated.' ); }
+		$nonce = MAD4B_SCP_Entropy::hex( 'restore_epoch_nonce', 32 );
+		if ( is_wp_error( $nonce ) ) return new WP_Error( 'mad4b_restore_epoch_nonce_unavailable', 'Restore epoch nonce could not be generated.' );
 		$record = array(
 			'contract' => self::CONTRACT,
 			'site_uuid' => strtolower( (string) $site_uuid ),
@@ -240,7 +243,7 @@ final class MAD4B_SCP_Restore_Epoch {
 			'nonce_sha256' => hash( 'sha256', $nonce ),
 			'previous_external_record_sha256' => preg_match( '/^[a-f0-9]{64}$/', (string) $previous_sha ) ? strtolower( (string) $previous_sha ) : '',
 			'reason' => sanitize_key( (string) $reason ),
-			'updated_at' => gmdate( 'c' ),
+			'updated_at' => gmdate( 'c', self::now_epoch() ),
 		);
 		$record['external_record_sha256'] = self::record_digest( $record );
 		return $record;
@@ -285,7 +288,7 @@ final class MAD4B_SCP_Restore_Epoch {
 			'epoch' => (int) $record['epoch'],
 			'nonce_sha256' => (string) $record['nonce_sha256'],
 			'external_record_sha256' => (string) $record['external_record_sha256'],
-			'bound_at' => gmdate( 'c' ),
+			'bound_at' => gmdate( 'c', self::now_epoch() ),
 		);
 		$ok = function_exists( 'update_option' ) ? update_option( self::OPTION, $binding, false ) : false;
 		$readback = self::read_binding();
@@ -354,6 +357,7 @@ final class MAD4B_SCP_Restore_Epoch {
 		);
 	}
 
+	private static function now_epoch() { return (int) MAD4B_SCP_Time_Policy::now_epoch(); }
 	private static function absolute_path( $path ) { return 1 === preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', (string) $path ); }
 	private static function path_within( $path, $root ) {
 		$path = str_replace( '\\', '/', (string) $path );

@@ -1,5 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Entropy' ) ) require_once __DIR__ . '/class-mad4b-scp-entropy.php';
+if ( ! class_exists( 'MAD4B_SCP_Time_Policy' ) ) require_once __DIR__ . '/class-mad4b-scp-time-policy.php';
 /** Signed preparation evidence, never a ticket, grant, idempotency key or approval. */
 final class MAD4B_SCP_Preparation_Receipt {
 	const CONTRACT = 'mad4b.preparation-receipt.v1';
@@ -17,12 +19,8 @@ final class MAD4B_SCP_Preparation_Receipt {
 		if ( ! class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) return new WP_Error( 'mad4b_preparation_crypto_unavailable', 'Versioned preparation receipt cryptography is unavailable.' );
 
 		$now = self::now_epoch();
-		if ( class_exists( 'MAD4B_SCP_Entropy' ) ) {
-			$nonce = MAD4B_SCP_Entropy::hex( 'preparation_receipt_nonce', 16 );
-			if ( is_wp_error( $nonce ) ) return $nonce;
-		} else {
-			try { $nonce = bin2hex( random_bytes( 16 ) ); } catch ( Throwable $error ) { return new WP_Error( 'mad4b_preparation_entropy_unavailable', 'Preparation receipt entropy is unavailable.' ); }
-		}
+		$nonce = MAD4B_SCP_Entropy::hex( 'preparation_receipt_nonce', 16 );
+		if ( is_wp_error( $nonce ) ) return new WP_Error( 'mad4b_preparation_entropy_unavailable', 'Preparation receipt entropy is unavailable.' );
 
 		$payload = array(
 			'contract' => self::CONTRACT,
@@ -96,6 +94,6 @@ final class MAD4B_SCP_Preparation_Receipt {
 		if ( $padding ) $value .= str_repeat( '=', 4 - $padding );
 		return base64_decode( strtr( $value, '-_', '+/' ), true );
 	}
-	private static function now_epoch(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::now_epoch():time();}
+	private static function now_epoch(){return (int) MAD4B_SCP_Time_Policy::now_epoch();}
 	private static function ttl(){if(class_exists('MAD4B_SCP_Time_Policy')){$v=MAD4B_SCP_Time_Policy::bounded_ttl('preparation_receipt',self::TTL);if(!is_wp_error($v))return(int)$v;}return self::TTL;}
 }

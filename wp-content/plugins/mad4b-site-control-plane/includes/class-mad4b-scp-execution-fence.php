@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Entropy' ) ) require_once __DIR__ . '/class-mad4b-scp-entropy.php';
 
 /**
  * Request-local idempotence fence for governed mutation execution.
@@ -259,9 +260,8 @@ final class MAD4B_SCP_Execution_Fence {
 		$child_input_sha = self::digest( 'mad4b.child-operation-input.v1', $input );
 		$child_evidence_sha = self::evidence_sha256( $input );
 		if ( '' === $child_input_sha || '' === $child_evidence_sha ) return new WP_Error( 'mad4b_child_operation_digest_failed', 'Governed child operation could not bind the exact child input/evidence.' );
-		try {
-			$token = bin2hex( random_bytes( 16 ) );
-		} catch ( Throwable $error ) {
+		$token = MAD4B_SCP_Entropy::hex( 'execution_child_permit', 16 );
+		if ( is_wp_error( $token ) ) {
 			return new WP_Error( 'mad4b_child_operation_token_unavailable', 'Governed child operation token could not be generated.' );
 		}
 		self::$child_permit = array(
@@ -327,9 +327,8 @@ final class MAD4B_SCP_Execution_Fence {
 		} elseif ( $parent && $mutation ) {
 			return new WP_Error( 'mad4b_recursive_dispatch_child_operation_required', 'Nested governed mutation requires an explicit one-time governed child operation.' );
 		}
-		try {
-			$frame_id = bin2hex( random_bytes( 16 ) );
-		} catch ( Throwable $error ) {
+		$frame_id = MAD4B_SCP_Entropy::hex( 'execution_frame', 16 );
+		if ( is_wp_error( $frame_id ) ) {
 			return new WP_Error( 'mad4b_execution_frame_token_unavailable', 'Execution frame identity could not be generated.' );
 		}
 		$frame = array(

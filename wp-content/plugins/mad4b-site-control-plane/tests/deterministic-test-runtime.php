@@ -24,7 +24,13 @@ $check(is_array($seeded)&&is_array($clock),'deterministic test hooks unavailable
 $a1=MAD4B_SCP_Entropy::hex('preparation_receipt_nonce',16);
 $a2=MAD4B_SCP_Entropy::hex('preparation_receipt_nonce',16);
 $b1=MAD4B_SCP_Entropy::hex('provider_breaker_probe',16);
-$check(is_string($a1)&&is_string($a2)&&is_string($b1)&&$a1!==$a2&&$a1!==$b1,'bounded purpose/counter entropy separation failed',array($a1,$a2,$b1));
+$dbProbe=MAD4B_SCP_Entropy::hex('database_transaction_probe',8);
+$dbOwner=MAD4B_SCP_Entropy::hex('database_transaction_ownership',16);
+$childPermit=MAD4B_SCP_Entropy::hex('execution_child_permit',16);
+$frame=MAD4B_SCP_Entropy::hex('execution_frame',16);
+$restoreNonce=MAD4B_SCP_Entropy::hex('restore_epoch_nonce',32);
+$critical=array($a1,$a2,$b1,$dbProbe,$dbOwner,$childPermit,$frame,$restoreNonce);
+$check(count(array_filter($critical,'is_string'))===count($critical)&&count(array_unique($critical))===count($critical),'bounded purpose/counter entropy separation failed',$critical);
 $check('mad4b_entropy_request_invalid'===(MAD4B_SCP_Entropy::bytes('oversized',65))->get_error_code(),'entropy length bound failed');
 
 $material=array(
@@ -34,6 +40,11 @@ $material=array(
  'preparation_nonce_1'=>$a1,
  'preparation_nonce_2'=>$a2,
  'breaker_probe_entropy'=>$b1,
+ 'database_transaction_probe'=>$dbProbe,
+ 'database_transaction_ownership'=>$dbOwner,
+ 'execution_child_permit'=>$childPermit,
+ 'execution_frame'=>$frame,
+ 'restore_epoch_nonce'=>$restoreNonce,
  'time_policy_sha256'=>MAD4B_SCP_Time_Policy::policy_sha256()
 );
 $fingerprint=hash('sha256',json_encode($material,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));

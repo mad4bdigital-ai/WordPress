@@ -5,6 +5,9 @@ audit=(root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audit.y
 entropy=(root/"includes/class-mad4b-scp-entropy.php").read_text(encoding="utf-8")
 prep=(root/"includes/class-mad4b-scp-preparation-receipt.php").read_text(encoding="utf-8")
 breaker=(root/"includes/class-mad4b-scp-provider-circuit-breaker.php").read_text(encoding="utf-8")
+db_guard=(root/"includes/class-mad4b-scp-database-transaction-guard.php").read_text(encoding="utf-8")
+execution_fence=(root/"includes/class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
+restore_epoch=(root/"includes/class-mad4b-scp-restore-epoch.php").read_text(encoding="utf-8")
 fixture=(root/"tests/deterministic-test-runtime.php").read_text(encoding="utf-8")
 
 for marker in ["Hermetic deterministic security kernel","MAD4B_TEST_SEED","MAD4B_TEST_WALL_EPOCH","MAD4B_TEST_MONOTONIC_MS","cmp -s"]:
@@ -21,6 +24,26 @@ if "MAD4B_SCP_Entropy::hex( 'preparation_receipt_nonce', 16 )" not in prep:
     raise SystemExit("FAIL preparation nonce not routed through bounded entropy")
 if "MAD4B_SCP_Entropy::hex('provider_breaker_probe',16)" not in breaker:
     raise SystemExit("FAIL breaker probe token not routed through bounded entropy")
+critical_entropy = {
+    "database_transaction_probe": db_guard,
+    "database_transaction_ownership": db_guard,
+    "execution_child_permit": execution_fence,
+    "execution_frame": execution_fence,
+    "restore_epoch_nonce": restore_epoch,
+}
+for purpose, source in critical_entropy.items():
+    marker=f"MAD4B_SCP_Entropy::hex( '{purpose}'"
+    if marker not in source:
+        raise SystemExit("FAIL critical entropy purpose not routed through bounded entropy: "+purpose)
+for name, source in {
+    "preparation": prep,
+    "provider_breaker": breaker,
+    "database_transaction_guard": db_guard,
+    "execution_fence": execution_fence,
+    "restore_epoch": restore_epoch,
+}.items():
+    if "random_bytes(" in source:
+        raise SystemExit("FAIL direct critical random_bytes remains outside entropy abstraction: "+name)
 for marker in ["MAD4B_SCP_Time_Policy::set_test_clock","MAD4B_SCP_Entropy::set_test_seed","mad4b.hermetic-critical-ci.v1"]:
     if marker not in fixture: raise SystemExit("FAIL deterministic fixture missing "+marker)
 print("mad4b.hermetic-prestaging-ci.contract.v1: PASS")
