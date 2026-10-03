@@ -547,7 +547,7 @@ assert "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();" not in entry, "MU refr
 
 # Runtime conflict repair is also a mutation/recovery transaction and must be
 # deferred on protocol hotpaths before active_plugins or MU/audit repair work.
-conflict_bootstrap = runtime_conflict.split("public static function bootstrap()", 1)[1].split("public static function status()", 1)[0]
+conflict_bootstrap = runtime_conflict.split("public static function bootstrap(", 1)[1].split("public static function status()", 1)[0]
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in conflict_bootstrap
 assert "'repair_deferred_protocol_hotpath'" in conflict_bootstrap
 assert "$status['repair_deferred'] = true;" in conflict_bootstrap

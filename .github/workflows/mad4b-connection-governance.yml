@@ -75,6 +75,7 @@ jobs:
           php "$root/tests/mcp-mu-recovery-boundaries-runtime.php"
           php "$root/tests/mcp-runtime-recovery-runtime.php"
           php "$root/tests/site-profile-general-distribution-runtime.php"
+          php "$root/tests/site-profile-lifecycle-matrix-runtime.php"
           node "$root/tests/admin-settings-persistence-runtime.mjs"
           php "$root/tests/upgrade-continuity-runtime.php"
           php "$root/tests/reconnect-hardening-runtime.php"
@@ -146,6 +147,30 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove fresh enrollment and update recovery in every WordPress environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          TEST="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-site-profile-installation-journey.php"
+          # Each declaration/environment gets fresh Core/plugin tables, not merely
+          # another save in an already-provisioned Site Profile database.
+          for declaration in explicit implicit; do
+            for environment in local development staging production; do
+              php /tmp/wp-cli.phar config set table_prefix "journey_${declaration}_${environment}_" --type=variable --path="$WP_PATH"
+              if [ "$declaration" = explicit ]; then
+                php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE "$environment" --type=constant --path="$WP_PATH"
+              else
+                php /tmp/wp-cli.phar config delete WP_ENVIRONMENT_TYPE --type=constant --path="$WP_PATH" --quiet || true
+              fi
+              php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-connection.test' --title='Disposable environment journey' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+              php /tmp/wp-cli.phar plugin activate mcp-adapter mad4b-site-control-plane --path="$WP_PATH"
+              MAD4B_TEST_ENVIRONMENT="$environment" MAD4B_TEST_DECLARATION="$declaration" php /tmp/wp-cli.phar eval-file "$TEST" --path="$WP_PATH" --user=mad4b-ci-admin
+            done
+          done
+          php /tmp/wp-cli.phar config set table_prefix wp_ --type=variable --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
 
       - name: Prove clean read-only connection readiness
         shell: bash

@@ -1,7 +1,7 @@
 <?php
 $cases = array( 'authorized', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
-	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' -n ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
+	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: 16/16 PASS' . PHP_EOL; exit;
 }
 $case = $argv[1];
