@@ -210,4 +210,10 @@ assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
 # unchanged and Feature 007 staging-certification work can evolve independently.
 runpy.run_path(str(root / "tests/truth-projection-invariants.py"), run_name="__main__")
 
+# Pending Site Profile builder is a pure constructor. A prior bulk
+# replacement accidentally made it recursive and exhausted PHP at runtime.
+pending_helper = site_profile.split("private static function build_pending_record", 1)[1].split("private static function pending_target_record", 1)[0]
+if "self::build_pending_record(" in pending_helper:
+    raise SystemExit("FAIL site-profile-pending-helper-recursion: build_pending_record must not call itself")
+
 print("mad4b.admin-settings-persistence.v7: PASS")

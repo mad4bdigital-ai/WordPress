@@ -468,7 +468,11 @@ final class MAD4B_SCP_Site_Profile {
 
 
 	private static function build_pending_record( array $next, $previous, $audit_action ) {
-		$pending = self::build_pending_record( $next, $before, $audit_action );
+		$pending = $next;
+		$pending['mutation_state'] = 'pending_audit';
+		$pending['mutation_id'] = function_exists( 'wp_generate_uuid4' )
+			? strtolower( wp_generate_uuid4() )
+			: substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 32 );
 		$pending['mutation_audit_action'] = trim( (string) $audit_action );
 		$pending['mutation_started_at'] = gmdate( 'c' );
 		$pending['mutation_target_digest'] = self::digest_record( self::normalize_record( $next ) );
