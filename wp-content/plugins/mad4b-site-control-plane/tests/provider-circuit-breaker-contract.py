@@ -12,3 +12,9 @@ if "certification_generation_sha256" not in cert or "mad4b.provider-certificatio
 for forbidden in ["Staging_Write_Authority::apply","Governed_Runtime_Gates::apply","Approval_Tickets::finalize","certification_level ="]:
     if forbidden in impl: raise SystemExit("FAIL breaker mutates authority/certification "+forbidden)
 print("mad4b.provider-circuit-breaker.contract.v1: PASS")
+
+connector=(root/"includes/class-mad4b-scp-connector-resilience.php").read_text(encoding="utf-8")
+for marker in ["begin_for_target( 'read', $target )","max_attempts' => ! empty( $breaker['half_open_probe'] ) ? 1","begin_for_target( $surface, $target )","record_result( $breaker"]:
+    if marker not in connector: raise SystemExit("FAIL connector breaker integration "+marker)
+for marker in ["mad4b_provider_circuit_breaker_read_probe_required","half_open_probe_inconclusive","$transport_ok && (int)$row['failure_count'] > 0"]:
+    if marker not in impl: raise SystemExit("FAIL breaker probe safety "+marker)

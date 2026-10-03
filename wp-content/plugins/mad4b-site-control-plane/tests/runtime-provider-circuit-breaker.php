@@ -27,6 +27,15 @@ $check(is_wp_error($second)&&'mad4b_provider_circuit_breaker_probe_in_flight'===
 $stale=$probe;$stale['probe_token']=hash('sha256',$probe['probe_token'].'tampered');
 $stale_result=MAD4B_SCP_Provider_Circuit_Breaker::record_result($stale,true,'');
 $check(is_wp_error($stale_result),'Tampered HALF_OPEN probe token changed breaker state.',$stale_result);
+$inconclusive_probe=$probe;
+$wpdb->query($wpdb->prepare("UPDATE {$t['provider_breakers']} SET probe_expires_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 30 SECOND) WHERE BINARY breaker_key_sha256=BINARY %s",$key));
+$inconclusive=MAD4B_SCP_Provider_Circuit_Breaker::record_result($inconclusive_probe,false,'authorization');
+$check(!is_wp_error($inconclusive)&&'open'===$inconclusive['state'],'Non-transport HALF_OPEN result incorrectly restored transport eligibility.',$inconclusive);
+$wpdb->query($wpdb->prepare("UPDATE {$t['provider_breakers']} SET open_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND) WHERE BINARY breaker_key_sha256=BINARY %s",$key));
+$mutation_probe=MAD4B_SCP_Provider_Circuit_Breaker::begin_attempt($provider,$site,$gen,false);
+$check(is_wp_error($mutation_probe)&&'mad4b_provider_circuit_breaker_read_probe_required'===$mutation_probe->get_error_code(),'Mutation path was allowed to become HALF_OPEN transport probe.',$mutation_probe);
+$probe=MAD4B_SCP_Provider_Circuit_Breaker::begin_attempt($provider,$site,$gen,true);
+$check(!is_wp_error($probe)&&!empty($probe['half_open_probe']),'Read/health probe could not enter HALF_OPEN after inconclusive result.',$probe);
 $closed=MAD4B_SCP_Provider_Circuit_Breaker::record_result($probe,true,'');
 $check(!is_wp_error($closed)&&'closed'===$closed['state']&&!empty($closed['transport_eligible'])&&0===$closed['failure_count'],'Successful HALF_OPEN probe did not restore transport-only CLOSED state.',$closed);
 $check(!empty($closed['probe_restores_transport_only'])&&empty($closed['certification_granted'])&&empty($closed['authority_granted'])&&empty($closed['approval_granted'])&&empty($closed['production_eligibility_granted']),'Probe success escalated non-transport authority.',$closed);

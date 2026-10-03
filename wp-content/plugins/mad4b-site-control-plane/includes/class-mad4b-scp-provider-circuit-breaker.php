@@ -25,10 +25,10 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 		$context = self::resolve_target_context( $surface, $target );
 		if ( is_wp_error( $context ) ) return $context;
 		if ( empty( $context['applicable'] ) ) return $context;
-		return self::begin_attempt( $context['provider_id'], $context['site_uuid'], $context['certification_generation_sha256'] );
+		return self::begin_attempt( $context['provider_id'], $context['site_uuid'], $context['certification_generation_sha256'], 'read' === sanitize_key( (string) $surface ) );
 	}
 
-	public static function begin_attempt( $provider_id, $site_uuid, $generation_sha256 ) {
+	public static function begin_attempt( $provider_id, $site_uuid, $generation_sha256, $allow_half_open_probe = true ) {
 		global $wpdb;
 		$identity = self::identity( $provider_id, $site_uuid, $generation_sha256 );
 		if ( is_wp_error( $identity ) ) return $identity;
@@ -49,6 +49,12 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 			$probe = false;
 			if ( self::STATE_OPEN === (string) $row['state'] ) {
 				$open_until = self::mysql_epoch( $row['open_until'] );
+				if ( $open_until <= $now && ! $allow_half_open_probe ) {
+					$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $tx ); if ( is_wp_error( $committed ) ) return $committed;
+					return new WP_Error( 'mad4b_provider_circuit_breaker_read_probe_required', 'Provider breaker recovery requires a non-mutating read/health probe before governed mutation transport can resume.', array(
+						'contract'=>self::CONTRACT,'provider_id'=>$identity['provider_id'],'state'=>self::STATE_OPEN,'transport_eligible'=>false,'authority_effect'=>'none'
+					) );
+				}
 				if ( $open_until > $now ) {
 					$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $tx ); if ( is_wp_error( $committed ) ) return $committed;
 					return new WP_Error( 'mad4b_provider_circuit_breaker_open', 'Provider transport circuit breaker is open.', array(
@@ -65,6 +71,12 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 				$row = $updated; $probe = true;
 			} elseif ( self::STATE_HALF_OPEN === (string) $row['state'] ) {
 				$probe_expires = self::mysql_epoch( $row['probe_expires_at'] );
+				if ( ! $allow_half_open_probe ) {
+					$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $tx ); if ( is_wp_error( $committed ) ) return $committed;
+					return new WP_Error( 'mad4b_provider_circuit_breaker_read_probe_required', 'HALF_OPEN provider recovery never uses mutation as a transport probe.', array(
+						'contract'=>self::CONTRACT,'provider_id'=>$identity['provider_id'],'state'=>self::STATE_HALF_OPEN,'transport_eligible'=>false,'authority_effect'=>'none'
+					) );
+				}
 				if ( '' !== (string)$row['probe_token_sha256'] && $probe_expires > $now ) {
 					$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $tx ); if ( is_wp_error( $committed ) ) return $committed;
 					return new WP_Error( 'mad4b_provider_circuit_breaker_probe_in_flight', 'A single HALF_OPEN provider probe is already in flight.', array(
@@ -115,15 +127,15 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 				$expected_probe = (string) $row['probe_token_sha256'];
 				if ( '' === $raw_probe || '' === $expected_probe || ! hash_equals( $expected_probe, hash('sha256',$raw_probe) ) ) throw new RuntimeException( 'provider_breaker_probe_token_mismatch' );
 				if ( self::mysql_epoch( $row['probe_expires_at'] ) < $now ) throw new RuntimeException( 'provider_breaker_probe_result_stale' );
-				if ( $breaker_failure ) {
-					$open_count = (int)$row['open_count'] + 1;
-					$seconds = self::open_seconds( $open_count );
-					$row = self::transition_locked( $row, self::STATE_OPEN, 'half_open_probe_failed', $failure_class, array(
-						'failure_count'=>self::FAILURE_THRESHOLD,'open_count'=>$open_count,'open_until'=>$now+$seconds,'probe_token_sha256'=>'','probe_expires_at'=>null
-					) );
-				} else {
+				if ( $transport_ok ) {
 					$row = self::transition_locked( $row, self::STATE_CLOSED, 'half_open_probe_succeeded', '', array(
 						'failure_count'=>0,'open_count'=>0,'open_until'=>null,'probe_token_sha256'=>'','probe_expires_at'=>null
+					) );
+				} else {
+					$open_count = (int)$row['open_count'] + 1;
+					$seconds = self::open_seconds( $open_count );
+					$row = self::transition_locked( $row, self::STATE_OPEN, $breaker_failure ? 'half_open_probe_failed' : 'half_open_probe_inconclusive', $failure_class, array(
+						'failure_count'=>self::FAILURE_THRESHOLD,'open_count'=>$open_count,'open_until'=>$now+$seconds,'probe_token_sha256'=>'','probe_expires_at'=>null
 					) );
 				}
 				if ( is_wp_error($row) ) throw new RuntimeException($row->get_error_code());
@@ -137,7 +149,7 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 						'failure_count'=>$failures,'open_count'=>$open_count,'open_until'=>$open_until,'probe_token_sha256'=>'','probe_expires_at'=>null
 					));
 					if(is_wp_error($row))throw new RuntimeException($row->get_error_code());
-				} elseif ( (int)$row['failure_count'] > 0 ) {
+				} elseif ( $transport_ok && (int)$row['failure_count'] > 0 ) {
 					$row=self::transition_locked($row,self::STATE_CLOSED,'transport_health_restored','',array(
 						'failure_count'=>0,'open_count'=>(int)$row['open_count'],'open_until'=>null,'probe_token_sha256'=>'','probe_expires_at'=>null
 					));
