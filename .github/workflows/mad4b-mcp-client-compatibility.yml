@@ -233,6 +233,61 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-persisted-generation-compatibility.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove rolling mixed-worker generation fencing
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          PLUGIN_MAIN="$WP_PATH/wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+          BACKUP=/tmp/mad4b-generation-main-backup.php
+          SYNC_DIR="/tmp/mad4b-generation-roll-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          READY="$SYNC_DIR/ready"
+          RELEASE="$SYNC_DIR/release"
+          OLD_LOG=/tmp/mad4b-generation-old-worker.log
+          rm -rf "$SYNC_DIR"
+          mkdir -p "$SYNC_DIR"
+          cp "$PLUGIN_MAIN" "$BACKUP"
+          cleanup() {
+            cp "$BACKUP" "$PLUGIN_MAIN" 2>/dev/null || true
+            rm -rf "$SYNC_DIR"
+          }
+          trap cleanup EXIT
+
+          MAD4B_CI_GENERATION_WORKER_MODE=old \
+          MAD4B_CI_GENERATION_READY_FILE="$READY" \
+          MAD4B_CI_GENERATION_RELEASE_FILE="$RELEASE" \
+            php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php" \
+              --path="$WP_PATH" --user=mad4b-ci-admin > "$OLD_LOG" 2>&1 &
+          OLD_PID=$!
+
+          READY_DEADLINE=$((SECONDS + 30))
+          while [ ! -f "$READY" ]; do
+            if [ "$SECONDS" -ge "$READY_DEADLINE" ]; then
+              cat "$OLD_LOG" || true
+              kill "$OLD_PID" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 0.05
+          done
+
+          printf '\n// MAD4B CI rolling generation N+1 marker\n' >> "$PLUGIN_MAIN"
+
+          MAD4B_CI_GENERATION_WORKER_MODE=new \
+            php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php" \
+              --path="$WP_PATH" --user=mad4b-ci-admin
+
+          : > "$RELEASE"
+          OLD_RC=0
+          wait "$OLD_PID" || OLD_RC=$?
+          cat "$OLD_LOG"
+          if [ "$OLD_RC" -ne 0 ]; then
+            exit "$OLD_RC"
+          fi
+
+          cp "$BACKUP" "$PLUGIN_MAIN"
+          trap - EXIT
+          cleanup
+
       - name: Prove restore replay quarantine across durable authority state
         shell: bash
         run: |
