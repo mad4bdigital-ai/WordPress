@@ -780,18 +780,25 @@ final class MAD4B_SCP_Authorization {
 					'execution_result' => 'used',
 					'evidence_correlation' => 'failed_after_side_effect',
 				), 'failed' );
+				$evidence_data = $evidence->get_error_data();
+				if ( ! is_array( $evidence_data ) ) $evidence_data = array();
 				if ( class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
-					return MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
-						$evidence->get_error_code(),
-						'Provider execution completed but provider-specific durable evidence could not be persisted. Reconcile provider state before any retry.'
-					);
+					$state = MAD4B_SCP_Execution_Evidence_Policy::crash_point( 'provider_returned' );
+					if ( is_array( $state ) ) $evidence_data = array_merge( $state, $evidence_data );
 				}
-				return new WP_Error( 'mad4b_execution_terminal_evidence_persist_failed', 'Provider execution completed but provider-specific durable evidence could not be persisted.', array(
+				$evidence_data = array_merge( $evidence_data, array(
 					'reason_code' => sanitize_key( (string) $evidence->get_error_code() ),
 					'reconciliation_required' => true,
 					'blind_retry_allowed' => false,
+					'automatic_retry_allowed' => false,
 					'terminal_success' => false,
+					'receipt_durable' => false,
 				) );
+				return new WP_Error(
+					$evidence->get_error_code(),
+					$evidence->get_error_message(),
+					$evidence_data
+				);
 			}
 		}
 
