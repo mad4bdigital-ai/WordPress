@@ -188,7 +188,8 @@ final class MAD4B_SCP_Site_Profile {
 		if ( empty( $bound['environment'] ) ) return $wordpress;
 		$profile_environment = sanitize_key( (string) $bound['environment'] );
 		if ( hash_equals( $profile_environment, $wordpress ) ) return $profile_environment;
-		if ( 'production' === $wordpress && ! self::wordpress_environment_explicit() ) return $profile_environment;
+		if ( 'production' === $wordpress && ! self::wordpress_environment_explicit()
+			&& ! empty( $bound['implicit_production_override_confirmed'] ) ) return $profile_environment;
 		return $wordpress;
 	}
 
@@ -196,14 +197,23 @@ final class MAD4B_SCP_Site_Profile {
 	public static function early_managed_runtime_binding() {
 		$profile = self::exact_stored_profile();
 		$environment = self::current_environment();
+		$wordpress = self::wordpress_environment();
+		$implicit_override = ! empty( $profile )
+			&& 'production' === $wordpress
+			&& ! self::wordpress_environment_explicit()
+			&& 'production' !== (string) $profile['environment'];
+		$override_ready = ! $implicit_override || ! empty( $profile['implicit_production_override_confirmed'] );
 		return array(
 			'eligible' => ! empty( $profile )
+				&& $override_ready
 				&& empty( $profile['migration_requires_reenrollment'] )
 				&& hash_equals( (string) $profile['environment'], $environment )
 				&& in_array( $environment, array( 'local', 'development', 'staging' ), true )
 				&& ! empty( $profile['features']['managed_runtime'] ),
 			'environment' => $environment,
-			'wordpress_environment' => self::wordpress_environment(),
+			'wordpress_environment' => $wordpress,
+			'implicit_nonproduction_override' => $implicit_override,
+			'implicit_nonproduction_override_confirmed' => $override_ready && $implicit_override,
 			'wordpress_environment_explicit' => self::wordpress_environment_explicit(),
 			'site_uuid' => ! empty( $profile['site_uuid'] ) ? (string) $profile['site_uuid'] : '',
 			'revision' => ! empty( $profile['revision'] ) ? absint( $profile['revision'] ) : 0,
@@ -247,7 +257,8 @@ final class MAD4B_SCP_Site_Profile {
 		$bound = self::exact_stored_profile();
 		$profile_environment = ! empty( $bound['environment'] ) ? sanitize_key( (string) $bound['environment'] ) : '';
 		$profile_matches_wordpress = '' !== $profile_environment && hash_equals( $profile_environment, $wordpress );
-		$profile_default_override = '' !== $profile_environment && ! $profile_matches_wordpress && 'production' === $wordpress && ! $wordpress_explicit;
+		$profile_default_override_requested = '' !== $profile_environment && ! $profile_matches_wordpress && 'production' === $wordpress && ! $wordpress_explicit;
+		$profile_default_override = $profile_default_override_requested && ! empty( $bound['implicit_production_override_confirmed'] );
 		$profile_authoritative = $profile_matches_wordpress || $profile_default_override;
 		$effective = $profile_authoritative ? $profile_environment : $wordpress;
 		$source = $profile_default_override
@@ -260,6 +271,8 @@ final class MAD4B_SCP_Site_Profile {
 			'profile_environment' => $profile_environment,
 			'exact_profile_bound' => '' !== $profile_environment,
 			'profile_environment_authoritative' => $profile_authoritative,
+			'profile_default_override_requested' => $profile_default_override_requested,
+			'profile_default_override_confirmed' => $profile_default_override,
 			'effective_environment' => $effective,
 			'effective_source' => $source,
 			'suggested_environment' => self::suggested_environment(),
@@ -310,7 +323,7 @@ final class MAD4B_SCP_Site_Profile {
 
 	public static function origin_enrolled() {
 		$status = self::status();
-		return ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] ) && ! empty( $status['deployment_binding_match'] );
+		return ! empty( $status['authority_ready'] );
 	}
 
 	public static function site_urls_match_enrollment() {
@@ -719,22 +732,27 @@ final class MAD4B_SCP_Site_Profile {
 			&& empty( $resolution['wordpress_environment_explicit'] )
 			&& 'production' !== (string) $profile['environment'];
 		$override_confirmed = $implicit_override && ! empty( $profile['implicit_production_override_confirmed'] );
+		$attestation_required = $implicit_override && ! $override_confirmed;
 		$blockers = array();
 		$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );
+		$authority_ready = $configured && $environment_match && $origin_match && $deployment_binding_match && ! $reenrollment_required && ! $attestation_required;
 		$binding_state = ! $configured
 			? 'unconfigured'
 			: ( ! $origin_match
 				? 'foreign_origin'
 				: ( ! $deployment_binding_match
 					? 'deployment_drift'
-					: ( ! $environment_match
-						? 'environment_drift'
-						: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) ) );
+					: ( $attestation_required
+						? 'nonproduction_override_unconfirmed'
+						: ( ! $environment_match
+							? 'environment_drift'
+							: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) ) ) );
 		$foreign_profile_detected = $configured && ( ! $origin_match || ! $environment_match || ! $deployment_binding_match );
 		if ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
 		if ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
 		if ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
 		if ( $configured && ! $deployment_binding_match ) $blockers[] = 'site_profile_deployment_binding_drift';
+		if ( $attestation_required ) $blockers[] = 'site_profile_nonproduction_override_confirmation_required';
 		if ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';
 		return array(
 			'contract' => self::CONTRACT,
@@ -763,14 +781,15 @@ final class MAD4B_SCP_Site_Profile {
 			'same_origin_clone_protection' => '' !== $stored_deployment_binding && $deployment_binding_match,
 			'implicit_nonproduction_override' => $implicit_override,
 			'implicit_nonproduction_override_confirmed' => $override_confirmed,
-			'nonproduction_override_attestation_required' => $implicit_override && ! $override_confirmed,
+			'nonproduction_override_attestation_required' => $attestation_required,
+			'authority_ready' => $authority_ready,
 			'binding_state' => $binding_state,
 			'foreign_profile_detected' => $foreign_profile_detected,
-			'profile_authority_quarantined' => $foreign_profile_detected,
+			'profile_authority_quarantined' => ! $authority_ready,
 			'reenrollment_required' => $reenrollment_required,
-			'write_enabled' => $configured && $environment_match && $origin_match && $deployment_binding_match && self::record_feature_enabled( $profile, 'write', $environment ),
-			'oauth_enabled' => $configured && $environment_match && $origin_match && $deployment_binding_match && self::record_feature_enabled( $profile, 'oauth', $environment ),
-			'skills_enabled' => $configured && $environment_match && $origin_match && $deployment_binding_match && self::record_feature_enabled( $profile, 'skills', $environment ),
+			'write_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'write', $environment ),
+			'oauth_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'oauth', $environment ),
+			'skills_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'skills', $environment ),
 			'blockers' => $blockers,
 		);
 	}
