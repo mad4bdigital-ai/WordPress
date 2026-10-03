@@ -1,0 +1,69 @@
+{
+  "contract": "mad4b.resource-constraint-contracts.v1",
+  "resource_set_contract": "mad4b.resource-constraint-set.v1",
+  "preparation_evidence_contract": "mad4b.resource-preparation-evidence.v1",
+  "limits": {
+    "max_resource_values": 128,
+    "max_canonical_input_bytes": 65536,
+    "max_leaf_value_bytes": 16384,
+    "max_relative_path_bytes": 1024,
+    "max_identifier_bytes": 191
+  },
+  "selectors": {
+    "post_ids": [
+      "post_id",
+      "post_ids.*",
+      "bundle.posts.*.id"
+    ],
+    "post_types": [
+      "post_type",
+      "bundle.posts.*.post_type"
+    ],
+    "taxonomy_names": [
+      "taxonomy",
+      "taxonomies.*"
+    ],
+    "term_ids": [
+      "term_id",
+      "term_ids.*"
+    ],
+    "provider_object_ids": [
+      "object_id",
+      "provider_object_id",
+      "product_id",
+      "attachment_id",
+      "widget_id",
+      "element_id",
+      "mutation_id"
+    ],
+    "filesystem_zone": [
+      "filesystem_zone"
+    ],
+    "filesystem_paths": [
+      "path",
+      "file_path",
+      "source_path",
+      "destination_path"
+    ],
+    "database_tables": [
+      "database_table",
+      "table_name"
+    ],
+    "database_columns": [
+      "database_columns.*",
+      "column_name"
+    ]
+  },
+  "allowed_filesystem_zones": [
+    "wordpress_root",
+    "content",
+    "uploads",
+    "plugins",
+    "themes",
+    "mu_plugins",
+    "managed_artifacts"
+  ],
+  "wildcard_policy": "deny",
+  "path_alias_policy": "deny",
+  "user_declared_limits_authorizing": false
+}
