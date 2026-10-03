@@ -26,19 +26,48 @@
 		});
 	}
 
-	async function refreshSelector(selector) {
-		if (!selector) return;
+	async function refreshSelector(selector, expectedReadback) {
+		if (!selector) return null;
 		var response = await fetch(window.location.href, {
 			credentials: "same-origin",
 			cache: "no-store",
 			headers: { "Cache-Control": "no-cache", "X-MAD4B-Settings-Readback": "1" }
 		});
-		if (!response.ok) throw new Error(cfg().refreshFailed || "Persisted view refresh failed.");
+		if (!response.ok) {
+			var httpFailure = new Error(cfg().refreshFailed || "Settings were saved, but the persisted view refresh failed.");
+			httpFailure.mad4bCode = "mad4b_settings_view_refresh_http_failed";
+			httpFailure.mad4bPersisted = true;
+			throw httpFailure;
+		}
 		var html = await response.text();
 		var doc = new DOMParser().parseFromString(html, "text/html");
 		var current = document.querySelector(selector);
 		var next = doc.querySelector(selector);
-		if (current && next) current.replaceWith(next);
+		if (!current || !next) {
+			var missing = new Error(cfg().savedViewRefreshFailed || "Settings were saved and verified, but the refreshed workspace could not be confirmed. Reload before editing again.");
+			missing.mad4bCode = "mad4b_settings_view_selector_missing";
+			missing.mad4bPersisted = true;
+			throw missing;
+		}
+		var nextForm = next.matches && next.matches(".mad4b-settings-ajax-form")
+			? next
+			: (next.querySelector ? next.querySelector(".mad4b-settings-ajax-form") : null);
+		if (expectedReadback && nextForm) {
+			var expectedRevision = expectedReadback.revision !== undefined ? String(expectedReadback.revision) : "";
+			var expectedDigest = expectedReadback.profile_digest ? String(expectedReadback.profile_digest) : "";
+			var revisionField = nextForm.querySelector ? nextForm.querySelector('input[name="expected_revision"]') : null;
+			var digestField = nextForm.querySelector ? nextForm.querySelector('input[name="expected_profile_digest"]') : null;
+			var revisionMismatch = expectedRevision && (!revisionField || String(revisionField.value) !== expectedRevision);
+			var digestMismatch = expectedDigest && (!digestField || String(digestField.value) !== expectedDigest);
+			if (revisionMismatch || digestMismatch) {
+				var stale = new Error(cfg().savedViewRefreshFailed || "Settings were saved and verified, but the refreshed workspace is stale. Reload before editing again.");
+				stale.mad4bCode = "mad4b_settings_view_readback_mismatch";
+				stale.mad4bPersisted = true;
+				throw stale;
+			}
+		}
+		current.replaceWith(next);
+		return next;
 	}
 
 	function syncConfirmationSection(section, needed) {
@@ -76,6 +105,10 @@
 		var form = event.target.closest(".mad4b-settings-ajax-form");
 		if (!form) return;
 		event.preventDefault();
+		if (form.dataset.mad4bViewStale === "1") {
+			setFeedback(form, cfg().savedViewRefreshFailed || "The previous save was persisted, but this workspace is stale. Reload before saving again.", false, "mad4b_settings_view_stale");
+			return;
+		}
 		if (form.dataset.mad4bBusy === "1") return;
 
 		// FormData excludes disabled controls; capture before locking the form.
@@ -154,8 +187,8 @@
 			var selector = form.getAttribute("data-mad4b-refresh-selector") || "";
 			var feedbackForm = form;
 			if (selector) {
-				await refreshSelector(selector);
-				var refreshed = document.querySelector(selector);
+				var refreshedNode = await refreshSelector(selector, payload.data.readback || {});
+				var refreshed = refreshedNode || document.querySelector(selector);
 				if (refreshed) {
 					feedbackForm = refreshed.matches && refreshed.matches(".mad4b-settings-ajax-form")
 						? refreshed
@@ -165,6 +198,7 @@
 			setFeedback(feedbackForm, successMessage, true, "");
 			document.dispatchEvent(new CustomEvent("mad4b:settings-persisted", { detail: payload.data }));
 		} catch (error) {
+			if (error && error.mad4bPersisted) form.dataset.mad4bViewStale = "1";
 			setFeedback(form, error && error.message ? error.message : (cfg().failed || "Settings could not be persisted."), false, error && error.mad4bCode ? error.mad4bCode : "");
 		} finally {
 			form.removeAttribute("aria-busy");
