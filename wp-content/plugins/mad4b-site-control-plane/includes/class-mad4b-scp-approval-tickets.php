@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Approval_Impact_Binding' ) ) require_once __DIR__ . '/class-mad4b-scp-approval-impact-binding.php';
 
 /**
  * One-time approval tickets with exact payload and tenant/build bindings.
@@ -31,8 +32,8 @@ final class MAD4B_SCP_Approval_Tickets {
 			$profile_binding = self::profile_snapshot( false );
 			if ( ! empty( $profile_binding['origin'] ) ) $site = $profile_binding['origin'];
 		}
-		$resource_set = class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ? MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $input ) ? $input : array() ) : array();
-		if ( is_wp_error( $resource_set ) ) return $resource_set;
+		$approval_binding = MAD4B_SCP_Approval_Impact_Binding::build( $ability_name, $provider, $target_fingerprint, is_array( $input ) ? $input : array() );
+		if ( is_wp_error( $approval_binding ) ) return $approval_binding;
 		$envelope = array(
 			'contract' => 'mad4b.approval.v1',
 			'site' => $site,
@@ -41,7 +42,11 @@ final class MAD4B_SCP_Approval_Tickets {
 			'ability' => (string) $ability_name,
 			'provider' => sanitize_key( (string) $provider ),
 			'target' => (string) $target_fingerprint,
-			'resource_set_sha256' => isset( $resource_set['resource_set_sha256'] ) ? (string) $resource_set['resource_set_sha256'] : '',
+			'exact_input_sha256' => (string) $approval_binding['exact_input_sha256'],
+			'resource_set_sha256' => (string) $approval_binding['resource_set_sha256'],
+			'dependency_generation_sha256' => (string) $approval_binding['dependency_generation_sha256'],
+			'impact_sha256' => (string) $approval_binding['impact_sha256'],
+			'approval_impact_binding_sha256' => (string) $approval_binding['binding_sha256'],
 			'ticket_class' => $ticket_class,
 			'input' => $input,
 		);

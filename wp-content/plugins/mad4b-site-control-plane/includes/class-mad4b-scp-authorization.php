@@ -1,6 +1,9 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Approval_Impact_Binding' ) ) require_once __DIR__ . '/class-mad4b-scp-approval-impact-binding.php';
+if ( ! class_exists( 'MAD4B_SCP_Authorization_Decision_Graph' ) ) require_once __DIR__ . '/class-mad4b-scp-authorization-decision-graph.php';
+if ( ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) ) require_once __DIR__ . '/class-mad4b-scp-execution-receipt.php';
 
 final class MAD4B_SCP_Authorization {
 	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
@@ -144,7 +147,8 @@ final class MAD4B_SCP_Authorization {
 
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		$call = static function() use ( $ability_name, $server_id, $provider, $input ) {
-			return self::authorize_mutation_impl( $ability_name, $server_id, $provider, $input );
+			$result = self::authorize_mutation_impl( $ability_name, $server_id, $provider, $input );
+			return MAD4B_SCP_Authorization_Decision_Graph::decorate( $result, $ability_name, $server_id, $provider );
 		};
 		return class_exists( 'MAD4B_SCP_Observability' )
 			? MAD4B_SCP_Observability::run_stage( 'authorization', $call, '', array(
@@ -258,6 +262,8 @@ final class MAD4B_SCP_Authorization {
 		if ( '' === $target_fingerprint ) return self::error( 'mad4b_approval_target_unresolved', 'A deterministic mutation target fingerprint could not be resolved.' );
 
 		$ticket_class = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $authorization_input ) : 'mutation';
+		$approval_impact_binding = MAD4B_SCP_Approval_Impact_Binding::build( $ability_name, $provider, $target_fingerprint, is_array( $authorization_input ) ? $authorization_input : array() );
+		if ( is_wp_error( $approval_impact_binding ) ) return $approval_impact_binding;
 		if ( $approval_required ) {
 			if ( '' === $approval_ticket_id ) return self::error( 'mad4b_approval_required', 'This governed mutation requires an exact short-lived one-time approval ticket.' );
 			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return self::error( 'mad4b_approval_service_unavailable', 'Approval service is unavailable.' );
@@ -350,6 +356,10 @@ final class MAD4B_SCP_Authorization {
 			'approval_ticket_source' => $approval_required ? $approval_ticket_source : 'not_required',
 			'ticket_class' => $ticket_class,
 			'target_fingerprint' => $target_fingerprint,
+			'approval_impact_binding_sha256' => (string) $approval_impact_binding['binding_sha256'],
+			'approval_exact_input_sha256' => (string) $approval_impact_binding['exact_input_sha256'],
+			'approval_dependency_generation_sha256' => (string) $approval_impact_binding['dependency_generation_sha256'],
+			'approval_impact_sha256' => (string) $approval_impact_binding['impact_sha256'],
 			'budget_costs' => $costs,
 			'policy_resolution' => $policy_resolution,
 			'policy_decision_sha256' => isset( $policy_resolution['decision_sha256'] ) ? (string) $policy_resolution['decision_sha256'] : '',
@@ -617,6 +627,15 @@ final class MAD4B_SCP_Authorization {
 			}
 			$receipt = MAD4B_SCP_Execution_Evidence_Policy::terminal_receipt( $material, is_array( $audit_entry ) ? $audit_entry : array() );
 			if ( is_wp_error( $receipt ) ) return $receipt;
+			$execution_receipt = MAD4B_SCP_Execution_Receipt::build( $claim, $result, $receipt );
+			if ( is_wp_error( $execution_receipt ) ) return $execution_receipt;
+			$receipt_audit = self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
+				'reason_code'=>'unified_execution_receipt_committed',
+				'execution_receipt'=>$execution_receipt,
+				'execution_receipt_sha256'=>(string)$execution_receipt['receipt_sha256'],
+				'execution_receipt_signature_state'=>(string)$execution_receipt['signature_state'],
+			), 'completed' );
+			if ( is_wp_error( $receipt_audit ) ) return MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error( $receipt_audit->get_error_code(), 'Unified execution receipt could not be durably appended to the audit chain.', array( 'execution_receipt_sha256'=>(string)$execution_receipt['receipt_sha256'] ) );
 		}
 		return true;
 	}
