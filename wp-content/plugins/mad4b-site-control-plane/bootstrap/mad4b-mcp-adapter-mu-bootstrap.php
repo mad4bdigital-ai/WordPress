@@ -17,7 +17,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 $mad4b_mcp_mu_status = array(
-	'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v5',
+	'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v6',
 	'executed' => true,
 	'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
 	'host' => '',
@@ -41,6 +41,8 @@ $mad4b_mcp_mu_status = array(
 	'request_requires_mcp_runtime' => false,
 	'request_scope_bypassed' => false,
 	'request_route' => '',
+	'transaction_pending' => false,
+	'diagnostic_mu_proof_valid' => false,
 );
 
 if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
@@ -60,6 +62,17 @@ $mad4b_mcp_mu_status['environment'] = $mad4b_mcp_mu_binding['environment'] ?? $m
 $mad4b_mcp_mu_status['wordpress_environment'] = $mad4b_mcp_mu_binding['wordpress_environment'] ?? 'unknown';
 $mad4b_mcp_mu_status['wordpress_environment_explicit'] = ! empty( $mad4b_mcp_mu_binding['wordpress_environment_explicit'] );
 $mad4b_mcp_mu_profile_enrolled = ! empty( $mad4b_mcp_mu_binding['eligible'] );
+
+// Any unresolved filesystem transaction blocks provider execution before normal
+// plugins load. A later authorized lifecycle request must reconcile it first.
+$mad4b_mcp_mu_transaction = function_exists( 'get_option' )
+	? get_option( 'mad4b_scp_mcp_mu_refresh_transaction_v1', array() )
+	: array();
+if ( is_array( $mad4b_mcp_mu_transaction ) && ! empty( $mad4b_mcp_mu_transaction ) ) {
+	$mad4b_mcp_mu_status['transaction_pending'] = true;
+	$mad4b_mcp_mu_status['state'] = 'managed_mu_transaction_pending';
+	$mad4b_mcp_mu_profile_enrolled = false;
+}
 
 if ( $mad4b_mcp_mu_profile_enrolled ) {
 	$mad4b_mcp_mu_active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
@@ -103,10 +116,20 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 
 		// Routing only: pin certified classes early on the exact diagnostic POST.
 		// The worker still owns nonce/capability/build checks and singleton arming.
+		$mad4b_mcp_mu_proof = isset( $_POST['mu_proof'] ) && is_string( $_POST['mu_proof'] )
+			? strtolower( trim( wp_unslash( $_POST['mu_proof'] ) ) )
+			: '';
+		$mad4b_mcp_mu_expected_proof = method_exists( 'MAD4B_SCP_Site_Profile', 'diagnostic_mu_proof' )
+			? MAD4B_SCP_Site_Profile::diagnostic_mu_proof()
+			: '';
+		$mad4b_mcp_mu_status['diagnostic_mu_proof_valid'] = '' !== $mad4b_mcp_mu_expected_proof
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_proof )
+			&& hash_equals( $mad4b_mcp_mu_expected_proof, $mad4b_mcp_mu_proof );
 		$mad4b_mcp_mu_diagnostic = 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
 			&& 1 === preg_match( '#(?:^|/)wp-admin/admin\\-ajax\\.php$#', $mad4b_mcp_mu_path )
 			&& isset( $_POST['action'] ) && is_string( $_POST['action'] )
-			&& 'mad4b_connection_endpoint_diagnostic' === $_POST['action']; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- routing only.
+			&& 'mad4b_connection_endpoint_diagnostic' === $_POST['action']
+			&& $mad4b_mcp_mu_status['diagnostic_mu_proof_valid']; // routing proof only; worker still owns auth.
 		if ( $mad4b_mcp_mu_diagnostic ) $mad4b_mcp_mu_request_requires_mcp = true;
 
 		$mad4b_mcp_mu_route = isset( $mad4b_mcp_mu_parsed['rest_route'] ) && is_string( $mad4b_mcp_mu_parsed['rest_route'] )
