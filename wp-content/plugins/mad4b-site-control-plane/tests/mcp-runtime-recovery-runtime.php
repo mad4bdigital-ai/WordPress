@@ -1,5 +1,5 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: ' . count( $cases ) . '/' . count( $cases ) . ' PASS' . PHP_EOL; exit;
@@ -52,7 +52,7 @@ class MAD4B_SCP_Site_Profile {
 	static function managed_runtime_enabled() { return true; }
 }
 class MAD4B_SCP_MCP_Request_Scope { static function current_request_is_protocol_hotpath() { return 'protocol' === $GLOBALS['case']; } static function current_request_is_endpoint_diagnostic_job() { return 'diagnostic' === $GLOBALS['case']; } }
-class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => 'integrity' !== $GLOBALS['case'] ); } }
+class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => 'integrity' !== $GLOBALS['case'] ); } static function mcp_adapter_plugin_identity( $refresh=false ) { return array( 'plugin_file' => 'renamed-mcp/mcp-adapter.php', 'ambiguous' => false, 'candidate_count' => 1 ); } }
 class MAD4B_SCP_Endpoint_Diagnostic { static function build_fingerprint() { return 'current-build'; } }
 class MAD4B_SCP_Runtime_Maintenance_Lease {
 	static function acquire( $owner ) { $GLOBALS['lease_acquired']=true; return 'lease_busy' === $GLOBALS['case'] ? new WP_Error( 'lease_busy' ) : 'fenced-token'; }
@@ -126,11 +126,12 @@ if ( 'transaction_contention' === $case ) {
 }
 if ( 'stale_managed' === $case ) file_put_contents( $destination, '<?php // mad4b.mcp-adapter-mu-bootstrap.v4' );
 if ( 'unmanaged' === $case ) file_put_contents( $destination, '<?php // foreign owner' );
-if ( 'update_schedule' === $case ) {
+if ( in_array( $case, array( 'update_schedule', 'renamed_update_schedule' ), true ) ) {
 	MAD4B_SCP_MCP_Runtime_Recovery::after_upgrade( null, array( 'type'=>'plugin', 'plugins'=>array( 'foreign/foreign.php' ) ) );
 	check_recovery( empty( $GLOBALS['scheduled'] ), 'foreign update scheduled recovery' );
-	MAD4B_SCP_MCP_Runtime_Recovery::after_upgrade( null, array( 'type'=>'plugin', 'plugins'=>array( 'mcp-adapter/mcp-adapter.php' ) ) );
-	check_recovery( 1===count( $GLOBALS['scheduled'] ), 'exact adapter update did not schedule new-request recovery' );
+	$updated_adapter = 'renamed_update_schedule' === $case ? 'renamed-mcp/mcp-adapter.php' : 'renamed-mcp/mcp-adapter.php';
+	MAD4B_SCP_MCP_Runtime_Recovery::after_upgrade( null, array( 'type'=>'plugin', 'plugins'=>array( $updated_adapter ) ) );
+	check_recovery( 1===count( $GLOBALS['scheduled'] ), 'dynamic adapter update did not schedule new-request recovery' );
 	MAD4B_SCP_MCP_Runtime_Recovery::schedule(); check_recovery( 1===count( $GLOBALS['scheduled'] ), 'schedule duplicated' );
 } elseif ( 'profile_schedule' === $case ) {
 	MAD4B_SCP_MCP_Runtime_Recovery::profile_saved(); check_recovery( 1===count( $GLOBALS['scheduled'] ), 'staging profile did not schedule' );
