@@ -107,18 +107,24 @@ final class MAD4B_SCP_MCP_Adapter_Compatibility {
 	public static function wire_data( $wire ) {
 		try {
 			if ( is_array( $wire ) ) return $wire;
-			if ( $wire instanceof stdClass ) return json_decode( wp_json_encode( $wire ), true );
+			// Convert only the top-level record/object to an associative array.
+			// Nested stdClass values (notably empty JSON Schema objects such as
+			// properties:{}) must remain objects or their wire shape changes to [].
+			if ( $wire instanceof stdClass ) return get_object_vars( $wire );
 			if ( is_object( $wire ) && method_exists( $wire, 'toArray' ) ) {
 				$data = $wire->toArray();
-				return is_array( $data ) ? $data : json_decode( wp_json_encode( $data ), true );
+				if ( is_array( $data ) ) return $data;
+				if ( $data instanceof stdClass ) return get_object_vars( $data );
 			}
 			if ( is_object( $wire ) && method_exists( $wire, 'jsonSerialize' ) ) {
 				$data = $wire->jsonSerialize();
-				return is_array( $data ) ? $data : json_decode( wp_json_encode( $data ), true );
+				if ( is_array( $data ) ) return $data;
+				if ( $data instanceof stdClass ) return get_object_vars( $data );
 			}
 			if ( $wire instanceof JsonSerializable ) {
 				$data = $wire->jsonSerialize();
-				return is_array( $data ) ? $data : json_decode( wp_json_encode( $data ), true );
+				if ( is_array( $data ) ) return $data;
+				if ( $data instanceof stdClass ) return get_object_vars( $data );
 			}
 		} catch ( Throwable $error ) {
 			return new WP_Error( 'mad4b_mcp_wire_serialization_failed', 'MCP wire representation could not be serialized.' );
