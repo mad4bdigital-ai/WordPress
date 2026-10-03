@@ -49,6 +49,7 @@ $check( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ), 'OAuth resource bridg
 // aliases when the journal is malformed or pending.
 $tx_option = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_OPTION;
 $tx_original = get_option( $tx_option, null );
+$tx_original_user_id = get_current_user_id();
 foreach ( array(
 	'malformed' => 'corrupt-scalar',
 	'pending' => array(
@@ -72,7 +73,10 @@ foreach ( array(
 	$alias_request = new WP_REST_Request( 'GET', '/mad4b/v1/ability-catalog/capabilities' );
 	$alias_denied = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, rest_get_server(), $alias_request );
 	$check( $alias_denied instanceof WP_REST_Response && 503 === (int) $alias_denied->get_status(), $tx_case . ' transaction did not quarantine protected REST alias.' );
+	wp_set_current_user( $tx_original_user_id );
 }
+wp_set_current_user( $tx_original_user_id );
+$check( current_user_can( 'manage_options' ), 'Transaction quarantine proof leaked anonymous identity into later readiness checks.' );
 if ( null === $tx_original ) delete_option( $tx_option ); else update_option( $tx_option, $tx_original, false );
 if ( function_exists( 'wp_cache_delete' ) ) { wp_cache_delete( $tx_option, 'options' ); wp_cache_delete( 'notoptions', 'options' ); }
 
