@@ -581,6 +581,7 @@ jobs:
               '.github/workflows/mad4b-governed-execution-fence.yml',
               '.github/workflows/mad4b-approval-decision-contract.yml',
               '.github/workflows/mad4b-oauth-resource-bridge.yml',
+              '.github/workflows/mad4b-runtime-release-set.yml',
           ]
           critical_workflow_guard_jobs = {
               '.github/workflows/mad4b-site-control-plane.yml': [
@@ -611,6 +612,9 @@ jobs:
               ],
               '.github/workflows/mad4b-oauth-resource-bridge.yml': [
                   'OAuth bridge runtime (latest)',
+              ],
+              '.github/workflows/mad4b-runtime-release-set.yml': [
+                  'Runtime release-set contract',
               ],
           }
           if set(critical_workflow_guard_jobs) != set(critical_trigger_workflows):
