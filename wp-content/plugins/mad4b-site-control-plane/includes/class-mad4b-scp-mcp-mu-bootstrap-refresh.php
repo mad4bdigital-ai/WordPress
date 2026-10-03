@@ -19,7 +19,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	const DESTINATION = '000-mad4b-mcp-adapter-bootstrap.php';
 	const TRANSACTION_OPTION = 'mad4b_scp_mcp_mu_refresh_transaction_v1';
 	const TRANSACTION_CONTRACT = 'mad4b.mcp-mu-filesystem-transaction.v1';
-	const TRANSACTION_STALE_AFTER = 120;
+	// Never reclaim a journal generation before the shared maintenance hard fence can expire.
+	const TRANSACTION_STALE_AFTER = 1200;
 
 	private static $status = array();
 
@@ -62,6 +63,48 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			wp_cache_delete( 'notoptions', 'options' );
 		}
 		return get_option( self::TRANSACTION_OPTION, array() );
+	}
+
+	private static function compare_and_swap_transaction_record( array $expected, $replacement = null ) {
+		self::read_transaction_option(); // evict persistent caches before the DB CAS.
+		global $wpdb;
+		$database_cas = is_object( $wpdb )
+			&& isset( $wpdb->options )
+			&& method_exists( $wpdb, 'prepare' )
+			&& method_exists( $wpdb, 'query' )
+			&& function_exists( 'maybe_serialize' );
+		if ( $database_cas ) {
+			if ( null === $replacement ) {
+				$sql = $wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+					self::TRANSACTION_OPTION,
+					maybe_serialize( $expected )
+				);
+			} else {
+				$sql = $wpdb->prepare(
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+					maybe_serialize( $replacement ),
+					self::TRANSACTION_OPTION,
+					maybe_serialize( $expected )
+				);
+			}
+			$changed = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+			if ( 1 !== (int) $changed ) return false;
+		} else {
+			$current = self::read_transaction_option();
+			if ( serialize( $current ) !== serialize( $expected ) ) return false;
+			if ( null === $replacement ) {
+				if ( false === delete_option( self::TRANSACTION_OPTION ) ) return false;
+			} elseif ( false === update_option( self::TRANSACTION_OPTION, $replacement, false ) ) return false;
+		}
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		$readback = get_option( self::TRANSACTION_OPTION, null );
+		return null === $replacement
+			? null === $readback
+			: serialize( $readback ) === serialize( $replacement );
 	}
 
 	private static function transaction_record_for_owner( $transaction_id ) {
@@ -112,43 +155,30 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$record = self::transaction_record_for_owner( $transaction_id );
 		if ( is_wp_error( $record ) ) return $record;
 		if ( 'prepared' !== ( $record['state'] ?? '' ) ) return new WP_Error( 'mu_bootstrap_transaction_state_invalid', 'MU filesystem transaction is not in the prepared state.' );
-		$record['state'] = 'replaced_pending_audit';
-		$record['replaced_at'] = time();
-		update_option( self::TRANSACTION_OPTION, $record, false );
-		$readback = self::read_transaction_option();
-		return is_array( $readback )
-			&& isset( $readback['transaction_id'], $readback['state'] )
-			&& hash_equals( (string) $record['transaction_id'], (string) $readback['transaction_id'] )
-			&& 'replaced_pending_audit' === $readback['state']
+		$replacement = $record;
+		$replacement['state'] = 'replaced_pending_audit';
+		$replacement['replaced_at'] = time();
+		return self::compare_and_swap_transaction_record( $record, $replacement )
 			? true
-			: new WP_Error( 'mu_bootstrap_transaction_state_persist_failed', 'MU filesystem transaction replacement state could not be persisted.' );
+			: new WP_Error( 'mu_bootstrap_transaction_state_persist_failed', 'MU filesystem transaction ownership changed before replacement state could be committed.' );
 	}
 
 	public static function block_transaction( $blocker, $transaction_id ) {
 		$record = self::transaction_record_for_owner( $transaction_id );
 		if ( is_wp_error( $record ) ) return $record;
-		$record['state'] = 'blocked';
-		$record['blocker'] = sanitize_key( (string) $blocker );
-		$record['blocked_at'] = time();
-		update_option( self::TRANSACTION_OPTION, $record, false );
-		$readback = self::read_transaction_option();
-		return is_array( $readback )
-			&& isset( $readback['transaction_id'], $readback['state'] )
-			&& hash_equals( (string) $record['transaction_id'], (string) $readback['transaction_id'] )
-			&& 'blocked' === $readback['state']
+		$replacement = $record;
+		$replacement['state'] = 'blocked';
+		$replacement['blocker'] = sanitize_key( (string) $blocker );
+		$replacement['blocked_at'] = time();
+		return self::compare_and_swap_transaction_record( $record, $replacement )
 			? true
-			: new WP_Error( 'mu_bootstrap_transaction_block_persist_failed', 'MU filesystem transaction blocker could not be persisted.' );
+			: new WP_Error( 'mu_bootstrap_transaction_block_persist_failed', 'MU filesystem transaction ownership changed before blocker state could be committed.' );
 	}
 
 	public static function complete_transaction( $transaction_id ) {
 		$record = self::transaction_record_for_owner( $transaction_id );
 		if ( is_wp_error( $record ) ) return false;
-		delete_option( self::TRANSACTION_OPTION );
-		if ( function_exists( 'wp_cache_delete' ) ) {
-			wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
-			wp_cache_delete( 'notoptions', 'options' );
-		}
-		return false === get_option( self::TRANSACTION_OPTION, false );
+		return self::compare_and_swap_transaction_record( $record, null );
 	}
 
 	private static function transaction_is_stale( array $record ) {
@@ -303,6 +333,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
+		$owner_before_replace = self::transaction_record_for_owner( $transaction_id );
+		if ( is_wp_error( $owner_before_replace ) || 'prepared' !== ( $owner_before_replace['state'] ?? '' ) ) {
+			@unlink( $temp );
+			$status['blocker'] = is_wp_error( $owner_before_replace ) ? $owner_before_replace->get_error_code() : 'mu_bootstrap_transaction_state_invalid';
+			self::$status = $status;
+			return $status;
+		}
 		if ( ! @rename( $temp, $destination ) ) {
 			@unlink( $temp );
 			$current_hash = is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
@@ -317,9 +354,12 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			return $status;
 		}
 		clearstatcache( true, $destination );
+		$status['opcache_invalidation'] = self::invalidate_managed_opcode( $destination );
+		$status['runtime_restart_required'] = ! $status['opcache_invalidation']['verified'];
 		$after_hash = is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
 		if ( ! is_string( $after_hash ) || ! hash_equals( $status['source_sha256'], $after_hash ) ) {
-			$restored = self::restore_bytes( $destination, $before );
+			$rollback_owner = self::transaction_record_for_owner( $transaction_id );
+			$restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
 			if ( $restored ) self::complete_transaction( $transaction_id ); else self::block_transaction( 'mu_bootstrap_refresh_post_replace_rollback_failed', $transaction_id );
 			$status['blocker'] = $restored ? 'mu_bootstrap_refresh_post_replace_integrity_failed' : 'mu_bootstrap_refresh_post_replace_rollback_failed';
 			self::$status = $status;
@@ -347,7 +387,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'ok'
 		);
 		if ( is_wp_error( $event ) ) {
-			$restored = self::restore_bytes( $destination, $before );
+			$rollback_owner = self::transaction_record_for_owner( $transaction_id );
+			$restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
 			if ( $restored ) self::complete_transaction( $transaction_id ); else self::block_transaction( 'audit_failed_mu_refresh_rollback_failed', $transaction_id );
 			$status['blocker'] = $restored ? 'audit_failed_mu_refresh_rolled_back' : 'audit_failed_mu_refresh_rollback_failed';
 			self::$status = $status;
@@ -372,12 +413,25 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		return ! empty( self::$status ) ? self::$status : self::base_status();
 	}
 
+	private static function invalidate_managed_opcode( $path ) {
+		$result = array( 'available' => false, 'verified' => false );
+		if ( function_exists( 'wp_opcache_invalidate' ) ) {
+			$result['available'] = true;
+			$result['verified'] = false !== wp_opcache_invalidate( $path, true );
+		} elseif ( function_exists( 'opcache_invalidate' ) ) {
+			$result['available'] = true;
+			$result['verified'] = false !== @opcache_invalidate( $path, true );
+		}
+		return $result;
+	}
+
 	private static function restore_bytes( $destination, $bytes ) {
 		$temp = $destination . '.rollback-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 		$written = @file_put_contents( $temp, $bytes, LOCK_EX );
 		if ( false === $written ) return false;
 		if ( ! @rename( $temp, $destination ) ) { @unlink( $temp ); return false; }
 		clearstatcache( true, $destination );
+		self::invalidate_managed_opcode( $destination );
 		$expected = hash( 'sha256', $bytes );
 		$actual = is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
 		return is_string( $actual ) && hash_equals( $expected, $actual );
