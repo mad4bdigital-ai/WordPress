@@ -147,11 +147,15 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 
 	private static function current_options_logical_digest() {
 		if ( ! class_exists( 'MAD4B_SCP_Catalog_Object_Store' ) ) return new WP_Error( 'mad4b_catalog_options_backend_unavailable', 'Options catalog backend is unavailable.' );
+		wp_cache_delete( MAD4B_SCP_Catalog_Object_Store::DIRECTORY, 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
 		$directory = get_option( MAD4B_SCP_Catalog_Object_Store::DIRECTORY, array() );
 		if ( ! is_array( $directory ) ) return new WP_Error( 'mad4b_catalog_options_directory_invalid', 'Options catalog directory is invalid.' );
 		$entries = array();
 		foreach ( $directory as $key => $entry ) {
 			if ( 0 === strpos( (string)$key, 'retired:' ) || ! is_array( $entry ) || empty( $entry['option'] ) || (int)$entry['expires'] <= time() ) continue;
+			wp_cache_delete( (string)$entry['option'], 'options' );
 			$value = get_option( (string)$entry['option'], false );
 			if ( false === $value ) return new WP_Error( 'mad4b_catalog_options_payload_missing', 'Options catalog payload is missing during backend transition.' );
 			$entries[ (string)$key ] = array( 'value'=>$value, 'expires'=>(int)$entry['expires'] );
