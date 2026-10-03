@@ -87,7 +87,14 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 
 		$mixed = ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] );
 		$preventive = $preventive && class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active();
-		if ( ! empty( $status['runtime_from_official_plugin'] ) || ( $preventive && empty( $status['runtime_class_loaded'] ) ) ) {
+		// Explicit governed recovery is source-agnostic: a competing vendor may
+		// already own McpAdapter itself (Rank Math, Hostinger, or another bundled
+		// package). PHP cannot replace declared classes in this request, but the
+		// certified MU bootstrap can pin the official class set on the next request.
+		// The recovery coordinator has already proven exact non-production
+		// enrollment, official Adapter disk integrity, audit readiness and a
+		// maintenance lease, so do not restrict repair to one reviewed vendor family.
+		if ( ! empty( $status['runtime_from_official_plugin'] ) || $preventive ) {
 			if ( $mixed || $preventive ) {
 				// PHP classes cannot be safely replaced after declaration. Keep the
 				// current request fail-closed, but arm the governed MU bootstrap so the
