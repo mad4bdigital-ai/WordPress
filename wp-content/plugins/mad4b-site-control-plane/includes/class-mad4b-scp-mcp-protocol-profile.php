@@ -132,8 +132,8 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 				'authorizing' => false,
 			);
 		}
-		$runtime_version = class_exists( 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge' )
-			? (string) MAD4B_SCP_MCP_Adapter_Metadata_Bridge::VERSION
+		$runtime_version = class_exists( 'MAD4B_SCP_Provider_Contracts' )
+			? (string) MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' )
 			: '';
 		$version_match = '' !== $runtime_version && hash_equals( self::CERTIFIED_ADAPTER_VERSION, $runtime_version );
 		$successor = isset( $catalog['successor_certification'] ) && is_array( $catalog['successor_certification'] )
