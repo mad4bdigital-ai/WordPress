@@ -38,7 +38,27 @@ try {
   $input['production_write_confirmed']=true;$input['production_write_confirmation']=MAD4B_SCP_Site_Profile::PRODUCTION_WRITE_CONFIRMATION;
  }
  $updated=MAD4B_SCP_Site_Profile::save_current_site($input);$check(!is_wp_error($updated)&&2===MAD4B_SCP_Site_Profile::revision()&&$uuid===MAD4B_SCP_Site_Profile::site_uuid()&&MAD4B_SCP_Site_Profile::write_enabled(),'Write enrollment readback failed.');
- $record=get_option(MAD4B_SCP_Site_Profile::OPTION);$recovery=MAD4B_SCP_MCP_Runtime_Recovery::run();
+ $record=get_option(MAD4B_SCP_Site_Profile::OPTION);
+
+ // Real wp_options CAS proof: a writer holding the exact old serialized value
+ // cannot overwrite a newer committed generation, and a stale rollback cannot
+ // erase a newer winner.
+ $cas_write=new ReflectionMethod('MAD4B_SCP_Site_Profile','persist_record_compare_and_swap');$cas_write->setAccessible(true);
+ $cas_restore=new ReflectionMethod('MAD4B_SCP_Site_Profile','restore_record_compare_and_swap');$cas_restore->setAccessible(true);
+ $competitor=$record;$competitor['revision']=3;$competitor['display_name']='concurrent-winner';$competitor['updated_at']=gmdate('c');
+ update_option(MAD4B_SCP_Site_Profile::OPTION,$competitor,false);MAD4B_SCP_Site_Profile::reset_cache();
+ $stale_candidate=$record;$stale_candidate['revision']=3;$stale_candidate['display_name']='stale-loser';$stale_candidate['updated_at']=gmdate('c');
+ $check(false===$cas_write->invoke(null,$record,$stale_candidate),'Database CAS accepted an obsolete Site Profile generation.');
+ $check($competitor===get_option(MAD4B_SCP_Site_Profile::OPTION),'Failed CAS changed the newer Site Profile winner.');
+
+ $pending=$record;$pending['revision']=3;$pending['mutation_state']='pending_audit';$pending['mutation_id']='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';$pending['updated_at']=gmdate('c');
+ $newer=$record;$newer['revision']=3;$newer['display_name']='newer-after-pending';$newer['updated_at']=gmdate('c');
+ update_option(MAD4B_SCP_Site_Profile::OPTION,$newer,false);MAD4B_SCP_Site_Profile::reset_cache();
+ $check(false===$cas_restore->invoke(null,$pending,$record),'Stale rollback accepted a generation it no longer owned.');
+ $check($newer===get_option(MAD4B_SCP_Site_Profile::OPTION),'Stale rollback erased a newer Site Profile commit.');
+ update_option(MAD4B_SCP_Site_Profile::OPTION,$record,false);MAD4B_SCP_Site_Profile::reset_cache();
+
+ $recovery=MAD4B_SCP_MCP_Runtime_Recovery::run();
  $check($eligible?!is_wp_error($recovery)&&is_file($destination)&&false===$recovery['connection_certified']:is_wp_error($recovery)&&!is_file($destination),'Recovery changed Production or failed non-production.');
  $check($record===get_option(MAD4B_SCP_Site_Profile::OPTION)&&$active===get_option('active_plugins')&&$before_authority===$authority_rows(),'Recovery/profile save changed agents, subjects, grants or plugins.');
  $check(!MAD4B_SCP_MCP_Runtime_Recovery::active()&&!MAD4B_SCP_Runtime_Maintenance_Lease::status()['active'],'Recovery leaked lease/privilege.');
