@@ -488,7 +488,7 @@ try {
 // touches the registered runtime tool.
 $corrupt_tool_description = static function ( $wire ) {
 	$copy = clone $wire;
-	if ( $copy instanceof \\WP\\McpSchema\\Record\\Tool ) {
+	if ( $copy instanceof \WP\McpSchema\Record\Tool ) {
 		$values = new ReflectionProperty( 'WP\\McpSchema\\Record', 'values' );
 		$values->setAccessible( true );
 		$data = $values->getValue( $copy );
@@ -497,7 +497,7 @@ $corrupt_tool_description = static function ( $wire ) {
 		$values->setValue( $copy, $data );
 		return $copy;
 	}
-	if ( $copy instanceof \\WP\\McpSchema\\Server\\Tools\\DTO\\Tool ) {
+	if ( $copy instanceof \WP\McpSchema\Server\Tools\DTO\Tool ) {
 		$description = new ReflectionProperty( 'WP\\McpSchema\\Server\\Tools\\DTO\\Tool', 'description' );
 		$description->setAccessible( true );
 		$description->setValue( $copy, "\xB1\x31" );
