@@ -138,6 +138,50 @@ final class MAD4B_SCP_Provider_Postcondition_Profile {
 		);
 	}
 
+	public static function assert_reconciliation_transition( array $observation, $kind ) {
+		$kind = sanitize_key( (string) $kind );
+		if ( self::OBSERVATION_CONTRACT !== ( isset( $observation['contract'] ) ? (string) $observation['contract'] : '' ) ) {
+			return new WP_Error( 'mad4b_postcondition_observation_contract_invalid', 'Provider postcondition observation contract is invalid.' );
+		}
+		$expected_sha = isset( $observation['observation_sha256'] ) ? strtolower( trim( (string) $observation['observation_sha256'] ) ) : '';
+		$material = $observation;
+		unset( $material['observation_sha256'] );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) || ! hash_equals( $expected_sha, self::digest( $material ) ) ) {
+			return new WP_Error( 'mad4b_postcondition_observation_integrity_invalid', 'Provider postcondition observation integrity check failed.' );
+		}
+		$ability = isset( $observation['ability_name'] ) ? (string) $observation['ability_name'] : '';
+		$current = self::profile( $ability );
+		if ( is_wp_error( $current ) ) return $current;
+		if ( empty( $current['reader_certified'] ) ) {
+			return new WP_Error( 'mad4b_postcondition_reader_uncertified', 'Mutation family has no currently certified postcondition reader.', array( 'ability_name' => $ability, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+		}
+		$observed_profile = isset( $observation['profile_sha256'] ) ? strtolower( trim( (string) $observation['profile_sha256'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $observed_profile ) || ! hash_equals( (string) $current['profile_sha256'], $observed_profile ) ) {
+			return new WP_Error( 'mad4b_postcondition_profile_stale', 'Postcondition observation was produced under a different reader/profile generation.', array( 'ability_name' => $ability, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+		}
+		$observed_at = isset( $observation['observed_at_epoch'] ) ? (int) $observation['observed_at_epoch'] : 0;
+		$now = time();
+		if ( $observed_at < 1 || $observed_at > $now + 5 || ( $now - $observed_at ) > (int) $current['freshness_seconds'] || empty( $observation['fresh'] ) ) {
+			return new WP_Error( 'mad4b_postcondition_observation_stale', 'Postcondition observation is outside the certified freshness window.', array( 'ability_name' => $ability, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+		}
+		$state = isset( $observation['postcondition_state'] ) ? sanitize_key( (string) $observation['postcondition_state'] ) : 'unknown';
+		$required = 'idempotency_completion' === $kind ? 'committed' : 'no_effect';
+		if ( ! hash_equals( $required, $state ) ) {
+			return new WP_Error( 'mad4b_postcondition_transition_unproven', 'Certified postcondition does not prove the requested durable transition.', array( 'kind' => $kind, 'required_state' => $required, 'observed_state' => $state, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+		}
+		$decision = self::recovery_decision( $observation );
+		if ( 'no_effect' === $required && empty( $decision['retry_reclaim_eligible'] ) ) {
+			return new WP_Error( 'mad4b_postcondition_retry_reclaim_ineligible', 'No-effect observation is not eligible for retry/reclaim.', array( 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+		}
+		if ( ! empty( $decision['blind_retry_allowed'] ) ) {
+			return new WP_Error( 'mad4b_postcondition_blind_retry_forbidden', 'Provider postcondition policy may not authorize blind mutation retry.' );
+		}
+		$decision['observation_sha256'] = $expected_sha;
+		$decision['profile_sha256'] = (string) $current['profile_sha256'];
+		$decision['ability_name'] = $ability;
+		return $decision;
+	}
+
 	private static function unknown_observation( array $profile, $cause, $observed_at_epoch ) {
 		$observation = self::decision_from_hashes( $profile, '', '', '', $observed_at_epoch );
 		$observation['cause'] = sanitize_key( (string) $cause );

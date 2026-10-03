@@ -3,6 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 if ( ! class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) ) require_once __DIR__ . '/class-mad4b-scp-database-transaction-guard.php';
 if ( ! class_exists( 'MAD4B_SCP_Database_Failure_Semantics' ) ) require_once __DIR__ . '/class-mad4b-scp-database-failure-semantics.php';
+if ( ! class_exists( 'MAD4B_SCP_Provider_Postcondition_Profile' ) ) require_once __DIR__ . '/class-mad4b-scp-provider-postcondition-profile.php';
 
 if ( ! class_exists( 'MAD4B_SCP_Durable_DB_Boundary_Exception' ) ) {
 	final class MAD4B_SCP_Durable_DB_Boundary_Exception extends RuntimeException {
@@ -551,7 +552,7 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 
-	public static function reclaim_idempotency( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $ttl_seconds = 86400 ) {
+	public static function reclaim_idempotency( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $ttl_seconds = 86400, array $postcondition_observation = array() ) {
 		$restore_epoch = self::restore_epoch_preflight( 'reclaim_idempotency' );
 		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
@@ -601,6 +602,7 @@ final class MAD4B_SCP_Durable_Execution {
 					'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
 					'expires_at' => isset( $row['expires_at'] ) ? (string) $row['expires_at'] : '',
 					'reconciliation_ref' => $reconciliation_ref,
+					'postcondition_observation' => $postcondition_observation,
 				)
 			);
 			if ( is_wp_error( $reconciliation ) ) {
@@ -711,7 +713,7 @@ final class MAD4B_SCP_Durable_Execution {
 		}
 	}
 
-	public static function reclaim_lease( $work_id, $worker_id, $expected_revision, $reconciliation_ref, $ttl_seconds = 120 ) {
+	public static function reclaim_lease( $work_id, $worker_id, $expected_revision, $reconciliation_ref, $ttl_seconds = 120, array $postcondition_observation = array() ) {
 		$restore_epoch = self::restore_epoch_preflight( 'reclaim_lease' );
 		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
@@ -756,6 +758,7 @@ final class MAD4B_SCP_Durable_Execution {
 					'requested_worker_id' => $worker_id,
 					'requested_expected_revision' => absint( $expected_revision ),
 					'reconciliation_ref' => $reconciliation_ref,
+					'postcondition_observation' => $postcondition_observation,
 				)
 			);
 			if ( is_wp_error( $reconciliation ) ) {
@@ -1131,13 +1134,25 @@ final class MAD4B_SCP_Durable_Execution {
 		$kind = sanitize_key( (string) $kind );
 		$ref = isset( $context['reconciliation_ref'] ) ? trim( (string) $context['reconciliation_ref'] ) : '';
 		if ( '' === $kind || '' === $ref ) return new WP_Error( 'mad4b_reconciliation_evidence_required', 'Durable reclaim requires reconciliation evidence.' );
+		$observation = isset( $context['postcondition_observation'] ) && is_array( $context['postcondition_observation'] )
+			? $context['postcondition_observation']
+			: ( isset( $context['result']['postcondition_observation'] ) && is_array( $context['result']['postcondition_observation'] ) ? $context['result']['postcondition_observation'] : array() );
+		if ( empty( $observation ) ) return new WP_Error(
+			'mad4b_postcondition_profile_required',
+			'Durable retry/reclaim requires a certified provider postcondition observation for the mutation family.',
+			array( 'kind' => $kind, 'reconciliation_ref' => substr( $ref, 0, 191 ), 'reconciliation_required' => true, 'blind_retry_allowed' => false )
+		);
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Postcondition_Profile' ) ) return new WP_Error( 'mad4b_postcondition_profile_runtime_unavailable', 'Provider Postcondition Profile runtime is unavailable.' );
+		$postcondition = MAD4B_SCP_Provider_Postcondition_Profile::assert_reconciliation_transition( $observation, $kind );
+		if ( is_wp_error( $postcondition ) ) return $postcondition;
+		$context['postcondition_recovery'] = $postcondition;
 		$verified = apply_filters( 'mad4b_scp_durable_reconciliation_verified', false, $kind, $context );
 		if ( true !== $verified ) return new WP_Error(
 			'mad4b_reconciliation_unverified',
-			'Durable reclaim is blocked until provider/state reconciliation is independently verified.',
-			array( 'kind' => $kind, 'reconciliation_ref' => substr( $ref, 0, 191 ) )
+			'Durable transition is blocked until the certified postcondition is independently reconciled.',
+			array( 'kind' => $kind, 'reconciliation_ref' => substr( $ref, 0, 191 ), 'profile_sha256' => isset( $postcondition['profile_sha256'] ) ? (string) $postcondition['profile_sha256'] : '', 'reconciliation_required' => true, 'blind_retry_allowed' => false )
 		);
-		return true;
+		return $postcondition;
 	}
 
 	private static function validate_lease_identity( &$work_id, &$aggregate_type, &$aggregate_id, &$worker_id, $expected_revision ) {
