@@ -115,6 +115,22 @@ EXPECTED_FIELDS = {
         "storage_scope_sha256", "generation_id", "directory_sha256", "fencing_token",
         "previous_generation_id", "published_at", "expires_at", "updated_at",
     ),
+    "network_operations": (
+        "network_operation_id", "origin_site_uuid", "origin_blog_id", "authority_scope_sha256",
+        "plan_sha256", "preparation_sha256", "idempotency_key", "state", "paused", "revision",
+        "latest_event_sha256", "created_at", "updated_at",
+    ),
+    "network_operation_targets": (
+        "id", "network_operation_id", "target_blog_id", "target_site_uuid", "origin_sha256",
+        "authority_scope_sha256", "catalog_sha256", "plan_sha256", "preparation_sha256",
+        "approval_ticket_id", "context_sha256", "credential_binding_sha256", "target_binding_sha256",
+        "idempotency_key", "state", "claim_epoch", "worker_id", "evidence_ref", "receipt_sha256",
+        "last_error_code", "created_at", "updated_at",
+    ),
+    "network_operation_events": (
+        "id", "network_operation_id", "sequence", "target_blog_id", "event_type", "state",
+        "evidence_ref", "safe_metadata_json", "previous_event_sha256", "event_sha256", "created_at",
+    ),
 }
 
 EXPECTED_KEYS = {
@@ -178,6 +194,16 @@ EXPECTED_KEYS = {
     ),
     "catalog_heads": (
         "PRIMARY KEY", "KEY generation_id", "KEY expires_at",
+    ),
+    "network_operations": (
+        "PRIMARY KEY", "UNIQUE KEY origin_idempotency", "KEY state_updated",
+    ),
+    "network_operation_targets": (
+        "PRIMARY KEY", "UNIQUE KEY operation_target", "UNIQUE KEY target_idempotency",
+        "KEY target_state", "KEY binding_sha256",
+    ),
+    "network_operation_events": (
+        "PRIMARY KEY", "UNIQUE KEY operation_sequence", "UNIQUE KEY event_sha256", "KEY target_event",
     ),
 }
 
@@ -270,6 +296,9 @@ def main():
         "catalog_objects": ("object_sha256", "payload_sha256", "payload_bytes", "expires_at", "retain_until"),
         "catalog_generations": ("generation_id", "storage_scope_sha256", "object_key_sha256", "object_sha256", "object_expires_at"),
         "catalog_heads": ("storage_scope_sha256", "generation_id", "directory_sha256", "fencing_token", "expires_at"),
+        "network_operations": ("network_operation_id", "origin_site_uuid", "authority_scope_sha256", "plan_sha256", "preparation_sha256", "idempotency_key", "state", "revision", "latest_event_sha256"),
+        "network_operation_targets": ("network_operation_id", "target_blog_id", "target_site_uuid", "authority_scope_sha256", "target_binding_sha256", "idempotency_key", "state", "claim_epoch"),
+        "network_operation_events": ("network_operation_id", "sequence", "target_blog_id", "event_type", "state", "previous_event_sha256", "event_sha256"),
     }
     for table, required in durable_required.items():
         fields, _ = visible_dbdelta_tokens(table_body(table))
@@ -292,7 +321,7 @@ def main():
     # fail-closed persistence. dbDelta visibility alone is not enough.
     migration_markers = (
         "const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';",
-        "const MIGRATION_ID = '20261003-capability-fabric-catalog-backend-v13';",
+        "const MIGRATION_ID = '20261003-feature007-capability-fabric-runtime-v13';",
         "const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v13';",
         "'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12, 13 )",
         "'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes'",

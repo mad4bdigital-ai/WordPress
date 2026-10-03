@@ -7,7 +7,7 @@ final class MAD4B_SCP_Schema {
 	const OPTION  = 'mad4b_scp_schema_version';
 	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v13';
 	const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';
-	const MIGRATION_ID = '20261003-capability-fabric-catalog-backend-v13';
+	const MIGRATION_ID = '20261003-feature007-capability-fabric-runtime-v13';
 	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v13';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
@@ -29,6 +29,7 @@ final class MAD4B_SCP_Schema {
 			'operation_events' => $wpdb->prefix . 'mad4b_dynamic_operation_events', 'operation_heads' => $wpdb->prefix . 'mad4b_dynamic_operation_heads',
 			'recovery_cases' => $wpdb->prefix . 'mad4b_dynamic_recovery_cases', 'metric_buckets' => $wpdb->prefix . 'mad4b_dynamic_metric_buckets',
 			'catalog_objects' => $wpdb->prefix . 'mad4b_catalog_objects', 'catalog_generations' => $wpdb->prefix . 'mad4b_catalog_generations', 'catalog_heads' => $wpdb->prefix . 'mad4b_catalog_heads',
+			'network_operations' => $wpdb->prefix . 'mad4b_network_operations', 'network_operation_targets' => $wpdb->prefix . 'mad4b_network_operation_targets', 'network_operation_events' => $wpdb->prefix . 'mad4b_network_operation_events',
 		);
 	}
 
@@ -44,6 +45,7 @@ final class MAD4B_SCP_Schema {
 			'content_jobs', 'content_job_events', 'work_leases', 'idempotency',
 			'outbox', 'inbox', 'operation_events', 'operation_heads', 'recovery_cases',
 			'catalog_objects', 'catalog_generations', 'catalog_heads',
+			'network_operations', 'network_operation_targets', 'network_operation_events',
 		);
 	}
 
@@ -126,7 +128,7 @@ final class MAD4B_SCP_Schema {
 			'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces',
 			'destructive' => false,
 			'expected_locks_downtime' => 'bounded_metadata_ddl_no_maintenance_mode_expected',
-			'data_volume_assumption' => 'v13_adds_empty_catalog_backend_tables_existing_governance_and_catalog_options_are_preserved',
+			'data_volume_assumption' => 'v13_adds_empty_capability_fabric_catalog_and_network_journal_tables_existing_governance_state_is_preserved',
 			'preflight_checks' => array(
 				'supported_prerequisite_schema_version',
 				'wordpress_database_handle_available',
@@ -141,7 +143,7 @@ final class MAD4B_SCP_Schema {
 				'integrity_token_written_after_verification_only',
 			),
 			'partial_failure_recovery' => 'target_version_and_integrity_token_not_advanced_until_deep_verification_passes_retry_is_idempotent',
-			'mixed_version_compatibility' => 'additive_v13_schema_preserves_v12_runtime_and_options_catalog_authority_until_explicit_parity_cutover',
+			'mixed_version_compatibility' => 'additive_v13_schema_preserves_v12 runtime; catalog remains options-authoritative until parity cutover and network journal remains inert until explicitly invoked',
 			'authority_widening' => false,
 		);
 	}
@@ -790,6 +792,73 @@ final class MAD4B_SCP_Schema {
 			KEY expires_at (expires_at)
 		) $charset;";
 
+		$sql[] = "CREATE TABLE {$t['network_operations']} (
+			network_operation_id char(36) NOT NULL,
+			origin_site_uuid char(36) NOT NULL,
+			origin_blog_id bigint(20) unsigned NOT NULL,
+			authority_scope_sha256 char(64) NOT NULL,
+			plan_sha256 char(64) NOT NULL,
+			preparation_sha256 char(64) NOT NULL,
+			idempotency_key char(64) NOT NULL,
+			state varchar(32) NOT NULL DEFAULT 'pending',
+			paused tinyint(1) NOT NULL DEFAULT 0,
+			revision bigint(20) unsigned NOT NULL DEFAULT 0,
+			latest_event_sha256 char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (network_operation_id),
+			UNIQUE KEY origin_idempotency (origin_site_uuid,idempotency_key),
+			KEY state_updated (state,updated_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['network_operation_targets']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			network_operation_id char(36) NOT NULL,
+			target_blog_id bigint(20) unsigned NOT NULL,
+			target_site_uuid char(36) NOT NULL,
+			origin_sha256 char(64) NOT NULL,
+			authority_scope_sha256 char(64) NOT NULL,
+			catalog_sha256 char(64) NOT NULL,
+			plan_sha256 char(64) NOT NULL,
+			preparation_sha256 char(64) NOT NULL,
+			approval_ticket_id char(36) NOT NULL DEFAULT '',
+			context_sha256 char(64) NOT NULL,
+			credential_binding_sha256 char(64) NOT NULL,
+			target_binding_sha256 char(64) NOT NULL,
+			idempotency_key char(64) NOT NULL,
+			state varchar(32) NOT NULL DEFAULT 'pending',
+			claim_epoch bigint(20) unsigned NOT NULL DEFAULT 0,
+			worker_id varchar(191) NOT NULL DEFAULT '',
+			evidence_ref varchar(191) NOT NULL DEFAULT '',
+			receipt_sha256 char(64) NOT NULL DEFAULT '',
+			last_error_code varchar(96) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY operation_target (network_operation_id,target_blog_id),
+			UNIQUE KEY target_idempotency (target_site_uuid,idempotency_key),
+			KEY target_state (network_operation_id,state,updated_at),
+			KEY binding_sha256 (target_binding_sha256)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['network_operation_events']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			network_operation_id char(36) NOT NULL,
+			sequence bigint(20) unsigned NOT NULL,
+			target_blog_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			event_type varchar(64) NOT NULL,
+			state varchar(32) NOT NULL,
+			evidence_ref varchar(191) NOT NULL DEFAULT '',
+			safe_metadata_json longtext NOT NULL,
+			previous_event_sha256 char(64) NOT NULL,
+			event_sha256 char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY operation_sequence (network_operation_id,sequence),
+			UNIQUE KEY event_sha256 (event_sha256),
+			KEY target_event (network_operation_id,target_blog_id,id)
+		) $charset;";
+
 		$dbdelta_diagnostics = array();
 		foreach ( $sql as $statement ) {
 			$table_name = '';
@@ -947,6 +1016,9 @@ final class MAD4B_SCP_Schema {
 			'catalog_objects' => array( 'object_sha256', 'object_kind', 'wire_generation', 'payload_blob', 'payload_sha256', 'payload_bytes', 'expires_at', 'retain_until', 'created_at' ),
 			'catalog_generations' => array( 'id', 'generation_id', 'storage_scope_sha256', 'object_key_sha256', 'object_sha256', 'object_expires_at', 'created_at' ),
 			'catalog_heads' => array( 'storage_scope_sha256', 'generation_id', 'directory_sha256', 'fencing_token', 'previous_generation_id', 'published_at', 'expires_at', 'updated_at' ),
+			'network_operations' => array( 'network_operation_id', 'origin_site_uuid', 'origin_blog_id', 'authority_scope_sha256', 'plan_sha256', 'preparation_sha256', 'idempotency_key', 'state', 'paused', 'revision', 'latest_event_sha256', 'created_at', 'updated_at' ),
+			'network_operation_targets' => array( 'id', 'network_operation_id', 'target_blog_id', 'target_site_uuid', 'origin_sha256', 'authority_scope_sha256', 'catalog_sha256', 'plan_sha256', 'preparation_sha256', 'approval_ticket_id', 'context_sha256', 'credential_binding_sha256', 'target_binding_sha256', 'idempotency_key', 'state', 'claim_epoch', 'worker_id', 'evidence_ref', 'receipt_sha256', 'last_error_code', 'created_at', 'updated_at' ),
+			'network_operation_events' => array( 'id', 'network_operation_id', 'sequence', 'target_blog_id', 'event_type', 'state', 'evidence_ref', 'safe_metadata_json', 'previous_event_sha256', 'event_sha256', 'created_at' ),
 		);
 	}
 	private static function required_durable_indexes() {
@@ -967,6 +1039,9 @@ final class MAD4B_SCP_Schema {
 			'catalog_objects' => array( 'kind_expiry' => false, 'expires_at' => false, 'retain_until' => false ),
 			'catalog_generations' => array( 'generation_object_key' => true, 'scope_generation' => false, 'object_sha256' => false, 'generation_expiry' => false ),
 			'catalog_heads' => array( 'generation_id' => false, 'expires_at' => false ),
+			'network_operations' => array( 'origin_idempotency' => true, 'state_updated' => false ),
+			'network_operation_targets' => array( 'operation_target' => true, 'target_idempotency' => true, 'target_state' => false, 'binding_sha256' => false ),
+			'network_operation_events' => array( 'operation_sequence' => true, 'event_sha256' => true, 'target_event' => false ),
 		);
 	}
 
