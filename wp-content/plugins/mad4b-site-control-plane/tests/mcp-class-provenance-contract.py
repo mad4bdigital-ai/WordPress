@@ -38,6 +38,16 @@ for path in required:
         raise SystemExit(f"Runtime provenance mapping does not cover {path}")
 
 for marker in (
+    "active_mcp_adapter_root",
+    "runtime_root_relative",
+    "plugin_identity_unavailable",
+):
+    if marker not in runtime:
+        raise SystemExit(f"Runtime provenance dynamic-root contract missing: {marker}")
+if "trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter'" in runtime:
+    raise SystemExit("Runtime provenance must not hardcode the MCP plugin directory")
+
+for marker in (
     "MAD4B_SCP_MCP_Class_Provenance::BLOCKER",
     "runtime_class_provenance",
     "validator_reason",
