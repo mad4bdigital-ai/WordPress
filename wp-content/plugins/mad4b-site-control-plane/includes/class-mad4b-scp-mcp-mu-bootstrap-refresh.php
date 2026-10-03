@@ -61,7 +61,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
 			wp_cache_delete( 'notoptions', 'options' );
 		}
-		return self::read_transaction_option();
+		return get_option( self::TRANSACTION_OPTION, array() );
 	}
 
 	private static function transaction_record_for_owner( $transaction_id ) {
