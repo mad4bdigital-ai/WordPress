@@ -85,7 +85,20 @@ jobs:
           WP_PATH=/tmp/mad4b-wordpress
           rm -rf "$WP_PATH"
           mkdir -p "$WP_PATH"
-          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          download_ok=0
+          for attempt in 1 2 3 4 5; do
+            if php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force; then
+              download_ok=1
+              break
+            fi
+            echo "WordPress core download attempt ${attempt}/5 failed; retrying after bounded backoff." >&2
+            rm -rf "$WP_PATH"/*
+            sleep $(( attempt * 3 ))
+          done
+          if [ "$download_ok" -ne 1 ]; then
+            echo "WordPress core download failed after 5 attempts; OAuth isolation tests did not run." >&2
+            exit 1
+          fi
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-local-transport.test' --title='MAD4B Local Transport' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"

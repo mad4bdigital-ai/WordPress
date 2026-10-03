@@ -78,13 +78,16 @@ $claim = array(
 	'server_id' => 'mad4b-write',
 	'provider' => 'core',
 	'impact' => 'high',
+	'context_receipt_sha256' => str_repeat( 'b', 64 ),
+	'capability_descriptor_sha256' => str_repeat( 'c', 64 ),
+	'policy_decision_sha256' => str_repeat( 'd', 64 ),
 );
 $provider_result = array( 'contract' => 'mad4b.provider-canary-execution.v1' );
 
 $GLOBALS['mad4b_finalization_events'] = array();
 $result = MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $provider_result );
 mad4b_finalize_same( true, $result, 'successful canary finalization should succeed' );
-mad4b_finalize_same( array( 'ticket:used', 'canary:persist', 'authorization-audit:completed' ), $GLOBALS['mad4b_finalization_events'], 'authorization must consume approval, persist provider correlation, then persist terminal success evidence' );
+mad4b_finalize_same( array( 'ticket:used', 'canary:persist', 'authorization-audit:completed', 'authorization-audit:completed' ), $GLOBALS['mad4b_finalization_events'], 'authorization must consume approval, persist provider correlation, commit terminal evidence, then append the unified execution receipt' );
 
 $GLOBALS['mad4b_finalization_events'] = array();
 $GLOBALS['mad4b_canary_persist_error'] = true;
@@ -117,7 +120,7 @@ $no_approval['approval_required'] = false;
 $no_approval['approval_ticket_id'] = '';
 $result = MAD4B_SCP_Authorization::finalize_execution_claim( $no_approval, $provider_result );
 mad4b_finalize_same( true, $result, 'non-approved governed execution should persist terminal success evidence without ticket/canary correlation' );
-mad4b_finalize_same( array( 'authorization-audit:completed' ), $GLOBALS['mad4b_finalization_events'], 'no approval still requires durable terminal success evidence' );
+mad4b_finalize_same( array( 'authorization-audit:completed', 'authorization-audit:completed' ), $GLOBALS['mad4b_finalization_events'], 'no approval still requires durable terminal success evidence and the unified execution receipt' );
 
 $GLOBALS['mad4b_finalization_events'] = array();
 $GLOBALS['mad4b_terminal_audit_error'] = true;
