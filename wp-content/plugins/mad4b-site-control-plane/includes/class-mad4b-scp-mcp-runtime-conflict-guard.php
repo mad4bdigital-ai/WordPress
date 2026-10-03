@@ -516,6 +516,13 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'mu_bootstrap_runtime_state' => isset( $runtime['state'] ) ? sanitize_key( (string) $runtime['state'] ) : ( $present ? 'present_not_executed_this_request' : 'absent' ),
 			'mu_bootstrap_runtime_source' => isset( $runtime['runtime_source'] ) ? sanitize_text_field( (string) $runtime['runtime_source'] ) : '',
 			'mu_bootstrap_runtime_from_official_plugin' => ! empty( $runtime['runtime_from_official_plugin'] ),
+			'mu_bootstrap_diagnostic_mu_proof_valid' => ! empty( $runtime['diagnostic_mu_proof_valid'] ),
+			'mu_bootstrap_canonical_symbols_pinned' => ! empty( $runtime['canonical_symbols_pinned'] ),
+			'mu_bootstrap_critical_class_baseline_ready' => ! empty( $runtime['critical_class_baseline_ready'] ),
+			'mu_bootstrap_critical_class_set_pinned' => ! empty( $runtime['critical_class_set_pinned'] ),
+			'mu_bootstrap_critical_class_pin_count' => isset( $runtime['critical_class_pin_count'] ) ? max( 0, (int) $runtime['critical_class_pin_count'] ) : 0,
+			'mu_bootstrap_runtime_preclaimed' => ! empty( $runtime['runtime_preclaimed'] ),
+			'mu_bootstrap_preclaimed_symbol' => isset( $runtime['preclaimed_symbol'] ) ? sanitize_text_field( (string) $runtime['preclaimed_symbol'] ) : '',
 		);
 	}
 
