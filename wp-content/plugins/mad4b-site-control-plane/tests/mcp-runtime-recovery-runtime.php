@@ -1,8 +1,8 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
-	echo 'mad4b.mcp-runtime-recovery.v1: 17/17 PASS' . PHP_EOL; exit;
+	echo 'mad4b.mcp-runtime-recovery.v1: 18/18 PASS' . PHP_EOL; exit;
 }
 $case = $argv[1];
 $root = sys_get_temp_dir() . '/mad4b-recovery-' . getmypid();
@@ -22,7 +22,18 @@ function current_user_can( $c ) { return 'capability' !== $GLOBALS['case']; }
 function is_admin() { return true; }
 function wp_doing_cron() { return false; }
 function wp_verify_nonce( $v, $action ) { return 'nonce' !== $GLOBALS['case'] && 'valid' === $v; }
-function get_option( $k, $default = null ) { return $GLOBALS['options'][ $k ] ?? $default; }
+function get_option( $k, $default = null ) {
+	if ( isset( $GLOBALS['option_cache'] ) && array_key_exists( $k, $GLOBALS['option_cache'] ) ) return $GLOBALS['option_cache'][ $k ];
+	return $GLOBALS['options'][ $k ] ?? $default;
+}
+function wp_cache_delete( $k, $group = '' ) {
+	if ( 'options' === $group && isset( $GLOBALS['option_cache'] ) ) {
+		if ( 'notoptions' === $k ) unset( $GLOBALS['option_cache']['notoptions'] );
+		else unset( $GLOBALS['option_cache'][ $k ] );
+	}
+	$GLOBALS['cache_delete_calls'] = isset( $GLOBALS['cache_delete_calls'] ) ? $GLOBALS['cache_delete_calls'] + 1 : 1;
+	return true;
+}
 function add_option( $k, $v, $deprecated = '', $autoload = 'yes' ) { if ( array_key_exists( $k, $GLOBALS['options'] ) ) return false; $GLOBALS['options'][ $k ]=$v; return true; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['options'][ $k ]=$v; return true; }
 function delete_option( $k ) { unset( $GLOBALS['options'][ $k ] ); return true; }
@@ -62,6 +73,18 @@ require $source . '/includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';
 require $source . '/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';
 require $source . '/includes/class-mad4b-scp-mcp-runtime-recovery.php';
 $destination = WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php';
+if ( 'persistent_cache_stale' === $case ) {
+	$first = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', str_repeat( 'd', 64 ) );
+	check_recovery( is_string( $first ) && 32 === strlen( $first ), 'persistent-cache fixture failed to acquire transaction' );
+	$GLOBALS['option_cache'][ MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_OPTION ] = array();
+	$before_cache_deletes = isset( $GLOBALS['cache_delete_calls'] ) ? $GLOBALS['cache_delete_calls'] : 0;
+	$reconcile = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::reconcile_transaction( $destination );
+	check_recovery( is_wp_error( $reconcile ) && 'mu_bootstrap_transaction_in_progress' === $reconcile->get_error_code(), 'stale persistent cache hid authoritative transaction row' );
+	check_recovery( ( $GLOBALS['cache_delete_calls'] ?? 0 ) > $before_cache_deletes, 'transaction read did not invalidate persistent option cache' );
+	check_recovery( MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $first ), 'owner could not complete cache regression transaction' );
+	echo $case . ': PASS' . PHP_EOL;
+	exit;
+}
 if ( 'transaction_contention' === $case ) {
 	$first = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', str_repeat( 'a', 64 ) );
 	check_recovery( is_string( $first ) && 32 === strlen( $first ), 'first worker failed to acquire transaction' );
