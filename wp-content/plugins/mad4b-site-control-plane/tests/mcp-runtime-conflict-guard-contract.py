@@ -75,8 +75,12 @@ for forbidden in (
 for marker in (
     "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v6'",
     "MAD4B_SCP_Site_Profile::early_managed_runtime_binding()",
-    "in_array( 'mcp-adapter/mcp-adapter.php'",
-    "in_array( 'mad4b-site-control-plane/mad4b-site-control-plane.php'",
+    "'plugin_directory_discovery' => 'active_plugins_unique_main_file'",
+    "$mad4b_mcp_mu_find_active",
+    "'mcp-adapter.php'",
+    "'mad4b-site-control-plane.php'",
+    "'plugin_identity_ambiguous'",
+    "$mad4b_mcp_mu_control_plane_root . 'config/certified-providers.json'",
     "'WP\\\\MCP\\\\Autoloader'",
     "'WP\\\\MCP\\\\Core\\\\McpAdapter'",
     "'WP\\\\MCP\\\\Plugin'",
@@ -93,7 +97,6 @@ for marker in (
     "'critical_class_set_pinned'",
     "'critical_class_pin_count'",
     "'critical_class_pin_failed_symbol'",
-    "mad4b-site-control-plane/config/certified-providers.json",
     "$mad4b_mcp_mu_critical_classes = array(",
     "includes/Domain/Tools/RegisterAbilityAsMcpTool.php",
     "includes/Domain/Tools/McpToolValidator.php",
@@ -140,6 +143,10 @@ for marker in (
     'TRANSACTION_OPTION',
     'reconcile_transaction',
     'replaced_pending_audit',
+    'add_option( self::TRANSACTION_OPTION',
+    'mu_bootstrap_transaction_not_owner',
+    'mu_bootstrap_transaction_in_progress',
+    'TRANSACTION_STALE_AFTER',
     "'next_request_required' => true",
 ):
     require(refresh, marker, 'mu-refresh')
@@ -191,4 +198,8 @@ assert "diagnostic_mu_proof_valid" in mu_bootstrap
 assert "MAD4B_SCP_Site_Profile::diagnostic_mu_proof()" in mu_bootstrap
 assert "canonical_runtime_pinned_diagnostic_deferred" in mu_bootstrap
 assert "managed_mu_transaction_pending" in mu_bootstrap
+assert "MAD4B_SCP_MCP_CLI_REQUEST" in mu_bootstrap
+assert "cli_mcp_opt_in" in mu_bootstrap
+assert "active_plugins_unique_main_file" in mu_bootstrap
+assert "plugin_identity_ambiguous" in mu_bootstrap
 assert mu_bootstrap.index("Validate every executable pin") < mu_bootstrap.index("foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once")
