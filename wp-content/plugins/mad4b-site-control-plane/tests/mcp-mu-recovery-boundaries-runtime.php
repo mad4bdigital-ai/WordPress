@@ -1,6 +1,6 @@
 <?php
 /** Exercise the shipped MU loader before regular plugins, in fresh PHP processes. */
-$cases = array( 'implicit', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
+$cases = array( 'implicit', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof', 'transaction_pending', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) {
 		passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code );
@@ -28,6 +28,7 @@ function get_option( $key, $default = null ) { return $GLOBALS['options'][ $key 
 function boundary_remove( $p ) { if ( is_dir( $p ) && ! is_link( $p ) ) { foreach ( array_diff( scandir( $p ), array( '.', '..' ) ) as $f ) boundary_remove( $p . '/' . $f ); rmdir( $p ); } elseif ( file_exists( $p ) || is_link( $p ) ) unlink( $p ); }
 register_shutdown_function( function () use ( $root ) { boundary_remove( $root ); } );
 define( 'ABSPATH', $root . '/' );
+if ( ! defined( 'NONCE_SALT' ) ) define( 'NONCE_SALT', str_repeat( 's', 64 ) );
 define( 'WP_PLUGIN_DIR', $root . '/plugins' );
 putenv( 'WP_ENVIRONMENT_TYPE' );
 if ( 'explicit_staging' === $case ) define( 'WP_ENVIRONMENT_TYPE', 'staging' );
@@ -46,6 +47,7 @@ if ( 'reenrollment' === $case ) $profile['migration_requires_reenrollment'] = tr
 if ( 'production' === $case ) $profile['environment'] = 'production';
 if ( in_array( $case, array( 'local', 'development' ), true ) ) $profile['environment'] = $case;
 $options = array( 'mad4b_scp_site_profile_v2' => $profile, 'active_plugins' => array( 'mcp-adapter/mcp-adapter.php', 'mad4b-site-control-plane/mad4b-site-control-plane.php' ) );
+if ( 'transaction_pending' === $case ) $options['mad4b_scp_mcp_mu_refresh_transaction_v1'] = array( 'contract'=>'mad4b.mcp-mu-filesystem-transaction.v1', 'state'=>'replaced_pending_audit', 'target_sha256'=>str_repeat('a',64) );
 if ( 'adapter_inactive' === $case ) $options['active_plugins'] = array( 'mad4b-site-control-plane/mad4b-site-control-plane.php' );
 if ( 'control_plane_inactive' === $case ) $options['active_plugins'] = array( 'mcp-adapter/mcp-adapter.php' );
 // Network-only activation is deliberately not mistaken for per-site activation.
@@ -53,7 +55,7 @@ if ( 'network_only' === $case ) $options['active_plugins'] = array();
 $_SERVER['REQUEST_URI'] = '/wp-json/mcp/mad4b-chatgpt';
 $_SERVER['REQUEST_METHOD'] = 'POST';
 if ( 'frontend' === $case ) $_SERVER['REQUEST_URI'] = '/?page=mad4b-control-plane-connection';
-if ( in_array( $case, array( 'foreign_ajax', 'diagnostic' ), true ) ) { $_SERVER['REQUEST_URI'] = '/wp-admin/admin-ajax.php'; $_POST['action'] = 'diagnostic' === $case ? 'mad4b_connection_endpoint_diagnostic' : 'foreign_action'; }
+if ( in_array( $case, array( 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof' ), true ) ) { $_SERVER['REQUEST_URI'] = '/wp-admin/admin-ajax.php'; $_POST['action'] = in_array( $case, array( 'diagnostic', 'diagnostic_no_proof' ), true ) ? 'mad4b_connection_endpoint_diagnostic' : 'foreign_action'; if ( 'diagnostic' === $case ) $_POST['mu_proof'] = hash_hmac( 'sha256', "mad4b-mcp-diagnostic-mu-v1\0" . $profile['site_uuid'] . "\0" . $profile['revision'], NONCE_SALT ); }
 if ( 'plain_route' === $case ) $_SERVER['REQUEST_URI'] = '/index.php?rest_route=%2Fmcp%2Fmad4b-chatgpt';
 if ( 'subdirectory' === $case ) $_SERVER['REQUEST_URI'] = '/wordpress/wp-json/mcp/mad4b-chatgpt';
 if ( 'custom_rest_prefix' === $case ) $_SERVER['REQUEST_URI'] = '/wordpress/api/mcp/mad4b-chatgpt';
@@ -91,12 +93,12 @@ if ( 'tampered_validator' === $case ) file_put_contents( WP_PLUGIN_DIR . '/mcp-a
 if ( 'preclaimed' === $case ) eval( 'namespace WP\\MCP\\Domain\\Tools; class McpToolValidator {}' );
 require $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 $status = $GLOBALS['mad4b_scp_mcp_mu_bootstrap'];
-if ( in_array( $case, array( 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
+if ( in_array( $case, array( 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'transaction_pending', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 	boundary_check( ! $status['eligible'] && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'ineligible binding loaded a provider class' );
 	if ( in_array( $case, array( 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 		boundary_check( ! MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::oauth_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled(), 'malformed profile gained regular-plugin authority' );
 	}
-} elseif ( in_array( $case, array( 'frontend', 'foreign_ajax', 'diagnostic_get', 'diagnostic_array' ), true ) ) {
+} elseif ( in_array( $case, array( 'frontend', 'foreign_ajax', 'diagnostic_get', 'diagnostic_array', 'diagnostic_no_proof' ), true ) ) {
 	boundary_check( $status['request_scope_bypassed'] && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'foreign request loaded MCP' );
 } elseif ( in_array( $case, array( 'tampered_autoloader', 'tampered_validator', 'missing_manifest', 'missing_baseline' ), true ) ) {
 	boundary_check( 'critical_class_baseline_mismatch' === $status['state'] && empty( $GLOBALS['tampered_executed'] ) && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'corrupt code executed before integrity validation' );
