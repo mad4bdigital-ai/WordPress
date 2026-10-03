@@ -24,6 +24,7 @@ function wp_doing_cron() { return false; }
 function wp_verify_nonce( $v, $action ) { return 'nonce' !== $GLOBALS['case'] && 'valid' === $v; }
 function get_option( $k, $default = null ) { return $GLOBALS['options'][ $k ] ?? $default; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['options'][ $k ]=$v; return true; }
+function delete_option( $k ) { unset( $GLOBALS['options'][ $k ] ); return true; }
 function wp_mkdir_p( $v ) { return mkdir( $v, 0777, true ); }
 function plugin_basename( $v ) { return 'mad4b-site-control-plane/mad4b-site-control-plane.php'; }
 function wp_next_scheduled( $hook ) { return $GLOBALS['scheduled'][ $hook ] ?? false; }
@@ -73,12 +74,13 @@ if ( 'update_schedule' === $case ) {
 	$GLOBALS['case']='production'; MAD4B_SCP_MCP_Runtime_Recovery::profile_saved(); check_recovery( empty( $GLOBALS['scheduled'] ), 'Production transition did not cancel recovery' );
 } else {
 	$result=MAD4B_SCP_MCP_Runtime_Recovery::run( '', true );
-	if ( in_array( $case, array( 'authorized', 'stale_managed' ), true ) ) {
+	if ( 'authorized' === $case ) {
 		check_recovery( ! is_wp_error( $result ) && $result['next_request_required'] && ! $result['connection_certified'], 'recovery did not arm next request' );
 		check_recovery( is_file( $destination ) && hash_file( 'sha256', $destination )===hash_file( 'sha256', $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php' ), 'bootstrap readback mismatch' );
 		check_recovery( ! empty( $GLOBALS['audit_events'] ), 'recovery lacked audit evidence' );
 	} else {
 		check_recovery( is_wp_error( $result ), 'negative boundary accepted' );
+		if ( 'stale_managed' === $case ) check_recovery( '<?php // mad4b.mcp-adapter-mu-bootstrap.v4'===file_get_contents( $destination ), 'marker-only bootstrap was treated as historical MAD4B ownership' );
 		if ( 'unmanaged' === $case ) check_recovery( '<?php // foreign owner'===file_get_contents( $destination ), 'unmanaged bootstrap overwritten' );
 		else check_recovery( ! file_exists( $destination ), 'denied/rolled-back recovery left bootstrap bytes' );
 	}
