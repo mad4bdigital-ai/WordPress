@@ -296,8 +296,11 @@ jobs:
 
           if "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php';" not in main:
               raise SystemExit('Metadata bridge is not loaded by the Control Plane')
-          if 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();' not in main:
-              raise SystemExit('Metadata bridge is not bootstrapped')
+          if 'MAD4B_SCP_Plugin::bind_catalog_registration_wiring();' not in main:
+              raise SystemExit('Canonical catalog registration wiring is not invoked by bootstrap')
+          catalog_wiring = plugin.split('public static function bind_catalog_registration_wiring()', 1)[1].split('public static function boot()', 1)[0]
+          if "array( 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge', 'bootstrap' )" not in catalog_wiring:
+              raise SystemExit('Metadata bridge is not owned by canonical catalog registration wiring')
 
           header = re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)', main)
           runtime = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", main)
