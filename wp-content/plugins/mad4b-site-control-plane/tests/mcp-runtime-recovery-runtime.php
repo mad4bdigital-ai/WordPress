@@ -1,8 +1,8 @@
 <?php
-$cases = array( 'authorized', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
-	echo 'mad4b.mcp-runtime-recovery.v1: 16/16 PASS' . PHP_EOL; exit;
+	echo 'mad4b.mcp-runtime-recovery.v1: 17/17 PASS' . PHP_EOL; exit;
 }
 $case = $argv[1];
 $root = sys_get_temp_dir() . '/mad4b-recovery-' . getmypid();
@@ -23,6 +23,7 @@ function is_admin() { return true; }
 function wp_doing_cron() { return false; }
 function wp_verify_nonce( $v, $action ) { return 'nonce' !== $GLOBALS['case'] && 'valid' === $v; }
 function get_option( $k, $default = null ) { return $GLOBALS['options'][ $k ] ?? $default; }
+function add_option( $k, $v, $deprecated = '', $autoload = 'yes' ) { if ( array_key_exists( $k, $GLOBALS['options'] ) ) return false; $GLOBALS['options'][ $k ]=$v; return true; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['options'][ $k ]=$v; return true; }
 function delete_option( $k ) { unset( $GLOBALS['options'][ $k ] ); return true; }
 function wp_mkdir_p( $v ) { return mkdir( $v, 0777, true ); }
@@ -61,6 +62,19 @@ require $source . '/includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';
 require $source . '/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';
 require $source . '/includes/class-mad4b-scp-mcp-runtime-recovery.php';
 $destination = WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php';
+if ( 'transaction_contention' === $case ) {
+	$first = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', str_repeat( 'a', 64 ) );
+	check_recovery( is_string( $first ) && 32 === strlen( $first ), 'first worker failed to acquire transaction' );
+	$snapshot = get_option( MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_OPTION, array() );
+	$second = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'refresh', str_repeat( 'b', 64 ), str_repeat( 'c', 64 ) );
+	check_recovery( is_wp_error( $second ) && 'mu_bootstrap_transaction_already_pending' === $second->get_error_code(), 'second worker acquired active transaction' );
+	check_recovery( $snapshot === get_option( MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_OPTION, array() ), 'second worker mutated owner marker' );
+	$reconcile = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::reconcile_transaction( $destination );
+	check_recovery( is_wp_error( $reconcile ) && 'mu_bootstrap_transaction_in_progress' === $reconcile->get_error_code(), 'fresh owner transaction was reconciled by another worker' );
+	check_recovery( MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $first ), 'owner could not complete transaction' );
+	echo $case . ': PASS' . PHP_EOL;
+	exit;
+}
 if ( 'stale_managed' === $case ) file_put_contents( $destination, '<?php // mad4b.mcp-adapter-mu-bootstrap.v4' );
 if ( 'unmanaged' === $case ) file_put_contents( $destination, '<?php // foreign owner' );
 if ( 'update_schedule' === $case ) {
