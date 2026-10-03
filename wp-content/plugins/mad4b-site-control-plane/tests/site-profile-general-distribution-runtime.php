@@ -342,6 +342,35 @@ ok(!is_wp_error($cas_outer),'CAS outer save failed');
 ok(is_wp_error($GLOBALS['mad4b_test_nested_save_result'])&&'mad4b_site_profile_mutation_pending'===$GLOBALS['mad4b_test_nested_save_result']->get_error_code(),'concurrent save succeeded while prior generation was pending audit');
 ok(2===MAD4B_SCP_Site_Profile::revision()&&'outer-wins'===MAD4B_SCP_Site_Profile::profile()['display_name'],'concurrent save changed committed winner');
 
+// Authority disable is an audited CAS mutation too: success finalizes exactly
+// one new generation, while audit failure restores the prior committed record.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://disable.client.test/';
+$disable_first=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),
+ 'write_enabled'=>true,'oauth_enabled'=>true
+));
+ok(!is_wp_error($disable_first)&&!empty($disable_first['write_enabled']),'disable-authority fixture initial save failed');
+$disable_before=get_option(MAD4B_SCP_Site_Profile::OPTION,null);
+$disable_ok=MAD4B_SCP_Site_Profile::disable_authority((int)$disable_first['revision']);
+ok(!is_wp_error($disable_ok)&&empty($disable_ok['write_enabled'])&&2===(int)$disable_ok['revision'],'audited authority disable did not commit exactly one generation');
+$disable_event=end($GLOBALS['mad4b_test_audit_events']);
+ok(is_array($disable_event)&&'mad4b/site-profile-write-disabled'===($disable_event[0]??''),'authority disable did not append its audit event');
+
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://disable-fail.client.test/';
+$disable_first=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),
+ 'write_enabled'=>true,'oauth_enabled'=>true
+));
+ok(!is_wp_error($disable_first),'disable-authority rollback fixture initial save failed');
+$disable_before=get_option(MAD4B_SCP_Site_Profile::OPTION,null);
+$GLOBALS['mad4b_test_audit_fail']=true;
+$disable_failed=MAD4B_SCP_Site_Profile::disable_authority((int)$disable_first['revision']);
+$GLOBALS['mad4b_test_audit_fail']=false;MAD4B_SCP_Site_Profile::reset_cache();
+ok(is_wp_error($disable_failed)&&'mad4b_site_profile_disable_authority_audit_failed'===$disable_failed->get_error_code(),'authority disable audit failure did not surface');
+ok($disable_before===get_option(MAD4B_SCP_Site_Profile::OPTION,null)&&!empty(MAD4B_SCP_Site_Profile::status()['write_enabled']),'failed authority disable changed the committed profile');
+
 // Double failure: audit fails and rollback persistence fails. The only remaining
 // record is explicitly pending_audit, so a fresh read cannot grant authority.
 reset_state();
