@@ -434,7 +434,10 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$requested_tools = array_values( array_unique( array_merge( $base, $optional ) ) );
 		$base_optional = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();
 		$required_base = array_diff( $base, $base_optional );
-		$all_optional = array_values( array_diff( array_unique( array_merge( $base_optional, $optional ) ), $required_base ) );
+		// Explicit dynamic selections are user-reviewed intent. They receive the
+		// optional budget before convenience direct step-ups; required transports
+		// remain non-optional and can never be displaced.
+		$all_optional = array_values( array_diff( array_unique( array_merge( $optional, $base_optional ) ), $required_base ) );
 		$budget = class_exists( 'MAD4B_SCP_MCP_Catalog_Diagnostics' )
 			? MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $requested_tools, $all_optional )
 			: array( 'ready' => false, 'blocker' => 'mcp_catalog_budget_unavailable' );
