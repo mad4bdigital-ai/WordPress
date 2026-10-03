@@ -360,7 +360,12 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 		// Validate every executable pin and the autoloader before require_once
 		// against the exact installed-version profile selected above.
 		$mad4b_mcp_mu_status['critical_class_baseline_ready'] = ! empty( $mad4b_mcp_mu_status['adapter_profile_ready'] );
-		foreach ( array_merge( array_values( $mad4b_mcp_mu_critical_classes ), array( 'includes/Autoloader.php', 'includes/Plugin.php', 'vendor/autoload_packages.php' ) ) as $mad4b_mcp_mu_critical_relative ) {
+		$mad4b_mcp_mu_integrity_files = array_values( array_unique( array_merge(
+			array( 'mcp-adapter.php' ),
+			array_values( $mad4b_mcp_mu_critical_classes ),
+			array( 'includes/Autoloader.php', 'includes/Plugin.php', 'vendor/autoload_packages.php' )
+		) ) );
+		foreach ( $mad4b_mcp_mu_integrity_files as $mad4b_mcp_mu_critical_relative ) {
 			$mad4b_mcp_mu_expected_sha = $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ?? '';
 			$mad4b_mcp_mu_actual_sha = is_readable( $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative ) ? hash_file( 'sha256', $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative ) : '';
 			if ( ! is_string( $mad4b_mcp_mu_expected_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_expected_sha )
@@ -504,6 +509,7 @@ unset(
 	$mad4b_mcp_mu_symbols,
 	$mad4b_mcp_mu_symbol,
 	$mad4b_mcp_mu_critical_classes,
+	$mad4b_mcp_mu_integrity_files,
 	$mad4b_mcp_mu_critical_symbol,
 	$mad4b_mcp_mu_critical_relative,
 	$mad4b_mcp_mu_baseline_file,
