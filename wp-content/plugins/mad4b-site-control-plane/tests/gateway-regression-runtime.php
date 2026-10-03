@@ -87,7 +87,7 @@ class MAD4B_SCP_Abuse_Budget {
  const CONTRACT = 'mad4b.abuse-budget.fixture.v1';
  static function admit( $surface, $input = array() ) {
   ++$GLOBALS['abuse_admit_calls'];
-  if ( 'prepare' !== $surface ) return new WP_Error( 'fixture_abuse_surface_unknown' );
+  if ( ! in_array( $surface, array( 'prepare', 'execute' ), true ) ) return new WP_Error( 'fixture_abuse_surface_unknown' );
   return array( 'contract' => self::CONTRACT, 'surface' => $surface, 'authorizing' => false );
  }
 }
