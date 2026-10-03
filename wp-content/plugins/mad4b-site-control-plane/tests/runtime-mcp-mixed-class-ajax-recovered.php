@@ -11,7 +11,7 @@ if ( ! is_string( $mu_proof ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $mu_proo
 	fwrite( STDERR, "FAIL: missing bounded diagnostic MU routing proof\n" );
 	exit( 1 );
 }
-$_POST=array( 'action'=>'mad4b_connection_endpoint_diagnostic', 'mu_proof'=>$mu_proof );
+$_POST=array( 'action'=>'mad4b_connection_endpoint_diagnostic', 'server_id'=>'mad4b-chatgpt', 'mu_proof'=>$mu_proof );
 $_REQUEST=$_POST;
 require $path . '/wp-load.php';
 function ajax_recovery_check( $ok, $message, $data = null ) {
@@ -24,7 +24,7 @@ ajax_recovery_check( ! empty( $mu['critical_class_set_pinned'] ) && 11===($mu['c
 ajax_recovery_check( 'canonical_runtime_pinned_diagnostic_deferred'===($mu['state'] ?? '') && empty( $mu['adapter_instance_armed'] ), 'MU diagnostic must defer singleton arming to the authorized worker.', $mu );
 ajax_recovery_check( 0===did_action( 'rest_api_init' ), 'REST was materialized before worker authorization.' );
 $user=get_user_by( 'login', 'mad4b-ci-admin' ); wp_set_current_user( $user->ID );
-$_POST += array( 'nonce'=>wp_create_nonce( 'mad4b_connection_deep_endpoints' ), 'server_id'=>'mad4b-chatgpt', 'build'=>MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() );
+$_POST += array( 'nonce'=>wp_create_nonce( 'mad4b_connection_deep_endpoints' ), 'build'=>MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() );
 $destination=WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php';
 $before=hash_file( 'sha256', $destination );
 $active=get_option( 'active_plugins' );
