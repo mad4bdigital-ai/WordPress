@@ -81,7 +81,7 @@ if ( 'update_schedule' === $case ) {
 	} else {
 		check_recovery( is_wp_error( $result ), 'negative boundary accepted' );
 		if ( 'stale_managed' === $case ) check_recovery( '<?php // mad4b.mcp-adapter-mu-bootstrap.v4'===file_get_contents( $destination ), 'marker-only bootstrap was treated as historical MAD4B ownership' );
-		if ( 'unmanaged' === $case ) check_recovery( '<?php // foreign owner'===file_get_contents( $destination ), 'unmanaged bootstrap overwritten' );
+		elseif ( 'unmanaged' === $case ) check_recovery( '<?php // foreign owner'===file_get_contents( $destination ), 'unmanaged bootstrap overwritten' );
 		else check_recovery( ! file_exists( $destination ), 'denied/rolled-back recovery left bootstrap bytes' );
 	}
 	check_recovery( ! MAD4B_SCP_MCP_Runtime_Recovery::active(), 'recovery privilege leaked beyond lifecycle' );
