@@ -17,6 +17,33 @@ function wp_normalize_path($v){return str_replace('\\','/',(string)$v);}
 
 require dirname(__DIR__).'/includes/class-mad4b-scp-time-policy.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-crypto-profile.php';
+function mad4b_crypto_test_wait_process($proc,array $pipes,$timeout_seconds=15){
+ $stdout='';$stderr='';$deadline=microtime(true)+max(1,(int)$timeout_seconds);$last=array('running'=>true,'exitcode'=>-1);
+ foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i]))stream_set_blocking($pipes[$i],false);
+ while(true){
+  foreach(array(1,2)as$i){
+   if(!isset($pipes[$i])||!is_resource($pipes[$i]))continue;
+   $chunk=stream_get_contents($pipes[$i]);
+   if(false!==$chunk&&''!==$chunk){if(1===$i)$stdout.=$chunk;else$stderr.=$chunk;}
+  }
+  $last=proc_get_status($proc);
+  if(!is_array($last)||empty($last['running']))break;
+  if(microtime(true)>=$deadline){
+   @proc_terminate($proc,9);usleep(100000);
+   $last=proc_get_status($proc);
+   if(is_array($last)&&!empty($last['running']))@proc_terminate($proc);
+   foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i])){$chunk=stream_get_contents($pipes[$i]);if(false!==$chunk&&''!==$chunk){if(1===$i)$stdout.=$chunk;else$stderr.=$chunk;}}
+   foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i]))fclose($pipes[$i]);
+   @proc_close($proc);
+   return array('timed_out'=>true,'exitcode'=>-1,'stdout'=>$stdout,'stderr'=>$stderr);
+  }
+  usleep(10000);
+ }
+ foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i])){$chunk=stream_get_contents($pipes[$i]);if(false!==$chunk&&''!==$chunk){if(1===$i)$stdout.=$chunk;else$stderr.=$chunk;}fclose($pipes[$i]);}
+ $closed=@proc_close($proc);$exit=is_array($last)&&isset($last['exitcode'])?(int)$last['exitcode']:-1;if($exit<0&&is_int($closed)&&$closed>=0)$exit=$closed;
+ return array('timed_out'=>false,'exitcode'=>$exit,'stdout'=>$stdout,'stderr'=>$stderr);
+}
+
 if('1'===getenv('MAD4B_CRYPTO_VERIFY_CHILD')){
  MAD4B_SCP_Time_Policy::set_test_clock((int)(getenv('MAD4B_CRYPTO_TEST_EPOCH')?:2000086401),500000);
  $payload=json_decode((string)file_get_contents(getenv('MAD4B_CRYPTO_VERIFY_FILE')),true);
@@ -82,9 +109,8 @@ $verify_env=array('MAD4B_CRYPTO_TEST_DIR'=>$tmp,'MAD4B_CRYPTO_VERIFY_CHILD'=>'1'
 $verify_spec=array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w'));
 $verify_pipes=array();$verify_proc=proc_open($verify_cmd,$verify_spec,$verify_pipes,null,$verify_env);
 $check(is_resource($verify_proc),'node B verification process failed to start');
-fclose($verify_pipes[0]);$verify_out=stream_get_contents($verify_pipes[1]);$verify_err=stream_get_contents($verify_pipes[2]);fclose($verify_pipes[1]);fclose($verify_pipes[2]);
-$verify_exit=proc_close($verify_proc);@unlink($verify_file);
-$check(0===$verify_exit,'node B could not verify node A receipt through shared keyring',array($verify_out,$verify_err));
+fclose($verify_pipes[0]);$verify_wait=mad4b_crypto_test_wait_process($verify_proc,$verify_pipes,15);@unlink($verify_file);
+$check(empty($verify_wait['timed_out'])&&0===$verify_wait['exitcode'],'node B could not verify node A receipt through shared keyring',$verify_wait);
 
 $rev=MAD4B_SCP_Crypto_Profile::revoke($p1,$old_kid);
 $check(is_array($rev),'old key revocation failed',$rev);
@@ -111,10 +137,9 @@ $spec=array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w'));
 $pipes1=array();$pipes2=array();$proc1=proc_open($cmd,$spec,$pipes1,null,$env);$proc2=proc_open($cmd,$spec,$pipes2,null,$env);
 $check(is_resource($proc1)&&is_resource($proc2),'concurrency workers failed to start');
 fclose($pipes1[0]);fclose($pipes2[0]);
-$out1=stream_get_contents($pipes1[1]);$err1=stream_get_contents($pipes1[2]);fclose($pipes1[1]);fclose($pipes1[2]);
-$out2=stream_get_contents($pipes2[1]);$err2=stream_get_contents($pipes2[2]);fclose($pipes2[1]);fclose($pipes2[2]);
-$exit1=proc_close($proc1);$exit2=proc_close($proc2);
-$check(0===$exit1&&0===$exit2,'concurrent rotations did not serialize',array($out1,$err1,$out2,$err2));
+$wait1=mad4b_crypto_test_wait_process($proc1,$pipes1,20);
+$wait2=mad4b_crypto_test_wait_process($proc2,$pipes2,20);
+$check(empty($wait1['timed_out'])&&empty($wait2['timed_out'])&&0===$wait1['exitcode']&&0===$wait2['exitcode'],'concurrent rotations did not serialize',array($wait1,$wait2));
 $after=MAD4B_SCP_Crypto_Profile::status($p1);
 $check((int)$after['revision']===$before_revision+2,'concurrent rotations lost a manifest update',$after);
 
@@ -147,4 +172,4 @@ if(@symlink($exposed,$tmp.'/keys')){
 }else{rename($real_keys,$tmp.'/keys');}
 
 MAD4B_SCP_Time_Policy::reset_test_clock();
-echo "mad4b.crypto-profile.runtime.v4: PASS\n";
+echo "mad4b.crypto-profile.runtime.v5: PASS\n";

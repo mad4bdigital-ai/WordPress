@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Crypto_Profile {
 	const CONTRACT = 'mad4b.crypto-profiles.v1';
 	const KEYRING_CONTRACT = 'mad4b.crypto-keyring.v1';
+	const KEYRING_LOCK_WAIT_MILLISECONDS = 5000;
 	const SIGNATURE_CONTRACT = 'mad4b.detached-signature.v1';
 	private static $profiles = null;
 
@@ -427,9 +428,33 @@ final class MAD4B_SCP_Crypto_Profile {
 		$handle=@fopen($lock_path,'c+');
 		if(false===$handle)return new WP_Error('mad4b_crypto_keyring_lock_unavailable','Receipt keyring mutation lock is unavailable.');
 		@chmod($lock_path,0600);
-		if(!@flock($handle,LOCK_EX)){@fclose($handle);return new WP_Error('mad4b_crypto_keyring_lock_failed','Receipt keyring mutation lock could not be acquired.');}
+		$deadline = self::runtime_monotonic_ms() + self::KEYRING_LOCK_WAIT_MILLISECONDS;
+		$acquired = false;
+		do {
+			if ( @flock( $handle, LOCK_EX | LOCK_NB ) ) { $acquired = true; break; }
+			if ( self::runtime_monotonic_ms() >= $deadline ) break;
+			usleep( 10000 );
+		} while ( true );
+		if ( ! $acquired ) {
+			@fclose( $handle );
+			return new WP_Error(
+				'mad4b_crypto_keyring_lock_timeout',
+				'Receipt keyring mutation lock was not acquired within the bounded wait.',
+				array(
+					'retry_class' => 'bounded_retry',
+					'blind_retry_allowed' => false,
+					'lock_wait_milliseconds' => self::KEYRING_LOCK_WAIT_MILLISECONDS,
+					'authorizing' => false,
+				)
+			);
+		}
 		try{return call_user_func($callback);}
 		finally{@flock($handle,LOCK_UN);@fclose($handle);}
+	}
+
+	private static function runtime_monotonic_ms() {
+		if ( function_exists( 'hrtime' ) ) return (int) floor( hrtime( true ) / 1000000 );
+		return (int) floor( microtime( true ) * 1000 );
 	}
 
 	private static function keyring_dir() {

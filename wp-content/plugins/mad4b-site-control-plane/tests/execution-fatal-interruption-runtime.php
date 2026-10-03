@@ -60,6 +60,28 @@ $claim=array(
 	'context_receipt_sha256'=>str_repeat('c',64),
 	'commit_guard_receipt'=>array('material_sha256'=>str_repeat('d',64)),
 );
+function mad4b_fatal_test_wait_ready($proc,$stdout,$stderr,$timeout_seconds=10){
+ stream_set_blocking($stdout,false);stream_set_blocking($stderr,false);
+ $deadline=microtime(true)+max(1,(int)$timeout_seconds);$out='';$err='';
+ while(microtime(true)<$deadline){
+  $chunk=stream_get_contents($stdout);if(false!==$chunk&&''!==$chunk)$out.=$chunk;
+  $e=stream_get_contents($stderr);if(false!==$e&&''!==$e)$err.=$e;
+  if(false!==strpos($out,"READY\n"))return array('ready'=>true,'stdout'=>$out,'stderr'=>$err);
+  $status=proc_get_status($proc);
+  if(!is_array($status)||empty($status['running']))break;
+  usleep(10000);
+ }
+ return array('ready'=>false,'stdout'=>$out,'stderr'=>$err);
+}
+function mad4b_fatal_test_terminate($proc,$timeout_seconds=5){
+ @proc_terminate($proc,9);$deadline=microtime(true)+max(1,(int)$timeout_seconds);
+ do{
+  $status=proc_get_status($proc);
+  if(!is_array($status)||empty($status['running'])){ @proc_close($proc); return true; }
+  usleep(10000);
+ }while(microtime(true)<$deadline);
+ @proc_terminate($proc);@proc_close($proc);return false;
+}
 $stage=(string)getenv('MAD4B_FATAL_STAGE');
 if(''!==$stage){
 	if('approval_claimed'===$stage){
@@ -101,12 +123,11 @@ foreach($expected as $stageName=>$expectedState){
 	$pipes=array();$proc=proc_open($cmd,$spec,$pipes,null,$env);
 	$check(is_resource($proc),'unable to start child',array('stage'=>$stageName));
 	fclose($pipes[0]);
-	$ready=fgets($pipes[1]);
-	$check("READY\n"===$ready,'child did not reach crash point',array('stage'=>$stageName,'stdout'=>$ready,'stderr'=>stream_get_contents($pipes[2])));
-	$killed=proc_terminate($proc,9);
-	if(!$killed)$killed=proc_terminate($proc);
-	fclose($pipes[1]);fclose($pipes[2]);proc_close($proc);
-	$check($killed,'unable to terminate child process',array('stage'=>$stageName));
+	$ready=mad4b_fatal_test_wait_ready($proc,$pipes[1],$pipes[2],10);
+	$check(!empty($ready['ready']),'child did not reach crash point',array('stage'=>$stageName,'stdout'=>$ready['stdout'],'stderr'=>$ready['stderr']));
+	$killed=mad4b_fatal_test_terminate($proc,5);
+	fclose($pipes[1]);fclose($pipes[2]);
+	$check($killed,'unable to terminate child process within bounded wait',array('stage'=>$stageName));
 	MAD4B_SCP_Audit::$path=$path;
 	$rows=file($path,FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES)?:array();
 	$check(!empty($rows),'durable evidence missing after process termination',array('stage'=>$stageName));
@@ -121,4 +142,4 @@ foreach($expected as $stageName=>$expectedState){
 	@unlink($path);
 }
 MAD4B_SCP_Audit::$path='';
-echo "mad4b.execution-fatal-interruption.runtime.v1: PASS\n";
+echo "mad4b.execution-fatal-interruption.runtime.v2: PASS\n";
