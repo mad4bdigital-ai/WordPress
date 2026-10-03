@@ -290,14 +290,15 @@ jobs:
           if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
           ' --path="$WP_PATH" --user=mad4b-ci-admin
 
+          # Requests that intentionally exercise the MCP runtime opt in before WordPress/MU bootstrap; generic WP-CLI remains isolated.
           # Request 1 must detect provenance mismatch and install the managed
           # 000-* MU bootstrap. It cannot replace the already-declared class.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
           # Request 2 loads 000-* before the simulated Hostinger preloader,
           # making the canonical 0.6.1 runtime owner and registering all six
           # MAD4B MCP servers through the normal mcp_adapter_init lifecycle.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
       - name: Prove official Adapter plus foreign validator mixed runtime self-heals
         shell: bash
@@ -332,12 +333,12 @@ jobs:
           # Request 1: official Adapter entrypoint + preclaimed foreign validator
           # must classify as a mixed class set. PHP classes are not swapped in the
           # current request; the governed 000-* MU repair is armed for next request.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
           # Request 2: managed 000-* executes before 900-*, verifies the exact
           # certified hashes, pins every critical class from mcp-adapter and
           # converges to a single canonical runtime.
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
           MAD4B_TEST_WP_PATH="$WP_PATH" php "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-ajax-recovered.php"
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
