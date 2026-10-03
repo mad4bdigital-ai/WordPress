@@ -111,6 +111,27 @@ for marker in [
 ]:
     assert marker in site_admin, marker
 
+# Native admin-post and AJAX must share the same persisted intent/readback proof.
+handle_save = site_admin.split("public static function handle_save()", 1)[1].split("public static function persisted_readback_matches", 1)[0]
+assert handle_save.count("self::persisted_readback_matches( $input, $result, $status, $profile )") >= 2
+native_tail = handle_save.rsplit("if ( is_wp_error( $result ) ) self::redirect", 1)[1]
+assert "MAD4B_SCP_Site_Profile::reset_cache();" in native_tail
+assert "mad4b_site_profile_readback_mismatch" in native_tail
+assert native_tail.index("persisted_readback_matches") < native_tail.index("self::redirect( 'saved' )")
+
+# Site Profile save is now audit-committed: the visible record is first written
+# as pending_audit through byte-exact CAS, then finalized only after audit.
+for marker in [
+    "persist_record_compare_and_swap",
+    "restore_record_compare_and_swap",
+    "BINARY option_value = BINARY %s",
+    "'mutation_state'] = 'pending_audit'",
+    "mad4b_site_profile_conflict",
+    "mad4b_site_profile_commit_finalize_failed",
+    "site_profile_mutation_pending_audit",
+]:
+    assert marker in site_profile, marker
+
 # Disable/revoke/governance actions remain explicit and outside the shared AJAX
 # settings form contract.
 disable_section = site_admin.split("public static function handle_disable()", 1)[1].split("private static function is_ajax_request()", 1)[0]
