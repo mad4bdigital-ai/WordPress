@@ -37,3 +37,10 @@ helper=controller.split("private static function current_options_logical_digest(
 for marker in ["wp_cache_delete( MAD4B_SCP_Catalog_Object_Store::DIRECTORY", "wp_cache_delete( 'alloptions'", "wp_cache_delete( (string)$entry['option']"]:
     if marker not in helper:
         raise SystemExit("FAIL catalog transition revalidation can trust stale object cache: "+marker)
+
+for marker in ["retire_scope(", "catalog_table_retirement_head_cas_conflict", "purge_unreferenced_objects", "'orphan_bytes'", "'referenced_bytes'"]:
+    if marker not in backend:
+        raise SystemExit("FAIL catalog table retirement/accounting invariant missing: "+marker)
+for marker in ["retire_after_rollback(", "mad4b_catalog_retirement_reader_drain_required", "'retirement'"]:
+    if marker not in controller:
+        raise SystemExit("FAIL catalog controller retirement invariant missing: "+marker)

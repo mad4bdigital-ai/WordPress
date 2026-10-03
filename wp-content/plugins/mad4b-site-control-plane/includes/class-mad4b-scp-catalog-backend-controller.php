@@ -120,6 +120,43 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 		return self::status( $scope );
 	}
 
+	public static function retire_after_rollback( $scope, $expected_generation_id, $expected_fencing_token, $reader_drain_verified = false ) {
+		$scope = strtolower( trim( (string)$scope ) );
+		$state = self::state();
+		if ( 'options' !== $state['authority_backend'] ) return new WP_Error( 'mad4b_catalog_retirement_authority_active', 'Catalog table storage may be retired only after options authority is restored.' );
+		if ( empty( $state['rollback'] ) || empty( $state['cutover'] ) || ! is_array( $state['rollback'] ) || ! is_array( $state['cutover'] ) ) {
+			return new WP_Error( 'mad4b_catalog_retirement_rollback_required', 'Catalog table retirement requires a completed bounded rollback.' );
+		}
+		if ( ! hash_equals( (string)$state['storage_scope_sha256'], $scope )
+			|| ! hash_equals( (string)$state['cutover']['table_generation_id'], strtolower(trim((string)$expected_generation_id)) )
+			|| (int)$state['cutover']['table_fencing_token'] !== (int)$expected_fencing_token ) {
+			return new WP_Error( 'mad4b_catalog_retirement_expectation_mismatch', 'Catalog table retirement expectations do not match the rolled-back cutover.' );
+		}
+		if ( true !== $reader_drain_verified ) return new WP_Error( 'mad4b_catalog_retirement_reader_drain_required', 'Explicit table-reader drain verification is required before retirement.' );
+		$planned = $state;
+		$planned['retirement'] = array(
+			'status'=>'planned','generation_id'=>(string)$state['cutover']['table_generation_id'],
+			'fencing_token'=>(int)$state['cutover']['table_fencing_token'],'reader_drain_verified'=>true,
+			'started_at'=>time(),'authorizing'=>false
+		);
+		if ( ! self::persist_state_cas( $state, $planned ) ) return new WP_Error( 'mad4b_catalog_retirement_plan_persist_failed', 'Catalog retirement plan changed concurrently.' );
+		$table = new MAD4B_SCP_Catalog_Table_Backend( $scope );
+		$retired = $table->retire_scope( $expected_generation_id, $expected_fencing_token, true );
+		if ( is_wp_error( $retired ) ) return $retired;
+		$final = $planned;
+		$final['retirement'] = array(
+			'status'=>'retired','generation_id'=>(string)$expected_generation_id,'fencing_token'=>(int)$expected_fencing_token,
+			'reader_drain_verified'=>true,'retired_at'=>time(),
+			'physical_bytes'=>(int)(isset($retired['physical_bytes'])?$retired['physical_bytes']:0),
+			'referenced_bytes'=>(int)(isset($retired['referenced_bytes'])?$retired['referenced_bytes']:0),
+			'orphan_bytes'=>(int)(isset($retired['orphan_bytes'])?$retired['orphan_bytes']:0),
+			'purged_unreferenced_objects'=>(int)(isset($retired['purged_unreferenced_objects'])?$retired['purged_unreferenced_objects']:0),
+			'authorizing'=>false
+		);
+		if ( ! self::persist_state_cas( $planned, $final ) ) return new WP_Error( 'mad4b_catalog_retirement_receipt_persist_failed', 'Catalog retirement completed but its receipt could not be persisted exactly.' );
+		return self::status( $scope );
+	}
+
 	public static function status( $scope = '' ) {
 		$state = self::state();
 		return array(
@@ -128,6 +165,7 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 			'shadow'=>isset($state['shadow'])&&is_array($state['shadow'])?$state['shadow']:array(),
 			'cutover'=>isset($state['cutover'])&&is_array($state['cutover'])?$state['cutover']:array(),
 			'rollback'=>isset($state['rollback'])&&is_array($state['rollback'])?$state['rollback']:array(),
+			'retirement'=>isset($state['retirement'])&&is_array($state['retirement'])?$state['retirement']:array(),
 			'table'=>class_exists('MAD4B_SCP_Catalog_Table_Backend')?MAD4B_SCP_Catalog_Table_Backend::status($scope):array(),
 			'dual_authority'=>false,'fallback_on_table_failure'=>false,'authorizing'=>false
 		);
@@ -138,7 +176,7 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 		if ( ! is_array( $value ) || self::CONTRACT !== ( isset($value['contract'])?(string)$value['contract']:'' ) ) {
 			return array(
 				'contract'=>self::CONTRACT,'authority_backend'=>'options','storage_scope_sha256'=>'',
-				'shadow'=>array(),'cutover'=>array(),'rollback'=>array()
+				'shadow'=>array(),'cutover'=>array(),'rollback'=>array(),'retirement'=>array()
 			);
 		}
 		if ( ! in_array( isset($value['authority_backend'])?(string)$value['authority_backend']:'', array('options','table'), true ) ) $value['authority_backend']='options';

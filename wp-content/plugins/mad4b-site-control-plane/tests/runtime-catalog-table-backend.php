@@ -17,7 +17,13 @@ $scope_b = MAD4B_SCP_Catalog_Backend_Controller::storage_scope();
 $check( 64 === strlen( $scope_a ) && hash_equals( $scope_a, $scope_b ), 'Catalog storage scope is not stable within the site runtime.' );
 
 $t = MAD4B_SCP_Schema::tables();
+$projection_before = array(
+	'binding' => MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(),
+	'abilities' => MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names(),
+);
+sort( $projection_before['abilities'], SORT_STRING );
 $protected_before = array(
+	'projection' => $projection_before,
 	'grants' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['grants']}" ),
 	'approvals' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['approvals']}" ),
 	'audit_events' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['audit_events']}" ),
@@ -66,10 +72,32 @@ $check(
 
 $rollback = MAD4B_SCP_Catalog_Backend_Controller::rollback( $scope_a );
 $check( ! is_wp_error( $rollback ) && 'options' === $rollback['authority_backend'] && empty( $rollback['dual_authority'] ), 'Bounded catalog rollback failed.', $rollback );
+$cutover_receipt = isset( $rollback['cutover'] ) && is_array( $rollback['cutover'] ) ? $rollback['cutover'] : array();
+$retired = MAD4B_SCP_Catalog_Backend_Controller::retire_after_rollback(
+	$scope_a,
+	isset( $cutover_receipt['table_generation_id'] ) ? $cutover_receipt['table_generation_id'] : '',
+	isset( $cutover_receipt['table_fencing_token'] ) ? (int)$cutover_receipt['table_fencing_token'] : 0,
+	true
+);
+$check( ! is_wp_error( $retired ) && 'retired' === ( isset( $retired['retirement']['status'] ) ? $retired['retirement']['status'] : '' ), 'Catalog table retirement after rollback failed.', $retired );
+$table_after_retirement = isset( $retired['table'] ) && is_array( $retired['table'] ) ? $retired['table'] : array();
+$check(
+	0 === (int)( isset( $table_after_retirement['generation_count'] ) ? $table_after_retirement['generation_count'] : -1 )
+		&& 0 === (int)( isset( $table_after_retirement['orphan_bytes'] ) ? $table_after_retirement['orphan_bytes'] : -1 )
+		&& 0 === (int)( isset( $table_after_retirement['referenced_bytes'] ) ? $table_after_retirement['referenced_bytes'] : -1 ),
+	'Catalog retirement left scope generations or unaccounted/orphan capacity.',
+	$table_after_retirement
+);
 wp_cache_delete( MAD4B_SCP_Catalog_Object_Store::DIRECTORY, 'options' );
 wp_cache_delete( 'notoptions', 'options' );
 
+$projection_after = array(
+	'binding' => MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(),
+	'abilities' => MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names(),
+);
+sort( $projection_after['abilities'], SORT_STRING );
 $protected_after = array(
+	'projection' => $projection_after,
 	'grants' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['grants']}" ),
 	'approvals' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['approvals']}" ),
 	'audit_events' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['audit_events']}" ),
