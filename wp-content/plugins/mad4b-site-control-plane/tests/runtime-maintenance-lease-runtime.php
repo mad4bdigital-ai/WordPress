@@ -69,6 +69,28 @@ $schema = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
 ok( is_string( $schema ) && '' !== $schema, 'next owner must acquire after verified release' );
 MAD4B_SCP_Runtime_Maintenance_Lease::release( $schema, 'schema_lifecycle' );
 
+// An old worker may not delete or refresh a newer generation that reused the
+// same option names after the old worker lost ownership.
+$old = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'old_worker' );
+ok( is_string( $old ) && '' !== $old, 'old-worker fixture could not acquire lease' );
+$new_token = 'newer-worker-token';
+$new_record = array(
+	'contract' => MAD4B_SCP_Runtime_Maintenance_Lease::CONTRACT,
+	'token' => $new_token,
+	'owner' => 'new_worker',
+	'expires_at' => time() + MAD4B_SCP_Runtime_Maintenance_Lease::LEASE_TTL,
+	'hard_expires_at' => time() + MAD4B_SCP_Runtime_Maintenance_Lease::HARD_TTL,
+	'acquired_at' => gmdate( 'c' ),
+);
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Maintenance_Lease::OPTION ] = $new_record;
+foreach ( MAD4B_SCP_Runtime_Maintenance_Lease::legacy_options() as $option ) $GLOBALS['mad4b_test_options'][ $option ] = $new_record;
+MAD4B_SCP_Runtime_Maintenance_Lease::release( $old, 'old_worker' );
+ok( $new_token === get_option( MAD4B_SCP_Runtime_Maintenance_Lease::OPTION, array() )['token'], 'stale owner deleted newer shared lease' );
+$stale_refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $old, 'old_worker' );
+ok( is_wp_error( $stale_refresh ) && 'mad4b_runtime_maintenance_lease_lost' === $stale_refresh->get_error_code(), 'stale owner refreshed newer shared lease' );
+MAD4B_SCP_Runtime_Maintenance_Lease::release( $new_token, 'new_worker' );
+ok( false === get_option( MAD4B_SCP_Runtime_Maintenance_Lease::OPTION, false ), 'new owner could not release replacement lease' );
+
 // A pre-hard-fence runtime may leave only a legacy token with expires_at.
 // New code must not steal it immediately at nominal expiry because the old
 // worker can still be inside a slow dbDelta/filesystem phase.
