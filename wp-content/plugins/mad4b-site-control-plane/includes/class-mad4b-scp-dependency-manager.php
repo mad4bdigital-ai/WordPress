@@ -53,7 +53,10 @@ final class MAD4B_SCP_Dependency_Manager {
 		$plugins = self::plugins();
 		$installed = isset( $plugins[ self::MCP_PLUGIN_FILE ] ) && is_array( $plugins[ self::MCP_PLUGIN_FILE ] );
 		$installed_version = $installed && isset( $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) ? trim( (string) $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) : '';
-		$active = function_exists( 'is_plugin_active' ) ? ( is_plugin_active( self::MCP_PLUGIN_FILE ) || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE ) ) ) : class_exists( 'WP\\MCP\\Core\\McpAdapter' );
+		$multisite_enabled = function_exists( 'is_multisite' ) && is_multisite();
+		$network_control_plane = $multisite_enabled && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) );
+		$network_mcp_adapter = $multisite_enabled && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE );
+		$active = function_exists( 'is_plugin_active' ) ? ( is_plugin_active( self::MCP_PLUGIN_FILE ) || $network_mcp_adapter ) : class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		$runtime_loaded = class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		$runtime_contract = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' )
 			? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $runtime_loaded )
@@ -97,6 +100,7 @@ final class MAD4B_SCP_Dependency_Manager {
 
 		$hard_blockers = array();
 		foreach ( $core as $key => $check ) if ( empty( $check['ready'] ) ) $hard_blockers[] = 'dependency_' . sanitize_key( $key ) . '_unavailable';
+		if ( $network_control_plane || $network_mcp_adapter ) $hard_blockers[] = 'multisite_network_activation_unsupported';
 		if ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
 		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
 		elseif ( ! $installed_integrity_ready ) $hard_blockers[] = 'mcp_adapter_integrity_mismatch';
@@ -151,13 +155,18 @@ final class MAD4B_SCP_Dependency_Manager {
 				'bundled_archive' => $bundle,
 				'install_requires_explicit_admin_action' => true,
 				'auto_downloads_remote_code' => false,
-				'network_activation_matches_control_plane' => ! ( function_exists( 'is_multisite' ) && is_multisite() ) || ! ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) ) ) || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE ) ),
+				'network_activation_matches_control_plane' => ! $network_control_plane || $network_mcp_adapter,
+				'network_activation_supported' => false,
 			),
 			'optional' => $optional,
 			'providers' => self::provider_dependency_summary(),
 			'multisite' => array(
-				'enabled' => function_exists( 'is_multisite' ) && is_multisite(),
-				'network_activation_supported' => true,
+				'enabled' => $multisite_enabled,
+				'network_activation_supported' => false,
+				'site_scoped_activation_supported' => true,
+				'network_control_plane_active' => $network_control_plane,
+				'network_mcp_adapter_active' => $network_mcp_adapter,
+				'authority_scope' => 'site',
 				'per_site_profile_required' => true,
 				'per_site_governance_schema' => true,
 			),
@@ -207,6 +216,9 @@ final class MAD4B_SCP_Dependency_Manager {
 		$network_control_plane = function_exists( 'is_multisite' ) && is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) );
 		$was_network_active = function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE );
 		$was_site_active = is_plugin_active( self::MCP_PLUGIN_FILE );
+		// Network-wide mutation would affect sites whose Site Profile/authority was
+		// not reviewed by this request. Keep repair site-scoped and fail closed.
+		if ( $network_control_plane || $was_network_active ) self::redirect_result( 'multisite_network_activation_unsupported' );
 		if ( $was_network_active || $was_site_active ) deactivate_plugins( self::MCP_PLUGIN_FILE, true, $was_network_active );
 
 		$skin = new Automatic_Upgrader_Skin();
@@ -216,7 +228,7 @@ final class MAD4B_SCP_Dependency_Manager {
 			if ( ( $was_network_active || $was_site_active ) && file_exists( WP_PLUGIN_DIR . '/' . self::MCP_PLUGIN_FILE ) ) activate_plugin( self::MCP_PLUGIN_FILE, '', $was_network_active );
 			self::redirect_result( 'install_failed' );
 		}
-		$activation = activate_plugin( self::MCP_PLUGIN_FILE, '', $network_control_plane || $was_network_active );
+		$activation = activate_plugin( self::MCP_PLUGIN_FILE, '', false );
 		if ( is_wp_error( $activation ) ) self::redirect_result( 'activate_failed' );
 		$plugins = self::plugins( true );
 		$installed_version = isset( $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) ? (string) $plugins[ self::MCP_PLUGIN_FILE ]['Version'] : '';
