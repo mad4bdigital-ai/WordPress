@@ -14,6 +14,13 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 	const RECEIPT_CONTRACT = 'mad4b.execution-commit-guard-receipt.v1';
 
 	public static function capture( array $claim, $input = null ) {
+		$call = static function() use ( $claim, $input ) { return self::capture_impl( $claim, $input ); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'commit_guard', $call, '', array( 'phase'=>'capture', 'ability'=>isset($claim['ability'])?(string)$claim['ability']:'' ) )
+			: $call();
+	}
+
+	private static function capture_impl( array $claim, $input = null ) {
 		$material = self::material_snapshot( $claim, $input );
 		if ( is_wp_error( $material ) ) return $material;
 		return array(
@@ -25,6 +32,13 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 	}
 
 	public static function revalidate( array $claim, $input = null ) {
+		$call = static function() use ( $claim, $input ) { return self::revalidate_impl( $claim, $input ); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'commit_guard', $call, '', array( 'phase'=>'revalidate', 'ability'=>isset($claim['ability'])?(string)$claim['ability']:'' ) )
+			: $call();
+	}
+
+	private static function revalidate_impl( array $claim, $input = null ) {
 		$expected = isset( $claim['commit_guard_snapshot'] ) && is_array( $claim['commit_guard_snapshot'] )
 			? $claim['commit_guard_snapshot']
 			: array();

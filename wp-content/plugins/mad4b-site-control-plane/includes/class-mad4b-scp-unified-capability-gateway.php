@@ -133,8 +133,18 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		if ( is_wp_error( $permission ) ) return $permission;
 		$action = isset( $input['action'] ) ? sanitize_key( (string) $input['action'] ) : 'negotiate';
 		if ( 'negotiate' === $action ) $result = self::negotiate( $input, $transport );
-		elseif ( 'search' === $action ) $result = self::search( $input, $transport );
-		elseif ( 'prepare' === $action ) $result = self::prepare( $input, $transport );
+		elseif ( 'search' === $action ) {
+			$call = static function() use ( $input, $transport ) { return self::search( $input, $transport ); };
+			$result = class_exists( 'MAD4B_SCP_Observability' )
+				? MAD4B_SCP_Observability::run_stage( 'discovery', $call, '', array( 'transport'=>$transport, 'gateway_action'=>'search' ) )
+				: $call();
+		}
+		elseif ( 'prepare' === $action ) {
+			$call = static function() use ( $input, $transport ) { return self::prepare( $input, $transport ); };
+			$result = class_exists( 'MAD4B_SCP_Observability' )
+				? MAD4B_SCP_Observability::run_stage( 'preparation', $call, '', array( 'transport'=>$transport, 'gateway_action'=>'prepare' ) )
+				: $call();
+		}
 		elseif ( in_array( $action, array( 'schema', 'chunk' ), true ) ) $result = self::schema_transport( $input, $action, $transport );
 		else return new WP_Error( 'mad4b_capability_gateway_action_invalid', 'Unknown capability gateway action.' );
 		if ( is_wp_error( $result ) ) return $result;

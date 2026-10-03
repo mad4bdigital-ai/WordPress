@@ -18,3 +18,12 @@ for forbidden in ["$_SERVER['HTTP_AUTHORIZATION']","getallheaders()","file_get_c
  if forbidden in impl: raise SystemExit("FAIL observability captures raw request secrets/body: "+forbidden)
 if "class-mad4b-scp-observability.php" not in main: raise SystemExit("FAIL observability runtime not bootstrapped")
 print("mad4b.observability.contract.v1: PASS")
+
+gateway=(root/"includes/class-mad4b-scp-unified-capability-gateway.php").read_text(encoding="utf-8")
+commit_guard=(root/"includes/class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
+for marker in ["run_stage(", "'' === trim( (string) $tenant_scope )", "Fan-out children therefore cannot", "result_class"]:
+    if marker not in impl: raise SystemExit("FAIL observability runtime integration primitive missing "+marker)
+for marker in ["run_stage( 'discovery'", "run_stage( 'preparation'"]:
+    if marker not in gateway: raise SystemExit("FAIL gateway observability stage missing "+marker)
+for marker in ["run_stage( 'commit_guard'", "capture_impl(", "revalidate_impl("]:
+    if marker not in commit_guard: raise SystemExit("FAIL commit-guard observability stage missing "+marker)

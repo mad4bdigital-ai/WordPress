@@ -47,9 +47,10 @@ final class MAD4B_SCP_Observability {
 	}
 
 	public static function current( $tenant_scope = '' ) {
-		$tenant = self::tenant_hash( $tenant_scope );
 		if ( ! is_array( self::$current ) ) return self::begin_trace( $tenant_scope );
-		if ( '' !== $tenant && ! hash_equals( (string)self::$current['tenant_scope_sha256'], $tenant ) ) {
+		if ( '' === trim( (string) $tenant_scope ) ) return self::$current;
+		$tenant = self::tenant_hash( $tenant_scope );
+		if ( ! hash_equals( (string)self::$current['tenant_scope_sha256'], $tenant ) ) {
 			return self::fork_for_tenant( self::$current, $tenant_scope );
 		}
 		return self::$current;
@@ -62,10 +63,6 @@ final class MAD4B_SCP_Observability {
 		if ( ! isset( $profile['stages'][ $stage ] ) ) return new WP_Error( 'mad4b_observability_stage_unknown', 'Observability stage is not registered.' );
 		$parent = self::current( $tenant_scope );
 		if ( is_wp_error( $parent ) ) return $parent;
-		$tenant = self::tenant_hash( $tenant_scope );
-		if ( '' !== $tenant && ! hash_equals( (string)$parent['tenant_scope_sha256'], $tenant ) ) {
-			$parent = self::fork_for_tenant( $parent, $tenant_scope );
-		}
 		$span_id = self::random_hex( 8 );
 		return array(
 			'contract'=>self::TRACE_CONTRACT,
@@ -107,7 +104,9 @@ final class MAD4B_SCP_Observability {
 			'cross_tenant_trace_id_reused'=>false,
 			'authorizing'=>false,
 		);
-		self::$current = $child;
+		// A cross-tenant fork is returned to the caller but never becomes the
+		// request-global current context. Fan-out children therefore cannot
+		// contaminate the origin site's subsequent spans.
 		return $child;
 	}
 
@@ -124,6 +123,30 @@ final class MAD4B_SCP_Observability {
 
 	public static function start_clock() {
 		return function_exists('hrtime') ? hrtime(true) : microtime(true);
+	}
+
+	public static function run_stage( $stage, $callback, $tenant_scope = '', array $attributes = array() ) {
+		if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_observability_callback_invalid', 'Observed stage requires a callable.' );
+		$span = self::child( $stage, $tenant_scope, $attributes );
+		$started = self::start_clock();
+		try {
+			$result = call_user_func( $callback );
+			if ( ! is_wp_error( $span ) ) {
+				// Telemetry is intentionally best-effort: its result never
+				// replaces or upgrades the authoritative callback result.
+				self::finish_span( $span, $started, ! is_wp_error( $result ), array(
+					'result_class' => is_wp_error( $result ) ? 'wp_error' : 'success',
+					'error_code' => is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : '',
+				) );
+			}
+			return $result;
+		} catch ( Throwable $error ) {
+			if ( ! is_wp_error( $span ) ) self::finish_span( $span, $started, false, array(
+				'result_class' => 'exception',
+				'error_class' => get_class( $error ),
+			) );
+			throw $error;
+		}
 	}
 
 	public static function finish_span( $span, $started, $success = true, array $attributes = array() ) {
