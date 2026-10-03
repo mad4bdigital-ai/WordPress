@@ -613,7 +613,7 @@ final class MAD4B_SCP_Abilities {
 		$required = array( 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' );
 		foreach ( $required as $key ) {
 			if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] ) || '' === $input[ $key ] ) {
-				return new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepare the target again and supply its exact signed preparation identity.' );
+				return class_exists( 'MAD4B_SCP_Legacy_Dispatch_Migration' ) ? MAD4B_SCP_Legacy_Dispatch_Migration::deny( 'fixed_dispatch', 'missing_prepared_identity', $ability_name ) : new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepare the target again and supply its exact signed preparation identity.' );
 			}
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
@@ -623,7 +623,7 @@ final class MAD4B_SCP_Abilities {
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_classification_sha256'] )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_authority_scope_sha256'] )
 			|| strlen( $input['preparation_receipt'] ) > MAD4B_SCP_Preparation_Receipt::MAX_BYTES ) {
-			return new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepared execution identity is malformed; prepare the target again.' );
+			return class_exists( 'MAD4B_SCP_Legacy_Dispatch_Migration' ) ? MAD4B_SCP_Legacy_Dispatch_Migration::deny( 'fixed_dispatch', 'malformed_prepared_identity', $ability_name ) : new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepared execution identity is malformed; prepare the target again.' );
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
 			|| ! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $input['expected_authority_scope_sha256'] ) ) {
