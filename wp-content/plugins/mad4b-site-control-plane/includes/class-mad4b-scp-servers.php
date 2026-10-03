@@ -958,7 +958,9 @@ final class MAD4B_SCP_Servers {
 				? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()
 				: array();
 			$reviewed_optional = array_values( array_intersect(
-				array_values( array_unique( array_merge( self::chatgpt_reviewed_direct_step_up_tools(), $dynamic_optional ) ) ),
+				// Persisted dynamic selections are explicit reviewed intent and therefore
+				// outrank convenience direct step-ups inside the optional catalog budget.
+				array_values( array_unique( array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() ) ) ),
 				$tools
 			) );
 			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, $reviewed_optional );
