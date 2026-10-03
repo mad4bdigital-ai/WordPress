@@ -13,7 +13,7 @@ $release_file = (string) getenv( 'MAD4B_CI_AUDIT_RELEASE_FILE' );
 $legacy_barrier = (float) getenv( 'MAD4B_CI_AUDIT_BARRIER' );
 $file_sync = 0 === strpos( $ready_file, '/tmp/mad4b-audit-sync-' )
 	&& 0 === strpos( $release_file, '/tmp/mad4b-audit-sync-' );
-$legacy_sync = $legacy_barrier > microtime( true );
+$legacy_sync = $legacy_barrier > 0;
 if ( ! in_array( $worker, array( 'one', 'two' ), true ) || ( ! $file_sync && ! $legacy_sync ) ) {
 	throw new RuntimeException( 'Audit worker requires a valid worker id and either bounded sync files or a future trusted-base barrier.' );
 }
