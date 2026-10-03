@@ -131,7 +131,8 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 			'creates_authority' => false,
 			'executes_tools' => false,
 			'stores_credentials' => false,
-			'stores_request_data' => false,
+			'persists_request_data' => false,
+			'request_local_diagnostic_state' => true,
 		);
 	}
 
@@ -143,10 +144,11 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 
 		$data = $error->get_error_data();
 		$data = is_array( $data ) ? $data : array();
-		$status = isset( $data['status'] ) && is_numeric( $data['status'] ) ? (int) $data['status'] : 403;
-		if ( $status < 400 || $status > 599 ) $status = 403;
 		$stage = isset( $data['stage'] ) ? sanitize_key( (string) $data['stage'] ) : '';
 		if ( '' === $stage ) $stage = self::stage_for_code( $code );
+		$default_status = in_array( $stage, array( 'catalog_admission', 'runtime_transaction', 'transport_binding', 'transport_admission' ), true ) ? 503 : 403;
+		$status = isset( $data['status'] ) && is_numeric( $data['status'] ) ? (int) $data['status'] : $default_status;
+		if ( $status < 400 || $status > 599 ) $status = $default_status;
 		$blocker = isset( $data['blocker'] ) ? sanitize_key( (string) $data['blocker'] ) : '';
 		if ( '' === $blocker ) $blocker = $code;
 
