@@ -684,11 +684,26 @@ final class MAD4B_SCP_Authorization {
 				'contract' => 'mad4b.execution-attempt-recovery.v1',
 				'execution_attempt_sha256' => $attempt,
 				'state' => 'UNKNOWN',
-				'tterminal' => false,
+				'terminal' => false,
 				'reconciliation_required' => true,
 				'blind_retry_allowed' => false,
 				'client_action' => 'reconcile_execution_state_before_any_retry',
 				'evidence_count' => 0,
+				'authorizing' => false,
+			);
+		}
+		if ( empty( $lookup['chain_valid'] ) || empty( $lookup['head_consistent'] ) ) {
+			return array(
+				'contract' => 'mad4b.execution-attempt-recovery.v1',
+				'execution_attempt_sha256' => $attempt,
+				'state' => 'RECONCILING',
+				'terminal' => false,
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+				'client_action' => 'repair_and_verify_audit_chain_before_execution_recovery',
+				'evidence_count' => count( $events ),
+				'chain_valid' => ! empty( $lookup['chain_valid'] ),
+				'head_consistent' => ! empty( $lookup['head_consistent'] ),
 				'authorizing' => false,
 			);
 		}
