@@ -31,6 +31,8 @@ final class MAD4B_SCP_Approval_Tickets {
 			$profile_binding = self::profile_snapshot( false );
 			if ( ! empty( $profile_binding['origin'] ) ) $site = $profile_binding['origin'];
 		}
+		$resource_set = class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ? MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $input ) ? $input : array() ) : array();
+		if ( is_wp_error( $resource_set ) ) return $resource_set;
 		$envelope = array(
 			'contract' => 'mad4b.approval.v1',
 			'site' => $site,
@@ -39,6 +41,7 @@ final class MAD4B_SCP_Approval_Tickets {
 			'ability' => (string) $ability_name,
 			'provider' => sanitize_key( (string) $provider ),
 			'target' => (string) $target_fingerprint,
+			'resource_set_sha256' => isset( $resource_set['resource_set_sha256'] ) ? (string) $resource_set['resource_set_sha256'] : '',
 			'ticket_class' => $ticket_class,
 			'input' => $input,
 		);

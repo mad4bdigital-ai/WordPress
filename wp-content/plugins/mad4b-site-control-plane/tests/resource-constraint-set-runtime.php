@@ -35,6 +35,14 @@ $widen = $input; $widen['post_id'] = 43;
 $drift = MAD4B_SCP_Resource_Constraint_Set::assert_same( $a, 'mad4b/content-update-post', 'core', $widen );
 $check( is_wp_error( $drift ) && 'mad4b_resource_set_drift' === $drift->get_error_code(), 'post resource widening was not rejected', $drift );
 
+$alternate_identifier = $input; unset( $alternate_identifier['post_id'] ); $alternate_identifier['object_id'] = '42';
+$drift = MAD4B_SCP_Resource_Constraint_Set::assert_same( $a, 'mad4b/content-update-post', 'core', $alternate_identifier );
+$check( is_wp_error( $drift ) && 'mad4b_resource_set_drift' === $drift->get_error_code(), 'alternate identifier representation was not rejected', $drift );
+
+$count_expand = $input; $count_expand['post_ids'] = array( 42, 43, 44 );
+$drift = MAD4B_SCP_Resource_Constraint_Set::assert_same( $a, 'mad4b/content-update-post', 'core', $count_expand );
+$check( is_wp_error( $drift ) && 'mad4b_resource_set_drift' === $drift->get_error_code(), 'mutation target-count expansion was not rejected', $drift );
+
 $provider_swap = $input; $provider_swap['provider_object_id'] = 'provider-object-999';
 $drift = MAD4B_SCP_Resource_Constraint_Set::assert_same( $a, 'mad4b/content-update-post', 'core', $provider_swap );
 $check( is_wp_error( $drift ) && 'mad4b_resource_set_drift' === $drift->get_error_code(), 'provider object substitution was not rejected', $drift );

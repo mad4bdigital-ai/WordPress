@@ -99,10 +99,13 @@ final class MAD4B_SCP_Authorization {
 
 		$normalized = self::canonicalize_target_value( $input, 0 );
 		if ( is_wp_error( $normalized ) ) return '';
+		$resource_set = class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ? MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $input ) ? $input : array() ) : array();
+		if ( is_wp_error( $resource_set ) ) return '';
 		$payload = array(
 			'contract' => self::TARGET_FINGERPRINT_CONTRACT,
 			'ability' => (string) $ability_name,
 			'provider' => $provider,
+			'resource_set_sha256' => isset( $resource_set['resource_set_sha256'] ) ? (string) $resource_set['resource_set_sha256'] : '',
 			'input' => $normalized,
 		);
 		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -202,6 +205,9 @@ final class MAD4B_SCP_Authorization {
 		}
 
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
+		if ( ! class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ) return self::error( 'mad4b_resource_constraint_compiler_unavailable', 'Provider-neutral resource constraint compiler is unavailable at mutation admission.' );
+		$resource_set = MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $authorization_input ) ? $authorization_input : array() );
+		if ( is_wp_error( $resource_set ) ) return $resource_set;
 		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
 			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $ability_name, $authorization_input );
 			if ( is_wp_error( $context_guard ) ) return $context_guard;
@@ -322,6 +328,9 @@ final class MAD4B_SCP_Authorization {
 			'grant_id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
 			'scopes_present' => ! empty( $scopes ),
 			'constraints' => $constraints,
+			'resource_set' => $resource_set,
+			'resource_set_sha256' => (string) $resource_set['resource_set_sha256'],
+			'resource_set_authorizing' => false,
 			'impact' => $impact,
 			'approval_required' => $approval_required,
 			'approval_ticket_id' => $approval_required ? $approval_ticket_id : '',
