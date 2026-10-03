@@ -79,21 +79,20 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 		$build = self::build_fingerprint();
 		if ( '' === $build || ! hash_equals( $build, $input['build'] ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_build_changed', 'Reload after the plugin update.', array( 'status' => 409 ) );
 
-		$proof = isset( $_POST['mu_proof'] ) && is_string( $_POST['mu_proof'] )
-			? strtolower( trim( wp_unslash( $_POST['mu_proof'] ) ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
-			: '';
-		$expected_proof = class_exists( 'MAD4B_SCP_Site_Profile', false ) && method_exists( 'MAD4B_SCP_Site_Profile', 'diagnostic_mu_proof' )
-			? strtolower( trim( (string) MAD4B_SCP_Site_Profile::diagnostic_mu_proof() ) )
-			: '';
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $proof ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_proof ) || ! hash_equals( $expected_proof, $proof ) ) {
-			return new WP_Error( 'mad4b_endpoint_diagnostic_mu_proof_invalid', 'Reload the page after enrollment or plugin changes and start a new diagnostic.', array( 'status' => 409 ) );
-		}
-
 		$runtime_bootstrap = self::bounded_mu_bootstrap_evidence();
 		$managed_nonproduction = class_exists( 'MAD4B_SCP_Site_Profile', false )
 			&& method_exists( 'MAD4B_SCP_Site_Profile', 'nonproduction_governed' )
 			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
 		if ( $managed_nonproduction ) {
+			$proof = isset( $_POST['mu_proof'] ) && is_string( $_POST['mu_proof'] )
+				? strtolower( trim( wp_unslash( $_POST['mu_proof'] ) ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+				: '';
+			$expected_proof = method_exists( 'MAD4B_SCP_Site_Profile', 'diagnostic_mu_proof' )
+				? strtolower( trim( (string) MAD4B_SCP_Site_Profile::diagnostic_mu_proof() ) )
+				: '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $proof ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_proof ) || ! hash_equals( $expected_proof, $proof ) ) {
+				return new WP_Error( 'mad4b_endpoint_diagnostic_mu_proof_invalid', 'Reload the page after enrollment or plugin changes and start a new diagnostic.', array( 'status' => 409 ) );
+			}
 			$bootstrap_ready = ! empty( $runtime_bootstrap['executed'] )
 				&& ! empty( $runtime_bootstrap['diagnostic_mu_proof_valid'] )
 				&& ! empty( $runtime_bootstrap['canonical_symbols_pinned'] )
