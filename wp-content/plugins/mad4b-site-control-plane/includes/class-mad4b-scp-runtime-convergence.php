@@ -230,6 +230,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$external_wpml = isset( $rest['external_wpml_acceptance'] ) && is_array( $rest['external_wpml_acceptance'] ) ? $rest['external_wpml_acceptance'] : array();
 		$providers = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix' ) ? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
 		$performance = class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) ? MAD4B_SCP_Admin_Query_Performance::status() : array();
+		$local_oauth = class_exists( 'MAD4B_SCP_Local_OAuth_Server', false ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' )
+			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
+			: array();
+		$local_oauth_required = ! empty( $local_oauth['configured'] );
+		$local_oauth_store_ready = ! $local_oauth_required || ! empty( $local_oauth['oauth_store_ready'] );
 
 		$update_target = isset( $update['native_wordpress_update']['target'] ) && is_array( $update['native_wordpress_update']['target'] ) ? $update['native_wordpress_update']['target'] : array();
 		$target_sha = isset( $update_target['source_commit_sha'] ) ? strtolower( trim( (string) $update_target['source_commit_sha'] ) ) : '';
@@ -265,6 +270,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'installed_version' => isset( $schema['installed_version'] ) ? (int) $schema['installed_version'] : 0,
 				'integrity_token_valid' => ! empty( $schema['integrity_token_valid'] ),
 				'physical_ready' => ! empty( $schema['physical_integrity']['ready'] ),
+			) ),
+			'local_oauth_store' => self::phase( 'local_oauth_store', $local_oauth_store_ready ? 'ready' : 'pending', $local_oauth_required, array( 'schema' ), true, array(
+				'configured' => $local_oauth_required,
+				'store_ready' => ! empty( $local_oauth['oauth_store_ready'] ),
+				'installed_version' => isset( $local_oauth['oauth_store_version'] ) ? (int) $local_oauth['oauth_store_version'] : 0,
+				'expected_version' => class_exists( 'MAD4B_SCP_Local_OAuth_Store', false ) ? (int) MAD4B_SCP_Local_OAuth_Store::VERSION : 0,
+				'protocol_migration_allowed' => false,
 			) ),
 			'managed_skills' => self::phase( 'managed_skills', ! $skills_enabled || ! empty( $skills['ready'] ) ? 'ready' : 'pending', $skills_enabled, array( 'schema' ), true, array(
 				'enabled' => $skills_enabled,
@@ -378,6 +390,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$phases = isset( $status['phases'] ) && is_array( $status['phases'] ) ? $status['phases'] : array();
 		if ( isset( $phases['schema'] ) && 'ready' !== $phases['schema']['state'] ) {
 			$actions[] = self::action( 'schema', 'reconcile_schema', self::APPLY_ABILITY, true, false );
+		}
+		if ( isset( $phases['local_oauth_store'] ) && 'ready' !== $phases['local_oauth_store']['state'] ) {
+			$actions[] = self::action( 'local_oauth_store', 'reconcile_local_oauth_store', self::APPLY_ABILITY, true, false );
 		}
 		if ( isset( $phases['managed_skills'] ) && 'ready' !== $phases['managed_skills']['state'] ) {
 			$actions[] = self::action( 'managed_skills', 'reconcile_managed_skills', self::APPLY_ABILITY, true, false );
@@ -910,6 +925,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 			}
 			if ( class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) && method_exists( 'MAD4B_SCP_Schema_Lifecycle', 'mark_current_package_applied' ) ) {
 				MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' );
+			}
+			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server', false ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'converge_store_for_lifecycle' ) ) {
+				$oauth_store = MAD4B_SCP_Local_OAuth_Server::converge_store_for_lifecycle();
+				if ( is_wp_error( $oauth_store ) ) return $oauth_store;
+				if ( is_array( $oauth_store ) && ! empty( $oauth_store['changed'] ) ) {
+					$changed[] = 'local_oauth_store';
+					$changed = array_values( array_unique( $changed ) );
+				}
 			}
 			if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) {
 				$mcp_recovery = MAD4B_SCP_MCP_Runtime_Recovery::run( $lock );

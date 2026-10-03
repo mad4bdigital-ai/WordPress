@@ -87,7 +87,14 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 
 		$mixed = ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] );
 		$preventive = $preventive && class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active();
-		if ( ! empty( $status['runtime_from_official_plugin'] ) || ( $preventive && empty( $status['runtime_class_loaded'] ) ) ) {
+		// Explicit governed recovery is source-agnostic: a competing vendor may
+		// already own McpAdapter itself (Rank Math, Hostinger, or another bundled
+		// package). PHP cannot replace declared classes in this request, but the
+		// certified MU bootstrap can pin the official class set on the next request.
+		// The recovery coordinator has already proven exact non-production
+		// enrollment, official Adapter disk integrity, audit readiness and a
+		// maintenance lease, so do not restrict repair to one reviewed vendor family.
+		if ( ! empty( $status['runtime_from_official_plugin'] ) || $preventive ) {
 			if ( $mixed || $preventive ) {
 				// PHP classes cannot be safely replaced after declaration. Keep the
 				// current request fail-closed, but arm the governed MU bootstrap so the
@@ -509,6 +516,13 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'mu_bootstrap_runtime_state' => isset( $runtime['state'] ) ? sanitize_key( (string) $runtime['state'] ) : ( $present ? 'present_not_executed_this_request' : 'absent' ),
 			'mu_bootstrap_runtime_source' => isset( $runtime['runtime_source'] ) ? sanitize_text_field( (string) $runtime['runtime_source'] ) : '',
 			'mu_bootstrap_runtime_from_official_plugin' => ! empty( $runtime['runtime_from_official_plugin'] ),
+			'mu_bootstrap_diagnostic_mu_proof_valid' => ! empty( $runtime['diagnostic_mu_proof_valid'] ),
+			'mu_bootstrap_canonical_symbols_pinned' => ! empty( $runtime['canonical_symbols_pinned'] ),
+			'mu_bootstrap_critical_class_baseline_ready' => ! empty( $runtime['critical_class_baseline_ready'] ),
+			'mu_bootstrap_critical_class_set_pinned' => ! empty( $runtime['critical_class_set_pinned'] ),
+			'mu_bootstrap_critical_class_pin_count' => isset( $runtime['critical_class_pin_count'] ) ? max( 0, (int) $runtime['critical_class_pin_count'] ) : 0,
+			'mu_bootstrap_runtime_preclaimed' => ! empty( $runtime['runtime_preclaimed'] ),
+			'mu_bootstrap_preclaimed_symbol' => isset( $runtime['preclaimed_symbol'] ) ? sanitize_text_field( (string) $runtime['preclaimed_symbol'] ) : '',
 		);
 	}
 

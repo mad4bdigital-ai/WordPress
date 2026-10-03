@@ -3,7 +3,7 @@
 $adapter_dir = $argv[1] ?? '';
 $case = $argv[2] ?? '';
 if ( '' === $case ) {
-	foreach ( array( 'capability', 'nonce', 'array_input', 'server', 'build', 'method', 'foreign_adapter', 'early_rest', 'success', 'evidence' ) as $mode ) {
+	foreach ( array( 'capability', 'nonce', 'array_input', 'server', 'build', 'method', 'mu_proof', 'mu_runtime', 'foreign_adapter', 'early_rest', 'success', 'evidence' ) as $mode ) {
 		// Inherit the runner's module configuration: PHP 7.4 loads JSON as an extension.
 		$command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $adapter_dir ) . ' ' . escapeshellarg( $mode );
 		passthru( $command, $code );
@@ -49,7 +49,7 @@ function get_option( $name, $default = false ) { return $default; }
 function register_initial_settings() { throw new RuntimeException( 'Core settings registrar ran' ); }
 function create_initial_rest_routes() { throw new RuntimeException( 'Core routes registrar ran' ); }
 function endpoint_preserved_registrar() { $GLOBALS['preserved']++; }
-class MAD4B_SCP_Site_Profile { static function origin_enrolled() { return true; } static function managed_runtime_enabled() { return true; } static function configured() { return false; } }
+class MAD4B_SCP_Site_Profile { static function origin_enrolled() { return true; } static function managed_runtime_enabled() { return true; } static function configured() { return false; } static function diagnostic_mu_proof() { return str_repeat( 'a', 64 ); } static function nonproduction_governed( $feature = '' ) { return 'managed_runtime' === $feature; } }
 class MAD4B_SCP_Adapter_Registry { static function instance() { throw new RuntimeException( 'Sibling catalog factory ran' ); } }
 class MAD4B_SCP_Developer_Runtime { static function tool_names( $breakglass ) { return array( $breakglass ? 'fixture/breakglass' : 'fixture/developer' ); } }
 class MAD4B_SCP_Provider_Contracts { static function runtime_status( ...$args ) { throw new RuntimeException( 'Full provider certification ran' ); } }
@@ -91,7 +91,21 @@ require MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-status.php';
 require MAD4B_SCP_DIR . 'includes/class-mad4b-scp-endpoint-diagnostic.php';
 $_GET = array();
 $_SERVER['REQUEST_METHOD'] = 'POST';
-$_POST = array( 'action' => MAD4B_SCP_Endpoint_Diagnostic::ACTION, 'nonce' => 'valid', 'server_id' => 'mad4b-developer-breakglass', 'build' => MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() );
+$GLOBALS['mad4b_scp_mcp_mu_bootstrap'] = array(
+	'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v6',
+	'executed' => true,
+	'eligible' => true,
+	'state' => 'canonical_runtime_pinned_diagnostic_deferred',
+	'request_requires_mcp_runtime' => true,
+	'diagnostic_mu_proof_valid' => true,
+	'canonical_symbols_pinned' => true,
+	'critical_class_baseline_ready' => true,
+	'critical_class_set_pinned' => true,
+	'critical_class_pin_count' => 10,
+	'runtime_from_official_plugin' => true,
+	'runtime_source' => 'mcp-adapter/includes/Core/McpAdapter.php',
+);
+$_POST = array( 'action' => MAD4B_SCP_Endpoint_Diagnostic::ACTION, 'nonce' => 'valid', 'server_id' => 'mad4b-developer-breakglass', 'build' => MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint(), 'mu_proof' => str_repeat( 'a', 64 ) );
 MAD4B_SCP_MCP_Request_Scope::bootstrap();
 check( MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() && ! MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'Unverified action armed runtime or entered lifecycle boot' );
 check( ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed(), 'Raw request grants REST permission' );
@@ -99,12 +113,14 @@ add_action( 'rest_api_init', 'register_initial_settings', 10 ); add_action( 'res
 add_action( 'rest_api_init', 'endpoint_foreign_registrar', 10 ); add_action( 'rest_api_init', 'endpoint_preserved_registrar', 10 );
 $job_adapter = new JobAdapter();
 add_action( 'mcp_adapter_init', static function() use ( $job_adapter ) { ( new MAD4B_SCP_Servers() )->register_servers( $job_adapter ); }, 10 );
-$expect = array( 'capability' => 'mad4b_endpoint_diagnostic_forbidden', 'nonce' => 'mad4b_endpoint_diagnostic_nonce_invalid', 'array_input' => 'mad4b_endpoint_diagnostic_input_invalid', 'server' => 'mad4b_endpoint_diagnostic_server_invalid', 'build' => 'mad4b_endpoint_diagnostic_build_changed', 'method' => 'mad4b_endpoint_diagnostic_post_required', 'foreign_adapter' => 'mad4b_endpoint_diagnostic_noncanonical_adapter', 'early_rest' => 'mad4b_endpoint_diagnostic_runtime_already_materialized' );
+$expect = array( 'capability' => 'mad4b_endpoint_diagnostic_forbidden', 'nonce' => 'mad4b_endpoint_diagnostic_nonce_invalid', 'array_input' => 'mad4b_endpoint_diagnostic_input_invalid', 'server' => 'mad4b_endpoint_diagnostic_server_invalid', 'build' => 'mad4b_endpoint_diagnostic_build_changed', 'method' => 'mad4b_endpoint_diagnostic_post_required', 'mu_proof' => 'mad4b_endpoint_diagnostic_mu_proof_invalid', 'mu_runtime' => 'mad4b_endpoint_diagnostic_mu_bootstrap_not_ready', 'foreign_adapter' => 'mad4b_endpoint_diagnostic_noncanonical_adapter', 'early_rest' => 'mad4b_endpoint_diagnostic_runtime_already_materialized' );
 if ( 'nonce' === $case ) $_POST['nonce'] = 'invalid';
 if ( 'array_input' === $case ) $_POST['server_id'] = array( 'mad4b-chatgpt' );
 if ( 'server' === $case ) $_POST['server_id'] = 'other-server';
 if ( 'build' === $case ) $_POST['build'] = str_repeat( '0', 64 );
 if ( 'method' === $case ) $_SERVER['REQUEST_METHOD'] = 'GET';
+if ( 'mu_proof' === $case ) $_POST['mu_proof'] = str_repeat( 'b', 64 );
+if ( 'mu_runtime' === $case ) $GLOBALS['mad4b_scp_mcp_mu_bootstrap']['critical_class_set_pinned'] = false;
 if ( 'early_rest' === $case ) $GLOBALS['did']['rest_api_init'] = 1;
 $result = MAD4B_SCP_Endpoint_Diagnostic::run();
 if ( isset( $expect[$case] ) ) {
@@ -115,6 +131,8 @@ if ( isset( $expect[$case] ) ) {
 	check( 9 === count( $job_adapter->tools ) && array( 'mad4b-developer-breakglass' ) === array_keys( array_filter( $job_adapter->tools ) ), 'Catalog selection: ' . json_encode( $job_adapter->tools ) );
 	check( 1 === $GLOBALS['preserved'] && 1 === did_action( 'mcp_adapter_init' ), 'Canonical or preserved callback lost' );
 	check( ! $result['connection_certified'] && ! $result['certification_performed'] && $result['foreign_transport_inventory_deferred'], 'Scoped job fabricated certification' );
+	check( ! empty( $result['runtime_bootstrap']['diagnostic_mu_proof_valid'] ) && ! empty( $result['runtime_bootstrap']['critical_class_set_pinned'] ) && ! empty( $result['runtime_bootstrap']['runtime_from_official_plugin'] ), 'Verified MU bootstrap evidence missing from diagnostic result' );
+	check( isset( $result['server']['runtime_bootstrap'] ) && $result['server']['runtime_bootstrap'] === $result['runtime_bootstrap'], 'Server evidence lost bounded MU bootstrap readback' );
 	check( ! $result['server']['local_endpoint_ready'], 'Missing actual Adapter server admitted' );
 	if ( 'evidence' === $case ) {
 		$failure = array( 'failing_ability' => 'mad4b/example', 'stage' => 'official_schema_validation', 'error_code' => 'mcp_tool_validation_failed', 'error_class' => 'WP_Error', 'validator_reason' => 'input_schema_properties_not_object', 'tool_bytes' => 120, 'raw_payload' => 'PRIVATE_PAYLOAD' );

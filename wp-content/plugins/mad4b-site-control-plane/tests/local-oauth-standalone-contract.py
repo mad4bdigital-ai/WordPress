@@ -10,6 +10,8 @@ init_lock = (root / 'includes' / 'class-mad4b-scp-local-oauth-init-lock.php').re
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 portable = (root / 'includes' / 'class-mad4b-scp-portable-readonly-connection.php').read_text(encoding='utf-8')
+convergence = (root / 'includes' / 'class-mad4b-scp-runtime-convergence.php').read_text(encoding='utf-8')
+mcp_recovery = (root / 'includes' / 'class-mad4b-scp-mcp-runtime-recovery.php').read_text(encoding='utf-8')
 
 required_server = [
     'mad4b.local-oauth-server.v3',
@@ -411,7 +413,39 @@ if ensure_runtime.index("request_is_schema_migration_hotpath()") > ensure_runtim
 if "flock( $handle, LOCK_EX )" in init_lock:
     raise SystemExit("Local OAuth first-boot lock must never block a PHP worker indefinitely")
 
-ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function status()", 1)[0]
+lifecycle_convergence = server.split("public static function converge_store_for_lifecycle()", 1)[1].split("public static function runtime_identity_status()", 1)[0]
+for marker in (
+    "mad4b.local-oauth-store-convergence.v1",
+    "MAD4B_SCP_Local_OAuth_Store::reset_readiness_cache()",
+    "MAD4B_SCP_Local_OAuth_Store::is_ready()",
+    "MAD4B_SCP_Local_OAuth_Store::install_or_upgrade()",
+    "mad4b_local_oauth_store_convergence_readback_failed",
+    "'physical_readback_ready' => true",
+):
+    if marker not in lifecycle_convergence:
+        raise SystemExit(f"Local OAuth lifecycle convergence missing: {marker}")
+for forbidden in (
+    "current_request_is_protocol_hotpath()",
+    "current_request_is_passive_admin_hotpath()",
+):
+    if forbidden in lifecycle_convergence:
+        raise SystemExit(f"Local OAuth lifecycle convergence must rely on its explicit caller, not request sniffing: {forbidden}")
+
+for marker in (
+    "'local_oauth_store' => self::phase(",
+    "'reconcile_local_oauth_store'",
+    "MAD4B_SCP_Local_OAuth_Server::converge_store_for_lifecycle()",
+):
+    if marker not in convergence:
+        raise SystemExit(f"Runtime convergence does not own Local OAuth store repair: {marker}")
+for marker in (
+    "MAD4B_SCP_Local_OAuth_Server::converge_store_for_lifecycle()",
+    "'local_oauth_store' => is_array( $oauth_store ) ? $oauth_store : array()",
+):
+    if marker not in mcp_recovery:
+        raise SystemExit(f"MCP recovery does not converge Local OAuth store after profile/update lifecycle: {marker}")
+
+ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function converge_store_for_lifecycle()", 1)[0]
 if "MAD4B_SCP_Local_OAuth_Store::is_ready()" in ensure_runtime:
     raise SystemExit("healthy Local OAuth runtime must not SHOW TABLES on every request")
 for marker in (

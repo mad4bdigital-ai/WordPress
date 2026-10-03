@@ -20,6 +20,14 @@ brk="MAD4B_SCP_Provider_Circuit_Breaker::begin_for_target"
 fin="MAD4B_SCP_Provider_Transport_Eligibility::finalize_breaker"
 if pre not in connector or brk not in connector or fin not in connector:
  raise SystemExit("FAIL connector mutation transport is not bound to eligibility precedence")
-if not (connector.index(pre)<connector.index(brk)<connector.index(fin)):
+mutation_marker="private static function execute_mutation_impl"
+if mutation_marker not in connector:
+ raise SystemExit("FAIL connector mutation implementation is missing")
+mutation=connector.split(mutation_marker,1)[1]
+if "\n\tprivate static function" in mutation:
+ mutation=mutation.split("\n\tprivate static function",1)[0]
+if pre not in mutation or brk not in mutation or fin not in mutation:
+ raise SystemExit("FAIL connector mutation implementation lost eligibility/breaker stages")
+if not (mutation.index(pre)<mutation.index(brk)<mutation.index(fin)):
  raise SystemExit("FAIL strongest static deny is not evaluated before breaker transport admission")
 print("mad4b.provider-transport-eligibility.contract.v1: PASS")
