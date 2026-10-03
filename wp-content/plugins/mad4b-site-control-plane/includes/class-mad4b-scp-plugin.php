@@ -210,6 +210,20 @@ final class MAD4B_SCP_Plugin {
 	}
 
 	private static function request_is_wordpress_plugin_lifecycle() {
+		// WP-CLI loads active plugins before executing "wp plugin <mutation>".
+		// Classify that command before generic CLI reconciliation so deactivate,
+		// activate, update, install and delete cannot incidentally rewrite Skills,
+		// provider or governance state in the command bootstrap request itself.
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
+			$argv = isset( $GLOBALS['argv'] ) && is_array( $GLOBALS['argv'] ) ? array_values( $GLOBALS['argv'] ) : array();
+			$count = count( $argv );
+			for ( $index = 0; $index + 1 < $count; $index++ ) {
+				$token = sanitize_key( (string) $argv[ $index ] );
+				if ( 'plugin' !== $token ) continue;
+				$subcommand = sanitize_key( (string) $argv[ $index + 1 ] );
+				if ( in_array( $subcommand, array( 'activate', 'deactivate', 'install', 'update', 'delete', 'uninstall' ), true ) ) return true;
+			}
+		}
 		if ( ! is_admin() ) return false;
 		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
 		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle observation only.

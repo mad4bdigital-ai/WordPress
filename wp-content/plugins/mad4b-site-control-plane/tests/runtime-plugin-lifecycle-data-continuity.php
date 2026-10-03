@@ -94,7 +94,21 @@ if ( ! is_array( $baseline ) || 'mad4b.plugin-lifecycle-data-continuity.v1' !== 
 	$fail( 'Lifecycle baseline is invalid.' );
 }
 if ( ! hash_equals( (string) $baseline['hash'], $hash ) || $baseline['data'] !== $data ) {
-	$fail( 'Authority-bearing data changed across plugin lifecycle boundary. before=' . (string) $baseline['hash'] . ' after=' . $hash );
+	$diffs = array();
+	foreach ( array( 'tables', 'options' ) as $section ) {
+		$before_section = isset( $baseline['data'][ $section ] ) && is_array( $baseline['data'][ $section ] ) ? $baseline['data'][ $section ] : array();
+		$after_section = isset( $data[ $section ] ) && is_array( $data[ $section ] ) ? $data[ $section ] : array();
+		$keys = array_values( array_unique( array_merge( array_keys( $before_section ), array_keys( $after_section ) ) ) );
+		sort( $keys, SORT_STRING );
+		foreach ( $keys as $key ) {
+			$before_value = array_key_exists( $key, $before_section ) ? $before_section[ $key ] : '__missing__';
+			$after_value = array_key_exists( $key, $after_section ) ? $after_section[ $key ] : '__missing__';
+			if ( $before_value === $after_value ) continue;
+			$diffs[] = $section . ':' . $key;
+			if ( count( $diffs ) >= 12 ) break 2;
+		}
+	}
+	$fail( 'Authority-bearing data changed across plugin lifecycle boundary. before=' . (string) $baseline['hash'] . ' after=' . $hash . ' changed=' . implode( ',', $diffs ) );
 }
 
 echo "mad4b.plugin-lifecycle-data-continuity.v1: VERIFIED {$hash}\n";
