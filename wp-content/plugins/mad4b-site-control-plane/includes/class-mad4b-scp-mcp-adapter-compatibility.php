@@ -30,7 +30,7 @@ final class MAD4B_SCP_MCP_Adapter_Compatibility {
 				if ( is_object( $schemas ) && method_exists( $schemas, 'forVersion' ) ) return $schemas->forVersion( $revision );
 			}
 			if ( class_exists( '\\WP\\McpSchema\\Schemas' ) && method_exists( '\\WP\\McpSchema\\Schemas', 'create' ) ) {
-				$schemas = \\WP\\McpSchema\\Schemas::create();
+				$schemas = \WP\McpSchema\Schemas::create();
 				if ( is_object( $schemas ) && method_exists( $schemas, 'forVersion' ) ) return $schemas->forVersion( $revision );
 			}
 		} catch ( Throwable $error ) {
@@ -50,7 +50,7 @@ final class MAD4B_SCP_MCP_Adapter_Compatibility {
 				if ( ! class_exists( '\\WP\\MCP\\Domain\\Tools\\McpTool' ) || ! method_exists( '\\WP\\MCP\\Domain\\Tools\\McpTool', 'fromAbility' ) ) {
 					return new WP_Error( 'mad4b_mcp_runtime_tool_builder_unavailable', 'Revision-aware MCP tool builder is unavailable.' );
 				}
-				$runtime_tool = \\WP\\MCP\\Domain\\Tools\\McpTool::fromAbility( $ability );
+				$runtime_tool = \WP\MCP\Domain\Tools\McpTool::fromAbility( $ability );
 				if ( is_wp_error( $runtime_tool ) ) return $runtime_tool;
 				$schema = self::schema( null, $revision );
 				if ( is_wp_error( $schema ) ) return $schema;
@@ -59,7 +59,7 @@ final class MAD4B_SCP_MCP_Adapter_Compatibility {
 				return array( 'wire' => $wire, 'adapter_meta' => is_array( $meta ) ? $meta : array(), 'runtime_tool' => $runtime_tool );
 			}
 
-			$built = \\WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool::build( $ability );
+			$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $ability );
 			if ( is_wp_error( $built ) ) return $built;
 			if ( ! is_array( $built ) || ! isset( $built['tool'] ) || ! is_object( $built['tool'] ) ) {
 				return new WP_Error( 'mad4b_mcp_legacy_builder_contract_invalid', 'Legacy MCP builder returned an unexpected contract.' );
