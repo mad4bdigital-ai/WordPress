@@ -49,7 +49,7 @@ final class MAD4B_SCP_Execution_State_View {
 
 	public static function combined( $operation_id = '', array $idempotency_identity = array(), $mutation_error = null ) {
 		$views = array();
-		if ( '' !== trim( (string) $operation_id ) {
+		if ( '' !== trim( (string) $operation_id ) ) {
 			$view = self::operation( $operation_id );
 			if ( is_wp_error( $view ) ) return $view;
 			$views[] = $view;
