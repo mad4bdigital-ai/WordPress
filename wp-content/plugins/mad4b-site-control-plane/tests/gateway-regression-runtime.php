@@ -58,6 +58,31 @@ class MAD4B_SCP_Connector_Resilience {
  static function execute_mutation( $lane, $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
  static function execute_read( $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
 }
+class MAD4B_SCP_Replay_Policy {
+ const CONTRACT = 'mad4b.replay-policy.v1';
+ static function policy_sha256() { return hash( 'sha256', 'gateway-regression-replay-policy-fixture-v1' ); }
+ static function begin( $preparation_receipt, $ability_name, $provider, $target_input, $idempotency_key = '' ) {
+  if ( ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) || ! method_exists( 'MAD4B_SCP_Preparation_Receipt', 'claims' ) ) return new WP_Error( 'fixture_replay_claims_unavailable' );
+  $claims = MAD4B_SCP_Preparation_Receipt::claims( $preparation_receipt, $ability_name );
+  if ( is_wp_error( $claims ) ) return $claims;
+  $policy_sha = self::policy_sha256();
+  if ( empty( $claims['replay_policy_sha256'] ) || ! hash_equals( $policy_sha, (string) $claims['replay_policy_sha256'] ) ) return new WP_Error( 'fixture_replay_policy_binding_mismatch' );
+  ++$GLOBALS['replay_begin_calls'];
+  return array(
+   'contract' => self::CONTRACT,
+   'replayed' => false,
+   'mode' => 'single_use',
+   'risk_tier' => 'fixture',
+   'policy_sha256' => $policy_sha,
+   'authorizing' => false,
+  );
+ }
+ static function complete( array $admission, $dispatch_result ) {
+  if ( empty( $admission['policy_sha256'] ) || ! hash_equals( self::policy_sha256(), (string) $admission['policy_sha256'] ) ) return new WP_Error( 'fixture_replay_completion_binding_mismatch' );
+  ++$GLOBALS['replay_complete_calls'];
+  return array( 'contract' => self::CONTRACT, 'completed' => true, 'authorizing' => false );
+ }
+}
 class MAD4B_SCP_Transport_Context { static function with_write_dispatch_target( $name, $digest, $callback ) { return $callback(); } }
 class MAD4B_SCP_Staging_Write_Planning_Guard {
  const ABILITY = 'mad4b/approval-plan';
@@ -85,7 +110,7 @@ class GatewayFixture {
   ++$this->calls; return array( 'ok' => true );
  }
 }
-$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0;
+$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0; $GLOBALS['replay_begin_calls'] = 0; $GLOBALS['replay_complete_calls'] = 0;
 require __DIR__ . '/../includes/class-mad4b-scp-identifiers.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
