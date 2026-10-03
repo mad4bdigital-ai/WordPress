@@ -3,12 +3,12 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 12;
+	const VERSION = 13;
 	const OPTION  = 'mad4b_scp_schema_version';
-	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v12';
+	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v13';
 	const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';
-	const MIGRATION_ID = '20260929-feature008-operation-journal-v12';
-	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v12';
+	const MIGRATION_ID = '20261003-capability-fabric-catalog-backend-v13';
+	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v13';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
 	private static $critical_ready_cache = null;
@@ -28,6 +28,7 @@ final class MAD4B_SCP_Schema {
 			'outbox' => $wpdb->prefix . 'mad4b_execution_outbox', 'inbox' => $wpdb->prefix . 'mad4b_execution_inbox',
 			'operation_events' => $wpdb->prefix . 'mad4b_dynamic_operation_events', 'operation_heads' => $wpdb->prefix . 'mad4b_dynamic_operation_heads',
 			'recovery_cases' => $wpdb->prefix . 'mad4b_dynamic_recovery_cases', 'metric_buckets' => $wpdb->prefix . 'mad4b_dynamic_metric_buckets',
+			'catalog_objects' => $wpdb->prefix . 'mad4b_catalog_objects', 'catalog_generations' => $wpdb->prefix . 'mad4b_catalog_generations', 'catalog_heads' => $wpdb->prefix . 'mad4b_catalog_heads',
 		);
 	}
 
@@ -42,6 +43,7 @@ final class MAD4B_SCP_Schema {
 			'approvals', 'mutations', 'audit_events', 'audit_heads',
 			'content_jobs', 'content_job_events', 'work_leases', 'idempotency',
 			'outbox', 'inbox', 'operation_events', 'operation_heads', 'recovery_cases',
+			'catalog_objects', 'catalog_generations', 'catalog_heads',
 		);
 	}
 
@@ -119,12 +121,12 @@ final class MAD4B_SCP_Schema {
 			'contract' => self::MIGRATION_CONTRACT,
 			'migration_id' => self::MIGRATION_ID,
 			'target_schema_version' => self::VERSION,
-			'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12 ),
+			'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12, 13 ),
 			'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes',
 			'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces',
 			'destructive' => false,
 			'expected_locks_downtime' => 'bounded_metadata_ddl_no_maintenance_mode_expected',
-			'data_volume_assumption' => 'feature008_adds_operation_journal_tables_existing_governance_rows_preserved',
+			'data_volume_assumption' => 'v13_adds_empty_catalog_backend_tables_existing_governance_and_catalog_options_are_preserved',
 			'preflight_checks' => array(
 				'supported_prerequisite_schema_version',
 				'wordpress_database_handle_available',
@@ -139,7 +141,7 @@ final class MAD4B_SCP_Schema {
 				'integrity_token_written_after_verification_only',
 			),
 			'partial_failure_recovery' => 'target_version_and_integrity_token_not_advanced_until_deep_verification_passes_retry_is_idempotent',
-			'mixed_version_compatibility' => 'additive_v12_schema_preserves_v11_runtime_tables_and_old_code_ignores_feature008_operation_journal_tables',
+			'mixed_version_compatibility' => 'additive_v13_schema_preserves_v12_runtime_and_options_catalog_authority_until_explicit_parity_cutover',
 			'authority_widening' => false,
 		);
 	}
@@ -743,6 +745,51 @@ final class MAD4B_SCP_Schema {
 			KEY metric_bucket (metric_name,bucket_start)
 		) $charset;";
 
+		$sql[] = "CREATE TABLE {$t['catalog_objects']} (
+			object_sha256 char(64) NOT NULL,
+			object_kind varchar(32) NOT NULL,
+			wire_generation varchar(64) NOT NULL,
+			payload_blob longblob NOT NULL,
+			payload_sha256 char(64) NOT NULL,
+			payload_bytes bigint(20) unsigned NOT NULL,
+			expires_at datetime NOT NULL,
+			retain_until datetime NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (object_sha256),
+			KEY kind_expiry (object_kind,expires_at),
+			KEY expires_at (expires_at),
+			KEY retain_until (retain_until)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['catalog_generations']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			generation_id char(64) NOT NULL,
+			authority_scope_sha256 char(64) NOT NULL,
+			object_key_sha256 char(64) NOT NULL,
+			object_sha256 char(64) NOT NULL,
+			object_expires_at datetime NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY generation_object_key (generation_id,object_key_sha256),
+			KEY scope_generation (authority_scope_sha256,generation_id),
+			KEY object_sha256 (object_sha256),
+			KEY generation_expiry (generation_id,object_expires_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['catalog_heads']} (
+			authority_scope_sha256 char(64) NOT NULL,
+			generation_id char(64) NOT NULL,
+			directory_sha256 char(64) NOT NULL,
+			fencing_token bigint(20) unsigned NOT NULL DEFAULT 0,
+			previous_generation_id char(64) NOT NULL DEFAULT '',
+			published_at datetime NOT NULL,
+			expires_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (authority_scope_sha256),
+			KEY generation_id (generation_id),
+			KEY expires_at (expires_at)
+		) $charset;";
+
 		$dbdelta_diagnostics = array();
 		foreach ( $sql as $statement ) {
 			$table_name = '';
@@ -879,7 +926,7 @@ final class MAD4B_SCP_Schema {
 		foreach ( self::required_durable_columns() as $table => $columns ) foreach ( $columns as $column ) $durable[] = $table . '.' . $column;
 		$indexes = array();
 		foreach ( self::required_durable_indexes() as $table => $required ) foreach ( $required as $name => $unique ) $indexes[] = $table . '.' . $name . ':' . ( $unique ? 'unique' : 'index' );
-		return hash( 'sha256', 'mad4b-schema-v12|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) . '|' . implode( '|', $indexes ) );
+		return hash( 'sha256', 'mad4b-schema-v13|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) . '|' . implode( '|', $indexes ) );
 	}
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
 	private static function required_durable_columns() {
@@ -897,6 +944,9 @@ final class MAD4B_SCP_Schema {
 			'operation_heads' => array( 'operation_id', 'operation_key', 'operation_binding_sha256', 'latest_sequence', 'latest_event_sha256', 'lifecycle_state', 'terminal_outcome', 'heartbeat_at', 'lock_expires_at', 'stale_after', 'hard_deadline_at', 'updated_at' ),
 			'recovery_cases' => array( 'recovery_id', 'operation_id', 'operation_binding_sha256', 'journal_head_sha256', 'current_state_sha256', 'provider_state_digest', 'pipeline_settings_sha256', 'policy_sha256', 'environment', 'plan_sha256', 'status', 'plan_json', 'generated_at', 'expires_at' ),
 			'metric_buckets' => array( 'bucket_key', 'metric_name', 'bucket_start', 'count_value', 'sum_value', 'updated_at' ),
+			'catalog_objects' => array( 'object_sha256', 'object_kind', 'wire_generation', 'payload_blob', 'payload_sha256', 'payload_bytes', 'expires_at', 'retain_until', 'created_at' ),
+			'catalog_generations' => array( 'id', 'generation_id', 'authority_scope_sha256', 'object_key_sha256', 'object_sha256', 'object_expires_at', 'created_at' ),
+			'catalog_heads' => array( 'authority_scope_sha256', 'generation_id', 'directory_sha256', 'fencing_token', 'previous_generation_id', 'published_at', 'expires_at', 'updated_at' ),
 		);
 	}
 	private static function required_durable_indexes() {
@@ -914,6 +964,9 @@ final class MAD4B_SCP_Schema {
 			'operation_heads' => array(),
 			'recovery_cases' => array( 'operation_plan' => true ),
 			'metric_buckets' => array(),
+			'catalog_objects' => array( 'object_sha256' => true, 'kind_expiry' => false, 'expires_at' => false, 'retain_until' => false ),
+			'catalog_generations' => array( 'generation_object_key' => true, 'scope_generation' => false, 'object_sha256' => false, 'generation_expiry' => false ),
+			'catalog_heads' => array( 'generation_id' => false, 'expires_at' => false ),
 		);
 	}
 

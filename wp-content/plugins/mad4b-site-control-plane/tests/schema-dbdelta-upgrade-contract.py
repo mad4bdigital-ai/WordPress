@@ -103,6 +103,18 @@ EXPECTED_FIELDS = {
         "id", "provider_id", "provider_event_id", "job_id", "payload_sha256",
         "status", "provider_execution_ref", "result_ref", "received_at", "processed_at",
     ),
+    "catalog_objects": (
+        "object_sha256", "object_kind", "wire_generation", "payload_blob", "payload_sha256",
+        "payload_bytes", "expires_at", "retain_until", "created_at",
+    ),
+    "catalog_generations": (
+        "id", "generation_id", "authority_scope_sha256", "object_key_sha256",
+        "object_sha256", "object_expires_at", "created_at",
+    ),
+    "catalog_heads": (
+        "authority_scope_sha256", "generation_id", "directory_sha256", "fencing_token",
+        "previous_generation_id", "published_at", "expires_at", "updated_at",
+    ),
 }
 
 EXPECTED_KEYS = {
@@ -156,6 +168,16 @@ EXPECTED_KEYS = {
     ),
     "inbox": (
         "PRIMARY KEY", "UNIQUE KEY provider_event", "KEY job_status", "KEY received_at",
+    ),
+    "catalog_objects": (
+        "PRIMARY KEY", "KEY kind_expiry", "KEY expires_at", "KEY retain_until",
+    ),
+    "catalog_generations": (
+        "PRIMARY KEY", "UNIQUE KEY generation_object_key", "KEY scope_generation",
+        "KEY object_sha256", "KEY generation_expiry",
+    ),
+    "catalog_heads": (
+        "PRIMARY KEY", "KEY generation_id", "KEY expires_at",
     ),
 }
 
@@ -245,6 +267,9 @@ def main():
         "operation_heads": ("operation_id", "operation_key", "operation_binding_sha256", "latest_sequence", "latest_event_sha256", "heartbeat_at", "stale_after", "hard_deadline_at"),
         "recovery_cases": ("recovery_id", "operation_id", "journal_head_sha256", "current_state_sha256", "plan_sha256", "expires_at"),
         "metric_buckets": ("bucket_key", "metric_name", "bucket_start", "count_value", "sum_value"),
+        "catalog_objects": ("object_sha256", "payload_sha256", "payload_bytes", "expires_at", "retain_until"),
+        "catalog_generations": ("generation_id", "authority_scope_sha256", "object_key_sha256", "object_sha256", "object_expires_at"),
+        "catalog_heads": ("authority_scope_sha256", "generation_id", "directory_sha256", "fencing_token", "expires_at"),
     }
     for table, required in durable_required.items():
         fields, _ = visible_dbdelta_tokens(table_body(table))
@@ -254,10 +279,10 @@ def main():
                 f"{table}: durable execution fields hidden from dbDelta: {','.join(hidden)}"
             )
 
-    if "const VERSION = 12;" not in SCHEMA:
-        raise AssertionError("Feature 008 requires additive schema version 12")
-    if "mad4b_scp_schema_integrity_v12" not in SCHEMA:
-        raise AssertionError("Feature 008 schema integrity token was not versioned")
+    if "const VERSION = 13;" not in SCHEMA:
+        raise AssertionError("Capability Fabric catalog backend requires additive schema version 13")
+    if "mad4b_scp_schema_integrity_v13" not in SCHEMA:
+        raise AssertionError("Schema v13 integrity token was not versioned")
     intent_body = table_body("intent_relations")
     if "UNIQUE KEY current_owner_scope" in intent_body:
         raise AssertionError("Intent Authority must not encode false single-owner exclusivity")
@@ -267,9 +292,9 @@ def main():
     # fail-closed persistence. dbDelta visibility alone is not enough.
     migration_markers = (
         "const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';",
-        "const MIGRATION_ID = '20260929-feature008-operation-journal-v12';",
-        "const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v12';",
-        "'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12 )",
+        "const MIGRATION_ID = '20261003-capability-fabric-catalog-backend-v13';",
+        "const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v13';",
+        "'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12, 13 )",
         "'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes'",
         "'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces'",
         "'destructive' => false",
@@ -292,7 +317,7 @@ def main():
     )
     for marker in migration_markers:
         if marker not in SCHEMA:
-            raise AssertionError(f"Schema v12 migration contract marker missing: {marker}")
+            raise AssertionError(f"Schema v13 migration contract marker missing: {marker}")
 
     physical_pos = SCHEMA.find("$physical = self::physical_integrity_status();")
     physical_guard_pos = SCHEMA.find("if ( empty( $physical['ready'] ) )", physical_pos)
@@ -302,15 +327,15 @@ def main():
     final_receipt_pos = SCHEMA.find("$final_receipt = self::migration_receipt", integrity_commit_pos)
     ready_pos = SCHEMA.find("self::$critical_ready_cache = true;", final_receipt_pos)
     if min(physical_pos, physical_guard_pos, first_receipt_pos, version_commit_pos, integrity_commit_pos, final_receipt_pos, ready_pos) < 0:
-        raise AssertionError("Schema v12 migration evidence ordering markers are incomplete")
+        raise AssertionError("Schema v13 migration evidence ordering markers are incomplete")
     if not (physical_pos < physical_guard_pos < first_receipt_pos < version_commit_pos < integrity_commit_pos < final_receipt_pos < ready_pos):
-        raise AssertionError("Schema v12 readiness may advance before deep verification/final receipt")
+        raise AssertionError("Schema v13 readiness may advance before deep verification/final receipt")
 
     is_ready_pos = SCHEMA.find("public static function is_ready()")
     critical_ready_pos = SCHEMA.find("public static function critical_ready()", is_ready_pos)
     is_ready_body = SCHEMA[is_ready_pos:critical_ready_pos]
     if "self::migration_receipt_valid()" not in is_ready_body:
-        raise AssertionError("Schema v12 readiness must require a valid finalized migration receipt")
+        raise AssertionError("Schema v13 readiness must require a valid finalized migration receipt")
 
     print("mad4b.schema-dbdelta-upgrade.v3: PASS")
 
