@@ -41,14 +41,8 @@
 		if (current && next) current.replaceWith(next);
 	}
 
-	function syncProductionConfirmation() {
-		var form = document.querySelector("#mad4b-site-profile-settings");
-		if (!form) return;
-		var environment = form.querySelector('[name="environment"]');
-		var write = form.querySelector('[name="write_enabled"]');
-		var section = form.querySelector("[data-mad4b-production-confirmation]");
-		if (!section || !environment || !write) return;
-		var needed = environment.value === "production" && write.checked;
+	function syncConfirmationSection(section, needed) {
+		if (!section) return;
 		section.hidden = !needed;
 		section.querySelectorAll("input").forEach(function (field) {
 			field.disabled = !needed;
@@ -59,9 +53,24 @@
 			}
 		});
 	}
-	document.addEventListener("change", syncProductionConfirmation);
-	document.addEventListener("mad4b:settings-persisted", syncProductionConfirmation);
-	syncProductionConfirmation();
+
+	function syncSensitiveConfirmations() {
+		var form = document.querySelector("#mad4b-site-profile-settings");
+		if (!form) return;
+		var environment = form.querySelector('[name="environment"]');
+		var write = form.querySelector('[name="write_enabled"]');
+		if (!environment || !write) return;
+		syncConfirmationSection(form.querySelector("[data-mad4b-production-confirmation]"), environment.value === "production" && write.checked);
+		var override = form.querySelector("[data-mad4b-nonproduction-confirmation]");
+		if (override) {
+			var sameConfirmedIdentity = override.dataset.alreadyConfirmed === "1" && (override.dataset.configuredEnvironment || "") === environment.value;
+			var needed = override.dataset.wordpressProductionDefault === "1" && environment.value !== "production" && !sameConfirmedIdentity;
+			syncConfirmationSection(override, needed);
+		}
+	}
+	document.addEventListener("change", syncSensitiveConfirmations);
+	document.addEventListener("mad4b:settings-persisted", syncSensitiveConfirmations);
+	syncSensitiveConfirmations();
 
 	document.addEventListener("submit", async function (event) {
 		var form = event.target.closest(".mad4b-settings-ajax-form");
