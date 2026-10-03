@@ -172,6 +172,12 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 	}
 
 	private static function state() {
+		// Backend authority is control-plane state. Always invalidate persistent
+		// option-cache copies before reading it so Redis/object-cache staleness
+		// cannot resurrect a retired authority mode or bypass transition CAS.
+		wp_cache_delete( self::STATE_OPTION, 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
 		$value = get_option( self::STATE_OPTION, array() );
 		if ( ! is_array( $value ) || self::CONTRACT !== ( isset($value['contract'])?(string)$value['contract']:'' ) ) {
 			return array(

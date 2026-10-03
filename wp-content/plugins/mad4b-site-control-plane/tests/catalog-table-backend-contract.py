@@ -44,3 +44,8 @@ for marker in ["retire_scope(", "catalog_table_retirement_head_cas_conflict", "p
 for marker in ["retire_after_rollback(", "mad4b_catalog_retirement_reader_drain_required", "'retirement'"]:
     if marker not in controller:
         raise SystemExit("FAIL catalog controller retirement invariant missing: "+marker)
+
+state_body=controller.split("private static function state()",1)[1].split("private static function current_options_logical_digest",1)[0]
+for marker in ["wp_cache_delete( self::STATE_OPTION, 'options' )","wp_cache_delete( 'alloptions', 'options' )","wp_cache_delete( 'notoptions', 'options' )"]:
+    if marker not in state_body:
+        raise SystemExit("FAIL backend authority state trusts persistent object cache: "+marker)

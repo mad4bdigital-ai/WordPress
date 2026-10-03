@@ -200,6 +200,15 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      redis:
+        image: redis:7.4.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
 
     steps:
       - name: Checkout exact ref
@@ -211,7 +220,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: mysqli, mbstring, openssl
+          extensions: mysqli, mbstring, openssl, redis
           coverage: none
 
       - name: Install WP-CLI
@@ -244,6 +253,8 @@ jobs:
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php" "$WP_PATH/wp-content/object-cache.php"
+          MAD4B_CI_REDIS_HOST=127.0.0.1 MAD4B_CI_REDIS_PORT=6379 php -r '$r=new Redis(); if(!$r->connect(getenv("MAD4B_CI_REDIS_HOST"),(int)getenv("MAD4B_CI_REDIS_PORT"),2.0)||false===$r->ping()) exit(1);'
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
@@ -274,4 +285,15 @@ jobs:
           cat /tmp/catalog-worker-a.json
           cat /tmp/catalog-worker-b.json
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove persistent Redis cache cannot resurrect catalog authority
+        shell: bash
+        env:
+          MAD4B_CI_REDIS_HOST: 127.0.0.1
+          MAD4B_CI_REDIS_PORT: 6379
+        run: |
+          set -euo pipefail
+          RUN_ID="redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
