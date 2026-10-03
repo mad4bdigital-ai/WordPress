@@ -831,6 +831,7 @@ final class MAD4B_SCP_Schema {
 			worker_id varchar(191) NOT NULL DEFAULT '',
 			evidence_ref varchar(191) NOT NULL DEFAULT '',
 			receipt_sha256 char(64) NOT NULL DEFAULT '',
+			receipt_binding_sha256 char(64) NOT NULL,
 			last_error_code varchar(96) NOT NULL DEFAULT '',
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
@@ -1017,7 +1018,7 @@ final class MAD4B_SCP_Schema {
 			'catalog_generations' => array( 'id', 'generation_id', 'storage_scope_sha256', 'object_key_sha256', 'object_sha256', 'object_expires_at', 'created_at' ),
 			'catalog_heads' => array( 'storage_scope_sha256', 'generation_id', 'directory_sha256', 'fencing_token', 'previous_generation_id', 'published_at', 'expires_at', 'updated_at' ),
 			'network_operations' => array( 'network_operation_id', 'origin_site_uuid', 'origin_blog_id', 'authority_scope_sha256', 'plan_sha256', 'preparation_sha256', 'idempotency_key', 'state', 'paused', 'revision', 'latest_event_sha256', 'created_at', 'updated_at' ),
-			'network_operation_targets' => array( 'id', 'network_operation_id', 'target_blog_id', 'target_site_uuid', 'origin_sha256', 'authority_scope_sha256', 'catalog_sha256', 'plan_sha256', 'preparation_sha256', 'approval_ticket_id', 'context_sha256', 'credential_binding_sha256', 'target_binding_sha256', 'idempotency_key', 'state', 'claim_epoch', 'worker_id', 'evidence_ref', 'receipt_sha256', 'last_error_code', 'created_at', 'updated_at' ),
+			'network_operation_targets' => array( 'id', 'network_operation_id', 'target_blog_id', 'target_site_uuid', 'origin_sha256', 'authority_scope_sha256', 'catalog_sha256', 'plan_sha256', 'preparation_sha256', 'approval_ticket_id', 'context_sha256', 'credential_binding_sha256', 'target_binding_sha256', 'idempotency_key', 'state', 'claim_epoch', 'worker_id', 'evidence_ref', 'receipt_sha256', 'receipt_binding_sha256', 'last_error_code', 'created_at', 'updated_at' ),
 			'network_operation_events' => array( 'id', 'network_operation_id', 'sequence', 'target_blog_id', 'event_type', 'state', 'evidence_ref', 'safe_metadata_json', 'previous_event_sha256', 'event_sha256', 'created_at' ),
 		);
 	}

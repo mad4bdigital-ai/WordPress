@@ -125,7 +125,7 @@ EXPECTED_FIELDS = {
         "authority_scope_sha256", "catalog_sha256", "plan_sha256", "preparation_sha256",
         "approval_ticket_id", "context_sha256", "credential_binding_sha256", "target_binding_sha256",
         "idempotency_key", "state", "claim_epoch", "worker_id", "evidence_ref", "receipt_sha256",
-        "last_error_code", "created_at", "updated_at",
+        "receipt_binding_sha256", "last_error_code", "created_at", "updated_at",
     ),
     "network_operation_events": (
         "id", "network_operation_id", "sequence", "target_blog_id", "event_type", "state",

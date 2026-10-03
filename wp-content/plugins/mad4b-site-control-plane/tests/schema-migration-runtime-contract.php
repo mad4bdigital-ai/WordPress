@@ -106,7 +106,7 @@ final class MAD4B_Test_Schema_WPDB {
 			'preparation_sha256', 'paused', 'revision', 'latest_event_sha256', 'target_blog_id',
 			'target_site_uuid', 'origin_sha256', 'catalog_sha256', 'approval_ticket_id', 'context_sha256',
 			'credential_binding_sha256', 'target_binding_sha256', 'claim_epoch', 'worker_id', 'evidence_ref',
-			'receipt_sha256', 'last_error_code', 'safe_metadata_json', 'previous_event_sha256',
+			'receipt_sha256', 'receipt_binding_sha256', 'last_error_code', 'safe_metadata_json', 'previous_event_sha256',
 		);
 	}
 	public function get_results( $query, $output = null ) {

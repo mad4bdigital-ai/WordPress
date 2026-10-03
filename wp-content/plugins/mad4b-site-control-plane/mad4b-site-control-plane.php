@@ -104,6 +104,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-generation-fence.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-transaction-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-durable-execution.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-network-operation-journal.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-canonicalization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-resource-constraint-set.php';
