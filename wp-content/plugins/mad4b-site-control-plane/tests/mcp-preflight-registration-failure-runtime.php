@@ -2,7 +2,7 @@
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'MAD4B_SCP_VERSION', 'fixture' );
 function add_filter( ...$args ) {}
-class WP_Error { private $code; private $data; function __construct( $code = 'adapter_rejected', $message = 'fixture', $data = array() ) { $this->code = $code; $this->data = $data; } function get_error_code() { return $this->code; } function get_error_message() { return 'fixture'; } function get_error_data() { return $this->data; } }
+class WP_Error { private $code; private $message; private $data; function __construct( $code = 'adapter_rejected', $message = 'fixture', $data = array() ) { $this->code = $code; $this->message = $message; $this->data = $data; } function get_error_code() { return $this->code; } function get_error_message() { return $this->message; } function get_error_data() { return $this->data; } }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function sanitize_key( $v ) { return strtolower( $v ); }
 function wp_json_encode( $v ) { return json_encode( $v ); }
@@ -40,12 +40,34 @@ foreach ( array( true, array(), array( 'tool' => 'invalid' ), array( 'tool' => n
 $dto = new class {
 	public $calls = 0;
 	function getName() { return 'mad4b-broken'; }
-	function toArray() { if ( ++$this->calls > 1 ) throw new RuntimeException( 'SECOND_SERIALIZATION_PRIVATE' ); return array( 'inputSchema' => array( 'type' => 'object' ) ); }
+	function toArray() { if ( ++$this->calls > 1 ) throw new RuntimeException( 'SECOND_SERIALIZATION_PRIVATE' ); return array( 'name' => 'mad4b-broken', 'inputSchema' => array( 'type' => 'object' ) ); }
 };
 \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::$result = array( 'tool' => $dto, 'adapter_meta' => array( 'ability' => 'mad4b/broken' ) );
-\WP\MCP\Domain\Tools\McpToolValidator::$result = new WP_Error( 'dto_validator_rejected' );
+\WP\MCP\Domain\Tools\McpToolValidator::$result = new WP_Error( 'dto_validator_rejected', 'Tool validation failed: Tool inputSchema properties must be an object/array' );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'mad4b/broken' ), array() );
 check( 'dto_validator_rejected' === $result['failures'][0]['error_code'] && 'official_schema_validation' === $result['failures'][0]['stage'] && 1 === $dto->calls, 'earlier validator failure was overwritten by repeated serialization' );
+check( 'input_schema_properties_not_object' === $result['failures'][0]['validator_reason'], 'bounded validator reason did not preserve the useful schema classification' );
+check( false === strpos( json_encode( $result ), 'Tool validation failed:' ), 'raw validator message leaked into bounded preflight evidence' );
+// Reuse the deliberate one-shot DTO for a separate validator case without
+// turning the second assertion into a serialization-exception test.
+$dto->calls = 0;
+\WP\MCP\Domain\Tools\McpToolValidator::$result = new WP_Error( 'dto_validator_rejected', 'PRIVATE VALIDATOR DETAIL 123' );
+$fallback = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'mad4b/broken' ), array() );
+check( 'validator_rejected' === $fallback['failures'][0]['validator_reason'], 'unknown validator text must collapse to a bounded generic reason' );
+check( false === strpos( json_encode( $fallback ), 'PRIVATE VALIDATOR DETAIL 123' ), 'unknown validator text escaped diagnostics' );
+
+// Structural classification must not depend on the active WordPress locale or
+// the translated upstream error text.
+$locale_dto = new class {
+	function getName() { return 'mad4b-broken'; }
+	function toArray() { return array( 'name' => 'mad4b-broken', 'inputSchema' => array( 'type' => 'object', 'properties' => 'not-an-object' ) ); }
+};
+\WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::$result = array( 'tool' => $locale_dto, 'adapter_meta' => array( 'ability' => 'mad4b/broken' ) );
+\WP\MCP\Domain\Tools\McpToolValidator::$result = new WP_Error( 'mcp_tool_validation_failed', 'رسالة تحقق مترجمة لا تحتوي المصطلحات الإنجليزية' );
+$localized = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'mad4b/broken' ), array() );
+check( 'input_schema_properties_not_object' === $localized['failures'][0]['validator_reason'], 'validator reason must derive from DTO structure, not translated text' );
+check( false === strpos( json_encode( $localized ), 'رسالة تحقق مترجمة' ), 'translated validator text escaped diagnostics' );
+
 $denied = MAD4B_SCP_Servers::can_read_transport();
 check( is_wp_error( $denied ) && 'mad4b_transport_read_permission_denied' === $denied->get_error_code() && 403 === $denied->get_error_data()['status'], 'read capability denial is classified without granting access' );
 MAD4B_SCP_Policy::$read = true;

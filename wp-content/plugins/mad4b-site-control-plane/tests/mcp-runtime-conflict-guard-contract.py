@@ -32,6 +32,14 @@ for marker in (
     'runtime_provenance()',
     "'runtime_from_hostinger_bundle'",
     "'runtime_provenance_mismatch'",
+    "'runtime_class_provenance_enforced'",
+    "'runtime_class_provenance_ready'",
+    "'runtime_class_provenance_state'",
+    "'runtime_class_provenance_failure_count'",
+    "! empty( $status['runtime_class_provenance_failure_count'] )",
+    "'mixed_runtime_class_set'",
+    "'mcp_adapter_class_provenance_mismatch'",
+    "MAD4B_SCP_MCP_Class_Provenance::status( false, false )",
     'ensure_mu_bootstrap()',
     "hash_file( 'sha256'",
     'hash_equals(',
@@ -50,8 +58,22 @@ for forbidden in (
 ):
     forbid(guard, forbidden, 'bounded-repair')
 
+repair_lifecycle = guard.split('private static function repair_lifecycle_allowed()', 1)[1].split('private static function mu_bootstrap_status()', 1)[0]
 for marker in (
-    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v3'",
+    "array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' )",
+    "current_user_can( 'update_plugins' )",
+    "defined( 'WP_CLI' )",
+    "wp_doing_cron()",
+):
+    require(repair_lifecycle, marker, 'repair-lifecycle')
+for forbidden in (
+    "explicit_rest_materialization_allowed()",
+    "MAD4B_SCP_Endpoint_Diagnostic::is_authorized_request()",
+):
+    forbid(repair_lifecycle, forbidden, 'diagnostics-remain-read-only')
+
+for marker in (
+    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v4'",
     "get_option( 'mad4b_scp_site_profile_v2', array() )",
     "'mad4b.site-profile.v2' === (string) $mad4b_mcp_mu_profile['contract']",
     "! empty( $mad4b_mcp_mu_features['managed_runtime'] )",
@@ -70,6 +92,24 @@ for marker in (
     "vendor/autoload_packages.php",
     "foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once $mad4b_mcp_mu_pin_file;",
     "'canonical_symbols_pinned'",
+    "'critical_class_baseline_ready'",
+    "'critical_class_set_pinned'",
+    "'critical_class_pin_count'",
+    "'critical_class_pin_failed_symbol'",
+    "mad4b-site-control-plane/config/certified-providers.json",
+    "$mad4b_mcp_mu_critical_classes = array(",
+    "includes/Domain/Tools/RegisterAbilityAsMcpTool.php",
+    "includes/Domain/Tools/McpToolValidator.php",
+    "includes/Domain/Utils/SchemaTransformer.php",
+    "includes/Domain/Utils/McpAnnotationMapper.php",
+    "includes/Domain/Utils/McpValidator.php",
+    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/Tool.php",
+    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolInputSchema.php",
+    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolOutputSchema.php",
+    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php",
+    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php",
+    "'critical_class_baseline_mismatch'",
+    "'critical_class_source_not_official'",
     "\\WP\\MCP\\Core\\McpAdapter::instance()",
     "'adapter_instance_armed'",
     "'adapter_init_hook'",
@@ -98,6 +138,7 @@ for marker in (
     "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
     'mad4b.mcp-adapter-mu-bootstrap.v2',
     'mad4b.mcp-adapter-mu-bootstrap.v3',
+    'mad4b.mcp-adapter-mu-bootstrap.v4',
     "'unmanaged_mu_bootstrap_path_conflict'",
     "'mad4b/mcp-mu-bootstrap-refreshed'",
     "'managed_mu_refreshed_for_next_request'",
@@ -133,7 +174,10 @@ for marker in (
     'MU bootstrap refresh state', 'MU bootstrap refresh blocker',
     'Runtime conflict guard eligible', 'Official MCP Adapter active',
     'Hostinger bundled adapter active', 'Official loads before Hostinger in active_plugins',
-    'Runtime provenance mismatch', 'Runtime from Hostinger bundle',
+    'Runtime provenance mismatch', 'Runtime class provenance enforced',
+    'Runtime class provenance ready', 'Runtime class provenance complete',
+    'Runtime class provenance state', 'Runtime class provenance failure count',
+    'Runtime class provenance unobserved count', 'Runtime from Hostinger bundle',
     'Collision risk detected', 'Runtime repair applied', 'MU bootstrap present',
     'MU bootstrap integrity', 'MU bootstrap executed this request',
     'MU bootstrap runtime state', 'Next request required',

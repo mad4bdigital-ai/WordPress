@@ -17,7 +17,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 $mad4b_mcp_mu_status = array(
-	'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v3',
+	'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v4',
 	'executed' => true,
 	'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
 	'host' => '',
@@ -29,6 +29,10 @@ $mad4b_mcp_mu_status = array(
 	'preclaimed_symbol' => '',
 	'canonical_symbols_pinned' => false,
 	'canonical_autoloader_loaded' => false,
+	'critical_class_baseline_ready' => false,
+	'critical_class_set_pinned' => false,
+	'critical_class_pin_count' => 0,
+	'critical_class_pin_failed_symbol' => '',
 	'adapter_instance_armed' => false,
 	'adapter_init_hook' => '',
 	'adapter_init_hook_bound' => false,
@@ -128,10 +132,22 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 	}
 
 	if ( $mad4b_mcp_mu_status['eligible'] && ! $mad4b_mcp_mu_status['request_scope_bypassed'] ) {
-		$mad4b_mcp_mu_symbols = array(
-			'WP\\MCP\\Autoloader',
-			'WP\\MCP\\Core\\McpAdapter',
-			'WP\\MCP\\Plugin',
+		$mad4b_mcp_mu_critical_classes = array(
+			'WP\\MCP\\Core\\McpAdapter' => 'includes/Core/McpAdapter.php',
+			'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' => 'includes/Domain/Tools/RegisterAbilityAsMcpTool.php',
+			'WP\\MCP\\Domain\\Tools\\McpToolValidator' => 'includes/Domain/Tools/McpToolValidator.php',
+			'WP\\MCP\\Domain\\Utils\\SchemaTransformer' => 'includes/Domain/Utils/SchemaTransformer.php',
+			'WP\\MCP\\Domain\\Utils\\McpAnnotationMapper' => 'includes/Domain/Utils/McpAnnotationMapper.php',
+			'WP\\MCP\\Domain\\Utils\\McpValidator' => 'includes/Domain/Utils/McpValidator.php',
+			'WP\\McpSchema\\Server\\Tools\\DTO\\Tool' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/Tool.php',
+			'WP\\McpSchema\\Server\\Tools\\DTO\\ToolInputSchema' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolInputSchema.php',
+			'WP\\McpSchema\\Server\\Tools\\DTO\\ToolOutputSchema' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolOutputSchema.php',
+			'WP\\McpSchema\\Server\\Tools\\DTO\\ToolAnnotations' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php',
+			'WP\\McpSchema\\Server\\Tools\\DTO\\ToolExecution' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php',
+		);
+		$mad4b_mcp_mu_symbols = array_merge(
+			array( 'WP\\MCP\\Autoloader', 'WP\\MCP\\Plugin' ),
+			array_keys( $mad4b_mcp_mu_critical_classes )
 		);
 		foreach ( $mad4b_mcp_mu_symbols as $mad4b_mcp_mu_symbol ) {
 			if ( class_exists( $mad4b_mcp_mu_symbol, false ) ) {
@@ -149,6 +165,7 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			$mad4b_mcp_mu_root . 'includes/Plugin.php',
 		);
 		$mad4b_mcp_mu_autoloader = $mad4b_mcp_mu_root . 'vendor/autoload_packages.php';
+		$mad4b_mcp_mu_baseline_file = trailingslashit( WP_PLUGIN_DIR ) . 'mad4b-site-control-plane/config/certified-providers.json';
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] ) {
 			foreach ( array_merge( $mad4b_mcp_mu_pin_files, array( $mad4b_mcp_mu_autoloader ) ) as $mad4b_mcp_mu_required_file ) {
@@ -172,13 +189,61 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 				if ( ! $mad4b_mcp_mu_status['canonical_autoloader_loaded'] ) {
 					$mad4b_mcp_mu_status['state'] = 'canonical_autoloader_load_failed';
 				} else {
-					$mad4b_mcp_mu_adapter = \WP\MCP\Core\McpAdapter::instance();
-					$mad4b_mcp_mu_status['adapter_instance_armed'] = is_object( $mad4b_mcp_mu_adapter );
-					$mad4b_mcp_mu_status['adapter_init_hook'] = defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ? 'init' : 'rest_api_init';
-					$mad4b_mcp_mu_status['adapter_init_hook_bound'] = false !== has_action( $mad4b_mcp_mu_status['adapter_init_hook'], array( $mad4b_mcp_mu_adapter, 'init' ) );
-					$mad4b_mcp_mu_status['state'] = $mad4b_mcp_mu_status['adapter_instance_armed'] && $mad4b_mcp_mu_status['adapter_init_hook_bound']
-						? 'canonical_runtime_pinned_adapter_hook_armed'
-						: 'canonical_adapter_hook_arm_failed';
+					$mad4b_mcp_mu_baseline = is_readable( $mad4b_mcp_mu_baseline_file ) ? json_decode( (string) file_get_contents( $mad4b_mcp_mu_baseline_file ), true ) : array();
+					$mad4b_mcp_mu_critical_hashes = isset( $mad4b_mcp_mu_baseline['providers']['mcp_adapter']['critical_files'] ) && is_array( $mad4b_mcp_mu_baseline['providers']['mcp_adapter']['critical_files'] )
+						? $mad4b_mcp_mu_baseline['providers']['mcp_adapter']['critical_files']
+						: array();
+					$mad4b_mcp_mu_status['critical_class_baseline_ready'] = ! empty( $mad4b_mcp_mu_critical_hashes );
+					foreach ( $mad4b_mcp_mu_critical_classes as $mad4b_mcp_mu_critical_symbol => $mad4b_mcp_mu_critical_relative ) {
+						$mad4b_mcp_mu_expected_sha = isset( $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ) ? strtolower( (string) $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ) : '';
+						$mad4b_mcp_mu_critical_file = $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative;
+						$mad4b_mcp_mu_actual_sha = is_readable( $mad4b_mcp_mu_critical_file ) ? hash_file( 'sha256', $mad4b_mcp_mu_critical_file ) : '';
+						if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_expected_sha )
+							|| ! is_string( $mad4b_mcp_mu_actual_sha )
+							|| ! hash_equals( $mad4b_mcp_mu_expected_sha, strtolower( $mad4b_mcp_mu_actual_sha ) ) ) {
+							$mad4b_mcp_mu_status['critical_class_baseline_ready'] = false;
+							$mad4b_mcp_mu_status['critical_class_pin_failed_symbol'] = $mad4b_mcp_mu_critical_symbol;
+							$mad4b_mcp_mu_status['state'] = 'critical_class_baseline_mismatch';
+							break;
+						}
+					}
+					if ( $mad4b_mcp_mu_status['critical_class_baseline_ready'] ) {
+						$mad4b_mcp_mu_official_root = realpath( $mad4b_mcp_mu_root );
+						foreach ( $mad4b_mcp_mu_critical_classes as $mad4b_mcp_mu_critical_symbol => $mad4b_mcp_mu_critical_relative ) {
+							if ( ! class_exists( $mad4b_mcp_mu_critical_symbol ) ) {
+								$mad4b_mcp_mu_status['critical_class_pin_failed_symbol'] = $mad4b_mcp_mu_critical_symbol;
+								$mad4b_mcp_mu_status['state'] = 'critical_class_pin_failed';
+								break;
+							}
+							try {
+								$mad4b_mcp_mu_critical_reflection = new ReflectionClass( $mad4b_mcp_mu_critical_symbol );
+								$mad4b_mcp_mu_critical_loaded = $mad4b_mcp_mu_critical_reflection->getFileName();
+								$mad4b_mcp_mu_critical_loaded = $mad4b_mcp_mu_critical_loaded ? realpath( $mad4b_mcp_mu_critical_loaded ) : false;
+								$mad4b_mcp_mu_critical_expected = realpath( $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative );
+								if ( ! $mad4b_mcp_mu_critical_loaded || ! $mad4b_mcp_mu_critical_expected || ! hash_equals( wp_normalize_path( $mad4b_mcp_mu_critical_expected ), wp_normalize_path( $mad4b_mcp_mu_critical_loaded ) ) ) {
+									$mad4b_mcp_mu_status['critical_class_pin_failed_symbol'] = $mad4b_mcp_mu_critical_symbol;
+									$mad4b_mcp_mu_status['state'] = 'critical_class_source_not_official';
+									break;
+								}
+								$mad4b_mcp_mu_status['critical_class_pin_count']++;
+							} catch ( Throwable $mad4b_mcp_mu_critical_error ) {
+								$mad4b_mcp_mu_status['critical_class_pin_failed_symbol'] = $mad4b_mcp_mu_critical_symbol;
+								$mad4b_mcp_mu_status['state'] = 'critical_class_reflection_failed';
+								break;
+							}
+						}
+						$mad4b_mcp_mu_status['critical_class_set_pinned'] = $mad4b_mcp_mu_status['critical_class_pin_count'] === count( $mad4b_mcp_mu_critical_classes );
+					}
+					$mad4b_mcp_mu_status['canonical_symbols_pinned'] = $mad4b_mcp_mu_status['canonical_symbols_pinned'] && $mad4b_mcp_mu_status['critical_class_set_pinned'];
+					if ( $mad4b_mcp_mu_status['canonical_symbols_pinned'] ) {
+						$mad4b_mcp_mu_adapter = \WP\MCP\Core\McpAdapter::instance();
+						$mad4b_mcp_mu_status['adapter_instance_armed'] = is_object( $mad4b_mcp_mu_adapter );
+						$mad4b_mcp_mu_status['adapter_init_hook'] = defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ? 'init' : 'rest_api_init';
+						$mad4b_mcp_mu_status['adapter_init_hook_bound'] = false !== has_action( $mad4b_mcp_mu_status['adapter_init_hook'], array( $mad4b_mcp_mu_adapter, 'init' ) );
+						$mad4b_mcp_mu_status['state'] = $mad4b_mcp_mu_status['adapter_instance_armed'] && $mad4b_mcp_mu_status['adapter_init_hook_bound']
+							? 'canonical_runtime_pinned_adapter_hook_armed'
+							: 'canonical_adapter_hook_arm_failed';
+					}
 				}
 			}
 		}
@@ -230,6 +295,19 @@ unset(
 	$mad4b_mcp_mu_offset,
 	$mad4b_mcp_mu_symbols,
 	$mad4b_mcp_mu_symbol,
+	$mad4b_mcp_mu_critical_classes,
+	$mad4b_mcp_mu_critical_symbol,
+	$mad4b_mcp_mu_critical_relative,
+	$mad4b_mcp_mu_baseline_file,
+	$mad4b_mcp_mu_baseline,
+	$mad4b_mcp_mu_critical_hashes,
+	$mad4b_mcp_mu_expected_sha,
+	$mad4b_mcp_mu_actual_sha,
+	$mad4b_mcp_mu_critical_file,
+	$mad4b_mcp_mu_critical_reflection,
+	$mad4b_mcp_mu_critical_loaded,
+	$mad4b_mcp_mu_critical_expected,
+	$mad4b_mcp_mu_critical_error,
 	$mad4b_mcp_mu_root,
 	$mad4b_mcp_mu_pin_files,
 	$mad4b_mcp_mu_pin_file,

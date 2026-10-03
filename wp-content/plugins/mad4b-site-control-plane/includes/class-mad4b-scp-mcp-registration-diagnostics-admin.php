@@ -94,6 +94,12 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 			self::row( 'Hostinger bundled adapter active', ! empty( $conflict['hostinger_bundle_active'] ) ? 'yes' : 'no' );
 			self::row( 'Official loads before Hostinger in active_plugins', ! empty( $conflict['official_loads_before_hostinger'] ) ? 'yes' : 'no' );
 			self::row( 'Runtime provenance mismatch', ! empty( $conflict['runtime_provenance_mismatch'] ) ? 'yes' : 'no' );
+			self::row( 'Runtime class provenance enforced', ! empty( $conflict['runtime_class_provenance_enforced'] ) ? 'yes' : 'no' );
+			self::row( 'Runtime class provenance ready', null === ( $conflict['runtime_class_provenance_ready'] ?? null ) ? 'Not checked' : ( ! empty( $conflict['runtime_class_provenance_ready'] ) ? 'yes' : 'no' ) );
+			self::row( 'Runtime class provenance complete', ! empty( $conflict['runtime_class_provenance_complete'] ) ? 'yes' : 'no' );
+			self::row( 'Runtime class provenance state', isset( $conflict['runtime_class_provenance_state'] ) ? sanitize_key( (string) $conflict['runtime_class_provenance_state'] ) : '' );
+			self::row( 'Runtime class provenance failure count', isset( $conflict['runtime_class_provenance_failure_count'] ) ? (string) max( 0, (int) $conflict['runtime_class_provenance_failure_count'] ) : '0' );
+			self::row( 'Runtime class provenance unobserved count', isset( $conflict['runtime_class_provenance_unobserved_count'] ) ? (string) max( 0, (int) $conflict['runtime_class_provenance_unobserved_count'] ) : '0' );
 			self::row( 'Runtime from Hostinger bundle', ! empty( $conflict['runtime_from_hostinger_bundle'] ) ? 'yes' : 'no' );
 			self::row( 'Collision risk detected', ! empty( $conflict['collision_risk_detected'] ) ? 'yes' : 'no' );
 			self::row( 'Runtime repair applied', ! empty( $conflict['repair_applied'] ) ? 'yes' : 'no' );
@@ -120,6 +126,19 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 			self::row( 'ChatGPT preflight ready', ! empty( $preflight['ready'] ) ? 'yes' : 'no' );
 			self::row( 'ChatGPT preflight degraded', ! empty( $preflight['degraded'] ) ? 'yes' : 'no' );
 			self::row( 'ChatGPT preflight blocker', isset( $preflight['blocker'] ) && '' !== (string) $preflight['blocker'] ? sanitize_key( (string) $preflight['blocker'] ) : 'none' );
+			$provenance = isset( $preflight['runtime_class_provenance'] ) && is_array( $preflight['runtime_class_provenance'] ) ? $preflight['runtime_class_provenance'] : array();
+			if ( $provenance ) {
+				self::row( 'MCP class provenance enforced', ! empty( $provenance['enforced'] ) ? 'yes' : 'no' );
+				self::row( 'MCP class provenance ready', ! empty( $provenance['ready'] ) ? 'yes' : 'no' );
+				self::row( 'MCP class provenance state', isset( $provenance['state'] ) ? sanitize_key( (string) $provenance['state'] ) : '' );
+				self::row( 'MCP class provenance blocker', isset( $provenance['blocker'] ) && '' !== (string) $provenance['blocker'] ? sanitize_key( (string) $provenance['blocker'] ) : 'none' );
+				self::row( 'MCP class provenance failures', isset( $provenance['failure_count'] ) ? (string) max( 0, (int) $provenance['failure_count'] ) : '0' );
+				$class_failures = isset( $provenance['failures'] ) && is_array( $provenance['failures'] ) ? array_slice( $provenance['failures'], 0, 12 ) : array();
+				foreach ( $class_failures as $index => $failure ) {
+					if ( ! is_array( $failure ) ) continue;
+					self::row( 'MCP class provenance failure ' . ( (int) $index + 1 ), self::class_failure_summary( $failure ) );
+				}
+			}
 			$failures = isset( $preflight['failures'] ) && is_array( $preflight['failures'] ) ? array_slice( $preflight['failures'], 0, 12 ) : array();
 			self::row( 'ChatGPT preflight failure count', isset( $preflight['failures'] ) && is_array( $preflight['failures'] ) ? (string) count( $preflight['failures'] ) : '0' );
 			foreach ( $failures as $index => $failure ) {
@@ -157,8 +176,9 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 
 	private static function failure_summary( array $failure ) {
 		$fields = array();
-		foreach ( array( 'failing_ability' => 'ability', 'stage' => 'stage', 'error_class' => 'class', 'error_code' => 'error' ) as $key => $label ) {
-			$fields[] = $label . '=' . self::bounded_text( $failure[ $key ] ?? '', 160 );
+		foreach ( array( 'failing_ability' => 'ability', 'stage' => 'stage', 'error_class' => 'class', 'error_code' => 'error', 'validator_reason' => 'validator_reason' ) as $key => $label ) {
+			$value = self::bounded_text( $failure[ $key ] ?? '', 160 );
+			if ( '' !== $value || 'validator_reason' !== $key ) $fields[] = $label . '=' . $value;
 		}
 		foreach ( array( 'source_schema_fingerprint' => 'source_schema', 'schema_fingerprint' => 'dto_schema' ) as $key => $label ) {
 			$value = $failure[ $key ] ?? '';
@@ -166,6 +186,18 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		}
 		foreach ( array( 'tool_bytes', 'catalog_bytes_before', 'catalog_bytes_limit' ) as $key ) {
 			if ( isset( $failure[ $key ] ) && is_int( $failure[ $key ] ) && $failure[ $key ] >= 0 ) $fields[] = $key . '=' . $failure[ $key ];
+		}
+		return implode( ' | ', $fields );
+	}
+
+	private static function class_failure_summary( array $failure ) {
+		$fields = array();
+		foreach ( array( 'alias' => 'alias', 'class' => 'class', 'expected_source' => 'expected', 'observed_source' => 'observed', 'reason' => 'reason' ) as $key => $label ) {
+			$fields[] = $label . '=' . self::bounded_text( $failure[ $key ] ?? '', 220 );
+		}
+		foreach ( array( 'expected_sha256' => 'expected_sha', 'actual_sha256' => 'actual_sha' ) as $key => $label ) {
+			$value = isset( $failure[ $key ] ) ? strtolower( (string) $failure[ $key ] ) : '';
+			if ( preg_match( '/^[a-f0-9]{64}$/D', $value ) ) $fields[] = $label . '=' . substr( $value, 0, 16 );
 		}
 		return implode( ' | ', $fields );
 	}
