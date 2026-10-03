@@ -50,6 +50,14 @@ class MAD4B_SCP_Site_Profile {
 	static function nonproduction_governed( $feature ) { return 'production' !== $GLOBALS['case']; }
 	static function origin_enrolled() { return true; }
 	static function managed_runtime_enabled() { return true; }
+	static function status() { return array(
+		'site_uuid' => '123e4567-e89b-42d3-a456-426614174000',
+		'revision' => 7,
+		'profile_digest' => str_repeat( 'a', 64 ),
+		'environment' => self::current_environment(),
+		'canonical_origin' => 'https://staging.fixture.test',
+		'authority_ready' => 'production' !== $GLOBALS['case'],
+	); }
 }
 class MAD4B_SCP_MCP_Request_Scope { static function current_request_is_protocol_hotpath() { return 'protocol' === $GLOBALS['case']; } static function current_request_is_endpoint_diagnostic_job() { return 'diagnostic' === $GLOBALS['case']; } }
 class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => 'integrity' !== $GLOBALS['case'] ); } static function mcp_adapter_plugin_identity( $refresh=false ) { return array( 'plugin_file' => 'renamed-mcp/mcp-adapter.php', 'ambiguous' => false, 'candidate_count' => 1 ); } }
@@ -178,6 +186,8 @@ if ( in_array( $case, array( 'update_schedule', 'renamed_update_schedule' ), tru
 	if ( 'authorized' === $case ) {
 		check_recovery( ! is_wp_error( $result ) && $result['next_request_required'] && ! $result['connection_certified'], 'recovery did not arm next request' );
 		check_recovery( 'current-build' === ( $result['target_build'] ?? '' ) && 64 === strlen( (string) ( $result['expected_mu_sha256'] ?? '' ) ), 'recovery omitted bounded node target evidence' );
+		check_recovery( '123e4567-e89b-42d3-a456-426614174000' === ( $result['site_uuid'] ?? '' ) && 7 === (int) ( $result['site_profile_revision'] ?? 0 ) && str_repeat( 'a', 64 ) === ( $result['site_profile_digest'] ?? '' ), 'recovery node evidence is not bound to the exact Site Profile generation' );
+		check_recovery( 64 === strlen( (string) ( $result['node_evidence_sha256'] ?? '' ) ), 'recovery node evidence lacks a stable bounded fingerprint' );
 		check_recovery( empty( $result['cluster_identity_configured'] ) && empty( $result['eligible_for_cluster_aggregation'] ) && empty( $result['node_runtime_execution_verified'] ), 'single-request recovery incorrectly self-certified cluster/runtime execution' );
 		check_recovery( is_file( $destination ) && hash_file( 'sha256', $destination )===hash_file( 'sha256', $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php' ), 'bootstrap readback mismatch' );
 		check_recovery( ! empty( $GLOBALS['audit_events'] ), 'recovery lacked audit evidence' );

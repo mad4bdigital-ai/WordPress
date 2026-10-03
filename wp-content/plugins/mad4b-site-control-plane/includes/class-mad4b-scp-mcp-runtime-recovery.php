@@ -33,6 +33,20 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	public static function node_evidence() {
 		$cluster_id = self::configured_topology_id( 'MAD4B_SCP_CLUSTER_ID' );
 		$node_id = self::configured_topology_id( 'MAD4B_SCP_NODE_ID' );
+		$site_status = class_exists( 'MAD4B_SCP_Site_Profile', false ) && method_exists( 'MAD4B_SCP_Site_Profile', 'status' )
+			? MAD4B_SCP_Site_Profile::status()
+			: array();
+		$site_uuid = isset( $site_status['site_uuid'] ) ? strtolower( trim( (string) $site_status['site_uuid'] ) ) : '';
+		$site_profile_revision = isset( $site_status['revision'] ) ? max( 0, (int) $site_status['revision'] ) : 0;
+		$site_profile_digest = isset( $site_status['profile_digest'] ) ? strtolower( trim( (string) $site_status['profile_digest'] ) ) : '';
+		$environment = isset( $site_status['environment'] ) ? sanitize_key( (string) $site_status['environment'] ) : '';
+		$canonical_origin = isset( $site_status['canonical_origin'] ) ? trim( (string) $site_status['canonical_origin'] ) : '';
+		$site_binding_ready = 1 === preg_match( '/^[a-f0-9-]{36}$/D', $site_uuid )
+			&& $site_profile_revision > 0
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $site_profile_digest )
+			&& '' !== $canonical_origin
+			&& ! empty( $site_status['authority_ready'] )
+			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
 		$target_build = class_exists( 'MAD4B_SCP_Endpoint_Diagnostic', false )
 			? (string) MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint()
 			: '';
@@ -49,11 +63,17 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			&& '' !== $observed_mu_sha256
 			&& hash_equals( $expected_mu_sha256, $observed_mu_sha256 );
 		$identity_configured = '' !== $cluster_id && '' !== $node_id;
-		return array(
-			'contract' => 'mad4b.mcp-runtime-node-evidence.v1',
+		$evidence = array(
+			'contract' => 'mad4b.mcp-runtime-node-evidence.v2',
 			'cluster_id' => $cluster_id,
 			'node_id' => $node_id,
 			'cluster_identity_configured' => $identity_configured,
+			'site_uuid' => $site_uuid,
+			'site_profile_revision' => $site_profile_revision,
+			'site_profile_digest' => $site_profile_digest,
+			'environment' => $environment,
+			'origin_sha256' => '' !== $canonical_origin ? hash( 'sha256', $canonical_origin ) : '',
+			'site_binding_ready' => $site_binding_ready,
 			'target_build' => $target_build,
 			'expected_mu_sha256' => $expected_mu_sha256,
 			'observed_mu_sha256' => $observed_mu_sha256,
@@ -68,10 +88,17 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			),
 			'runtime_execution_verified' => $runtime_execution_verified,
 			'verified_at' => $runtime_execution_verified ? gmdate( 'c' ) : '',
-			'eligible_for_cluster_aggregation' => $runtime_execution_verified && $identity_configured,
+			'eligible_for_cluster_aggregation' => $runtime_execution_verified && $identity_configured && $site_binding_ready && '' !== $target_build,
 			'runtime_node_scope' => 'current_node',
 			'shared_filesystem_certified' => false,
 		);
+		$fingerprint = $evidence;
+		unset( $fingerprint['verified_at'] );
+		$encoded = function_exists( 'wp_json_encode' )
+			? wp_json_encode( $fingerprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+			: json_encode( $fingerprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$evidence['evidence_sha256'] = hash( 'sha256', is_string( $encoded ) ? $encoded : '' );
+		return $evidence;
 	}
 
 	public static function run_cron() {
@@ -168,8 +195,15 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 				'cluster_convergence_required' => true,
 				'cluster_id' => $node_evidence['cluster_id'],
 				'node_id' => $node_evidence['node_id'],
+				'site_uuid' => $node_evidence['site_uuid'],
+				'site_profile_revision' => $node_evidence['site_profile_revision'],
+				'site_profile_digest' => $node_evidence['site_profile_digest'],
+				'environment' => $node_evidence['environment'],
+				'origin_sha256' => $node_evidence['origin_sha256'],
+				'site_binding_ready' => $node_evidence['site_binding_ready'],
 				'target_build' => $node_evidence['target_build'],
 				'expected_mu_sha256' => $node_evidence['expected_mu_sha256'],
+				'node_evidence_sha256' => $node_evidence['evidence_sha256'],
 				'executed_runtime_provenance' => $node_evidence['executed_runtime_provenance'],
 				'node_verified_at' => $node_evidence['verified_at'],
 				'node_runtime_execution_verified' => $node_evidence['runtime_execution_verified'],

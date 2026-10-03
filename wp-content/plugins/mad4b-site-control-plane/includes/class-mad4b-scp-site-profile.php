@@ -998,6 +998,24 @@ final class MAD4B_SCP_Site_Profile {
 		return $result;
 	}
 
+	private static function valid_revocation_audit_event( $revocation_id, array $event ) {
+		$revocation_id = strtolower( trim( (string) $revocation_id ) );
+		if ( 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/D', $revocation_id ) ) return false;
+		if ( self::REVOCATION_AUDIT_OUTBOX_CONTRACT !== ( $event['contract'] ?? '' ) ) return false;
+		if ( ! isset( $event['revocation_id'] ) || ! hash_equals( $revocation_id, strtolower( trim( (string) $event['revocation_id'] ) ) ) ) return false;
+		if ( ! isset( $event['site_uuid'] ) || ! self::valid_uuid( (string) $event['site_uuid'] ) ) return false;
+		$previous_revision = isset( $event['previous_revision'] ) ? absint( $event['previous_revision'] ) : 0;
+		$revision = isset( $event['revision'] ) ? absint( $event['revision'] ) : 0;
+		if ( $previous_revision < 1 || $revision !== $previous_revision + 1 ) return false;
+		foreach ( array( 'previous_profile_digest', 'profile_digest' ) as $field ) {
+			if ( ! isset( $event[ $field ] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', strtolower( trim( (string) $event[ $field ] ) ) ) ) return false;
+		}
+		if ( ! array_key_exists( 'write_enabled', $event ) || false !== $event['write_enabled'] ) return false;
+		if ( empty( $event['occurred_at'] ) || ! is_string( $event['occurred_at'] ) || false === strtotime( $event['occurred_at'] ) ) return false;
+		if ( isset( $event['reason'] ) && ( ! is_string( $event['reason'] ) || strlen( $event['reason'] ) > 64 ) ) return false;
+		return true;
+	}
+
 	private static function revocation_outbox_read() {
 		$value = function_exists( 'get_option' ) ? get_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, array() ) : array();
 		return is_array( $value ) ? $value : array();
@@ -1035,7 +1053,7 @@ final class MAD4B_SCP_Site_Profile {
 
 	private static function enqueue_revocation_audit_event( array $event ) {
 		$revocation_id = isset( $event['revocation_id'] ) ? strtolower( trim( (string) $event['revocation_id'] ) ) : '';
-		if ( 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/D', $revocation_id ) ) return false;
+		if ( ! self::valid_revocation_audit_event( $revocation_id, $event ) ) return false;
 		for ( $attempt = 0; $attempt < 5; ++$attempt ) {
 			$before = self::revocation_outbox_read();
 			if ( isset( $before[ $revocation_id ] ) ) return serialize( $before[ $revocation_id ] ) === serialize( $event );
@@ -1062,12 +1080,18 @@ final class MAD4B_SCP_Site_Profile {
 
 	public static function revocation_audit_outbox_status() {
 		$outbox = self::revocation_outbox_read();
+		$invalid = 0;
+		foreach ( $outbox as $revocation_id => $event ) {
+			if ( ! is_array( $event ) || ! self::valid_revocation_audit_event( $revocation_id, $event ) ) ++$invalid;
+		}
 		return array(
 			'contract' => self::REVOCATION_AUDIT_OUTBOX_CONTRACT,
 			'read_only' => true,
 			'mutation_performed' => false,
 			'pending_count' => count( $outbox ),
 			'pending' => ! empty( $outbox ),
+			'integrity_valid' => 0 === $invalid,
+			'invalid_count' => $invalid,
 		);
 	}
 
@@ -1085,7 +1109,13 @@ final class MAD4B_SCP_Site_Profile {
 		foreach ( $outbox as $revocation_id => $event ) {
 			if ( $processed >= $limit ) break;
 			++$processed;
-			if ( ! is_array( $event ) || ! isset( $event['profile_digest'] ) ) continue;
+			if ( ! is_array( $event ) || ! self::valid_revocation_audit_event( $revocation_id, $event ) ) {
+				return new WP_Error(
+					'mad4b_site_profile_revocation_outbox_integrity_invalid',
+					'Revocation audit outbox contains malformed evidence; automatic replay stopped.',
+					array( 'revocation_id' => sanitize_text_field( (string) $revocation_id ) )
+				);
+			}
 			$existing = MAD4B_SCP_Audit::site_profile_revocation_events( $revocation_id, (string) $event['profile_digest'] );
 			if ( is_wp_error( $existing ) ) return $existing;
 			if ( (int) ( $existing['count'] ?? 0 ) > 1 ) {
@@ -1123,6 +1153,15 @@ final class MAD4B_SCP_Site_Profile {
 		if ( 'pending_audit' === ( $profile['mutation_state'] ?? '' ) ) return new WP_Error( 'mad4b_site_profile_mutation_pending', 'Pending Site Profile mutation must be reconciled before authority can be changed.' );
 		$current_revision = absint( $profile['revision'] ?? 0 );
 		if ( null !== $expected_revision && absint( $expected_revision ) !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before disabling authority.' );
+		$features = isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array();
+		if ( empty( $features['write'] ) && empty( $features['production_write_confirmed'] ) ) {
+			$status = self::status();
+			$outbox = self::revocation_audit_outbox_status();
+			$status['authority_already_disabled'] = true;
+			$status['revocation_evidence_pending'] = ! empty( $outbox['pending'] );
+			$status['revocation_outbox_integrity_valid'] = ! empty( $outbox['integrity_valid'] );
+			return $status;
+		}
 
 		$next = $profile;
 		$next['revision'] = $current_revision + 1;

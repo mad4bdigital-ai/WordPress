@@ -376,6 +376,10 @@ $disable_ok=MAD4B_SCP_Site_Profile::disable_authority((int)$disable_first['revis
 ok(!is_wp_error($disable_ok)&&empty($disable_ok['write_enabled'])&&2===(int)$disable_ok['revision'],'audited authority disable did not commit exactly one generation');
 $disable_event=end($GLOBALS['mad4b_test_audit_events']);
 ok(is_array($disable_event)&&'mad4b/site-profile-write-disabled'===($disable_event[0]??''),'authority disable did not append its audit event');
+$disable_event_count=count($GLOBALS['mad4b_test_audit_events']);
+$disable_noop=MAD4B_SCP_Site_Profile::disable_authority(2);
+ok(!is_wp_error($disable_noop)&&!empty($disable_noop['authority_already_disabled'])&&2===MAD4B_SCP_Site_Profile::revision(),'repeated authority disable created a new profile generation');
+ok($disable_event_count===count($GLOBALS['mad4b_test_audit_events']),'repeated authority disable emitted duplicate revocation evidence');
 
 reset_state();
 $GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://disable-fail.client.test/';
@@ -408,6 +412,12 @@ update_option(MAD4B_SCP_Site_Profile::REVOCATION_AUDIT_OUTBOX_OPTION,array($revo
 $before_event_count=count($GLOBALS['mad4b_test_audit_events']);
 $dedupe=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
 ok(!is_wp_error($dedupe)&&1===($dedupe['deduplicated']??0)&&$before_event_count===count($GLOBALS['mad4b_test_audit_events']),'revocation replay duplicated an already committed audit event');
+$bad_revocation='22222222-2222-4222-8222-222222222222';
+update_option(MAD4B_SCP_Site_Profile::REVOCATION_AUDIT_OUTBOX_OPTION,array($bad_revocation=>array('contract'=>'tampered')),false);
+$bad_outbox_status=MAD4B_SCP_Site_Profile::revocation_audit_outbox_status();
+ok(empty($bad_outbox_status['integrity_valid'])&&1===($bad_outbox_status['invalid_count']??0),'tampered revocation outbox was reported healthy');
+$bad_flush=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(is_wp_error($bad_flush)&&'mad4b_site_profile_revocation_outbox_integrity_invalid'===$bad_flush->get_error_code(),'tampered revocation outbox was replayed or silently skipped');
 
 // Double failure: audit fails and rollback persistence fails. The only remaining
 // record is explicitly pending_audit, so a fresh read cannot grant authority.

@@ -53,6 +53,16 @@ available. Production without write needs no write acknowledgement. Production
 with write requires both the checkbox and the exact phrase
 `ENABLE GOVERNED PRODUCTION WRITE`.
 
+A Site Profile generation that crashes between pending persistence, audit append
+and finalization remains authority-quarantined. New pending generations carry the
+exact prior snapshot, target digest, audit action and mutation ID. After a grace
+period, an administrator-only plan/apply reconciler uses exact append-only audit
+evidence to choose either finalization or rollback; stale/ambiguous evidence stays
+fail-closed. Write-authority revocation remains effective even when audit storage
+fails: bounded revocation evidence is placed in a separate CAS-protected outbox,
+validated before replay, deduplicated against the audit chain, and repeated
+disable requests are idempotent.
+
 Environment rebinding creates a new site identity and may reset its revision to
 1. AJAX verifies the committed UUID, revision, digest, origin and environment,
 without assuming the revision must exceed that of the old identity. The save form
@@ -146,7 +156,11 @@ outbound HTTP during profile/recovery work.
 
 ### Limits and deployment acceptance
 
-- Runtime recovery currently certifies only the current serving node. The result
+- Runtime recovery currently certifies only the current serving node. Per-node
+  evidence is bound to the exact Site Profile UUID/revision/digest, hashed origin,
+  target build, expected/observed MU hash and executed runtime provenance. A stable
+  evidence SHA-256 supports external deduplication, but it is not a signature and
+  does not replace authenticated collection from each serving node. The result
   reports `runtime_node_scope=current_node`, does not claim a shared filesystem,
   and marks cluster convergence as required. Multi-webhead deployments must either
   use a shared/identical `WPMU_PLUGIN_DIR` or perform an external per-node
