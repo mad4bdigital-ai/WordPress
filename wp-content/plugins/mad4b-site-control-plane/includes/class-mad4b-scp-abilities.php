@@ -430,6 +430,7 @@ final class MAD4B_SCP_Abilities {
 			}
 		);
 		if ( is_wp_error( $execution ) ) return $execution;
+		if ( class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) MAD4B_SCP_Projection_Hotset_Recommender::record_usage( $ability_name, 'fixed_dispatch' );
 		return array(
 			'contract' => 'mad4b.chatgpt-read-execute.v1',
 			'input_schema_sha256' => $actual_schema_sha256,

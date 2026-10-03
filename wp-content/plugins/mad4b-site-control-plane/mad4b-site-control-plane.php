@@ -111,6 +111,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-resource-constraint-set.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-journal.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-evidence-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-metrics.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-projection-hotset-recommender.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-diff.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-provider-contract.php';

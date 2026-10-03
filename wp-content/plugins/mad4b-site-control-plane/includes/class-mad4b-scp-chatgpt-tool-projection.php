@@ -39,7 +39,15 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'category' => 'mad4b-read',
 				'execute_callback' => array( __CLASS__, 'status' ),
 				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
-				'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+				'input_schema' => array(
+					'type' => 'object',
+					'properties' => array(
+						'include_recommendations' => array( 'type' => 'boolean', 'default' => false ),
+						'recommendation_quota' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_QUOTA, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA ),
+						'recommendation_hours' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_HOURS, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS ),
+					),
+					'additionalProperties' => false,
+				),
 				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 				'meta' => self::meta( true ),
 			) );
@@ -288,6 +296,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		}
 		$seal = MAD4B_SCP_Execution_Fence::seal_projected_call( $name, $args, $tool, $server );
 		if ( is_wp_error( $seal ) ) return $seal;
+		if ( class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) MAD4B_SCP_Projection_Hotset_Recommender::record_usage( $name, 'direct_projection' );
 		return $args;
 	}
 
@@ -653,11 +662,19 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function status( $input = null ) {
-		unset( $input );
+		$input = is_array( $input ) ? $input : array();
 		$state = self::raw_state();
 		$effective = self::effective_projection_rows();
 		$catalog = array_values( array_unique( array_merge( MAD4B_SCP_Servers::chatgpt_base_tools(), array_keys( $effective ) ) ) );
 		$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $catalog, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog ) );
+		$recommendations = array();
+		if ( ! empty( $input['include_recommendations'] ) && class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) {
+			$recommendations = MAD4B_SCP_Projection_Hotset_Recommender::recommend(
+				isset( $input['recommendation_quota'] ) ? absint( $input['recommendation_quota'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA,
+				isset( $input['recommendation_hours'] ) ? absint( $input['recommendation_hours'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS
+			);
+			if ( is_wp_error( $recommendations ) ) $recommendations = array( 'error_code' => $recommendations->get_error_code(), 'authorizing' => false );
+		}
 		$stored = array();
 		foreach ( $state['abilities'] as $ability_name => $row ) {
 			$current = self::ability_row( $ability_name );
@@ -696,6 +713,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
 			'isolation' => self::isolation_contract(),
 			'protocol_profile' => class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ? MAD4B_SCP_MCP_Protocol_Profile::status() : array(),
+			'hotset_recommendation_available' => class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ),
+			'hotset_recommendations' => $recommendations,
 			'primary_execution_mode' => 'fixed_dispatch',
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
