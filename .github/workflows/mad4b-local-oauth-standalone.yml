@@ -38,6 +38,11 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-local-oauth-loopback-guard.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-browser-canary.php"
           php -l "$root/includes/class-mad4b-scp-mcp-transport-admission.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-adapter-compatibility.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-catalog-diagnostics.php"
+          php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
+          php -l "$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
           php -l "$root/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
           php -l "$root/tests/local-oauth-consent-ui-contract.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
@@ -61,6 +66,7 @@ jobs:
           python3 "$root/tests/local-oauth-standalone-contract.py"
           python3 "$root/tests/chatgpt-oauth-lifecycle-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
+          python3 "$root/tests/mcp-adapter-compatibility-contract.py"
           python3 "$root/tests/chatgpt-connection-ui-contract.py"
           for scenario in fresh foreign environment_drift exact invalid; do
             php "$root/tests/portable-readonly-cross-tenant-runtime.php" "$scenario"
@@ -170,6 +176,11 @@ jobs:
           fi
 
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "$ADAPTER_ARCHIVE" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
+            test -r "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php"
+            echo "MAD4B target 0.7.0 vendor/autoload_packages.php SHA256:"
+            sha256sum "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php"
+          fi
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
