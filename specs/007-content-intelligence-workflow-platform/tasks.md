@@ -809,17 +809,17 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3748 P0 Invalidate approval when the resource set, dependency generation, impact graph or target fingerprint materially changes before commit.
 - [x] T3749 P1 Implement an authorization decision graph exposing PASS/FAIL/NOT_EVALUATED steps, stable reason codes, policy/evidence versions and redacted evidence refs without revealing secrets.
 - [x] T3750 P0 Define mad4b.execution-receipt.v1 linking preparation, descriptor, policy decision, approval, idempotency claim, operation journal, provider evidence, readback/reconciliation and terminal outcome.
-- [ ] T3751 P0 Hash/sign the unified execution receipt, support independent verification/export and prove no missing stage can be represented as terminal success.
+- [x] T3751 P0 Hash/sign the unified execution receipt, support independent verification/export and prove no missing stage can be represented as terminal success.
 - [x] T3752 P1 Implement provider-neutral semantic intent routing: user intent → required traits → provider candidates → exact capability, with confidence/evidence/ambiguity/human-review semantics.
 - [x] T3753 P1 GATE Semantic routing remains non-authorizing and cannot choose a capability outside current certification, authority, environment, resource constraints or risk policy.
 
 ### 37J — Cryptography, time, replay, canonicalization and abuse resistance
-- [ ] T3754 P0 Define recursive structural redaction/classification for provider/plugin errors, callback return data, metadata and nested arrays/objects; add adversarial fuzz cases for unexpected secret field names.
+- [x] T3754 P0 Define recursive structural redaction/classification for provider/plugin errors, callback return data, metadata and nested arrays/objects; add adversarial fuzz cases for unexpected secret field names.
 - [ ] T3755 P0 Introduce versioned cryptographic profiles/key IDs for preparation/context/execution receipts with rotation, overlap, revocation and algorithm-agility rules.
-- [ ] T3756 P0 Define clock-skew and monotonic-time policy for receipt TTL, lease deadlines, breaker windows, offline authorization and reconciliation observation windows.
-- [ ] T3757 P0 Define replay semantics by operation risk class, including when preparation evidence is reusable versus single-use and how replay prevention composes with idempotency.
-- [ ] T3758 P0 Define Unicode/canonicalization/confusable policy for ability names, semantic operation IDs, resource identifiers, URLs, paths, headers and canonical JSON/hash inputs.
-- [ ] T3759 P0 Add per-principal/site/client rate limits and complexity budgets for discovery/prepare/execute, deep nesting, schema bombs, pathological regex/search terms and oversized metadata.
+- [x] T3756 P0 Define clock-skew and monotonic-time policy for receipt TTL, lease deadlines, breaker windows, offline authorization and reconciliation observation windows.
+- [x] T3757 P0 Define replay semantics by operation risk class, including when preparation evidence is reusable versus single-use and how replay prevention composes with idempotency.
+- [x] T3758 P0 Define Unicode/canonicalization/confusable policy for ability names, semantic operation IDs, resource identifiers, URLs, paths, headers and canonical JSON/hash inputs.
+- [x] T3759 P0 Add per-principal/site/client rate limits and complexity budgets for discovery/prepare/execute, deep nesting, schema bombs, pathological regex/search terms and oversized metadata.
 - [ ] T3760 P1 Extend egress policy beyond SSRF with TLS verification, proxy trust, redirect revalidation, DNS-answer changes and certificate/hostname failure semantics.
 - [ ] T3761 P1 Define backward-compatible migration/deprecation telemetry for legacy unprepared dispatcher callers, versioned error contracts and explicit sunset gates.
 - [ ] T3762 P1 Make critical CI hermetic/deterministic with injectable clocks, bounded deterministic test randomness, stable fixtures and no flaky-check bypass for release gates.

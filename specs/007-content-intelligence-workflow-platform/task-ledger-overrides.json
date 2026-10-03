@@ -1741,19 +1741,15 @@
       "reason": "mad4b.execution-receipt.v1 links preparation, descriptor, policy decision, approval when required, idempotency/journal when present, provider evidence, readback/reconciliation and terminal outcome; required stages are fail-closed."
     },
     "T3751": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
-        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-        "workflow_run:37119261674",
-        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py"
       ],
-      "reason": "The unified receipt is content-addressed, independently integrity-verifiable/exportable and cannot represent terminal success with a missing required stage. Cryptographic signing remains intentionally blocked by signature_state=crypto_profile_required until T3755 supplies versioned crypto profiles/key IDs/rotation semantics."
+      "reason": "Unified execution receipts are canonically hashed, cryptographically signed, independently verifiable/exportable with public-key evidence, and fail closed when required execution stages or approval evidence are missing."
     },
     "T3752": {
       "status": "DONE",
@@ -1784,6 +1780,77 @@
         "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
       ],
       "reason": "Semantic routing is explicitly non-authorizing and reuses current Authorization probe/resource/policy/descriptor/provider eligibility; unauthorized or insufficiently bound candidates remain unselected and require review."
+    },
+    "T3754": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-structural-redaction.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php"
+      ],
+      "reason": "Recursive structural redaction classifies and bounds nested provider/plugin errors, callback and metadata surfaces; adversarial secret-key/value, URL-credential, private-key, JWT-like, depth and truncation fixtures are covered and shared evidence surfaces consume the redactor."
+    },
+    "T3755": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php"
+      ],
+      "reason": "Versioned RSA crypto profiles, key IDs, rotation overlap, revocation, independent public verification and RS256/RS512 algorithm agility are implemented for unified execution receipts. The task remains PARTIAL because preparation/context receipt families have not all migrated from their legacy/local signing semantics to the same versioned key-ID lifecycle."
+    },
+    "T3756": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/time-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-postcondition-profile.php"
+      ],
+      "reason": "A single time policy now bounds receipt and approval TTLs, durable leases/idempotency, breaker windows, reconciliation observation freshness and crypto signature skew; injectable wall/monotonic clocks prove rollback-safe monotonic behavior and risk-tiered offline authorization windows."
+    },
+    "T3757": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-replay-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php"
+      ],
+      "reason": "Preparation replay is policy-digest bound and risk-class aware: high risk and missing-idempotency paths are single-use, reusable paths bind the exact receipt/request/idempotency identity to Durable Execution, completed replays return recorded results, and rebinding or payload drift fails closed."
+    },
+    "T3758": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-canonicalization.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-contract.py"
+      ],
+      "reason": "Canonicalization policy is explicit across ability names, semantic operation IDs, resource identifiers, relative paths, headers, URLs and canonical JSON/hash material; security identities are ASCII-only, hidden bidi/zero-width controls and confusables are denied, and real Unicode codepoint fixtures prove the behavior."
+    },
+    "T3759": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/abuse-budget.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abuse-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php"
+      ],
+      "reason": "Deny-only per-site/principal/client rate buckets and complexity budgets cover discovery, preparation and execution, including depth/node/string/metadata/schema/search/regex limits; transactional bucket updates and contract tests prove every governed discovery/execute surface consumes the appropriate budget."
     }
   }
 }

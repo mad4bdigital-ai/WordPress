@@ -273,7 +273,7 @@
     },
     {
       "id": "impact_approval_receipt_routing",
-      "status": "PARTIAL",
+      "status": "DONE",
       "task_ids": [
         "T3747",
         "T3748",
@@ -293,25 +293,21 @@
         "postconditions_execution_state_identifiers"
       ],
       "interim_behavior": "Any impact/resource/dependency drift invalidates approval; routing never grants capability eligibility.",
-      "evidence_strategy": "Approval impact binding, authorization decision graph, unified execution-receipt integrity/export and semantic-routing authority constraints are exact-head certified; cryptographic receipt signing remains gated on T3755.",
+      "evidence_strategy": "Approval impact binding, authorization decision graph, signed unified execution-receipt integrity/export and semantic-routing authority constraints are implemented and runtime-tested.",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
-        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-        "workflow_run:37119261674",
-        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py"
       ],
-      "remainder": [
-        "T3751 remains PARTIAL only for cryptographic signing: receipt hashing, independent verification/export and required-stage completeness are certified, while signature_state remains crypto_profile_required until T3755 closes versioned crypto-profile/key-rotation semantics."
-      ]
+      "remainder": []
     },
     {
       "id": "crypto_time_replay_abuse",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3754",
         "T3755",
@@ -333,7 +329,31 @@
         "impact_approval_receipt_routing"
       ],
       "interim_behavior": "Unknown crypto/time/replay/canonicalization conditions deny or require reprepare; abuse limits never bypass stronger policy.",
-      "evidence_strategy": "Rotation/skew/replay/fuzz/rate/TLS/DNS/backward-compatibility/hermetic-CI evidence."
+      "evidence_strategy": "Structural redaction, execution-receipt cryptography, unified time policy, replay/idempotency binding, canonicalization and per-identity abuse budgets are implemented and runtime/contract tested; remaining work is explicitly bounded to full receipt-family crypto migration plus T3760-T3762.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-structural-redaction.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/time-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-replay-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-canonicalization.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/abuse-budget.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abuse-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php"
+      ],
+      "remainder": [
+        "T3755 remains PARTIAL until preparation/context receipt families use the versioned crypto-profile/key-ID rotation lifecycle rather than legacy/local signing semantics.",
+        "T3760 remains OPEN for TLS verification, proxy trust, redirect revalidation, DNS-answer change and certificate/hostname failure semantics.",
+        "T3761 remains OPEN for legacy unprepared-dispatch migration/deprecation telemetry, versioned error contracts and explicit sunset gates.",
+        "T3762 remains OPEN for end-to-end hermetic deterministic critical CI with bounded deterministic randomness and no flaky-gate bypass."
+      ]
     },
     {
       "id": "maintainability_config",
