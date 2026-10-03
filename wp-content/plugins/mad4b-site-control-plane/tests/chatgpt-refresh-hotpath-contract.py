@@ -89,9 +89,17 @@ assert "MAD4B_SCP_Endpoint_Diagnostic::is_authorized_request()" in provider_poli
 endpoint_worker = (root / "includes/class-mad4b-scp-endpoint-diagnostic.php").read_text(encoding="utf-8")
 assert endpoint_worker.index("wp_verify_nonce") < endpoint_worker.index("begin_endpoint_diagnostic") < endpoint_worker.index("rest_get_server()")
 connection_ui = (root / "includes/class-mad4b-scp-connection-admin-ui.php").read_text(encoding="utf-8")
+endpoint_client = (root / "assets/connection-endpoint-diagnostics.js").read_text(encoding="utf-8")
 assert "wp_create_nonce( 'mad4b_connection_deep_endpoints' )" in connection_ui
 assert "Run Deep Endpoint Diagnostic" in connection_ui
 assert "self::snapshot( false )" in connection_ui
+assert "$asset_hash = is_readable( $asset_path ) ? @hash_file( 'sha256', $asset_path ) : false;" in connection_ui
+assert "substr( $asset_hash, 0, 16 )" in connection_ui
+assert "'assetVersion' => $asset_version" in connection_ui
+assert "mu_proof: config.muProof || ''" in endpoint_client
+assert "mad4b_endpoint_diagnostic_mu_proof_invalid" in endpoint_worker
+assert "mad4b_endpoint_diagnostic_mu_bootstrap_not_ready" in endpoint_worker
+assert "'runtime_bootstrap' => $runtime_bootstrap" in endpoint_worker
 assert "$_POST" not in connection_ui
 assert "rest_get_server(" not in connection_ui
 prime = plugin.split("public static function prime_admin_mcp_runtime()", 1)[1].split("public static function governance_bootstrap_error_code()", 1)[0]
