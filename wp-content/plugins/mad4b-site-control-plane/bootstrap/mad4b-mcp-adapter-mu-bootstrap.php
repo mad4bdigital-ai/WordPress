@@ -102,7 +102,13 @@ $mad4b_mcp_mu_status['wordpress_environment_explicit'] = ! empty( $mad4b_mcp_mu_
 $mad4b_mcp_mu_profile_enrolled = ! empty( $mad4b_mcp_mu_binding['eligible'] );
 
 // Any unresolved filesystem transaction blocks provider execution before normal
-// plugins load. A later authorized lifecycle request must reconcile it first.
+// plugins load. The database option is authoritative; persistent object-cache
+// state is evicted before this safety read so Redis/Memcached acceleration cannot
+// hide an in-flight filesystem transaction.
+if ( function_exists( 'wp_cache_delete' ) ) {
+	wp_cache_delete( 'mad4b_scp_mcp_mu_refresh_transaction_v1', 'options' );
+	wp_cache_delete( 'notoptions', 'options' );
+}
 $mad4b_mcp_mu_transaction = function_exists( 'get_option' )
 	? get_option( 'mad4b_scp_mcp_mu_refresh_transaction_v1', array() )
 	: array();
