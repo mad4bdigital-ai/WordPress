@@ -81,6 +81,7 @@ remote = (INCLUDES / "class-mad4b-scp-remote-plugin-update.php").read_text(encod
 require("0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' )" in remote, "generic remote updater must continue denying MCP Adapter")
 
 runtime = (INCLUDES / "class-mad4b-scp-runtime-release-set.php").read_text(encoding="utf-8")
+servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 for needle in (
     "mad4b.runtime-release-set.v1",
     "update_control_plane",
@@ -98,6 +99,17 @@ for needle in (
 ):
     require(needle in runtime, f"runtime release-set invariant missing: {needle}")
 require("production_allowed' => false" in runtime, "runtime release-set Production mutation must remain denied")
+require("const BOOTSTRAP_APPLY_ABILITY = 'mad4b/runtime-release-set-bootstrap-apply'" in runtime, "runtime release-set bootstrap step-up ability missing")
+require("'chatgpt_direct_step_up' => true" in runtime, "runtime release-set bootstrap is not projected as reviewed direct step-up")
+require("verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )" in runtime, "runtime release-set bootstrap lacks exact authority step-up scope check")
+require("verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )" in runtime, "runtime release-set bootstrap lacks exact ChatGPT client attribution")
+bootstrap_permission = runtime.split("public static function can_bootstrap_apply", 1)[1].split("public static function chatgpt_step_up_tools", 1)[0]
+require("MAD4B_SCP_Policy::can_mutate()" not in bootstrap_permission, "runtime release-set bootstrap incorrectly depends on general mutation authority")
+catalog_projection = runtime.split("public static function chatgpt_step_up_tools", 1)[1].split("public static function bootstrap_apply", 1)[0]
+require("verified_bearer" not in catalog_projection, "runtime release-set catalog projection must remain bearer-independent")
+require("can_bootstrap_apply" not in catalog_projection, "runtime release-set catalog projection must not execute request-time authorization")
+require("MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY" in servers, "ChatGPT reviewed direct step-up catalog omits runtime release-set bootstrap")
+require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "ChatGPT enrollment candidates omit runtime release-set step-up projection")
 require("caller_url_allowed' => false" in runtime, "caller-controlled package URL must remain denied")
 require("generic_plugin_update_for_adapter_allowed' => false" in runtime, "generic Adapter update must remain denied")
 
