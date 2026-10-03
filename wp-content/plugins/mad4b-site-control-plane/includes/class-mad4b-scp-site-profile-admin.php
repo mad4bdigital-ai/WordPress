@@ -44,6 +44,8 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			'write_enabled' => ! empty( $_POST['write_enabled'] ),
 			'production_write_confirmed' => ! empty( $_POST['production_write_confirmed'] ),
 			'production_write_confirmation' => isset( $_POST['production_write_confirmation'] ) ? wp_unslash( $_POST['production_write_confirmation'] ) : '',
+			'nonproduction_override_confirmed' => ! empty( $_POST['nonproduction_override_confirmed'] ),
+			'nonproduction_override_confirmation' => isset( $_POST['nonproduction_override_confirmation'] ) ? wp_unslash( $_POST['nonproduction_override_confirmation'] ) : '',
 			'expected_revision' => isset( $_POST['expected_revision'] ) ? absint( $_POST['expected_revision'] ) : 0,
 			'expected_profile_digest' => isset( $_POST['expected_profile_digest'] ) && is_string( $_POST['expected_profile_digest'] ) ? wp_unslash( $_POST['expected_profile_digest'] ) : null,
 			'provider_isolation_enabled' => ! empty( $_POST['provider_isolation_enabled'] ),
@@ -88,15 +90,59 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		self::redirect( 'saved' );
 	}
 
-	/** Revision may reset to 1 on an identity rebind; compare the committed identity. */
+	/** Revision may reset to 1 on an identity rebind; compare identity and intent. */
 	public static function persisted_readback_matches( array $input, array $committed, array $status, array $profile ) {
 		if ( empty( $profile ) || empty( $committed['profile_digest'] ) || empty( $status['profile_digest'] ) ) return false;
 		foreach ( array( 'revision', 'profile_digest', 'site_uuid', 'configured_environment', 'canonical_origin' ) as $field ) {
 			if ( ! isset( $committed[ $field ], $status[ $field ] ) || (string) $committed[ $field ] !== (string) $status[ $field ] ) return false;
 		}
 		$requested = sanitize_key( (string) ( $input['environment'] ?? '' ) );
-		return ( '' === $requested || hash_equals( $requested, (string) $status['configured_environment'] ) )
-			&& hash_equals( (string) MAD4B_SCP_Site_Profile::profile_digest(), (string) $status['profile_digest'] );
+		if ( '' !== $requested && ! hash_equals( $requested, (string) $status['configured_environment'] ) ) return false;
+		if ( ! hash_equals( (string) MAD4B_SCP_Site_Profile::profile_digest(), (string) $status['profile_digest'] ) ) return false;
+		return self::requested_intent_matches_profile( $input, $profile );
+	}
+
+	private static function requested_intent_matches_profile( array $input, array $profile ) {
+		$environment = isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : '';
+		$features = isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array();
+		foreach ( array(
+			'oauth' => 'oauth_enabled',
+			'skills' => 'skills_enabled',
+			'write' => 'write_enabled',
+			'provider_isolation' => 'provider_isolation_enabled',
+			'managed_runtime' => 'managed_runtime_enabled',
+			'acceptance' => 'acceptance_enabled',
+		) as $feature => $input_key ) {
+			if ( (bool) ! empty( $input[ $input_key ] ) !== (bool) ! empty( $features[ $feature ] ) ) return false;
+		}
+		$expected_production_confirmation = 'production' === $environment && ! empty( $input['write_enabled'] ) && ! empty( $input['production_write_confirmed'] );
+		if ( $expected_production_confirmation !== (bool) ! empty( $features['production_write_confirmed'] ) ) return false;
+		if ( array_key_exists( 'display_name', $input ) ) {
+			$display_name = substr( sanitize_text_field( (string) $input['display_name'] ), 0, 191 );
+			if ( $display_name !== (string) ( $profile['display_name'] ?? '' ) ) return false;
+		}
+		if ( array_key_exists( 'chatgpt_app_id', $input ) ) {
+			$app_id = trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) );
+			if ( $app_id !== (string) ( $profile['chatgpt_app_id'] ?? '' ) ) return false;
+		}
+		$requested_users = self::normalize_user_ids( $input['oauth_user_ids'] ?? array() );
+		if ( empty( $requested_users ) ) $requested_users = array( get_current_user_id() );
+		$profile_users = self::normalize_user_ids( $profile['oauth_user_ids'] ?? array() );
+		sort( $requested_users, SORT_NUMERIC );
+		sort( $profile_users, SORT_NUMERIC );
+		return $requested_users === $profile_users;
+	}
+
+	private static function normalize_user_ids( $value ) {
+		if ( is_string( $value ) ) $value = preg_split( '/[\s,]+/', $value );
+		if ( ! is_array( $value ) ) return array();
+		$out = array();
+		foreach ( $value as $item ) {
+			if ( ! is_int( $item ) && ! is_string( $item ) ) continue;
+			$item = trim( (string) $item );
+			if ( 1 === preg_match( '/^[1-9][0-9]*$/D', $item ) ) $out[] = (int) $item;
+		}
+		return array_values( array_unique( array_filter( $out ) ) );
 	}
 
 	public static function handle_disable() {
@@ -145,6 +191,8 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$features = isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array();
 		$related = isset( $profile['related_origins'] ) && is_array( $profile['related_origins'] ) ? $profile['related_origins'] : array();
 		$users = MAD4B_SCP_Site_Profile::oauth_user_ids();
+		$wordpress_default_production = 'production' === (string) $resolution['wordpress_environment'] && empty( $resolution['wordpress_environment_explicit'] );
+		$override_already_confirmed = ! empty( $profile['implicit_production_override_confirmed'] );
 		$state = isset( $_GET['mad4b_site_profile'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_site_profile'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
 		<div class="wrap" id="mad4b-site-profile-workspace">
@@ -160,7 +208,8 @@ final class MAD4B_SCP_Site_Profile_Admin {
 				<tr><th><?php esc_html_e( 'Enrolled origin', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['canonical_origin'] ); ?></code></td></tr>
 				<tr><th><?php esc_html_e( 'Site UUID', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['site_uuid'] ); ?></code></td></tr>
 				<tr><th><?php esc_html_e( 'Revision', 'mad4b-site-control-plane' ); ?></th><td><?php echo esc_html( (string) $status['revision'] ); ?></td></tr>
-				<tr><th><?php esc_html_e( 'Origin binding', 'mad4b-site-control-plane' ); ?></th><td><?php echo ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] ) ? 'PASS' : 'BLOCKED'; ?></td></tr>
+				<tr><th><?php esc_html_e( 'Origin binding', 'mad4b-site-control-plane' ); ?></th><td><?php echo ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] ) && ! empty( $status['deployment_binding_match'] ) ? 'PASS' : 'BLOCKED'; ?></td></tr>
+				<tr><th><?php esc_html_e( 'Deployment binding', 'mad4b-site-control-plane' ); ?></th><td><?php echo ! empty( $status['deployment_binding_configured'] ) ? esc_html__( 'Configured', 'mad4b-site-control-plane' ) : esc_html__( 'Not configured', 'mad4b-site-control-plane' ); ?> · <?php echo ! empty( $status['same_origin_clone_protection'] ) ? esc_html__( 'same-origin clone protection active', 'mad4b-site-control-plane' ) : esc_html__( 'database/origin binding only', 'mad4b-site-control-plane' ); ?></td></tr>
 				</tbody>
 			</table>
 
@@ -193,6 +242,13 @@ final class MAD4B_SCP_Site_Profile_Admin {
 						<?php self::checkbox( 'managed_runtime_enabled', 'Managed MCP runtime pinning', ! empty( $features['managed_runtime'] ) ); ?>
 						<?php self::checkbox( 'acceptance_enabled', 'External acceptance evidence', ! empty( $features['acceptance'] ) ); ?>
 						<?php self::checkbox( 'write_enabled', 'Governed write authority', ! empty( $features['write'] ) ); ?>
+						<div data-mad4b-nonproduction-confirmation data-wordpress-production-default="<?php echo $wordpress_default_production ? '1' : '0'; ?>" data-configured-environment="<?php echo esc_attr( (string) ( $status['configured_environment'] ?? '' ) ); ?>" data-already-confirmed="<?php echo $override_already_confirmed ? '1' : '0'; ?>">
+							<p class="description"><?php esc_html_e( 'WordPress is using its implicit Production default. Selecting a non-Production MAD4B environment changes governance policy for this exact origin. Confirm this once for the bound identity/environment.', 'mad4b-site-control-plane' ); ?></p>
+							<?php self::checkbox( 'nonproduction_override_confirmed', 'I confirm this exact origin is not Production', false ); ?>
+							<label style="display:block;margin:.6em 0" for="mad4b-nonproduction-override-confirmation"><?php esc_html_e( 'Type the exact non-Production confirmation phrase:', 'mad4b-site-control-plane' ); ?></label>
+							<code><?php echo esc_html( MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION ); ?></code><br />
+							<input class="regular-text" autocomplete="off" id="mad4b-nonproduction-override-confirmation" name="nonproduction_override_confirmation" value="" data-mad4b-one-time-confirm />
+						</div>
 						<div data-mad4b-production-confirmation>
 							<p class="description"><?php esc_html_e( 'Required only when the selected environment is Production and governed write is enabled. To save Production without writes, clear Governed write authority.', 'mad4b-site-control-plane' ); ?></p>
 							<?php self::checkbox( 'production_write_confirmed', 'I explicitly authorize governed writes on this Production origin', false ); ?>
