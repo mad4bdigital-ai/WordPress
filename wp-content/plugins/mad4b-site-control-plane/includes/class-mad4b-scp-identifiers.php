@@ -72,8 +72,10 @@ final class MAD4B_SCP_Identifiers {
 	}
 
 	public static function approval_ticket_id( $value ) {
-		$identity = self::inspect( 'approval_ticket_id', $value, 'write' );
-		return is_wp_error( $identity ) ? '' : (string) $identity['value'];
+		// Approval-ticket identity must remain available in isolated runtime
+		// guards before the policy catalog is materialized. The registry records
+		// the policy; this primitive enforces the same immutable UUIDv4 shape.
+		return self::uuidv4( $value );
 	}
 	public static function valid_approval_ticket_id( $value ) { return '' !== self::approval_ticket_id( $value ); }
 

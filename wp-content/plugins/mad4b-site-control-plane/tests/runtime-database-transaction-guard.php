@@ -59,6 +59,6 @@ $check( is_array( $appended ) && 0 === MAD4B_SCP_Database_Transaction_Guard::tra
 $uppercase = $context;
 $uppercase['operation_id'] = strtoupper( $context['operation_id'] );
 $alias = MAD4B_SCP_Operation_Journal::append( $uppercase, 'collation_alias_fixture', array( 'lifecycle_state' => 'running' ) );
-$check( 'mad4b_operation_journal_append_failed' === $code( $alias ), 'Case-alias operation id matched under database collation', $alias );
+$check( 'mad4b_operation_id_invalid' === $code( $alias ), 'Case-alias operation id bypassed canonical write identity boundary', $alias );
 
 echo "mad4b.database-transaction-guard.real-db.v1: PASS\n";

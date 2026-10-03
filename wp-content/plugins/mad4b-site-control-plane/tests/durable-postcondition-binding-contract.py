@@ -7,7 +7,7 @@ required_durable=[
  "mad4b_postcondition_profile_required",
  "array $postcondition_observation = array()",
  "'postcondition_observation' => $postcondition_observation",
- "'postcondition_recovery' => $postcondition",
+ "$context['postcondition_recovery'] = $postcondition;",
 ]
 for marker in required_durable:
  if marker not in durable: raise SystemExit("FAIL durable-postcondition-binding missing: "+marker)
