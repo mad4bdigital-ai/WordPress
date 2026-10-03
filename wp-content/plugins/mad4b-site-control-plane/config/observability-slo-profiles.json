@@ -29,6 +29,10 @@
       "p95_ms": 500,
       "availability_objective": 0.999
     },
+    "policy": {
+      "p95_ms": 500,
+      "availability_objective": 0.999
+    },
     "approval": {
       "p95_ms": 500,
       "availability_objective": 0.999

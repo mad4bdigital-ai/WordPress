@@ -57,6 +57,8 @@ $check(is_array($callback_result)&&'unchanged'===$callback_result['safe_read'],'
 $optional=MAD4B_SCP_Observability::record_stage('discovery',17,true,array('safe'=>'yes'));
 $check(is_array($optional)&&empty($optional['recorded'])&&empty($optional['safe_read_blocked'])&&'ci_metric_backend_down'===$optional['telemetry_error_code'],'Optional telemetry outage became blocking.',$optional);
 $GLOBALS['obs_metric_fail']=false;
+$policy_record=MAD4B_SCP_Observability::record_stage('policy',21,true,array('capability_sha256'=>hash('sha256','demo/read')));
+$check(!empty($policy_record['recorded'])&&'policy'===$policy_record['stage'],'Policy stage metric is not registered.',$policy_record);
 $recorded=MAD4B_SCP_Observability::record_stage('provider_execution',87,false,array('provider_id'=>'provider-a','token'=>'secret'));
 $check(!empty($recorded['recorded'])&&'[REDACTED]'===$recorded['attributes']['token'],'Stage metric did not record/redact.',$recorded);
 

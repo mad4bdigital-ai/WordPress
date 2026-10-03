@@ -74,6 +74,17 @@ final class MAD4B_SCP_Policy_Resolution {
 	}
 
 	public static function resolve( array $facts ) {
+		$call = static function() use ( $facts ) { return self::resolve_impl( $facts ); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'policy', $call, '', array(
+				'environment'=>isset($facts['environment'])?sanitize_key((string)$facts['environment']):'',
+				'capability_sha256'=>hash('sha256',isset($facts['capability'])?(string)$facts['capability']:''),
+				'target_fingerprint'=>isset($facts['target_fingerprint'])?(string)$facts['target_fingerprint']:'',
+			) )
+			: $call();
+	}
+
+	private static function resolve_impl( array $facts ) {
 		$normalized = self::normalize_facts( $facts );
 		if ( is_wp_error( $normalized ) ) return $normalized;
 

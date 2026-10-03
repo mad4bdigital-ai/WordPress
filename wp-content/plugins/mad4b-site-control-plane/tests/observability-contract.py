@@ -5,7 +5,7 @@ impl=(root/"includes/class-mad4b-scp-observability.php").read_text(encoding="utf
 cfg=json.loads((root/"config/observability-slo-profiles.json").read_text(encoding="utf-8"))
 main=(root/"mad4b-site-control-plane.php").read_text(encoding="utf-8")
 if cfg.get("contract")!="mad4b.observability-slo-profile.v1": raise SystemExit("FAIL observability profile contract")
-required_stages=["discovery","preparation","authorization","approval","commit_guard","provider_execution","readback","reconciliation","catalog_rebuild","network_fanout"]
+required_stages=["discovery","preparation","authorization","policy","approval","commit_guard","provider_execution","readback","reconciliation","catalog_rebuild","network_fanout"]
 if sorted(cfg.get("stages",{}))!=sorted(required_stages): raise SystemExit("FAIL observability stage registry")
 for marker in [
  "TRACE_CONTRACT","parse_traceparent(","fork_for_tenant(","causal_link_sha256",
@@ -47,3 +47,7 @@ for marker in ["run_stage( 'network_fanout'", "target_trace_link(", "causal_link
     if marker not in network: raise SystemExit("FAIL network fan-out observability missing "+marker)
 for marker in ["run_stage( 'catalog_rebuild'", "flush_impl("]:
     if marker not in catalog: raise SystemExit("FAIL catalog rebuild observability missing "+marker)
+
+policy=(root/"includes/class-mad4b-scp-policy-resolution.php").read_text(encoding="utf-8")
+for marker in ["run_stage( 'policy'", "resolve_impl(", "capability_sha256"]:
+    if marker not in policy: raise SystemExit("FAIL explicit policy observability stage missing "+marker)
