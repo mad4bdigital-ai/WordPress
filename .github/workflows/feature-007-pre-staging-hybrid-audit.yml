@@ -5,6 +5,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
   push:
@@ -189,6 +190,12 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py
 
+
+      - name: Capability Fabric composed cross-fault matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py
 
       - name: Hermetic deterministic security kernel
         shell: bash
