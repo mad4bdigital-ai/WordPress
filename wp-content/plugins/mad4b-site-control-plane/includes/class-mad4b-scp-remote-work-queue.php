@@ -222,6 +222,14 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				'completed_at' => '',
 				'cancel_requested_at' => '',
 				'cancel_reason_code' => '',
+				'cancel_generation' => 0,
+				'cancel_acknowledged_at' => '',
+				'cancel_acknowledged_generation' => 0,
+				'provider_checkpoint' => 'not_entered',
+				'provider_entry_at' => '',
+				'provider_returned_at' => '',
+				'provider_side_effect_possible' => false,
+				'provider_cancel_required' => false,
 				'reconciliation_required' => false,
 				'blind_retry_allowed' => false,
 				'client_action' => '',
@@ -302,6 +310,11 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			$job['lease_expires_at_epoch'] = self::now() + $lease_seconds;
 			$job['lease_expires_at'] = gmdate( 'c', $job['lease_expires_at_epoch'] );
 			$job['lease_token_sha256'] = hash( 'sha256', $token );
+			$job['provider_checkpoint'] = 'not_entered';
+			$job['provider_entry_at'] = '';
+			$job['provider_returned_at'] = '';
+			$job['provider_side_effect_possible'] = false;
+			$job['provider_cancel_required'] = false;
 			$jobs[ $job_id ] = $job;
 			if ( ! self::save_jobs( $jobs ) ) return new WP_Error( 'mad4b_remote_work_claim_persist_failed', 'Remote work lease could not be durably read back.' );
 			return array( 'contract' => self::CONTRACT, 'state' => 'claimed', 'lease_token' => $token, 'job' => self::public_job( $job ) );
@@ -324,23 +337,148 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			if ( 'reconciling' === $status ) return array( 'contract' => self::CONTRACT, 'state' => 'reconciling', 'job' => self::public_job( $job ) );
 			$job['cancel_requested_at'] = gmdate( 'c' );
 			$job['cancel_reason_code'] = $reason_code;
+			$job['cancel_generation'] = max( 0, (int) ( isset( $job['cancel_generation'] ) ? $job['cancel_generation'] : 0 ) ) + 1;
 			$job['blind_retry_allowed'] = false;
 			if ( 'pending' === $status ) {
 				$job['status'] = 'cancelled_no_effect';
 				$job['reconciliation_required'] = false;
+				$job['provider_cancel_required'] = false;
+				$job['cancel_acknowledged_at'] = gmdate( 'c' );
+				$job['cancel_acknowledged_generation'] = (int) $job['cancel_generation'];
 				$job['client_action'] = 'no_retry_required';
 				$job['lease_token_sha256'] = '';
 				$job['lease_expires_at_epoch'] = 0;
 			} elseif ( 'claimed' === $status ) {
 				$job['status'] = 'reconciling';
 				$job['reconciliation_required'] = true;
-				$job['client_action'] = 'reconcile_provider_state_before_any_retry';
+				$job['provider_cancel_required'] = true;
+				$job['client_action'] = 'propagate_cancel_then_reconcile_provider_state';
 			} else {
 				return new WP_Error( 'mad4b_remote_work_cancel_state_denied', 'Remote work cannot be cancelled from its current state.' );
 			}
 			$jobs[ $job_id ] = $job;
 			if ( ! self::save_jobs( $jobs ) ) return new WP_Error( 'mad4b_remote_work_cancel_persist_failed', 'Remote work cancellation state could not be durably read back.' );
 			return array( 'contract' => self::CONTRACT, 'state' => (string) $job['status'], 'job' => self::public_job( $job ) );
+		} );
+	}
+
+	private static function validate_active_lease( array $job, $executor_id, $lease_token ) {
+		$executor_id = sanitize_key( (string) $executor_id );
+		$lease_token = strtolower( trim( (string) $lease_token ) );
+		if ( '' === $executor_id || 1 !== preg_match( '/^[a-f0-9]{64}$/', $lease_token ) ) {
+			return new WP_Error( 'mad4b_remote_work_lease_invalid', 'Remote work executor and lease token are required.' );
+		}
+		if ( ! hash_equals( (string) ( isset( $job['executor_id'] ) ? $job['executor_id'] : '' ), $executor_id ) ) {
+			return new WP_Error( 'mad4b_remote_work_executor_mismatch', 'Remote work executor does not own the active lease.' );
+		}
+		if ( ! hash_equals( (string) ( isset( $job['lease_token_sha256'] ) ? $job['lease_token_sha256'] : '' ), hash( 'sha256', $lease_token ) ) ) {
+			return new WP_Error( 'mad4b_remote_work_lease_mismatch', 'Remote work lease token does not match the active claim.' );
+		}
+		return true;
+	}
+
+	public static function cancellation_signal( $job_id, $executor_id, $lease_token ) {
+		$job_id = strtolower( trim( (string) $job_id ) );
+		$jobs = self::jobs();
+		if ( ! isset( $jobs[ $job_id ] ) || ! is_array( $jobs[ $job_id ] ) ) return new WP_Error( 'mad4b_remote_work_job_missing', 'Remote work job was not found.' );
+		$job = $jobs[ $job_id ];
+		$lease = self::validate_active_lease( $job, $executor_id, $lease_token );
+		if ( is_wp_error( $lease ) ) return $lease;
+		$cancel_requested = '' !== (string) ( isset( $job['cancel_requested_at'] ) ? $job['cancel_requested_at'] : '' );
+		return array(
+			'contract' => 'mad4b.remote-work-cancellation-signal.v1',
+			'job_id' => $job_id,
+			'cancel_requested' => $cancel_requested,
+			'cancel_generation' => (int) ( isset( $job['cancel_generation'] ) ? $job['cancel_generation'] : 0 ),
+			'provider_checkpoint' => isset( $job['provider_checkpoint'] ) ? (string) $job['provider_checkpoint'] : 'not_entered',
+			'provider_side_effect_possible' => ! empty( $job['provider_side_effect_possible'] ),
+			'provider_cancel_required' => $cancel_requested && ! empty( $job['provider_cancel_required'] ),
+			'reconciliation_required' => ! empty( $job['reconciliation_required'] ),
+			'blind_retry_allowed' => false,
+			'authorizing' => false,
+		);
+	}
+
+	public static function provider_checkpoint( $job_id, $executor_id, $lease_token, $checkpoint ) {
+		$job_id = strtolower( trim( (string) $job_id ) );
+		$checkpoint = sanitize_key( (string) $checkpoint );
+		if ( ! in_array( $checkpoint, array( 'provider_entered', 'provider_returned' ), true ) ) {
+			return new WP_Error( 'mad4b_remote_work_provider_checkpoint_invalid', 'Remote work provider checkpoint is not registered.' );
+		}
+		return self::with_lock( 'provider_checkpoint', static function () use ( $job_id, $executor_id, $lease_token, $checkpoint ) {
+			$jobs = self::jobs();
+			if ( ! isset( $jobs[ $job_id ] ) || ! is_array( $jobs[ $job_id ] ) ) return new WP_Error( 'mad4b_remote_work_job_missing', 'Remote work job was not found.' );
+			$job = $jobs[ $job_id ];
+			if ( ! in_array( (string) ( isset( $job['status'] ) ? $job['status'] : '' ), array( 'claimed', 'reconciling' ), true ) ) {
+				return new WP_Error( 'mad4b_remote_work_provider_checkpoint_state_denied', 'Remote work provider checkpoint requires an active or reconciling claim.' );
+			}
+			$lease = self::validate_active_lease( $job, $executor_id, $lease_token );
+			if ( is_wp_error( $lease ) ) return $lease;
+			$current = isset( $job['provider_checkpoint'] ) ? (string) $job['provider_checkpoint'] : 'not_entered';
+			$cancel_requested = '' !== (string) ( isset( $job['cancel_requested_at'] ) ? $job['cancel_requested_at'] : '' );
+			if ( 'provider_entered' === $checkpoint ) {
+				if ( $cancel_requested && 'not_entered' === $current ) {
+					return new WP_Error( 'mad4b_remote_work_cancel_before_provider_entry', 'Cancellation was observed before provider entry; provider execution must not start.', array(
+						'cancel_generation' => (int) ( isset( $job['cancel_generation'] ) ? $job['cancel_generation'] : 0 ),
+						'provider_entry_allowed' => false,
+						'reconciliation_required' => true,
+						'blind_retry_allowed' => false,
+					) );
+				}
+				if ( ! in_array( $current, array( 'not_entered', 'provider_entered' ), true ) ) return new WP_Error( 'mad4b_remote_work_provider_checkpoint_regression', 'Provider checkpoint cannot move backward.' );
+				$job['provider_checkpoint'] = 'provider_entered';
+				$job['provider_entry_at'] = '' !== (string) $job['provider_entry_at'] ? (string) $job['provider_entry_at'] : gmdate( 'c' );
+				$job['provider_side_effect_possible'] = true;
+			} else {
+				if ( ! in_array( $current, array( 'provider_entered', 'provider_returned' ), true ) ) return new WP_Error( 'mad4b_remote_work_provider_return_without_entry', 'Provider return cannot be recorded before provider entry.' );
+				$job['provider_checkpoint'] = 'provider_returned';
+				$job['provider_returned_at'] = gmdate( 'c' );
+				$job['provider_side_effect_possible'] = true;
+			}
+			if ( $cancel_requested ) {
+				$job['status'] = 'reconciling';
+				$job['reconciliation_required'] = true;
+				$job['provider_cancel_required'] = true;
+				$job['client_action'] = 'propagate_cancel_then_reconcile_provider_state';
+			}
+			$jobs[ $job_id ] = $job;
+			if ( ! self::save_jobs( $jobs ) ) return new WP_Error( 'mad4b_remote_work_provider_checkpoint_persist_failed', 'Remote work provider checkpoint could not be durably read back.' );
+			return array( 'contract' => self::CONTRACT, 'state' => (string) $job['status'], 'job' => self::public_job( $job ) );
+		} );
+	}
+
+	public static function acknowledge_cancellation( $job_id, $executor_id, $lease_token, $cancel_generation ) {
+		$job_id = strtolower( trim( (string) $job_id ) );
+		$cancel_generation = (int) $cancel_generation;
+		return self::with_lock( 'acknowledge_cancellation', static function () use ( $job_id, $executor_id, $lease_token, $cancel_generation ) {
+			$jobs = self::jobs();
+			if ( ! isset( $jobs[ $job_id ] ) || ! is_array( $jobs[ $job_id ] ) ) return new WP_Error( 'mad4b_remote_work_job_missing', 'Remote work job was not found.' );
+			$job = $jobs[ $job_id ];
+			$lease = self::validate_active_lease( $job, $executor_id, $lease_token );
+			if ( is_wp_error( $lease ) ) return $lease;
+			$current_generation = (int) ( isset( $job['cancel_generation'] ) ? $job['cancel_generation'] : 0 );
+			if ( $cancel_generation < 1 || $cancel_generation !== $current_generation || '' === (string) ( isset( $job['cancel_requested_at'] ) ? $job['cancel_requested_at'] : '' ) ) {
+				return new WP_Error( 'mad4b_remote_work_cancel_ack_generation_mismatch', 'Cancellation acknowledgement does not match the current durable cancel generation.' );
+			}
+			$checkpoint = isset( $job['provider_checkpoint'] ) ? (string) $job['provider_checkpoint'] : 'not_entered';
+			if ( 'not_entered' !== $checkpoint || ! empty( $job['provider_side_effect_possible'] ) ) {
+				return new WP_Error( 'mad4b_remote_work_reconciliation_required', 'Provider entry is possible or recorded; cancellation cannot be acknowledged as no-effect.', array(
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+					'client_action' => 'reconcile_provider_state_before_any_retry',
+				) );
+			}
+			$job['status'] = 'cancelled_no_effect';
+			$job['reconciliation_required'] = false;
+			$job['provider_cancel_required'] = false;
+			$job['cancel_acknowledged_at'] = gmdate( 'c' );
+			$job['cancel_acknowledged_generation'] = $cancel_generation;
+			$job['client_action'] = 'no_retry_required';
+			$job['lease_token_sha256'] = '';
+			$job['lease_expires_at_epoch'] = 0;
+			$jobs[ $job_id ] = $job;
+			if ( ! self::save_jobs( $jobs ) ) return new WP_Error( 'mad4b_remote_work_cancel_ack_persist_failed', 'Remote work cancellation acknowledgement could not be durably read back.' );
+			return array( 'contract' => self::CONTRACT, 'state' => 'cancelled_no_effect', 'job' => self::public_job( $job ) );
 		} );
 	}
 
