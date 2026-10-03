@@ -4,7 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Plugin {
 	private static $booted = false;
-	private static $catalog_registration_wired = false;
 	private static $schema_error = null;
 
 	public static function activate() {
@@ -29,74 +28,6 @@ final class MAD4B_SCP_Plugin {
 		// remains observe-only inside Runtime_Convergence.
 		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Runtime_Convergence' ) ) {
 			MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
-		}
-	}
-
-	/**
-	 * Bind the canonical Ability/catalog registration graph without starting any
-	 * reconciliation, provider discovery, persistence, telemetry or mutation.
-	 *
-	 * A signed endpoint diagnostic is deliberately classified as passive until
-	 * its worker verifies capability + nonce + build + MU proof. The MU-bound
-	 * server id is nevertheless trusted as routing evidence, so the exact catalog
-	 * definitions must be wired before WordPress lazily fires
-	 * wp_abilities_api_init. Keeping this graph separate from the heavy lifecycle
-	 * prevents diagnostic catalog parity from becoming lifecycle authority.
-	 */
-	public static function bind_catalog_registration_wiring() {
-		if ( self::$catalog_registration_wired ) return;
-		self::$catalog_registration_wired = true;
-
-		$boots = array(
-			array( 'MAD4B_SCP_Staging_Certification', 'boot' ),
-			array( 'MAD4B_SCP_Acceptance_Core', 'boot_early' ),
-			array( 'MAD4B_SCP_Connection_Ability', 'boot' ),
-			array( 'MAD4B_SCP_Read_Consistency', 'boot' ),
-			array( 'MAD4B_SCP_Multi_Authority_Registry', 'boot' ),
-			array( 'MAD4B_SCP_Context_Authority', 'boot' ),
-			array( 'MAD4B_SCP_AI_Approval', 'boot' ),
-			array( 'MAD4B_SCP_Provider_Transport_Registry', 'boot' ),
-			array( 'MAD4B_SCP_Dependency_Impact_Graph', 'boot' ),
-			array( 'MAD4B_SCP_Operation_Registry', 'boot' ),
-			array( 'MAD4B_SCP_Operation_Pipeline', 'boot' ),
-			array( 'MAD4B_SCP_Provider_Autopilot', 'boot' ),
-			array( 'MAD4B_SCP_Plugin_Transaction', 'boot' ),
-			array( 'MAD4B_SCP_Operation_Resume', 'boot' ),
-			array( 'MAD4B_SCP_Plugin_Lifecycle', 'boot' ),
-			array( 'MAD4B_SCP_Plugin_Package', 'boot' ),
-			array( 'MAD4B_SCP_Remote_Plugin_Update', 'boot' ),
-			array( 'MAD4B_SCP_Self_Update', 'boot' ),
-			array( 'MAD4B_SCP_Functional_Gap_Runtime_Diagnostic', 'boot' ),
-			array( 'MAD4B_SCP_Code_Snippets_Runtime_Diagnostic', 'boot' ),
-			array( 'MAD4B_SCP_Workflow_Providers', 'boot' ),
-			array( 'MAD4B_SCP_Addon_Registry', 'boot' ),
-			array( 'MAD4B_SCP_Operating_Model', 'boot' ),
-			array( 'MAD4B_SCP_Governed_Ability_Overrides', 'boot' ),
-			array( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan', 'boot' ),
-			array( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation', 'boot' ),
-			array( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'boot' ),
-			array( 'MAD4B_SCP_Staging_Write_Planning_Guard', 'boot' ),
-			array( 'MAD4B_SCP_Governance_Abilities', 'boot' ),
-			array( 'MAD4B_SCP_Skill_Abilities', 'boot' ),
-			array( 'MAD4B_SCP_Skills_Adapter', 'boot' ),
-			array( 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge', 'bootstrap' ),
-		);
-		foreach ( $boots as $boot ) {
-			if ( class_exists( $boot[0], false ) && is_callable( $boot ) ) call_user_func( $boot );
-		}
-
-
-		$registrars = array(
-			array( 35, 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ),
-			array( 36, 'MAD4B_SCP_REST_Compatibility', 'register_ability' ),
-			array( 37, 'MAD4B_SCP_Write_Runtime_Certification', 'register_ability' ),
-		);
-		foreach ( $registrars as $registrar ) {
-			$callback = array( $registrar[1], $registrar[2] );
-			if ( class_exists( $registrar[1], false ) && is_callable( $callback )
-				&& false === has_action( 'wp_abilities_api_init', $callback ) ) {
-				add_action( 'wp_abilities_api_init', $callback, $registrar[0] );
-			}
 		}
 	}
 
