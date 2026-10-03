@@ -388,8 +388,14 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		), true ) ? $server_id : '';
 	}
 
+	private static function cli_mcp_opt_in() {
+		if ( ! ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) ) return false;
+		if ( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) ) return true;
+		return '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+	}
+
 	public static function current_request_requires_mcp_runtime() {
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return self::cli_mcp_opt_in();
 		if ( self::current_request_is_endpoint_diagnostic_job() ) return '' !== self::$endpoint_diagnostic_server_id;
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
