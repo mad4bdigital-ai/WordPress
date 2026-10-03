@@ -1,0 +1,104 @@
+{
+  "contract": "mad4b.provider-postcondition-profiles.v1",
+  "profile_contract": "mad4b.provider-postcondition-profile.v1",
+  "observation_contract": "mad4b.provider-postcondition-observation.v1",
+  "recovery_decision_contract": "mad4b.provider-postcondition-recovery-decision.v1",
+  "default_freshness_seconds": 60,
+  "unsupported_policy": {
+    "state": "unknown",
+    "reconciliation_required": true,
+    "blind_retry_allowed": false,
+    "retry_reclaim_eligible": false
+  },
+  "profiles": {
+    "mad4b/content-update-post": {
+      "reader_type": "mutation_manager",
+      "reader_id": "core-post-state",
+      "freshness_seconds": 30
+    },
+    "mad4b/content-create-post": {
+      "reader_type": "adapter",
+      "adapter_id": "core-content-modeling",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    },
+    "mad4b/taxonomy-create-term": {
+      "reader_type": "adapter",
+      "adapter_id": "core-content-modeling",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    },
+    "mad4b/taxonomy-set-object-terms": {
+      "reader_type": "adapter",
+      "adapter_id": "core-content-modeling",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    },
+    "seo/update-meta": {
+      "reader_type": "adapter",
+      "adapter_id": "seo",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    },
+    "woocommerce/update-product": {
+      "reader_type": "adapter",
+      "adapter_id": "woocommerce",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    },
+    "media/update-metadata": {
+      "reader_type": "adapter",
+      "adapter_id": "media",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    },
+    "media/set-featured": {
+      "reader_type": "adapter",
+      "adapter_id": "media",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    },
+    "elementor/update-widget-settings": {
+      "reader_type": "adapter",
+      "adapter_id": "elementor",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 45
+    },
+    "elementor/clone-subtree": {
+      "reader_type": "adapter",
+      "adapter_id": "elementor",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 45
+    },
+    "elementor/move-element": {
+      "reader_type": "adapter",
+      "adapter_id": "elementor",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 45
+    },
+    "elementor/delete-element": {
+      "reader_type": "adapter",
+      "adapter_id": "elementor",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 45
+    },
+    "elementor/set-dynamic-tag": {
+      "reader_type": "adapter",
+      "adapter_id": "elementor",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 45
+    },
+    "elementor/set-etg-dynamic-tag": {
+      "reader_type": "adapter",
+      "adapter_id": "elementor",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 45
+    },
+    "jetengine/update-post-meta": {
+      "reader_type": "adapter",
+      "adapter_id": "jetengine",
+      "reader_method": "read_reversible_state",
+      "freshness_seconds": 30
+    }
+  }
+}

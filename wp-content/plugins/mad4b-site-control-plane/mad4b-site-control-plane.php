@@ -206,6 +206,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 MAD4B_SCP_Authorization::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-fence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mutation-manager.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-postcondition-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reversible-adapter-mutations.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-autopilot.php';

@@ -262,6 +262,9 @@ final class MAD4B_SCP_Connector_Resilience {
 			if ( is_wp_error( $result ) ) {
 				$classification = self::classify_wp_error( $result );
 				$original_error_code = self::safe_error_code( $result );
+				$original_data = method_exists( $result, 'get_error_data' ) ? $result->get_error_data( $original_error_code ) : array();
+				$mutation_evidence = is_array( $original_data ) && isset( $original_data['mad4b_mutation_evidence'] ) && is_array( $original_data['mad4b_mutation_evidence'] ) ? $original_data['mad4b_mutation_evidence'] : array();
+				$postcondition_recovery = isset( $mutation_evidence['postcondition_recovery'] ) && is_array( $mutation_evidence['postcondition_recovery'] ) ? $mutation_evidence['postcondition_recovery'] : array();
 				$dispatch_not_started = self::wp_error_proves_mutation_not_started( $original_error_code );
 				$code_suffix = $dispatch_not_started
 					? '_dispatch_not_started'
@@ -284,6 +287,9 @@ final class MAD4B_SCP_Connector_Resilience {
 						'mutation_state' => $dispatch_not_started ? 'not_started' : 'unknown',
 						'reconciliation_required' => ! $dispatch_not_started,
 						'blind_retry_allowed' => false,
+						'postcondition_recovery' => $postcondition_recovery,
+						'postcondition_reader_certified' => ! empty( $postcondition_recovery['reader_certified'] ),
+						'retry_reclaim_eligible' => ! empty( $postcondition_recovery['retry_reclaim_eligible'] ),
 						'automatic_retry_performed' => false,
 						'raw_error_message_exposed' => false,
 					)
