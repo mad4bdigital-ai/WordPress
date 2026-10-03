@@ -134,6 +134,19 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		if ( is_wp_error( $transaction ) ) return $transaction;
 		$t = MAD4B_SCP_Schema::tables();
 		try {
+			// Materialize the scope head before taking FOR UPDATE. Locking a missing
+			// primary-key row lets concurrent first publishers acquire competing gap
+			// locks and deadlock while both try to INSERT the same head. INSERT IGNORE
+			// serializes that one-time materialization; all publications after it are
+			// fenced UPDATE-CAS transitions.
+			$seed_expiry = time() + 60;
+			$seeded = $wpdb->query( $wpdb->prepare(
+				"INSERT IGNORE INTO {$t['catalog_heads']}
+				 (storage_scope_sha256,generation_id,directory_sha256,fencing_token,previous_generation_id,published_at,expires_at,updated_at)
+				 VALUES (%s,'','',0,'',UTC_TIMESTAMP(),FROM_UNIXTIME(%d),UTC_TIMESTAMP())",
+				$this->scope, $seed_expiry
+			) );
+			if ( false === $seeded ) throw new RuntimeException( 'catalog_table_head_seed_failed' );
 			$physical_bytes = $wpdb->get_var( "SELECT COALESCE(SUM(payload_bytes),0) FROM {$t['catalog_objects']}" );
 			if ( null === $physical_bytes || ! is_numeric( $physical_bytes ) ) throw new RuntimeException( 'catalog_table_capacity_measurement_failed' );
 			$physical_bytes = (int) $physical_bytes;
@@ -141,8 +154,9 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 				"SELECT * FROM {$t['catalog_heads']} WHERE BINARY storage_scope_sha256=BINARY %s FOR UPDATE",
 				$this->scope
 			), ARRAY_A );
-			$expected_fence = is_array( $head ) ? (int) $head['fencing_token'] : 0;
-			$previous_generation = is_array( $head ) ? (string) $head['generation_id'] : '';
+			if ( ! is_array( $head ) ) throw new RuntimeException( 'catalog_table_head_lock_missing' );
+			$expected_fence = (int) $head['fencing_token'];
+			$previous_generation = (string) $head['generation_id'];
 			$directory = array();
 			if ( ! $this->replace && '' !== $previous_generation ) {
 				$rows = $wpdb->get_results( $wpdb->prepare(
@@ -209,23 +223,13 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 				if ( 1 !== (int) $ok ) throw new RuntimeException( 'catalog_table_generation_write_failed' );
 			}
 			$head_expiry = empty( $directory ) ? time() + 60 : max( array_map( static function( $entry ){ return (int)$entry['expires']; }, $directory ) );
-			if ( is_array( $head ) ) {
-				$ok = $wpdb->query( $wpdb->prepare(
-					"UPDATE {$t['catalog_heads']}
-					 SET generation_id=%s,directory_sha256=%s,fencing_token=%d,previous_generation_id=%s,published_at=UTC_TIMESTAMP(),expires_at=FROM_UNIXTIME(%d),updated_at=UTC_TIMESTAMP()
-					 WHERE BINARY storage_scope_sha256=BINARY %s AND fencing_token=%d AND BINARY generation_id=BINARY %s",
-					$generation_id, $directory_sha, $next_fence, $previous_generation, $head_expiry, $this->scope, $expected_fence, $previous_generation
-				) );
-				if ( 1 !== (int) $ok ) throw new RuntimeException( 'catalog_table_head_cas_conflict' );
-			} else {
-				$ok = $wpdb->query( $wpdb->prepare(
-					"INSERT INTO {$t['catalog_heads']}
-					 (storage_scope_sha256,generation_id,directory_sha256,fencing_token,previous_generation_id,published_at,expires_at,updated_at)
-					 VALUES (%s,%s,%s,%d,'',UTC_TIMESTAMP(),FROM_UNIXTIME(%d),UTC_TIMESTAMP())",
-					$this->scope, $generation_id, $directory_sha, $next_fence, $head_expiry
-				) );
-				if ( 1 !== (int) $ok ) throw new RuntimeException( 'catalog_table_head_create_conflict' );
-			}
+			$ok = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['catalog_heads']}
+				 SET generation_id=%s,directory_sha256=%s,fencing_token=%d,previous_generation_id=%s,published_at=UTC_TIMESTAMP(),expires_at=FROM_UNIXTIME(%d),updated_at=UTC_TIMESTAMP()
+				 WHERE BINARY storage_scope_sha256=BINARY %s AND fencing_token=%d AND BINARY generation_id=BINARY %s",
+				$generation_id, $directory_sha, $next_fence, $previous_generation, $head_expiry, $this->scope, $expected_fence, $previous_generation
+			) );
+			if ( 1 !== (int) $ok ) throw new RuntimeException( 'catalog_table_head_cas_conflict' );
 			$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $transaction );
 			if ( is_wp_error( $committed ) ) return $committed;
 			$this->pending = array(); $this->replace = false; ++$this->metrics['generations_published'];

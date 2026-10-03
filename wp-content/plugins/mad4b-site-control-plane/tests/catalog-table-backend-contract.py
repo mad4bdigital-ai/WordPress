@@ -8,7 +8,7 @@ transport=(root/"includes/class-mad4b-scp-ability-catalog-transport.php").read_t
 
 for marker in ["catalog_objects","catalog_generations","catalog_heads","fencing_token","generation_object_key","scope_generation"]:
     if marker not in schema: raise SystemExit("FAIL catalog-table-backend schema missing "+marker)
-for marker in ["catalog_table_head_cas_conflict","FOR UPDATE","fencing_token=%d","object_sha256","retain_until","collect_expired","logical_digest_from_head"]:
+for marker in ["catalog_table_head_seed_failed","INSERT IGNORE INTO","catalog_table_head_lock_missing","catalog_table_head_cas_conflict","FOR UPDATE","fencing_token=%d","object_sha256","retain_until","collect_expired","logical_digest_from_head"]:
     if marker not in backend: raise SystemExit("FAIL catalog-table-backend invariant missing "+marker)
 for marker in ["storage_scope","authority_backend","shadow_options_directory","cutover(","rollback(","mad4b_catalog_cutover_parity_required","mad4b_catalog_rollback_generation_advanced","persist_state_cas","fallback_on_table_failure"]:
     if marker not in controller: raise SystemExit("FAIL catalog-backend-controller invariant missing "+marker)

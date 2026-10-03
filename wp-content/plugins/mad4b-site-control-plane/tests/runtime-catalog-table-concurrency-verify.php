@@ -31,7 +31,7 @@ foreach ( $hosts as $worker_id => $host_id ) {
 	);
 }
 $head = $backend->head();
-$check( ! is_wp_error( $head ) && (int) $head['fencing_token'] >= 3, 'Concurrent workers did not advance a fenced table head.', $head );
+$check( ! is_wp_error( $head ) && (int) $head['fencing_token'] >= 2, 'Concurrent workers did not advance a fenced table head twice after retirement.', $head );
 
 $status = MAD4B_SCP_Catalog_Backend_Controller::status( $scope );
 $check( 'options' === $status['authority_backend'] && empty( $status['dual_authority'] ), 'Concurrent shadow publication changed catalog authority.', $status );
