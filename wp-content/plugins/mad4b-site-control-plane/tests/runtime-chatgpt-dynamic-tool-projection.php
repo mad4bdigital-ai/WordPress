@@ -293,6 +293,26 @@ try {
 	if ( ! is_wp_error( $replayed_execution ) || 'mad4b_projection_execution_seal_required' !== $replayed_execution->get_error_code() ) {
 		$fail( 'Projected execution seal was reusable or absent final callback enforcement.', $replayed_execution );
 	}
+
+	// A stale client may retain the old DTO after another actor removes the hot
+	// set entry. Visibility is not authority: the cached direct call must fail,
+	// while exact governed fixed dispatch for the same Ability remains valid.
+	$removed_hotset = $fixture_state;
+	$removed_hotset['revision'] = (int) $fixture_state['revision'] + 1;
+	$removed_hotset['abilities'] = array();
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $removed_hotset, false );
+	$cached_removed = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
+	if ( ! is_wp_error( $cached_removed ) || 'mad4b_projection_not_selected' !== $cached_removed->get_error_code() ) {
+		$fail( 'Cached client executed or admitted an Ability removed from the site hot set.', $cached_removed );
+	}
+	$removed_fixed_identity = mad4b_test_prepared_dispatch_identity( 'mad4b/diagnostics-health' );
+	if ( is_wp_error( $removed_fixed_identity ) ) $fail( 'Removed-hot-set fixed-dispatch preparation failed.', $removed_fixed_identity->get_error_code() );
+	$removed_fixed = ( new MAD4B_SCP_Abilities() )->read_execute( array_merge(
+		array( 'ability_name' => 'mad4b/diagnostics-health', 'input' => array() ),
+		$removed_fixed_identity
+	) );
+	if ( is_wp_error( $removed_fixed ) ) $fail( 'Hot-set removal changed fixed-dispatch correctness for the same Ability.', $removed_fixed->get_error_code() );
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 	MAD4B_SCP_Transport_Context::clear();
 
 	// A later same-priority pre-tool filter may try to erase our denial, but it
