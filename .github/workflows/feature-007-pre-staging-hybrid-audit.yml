@@ -180,6 +180,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/terminal-evidence-fault-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/execution-fatal-interruption-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/preparation-receipt-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
