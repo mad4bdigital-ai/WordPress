@@ -85,11 +85,6 @@ final class MAD4B_SCP_Plugin {
 			if ( class_exists( $boot[0], false ) && is_callable( $boot ) ) call_user_func( $boot );
 		}
 
-		$write_augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
-			&& false === has_filter( 'wp_register_ability_args', $write_augment ) ) {
-			add_filter( 'wp_register_ability_args', $write_augment, 70, 2 );
-		}
 
 		$registrars = array(
 			array( 35, 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ),
