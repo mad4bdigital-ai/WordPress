@@ -21,6 +21,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	const MU_BOOTSTRAP_SOURCE = 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 
 	private static $status = array();
+	private static $mu_transaction_id = '';
 
 	public static function bootstrap( $preventive = false ) {
 		$status = self::base_status();
@@ -122,9 +123,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				);
 				if ( is_wp_error( $event ) ) {
 					$rolled_back = ! $mu_installed || self::remove_managed_mu_bootstrap();
-					if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) ) {
-						if ( $rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction();
-						else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_class_repair_rollback_failed' );
+					if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+						if ( $rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( self::$mu_transaction_id );
+						else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_class_repair_rollback_failed', self::$mu_transaction_id );
+						self::$mu_transaction_id = '';
 					}
 					$status = array_merge( $status, self::mu_bootstrap_status() );
 					$status['state'] = 'mixed_runtime_class_set';
@@ -132,11 +134,15 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 					self::$status = $status;
 					return $status;
 				}
-				if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction() ) {
-					MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed' );
-					$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
-					self::$status = $status;
-					return $status;
+				if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+					$transaction_id = self::$mu_transaction_id;
+					self::$mu_transaction_id = '';
+					if ( ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $transaction_id ) ) {
+						MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed', $transaction_id );
+						$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
+						self::$status = $status;
+						return $status;
+					}
 				}
 				$status = array_merge( $status, self::mu_bootstrap_status() );
 				$status['state'] = $mu_installed ? 'mu_bootstrap_installed_for_class_set_next_request' : 'class_set_repair_armed_for_next_request';
@@ -255,9 +261,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		);
 		if ( is_wp_error( $event ) ) {
 			$mu_rolled_back = ! $mu_installed || self::remove_managed_mu_bootstrap();
-			if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) ) {
-				if ( $mu_rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction();
-				else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_repair_rollback_failed' );
+			if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+				if ( $mu_rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( self::$mu_transaction_id );
+				else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'audit_failed_runtime_repair_rollback_failed', self::$mu_transaction_id );
+				self::$mu_transaction_id = '';
 			}
 			if ( $order_repair_applied ) update_option( 'active_plugins', $before );
 			$status = array_merge( $status, self::mu_bootstrap_status() );
@@ -266,11 +273,15 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 
-		if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction() ) {
-			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed' );
-			$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
-			self::$status = $status;
-			return $status;
+		if ( ! empty( $mu['mu_bootstrap_transaction_pending'] ) && '' !== self::$mu_transaction_id ) {
+			$transaction_id = self::$mu_transaction_id;
+			self::$mu_transaction_id = '';
+			if ( ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $transaction_id ) ) {
+				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_transaction_finalize_failed', $transaction_id );
+				$status['blocker'] = 'mu_bootstrap_install_transaction_finalize_failed';
+				self::$status = $status;
+				return $status;
+			}
 		}
 		$status = array_merge( $status, self::mu_bootstrap_status() );
 		$status['state'] = $mu_installed ? 'mu_bootstrap_installed_for_next_request' : 'repaired_for_next_request';
@@ -448,17 +459,23 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$status['blocker'] = 'mu_bootstrap_temp_integrity_failed';
 			return $status;
 		}
-		$transaction = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', $source_hash );
-		if ( is_wp_error( $transaction ) ) {
+		$transaction_id = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', $source_hash );
+		if ( is_wp_error( $transaction_id ) ) {
 			@unlink( $temp );
-			$status['blocker'] = $transaction->get_error_code();
+			$status['blocker'] = $transaction_id->get_error_code();
 			return $status;
 		}
+		self::$mu_transaction_id = $transaction_id;
 		if ( ! @rename( $temp, $destination ) ) {
 			@unlink( $temp );
-			$reconciled = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::reconcile_transaction( $destination );
 			$race = self::mu_bootstrap_status();
-			if ( ! empty( $race['mu_bootstrap_present'] ) && ! empty( $race['mu_bootstrap_integrity'] ) ) return array_merge( $race, array( 'blocker' => '' ) );
+			if ( ! empty( $race['mu_bootstrap_present'] ) && ! empty( $race['mu_bootstrap_integrity'] ) ) {
+				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $transaction_id );
+				self::$mu_transaction_id = '';
+				return array_merge( $race, array( 'blocker' => '' ) );
+			}
+			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_atomic_install_failed', $transaction_id );
+			self::$mu_transaction_id = '';
 			$status['blocker'] = 'mu_bootstrap_atomic_install_failed';
 			return $status;
 		}
@@ -466,16 +483,20 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$status = self::mu_bootstrap_status();
 		$status['mu_bootstrap_installed'] = ! empty( $status['mu_bootstrap_present'] ) && ! empty( $status['mu_bootstrap_integrity'] );
 		if ( $status['mu_bootstrap_installed'] ) {
-			$marked = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::mark_transaction_replaced();
+			$marked = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::mark_transaction_replaced( $transaction_id );
 			if ( is_wp_error( $marked ) ) {
-				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $marked->get_error_code() );
+				MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $marked->get_error_code(), $transaction_id );
+				self::$mu_transaction_id = '';
 				$status['blocker'] = $marked->get_error_code();
 				return $status;
 			}
 			$status['mu_bootstrap_transaction_pending'] = true;
 		}
 		$status['blocker'] = $status['mu_bootstrap_installed'] ? '' : 'mu_bootstrap_post_install_integrity_failed';
-		if ( ! $status['mu_bootstrap_installed'] ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $status['blocker'] );
+		if ( ! $status['mu_bootstrap_installed'] ) {
+			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( $status['blocker'], $transaction_id );
+			self::$mu_transaction_id = '';
+		}
 		return $status;
 	}
 
