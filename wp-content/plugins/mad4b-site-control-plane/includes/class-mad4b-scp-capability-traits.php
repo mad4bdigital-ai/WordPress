@@ -106,6 +106,43 @@ final class MAD4B_SCP_Capability_Traits {
 		return hash( 'sha256', self::stable_json( $value ) );
 	}
 
+	private static function descriptor_bindings( array $capability ) {
+		$abilities = isset( $capability['abilities'] ) && is_array( $capability['abilities'] ) ? array_values( array_unique( array_map( 'strval', $capability['abilities'] ) ) ) : array();
+		sort( $abilities, SORT_STRING );
+		$bindings = array();
+		$blockers = array();
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ) {
+			$blockers[] = 'capability_descriptor_registry_unavailable';
+		} else {
+			foreach ( $abilities as $ability_name ) {
+				$binding = MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'capability_traits' );
+				if ( is_wp_error( $binding ) ) {
+					$blockers[] = $ability_name . ':' . $binding->get_error_code();
+					continue;
+				}
+				$bindings[ $ability_name ] = $binding;
+			}
+		}
+		ksort( $bindings, SORT_STRING );
+		$blockers = array_values( array_unique( $blockers ) );
+		sort( $blockers, SORT_STRING );
+		$generation_basis = array();
+		foreach ( $bindings as $ability_name => $binding ) {
+			$generation_basis[ $ability_name ] = array(
+				'descriptor_sha256' => isset( $binding['descriptor_sha256'] ) ? (string) $binding['descriptor_sha256'] : '',
+				'generation_roots' => isset( $binding['generation_roots'] ) && is_array( $binding['generation_roots'] ) ? $binding['generation_roots'] : array(),
+			);
+		}
+		return array(
+			'ability_names' => $abilities,
+			'bindings' => $bindings,
+			'blockers' => $blockers,
+			'ready' => ! empty( $abilities ) && empty( $blockers ) && count( $bindings ) === count( $abilities ),
+			'generation_sha256' => self::fingerprint( $generation_basis ),
+			'authorizing' => false,
+		);
+	}
+
 	private static function normalize_traits( array $capability ) {
 		$traits = isset( $capability['traits'] ) && is_array( $capability['traits'] ) ? $capability['traits'] : array();
 		$defaults = array(
@@ -156,6 +193,7 @@ final class MAD4B_SCP_Capability_Traits {
 			);
 		}
 		$traits = self::normalize_traits( $capability );
+		$descriptor_state = self::descriptor_bindings( $capability );
 		$profile = array(
 			'contract' => self::PROFILE_CONTRACT,
 			'provider_id' => $provider_id,
@@ -165,6 +203,12 @@ final class MAD4B_SCP_Capability_Traits {
 			'rollback_contract' => isset( $capability['rollback_contract'] ) ? sanitize_text_field( (string) $capability['rollback_contract'] ) : '',
 			'traits' => $traits,
 			'unknown_traits' => array_values( array_keys( array_filter( $traits, static function( $v ) { return 'unknown' === $v; } ) ) ),
+			'ability_names' => $descriptor_state['ability_names'],
+			'capability_descriptor_bindings' => $descriptor_state['bindings'],
+			'descriptor_binding_ready' => (bool) $descriptor_state['ready'],
+			'descriptor_binding_blockers' => $descriptor_state['blockers'],
+			'descriptor_generation_sha256' => (string) $descriptor_state['generation_sha256'],
+			'descriptor_authority_effect' => 'none',
 			'authorizing' => false,
 			'mutation_performed' => false,
 		);
@@ -275,6 +319,9 @@ final class MAD4B_SCP_Capability_Traits {
 			$profile = self::profile( $provider_id, $capability_id );
 			if ( empty( $profile['found'] ) && isset( $profile['found'] ) ) continue;
 			$violations = array();
+			if ( empty( $profile['descriptor_binding_ready'] ) ) {
+				$violations[] = array( 'trait' => 'capability_descriptor', 'reason_code' => 'capability_descriptor_binding_unavailable', 'blockers' => isset( $profile['descriptor_binding_blockers'] ) ? $profile['descriptor_binding_blockers'] : array() );
+			}
 			foreach ( $required as $trait => $requirement ) {
 				if ( ! array_key_exists( $trait, $profile['traits'] ) ) {
 					$violations[] = array( 'trait' => $trait, 'reason_code' => 'trait_not_declared' );
@@ -296,6 +343,9 @@ final class MAD4B_SCP_Capability_Traits {
 				'activation_stage' => $ring_status['activation_stage'],
 				'release_ring' => $release_ring,
 				'traits' => $profile['traits'],
+				'descriptor_generation_sha256' => isset( $profile['descriptor_generation_sha256'] ) ? (string) $profile['descriptor_generation_sha256'] : '',
+				'capability_descriptor_bindings' => isset( $profile['capability_descriptor_bindings'] ) ? $profile['capability_descriptor_bindings'] : array(),
+				'descriptor_binding_ready' => ! empty( $profile['descriptor_binding_ready'] ),
 				'violations' => $violations,
 			);
 			if ( empty( $violations ) ) $eligible[] = $row; else $rejected[] = $row;

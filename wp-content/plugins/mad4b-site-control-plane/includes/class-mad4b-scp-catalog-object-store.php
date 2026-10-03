@@ -8,8 +8,28 @@ final class MAD4B_SCP_Catalog_Object_Store {
 	const READER_GRACE_SECONDS = 3600;
 	private $pending = array();
 	private $metrics = array( 'reads' => 0, 'writes' => 0, 'bytes_read' => 0 );
+	private $scope = '';
+	private $table_backend = null;
+
+	public function __construct( $storage_scope_sha256 = '' ) {
+		$scope = strtolower( trim( (string) $storage_scope_sha256 ) );
+		if ( '' === $scope && class_exists( 'MAD4B_SCP_Catalog_Backend_Controller' ) ) $scope = MAD4B_SCP_Catalog_Backend_Controller::storage_scope();
+		$this->scope = 1 === preg_match( '/^[a-f0-9]{64}$/D', $scope ) ? $scope : hash( 'sha256', 'mad4b.catalog-table.default-scope.v1' );
+	}
+
+	private function authority_backend() {
+		if ( ! class_exists( 'MAD4B_SCP_Catalog_Backend_Controller' ) ) return 'options';
+		return MAD4B_SCP_Catalog_Backend_Controller::authority_backend( $this->scope );
+	}
+	private function table_backend() {
+		if ( null === $this->table_backend ) $this->table_backend = new MAD4B_SCP_Catalog_Table_Backend( $this->scope );
+		return $this->table_backend;
+	}
 
 	public function get( $key ) {
+		$backend = $this->authority_backend();
+		if ( is_wp_error( $backend ) ) throw new RuntimeException( $backend->get_error_code() );
+		if ( 'table' === $backend ) return $this->table_backend()->get( $key );
 		if ( isset( $this->pending[ $key ] ) ) return $this->pending[ $key ]['value'];
 		for ( $attempt = 0; $attempt < 2; ++$attempt ) {
 			$directory = 0 === $attempt ? get_option( self::DIRECTORY, array() ) : $this->directory();
@@ -25,6 +45,9 @@ final class MAD4B_SCP_Catalog_Object_Store {
 	}
 
 	public function put( $key, $value, $ttl, $minimum_expires = 0 ) {
+		$backend = $this->authority_backend();
+		if ( is_wp_error( $backend ) ) throw new RuntimeException( $backend->get_error_code() );
+		if ( 'table' === $backend ) { $this->table_backend()->put( $key, $value, $ttl, $minimum_expires ); return; }
 		$ttl = max( 1, (int) $ttl );
 		$minimum_expires = max( 0, (int) $minimum_expires );
 		$expires = max( time() + $ttl, $minimum_expires );
@@ -43,11 +66,17 @@ final class MAD4B_SCP_Catalog_Object_Store {
 	}
 
 	public function expires( $key ) {
+		$backend = $this->authority_backend();
+		if ( is_wp_error( $backend ) ) throw new RuntimeException( $backend->get_error_code() );
+		if ( 'table' === $backend ) return $this->table_backend()->expires( $key );
 		if ( isset( $this->pending[ $key ] ) ) return $this->pending[ $key ]['expires'];
 		$d = get_option( self::DIRECTORY, array() );
 		return $d[ $key ]['expires'] ?? 0;
 	}
-	public function metrics() { return $this->metrics; }
+	public function metrics() {
+		$backend = $this->authority_backend();
+		return 'table' === $backend ? $this->table_backend()->metrics() : $this->metrics;
+	}
 	private function directory() {
 		wp_cache_delete( self::DIRECTORY, 'options' );
 		wp_cache_delete( 'notoptions', 'options' );
@@ -76,6 +105,13 @@ final class MAD4B_SCP_Catalog_Object_Store {
 	}
 
 	public function flush() {
+		$backend = $this->authority_backend();
+		if ( is_wp_error( $backend ) ) throw new RuntimeException( $backend->get_error_code() );
+		if ( 'table' === $backend ) {
+			$result = $this->table_backend()->flush();
+			if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() );
+			return;
+		}
 		global $wpdb;
 		$drafts = array(); $created = array(); $published = false;
 		$deadline = microtime( true ) + 30;
@@ -129,6 +165,7 @@ final class MAD4B_SCP_Catalog_Object_Store {
 				if ( ! $ok ) continue;
 				$published = true;
 				wp_cache_delete( self::DIRECTORY, 'options' ); wp_cache_delete( 'notoptions', 'options' );
+				if ( class_exists( 'MAD4B_SCP_Catalog_Backend_Controller' ) ) MAD4B_SCP_Catalog_Backend_Controller::shadow_options_directory( $this->scope, $next );
 				$this->pending = array();
 				foreach ( array_unique( $garbage ) as $option ) if ( ! in_array( $option, array_column( $next, 'option' ), true ) ) delete_option( $option );
 				return;
@@ -151,11 +188,13 @@ final class MAD4B_SCP_Catalog_Object_Store {
 			'next_gc' => function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( 'mad4b_catalog_gc' ) : false,
 			'retention_policy' => 'preserve_on_deactivation_and_uninstall',
 			'authority_effect' => 'none',
+			'backend_controller' => class_exists( 'MAD4B_SCP_Catalog_Backend_Controller' ) ? MAD4B_SCP_Catalog_Backend_Controller::status() : array(),
 		);
 	}
 
 	public static function collect_expired() {
 		$store = new self(); $store->flush();
+		if ( class_exists( 'MAD4B_SCP_Catalog_Table_Backend' ) ) MAD4B_SCP_Catalog_Table_Backend::collect_expired();
 		global $wpdb;
 		if ( ! method_exists( $wpdb, 'get_col' ) ) return;
 		$cursor = (string) get_option( self::GC_CURSOR, '' );

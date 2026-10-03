@@ -76,6 +76,7 @@
 | REPOGOV | external repository governance | active master ruleset + pinned Release Verdict + zero bypass actors |
 | BACKUP | protected backup/recovery readiness | protected-root readiness + current-runtime backup receipt + known-good restore proof |
 | CLOSURE | unified implementation closure | closure ledger + Phase 36 evidence + terminal vertical-slice chain |
+| CAPFAB | post-merge Capability Fabric completeness overlay | Phase 37 closure ledger + contract + task ledger + cross-fault evidence |
 
 ## Dependency graph
 release-lineage
@@ -216,3 +217,28 @@ REPOGOV + BASESYNC + CLOSURE
 → CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED
 
 Maturity families remain outside this critical proof unless a concrete dependency requires admission.
+
+## Capability Fabric post-merge dependency overlay
+
+canonical capability descriptor
+→ resource-constrained plan/approval
+→ commit-time revalidation
+→ provider postcondition reconciliation
+→ unified execution receipt
+
+request-scope isolation + authoritative DB routing + hook/reentrancy safety
+→ reliable admission and durable evidence
+
+site clone/restore epoch + subject lifecycle revocation
+→ replay-safe authority after backup/restore and identity changes
+
+persisted contract compatibility + runtime generation fencing
+→ safe mixed-version rollout/rollback
+
+evidence commit ordering + degraded infrastructure semantics
+→ conservative terminal execution truth
+
+cancellation + chunk transport integrity + composed cross-fault fixtures
+→ CAPABILITY_FABRIC_COMPLETENESS
+
+CAPFAB is non-authorizing and maps to existing hard quality families; it does not replace the Critical Kernel terminal gate.

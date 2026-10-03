@@ -147,6 +147,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   async function negotiate({signal} = {}) {
     const caps = await request('capabilities', {}, {signal});
     if (!DIGEST.test(caps.authority_scope_sha256) || !caps.transports?.includes(transport)) throw new CatalogError('Incompatible transport or authority scope');
+    if (typeof caps.wire_generation !== 'string' || caps.wire_generation.length < 1 || caps.wire_generation.length > 191) throw new CatalogError('Invalid catalog wire generation');
     if (base && new URL(caps.rest_base_url).origin !== base.origin) throw new CatalogError('Server advertised a different credential origin');
     return caps;
   }
@@ -195,7 +196,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     // Chunk size is pinned for one download/resume namespace; REST parallelism may adapt between bounded windows.
     const size = state.chunkBytes ?? chunkBytes;
     if (!Number.isInteger(size) || size < minChunkBytes || size > maxChunkBytes) throw new CatalogError('Invalid resume chunk size');
-    const namespace = [base?.origin ?? 'mcp', catalog.authority_scope_sha256, format, descriptor.sha256, size].join(':');
+    const namespace = [base?.origin ?? 'mcp', catalog.authority_scope_sha256, caps.wire_generation, format, descriptor.sha256, size].join(':');
     if (state.namespace && state.namespace !== namespace) throw new CatalogError('Resume authority or schema mismatch');
     state.namespace = namespace; state.chunkBytes = size;
     if (!(state.chunks instanceof Map)) throw new CatalogError('Invalid resume chunk cache');
@@ -215,6 +216,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       const expected = Math.min(size, descriptor.bytes - i * size), cached = state.chunks.get(i);
       const valid = cached?.bytes instanceof Uint8Array
         && cached.bytes.length === expected
+        && cached.wireGeneration === caps.wire_generation
         && DIGEST.test(cached.sha256)
         && await hash(cached.bytes) === cached.sha256;
       if (valid) completedBytes += expected;
@@ -227,16 +229,33 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       const input = {snapshot, schema_sha256: descriptor.sha256, schema_format: format, chunk_bytes: size, chunk_index: i};
       if (base) {
         const {response, bytes: bodyBytes} = await rest(`schemas/${descriptor.sha256}/chunks/${i}`, input, {signal, limit: expected});
-        if (response.headers.get('X-MAD4B-Schema-SHA256') !== descriptor.sha256 || Number(response.headers.get('X-MAD4B-Chunk-Count')) !== count) throw new CatalogError('Chunk identity mismatch');
-        bytes = bodyBytes; checksum = response.headers.get('X-MAD4B-Content-SHA256');
+        const headers = response.headers;
+        if (headers.get('X-MAD4B-Schema-SHA256') !== descriptor.sha256
+          || headers.get('X-MAD4B-Snapshot') !== snapshot
+          || headers.get('X-MAD4B-Wire-Generation') !== caps.wire_generation
+          || headers.get('X-MAD4B-Compression') !== 'none'
+          || Number(headers.get('X-MAD4B-Chunk-Count')) !== count
+          || Number(headers.get('X-MAD4B-Chunk-Index')) !== i
+          || Number(headers.get('X-MAD4B-Chunk-Offset')) !== i * size
+          || Number(headers.get('X-MAD4B-Chunk-Payload-Bytes')) !== expected) throw new CatalogError('Chunk identity mismatch');
+        bytes = bodyBytes; checksum = headers.get('X-MAD4B-Content-SHA256');
       } else {
         const part = await request('chunk', input, {signal});
-        if (part.schema_sha256 !== descriptor.sha256 || part.chunk_index !== i || part.chunk_count !== count || part.encoding !== 'base64') throw new CatalogError('MCP chunk identity mismatch');
+        if (part.schema_sha256 !== descriptor.sha256
+          || part.snapshot !== snapshot
+          || part.wire_generation !== caps.wire_generation
+          || part.compression !== 'none'
+          || part.chunk_index !== i
+          || part.chunk_count !== count
+          || part.chunk_bytes !== size
+          || part.chunk_offset !== i * size
+          || part.chunk_payload_bytes !== expected
+          || part.encoding !== 'base64') throw new CatalogError('MCP chunk identity mismatch');
         if (typeof part.data !== 'string' || part.data.length > 4 * Math.ceil(expected / 3)) throw new CatalogError('Response memory budget exceeded');
         bytes = Uint8Array.from(atob(part.data), c => c.charCodeAt(0)); checksum = part.chunk_sha256;
       }
       if (bytes.length !== expected || !DIGEST.test(checksum ?? '') || await hash(bytes) !== checksum) throw new CatalogError('Chunk integrity failure');
-      state.chunks.set(i, {bytes, sha256: checksum});
+      state.chunks.set(i, {bytes, sha256: checksum, wireGeneration: caps.wire_generation});
       completedBytes += bytes.length;
       const elapsed = performance.now() - started;
       onProgress({abilityName, completedBytes: Math.min(descriptor.bytes, completedBytes), totalBytes: descriptor.bytes, transport, elapsedMs: elapsed, parallelism: activeParallel});

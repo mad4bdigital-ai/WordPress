@@ -23,6 +23,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const WORK_QUEUE_ABILITY = 'mad4b/remote-operation-work-queue';
 	const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';
 	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
+	const WORK_CANCEL_ABILITY = 'mad4b/remote-operation-work-cancel';
 	const SKILLS_STATE_OPTION = 'mad4b_scp_remote_skills_reconciliation_v1';
 	const SKILLS_LOCK_OPTION = 'mad4b_scp_remote_skills_reconciliation_lock_v1';
 	const SKILLS_LOCK_TTL = 900;
@@ -56,6 +57,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::QUERY_MONITOR_ATTRIBUTION_ABILITY,
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
+			self::WORK_CANCEL_ABILITY,
 		);
 
 		// During Ability registration keep the deterministic built-in seed only.
@@ -216,6 +218,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'Complete a leased semantic job only after WordPress independently observes the required acceptance evidence.',
 			self::work_complete_schema(),
 			array( __CLASS__, 'complete_remote_work' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_CANCEL_ABILITY,
+			'Cancel Remote Operation Work',
+			'Cancel unclaimed semantic work as verified no-effect, or quarantine claimed work for provider reconciliation without replay.',
+			self::work_cancel_schema(),
+			array( __CLASS__, 'cancel_remote_work' ),
 			true
 		);
 	}
@@ -1232,6 +1243,18 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
+	private static function work_cancel_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
+		$properties['reason_code'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9_-]+$' );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id' ),
+			'additionalProperties' => false,
+		);
+	}
+
 	private static function work_complete_schema() {
 		$properties = self::exact_build_properties();
 		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
@@ -1323,6 +1346,25 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'job_id' => (string) $input['job_id'],
 			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
 			'claim_generation' => isset( $result['job']['claim_generation'] ) ? (int) $result['job']['claim_generation'] : 0,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function cancel_remote_work( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::cancel(
+			(string) $input['job_id'],
+			isset( $input['reason_code'] ) ? (string) $input['reason_code'] : 'cancel_requested'
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_CANCEL_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'cancel_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'reconciliation_required' => ! empty( $result['job']['reconciliation_required'] ),
+			'blind_retry_allowed' => false,
+			'reason_code' => isset( $input['reason_code'] ) ? sanitize_key( (string) $input['reason_code'] ) : 'cancel_requested',
 		) );
 		return is_wp_error( $audit ) ? $audit : $result;
 	}

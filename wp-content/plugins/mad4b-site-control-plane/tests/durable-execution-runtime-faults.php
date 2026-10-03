@@ -9,6 +9,15 @@
 
 $root = dirname( __DIR__ );
 require_once $root . '/includes/class-mad4b-scp-schema.php';
+if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+	final class MAD4B_SCP_Restore_Epoch {
+		public static $ensure_calls = 0;
+		public static function ensure_bound() {
+			self::$ensure_calls++;
+			return array( 'ready' => true, 'contract' => 'mad4b.restore-authority-epoch.v1', 'fixture' => true );
+		}
+	}
+}
 require_once $root . '/includes/class-mad4b-scp-durable-execution.php';
 
 $fail = static function ( $message ) {
@@ -21,11 +30,44 @@ $check = static function ( $condition, $message ) use ( $fail ) {
 $error_code = static function ( $value ) {
 	return is_wp_error( $value ) ? $value->get_error_code() : '';
 };
+if ( ! class_exists( 'MAD4B_SCP_Mutation_Manager' ) ) {
+	final class MAD4B_SCP_Mutation_Manager {
+		public static function postcondition_state( array $target ) { return array(); }
+	}
+}
+$postcondition_no_effect = static function ( $seed ) {
+	$profile = MAD4B_SCP_Provider_Postcondition_Profile::profile( 'mad4b/content-update-post' );
+	if ( is_wp_error( $profile ) ) return array();
+	$before = hash( 'sha256', 'before:' . $seed );
+	$after = hash( 'sha256', 'after:' . $seed );
+	return MAD4B_SCP_Provider_Postcondition_Profile::decision_from_hashes( $profile, $before, $after, $before, time() );
+};
 
 $status = MAD4B_SCP_Schema::status( true );
 $check( ! empty( $status['ready'] ), 'schema is not ready' );
 $tables = MAD4B_SCP_Schema::tables();
 global $wpdb;
+
+// ---- Caller transaction ownership boundary ----
+// A long-lived caller may already own a transaction. DurableExecution must
+// deny nesting without committing or rolling back that caller transaction.
+$check( class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ), 'transaction guard unavailable for durable runtime fixture' );
+$check( false !== $wpdb->query( 'START TRANSACTION' ), 'unable to start caller-owned transaction fixture for DurableExecution' );
+$caller_state = MAD4B_SCP_Database_Transaction_Guard::transaction_state();
+$check( 1 === $caller_state, 'caller-owned transaction fixture is not active' );
+$nested_work_id = wp_generate_uuid4();
+$nested_lease = MAD4B_SCP_Durable_Execution::acquire_lease(
+	$nested_work_id,
+	'content_job',
+	'job-' . wp_generate_uuid4(),
+	'worker-nested-denied',
+	1,
+	30
+);
+$check( 'mad4b_database_nested_transaction_denied' === $error_code( $nested_lease ), 'DurableExecution nested into caller-owned transaction' );
+$check( 1 === MAD4B_SCP_Database_Transaction_Guard::transaction_state(), 'DurableExecution changed caller-owned transaction state' );
+$check( false !== $wpdb->query( 'ROLLBACK' ), 'unable to rollback caller-owned transaction fixture' );
+$check( 0 === MAD4B_SCP_Database_Transaction_Guard::transaction_state(), 'caller-owned rollback did not clear transaction fixture' );
 
 // ---- Lease / fencing fault injection ----
 $work_id = wp_generate_uuid4();
@@ -38,7 +80,11 @@ $lease_a = MAD4B_SCP_Durable_Execution::acquire_lease(
 	7,
 	30
 );
-$check( is_array( $lease_a ) && 1 === (int) $lease_a['lease_epoch'], 'initial lease acquisition failed' );
+$check(
+	is_array( $lease_a ) && 1 === (int) $lease_a['lease_epoch'],
+	'initial lease acquisition failed' . ( is_wp_error( $lease_a ) ? ': ' . $lease_a->get_error_code() : '' )
+);
+$check( MAD4B_SCP_Restore_Epoch::$ensure_calls >= 1, 'DurableExecution did not invoke restore-epoch admission for the normal lease path' );
 
 $lease_a_repeat = MAD4B_SCP_Durable_Execution::acquire_lease(
 	$work_id,
@@ -77,12 +123,22 @@ $check( 'mad4b_fence_lease_expired' === $error_code( $expired_fence ), 'expired 
 $expired_complete = MAD4B_SCP_Durable_Execution::complete_lease( $work_id, 'worker-a', 1, 'completed' );
 $check( 'mad4b_lease_complete_fenced' === $error_code( $expired_complete ), 'expired worker terminalized lease before reconciliation' );
 
-$reclaim_unverified = MAD4B_SCP_Durable_Execution::reclaim_lease(
+$reclaim_missing_postcondition = MAD4B_SCP_Durable_Execution::reclaim_lease(
 	$work_id,
 	'worker-b',
 	8,
 	'reconcile:lease:verified-readback',
 	30
+);
+$check( 'mad4b_postcondition_profile_required' === $error_code( $reclaim_missing_postcondition ), 'lease reclaim admitted missing certified postcondition evidence' );
+$lease_postcondition = $postcondition_no_effect( 'lease-reclaim' );
+$reclaim_unverified = MAD4B_SCP_Durable_Execution::reclaim_lease(
+	$work_id,
+	'worker-b',
+	8,
+	'reconcile:lease:verified-readback',
+	30,
+	$lease_postcondition
 );
 $check( 'mad4b_reconciliation_unverified' === $error_code( $reclaim_unverified ), 'lease reclaim bypassed reconciliation verifier' );
 
@@ -120,7 +176,8 @@ $lease_b = MAD4B_SCP_Durable_Execution::reclaim_lease(
 	'worker-b',
 	8,
 	'reconcile:lease:verified-readback',
-	30
+	30,
+	$lease_postcondition
 );
 $check( is_array( $lease_b ) && 2 === (int) $lease_b['lease_epoch'], 'reconciled lease did not advance fencing epoch' );
 
@@ -197,12 +254,22 @@ $expired_duplicate = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope, $id
 $check( 'mad4b_idempotency_reconciliation_required' === $error_code( $expired_duplicate ), 'expired pending idempotency was blindly reclaimed' );
 
 remove_filter( 'mad4b_scp_durable_reconciliation_verified', $reconcile_filter, PHP_INT_MAX );
-$reclaim_id_unverified = MAD4B_SCP_Durable_Execution::reclaim_idempotency(
+$reclaim_id_missing_postcondition = MAD4B_SCP_Durable_Execution::reclaim_idempotency(
 	$scope,
 	$idempotency_key,
 	$request_sha,
 	'reconcile:idempotency:verified-readback',
 	3600
+);
+$check( 'mad4b_postcondition_profile_required' === $error_code( $reclaim_id_missing_postcondition ), 'idempotency reclaim admitted missing certified postcondition evidence' );
+$idempotency_postcondition = $postcondition_no_effect( 'idempotency-reclaim' );
+$reclaim_id_unverified = MAD4B_SCP_Durable_Execution::reclaim_idempotency(
+	$scope,
+	$idempotency_key,
+	$request_sha,
+	'reconcile:idempotency:verified-readback',
+	3600,
+	$idempotency_postcondition
 );
 $check( 'mad4b_reconciliation_unverified' === $error_code( $reclaim_id_unverified ), 'idempotency reclaim bypassed reconciliation verifier' );
 add_filter( 'mad4b_scp_durable_reconciliation_verified', $reconcile_filter, PHP_INT_MAX, 3 );
@@ -212,7 +279,8 @@ $claim_b = MAD4B_SCP_Durable_Execution::reclaim_idempotency(
 	$idempotency_key,
 	$request_sha,
 	'reconcile:idempotency:verified-readback',
-	3600
+	3600,
+	$idempotency_postcondition
 );
 $check( is_array( $claim_b ) && ! empty( $claim_b['reclaimed'] ) && 2 === (int) $claim_b['claim_epoch'], 'idempotency reclaim did not advance claim epoch' );
 
@@ -250,6 +318,7 @@ $no_effect_proof = array(
 	'provider_scan_complete' => true,
 	'provider_candidate_count' => 0,
 	'provider_identity' => $provider_identity,
+	'postcondition_observation' => $postcondition_no_effect( 'no-effect-proof' ),
 );
 
 $premature_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
@@ -267,6 +336,7 @@ $observation_a = array(
 	'provider_candidate_count' => 0,
 	'provider_scan_generation' => hash( 'sha256', 'scan-a:' . $no_effect_key ),
 	'provider_identity' => $provider_identity,
+	'postcondition_observation' => $postcondition_no_effect( 'observation-a' ),
 );
 $record_a = MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation(
 	$no_effect_scope,
@@ -288,6 +358,7 @@ $check( 'mad4b_idempotency_no_effect_observations_insufficient' === $error_code(
 
 $observation_b = $observation_a;
 $observation_b['provider_scan_generation'] = hash( 'sha256', 'scan-b:' . $no_effect_key );
+$observation_b['postcondition_observation'] = $postcondition_no_effect( 'observation-b' );
 $record_b = MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation(
 	$no_effect_scope,
 	$no_effect_key,
@@ -341,6 +412,7 @@ $check( is_array( $no_effect_release ) && ! empty( $no_effect_release['released'
 
 $late_observation = $observation_b;
 $late_observation['provider_scan_generation'] = hash( 'sha256', 'scan-late:' . $no_effect_key );
+$late_observation['postcondition_observation'] = $postcondition_no_effect( 'observation-late' );
 $late_record = MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation(
 	$no_effect_scope,
 	$no_effect_key,

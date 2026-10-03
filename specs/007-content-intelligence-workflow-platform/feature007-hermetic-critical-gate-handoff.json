@@ -1,0 +1,19 @@
+{
+  "contract": "mad4b.feature007-hermetic-critical-gate-handoff.v1",
+  "state": "GOVERNANCE_WIRING_REQUIRED",
+  "feature_pr": 236,
+  "candidate_proof_head": "a0e26dbea52f8a4714f5082bde6486e37663f9b6",
+  "candidate_proof_workflow_run": 37137981870,
+  "candidate_proof_result": "SUCCESS",
+  "release_critical_file": ".github/workflows/feature-007-critical-kernel.yml",
+  "root_of_trust_rule": "Feature implementation PRs must not self-certify release-critical workflow changes.",
+  "required_post_merge_change": {
+    "remove_optional_missing_test_bypass": "durable-execution-runtime-faults.php must be required, not NOT_APPLICABLE",
+    "add_step": "Hermetic deterministic security kernel",
+    "fixture": "wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php",
+    "contract": "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
+    "run_twice_and_compare": true
+  },
+  "authority_effect": "none",
+  "production_authorized": false
+}

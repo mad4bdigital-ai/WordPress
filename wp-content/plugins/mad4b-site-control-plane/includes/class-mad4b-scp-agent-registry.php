@@ -5,6 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Agent_Registry {
 	private static $agent_by_public_id = array();
 
+	public static function reset_request_cache() {
+		self::invalidate_agent_cache();
+		return true;
+	}
+
 	private static function now() { return current_time( 'mysql', true ); }
 
 	private static function invalidate_agent_cache( $public_id = '' ) {

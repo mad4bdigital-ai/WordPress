@@ -12,6 +12,10 @@ MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 for marker in (
     "mad4b.durable-execution.v1",
+    "write_topology_preflight",
+    "same_writer_after_write",
+    "database_write_failure",
+    "authoritative_read_failure",
     "mad4b.execution-plane.v1",
     "mad4b.idempotency-record.v1",
     "mad4b.execution-outbox.v1",
@@ -142,10 +146,10 @@ for marker in (
     "claim_epoch=%d",
     "status='pending'",
     "expires_at<=%s",
-    "START TRANSACTION",
+    "begin_owned_transaction",
     "FOR UPDATE",
-    "COMMIT",
-    "ROLLBACK",
+    "commit_owned_transaction",
+    "rollback_owned_transaction",
 ):
     if marker not in idempotency_reclaim:
         raise SystemExit(f"idempotency reclaim is not fail-closed: {marker}")
@@ -153,7 +157,7 @@ for marker in (
 no_effect_release = DURABLE[DURABLE.index("public static function release_idempotency_after_verified_no_effect"):]
 no_effect_release = no_effect_release[: no_effect_release.index("public static function reclaim_idempotency")]
 for marker in (
-    "START TRANSACTION",
+    "begin_owned_transaction",
     "FOR UPDATE",
     "RECONCILIATION_OBSERVATIONS_CONTRACT",
     "count( $observations ) < 2",
@@ -166,8 +170,8 @@ for marker in (
     "status='released_verified_no_effect'",
     "claim_epoch=%d",
     "status='pending'",
-    "COMMIT",
-    "ROLLBACK",
+    "commit_owned_transaction",
+    "rollback_owned_transaction",
 ):
     if marker not in no_effect_release:
         raise SystemExit(f"verified no-effect idempotency release is not fail-closed: {marker}")
@@ -175,7 +179,7 @@ for marker in (
 observation = DURABLE[DURABLE.index("public static function record_idempotency_reconciliation_observation"):]
 observation = observation[: observation.index("public static function release_idempotency_after_verified_no_effect")]
 for marker in (
-    "START TRANSACTION",
+    "begin_owned_transaction",
     "FOR UPDATE",
     "reconciliation_verified( 'idempotency_observation'",
     "provider_scan_generation",
@@ -184,8 +188,8 @@ for marker in (
     "MAX_RECONCILIATION_OBSERVATIONS",
     "status='pending'",
     "claim_epoch=%d",
-    "COMMIT",
-    "ROLLBACK",
+    "commit_owned_transaction",
+    "rollback_owned_transaction",
 ):
     if marker not in observation:
         raise SystemExit(f"idempotency reconciliation observation ledger is incomplete: {marker}")
@@ -250,6 +254,26 @@ for marker in (
     if marker not in outbox:
         raise SystemExit(f"outbox identity validation missing: {marker}")
 
+# Durable transactions must use the central ownership/topology guard. Raw
+# transaction statements would reintroduce caller-transaction commits.
+for forbidden in (
+    "$wpdb->query( 'START TRANSACTION' );",
+    "$wpdb->query( 'COMMIT' );",
+    "$wpdb->query( 'ROLLBACK' );",
+):
+    if forbidden in DURABLE:
+        raise SystemExit(f"raw transaction ownership bypass remains: {forbidden}")
+for marker in (
+    "MAD4B_SCP_Database_Transaction_Guard::begin",
+    "MAD4B_SCP_Database_Transaction_Guard::commit",
+    "MAD4B_SCP_Database_Transaction_Guard::rollback",
+    "MAD4B_SCP_Database_Failure_Semantics::classify",
+    "mad4b_durable_persistence_uncertain",
+    "blind_retry_allowed",
+):
+    if marker not in DURABLE:
+        raise SystemExit(f"durable database failure/ownership contract missing: {marker}")
+
 # Durable persistence primitives must not become an alternate provider/network
 # execution surface.
 for forbidden in (
@@ -263,3 +287,35 @@ for forbidden in (
         raise SystemExit(f"durable execution contains forbidden side-effect path: {forbidden}")
 
 print("mad4b.durable-execution.v1: PASS")
+
+
+# Single-statement durable writes and commit-fence reads must use the certified
+# writer topology too; transaction-only coverage is insufficient.
+for method, end, markers in (
+    ("public static function begin_idempotency", "public static function complete_idempotency", ("write_topology_preflight", "same_writer_after_write", "authoritative_read_failure")),
+    ("public static function complete_idempotency", "public static function complete_idempotency_from_reconciliation", ("write_topology_preflight", "same_writer_after_write", "mad4b_durable_persistence_uncertain")),
+    ("public static function heartbeat", "public static function assert_fencing_token", ("write_topology_preflight", "same_writer_after_write", "database_write_failure")),
+    ("public static function assert_fencing_token", "public static function complete_lease", ("write_topology_preflight", "assert_same_writer", "authoritative_read_failure")),
+    ("public static function complete_lease", "public static function enqueue_outbox", ("write_topology_preflight", "same_writer_after_write", "mad4b_durable_persistence_uncertain")),
+    ("public static function enqueue_outbox", "public static function accept_inbox", ("write_topology_preflight", "same_writer_after_write", "database_write_failure")),
+    ("public static function accept_inbox", "private static function write_topology_preflight", ("write_topology_preflight", "same_writer_after_write", "database_write_failure")),
+):
+    surface = DURABLE[DURABLE.index(method):DURABLE.index(end)]
+    for marker in markers:
+        if marker not in surface:
+            raise SystemExit(f"single-statement durable write is not topology-fenced: {method} missing {marker}")
+
+
+# Restore/authority epoch quarantine must front every durable replay/mutation surface.
+if "private static function restore_epoch_preflight" not in DURABLE:
+    raise SystemExit("durable restore-epoch preflight helper missing")
+for method in (
+    "begin_idempotency","complete_idempotency","complete_idempotency_from_reconciliation",
+    "record_idempotency_reconciliation_observation","release_idempotency_after_verified_no_effect",
+    "reclaim_idempotency","acquire_lease","reclaim_lease","heartbeat","assert_fencing_token",
+    "complete_lease","enqueue_outbox","accept_inbox",
+):
+    start = DURABLE.index(f"public static function {method}")
+    tail = DURABLE[start:start+900]
+    if "restore_epoch_preflight" not in tail:
+        raise SystemExit(f"durable surface bypasses restore epoch quarantine: {method}")

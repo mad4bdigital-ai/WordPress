@@ -1,0 +1,53 @@
+{
+  "contract": "mad4b.mcp-protocol-profile-catalog.v1",
+  "certified_adapter": {
+    "slug": "mcp-adapter",
+    "version": "0.6.1",
+    "upstream_ref": "v0.6.1",
+    "exact_package_governed": true,
+    "evidence": "WordPress/mcp-adapter v0.6.1 McpVersionNegotiator::SUPPORTED_PROTOCOL_VERSIONS and InitializeHandler capabilities"
+  },
+  "supported_protocol_versions": [
+    "2025-11-25",
+    "2025-06-18",
+    "2024-11-05"
+  ],
+  "profiles": {
+    "2025-11-25": {
+      "lifecycle": "initialize_session",
+      "tools_list_changed": false,
+      "tools_list_pagination": "none",
+      "refresh_semantics": "pull_tools_list_then_reconnect_if_cached",
+      "unknown_feature_policy": "deny",
+      "authority_effect": "none"
+    },
+    "2025-06-18": {
+      "lifecycle": "initialize_session",
+      "tools_list_changed": false,
+      "tools_list_pagination": "none",
+      "refresh_semantics": "pull_tools_list_then_reconnect_if_cached",
+      "unknown_feature_policy": "deny",
+      "authority_effect": "none"
+    },
+    "2024-11-05": {
+      "lifecycle": "initialize_session",
+      "tools_list_changed": false,
+      "tools_list_pagination": "none",
+      "refresh_semantics": "pull_tools_list_then_reconnect_if_cached",
+      "unknown_feature_policy": "deny",
+      "authority_effect": "none"
+    }
+  },
+  "successor_certification": {
+    "state": "not_certified",
+    "auto_adopt": false,
+    "dual_protocol_regression_required": true,
+    "required_surfaces": [
+      "tool_schemas",
+      "pagination_or_chunk_transport",
+      "refresh_semantics",
+      "notifications",
+      "error_normalization"
+    ]
+  }
+}

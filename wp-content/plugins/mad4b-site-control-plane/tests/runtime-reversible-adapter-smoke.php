@@ -12,6 +12,30 @@ $reset_request_ticket_overlay = static function () {
 
 $check( class_exists( 'MAD4B_SCP_Reversible_Adapter_Mutations' ), 'Generic reversible adapter manager is unavailable.' );
 $check( wp_has_ability( 'media/set-featured' ) && wp_has_ability( 'mad4b/mutation-undo' ), 'Required reversible Media relationship abilities are missing.' );
+
+// This disposable runtime is explicit Staging but WordPress is installed with
+// an HTTP-only test URL. Promote only the local fixture origin to HTTPS so Site
+// Profile enrollment and Restore/Authority Epoch use the production validation
+// path without any outbound request.
+$fixture_origin = 'https://mad4b-adapter-runtime.test';
+update_option( 'home', $fixture_origin );
+update_option( 'siteurl', $fixture_origin );
+MAD4B_SCP_Site_Profile::reset_cache();
+$profile = MAD4B_SCP_Site_Profile::save_current_site( array(
+	'environment' => 'staging',
+	'write_enabled' => true,
+	'oauth_enabled' => false,
+	'skills_enabled' => false,
+	'provider_isolation_enabled' => false,
+	'managed_runtime_enabled' => false,
+	'acceptance_enabled' => false,
+	'oauth_user_ids' => array( get_current_user_id() ),
+	'display_name' => 'MAD4B Adapter Runtime',
+) );
+$check( ! is_wp_error( $profile ), 'Disposable Site Profile enrollment failed: ' . ( is_wp_error( $profile ) ? $profile->get_error_message() : '' ) );
+$check( MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::write_enabled(), 'Disposable Site Profile is not enrolled for governed Staging write.' );
+$restore_epoch = MAD4B_SCP_Restore_Epoch::ensure_bound();
+$check( ! is_wp_error( $restore_epoch ) && ! empty( $restore_epoch['ready'] ), 'Disposable Restore/Authority Epoch bootstrap failed: ' . ( is_wp_error( $restore_epoch ) ? wp_json_encode( $restore_epoch->get_error_data() ) : '' ) );
 $media_featured = wp_get_ability( 'media/set-featured' );
 $media_meta = $media_featured->get_meta();
 $check( isset( $media_meta['mcp']['mad4b_reversible_contract'] ) && 'mad4b.rollback.featured-image.v1' === $media_meta['mcp']['mad4b_reversible_contract'], 'Featured-image mutation is not bound to its exact reversible contract.' );

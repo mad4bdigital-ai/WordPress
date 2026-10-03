@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Identifiers' ) ) require_once __DIR__ . '/class-mad4b-scp-identifiers.php';
 
 /**
  * Durable ContentJob domain service.
@@ -174,7 +175,7 @@ final class MAD4B_SCP_Content_Jobs {
 	}
 
 	private static function valid_uuid( $value ) {
-		return is_string( $value ) && 1 === preg_match( '/^[a-f0-9-]{36}$/', strtolower( trim( $value ) ) );
+		return class_exists( 'MAD4B_SCP_Identifiers' ) && '' !== MAD4B_SCP_Identifiers::job_id( $value );
 	}
 
 	private static function actor() {

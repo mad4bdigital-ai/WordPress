@@ -1,0 +1,254 @@
+{
+  "contract": "mad4b.semantic-content-field-contracts.v1",
+  "classification_contract": "mad4b.semantic-content-field-classification.v1",
+  "default_unknown_policy": "review_if_brand_evidence",
+  "fallback_evidence_authorizing": false,
+  "abilities": {
+    "mad4b/content-create-post": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "post_title",
+        "post_content",
+        "post_excerpt"
+      ],
+      "operational_paths": [
+        "post_type",
+        "post_status",
+        "post_name",
+        "post_parent",
+        "menu_order",
+        "comment_status",
+        "ping_status",
+        "post_author",
+        "expected_modified_gmt",
+        "expected_post_modified_gmt"
+      ]
+    },
+    "mad4b/content-update-post": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "post_title",
+        "post_content",
+        "post_excerpt"
+      ],
+      "operational_paths": [
+        "post_id",
+        "post_type",
+        "post_status",
+        "post_name",
+        "post_parent",
+        "menu_order",
+        "comment_status",
+        "ping_status",
+        "post_author",
+        "expected_modified_gmt",
+        "expected_post_modified_gmt"
+      ]
+    },
+    "mad4b/content-import-bundle": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "bundle.posts.*.post_title",
+        "bundle.posts.*.post_content",
+        "bundle.posts.*.post_excerpt"
+      ],
+      "operational_paths": [
+        "bundle.posts.*.post_type",
+        "bundle.posts.*.post_status",
+        "bundle.posts.*.post_name",
+        "bundle.posts.*.post_parent",
+        "bundle.posts.*.menu_order",
+        "bundle.posts.*.id"
+      ]
+    },
+    "mad4b/taxonomy-create-term": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "name",
+        "description"
+      ],
+      "operational_paths": [
+        "taxonomy",
+        "slug",
+        "parent",
+        "term_id"
+      ]
+    },
+    "mad4b/taxonomy-update-term": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "name",
+        "description"
+      ],
+      "operational_paths": [
+        "term_id",
+        "taxonomy",
+        "slug",
+        "parent",
+        "expected_slug",
+        "expected_parent"
+      ]
+    },
+    "seo/update-meta": {
+      "provider": "seo",
+      "mode": "object_fields",
+      "container_path": "fields",
+      "brand_fields": [
+        "title",
+        "description",
+        "focus_keyword"
+      ],
+      "operational_fields": [
+        "robots",
+        "canonical_url",
+        "noindex",
+        "nofollow",
+        "schema_type",
+        "primary_term_id"
+      ],
+      "root_operational_paths": [
+        "post_id",
+        "object_id",
+        "expected_modified_gmt"
+      ]
+    },
+    "woocommerce/update-product": {
+      "provider": "woocommerce",
+      "mode": "object_fields",
+      "container_path": "fields",
+      "brand_fields": [
+        "name",
+        "description",
+        "short_description"
+      ],
+      "operational_fields": [
+        "regular_price",
+        "sale_price",
+        "price",
+        "stock_status",
+        "stock_quantity",
+        "manage_stock",
+        "sku",
+        "virtual",
+        "downloadable",
+        "tax_status",
+        "tax_class",
+        "featured",
+        "catalog_visibility",
+        "status"
+      ],
+      "root_operational_paths": [
+        "product_id",
+        "post_id",
+        "expected_modified_gmt"
+      ]
+    },
+    "media/update-metadata": {
+      "provider": "media",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "title",
+        "caption",
+        "description",
+        "alt"
+      ],
+      "operational_paths": [
+        "attachment_id",
+        "expected_sha256",
+        "expected_modified_gmt",
+        "filename",
+        "mime_type"
+      ]
+    },
+    "mad4b/content-set-meta": {
+      "provider": "core_meta",
+      "mode": "keyed_value",
+      "selector_path": "key",
+      "value_path": "value",
+      "brand_key_regex": "(^|[_-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords|editor|html|wysiwyg)([_-]|$)",
+      "operational_key_regex": "^_?(menu_order|thumbnail_id|edit_lock|edit_last|wp_page_template|price|sku|stock|stock_status|regular_price|sale_price|featured|visibility|order|count|id|uuid|hash|checksum|status|enabled|disabled|color|size|width|height|position|priority|timestamp|date|url|path)$",
+      "root_operational_paths": [
+        "post_id",
+        "expected_value_sha256",
+        "expected_modified_gmt"
+      ]
+    },
+    "jetengine/update-post-meta": {
+      "provider": "jetengine",
+      "mode": "keyed_value",
+      "selector_path": "field",
+      "value_path": "value",
+      "brand_key_regex": "(^|[_-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords|editor|html|wysiwyg)([_-]|$)",
+      "operational_key_regex": "^(price|amount|count|order|priority|status|enabled|disabled|color|size|width|height|position|timestamp|date|url|path|id|uuid|hash|checksum)$",
+      "root_operational_paths": [
+        "post_id",
+        "object_id",
+        "expected_modified_gmt"
+      ]
+    },
+    "elementor/update-widget-settings": {
+      "provider": "elementor",
+      "mode": "object_fields",
+      "container_path": "settings",
+      "brand_fields": [
+        "title",
+        "headline",
+        "heading",
+        "subtitle",
+        "content",
+        "description",
+        "excerpt",
+        "text",
+        "editor",
+        "caption",
+        "label",
+        "tagline",
+        "button_text",
+        "placeholder",
+        "html",
+        "wysiwyg"
+      ],
+      "brand_key_regex": "(^|[_-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|editor|html|wysiwyg)([_-]|$)",
+      "operational_fields": [
+        "background_color",
+        "color",
+        "margin",
+        "padding",
+        "width",
+        "height",
+        "align",
+        "position",
+        "z_index",
+        "animation",
+        "css_classes",
+        "css_id",
+        "url",
+        "image",
+        "icon",
+        "size",
+        "responsive",
+        "spacing",
+        "border",
+        "typography",
+        "top",
+        "right",
+        "bottom",
+        "left",
+        "unit",
+        "isLinked"
+      ],
+      "operational_key_regex": "(^|[_-])(color|background|margin|padding|width|height|align|position|z_index|animation|css|class|id|url|image|icon|size|responsive|spacing|border|typography|top|right|bottom|left|unit)([_-]|$)",
+      "root_operational_paths": [
+        "post_id",
+        "widget_id",
+        "element_id",
+        "expected_document_revision"
+      ]
+    }
+  }
+}

@@ -215,6 +215,20 @@ final class MAD4B_SCP_Schema_Lifecycle {
 			wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
 			return $audit;
 		}
+		if ( class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) {
+			$profile_id = MAD4B_SCP_Crypto_Profile::default_profile( 'execution_receipt' );
+			$crypto = is_wp_error( $profile_id ) ? $profile_id : MAD4B_SCP_Crypto_Profile::provision_for_lifecycle( $profile_id );
+			if ( is_wp_error( $crypto ) ) {
+				$state['state'] = 'crypto_blocked';
+				$state['error_code'] = sanitize_key( (string) $crypto->get_error_code() );
+				$state['attempts'] = min( 10, 1 + ( isset( $state['attempts'] ) ? absint( $state['attempts'] ) : 0 ) );
+				$state['next_attempt_at'] = time() + MINUTE_IN_SECONDS;
+				update_option( self::STATE_OPTION, $state, false );
+				wp_clear_scheduled_hook( self::CRON_HOOK );
+				wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
+				return $crypto;
+			}
+		}
 		$state['state'] = 'ready';
 		$state['error_code'] = '';
 		$state['attempts'] = 0;

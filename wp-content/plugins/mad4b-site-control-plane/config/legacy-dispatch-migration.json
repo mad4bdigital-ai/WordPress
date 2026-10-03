@@ -1,0 +1,16 @@
+{
+  "contract": "mad4b.legacy-dispatch-migration.v1",
+  "version": 1,
+  "error_contract": "mad4b.dispatch-preparation-required.v2",
+  "current_state": "deny_unprepared",
+  "legacy_error_code": "mad4b_dispatch_preparation_required",
+  "telemetry_metric_prefix": "legacy_dispatch",
+  "migration_target": "signed_preparation_identity",
+  "sunset_gates": {
+    "signed_preparation_required": true,
+    "schema_only_legacy_admission": false,
+    "compatibility_bypass_allowed": false,
+    "zero_legacy_denials_window_hours": 168,
+    "explicit_removal_review_required": true
+  }
+}

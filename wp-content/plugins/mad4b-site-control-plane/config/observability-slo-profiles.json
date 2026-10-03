@@ -1,0 +1,81 @@
+{
+  "contract": "mad4b.observability-slo-profile.v1",
+  "sampling_basis_points": 1000,
+  "histogram_ms": [
+    5,
+    10,
+    25,
+    50,
+    100,
+    250,
+    500,
+    1000,
+    2000,
+    5000,
+    10000,
+    30000,
+    60000
+  ],
+  "stages": {
+    "discovery": {
+      "p95_ms": 500,
+      "availability_objective": 0.995
+    },
+    "preparation": {
+      "p95_ms": 750,
+      "availability_objective": 0.995
+    },
+    "authorization": {
+      "p95_ms": 500,
+      "availability_objective": 0.999
+    },
+    "policy": {
+      "p95_ms": 500,
+      "availability_objective": 0.999
+    },
+    "approval": {
+      "p95_ms": 500,
+      "availability_objective": 0.999
+    },
+    "commit_guard": {
+      "p95_ms": 500,
+      "availability_objective": 0.999
+    },
+    "provider_execution": {
+      "p95_ms": 5000,
+      "availability_objective": 0.99
+    },
+    "readback": {
+      "p95_ms": 2000,
+      "availability_objective": 0.995
+    },
+    "reconciliation": {
+      "p95_ms": 5000,
+      "availability_objective": 0.99
+    },
+    "catalog_rebuild": {
+      "p95_ms": 2000,
+      "availability_objective": 0.99
+    },
+    "network_fanout": {
+      "p95_ms": 10000,
+      "availability_objective": 0.99
+    }
+  },
+  "burn_rate": {
+    "short_window_hours": 1,
+    "long_window_hours": 24,
+    "warning_multiplier": 2,
+    "critical_multiplier": 6
+  },
+  "privacy": {
+    "max_attributes": 16,
+    "max_depth": 6,
+    "max_items": 50,
+    "max_string_bytes": 512,
+    "raw_provider_payloads": "excluded",
+    "raw_inputs": "excluded",
+    "tokens_and_secrets": "redacted",
+    "tenant_labels": "sha256_only"
+  }
+}

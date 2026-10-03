@@ -1,7 +1,11 @@
 <?php
 // Behavioral contracts with external WordPress services replaced, production
 // discovery/classification/dispatch code unchanged. Real WP parity runs in CI too.
+$GLOBALS['mad4b_gateway_crypto_tmp'] = sys_get_temp_dir() . '/mad4b-gateway-crypto-' . getmypid();
+@mkdir( $GLOBALS['mad4b_gateway_crypto_tmp'] . '/keys', 0777, true );
 define( 'ABSPATH', __DIR__ );
+define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
+define( 'MAD4B_SCP_CRYPTO_KEYRING_DIR', $GLOBALS['mad4b_gateway_crypto_tmp'] . '/keys' );
 class WP_Error {
  private $code; private $message; private $data;
  function __construct( $code, $message = '', $data = array() ) { $this->code = $code; $this->message = $message; $this->data = $data; }
@@ -14,6 +18,9 @@ function add_action() {} function add_filter() {}
 function sanitize_key( $value ) { return strtolower( $value ); }
 function absint( $value ) { return abs( (int) $value ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function wp_mkdir_p( $dir ) { return is_dir( $dir ) || mkdir( $dir, 0777, true ); }
+function trailingslashit( $value ) { return rtrim( (string) $value, '/\\' ) . '/'; }
+function wp_normalize_path( $value ) { return str_replace( '\\', '/', (string) $value ); }
 function wp_salt( $scheme ) { return $GLOBALS['signing_salt'] ?? 'test-only-receipt-salt'; }
 function wp_strip_all_tags( $value ) { return strip_tags( $value ); }
 function wp_check_invalid_utf8( $value ) { return iconv( 'UTF-8', 'UTF-8//IGNORE', $value ); }
@@ -58,6 +65,39 @@ class MAD4B_SCP_Connector_Resilience {
  static function execute_mutation( $lane, $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
  static function execute_read( $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
 }
+class MAD4B_SCP_Replay_Policy {
+ const CONTRACT = 'mad4b.replay-policy.v1';
+ static function policy_sha256() { return hash( 'sha256', 'gateway-regression-replay-policy-fixture-v1' ); }
+ static function begin( $preparation_receipt, $ability_name, $provider, $target_input, $idempotency_key = '' ) {
+  if ( ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) || ! method_exists( 'MAD4B_SCP_Preparation_Receipt', 'claims' ) ) return new WP_Error( 'fixture_replay_claims_unavailable' );
+  $claims = MAD4B_SCP_Preparation_Receipt::claims( $preparation_receipt, $ability_name );
+  if ( is_wp_error( $claims ) ) return $claims;
+  $policy_sha = self::policy_sha256();
+  if ( empty( $claims['replay_policy_sha256'] ) || ! hash_equals( $policy_sha, (string) $claims['replay_policy_sha256'] ) ) return new WP_Error( 'fixture_replay_policy_binding_mismatch' );
+  ++$GLOBALS['replay_begin_calls'];
+  return array(
+   'contract' => self::CONTRACT,
+   'replayed' => false,
+   'mode' => 'single_use',
+   'risk_tier' => 'fixture',
+   'policy_sha256' => $policy_sha,
+   'authorizing' => false,
+  );
+ }
+ static function complete( array $admission, $dispatch_result ) {
+  if ( empty( $admission['policy_sha256'] ) || ! hash_equals( self::policy_sha256(), (string) $admission['policy_sha256'] ) ) return new WP_Error( 'fixture_replay_completion_binding_mismatch' );
+  ++$GLOBALS['replay_complete_calls'];
+  return array( 'contract' => self::CONTRACT, 'completed' => true, 'authorizing' => false );
+ }
+}
+class MAD4B_SCP_Abuse_Budget {
+ const CONTRACT = 'mad4b.abuse-budget.fixture.v1';
+ static function admit( $surface, $input = array() ) {
+  ++$GLOBALS['abuse_admit_calls'];
+  if ( ! in_array( $surface, array( 'prepare', 'execute' ), true ) ) return new WP_Error( 'fixture_abuse_surface_unknown' );
+  return array( 'contract' => self::CONTRACT, 'surface' => $surface, 'authorizing' => false );
+ }
+}
 class MAD4B_SCP_Transport_Context { static function with_write_dispatch_target( $name, $digest, $callback ) { return $callback(); } }
 class MAD4B_SCP_Staging_Write_Planning_Guard {
  const ABILITY = 'mad4b/approval-plan';
@@ -85,10 +125,11 @@ class GatewayFixture {
   ++$this->calls; return array( 'ok' => true );
  }
 }
-$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0;
+$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0; $GLOBALS['replay_begin_calls'] = 0; $GLOBALS['replay_complete_calls'] = 0; $GLOBALS['abuse_admit_calls'] = 0;
 require __DIR__ . '/../includes/class-mad4b-scp-identifiers.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
+require __DIR__ . '/../includes/class-mad4b-scp-crypto-profile.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
@@ -119,6 +160,7 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  check_gateway( $execution['dispatch_tool'] === 'mad4b/write-execute' && $execution['expected_execution_lane'] === $lane, 'Mutation lane lost stable dispatch/original identity: ' . $lane );
  $identity = prepared_dispatch_identity( $name );
  check_gateway( ! is_wp_error( $identity ), 'Unable to issue prepared identity: ' . $lane );
+ check_gateway( 0 < $GLOBALS['abuse_admit_calls'], 'Preparation fixture bypassed abuse-budget admission: ' . $lane );
  $input = array_merge( array( 'ability_name' => $name, 'input' => array() ), $identity );
  $approval_id = '00000000-0000-4000-8000-000000000001';
  $invalid_permission = $input; $invalid_permission['preparation_receipt'] .= '0'; $invalid_permission['_mad4b_approval_ticket_id'] = $approval_id;

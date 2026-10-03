@@ -288,6 +288,13 @@ final class MAD4B_SCP_Mutation_Manager {
 		return $row ? $row : null;
 	}
 
+	public static function postcondition_state( array $target ) {
+		$id = isset( $target['post_id'] ) ? absint( $target['post_id'] ) : 0;
+		$post = $id > 0 ? get_post( $id ) : null;
+		if ( ! $post ) return new WP_Error( 'mad4b_postcondition_post_missing', 'Postcondition target post is unavailable.' );
+		return self::post_state( $post );
+	}
+
 	private static function post_state( $post ) {
 		return array(
 			'post_title' => (string) $post->post_title,

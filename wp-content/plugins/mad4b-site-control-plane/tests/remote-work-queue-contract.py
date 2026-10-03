@@ -24,6 +24,12 @@ for marker in [
     "identity_matches",
     "public static function claim(",
     "public static function complete(",
+    "reconcile_provider_state_before_any_retry",
+    "reconciliation_completion_valid",
+    "mad4b_remote_work_reconciliation_required",
+    "'reconciling'",
+    "'cancelled_no_effect'",
+    "public static function cancel(",
     "unset( $job['lease_token_sha256'] )",
 ]:
     if marker not in queue:
@@ -58,6 +64,7 @@ for marker in [
     "MAD4B_SCP_Remote_Work_Queue::enqueue(",
     "MAD4B_SCP_Remote_Work_Queue::claim(",
     "MAD4B_SCP_Remote_Work_Queue::complete(",
+    "MAD4B_SCP_Remote_Work_Queue::cancel(",
     "mad4b_remote_work_evidence_not_observed",
     "query_monitor_frontend_probe_telemetry",
     "matched_frontend_probe_samples",
@@ -117,6 +124,7 @@ enrollment = parity[enrollment_start:enrollment_end]
 for marker in (
     "self::WORK_CLAIM_ABILITY",
     "self::WORK_COMPLETE_ABILITY",
+    "self::WORK_CANCEL_ABILITY",
 ):
     if marker not in enrollment:
         raise SystemExit("remote external-executor mutation ability is not projected through enrollment_abilities(): " + marker)
@@ -132,3 +140,14 @@ if queue_load < 0 or parity_load < 0 or queue_load > parity_load:
     raise SystemExit("Remote Work Queue must load before Remote Operation Parity")
 
 print("mad4b.remote-work-queue.v1: PASS")
+
+
+# Cancellation/replay safety.
+if "'claimed' === $status && $expired" in queue:
+    raise SystemExit("claimed expired work must not be treated as safely reclaimable")
+if "in_array( $status, array( 'completed', 'cancelled_no_effect' )" not in queue:
+    raise SystemExit("only completed/cancelled-no-effect work may be terminally reclaimed")
+if "reconciliation_completion_valid" not in queue or "postcondition_verified" not in queue:
+    raise SystemExit("reconciling work lacks explicit postcondition-proof completion gate")
+if "WORK_CANCEL_ABILITY" not in parity or "cancel_remote_work" not in parity:
+    raise SystemExit("governed remote cancellation surface is missing")
