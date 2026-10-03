@@ -69,7 +69,15 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			self::$cache[ $cache_key ] = $out;
 			return self::$cache[ $cache_key ];
 		}
-		$out = self::inspect_contract( $contract, trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter', $out, $autoload );
+		$runtime_root = self::active_mcp_adapter_root();
+		if ( '' === $runtime_root ) {
+			$out['enforced'] = true;
+			$out['state'] = 'plugin_identity_unavailable';
+			$out['blocker'] = self::BLOCKER;
+			self::$cache[ $cache_key ] = $out;
+			return self::$cache[ $cache_key ];
+		}
+		$out = self::inspect_contract( $contract, $runtime_root, $out, $autoload );
 		self::$cache[ $cache_key ] = $out;
 		return self::$cache[ $cache_key ];
 	}
@@ -109,6 +117,10 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 		$root_normalized = $root ? rtrim( self::normalize_path( $root ), '/' ) : '';
 		$plugin_root = defined( 'WP_PLUGIN_DIR' ) ? realpath( WP_PLUGIN_DIR ) : false;
 		$plugin_root_normalized = $plugin_root ? rtrim( self::normalize_path( $plugin_root ), '/' ) : '';
+		$runtime_root_relative = '';
+		if ( '' !== $root_normalized && '' !== $plugin_root_normalized && 0 === strpos( $root_normalized, $plugin_root_normalized . '/' ) ) {
+			$runtime_root_relative = ltrim( substr( $root_normalized, strlen( $plugin_root_normalized ) ), '/' );
+		}
 
 		foreach ( self::critical_classes() as $alias => $spec ) {
 			$class = $spec['class'];
@@ -117,7 +129,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			$row = array(
 				'alias' => sanitize_key( (string) $alias ),
 				'class' => $class,
-				'expected_source' => 'mcp-adapter/' . $relative,
+				'expected_source' => ( '' !== $runtime_root_relative ? $runtime_root_relative . '/' : '' ) . $relative,
 				'observed_source' => 'not_loaded',
 				'expected_sha256' => preg_match( '/^[a-f0-9]{64}$/D', $expected_sha ) ? $expected_sha : '',
 				'actual_sha256' => '',
@@ -197,7 +209,9 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			if ( ! is_array( $failure ) ) continue;
 			$reason = isset( $failure['reason'] ) ? (string) $failure['reason'] : '';
 			$observed = isset( $failure['observed_source'] ) ? (string) $failure['observed_source'] : '';
-			if ( 'runtime_class_sha256_mismatch' === $reason && 0 === strpos( $observed, 'mcp-adapter/' ) ) {
+			if ( 'runtime_class_sha256_mismatch' === $reason ) {
+				// This reason is assigned only after the exact expected path matched;
+				// directory names therefore do not participate in official ownership.
 				$official_disk_mismatch = true;
 			}
 			if ( 'runtime_class_source_mismatch' === $reason ) {
@@ -213,6 +227,23 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			$out['repair_action'] = 'inspect_certified_mcp_runtime';
 		}
 		return $out;
+	}
+
+	private static function active_mcp_adapter_root() {
+		if ( ! defined( 'WP_PLUGIN_DIR' ) || ! function_exists( 'get_option' ) ) return '';
+		$active = get_option( 'active_plugins', array() );
+		if ( ! is_array( $active ) ) return '';
+		$matches = array();
+		foreach ( $active as $plugin_file ) {
+			$plugin_file = self::normalize_path( (string) $plugin_file );
+			$plugin_file = ltrim( trim( $plugin_file ), '/' );
+			if ( '' === $plugin_file || false !== strpos( $plugin_file, '../' ) || in_array( '..', explode( '/', $plugin_file ), true ) ) continue;
+			if ( 'mcp-adapter.php' === basename( $plugin_file ) ) $matches[] = $plugin_file;
+		}
+		$matches = array_values( array_unique( $matches ) );
+		if ( 1 !== count( $matches ) ) return '';
+		$root = realpath( trailingslashit( WP_PLUGIN_DIR ) . dirname( $matches[0] ) );
+		return $root && is_dir( $root ) ? rtrim( self::normalize_path( $root ), '/' ) : '';
 	}
 
 	public static function reset_cache() { self::$cache = array(); }
