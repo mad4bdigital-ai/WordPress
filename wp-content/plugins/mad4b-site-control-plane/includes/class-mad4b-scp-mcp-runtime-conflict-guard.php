@@ -470,6 +470,12 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 
+		$filesystem_lock = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::acquire_managed_filesystem_lock( $destination );
+		if ( is_wp_error( $filesystem_lock ) ) {
+			$status['blocker'] = $filesystem_lock->get_error_code();
+			return $status;
+		}
+		try {
 		$temp = $destination . '.tmp-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 		if ( ! copy( $source, $temp ) ) {
 			$status['blocker'] = 'mu_bootstrap_temp_write_failed';
@@ -531,6 +537,9 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			self::$mu_transaction_id = '';
 		}
 		return $status;
+		} finally {
+			MAD4B_SCP_MCP_MU_Bootstrap_Refresh::release_managed_filesystem_lock( $filesystem_lock );
+		}
 	}
 
 	private static function remove_managed_mu_bootstrap() {
