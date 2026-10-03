@@ -445,7 +445,7 @@ for marker in (
     if marker not in mcp_recovery:
         raise SystemExit(f"MCP recovery does not converge Local OAuth store after profile/update lifecycle: {marker}")
 
-ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function status()", 1)[0]
+ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function converge_store_for_lifecycle()", 1)[0]
 if "MAD4B_SCP_Local_OAuth_Store::is_ready()" in ensure_runtime:
     raise SystemExit("healthy Local OAuth runtime must not SHOW TABLES on every request")
 for marker in (
