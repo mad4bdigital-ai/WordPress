@@ -1,6 +1,6 @@
 <?php
 /** Exercise the shipped MU loader before regular plugins, in fresh PHP processes. */
-$cases = array( 'implicit', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof', 'transaction_pending', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
+$cases = array( 'implicit', 'implicit_unconfirmed', 'implicit_unconfirmed', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof', 'transaction_pending', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) {
 		passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code );
@@ -34,7 +34,8 @@ putenv( 'WP_ENVIRONMENT_TYPE' );
 if ( 'explicit_staging' === $case ) define( 'WP_ENVIRONMENT_TYPE', 'staging' );
 if ( 'explicit_constant' === $case ) define( 'WP_ENVIRONMENT_TYPE', 'production' );
 if ( 'explicit_environment' === $case ) putenv( 'WP_ENVIRONMENT_TYPE=production' );
-$profile = array( 'contract' => 'mad4b.site-profile.v2', 'version' => 2, 'site_uuid' => '17dbf7bc-3a50-47db-93d6-a38c2ab1fcc7', 'revision' => 2, 'environment' => 'staging', 'canonical_origin' => 'https://staging.fixture.test', 'features' => array( 'managed_runtime' => true ) );
+$profile = array( 'contract' => 'mad4b.site-profile.v2', 'version' => 2, 'site_uuid' => '17dbf7bc-3a50-47db-93d6-a38c2ab1fcc7', 'revision' => 2, 'environment' => 'staging', 'canonical_origin' => 'https://staging.fixture.test', 'implicit_production_override_confirmed' => true, 'features' => array( 'managed_runtime' => true ) );
+if ( 'implicit_unconfirmed' === $case ) $profile['implicit_production_override_confirmed'] = false;
 if ( 'foreign_origin' === $case ) $profile['canonical_origin'] = 'https://production.fixture.test';
 if ( 'invalid_uuid' === $case ) $profile['site_uuid'] = 'invalid';
 if ( 'invalid_revision' === $case ) $profile['revision'] = 0;
