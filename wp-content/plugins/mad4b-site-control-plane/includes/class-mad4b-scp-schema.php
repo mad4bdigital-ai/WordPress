@@ -30,6 +30,7 @@ final class MAD4B_SCP_Schema {
 			'recovery_cases' => $wpdb->prefix . 'mad4b_dynamic_recovery_cases', 'metric_buckets' => $wpdb->prefix . 'mad4b_dynamic_metric_buckets',
 			'catalog_objects' => $wpdb->prefix . 'mad4b_catalog_objects', 'catalog_generations' => $wpdb->prefix . 'mad4b_catalog_generations', 'catalog_heads' => $wpdb->prefix . 'mad4b_catalog_heads',
 			'network_operations' => $wpdb->prefix . 'mad4b_network_operations', 'network_operation_targets' => $wpdb->prefix . 'mad4b_network_operation_targets', 'network_operation_events' => $wpdb->prefix . 'mad4b_network_operation_events',
+			'provider_breakers' => $wpdb->prefix . 'mad4b_provider_breakers', 'provider_breaker_events' => $wpdb->prefix . 'mad4b_provider_breaker_events',
 		);
 	}
 
@@ -46,6 +47,7 @@ final class MAD4B_SCP_Schema {
 			'outbox', 'inbox', 'operation_events', 'operation_heads', 'recovery_cases',
 			'catalog_objects', 'catalog_generations', 'catalog_heads',
 			'network_operations', 'network_operation_targets', 'network_operation_events',
+			'provider_breakers', 'provider_breaker_events',
 		);
 	}
 
@@ -863,6 +865,45 @@ final class MAD4B_SCP_Schema {
 			KEY target_event (network_operation_id,target_blog_id,id)
 		) $charset;";
 
+		$sql[] = "CREATE TABLE {$t['provider_breakers']} (
+			breaker_key_sha256 char(64) NOT NULL,
+			provider_id varchar(64) NOT NULL,
+			site_uuid char(36) NOT NULL,
+			certification_generation_sha256 char(64) NOT NULL,
+			state varchar(16) NOT NULL DEFAULT 'closed',
+			failure_count int(10) unsigned NOT NULL DEFAULT 0,
+			open_count int(10) unsigned NOT NULL DEFAULT 0,
+			open_until datetime NULL,
+			probe_token_sha256 char(64) NOT NULL DEFAULT '',
+			probe_expires_at datetime NULL,
+			revision bigint(20) unsigned NOT NULL DEFAULT 0,
+			latest_event_sha256 char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (breaker_key_sha256),
+			UNIQUE KEY provider_site_generation (provider_id,site_uuid,certification_generation_sha256),
+			KEY state_open_until (state,open_until),
+			KEY provider_updated (provider_id,updated_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['provider_breaker_events']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			breaker_key_sha256 char(64) NOT NULL,
+			sequence bigint(20) unsigned NOT NULL,
+			event_type varchar(64) NOT NULL,
+			from_state varchar(16) NOT NULL,
+			to_state varchar(16) NOT NULL,
+			failure_class varchar(64) NOT NULL DEFAULT '',
+			safe_metadata_json longtext NOT NULL,
+			previous_event_sha256 char(64) NOT NULL,
+			event_sha256 char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY breaker_sequence (breaker_key_sha256,sequence),
+			UNIQUE KEY event_sha256 (event_sha256),
+			KEY breaker_created (breaker_key_sha256,created_at)
+		) $charset;";
+
 		$dbdelta_diagnostics = array();
 		foreach ( $sql as $statement ) {
 			$table_name = '';
@@ -1023,6 +1064,8 @@ final class MAD4B_SCP_Schema {
 			'network_operations' => array( 'network_operation_id', 'origin_site_uuid', 'origin_blog_id', 'authority_scope_sha256', 'plan_sha256', 'preparation_sha256', 'idempotency_key', 'target_set_sha256', 'state', 'paused', 'revision', 'latest_event_sha256', 'created_at', 'updated_at' ),
 			'network_operation_targets' => array( 'id', 'network_operation_id', 'target_blog_id', 'target_site_uuid', 'origin_sha256', 'authority_scope_sha256', 'catalog_sha256', 'plan_sha256', 'preparation_sha256', 'approval_ticket_id', 'context_sha256', 'credential_binding_sha256', 'target_binding_sha256', 'idempotency_key', 'state', 'claim_epoch', 'worker_id', 'claim_expires_at', 'evidence_ref', 'receipt_sha256', 'receipt_binding_sha256', 'last_error_code', 'created_at', 'updated_at' ),
 			'network_operation_events' => array( 'id', 'network_operation_id', 'sequence', 'target_blog_id', 'event_type', 'state', 'evidence_ref', 'safe_metadata_json', 'previous_event_sha256', 'event_sha256', 'created_at' ),
+			'provider_breakers' => array( 'breaker_key_sha256', 'provider_id', 'site_uuid', 'certification_generation_sha256', 'state', 'failure_count', 'open_count', 'open_until', 'probe_token_sha256', 'probe_expires_at', 'revision', 'latest_event_sha256', 'created_at', 'updated_at' ),
+			'provider_breaker_events' => array( 'id', 'breaker_key_sha256', 'sequence', 'event_type', 'from_state', 'to_state', 'failure_class', 'safe_metadata_json', 'previous_event_sha256', 'event_sha256', 'created_at' ),
 		);
 	}
 	private static function required_durable_indexes() {
@@ -1046,6 +1089,8 @@ final class MAD4B_SCP_Schema {
 			'network_operations' => array( 'origin_idempotency' => true, 'state_updated' => false ),
 			'network_operation_targets' => array( 'operation_target' => true, 'target_idempotency' => true, 'target_state' => false, 'claim_expiry' => false, 'binding_sha256' => false ),
 			'network_operation_events' => array( 'operation_sequence' => true, 'event_sha256' => true, 'target_event' => false ),
+			'provider_breakers' => array( 'provider_site_generation' => true, 'state_open_until' => false, 'provider_updated' => false ),
+			'provider_breaker_events' => array( 'breaker_sequence' => true, 'event_sha256' => true, 'breaker_created' => false ),
 		);
 	}
 

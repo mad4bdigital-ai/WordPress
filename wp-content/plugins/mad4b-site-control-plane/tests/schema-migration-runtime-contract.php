@@ -107,6 +107,8 @@ final class MAD4B_Test_Schema_WPDB {
 			'target_site_uuid', 'origin_sha256', 'catalog_sha256', 'approval_ticket_id', 'context_sha256',
 			'credential_binding_sha256', 'target_binding_sha256', 'claim_epoch', 'worker_id', 'claim_expires_at', 'evidence_ref',
 			'receipt_sha256', 'receipt_binding_sha256', 'last_error_code', 'safe_metadata_json', 'previous_event_sha256',
+			'breaker_key_sha256', 'certification_generation_sha256', 'failure_count', 'open_count', 'open_until',
+			'probe_token_sha256', 'probe_expires_at', 'from_state', 'to_state', 'failure_class',
 		);
 	}
 	public function get_results( $query, $output = null ) {
@@ -119,6 +121,7 @@ final class MAD4B_Test_Schema_WPDB {
 			'operation_sequence', 'event_sha256', 'operation_plan',
 			'kind_expiry', 'expires_at', 'retain_until', 'generation_object_key', 'scope_generation', 'object_sha256', 'generation_expiry', 'generation_id',
 			'origin_idempotency', 'state_updated', 'operation_target', 'target_idempotency', 'target_state', 'claim_expiry', 'binding_sha256', 'target_event',
+			'provider_site_generation', 'state_open_until', 'provider_updated', 'breaker_sequence', 'breaker_created',
 		) as $name ) {
 			$rows[] = array( 'Key_name' => $name, 'Non_unique' => 0 );
 		}

@@ -131,6 +131,15 @@ EXPECTED_FIELDS = {
         "id", "network_operation_id", "sequence", "target_blog_id", "event_type", "state",
         "evidence_ref", "safe_metadata_json", "previous_event_sha256", "event_sha256", "created_at",
     ),
+    "provider_breakers": (
+        "breaker_key_sha256", "provider_id", "site_uuid", "certification_generation_sha256",
+        "state", "failure_count", "open_count", "open_until", "probe_token_sha256",
+        "probe_expires_at", "revision", "latest_event_sha256", "created_at", "updated_at",
+    ),
+    "provider_breaker_events": (
+        "id", "breaker_key_sha256", "sequence", "event_type", "from_state", "to_state",
+        "failure_class", "safe_metadata_json", "previous_event_sha256", "event_sha256", "created_at",
+    ),
 }
 
 EXPECTED_KEYS = {
@@ -204,6 +213,12 @@ EXPECTED_KEYS = {
     ),
     "network_operation_events": (
         "PRIMARY KEY", "UNIQUE KEY operation_sequence", "UNIQUE KEY event_sha256", "KEY target_event",
+    ),
+    "provider_breakers": (
+        "PRIMARY KEY", "UNIQUE KEY provider_site_generation", "KEY state_open_until", "KEY provider_updated",
+    ),
+    "provider_breaker_events": (
+        "PRIMARY KEY", "UNIQUE KEY breaker_sequence", "UNIQUE KEY event_sha256", "KEY breaker_created",
     ),
 }
 
