@@ -1,6 +1,6 @@
 <?php
 /** Exercise the shipped MU loader before regular plugins, in fresh PHP processes. */
-$cases = array( 'implicit', 'implicit_unconfirmed', 'renamed_plugins', 'ambiguous_plugin_identity', 'cli_generic', 'cli_opt_in', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof', 'transaction_pending', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
+$cases = array( 'implicit', 'implicit_unconfirmed', 'renamed_plugins', 'ambiguous_plugin_identity', 'cli_generic', 'cli_opt_in', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof', 'transaction_pending', 'transaction_cached_negative', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) {
 		passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code );
@@ -24,7 +24,17 @@ function wp_get_environment_type() { return defined( 'WP_ENVIRONMENT_TYPE' ) ? W
 function apply_filters( $hook, $v, ...$args ) { return 'explicit_filter' === $GLOBALS['case'] && 'mad4b_scp_wordpress_environment_explicit' === $hook ? true : $v; }
 function rest_get_url_prefix() { return 'custom_rest_prefix' === $GLOBALS['case'] ? 'api' : 'wp-json'; }
 function has_action( $hook, $callback ) { return false; }
-function get_option( $key, $default = null ) { return $GLOBALS['options'][ $key ] ?? $default; }
+function get_option( $key, $default = null ) {
+	if ( isset( $GLOBALS['option_cache'] ) && array_key_exists( $key, $GLOBALS['option_cache'] ) ) return $GLOBALS['option_cache'][ $key ];
+	return $GLOBALS['options'][ $key ] ?? $default;
+}
+function wp_cache_delete( $key, $group = '' ) {
+	if ( 'options' === $group && isset( $GLOBALS['option_cache'] ) ) {
+		if ( 'notoptions' === $key ) unset( $GLOBALS['option_cache']['notoptions'] );
+		else unset( $GLOBALS['option_cache'][ $key ] );
+	}
+	return true;
+}
 function boundary_remove( $p ) { if ( is_dir( $p ) && ! is_link( $p ) ) { foreach ( array_diff( scandir( $p ), array( '.', '..' ) ) as $f ) boundary_remove( $p . '/' . $f ); rmdir( $p ); } elseif ( file_exists( $p ) || is_link( $p ) ) unlink( $p ); }
 register_shutdown_function( function () use ( $root ) { boundary_remove( $root ); } );
 define( 'ABSPATH', $root . '/' );
@@ -58,7 +68,10 @@ if ( 'ambiguous_plugin_identity' === $case ) {
 	$options['active_plugins'][] = 'duplicate-mcp/mcp-adapter.php';
 	$options['active_plugins'][] = 'duplicate-control/mad4b-site-control-plane.php';
 }
-if ( 'transaction_pending' === $case ) $options['mad4b_scp_mcp_mu_refresh_transaction_v1'] = array( 'contract'=>'mad4b.mcp-mu-filesystem-transaction.v1', 'state'=>'replaced_pending_audit', 'target_sha256'=>str_repeat('a',64) );
+if ( in_array( $case, array( 'transaction_pending', 'transaction_cached_negative' ), true ) ) {
+	$options['mad4b_scp_mcp_mu_refresh_transaction_v1'] = array( 'contract'=>'mad4b.mcp-mu-filesystem-transaction.v1', 'state'=>'replaced_pending_audit', 'target_sha256'=>str_repeat('a',64) );
+}
+if ( 'transaction_cached_negative' === $case ) $GLOBALS['option_cache']['mad4b_scp_mcp_mu_refresh_transaction_v1'] = array();
 if ( 'adapter_inactive' === $case ) $options['active_plugins'] = array( $control_entry );
 if ( 'control_plane_inactive' === $case ) $options['active_plugins'] = array( $adapter_entry );
 // Network-only activation is deliberately not mistaken for per-site activation.
@@ -106,7 +119,7 @@ if ( 'tampered_validator' === $case ) file_put_contents( WP_PLUGIN_DIR . '/' . $
 if ( 'preclaimed' === $case ) eval( 'namespace WP\\MCP\\Domain\\Tools; class McpToolValidator {}' );
 require $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 $status = $GLOBALS['mad4b_scp_mcp_mu_bootstrap'];
-if ( in_array( $case, array( 'ambiguous_plugin_identity', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'transaction_pending', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
+if ( in_array( $case, array( 'ambiguous_plugin_identity', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'transaction_pending', 'transaction_cached_negative', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 	boundary_check( ! $status['eligible'] && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'ineligible binding loaded a provider class' );
 	if ( 'ambiguous_plugin_identity' === $case ) boundary_check( ! empty( $status['plugin_identity_ambiguous'] ), 'ambiguous main-file identity was not reported' );
 	if ( in_array( $case, array( 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
