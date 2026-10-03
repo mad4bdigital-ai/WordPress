@@ -7,6 +7,8 @@ INSPECTOR = (ROOT / "includes" / "class-mad4b-scp-ability-contract-inspector.php
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 DIAG = (ROOT / "includes" / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+FENCE = (ROOT / "includes" / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
+ABILITIES = (ROOT / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 
 def require(condition, message):
     if not condition:
