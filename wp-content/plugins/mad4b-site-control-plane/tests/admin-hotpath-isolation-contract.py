@@ -102,14 +102,18 @@ assert "'approvals' === $section" in admin
 assert "'mutations' === $section" in admin
 assert "'audit' === $section" not in admin or "MAD4B_SCP_Audit::tail" in admin
 
-# Filesystem/runtime repair cannot execute on ordinary request-serving hotpaths.
+# Filesystem/runtime repair cannot execute on ordinary request-serving or generic
+# infrastructure contexts. Every MU writer is admitted only while the Recovery
+# coordinator is active; Recovery owns/borrows the shared maintenance lease.
 for source in (mu, guard):
     assert "repair_lifecycle_allowed()" in source
     assert "next_lifecycle_required" in source
-    assert "wp_doing_cron()" in source
-    assert "'update.php'" in source
-    assert "'plugin-install.php'" in source
-    assert "current_user_can( 'update_plugins' )" in source
+    repair = source.split("private static function repair_lifecycle_allowed()", 1)[1]
+    assert "MAD4B_SCP_MCP_Runtime_Recovery::active()" in repair
+    assert "wp_doing_cron()" not in repair
+    assert "current_user_can( 'update_plugins' )" not in repair
+    assert "'update.php'" not in repair
+    assert "'plugin-install.php'" not in repair
 
 # Diagnostics are read-only even after authorization. Both repair helpers accept
 # the active orchestrator only after its own nonce/build/capability/lease gates.
