@@ -163,3 +163,115 @@ jobs:
           path: dist/pre-staging-hybrid-audit.json
           if-no-files-found: error
           retention-days: 14
+
+  catalog-backend-runtime:
+    name: Catalog backend runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - wordpress: '6.9'
+            php: '7.4'
+            database: mysql:8.0
+            health_command: mysqladmin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: 'latest'
+            php: '8.3'
+            database: mysql:8.0
+            health_command: mysqladmin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: 'latest'
+            php: '8.3'
+            database: mariadb:11.8
+            health_command: mariadb-admin ping -h 127.0.0.1 -uroot -proot
+
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="${{ matrix.health_command }}"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, mbstring, openssl
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+
+      - name: Provision disposable Staging WordPress
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-catalog.test' --title='MAD4B Catalog Backend CI' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar option update home 'https://mad4b-catalog.test' --path="$WP_PATH"
+          php /tmp/wp-cli.phar option update siteurl 'https://mad4b-catalog.test' --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+
+      - name: Install exact MCP Adapter and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove schema v13 migration contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
+
+      - name: Prove table shadow cutover cache isolation and rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove multi-worker publication fencing
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-a --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-a.json &
+          PID_A=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-b --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-b.json &
+          PID_B=$!
+          wait "$PID_A"
+          wait "$PID_B"
+          cat /tmp/catalog-worker-a.json
+          cat /tmp/catalog-worker-b.json
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
