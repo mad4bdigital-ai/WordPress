@@ -8,7 +8,7 @@ function wp_normalize_path( $path ) { return str_replace( '\\', '/', (string) $p
 
 $base = rtrim( sys_get_temp_dir(), '/\\' ) . '/mad4b-mcp-provenance-' . getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 $plugins = $base . '/plugins';
-$runtime = $plugins . '/mcp-adapter';
+$runtime = $plugins . '/renamed-mcp-runtime';
 if ( ! mkdir( $runtime, 0777, true ) && ! is_dir( $runtime ) ) throw new RuntimeException( 'Unable to create fixture root' );
 define( 'WP_PLUGIN_DIR', $plugins );
 
@@ -82,7 +82,7 @@ check( MAD4B_SCP_MCP_Class_Provenance::BLOCKER === $mixed['blocker'], 'mixed run
 check( 1 === $mixed['failure_count'], 'one drifted file must produce one class failure' );
 check( 'tool_validator' === $mixed['failures'][0]['alias'], 'validator drift alias mismatch' );
 check( 'runtime_class_sha256_mismatch' === $mixed['failures'][0]['reason'], 'validator drift reason mismatch' );
-check( 'mcp-adapter/includes/Domain/Tools/McpToolValidator.php' === $mixed['failures'][0]['observed_source'], 'observed source must be plugin-relative and bounded' );
+check( 'renamed-mcp-runtime/includes/Domain/Tools/McpToolValidator.php' === $mixed['failures'][0]['observed_source'], 'observed source must be plugin-relative and bounded' );
 check( false === strpos( $mixed['failures'][0]['observed_source'], $base ), 'absolute fixture path leaked' );
 
 $missing_contract = $contract;
