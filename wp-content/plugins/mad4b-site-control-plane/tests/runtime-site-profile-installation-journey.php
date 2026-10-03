@@ -21,6 +21,7 @@ try {
  $check(!MAD4B_SCP_Site_Profile::configured()&&!MAD4B_SCP_Site_Profile::oauth_enabled()&&!MAD4B_SCP_Site_Profile::skills_enabled()&&!MAD4B_SCP_Site_Profile::write_enabled(),'Unknown install gained authority.');
  MAD4B_SCP_MCP_Runtime_Recovery::schedule();$check(false===wp_next_scheduled(MAD4B_SCP_MCP_Runtime_Recovery::HOOK),'Unknown install scheduled repair.');
  $input=array('environment'=>$environment,'expected_profile_digest'=>MAD4B_SCP_Site_Profile::profile_digest(),'expected_revision'=>0,'display_name'=>'Disposable journey','oauth_user_ids'=>array(get_current_user_id()),'oauth_enabled'=>true,'skills_enabled'=>true,'write_enabled'=>false,'managed_runtime_enabled'=>true,'development_origin'=>'https://cloned-tenant.invalid');
+ if('implicit'===$declaration && 'production'!==$environment){$input['nonproduction_override_confirmed']=true;$input['nonproduction_override_confirmation']=MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION;}
  $saved=MAD4B_SCP_Site_Profile::save_current_site($input);
  $check(!is_wp_error($saved),'Initial enrollment: '.(is_wp_error($saved)?$saved->get_error_code():''));
  $check(MAD4B_SCP_Site_Profile::origin_enrolled()&&$environment===MAD4B_SCP_Site_Profile::current_environment()&&1===MAD4B_SCP_Site_Profile::revision(),'Initial readback/environment wrong.');
@@ -45,6 +46,7 @@ try {
  $check(!MAD4B_SCP_Site_Profile::origin_enrolled()&&!MAD4B_SCP_Site_Profile::oauth_enabled()&&!MAD4B_SCP_Site_Profile::skills_enabled()&&!MAD4B_SCP_Site_Profile::write_enabled()&&!MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'],'Copy inherited authority from related origin.');
  remove_filter('home_url',$clone);MAD4B_SCP_Site_Profile::reset_cache();
  $alternate='production'===$environment?'staging':'production';$input['environment']=$alternate;$input['expected_revision']=2;$input['expected_profile_digest']=MAD4B_SCP_Site_Profile::profile_digest();$input['write_enabled']=false;$input['production_write_confirmed']=false;unset($input['production_write_confirmation']);
+ if('implicit'===$declaration && 'production'!==$alternate){$input['nonproduction_override_confirmed']=true;$input['nonproduction_override_confirmation']=MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION;}else{unset($input['nonproduction_override_confirmed'],$input['nonproduction_override_confirmation']);}
  $rebound=MAD4B_SCP_Site_Profile::save_current_site($input);
  if('explicit'===$declaration)$check(is_wp_error($rebound)&&'mad4b_site_profile_environment_conflicts_explicit_wordpress'===$rebound->get_error_code()&&$record===get_option(MAD4B_SCP_Site_Profile::OPTION),'Explicit host environment overridden.');
  else {
