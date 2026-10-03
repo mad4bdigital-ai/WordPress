@@ -27,7 +27,14 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	public static function after_upgrade( $upgrader, $extra ) {
 		if ( ! is_array( $extra ) || 'plugin' !== ( $extra['type'] ?? '' ) ) return;
 		$plugins = isset( $extra['plugins'] ) && is_array( $extra['plugins'] ) ? $extra['plugins'] : array( $extra['plugin'] ?? '' );
-		if ( ! array_intersect( array( plugin_basename( MAD4B_SCP_FILE ), 'mcp-adapter/mcp-adapter.php' ), $plugins ) ) return;
+		$adapter_file = '';
+		if ( class_exists( 'MAD4B_SCP_Dependency_Manager' ) && method_exists( 'MAD4B_SCP_Dependency_Manager', 'mcp_adapter_plugin_identity' ) ) {
+			$identity = MAD4B_SCP_Dependency_Manager::mcp_adapter_plugin_identity( true );
+			if ( is_array( $identity ) && empty( $identity['ambiguous'] ) && ! empty( $identity['plugin_file'] ) ) $adapter_file = (string) $identity['plugin_file'];
+		}
+		$targets = array( plugin_basename( MAD4B_SCP_FILE ) );
+		if ( '' !== $adapter_file ) $targets[] = $adapter_file;
+		if ( ! array_intersect( $targets, array_values( array_filter( array_map( 'strval', $plugins ) ) ) ) ) return;
 		// This request still runs the old PHP classes. Schedule new-code recovery.
 		self::schedule();
 	}
