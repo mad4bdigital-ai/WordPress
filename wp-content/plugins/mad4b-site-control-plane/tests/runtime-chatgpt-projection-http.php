@@ -33,10 +33,11 @@ $step = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_I
 if ( is_wp_error( $read ) || is_wp_error( $step ) ) $fail( 'Cannot mint projection HTTP proof tokens.' );
 wp_set_current_user( 0 );
 $dispatch = static function ( $bearer, $method, array $params, $session = '' ) use ( $wire, $network_base, $network ) {
+    $wire_params = empty( $params ) ? new stdClass() : $params;
     if ( $network_base ) {
         $headers = array( 'MCP-Protocol-Version' => '2025-11-25' );
         if ( $session ) $headers['Mcp-Session-Id'] = $session;
-        $response = $network( $bearer, '/mcp/mad4b-chatgpt', 'POST', array( 'jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => empty( $params ) ? new stdClass() : $params ), $headers );
+        $response = $network( $bearer, '/mcp/mad4b-chatgpt', 'POST', array( 'jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $wire_params ), $headers );
         return array( $response, $wire( $response ) );
     }
     $request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
@@ -45,7 +46,7 @@ $dispatch = static function ( $bearer, $method, array $params, $session = '' ) u
     $request->set_header( 'Content-Type', 'application/json' );
     $request->set_header( 'MCP-Protocol-Version', '2025-11-25' );
     if ( $session ) $request->set_header( 'Mcp-Session-Id', $session );
-    $request->set_body( wp_json_encode( array( 'jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $params ) ) );
+    $request->set_body( wp_json_encode( array( 'jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $wire_params ) ) );
     $response = rest_ensure_response( rest_do_request( $request ) );
     $response = apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
     return array( $response, $wire( $response ) );
@@ -71,7 +72,8 @@ $initialize = static function ( $bearer ) use ( $dispatch, $fail ) {
     $fail( 'Projection initialize session missing.' );
 };
 $call = static function ( $bearer, $session, $name, array $args = array() ) use ( $dispatch ) {
-    list( $response, $body ) = $dispatch( $bearer, 'tools/call', array( 'name' => $name, 'arguments' => $args ), $session );
+    $wire_args = empty( $args ) ? new stdClass() : $args;
+    list( $response, $body ) = $dispatch( $bearer, 'tools/call', array( 'name' => $name, 'arguments' => $wire_args ), $session );
     return $body;
 };
 $denied = static function ( array $body ) { return ! empty( $body['result']['isError'] ) || isset( $body['error'] ); };
