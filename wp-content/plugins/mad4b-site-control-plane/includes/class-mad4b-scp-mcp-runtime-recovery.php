@@ -19,6 +19,61 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 
 	public static function active() { return self::$active; }
 
+	private static function configured_topology_id( $constant_name ) {
+		if ( ! defined( $constant_name ) ) return '';
+		$value = trim( (string) constant( $constant_name ) );
+		return 1 === preg_match( '/^[A-Za-z0-9._:-]{1,128}$/D', $value ) ? $value : '';
+	}
+
+	/**
+	 * Current-node evidence is deliberately separate from cluster certification.
+	 * A node without explicit cluster/node IDs can be healthy but cannot be
+	 * aggregated into a multi-webhead production certificate.
+	 */
+	public static function node_evidence() {
+		$cluster_id = self::configured_topology_id( 'MAD4B_SCP_CLUSTER_ID' );
+		$node_id = self::configured_topology_id( 'MAD4B_SCP_NODE_ID' );
+		$target_build = class_exists( 'MAD4B_SCP_Endpoint_Diagnostic', false )
+			? (string) MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint()
+			: '';
+		$source = defined( 'MAD4B_SCP_DIR' ) ? trailingslashit( MAD4B_SCP_DIR ) . 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php' : '';
+		$destination = defined( 'WPMU_PLUGIN_DIR' ) ? trailingslashit( WPMU_PLUGIN_DIR ) . '000-mad4b-mcp-adapter-bootstrap.php' : '';
+		$expected_mu_sha256 = $source && is_readable( $source ) ? (string) hash_file( 'sha256', $source ) : '';
+		$observed_mu_sha256 = $destination && is_readable( $destination ) ? (string) hash_file( 'sha256', $destination ) : '';
+		$guard = class_exists( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard', false ) ? MAD4B_SCP_MCP_Runtime_Conflict_Guard::status() : array();
+		$runtime_execution_verified = 'canonical_runtime' === ( $guard['state'] ?? '' )
+			&& ! empty( $guard['runtime_from_official_plugin'] )
+			&& ! empty( $guard['mu_bootstrap_executed'] )
+			&& ! empty( $guard['mu_bootstrap_runtime_from_official_plugin'] )
+			&& '' !== $expected_mu_sha256
+			&& '' !== $observed_mu_sha256
+			&& hash_equals( $expected_mu_sha256, $observed_mu_sha256 );
+		$identity_configured = '' !== $cluster_id && '' !== $node_id;
+		return array(
+			'contract' => 'mad4b.mcp-runtime-node-evidence.v1',
+			'cluster_id' => $cluster_id,
+			'node_id' => $node_id,
+			'cluster_identity_configured' => $identity_configured,
+			'target_build' => $target_build,
+			'expected_mu_sha256' => $expected_mu_sha256,
+			'observed_mu_sha256' => $observed_mu_sha256,
+			'executed_runtime_provenance' => array(
+				'state' => isset( $guard['state'] ) ? sanitize_key( (string) $guard['state'] ) : '',
+				'runtime_source' => isset( $guard['runtime_source'] ) ? sanitize_text_field( (string) $guard['runtime_source'] ) : '',
+				'runtime_version' => isset( $guard['runtime_version'] ) ? sanitize_text_field( (string) $guard['runtime_version'] ) : '',
+				'runtime_from_official_plugin' => ! empty( $guard['runtime_from_official_plugin'] ),
+				'mu_bootstrap_executed' => ! empty( $guard['mu_bootstrap_executed'] ),
+				'mu_runtime_source' => isset( $guard['mu_bootstrap_runtime_source'] ) ? sanitize_text_field( (string) $guard['mu_bootstrap_runtime_source'] ) : '',
+				'mu_runtime_from_official_plugin' => ! empty( $guard['mu_bootstrap_runtime_from_official_plugin'] ),
+			),
+			'runtime_execution_verified' => $runtime_execution_verified,
+			'verified_at' => $runtime_execution_verified ? gmdate( 'c' ) : '',
+			'eligible_for_cluster_aggregation' => $runtime_execution_verified && $identity_configured,
+			'runtime_node_scope' => 'current_node',
+			'shared_filesystem_certified' => false,
+		);
+	}
+
 	public static function run_cron() {
 		$result = self::run();
 		if ( is_wp_error( $result ) ) update_option( self::OPTION, array( 'state' => 'blocked', 'blocker' => sanitize_key( $result->get_error_code() ), 'connection_certified' => false ), false );
@@ -99,6 +154,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			if ( empty( $guard['mu_bootstrap_present'] ) || empty( $guard['mu_bootstrap_integrity'] )
 				|| ! in_array( $guard['blocker'] ?? '', array( '', 'mcp_adapter_class_provenance_mismatch' ), true ) ) return new WP_Error( $guard['blocker'] ?: 'mad4b_mcp_repair_readback_failed', 'Managed bootstrap was not verified.' );
 			$runtime_restart_required = ! empty( $refresh['runtime_restart_required'] ) || ! empty( $guard['runtime_restart_required'] );
+			$node_evidence = self::node_evidence();
 			$result = array(
 				'contract' => 'mad4b.mcp-runtime-recovery.v1',
 				'state' => 'armed_for_next_request',
@@ -110,6 +166,15 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 				'runtime_node_scope' => 'current_node',
 				'shared_filesystem_certified' => false,
 				'cluster_convergence_required' => true,
+				'cluster_id' => $node_evidence['cluster_id'],
+				'node_id' => $node_evidence['node_id'],
+				'target_build' => $node_evidence['target_build'],
+				'expected_mu_sha256' => $node_evidence['expected_mu_sha256'],
+				'executed_runtime_provenance' => $node_evidence['executed_runtime_provenance'],
+				'node_verified_at' => $node_evidence['verified_at'],
+				'node_runtime_execution_verified' => $node_evidence['runtime_execution_verified'],
+				'cluster_identity_configured' => $node_evidence['cluster_identity_configured'],
+				'eligible_for_cluster_aggregation' => $node_evidence['eligible_for_cluster_aggregation'],
 				'production_mutation' => false,
 			);
 			// A slow filesystem/audit phase may outlive its fence. Do not publish an

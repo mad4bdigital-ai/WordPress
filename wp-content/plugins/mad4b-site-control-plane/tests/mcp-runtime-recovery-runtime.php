@@ -177,6 +177,8 @@ if ( in_array( $case, array( 'update_schedule', 'renamed_update_schedule' ), tru
 	$result=MAD4B_SCP_MCP_Runtime_Recovery::run( '', true );
 	if ( 'authorized' === $case ) {
 		check_recovery( ! is_wp_error( $result ) && $result['next_request_required'] && ! $result['connection_certified'], 'recovery did not arm next request' );
+		check_recovery( 'current-build' === ( $result['target_build'] ?? '' ) && 64 === strlen( (string) ( $result['expected_mu_sha256'] ?? '' ) ), 'recovery omitted bounded node target evidence' );
+		check_recovery( empty( $result['cluster_identity_configured'] ) && empty( $result['eligible_for_cluster_aggregation'] ) && empty( $result['node_runtime_execution_verified'] ), 'single-request recovery incorrectly self-certified cluster/runtime execution' );
 		check_recovery( is_file( $destination ) && hash_file( 'sha256', $destination )===hash_file( 'sha256', $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php' ), 'bootstrap readback mismatch' );
 		check_recovery( ! empty( $GLOBALS['audit_events'] ), 'recovery lacked audit evidence' );
 	} else {
