@@ -110,6 +110,10 @@ require("verified_bearer" not in catalog_projection, "runtime release-set catalo
 require("can_bootstrap_apply" not in catalog_projection, "runtime release-set catalog projection must not execute request-time authorization")
 require("MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY" in servers, "ChatGPT reviewed direct step-up catalog omits runtime release-set bootstrap")
 require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "ChatGPT enrollment candidates omit runtime release-set step-up projection")
+require("self::apply_internal( $input, false, true )" in runtime, "remote bootstrap apply is not separated from local wp-admin apply")
+require("MAD4B_SCP_Self_Update::native_apply(" in runtime and "(bool) $bootstrap_step_up" in runtime, "Control Plane component does not inherit bootstrap revalidation")
+require(runtime.count("$revalidate = self::can_bootstrap_apply( $input );") >= 2, "each remote runtime component must revalidate OAuth step-up immediately before mutation")
+require("self::apply_internal(" in runtime and "true,\n\t\t\tfalse" in runtime, "local wp-admin runtime update must remain independent of OAuth step-up")
 require("caller_url_allowed' => false" in runtime, "caller-controlled package URL must remain denied")
 require("generic_plugin_update_for_adapter_allowed' => false" in runtime, "generic Adapter update must remain denied")
 
