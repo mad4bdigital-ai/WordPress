@@ -93,7 +93,7 @@ $expected=array(
 	'durable_receipt'=>'COMMITTED',
 );
 foreach($expected as $stageName=>$expectedState){
-	$path=sys_get_temp_dir().'/mad4b-fatal-'.$stageName.'-'.getmypid().'-'.bin2hex(random_bytes(4)).'.jsonl';
+	$path=sys_get_temp_dir().'/mad4b-fatal-'.$stageName.'-'.getmypid().'.jsonl';
 	@unlink($path);
 	$cmd=escapeshellarg(PHP_BINARY).' '.escapeshellarg(__FILE__);
 	$env=array('MAD4B_FATAL_STAGE'=>$stageName,'MAD4B_FATAL_EVIDENCE_FILE'=>$path);
