@@ -418,6 +418,42 @@ jobs:
           cat /tmp/mad4b-http-tools.body
           test "$TOOLS_STATUS" = "200"
 
+          CALL_INDEX=0
+          for TOOL_NAME in mad4b-site-profile-status mad4b-session-safe-diagnostics mad4b-site-info; do
+            CALL_INDEX=$((CALL_INDEX + 1))
+            CALL_META="$(curl --silent --show-error \
+              --connect-timeout 2 --max-time 8 \
+              -D "/tmp/mad4b-http-call-${CALL_INDEX}.headers" \
+              -o "/tmp/mad4b-http-call-${CALL_INDEX}.body" \
+              -w '%{http_code} %{time_total}' \
+              -X POST "$MCP_URL" \
+              -H "Authorization: Bearer $CHATGPT_TOKEN" \
+              -H "Mcp-Session-Id: $SESSION_ID" \
+              -H 'Accept: application/json, text/event-stream' \
+              -H 'Content-Type: application/json' \
+              -H 'MCP-Protocol-Version: 2025-11-25' \
+              --data "{\"jsonrpc\":\"2.0\",\"id\":$((902 + CALL_INDEX)),\"method\":\"tools/call\",\"params\":{\"name\":\"$TOOL_NAME\",\"arguments\":{}}}")"
+            CALL_STATUS="${CALL_META%% *}"
+            CALL_TIME="${CALL_META#* }"
+            echo "HTTP MCP tools/call tool=$TOOL_NAME status=$CALL_STATUS time=$CALL_TIME"
+            cat "/tmp/mad4b-http-call-${CALL_INDEX}.headers"
+            cat "/tmp/mad4b-http-call-${CALL_INDEX}.body"
+            test "$CALL_STATUS" = "200"
+            TOOL_NAME="$TOOL_NAME" CALL_BODY="/tmp/mad4b-http-call-${CALL_INDEX}.body" python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          raw=Path(os.environ['CALL_BODY']).read_text(encoding='utf-8', errors='replace').strip()
+          if raw.startswith('data:'):
+              raw=''.join(line[5:].strip() for line in raw.splitlines() if line.startswith('data:'))
+          payload=json.loads(raw)
+          result=payload.get('result')
+          if payload.get('error') or not isinstance(result, dict) or result.get('isError') is True:
+              raise SystemExit(f"HTTP MCP tools/call failed for {os.environ['TOOL_NAME']}: {payload!r}")
+          print(json.dumps({'tool': os.environ['TOOL_NAME'], 'status': 'PASS'}))
+          PY
+          done
+
           export INIT_TIME TOOLS_TIME
           python3 - <<'PY'
           import json, os
