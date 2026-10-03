@@ -80,7 +80,7 @@ $_SERVER['REQUEST_URI'] = '/wp-json/mcp/mad4b-chatgpt';
 $_SERVER['REQUEST_METHOD'] = 'POST';
 if ( 'cli_generic' === $case ) $_SERVER['REQUEST_URI'] = '/';
 if ( 'frontend' === $case ) $_SERVER['REQUEST_URI'] = '/?page=mad4b-control-plane-connection';
-if ( in_array( $case, array( 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof' ), true ) ) { $_SERVER['REQUEST_URI'] = '/wp-admin/admin-ajax.php'; $_POST['action'] = in_array( $case, array( 'diagnostic', 'diagnostic_no_proof' ), true ) ? 'mad4b_connection_endpoint_diagnostic' : 'foreign_action'; if ( 'diagnostic' === $case ) $_POST['mu_proof'] = hash_hmac( 'sha256', "mad4b-mcp-diagnostic-mu-v1\0" . $profile['site_uuid'] . "\0" . $profile['revision'], NONCE_SALT ); }
+if ( in_array( $case, array( 'foreign_ajax', 'diagnostic', 'diagnostic_no_proof' ), true ) ) { $_SERVER['REQUEST_URI'] = '/wp-admin/admin-ajax.php'; $_POST['action'] = in_array( $case, array( 'diagnostic', 'diagnostic_no_proof' ), true ) ? 'mad4b_connection_endpoint_diagnostic' : 'foreign_action'; if ( in_array( $case, array( 'diagnostic', 'diagnostic_no_proof' ), true ) ) $_POST['server_id'] = 'mad4b-read'; if ( 'diagnostic' === $case ) $_POST['mu_proof'] = hash_hmac( 'sha256', "mad4b-mcp-diagnostic-mu-v1\0" . $profile['site_uuid'] . "\0" . $profile['revision'], NONCE_SALT ); }
 if ( 'plain_route' === $case ) $_SERVER['REQUEST_URI'] = '/index.php?rest_route=%2Fmcp%2Fmad4b-chatgpt';
 if ( 'subdirectory' === $case ) $_SERVER['REQUEST_URI'] = '/wordpress/wp-json/mcp/mad4b-chatgpt';
 if ( 'custom_rest_prefix' === $case ) $_SERVER['REQUEST_URI'] = '/wordpress/api/mcp/mad4b-chatgpt';

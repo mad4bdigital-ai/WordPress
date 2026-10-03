@@ -179,6 +179,28 @@ final class MAD4B_SCP_MCP_Request_Scope {
 
 	public static function endpoint_diagnostic_server_id() { return self::$endpoint_diagnostic_server_id; }
 
+	/**
+	 * Return a proof-gated routing hint for the endpoint diagnostic before the
+	 * worker grants authority. This exists only so the Abilities lifecycle can
+	 * register the provider-backed catalog selected by the signed diagnostic
+	 * request before MCP materialization. It never arms REST, grants transport
+	 * authority, or replaces begin_endpoint_diagnostic() authorization.
+	 */
+	public static function endpoint_diagnostic_routing_server_id() {
+		if ( '' !== self::$endpoint_diagnostic_server_id ) return self::$endpoint_diagnostic_server_id;
+		if ( ! self::current_request_is_endpoint_diagnostic_job() ) return '';
+		$mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
+			? $GLOBALS['mad4b_scp_mcp_mu_bootstrap']
+			: array();
+		if ( 'mad4b.mcp-adapter-mu-bootstrap.v6' !== ( isset( $mu['contract'] ) ? (string) $mu['contract'] : '' )
+			|| empty( $mu['diagnostic_mu_proof_valid'] ) ) return '';
+		$candidate = isset( $mu['diagnostic_server_id'] ) && is_string( $mu['diagnostic_server_id'] )
+			? trim( $mu['diagnostic_server_id'] )
+			: '';
+		if ( '' === $candidate || ! class_exists( 'MAD4B_SCP_Servers', false ) ) return '';
+		return in_array( $candidate, MAD4B_SCP_Servers::expected_server_ids(), true ) ? $candidate : '';
+	}
+
 	/** Arm only the proven official singleton, after the explicit job is authorized. */
 	public static function begin_endpoint_diagnostic( $server_id ) {
 		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false ) || ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()
@@ -562,6 +584,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'contract' => self::CONTRACT,
 			'eligible' => self::$eligible,
 			'endpoint_diagnostic_server_id' => self::$endpoint_diagnostic_server_id,
+			'endpoint_diagnostic_routing_server_id' => self::endpoint_diagnostic_routing_server_id(),
 			'current_request_requires_mcp_runtime' => self::$current_request_requires_mcp,
 			'current_request_is_passive_admin_hotpath' => self::current_request_is_passive_admin_hotpath(),
 			'current_request_is_http_mcp_transport' => self::current_request_is_http_mcp_transport(),

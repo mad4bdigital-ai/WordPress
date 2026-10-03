@@ -363,20 +363,15 @@ MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
 
 $mad4b_passive_admin_read = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 	&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+$mad4b_diagnostic_catalog_target = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+	&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'endpoint_diagnostic_routing_server_id' )
+	? (string) MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_routing_server_id()
+	: '';
 
-// Ordinary Control Plane GET/HEAD pages are render requests, not lifecycle jobs.
-// Keep the global request bootstrap intentionally narrow: page-specific render
-// code may read bounded/current evidence, while provider discovery, acceptance
-// telemetry, write/catalog reconciliation, package/update lifecycle and Skill
-// certification run only on explicit deep/action/protocol/CLI surfaces.
-if ( ! $mad4b_passive_admin_read ) {
-	MAD4B_SCP_Live_Acceptance_Observer::boot_early();
-	MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();
-	MAD4B_SCP_Admin_Query_Performance::boot();
-	MAD4B_SCP_Live_Acceptance_Finalizer::boot_early();
-	MAD4B_SCP_Production_Unchanged_Attestation::boot_early();
-	MAD4B_SCP_WPML_Response_Contract::boot_early();
-	MAD4B_SCP_Live_Truth::boot_early();
+// Definition-only catalog wiring. A MU-signed diagnostic target may select the
+// exact provider-backed catalog before worker authorization, but it does not
+// make the request non-passive and grants no lifecycle or mutation authority.
+if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_Staging_Certification::boot();
 	MAD4B_SCP_Acceptance_Core::boot_early();
 	MAD4B_SCP_Connection_Ability::boot();
@@ -384,8 +379,6 @@ if ( ! $mad4b_passive_admin_read ) {
 	MAD4B_SCP_Multi_Authority_Registry::boot();
 	MAD4B_SCP_Context_Authority::boot();
 	MAD4B_SCP_AI_Approval::boot();
-	MAD4B_SCP_Context_Provider_Gateway::boot();
-	MAD4B_SCP_Brand_Context_Builder::boot();
 	MAD4B_SCP_Provider_Transport_Registry::boot();
 	MAD4B_SCP_Dependency_Impact_Graph::boot();
 	MAD4B_SCP_Operation_Registry::boot();
@@ -417,6 +410,23 @@ if ( ! $mad4b_passive_admin_read ) {
 	MAD4B_SCP_Skill_Abilities::boot();
 	MAD4B_SCP_Skills_Adapter::boot();
 	MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
+}
+
+// Ordinary Control Plane GET/HEAD pages are render requests, not lifecycle jobs.
+// Keep the global request bootstrap intentionally narrow: page-specific render
+// code may read bounded/current evidence, while provider discovery, acceptance
+// telemetry, write/catalog reconciliation, package/update lifecycle and Skill
+// certification run only on explicit deep/action/protocol/CLI surfaces.
+if ( ! $mad4b_passive_admin_read ) {
+	MAD4B_SCP_Live_Acceptance_Observer::boot_early();
+	MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();
+	MAD4B_SCP_Admin_Query_Performance::boot();
+	MAD4B_SCP_Live_Acceptance_Finalizer::boot_early();
+	MAD4B_SCP_Production_Unchanged_Attestation::boot_early();
+	MAD4B_SCP_WPML_Response_Contract::boot_early();
+	MAD4B_SCP_Live_Truth::boot_early();
+	MAD4B_SCP_Context_Provider_Gateway::boot();
+	MAD4B_SCP_Brand_Context_Builder::boot();
 	remove_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
 
 	MAD4B_SCP_Skill_Autoconfig::bootstrap();
@@ -443,4 +453,4 @@ MAD4B_SCP_MCP_Provider_Isolation::boot_early();
 MAD4B_SCP_Context_Admin_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
 add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );
-unset( $mad4b_passive_admin_read );
+unset( $mad4b_passive_admin_read, $mad4b_diagnostic_catalog_target );

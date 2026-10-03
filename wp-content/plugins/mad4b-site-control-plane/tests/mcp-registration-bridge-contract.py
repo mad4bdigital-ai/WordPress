@@ -7,6 +7,8 @@ bridge = (ROOT / 'includes/class-mad4b-scp-mcp-registration-bridge.php').read_te
 diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
+request_scope = (ROOT / 'includes/class-mad4b-scp-mcp-request-scope.php').read_text('utf-8')
+mu_bootstrap = (ROOT / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text('utf-8')
 staging_authority = (ROOT / 'includes/class-mad4b-scp-staging-write-authority.php').read_text('utf-8')
 build_marker = ROOT / 'MAD4B-RUNTIME-BUILD.txt'
 
@@ -69,6 +71,42 @@ for marker in (
     "'adapter_init_seen_before_bridge_boot'",
 ):
     require(bridge, marker, 'bridge-contract')
+
+require(bridge, "endpoint_diagnostic_routing_server_id()", 'diagnostic-routing-before-registry-materialization')
+for marker in (
+    "'diagnostic_server_id' => ''",
+    "$mad4b_mcp_mu_diagnostic_server_id",
+    "in_array( '/mcp/' . $mad4b_mcp_mu_diagnostic_server_id, $mad4b_mcp_mu_allowed_routes, true )",
+    "$mad4b_mcp_mu_status['diagnostic_server_id'] = $mad4b_mcp_mu_diagnostic_server_id",
+):
+    require(mu_bootstrap, marker, 'mu-bound-diagnostic-target')
+
+for marker in (
+    'public static function endpoint_diagnostic_routing_server_id()',
+    "'mad4b.mcp-adapter-mu-bootstrap.v6'",
+    "'diagnostic_mu_proof_valid'",
+    "'diagnostic_server_id'",
+    "MAD4B_SCP_Servers::expected_server_ids()",
+    "'endpoint_diagnostic_routing_server_id' => self::endpoint_diagnostic_routing_server_id()",
+):
+    require(request_scope, marker, 'proof-gated-diagnostic-routing')
+
+routing_method = request_scope.split(
+    'public static function endpoint_diagnostic_routing_server_id()', 1
+)[1].split(
+    '/** Arm only the proven official singleton', 1
+)[0]
+for forbidden in (
+    'current_user_can(',
+    'add_action(',
+    'remove_action(',
+    'update_option(',
+    'add_option(',
+    'delete_option(',
+    '$wpdb',
+    "$_POST['server_id']",
+):
+    forbid(routing_method, forbidden, 'routing-hint-non-authorizing')
 
 for stale in (
     "array( __CLASS__, 'register_categories' )",

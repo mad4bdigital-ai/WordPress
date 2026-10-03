@@ -47,6 +47,7 @@ $mad4b_mcp_mu_status = array(
 	'request_route' => '',
 	'transaction_pending' => false,
 	'diagnostic_mu_proof_valid' => false,
+	'diagnostic_server_id' => '',
 	'cli_request' => false,
 	'cli_mcp_opt_in' => false,
 );
@@ -182,13 +183,20 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 		$mad4b_mcp_mu_status['diagnostic_mu_proof_valid'] = '' !== $mad4b_mcp_mu_expected_proof
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_proof )
 			&& hash_equals( $mad4b_mcp_mu_expected_proof, $mad4b_mcp_mu_proof );
+		$mad4b_mcp_mu_diagnostic_server_id = isset( $_POST['server_id'] ) && is_string( $_POST['server_id'] )
+			? trim( wp_unslash( $_POST['server_id'] ) )
+			: '';
 		$mad4b_mcp_mu_diagnostic = ! $mad4b_mcp_mu_is_cli
 			&& 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
 			&& 1 === preg_match( '#(?:^|/)wp-admin/admin\\-ajax\\.php$#', $mad4b_mcp_mu_path )
 			&& isset( $_POST['action'] ) && is_string( $_POST['action'] )
 			&& 'mad4b_connection_endpoint_diagnostic' === $_POST['action']
-			&& $mad4b_mcp_mu_status['diagnostic_mu_proof_valid']; // routing proof only; worker still owns auth.
-		if ( $mad4b_mcp_mu_diagnostic ) $mad4b_mcp_mu_request_requires_mcp = true;
+			&& $mad4b_mcp_mu_status['diagnostic_mu_proof_valid']
+			&& in_array( '/mcp/' . $mad4b_mcp_mu_diagnostic_server_id, $mad4b_mcp_mu_allowed_routes, true ); // routing proof only; worker still owns auth.
+		if ( $mad4b_mcp_mu_diagnostic ) {
+			$mad4b_mcp_mu_status['diagnostic_server_id'] = $mad4b_mcp_mu_diagnostic_server_id;
+			$mad4b_mcp_mu_request_requires_mcp = true;
+		}
 
 		$mad4b_mcp_mu_route = isset( $mad4b_mcp_mu_parsed['rest_route'] ) && is_string( $mad4b_mcp_mu_parsed['rest_route'] )
 			? $mad4b_mcp_mu_parsed['rest_route']
@@ -397,6 +405,7 @@ unset(
 	$mad4b_mcp_mu_adapter_plugin,
 	$mad4b_mcp_mu_control_plane_root,
 	$mad4b_mcp_mu_diagnostic,
+	$mad4b_mcp_mu_diagnostic_server_id,
 	$mad4b_mcp_mu_proof,
 	$mad4b_mcp_mu_expected_proof,
 	$mad4b_mcp_mu_is_cli,
