@@ -195,7 +195,7 @@ $claims = json_decode( $decode( $parts[1] ), true );
 $signature = $decode( $parts[2] );
 if ( ! is_array( $header ) || ! is_array( $claims ) || false === $signature ) exit( 1 );
 if ( 'RS256' !== $header['alg'] || $key['kid'] !== $header['kid'] ) exit( 1 );
-if ( MAD4B_SCP_Local_OAuth_Server::issuer() !== $claims['iss'] || $resource !== $claims['aud'] || $resource !== $claims['resource'] || 'user:1' !== $claims['sub'] ) exit( 1 );
+if ( MAD4B_SCP_Local_OAuth_Server::issuer() !== $claims['iss'] || $resource !== $claims['aud'] || $resource !== $claims['resource'] || 'user:1' !== $claims['sub'] || MAD4B_SCP_Site_Profile::site_uuid() !== $claims['mad4b_site_uuid'] ) exit( 1 );
 
 $jwk_to_pem = new ReflectionMethod( 'MAD4B_SCP_OAuth_Resource_Bridge', 'public_key_from_jwk' );
 $jwk_to_pem->setAccessible( true );
@@ -208,6 +208,7 @@ $code_hash = hash( 'sha256', 'ci-code-' . wp_generate_uuid4() );
 if ( ! MAD4B_SCP_Local_OAuth_Store::insert_code( array(
 	'code_hash' => $code_hash,
 	'client_id' => 'https://client.example.test/mcp-client.json',
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 	'wp_user_id' => 1,
 	'redirect_uri' => 'https://client.example.test/callback',
 	'resource' => $resource,
@@ -219,6 +220,7 @@ if ( ! MAD4B_SCP_Local_OAuth_Store::insert_code( array(
 if ( MAD4B_SCP_Local_OAuth_Store::insert_code( array(
 	'code_hash' => hash( 'sha256', 'ci-overlong-' . wp_generate_uuid4() ),
 	'client_id' => $too_long_client,
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 	'wp_user_id' => 1,
 	'redirect_uri' => 'https://client.example.test/callback',
 	'resource' => $resource,
@@ -238,6 +240,7 @@ if ( ! MAD4B_SCP_Local_OAuth_Store::insert_refresh_token( array(
 	'token_hash' => $refresh_hash,
 	'family_id' => $family,
 	'client_id' => 'https://client.example.test/mcp-client.json',
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 	'wp_user_id' => 1,
 	'resource' => $resource,
 	'scope' => 'mad4b:read offline_access',
@@ -248,6 +251,7 @@ if ( MAD4B_SCP_Local_OAuth_Store::insert_refresh_token( array(
 	'token_hash' => hash( 'sha256', 'ci-overlong-refresh-' . wp_generate_uuid4() ),
 	'family_id' => wp_generate_uuid4(),
 	'client_id' => $too_long_client,
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 	'wp_user_id' => 1,
 	'resource' => $resource,
 	'scope' => 'mad4b:read',
@@ -267,6 +271,7 @@ if ( MAD4B_SCP_Local_OAuth_Store::insert_refresh_token( array(
 	'token_hash' => $replacement_hash,
 	'family_id' => $family,
 	'client_id' => 'https://client.example.test/mcp-client.json',
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 	'wp_user_id' => 1,
 	'resource' => $resource,
 	'scope' => 'mad4b:read offline_access',
