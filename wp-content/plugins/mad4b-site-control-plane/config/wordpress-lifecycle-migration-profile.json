@@ -1,0 +1,33 @@
+{
+  "contract": "mad4b.wordpress-lifecycle-migration-profile.v1",
+  "current_stage": "shadow_parity_required",
+  "legacy_authority": "reflection_provenance_wrappers",
+  "replacement_strategy": "wordpress_native_ability_hooks_plus_signed_registration_provenance",
+  "wordpress_native_hooks": [
+    "wp_ability_invoked",
+    "wp_pre_execute_ability",
+    "wp_ability_permission_result",
+    "wp_ability_execute_result"
+  ],
+  "legacy_reflection_surfaces": [
+    "includes/class-mad4b-scp-authorization.php::verified_execution_boundary",
+    "includes/class-mad4b-scp-execution-fence.php::final_execution_wrapper_verified",
+    "includes/class-mad4b-scp-chatgpt-tool-projection.php::callback_identity"
+  ],
+  "parity_requirements": [
+    "invocation_identity",
+    "pre_execute_observation",
+    "permission_result",
+    "execute_result",
+    "registration_provenance_equivalent",
+    "final_execution_boundary_equivalent",
+    "fixed_dispatch_semantics_equivalent",
+    "no_authority_widening"
+  ],
+  "cutover": {
+    "automatic": false,
+    "requires_exact_parity": true,
+    "requires_signed_registration_provenance": true,
+    "replace_reflection_before_parity": false
+  }
+}

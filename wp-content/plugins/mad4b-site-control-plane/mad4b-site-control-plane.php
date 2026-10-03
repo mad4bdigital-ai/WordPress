@@ -231,6 +231,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-resume.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-state-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-activation-state.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-lifecycle.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-package.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-plugin-update.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-self-update.php';

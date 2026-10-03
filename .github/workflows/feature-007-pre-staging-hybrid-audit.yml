@@ -132,6 +132,13 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-profile-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/catalog-lifecycle-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php
           node wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs
 
       - name: MCP protocol and adaptive projection contracts
@@ -364,4 +371,21 @@ jobs:
           cat /tmp/network-worker-b.json
           cat /tmp/network-worker-crash.json
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php" "$OP_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove activate deactivate uninstall governance retention
+        shell: bash
+        env:
+          MAD4B_CI_REDIS_HOST: 127.0.0.1
+          MAD4B_CI_REDIS_PORT: 6379
+        run: |
+          set -euo pipefail
+          SNAPSHOT="/tmp/mad4b-lifecycle-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}.json"
+          MAD4B_LIFECYCLE_PHASE=capture MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar plugin deactivate mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          MAD4B_LIFECYCLE_PHASE=verify MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          MAD4B_LIFECYCLE_PHASE=verify MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar plugin deactivate mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar plugin uninstall mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          MAD4B_LIFECYCLE_PHASE=verify MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
