@@ -310,7 +310,79 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	}
 
 	public static function status() {
-		return ! empty( self::$status ) ? self::$status : array_merge( self::base_status(), self::runtime_provenance(), self::mu_bootstrap_status() );
+		return ! empty( self::$status ) ? self::$status : self::inspect_status();
+	}
+
+	/**
+	 * Observe runtime ownership without acquiring repair authority or mutating
+	 * plugin/filesystem state. This keeps diagnostics truthful after repair was
+	 * armed in a previous request: a clean next request can prove convergence
+	 * without calling the privileged Recovery coordinator again.
+	 */
+	private static function inspect_status() {
+		$status = self::base_status();
+		if ( empty( $status['eligible'] ) ) return $status;
+
+		$active = get_option( 'active_plugins', array() );
+		if ( ! is_array( $active ) ) {
+			$status['blocker'] = 'active_plugin_inventory_invalid';
+			return $status;
+		}
+		$active = array_values( array_map( 'strval', $active ) );
+		$official_identity = self::official_plugin_identity( $active );
+		$official_plugin = isset( $official_identity['plugin_file'] ) ? (string) $official_identity['plugin_file'] : '';
+		$official_index = '' !== $official_plugin ? array_search( $official_plugin, $active, true ) : false;
+		$hostinger_index = self::hostinger_index( $active );
+		$status['official_plugin_file'] = $official_plugin;
+		$status['official_plugin_identity_ambiguous'] = ! empty( $official_identity['ambiguous'] );
+		$status['official_plugin_active'] = false !== $official_index;
+		$status['hostinger_bundle_active'] = false !== $hostinger_index;
+		$status['official_index'] = false === $official_index ? -1 : (int) $official_index;
+		$status['hostinger_index'] = false === $hostinger_index ? -1 : (int) $hostinger_index;
+		$status['official_loads_before_hostinger'] = false === $hostinger_index || ( false !== $official_index && $official_index < $hostinger_index );
+		$status = array_merge( $status, self::runtime_provenance(), self::mu_bootstrap_status() );
+
+		if ( ! empty( $official_identity['ambiguous'] ) ) {
+			$status['blocker'] = 'official_mcp_adapter_identity_ambiguous';
+			return $status;
+		}
+		if ( false === $official_index ) {
+			$status['blocker'] = 'official_mcp_adapter_not_active';
+			return $status;
+		}
+
+		$mixed = ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] );
+		if ( ! empty( $status['runtime_from_official_plugin'] ) ) {
+			if ( $mixed ) {
+				$status['state'] = 'mixed_runtime_class_set';
+				$status['collision_risk_detected'] = true;
+				$status['runtime_provenance_mismatch'] = true;
+				$status['next_request_required'] = true;
+				$status['blocker'] = 'mcp_adapter_class_provenance_mismatch';
+				return $status;
+			}
+			$status['state'] = 'canonical_runtime';
+			$status['blocker'] = '';
+			return $status;
+		}
+
+		if ( empty( $status['runtime_class_loaded'] ) ) {
+			$status['state'] = 'runtime_not_loaded_at_guard';
+			$status['blocker'] = '';
+			return $status;
+		}
+
+		$status['collision_risk_detected'] = true;
+		$status['next_request_required'] = true;
+		if ( ! empty( $status['runtime_from_hostinger_bundle'] ) ) {
+			$status['state'] = 'runtime_provenance_mismatch';
+			$status['runtime_provenance_mismatch'] = true;
+			$status['blocker'] = 'mcp_adapter_runtime_provenance_mismatch';
+		} else {
+			$status['state'] = 'runtime_provenance_unreviewed';
+			$status['blocker'] = 'unreviewed_mcp_adapter_runtime_source';
+		}
+		return $status;
 	}
 
 	private static function official_plugin_identity( array $active ) {
