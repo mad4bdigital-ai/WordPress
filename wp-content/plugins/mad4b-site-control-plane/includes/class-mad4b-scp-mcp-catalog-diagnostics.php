@@ -126,7 +126,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 					$wire_data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $wire );
 					$failure = is_wp_error( $wire_data )
 						? array( 'stage' => 'wire_serialization', 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $wire_data->get_error_code() ), 'schema_fingerprint' => '' )
-						: self::dto_failure( $wire );
+						: self::dto_failure( $wire, $wire_data );
 					// Preserve the first failure; serializing it again may throw and
 					// otherwise replace the useful validator evidence with a symptom.
 					$stage = 'wire_serialization';
@@ -278,11 +278,13 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	}
 
 	/** Official validator plus exact wire serialization. Only bounded diagnostic fields escape. */
-	public static function dto_failure( $dto ) {
+	public static function dto_failure( $dto, $prepared_data = null ) {
 		$stage = 'wire_serialization'; $fingerprint = '';
 		try {
 			if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) throw new RuntimeException( 'adapter_compatibility_unavailable' );
-			$data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $dto );
+			$data = null === $prepared_data
+				? MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $dto )
+				: $prepared_data;
 			if ( is_wp_error( $data ) || ! is_array( $data ) ) throw new RuntimeException( 'wire_data_unavailable' );
 			$fingerprint = hash( 'sha256', serialize( array( $data['inputSchema'] ?? null, $data['outputSchema'] ?? null ) ) );
 			$json = json_encode( $data, JSON_THROW_ON_ERROR );
