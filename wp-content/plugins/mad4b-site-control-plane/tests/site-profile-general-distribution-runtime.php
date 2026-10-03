@@ -280,4 +280,26 @@ ok(is_wp_error($blocked_override)&&'mad4b_site_profile_nonproduction_override_co
 $accepted_override=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'nonproduction_override_confirmed'=>true,'nonproduction_override_confirmation'=>MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION));
 ok(!is_wp_error($accepted_override)&&!empty(MAD4B_SCP_Site_Profile::profile()['implicit_production_override_confirmed']),'exact non-Production attestation was not persisted');
 
+// Existing implicit-Production profiles without the new attestation are
+// configured but quarantined on read until an administrator confirms them.
+reset_state();
+$GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://staging.legacy-override.test/';
+$unconfirmed=legacy_record('staging','https://staging.legacy-override.test',7);
+$unconfirmed['contract']=MAD4B_SCP_Site_Profile::CONTRACT;
+$unconfirmed['version']=MAD4B_SCP_Site_Profile::VERSION;
+unset($unconfirmed['implicit_production_override_confirmed']);
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$unconfirmed;
+MAD4B_SCP_Site_Profile::reset_cache();
+$unconfirmed_status=MAD4B_SCP_Site_Profile::status();
+ok('production'===MAD4B_SCP_Site_Profile::current_environment(),'unconfirmed implicit override became effective');
+ok('nonproduction_override_unconfirmed'===($unconfirmed_status['binding_state']??''),'unconfirmed implicit override was not diagnosed');
+ok(empty($unconfirmed_status['authority_ready'])&&!empty($unconfirmed_status['profile_authority_quarantined']),'unconfirmed implicit override retained authority');
+ok(!MAD4B_SCP_Site_Profile::origin_enrolled()&&!MAD4B_SCP_Site_Profile::oauth_enabled()&&!MAD4B_SCP_Site_Profile::write_enabled()&&!MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'],'unconfirmed implicit override remained executable');
+
+$unconfirmed['implicit_production_override_confirmed']=true;
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$unconfirmed;
+MAD4B_SCP_Site_Profile::reset_cache();
+$confirmed_status=MAD4B_SCP_Site_Profile::status();
+ok('staging'===MAD4B_SCP_Site_Profile::current_environment()&&!empty($confirmed_status['authority_ready']),'confirmed implicit override did not restore exact staging authority');
+
 fwrite(STDOUT,"MAD4B Site Profile v2 general distribution runtime: PASS\n");
