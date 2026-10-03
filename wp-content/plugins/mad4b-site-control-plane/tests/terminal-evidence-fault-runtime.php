@@ -94,6 +94,20 @@ $claim = array(
 );
 $result = array( 'updated' => true, 'id' => 7 );
 
+// A provider-entry checkpoint must be durable before the governed callback can run.
+MAD4B_SCP_Audit::reset();
+$entry_checkpoint = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_entry_possible' );
+$check( is_array( $entry_checkpoint ) && 'provider_entry_possible' === $entry_checkpoint['crash_point'] && 'RECONCILING' === $entry_checkpoint['state'], 'provider-entry checkpoint contract invalid', $entry_checkpoint );
+
+MAD4B_SCP_Audit::reset( 'fail_first' );
+$entry_checkpoint_failure = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_entry_possible' );
+$check( is_wp_error( $entry_checkpoint_failure ) && 'mad4b_execution_checkpoint_persist_failed' === $entry_checkpoint_failure->get_error_code(), 'provider-entry persistence failure did not fail closed', $entry_checkpoint_failure );
+$entry_data = $entry_checkpoint_failure->get_error_data();
+$check( 'RECONCILING' === ( $entry_data['state'] ?? '' ) && ! empty( $entry_data['reconciliation_required'] ) && empty( $entry_data['blind_retry_allowed'] ), 'provider-entry persistence failure lost reconciliation semantics', $entry_data );
+
+$unknown_checkpoint = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'future_unknown_point' );
+$check( is_wp_error( $unknown_checkpoint ) && 'mad4b_execution_crash_point_unknown' === $unknown_checkpoint->get_error_code(), 'unknown crash boundary failed open', $unknown_checkpoint );
+
 // Provider has returned successfully, but the first durable audit write fails.
 MAD4B_SCP_Audit::reset( 'fail_first' );
 MAD4B_SCP_Execution_Receipt::$fail = false;
