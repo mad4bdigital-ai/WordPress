@@ -25,7 +25,7 @@
         "request_generation",
         "hook_order_contract",
         "clone_quarantine",
-        "restore_replay",
+        "restore_replay_contract",
         "subject_lifecycle"
       ],
       "expected": "no stale identity, restored authority, or revoked subject can commit"
@@ -40,7 +40,7 @@
       ],
       "test_ids": [
         "database_topology",
-        "durable_execution_faults",
+        "durable_execution_contract",
         "terminal_evidence_faults",
         "fatal_interruption"
       ],
@@ -60,5 +60,10 @@
       ],
       "expected": "post-entry cancellation reconciles, mixed transport is rejected, and missing evidence suppresses success"
     }
-  ]
+  ],
+  "execution_layers": {
+    "hermetic_composition": "This matrix executes only repository-local hermetic/static contracts.",
+    "real_database_evidence": "Durable execution and restore integration remain separately certified by Critical Kernel and Pre-Staging database runtime jobs.",
+    "authorizing": false
+  }
 }
