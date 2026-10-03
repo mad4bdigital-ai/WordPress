@@ -27,6 +27,10 @@ final class MAD4B_SCP_Runtime_Generation_Fence {
 		$catalog_generation = class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) && method_exists( 'MAD4B_SCP_Ability_Catalog_Transport', 'wire_generation' )
 			? (string) MAD4B_SCP_Ability_Catalog_Transport::wire_generation()
 			: 'mad4b.ability-catalog-transport.v2:' . ( defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '' );
+		$config_generation = self::config_generation_material();
+		$config_generation_sha = is_wp_error( $config_generation ) ? '' : (string) $config_generation['generation_sha256'];
+		$config_file_digests = is_wp_error( $config_generation ) ? array() : $config_generation['files'];
+		$config_generation_error = is_wp_error( $config_generation ) ? (string) $config_generation->get_error_code() : '';
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -40,13 +44,16 @@ final class MAD4B_SCP_Runtime_Generation_Fence {
 			'persisted_contract_registry_sha256' => strtolower( (string) $persisted_registry_sha ),
 			'policy_config_sha256' => strtolower( (string) $policy_sha ),
 			'catalog_wire_generation' => $catalog_generation,
+			'config_generation_sha256' => strtolower( (string) $config_generation_sha ),
+			'config_file_digests' => $config_file_digests,
+			'config_generation_error' => $config_generation_error,
 		);
 	}
 
 	public static function status() {
 		$material = self::material();
 		$blockers = array();
-		foreach ( array( 'boot_runtime_file_sha256', 'disk_runtime_file_sha256', 'persisted_contract_registry_sha256' ) as $field ) {
+		foreach ( array( 'boot_runtime_file_sha256', 'disk_runtime_file_sha256', 'persisted_contract_registry_sha256', 'config_generation_sha256' ) as $field ) {
 			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $material[ $field ] ) ) $blockers[] = $field . '_invalid';
 		}
 		if ( empty( $blockers )
@@ -120,6 +127,43 @@ final class MAD4B_SCP_Runtime_Generation_Fence {
 			}
 		}
 		return $status;
+	}
+
+	private static function config_generation_material() {
+		$dir = defined( 'MAD4B_SCP_DIR' ) ? rtrim( (string) MAD4B_SCP_DIR, '/\\' ) . '/config' : '';
+		if ( '' === $dir || ! is_dir( $dir ) ) {
+			return new WP_Error( 'mad4b_runtime_config_generation_directory_unavailable', 'Runtime configuration directory is unavailable.' );
+		}
+		$files = glob( $dir . '/*.json' );
+		if ( ! is_array( $files ) || empty( $files ) ) {
+			return new WP_Error( 'mad4b_runtime_config_generation_empty', 'No versioned runtime configuration files are available for generation fencing.' );
+		}
+		sort( $files, SORT_STRING );
+		$digests = array();
+		foreach ( $files as $file ) {
+			if ( ! is_file( $file ) || ! is_readable( $file ) ) {
+				return new WP_Error( 'mad4b_runtime_config_generation_file_unreadable', 'A versioned runtime configuration file is unreadable.' );
+			}
+			$sha = strtolower( (string) hash_file( 'sha256', $file ) );
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $sha ) ) {
+				return new WP_Error( 'mad4b_runtime_config_generation_digest_invalid', 'A runtime configuration digest could not be computed.' );
+			}
+			$digests[ basename( $file ) ] = $sha;
+		}
+		ksort( $digests, SORT_STRING );
+		$generation_sha = self::digest( array(
+			'contract' => 'mad4b.runtime-config-generation.v1',
+			'files' => $digests,
+		) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $generation_sha ) ) {
+			return new WP_Error( 'mad4b_runtime_config_generation_digest_invalid', 'Runtime configuration generation digest is unavailable.' );
+		}
+		return array(
+			'contract' => 'mad4b.runtime-config-generation.v1',
+			'generation_sha256' => $generation_sha,
+			'files' => $digests,
+			'authorizing' => false,
+		);
 	}
 
 	private static function error_from_status( array $status ) {
