@@ -1404,6 +1404,52 @@
         "wp-content/plugins/mad4b-site-control-plane/tools/catalog-decommission.php"
       ],
       "reason": "Bounded rollback, reader-drained fenced retirement, projection/governance preservation and referenced/orphan capacity readback are implemented; exact-head retirement runtime certification is still pending."
+    },
+    "T3725": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py"
+      ],
+      "reason": "Durable NetworkOperation, per-site target and append-only event-journal storage are implemented in schema v13 and bound to exact site, authority, plan/preparation and evidence identities; exact-head runtime certification remains pending."
+    },
+    "T3726": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php"
+      ],
+      "reason": "Partial completion, pause/resume and conservative reconciling state derivation are implemented; completed sites remain immutable and are excluded from resume candidates; exact-head runtime certification remains pending."
+    },
+    "T3727": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php"
+      ],
+      "reason": "Network-level and per-target idempotency, claim epochs, duplicate terminal callback handling and stale/reordered dispatch denial are implemented with independent worker fixtures; exact-head runtime certification remains pending."
+    },
+    "T3728": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/client/network-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php"
+      ],
+      "reason": "Per-site target binding covers Site UUID, origin, authority, catalog, approval, context, credential and receipt-binding digests, with existing network catalog ownership isolation tests; exact-head fan-out runtime certification remains pending."
+    },
+    "T3729": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Fresh-process setup/parallel workers/reconstruction fixtures model a mid-fan-out crash boundary and prove only pending sites are resume candidates while committed mutations are never replayed; exact-head certified database matrix remains pending."
     }
   }
 }

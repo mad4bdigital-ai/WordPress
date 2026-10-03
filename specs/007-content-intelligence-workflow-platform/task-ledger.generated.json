@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "267a59754c7d0061f25bc1e4c461cc2a9ec9f4fc",
-  "override_git_blob_sha": "68dde3a71fbbf5edf257ef1deb471efe1b7e8193",
+  "override_git_blob_sha": "0cee65271c86860997825079e7bec5f6a45e5275",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -11,15 +11,15 @@
   "counts": {
     "DEFERRED": 2,
     "DONE": 83,
-    "OPEN": 601,
-    "PARTIAL": 71
+    "OPEN": 596,
+    "PARTIAL": 76
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 73,
-      "OPEN": 469,
-      "PARTIAL": 43
+      "OPEN": 464,
+      "PARTIAL": 48
     },
     "P1": {
       "DEFERRED": 0,
@@ -7319,50 +7319,71 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define a durable NetworkOperation journal with per-site target identity, authority scope, plan/preparation digest, state and evidence refs.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py"
+      ],
+      "reason": "Durable NetworkOperation, per-site target and append-only event-journal storage are implemented in schema v13 and bound to exact site, authority, plan/preparation and evidence identities; exact-head runtime certification remains pending."
     },
     {
       "task_id": "T3726",
       "phase": 37,
       "priority": "P0",
       "summary": "Define partial-completion, pause, resume and reconciliation semantics; completed sites are never falsely rolled back because another site failed.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php"
+      ],
+      "reason": "Partial completion, pause/resume and conservative reconciling state derivation are implemented; completed sites remain immutable and are excluded from resume candidates; exact-head runtime certification remains pending."
     },
     {
       "task_id": "T3727",
       "phase": 37,
       "priority": "P0",
       "summary": "Add network idempotency/deduplication keys and duplicate/reordered site-dispatch tests across independent workers.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php"
+      ],
+      "reason": "Network-level and per-target idempotency, claim epochs, duplicate terminal callback handling and stale/reordered dispatch denial are implemented with independent worker fixtures; exact-head runtime certification remains pending."
     },
     {
       "task_id": "T3728",
       "phase": 37,
       "priority": "P0",
       "summary": "Prove credentials, catalog ownership, receipts, approvals, context and authority remain site-bound during concurrent fan-out and cannot cross sites.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/client/network-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php"
+      ],
+      "reason": "Per-site target binding covers Site UUID, origin, authority, catalog, approval, context, credential and receipt-binding digests, with existing network catalog ownership isolation tests; exact-head fan-out runtime certification remains pending."
     },
     {
       "task_id": "T3729",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Crash mid-fan-out and reconnect/resume must reconstruct exact completed/pending/reconciling site sets from durable evidence without replaying committed mutations.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Fresh-process setup/parallel workers/reconstruction fixtures model a mid-fan-out crash boundary and prove only pending sites are resume candidates while committed mutations are never replayed; exact-head certified database matrix remains pending."
     },
     {
       "task_id": "T3730",

@@ -131,7 +131,7 @@
     },
     {
       "id": "durable_multisite_network",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3725",
         "T3726",
@@ -148,7 +148,19 @@
         "postconditions_execution_state_identifiers"
       ],
       "interim_behavior": "Partial completion is preserved; failed sites do not trigger blind replay or cross-site credential/evidence reuse.",
-      "evidence_strategy": "Durable NetworkOperation journal and crash/resume/fan-out isolation fixtures."
+      "evidence_strategy": "Durable NetworkOperation journal and crash/resume/fan-out isolation fixtures.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "remainder": [
+        "Exact-head fan-out runtime matrix must pass on WordPress 6.9/PHP 7.4/MySQL 8 and latest/PHP 8.3 on MySQL 8 and MariaDB 11.8 before T3725-T3729 and this workstream are promoted to DONE."
+      ]
     },
     {
       "id": "projection_mcp_evolution",
