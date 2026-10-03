@@ -56,6 +56,17 @@ for marker in (
     "'missed_rest_recovery_route_count'",
     "'missed_rest_recovery_state'",
     "'missed_rest_recovery_blocker'",
+    'public static function hydrate_authorized_endpoint_registry( $server_id )',
+    "mad4b.endpoint-diagnostic-registry-hydration.v1",
+    "MAD4B_SCP_Endpoint_Diagnostic::is_authorized_request()",
+    "MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id()",
+    "array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin' )",
+    "self::$registry->register_categories();",
+    "self::$registry->register_abilities();",
+    "wp_has_ability( $ability_name )",
+    "mad4b_endpoint_diagnostic_registry_hydration_incomplete",
+    "'diagnostic_registry_hydration_attempted'",
+    "'diagnostic_registry_hydration'",
     'public static function register_core_categories()',
     'public static function register_registry_categories()',
     'public static function register_core_abilities()',
@@ -107,6 +118,26 @@ for forbidden in (
     "$_POST['server_id']",
 ):
     forbid(routing_method, forbidden, 'routing-hint-non-authorizing')
+
+hydration_block = bridge.split('public static function hydrate_authorized_endpoint_registry( $server_id )', 1)[1].split('public static function register_core_categories()', 1)[0]
+for forbidden in (
+    "do_action( 'wp_abilities_api_init'",
+    "do_action( 'wp_abilities_api_categories_init'",
+    "do_action( 'rest_api_init'",
+    "update_option(",
+    "add_option(",
+    "delete_option(",
+    "$wpdb->",
+    "wp_remote_",
+    "curl_exec(",
+):
+    forbid(hydration_block, forbidden, 'authorized-diagnostic-hydration-bounded')
+for required in (
+    "did_action( 'wp_abilities_api_categories_init' ) > 0",
+    "did_action( 'wp_abilities_api_init' ) > 0",
+    "empty( $missing )",
+):
+    require(hydration_block, required, 'authorized-diagnostic-hydration-readback')
 
 for stale in (
     "array( __CLASS__, 'register_categories' )",
