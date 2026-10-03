@@ -59,7 +59,6 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 			$status = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 500;
 			$payload = array( 'code' => sanitize_key( $result->get_error_code() ) );
 			if ( is_array( $data ) && isset( $data['runtime_bootstrap'] ) && is_array( $data['runtime_bootstrap'] ) ) $payload['runtime_bootstrap'] = $data['runtime_bootstrap'];
-			if ( is_array( $data ) && isset( $data['registry_hydration'] ) && is_array( $data['registry_hydration'] ) ) $payload['registry_hydration'] = $data['registry_hydration'];
 			wp_send_json_error( $payload, $status );
 		}
 		wp_send_json_success( $result );
@@ -113,28 +112,13 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 		try {
 			$armed = MAD4B_SCP_MCP_Request_Scope::begin_endpoint_diagnostic( $input['server_id'] );
 			if ( is_wp_error( $armed ) ) return $armed;
-			$registry_hydration = array(
-				'contract' => 'mad4b.endpoint-diagnostic-registry-hydration.v1',
-				'required' => false,
-				'ready' => true,
-				'server_id' => $input['server_id'],
-				'missing_count' => 0,
-			);
-			if ( class_exists( 'MAD4B_SCP_MCP_Registration_Bridge', false )
-				&& method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'hydrate_authorized_endpoint_registry' ) ) {
-				$registry_hydration = MAD4B_SCP_MCP_Registration_Bridge::hydrate_authorized_endpoint_registry( $input['server_id'] );
-				if ( is_wp_error( $registry_hydration ) ) return $registry_hydration;
-			}
 			// No route dispatch, HTTP self-call, tool execution or certification.
 			// Governed jobs match transport bootstrap; preserved callbacks may still stall.
 			rest_get_server();
 			$result = MAD4B_SCP_Connection_Status::endpoint_diagnostic( $input['server_id'] );
-			if ( is_array( $result ) ) {
-				$result['runtime_bootstrap'] = $runtime_bootstrap;
-				$result['registry_hydration'] = $registry_hydration;
-			}
+			if ( is_array( $result ) ) $result['runtime_bootstrap'] = $runtime_bootstrap;
 			if ( ! hash_equals( $build, self::build_fingerprint() ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_build_changed', 'Plugin files changed during the diagnostic.', array( 'status' => 409 ) );
-			return array( 'contract' => self::CONTRACT, 'build' => $build, 'server' => $result, 'runtime_bootstrap' => $runtime_bootstrap, 'registry_hydration' => $registry_hydration, 'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ), 'connection_certified' => false, 'certification_performed' => false, 'foreign_transport_inventory_deferred' => true, 'tool_execution_performed' => false, 'outbound_discovery_performed' => false );
+			return array( 'contract' => self::CONTRACT, 'build' => $build, 'server' => $result, 'runtime_bootstrap' => $runtime_bootstrap, 'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ), 'connection_certified' => false, 'certification_performed' => false, 'foreign_transport_inventory_deferred' => true, 'tool_execution_performed' => false, 'outbound_discovery_performed' => false );
 		} catch ( Throwable $error ) {
 			// Never expose provider exception messages or filesystem paths.
 			return new WP_Error( 'mad4b_endpoint_diagnostic_exception', 'Endpoint inspection failed.', array( 'status' => 500 ) );
