@@ -174,6 +174,10 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		try {
 			$fence = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease, $own_lease ? 'mcp_runtime_recovery' : 'runtime_convergence' );
 			if ( is_wp_error( $fence ) ) return $fence;
+			$oauth_store = class_exists( 'MAD4B_SCP_Local_OAuth_Server', false ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'converge_store_for_lifecycle' )
+				? MAD4B_SCP_Local_OAuth_Server::converge_store_for_lifecycle()
+				: array( 'contract' => 'mad4b.local-oauth-store-convergence.v1', 'required' => false, 'ready' => true, 'changed' => false );
+			if ( is_wp_error( $oauth_store ) ) return $oauth_store;
 			self::$active = true;
 			$refresh = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 			if ( ! empty( $refresh['blocker'] ) ) return new WP_Error( $refresh['blocker'], 'Managed bootstrap refresh is blocked.' );
@@ -209,6 +213,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 				'node_runtime_execution_verified' => $node_evidence['runtime_execution_verified'],
 				'cluster_identity_configured' => $node_evidence['cluster_identity_configured'],
 				'eligible_for_cluster_aggregation' => $node_evidence['eligible_for_cluster_aggregation'],
+				'local_oauth_store' => is_array( $oauth_store ) ? $oauth_store : array(),
 				'production_mutation' => false,
 			);
 			// A slow filesystem/audit phase may outlive its fence. Do not publish an
