@@ -71,8 +71,10 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	public static function run( $convergence_lease = '', $authorized_admin = false ) {
 		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()
 			|| MAD4B_SCP_MCP_Request_Scope::current_request_is_endpoint_diagnostic_job() ) return new WP_Error( 'mad4b_mcp_repair_hotpath_denied', 'Repair requires a separate lifecycle request.' );
-		$cli = defined( 'WP_CLI' ) && WP_CLI;
-		$cron = function_exists( 'wp_doing_cron' ) && wp_doing_cron();
+		$cli = defined( 'WP_CLI' ) && WP_CLI
+			&& defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && true === constant( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+		$cron = function_exists( 'wp_doing_cron' ) && wp_doing_cron()
+			&& function_exists( 'current_filter' ) && self::HOOK === current_filter();
 		if ( ! $cli && ! $cron && '' === $convergence_lease && ( ! $authorized_admin || is_wp_error( self::authorize() ) ) ) return new WP_Error( 'mad4b_mcp_repair_lifecycle_required', 'An authorized repair lifecycle is required.' );
 		if ( ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) return new WP_Error( 'mad4b_mcp_repair_profile_ineligible', 'Exact non-production managed-runtime enrollment is required.' );
 		$integrity = MAD4B_SCP_Dependency_Manager::mcp_adapter_disk_integrity();
