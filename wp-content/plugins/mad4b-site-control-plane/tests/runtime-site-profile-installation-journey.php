@@ -1,6 +1,7 @@
 <?php
 /** Disposable real-WordPress journey; run separately for each host declaration. */
 if ( ! defined( 'ABSPATH' ) || ! defined( 'WP_CLI' ) || ! WP_CLI ) throw new RuntimeException( 'Disposable WP-CLI fixture required.' );
+if ( ! defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) ) define( 'MAD4B_SCP_MCP_CLI_REQUEST', true );
 $environment=getenv('MAD4B_TEST_ENVIRONMENT'); $declaration=getenv('MAD4B_TEST_DECLARATION');
 if (!in_array($environment,array('local','development','staging','production'),true))throw new RuntimeException('Fixture environment missing.');
 $checks=0;
