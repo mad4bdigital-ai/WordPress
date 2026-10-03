@@ -43,6 +43,8 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	private static $mcp_adapter_callback_present_at_first_rest = false;
 	private static $first_rest_classification = 'not_observed';
 	private static $first_rest_caller_trace = array();
+	private static $diagnostic_registry_hydration_attempted = false;
+	private static $diagnostic_registry_hydration = array();
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
@@ -423,6 +425,82 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$registry->register_defaults();
 	}
 
+	/**
+	 * Restore adapter-registry lifecycle parity for one already-authorized deep
+	 * endpoint diagnostic. Raw admin-ajax requests intentionally boot as passive
+	 * until capability/nonce/build/MU proof validation completes. If the public
+	 * Abilities API was lazily materialized during that passive phase, the
+	 * provider-backed registry callbacks correctly skipped registration and the
+	 * one-shot wp_abilities_api_init action cannot be replayed.
+	 *
+	 * This bounded hydration runs only after Request_Scope has armed one exact
+	 * provider-backed diagnostic target. It registers definitions only; it never
+	 * executes an ability, replays a WordPress action, grants authority, performs
+	 * provider discovery, or mutates persistent state.
+	 */
+	public static function hydrate_authorized_endpoint_registry( $server_id ) {
+		$server_id = sanitize_key( (string) $server_id );
+		$provider_servers = array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin' );
+		if ( ! in_array( $server_id, $provider_servers, true ) ) {
+			return array(
+				'contract' => 'mad4b.endpoint-diagnostic-registry-hydration.v1',
+				'required' => false,
+				'ready' => true,
+				'server_id' => $server_id,
+				'missing_count' => 0,
+			);
+		}
+		if ( self::$diagnostic_registry_hydration_attempted ) return self::$diagnostic_registry_hydration;
+		self::$diagnostic_registry_hydration_attempted = true;
+
+		$authorized = class_exists( 'MAD4B_SCP_Endpoint_Diagnostic', false )
+			&& method_exists( 'MAD4B_SCP_Endpoint_Diagnostic', 'is_authorized_request' )
+			&& MAD4B_SCP_Endpoint_Diagnostic::is_authorized_request();
+		$armed = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& hash_equals( $server_id, (string) MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id() );
+		if ( ! $authorized || ! $armed ) {
+			return new WP_Error( 'mad4b_endpoint_diagnostic_registry_hydration_forbidden', 'Authorized endpoint scope is required before adapter registry hydration.', array( 'status' => 403 ) );
+		}
+
+		self::prepare_registry();
+		if ( ! self::$registry ) {
+			return new WP_Error( 'mad4b_endpoint_diagnostic_registry_unavailable', 'Adapter registry is unavailable for the authorized endpoint diagnostic.', array( 'status' => 409 ) );
+		}
+
+		$late_categories = did_action( 'wp_abilities_api_categories_init' ) > 0;
+		$late_abilities = did_action( 'wp_abilities_api_init' ) > 0;
+		if ( $late_categories ) self::$registry->register_categories();
+		if ( $late_abilities ) self::$registry->register_abilities();
+
+		$surface = 'mad4b-read' === $server_id ? 'read' : ( 'mad4b-content' === $server_id ? 'content' : 'admin' );
+		$expected = self::$registry->ability_names( $surface );
+		$missing = array();
+		if ( function_exists( 'wp_has_ability' ) ) {
+			foreach ( $expected as $ability_name ) {
+				if ( ! wp_has_ability( $ability_name ) ) $missing[] = (string) $ability_name;
+			}
+		}
+		self::$diagnostic_registry_hydration = array(
+			'contract' => 'mad4b.endpoint-diagnostic-registry-hydration.v1',
+			'required' => true,
+			'ready' => empty( $missing ),
+			'server_id' => $server_id,
+			'late_categories_hydrated' => (bool) $late_categories,
+			'late_abilities_hydrated' => (bool) $late_abilities,
+			'expected_count' => count( $expected ),
+			'missing_count' => count( $missing ),
+			'missing_abilities' => array_slice( $missing, 0, 50 ),
+		);
+		if ( ! empty( $missing ) ) {
+			return new WP_Error(
+				'mad4b_endpoint_diagnostic_registry_hydration_incomplete',
+				'Adapter abilities remain incomplete after authorized endpoint registry hydration.',
+				array( 'status' => 409, 'registry_hydration' => self::$diagnostic_registry_hydration )
+			);
+		}
+		return self::$diagnostic_registry_hydration;
+	}
+
 	public static function register_core_categories() {
 		if ( self::$abilities ) self::$abilities->register_categories();
 	}
@@ -539,6 +617,8 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			'missed_rest_recovery_route_count' => self::$missed_rest_recovery_route_count,
 			'missed_rest_recovery_state' => self::$missed_rest_recovery_state,
 			'missed_rest_recovery_blocker' => self::$missed_rest_recovery_blocker,
+			'diagnostic_registry_hydration_attempted' => self::$diagnostic_registry_hydration_attempted,
+			'diagnostic_registry_hydration' => self::$diagnostic_registry_hydration,
 			'rest_postcondition_watchdog_bound' => self::$rest_postcondition_watchdog_bound,
 			'rest_postcondition_recovery_triggered' => self::$rest_postcondition_recovery_triggered,
 			'mcp_adapter_init_count' => did_action( 'mcp_adapter_init' ),
