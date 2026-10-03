@@ -17,8 +17,103 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	const CONTRACT = 'mad4b.mcp-mu-bootstrap-refresh.v1';
 	const SOURCE = 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 	const DESTINATION = '000-mad4b-mcp-adapter-bootstrap.php';
+	const TRANSACTION_OPTION = 'mad4b_scp_mcp_mu_refresh_transaction_v1';
+	const TRANSACTION_CONTRACT = 'mad4b.mcp-mu-filesystem-transaction.v1';
 
 	private static $status = array();
+
+	/** Exact historical artifacts that MAD4B is allowed to replace in-place. */
+	public static function historical_managed_sha256( $hash ) {
+		$hash = strtolower( trim( (string) $hash ) );
+		return in_array( $hash, array(
+			'53a5744144211fef792f5c0f27d59af04860e8343e1b24674531d4ffd767514b',
+			'6519bc8cbbdd27e4016d69576d309f9acc045faf02cf4ebde826d4e1d7d29848',
+			'876d9ef3634a9ef72187965cb08f53bad28b1aca3e10faa216df92bcbf0ef958',
+			'd0f0291f0d82c7030afbed0ac3bc3799550d7438197433d4fee3adad145271e8',
+			'8f4a35bfc4f8544c85683f4198b1378ad78c7d53ed528d5b13f2e8fa834ac57d',
+			'a00886848e3988af1e9cf9e9f580b6a145b097e8d33a99b84a67f68b2dc1274d',
+			'ed0b4616db0242b8a6419229c0d014010f0cbbf28f41be5d2c9cb832c54c08e4',
+			'5cb213798516e7de9caecd212124ee14ca10c9571bca328e94883c82f3a9722c',
+			'049ae5e77ba6da9068ca0316092d3a2a76143912846b491413b755900c95dd07',
+			'86a15a9cdd57c1aea854bc131d8ad636bc5cfc4d6488931be0e633d76a3f7417',
+			'a4870dbf8851320047fe69a6a9f583d0c54c8861fcb164d9afd2a971e4b19874',
+			'48e331291a5375ec73b41bd9a95e460c4609cb67f84ce59ec9a8798f784ecdee',
+		), true );
+	}
+
+	public static function begin_transaction( $operation, $previous_sha256, $target_sha256 ) {
+		$existing = get_option( self::TRANSACTION_OPTION, array() );
+		if ( is_array( $existing ) && ! empty( $existing ) ) return new WP_Error( 'mu_bootstrap_transaction_already_pending', 'A prior MU filesystem transaction must be reconciled first.' );
+		$record = array(
+			'contract' => self::TRANSACTION_CONTRACT,
+			'state' => 'prepared',
+			'operation' => sanitize_key( (string) $operation ),
+			'previous_sha256' => strtolower( (string) $previous_sha256 ),
+			'target_sha256' => strtolower( (string) $target_sha256 ),
+			'created_at' => gmdate( 'c' ),
+		);
+		update_option( self::TRANSACTION_OPTION, $record, false );
+		return $record === get_option( self::TRANSACTION_OPTION, array() )
+			? true
+			: new WP_Error( 'mu_bootstrap_transaction_persist_failed', 'MU filesystem transaction marker could not be persisted.' );
+	}
+
+	public static function mark_transaction_replaced() {
+		$record = get_option( self::TRANSACTION_OPTION, array() );
+		if ( ! is_array( $record ) || self::TRANSACTION_CONTRACT !== ( $record['contract'] ?? '' ) ) return new WP_Error( 'mu_bootstrap_transaction_missing', 'MU filesystem transaction marker is missing.' );
+		$record['state'] = 'replaced_pending_audit';
+		$record['replaced_at'] = gmdate( 'c' );
+		update_option( self::TRANSACTION_OPTION, $record, false );
+		return $record === get_option( self::TRANSACTION_OPTION, array() )
+			? true
+			: new WP_Error( 'mu_bootstrap_transaction_state_persist_failed', 'MU filesystem transaction replacement state could not be persisted.' );
+	}
+
+	public static function block_transaction( $blocker ) {
+		$record = get_option( self::TRANSACTION_OPTION, array() );
+		if ( ! is_array( $record ) || empty( $record ) ) $record = array( 'contract' => self::TRANSACTION_CONTRACT );
+		$record['state'] = 'blocked';
+		$record['blocker'] = sanitize_key( (string) $blocker );
+		$record['blocked_at'] = gmdate( 'c' );
+		update_option( self::TRANSACTION_OPTION, $record, false );
+	}
+
+	public static function complete_transaction() {
+		delete_option( self::TRANSACTION_OPTION );
+		return false === get_option( self::TRANSACTION_OPTION, false );
+	}
+
+	public static function reconcile_transaction( $destination ) {
+		$record = get_option( self::TRANSACTION_OPTION, array() );
+		if ( ! is_array( $record ) || empty( $record ) ) return true;
+		if ( self::TRANSACTION_CONTRACT !== ( $record['contract'] ?? '' ) ) return new WP_Error( 'mu_bootstrap_transaction_invalid', 'Unknown MU filesystem transaction state blocks runtime loading.' );
+		$previous = isset( $record['previous_sha256'] ) ? strtolower( (string) $record['previous_sha256'] ) : '';
+		$target = isset( $record['target_sha256'] ) ? strtolower( (string) $record['target_sha256'] ) : '';
+		$current = is_file( $destination ) && is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
+		$current = is_string( $current ) ? strtolower( $current ) : '';
+		if ( hash_equals( $previous, $current ) ) return self::complete_transaction() ? true : new WP_Error( 'mu_bootstrap_transaction_clear_failed', 'Rolled-back MU transaction marker could not be cleared.' );
+		if ( '' !== $target && hash_equals( $target, $current ) ) {
+			$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+			if ( empty( $audit['ready'] ) ) return new WP_Error( 'mu_bootstrap_transaction_audit_unavailable', 'MU transaction reached target bytes but audit storage is unavailable.' );
+			$marked = self::mark_transaction_replaced();
+		if ( is_wp_error( $marked ) ) {
+			self::block_transaction( $marked->get_error_code() );
+			$status['blocker'] = $marked->get_error_code();
+			self::$status = $status;
+			return $status;
+		}
+
+		$event = MAD4B_SCP_Audit::record( 'mad4b/mcp-mu-filesystem-transaction-recovered', array(
+				'contract' => self::TRANSACTION_CONTRACT,
+				'operation' => sanitize_key( (string) ( $record['operation'] ?? '' ) ),
+				'previous_sha256' => $previous,
+				'target_sha256' => $target,
+			), 'ok' );
+			if ( is_wp_error( $event ) ) return new WP_Error( 'mu_bootstrap_transaction_recovery_audit_failed', 'MU transaction target bytes require successful recovery audit before use.' );
+			return self::complete_transaction() ? true : new WP_Error( 'mu_bootstrap_transaction_clear_failed', 'Recovered MU transaction marker could not be cleared.' );
+		}
+		return new WP_Error( 'mu_bootstrap_transaction_bytes_ambiguous', 'MU filesystem bytes do not match either side of the pending transaction.' );
+	}
 
 	public static function bootstrap() {
 		$status = self::base_status();
@@ -60,6 +155,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
+		$transaction = self::reconcile_transaction( $destination );
+		if ( is_wp_error( $transaction ) ) {
+			$status['blocker'] = $transaction->get_error_code();
+			$status['transaction_pending'] = true;
+			self::$status = $status;
+			return $status;
+		}
 		if ( ! is_file( $destination ) ) {
 			$status['state'] = 'managed_mu_absent';
 			self::$status = $status;
@@ -85,10 +187,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
-		$status['managed'] = false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v2" )
-			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v3" )
-			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v4" )
-			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v5" );
+		$status['managed'] = self::historical_managed_sha256( $status['destination_sha256_before'] );
 		if ( ! $status['managed'] ) {
 			$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 			self::$status = $status;
@@ -120,17 +219,26 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
+		$transaction = self::begin_transaction( 'refresh', $status['destination_sha256_before'], $status['source_sha256'] );
+		if ( is_wp_error( $transaction ) ) {
+			@unlink( $temp );
+			$status['blocker'] = $transaction->get_error_code();
+			self::$status = $status;
+			return $status;
+		}
 		if ( ! @rename( $temp, $destination ) ) {
 			@unlink( $temp );
-			$status['blocker'] = 'mu_bootstrap_refresh_atomic_replace_failed';
+			$reconciled = self::reconcile_transaction( $destination );
+			$status['blocker'] = is_wp_error( $reconciled ) ? $reconciled->get_error_code() : 'mu_bootstrap_refresh_atomic_replace_failed';
 			self::$status = $status;
 			return $status;
 		}
 		clearstatcache( true, $destination );
 		$after_hash = is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
 		if ( ! is_string( $after_hash ) || ! hash_equals( $status['source_sha256'], $after_hash ) ) {
-			self::restore_bytes( $destination, $before );
-			$status['blocker'] = 'mu_bootstrap_refresh_post_replace_integrity_failed';
+			$restored = self::restore_bytes( $destination, $before );
+			if ( $restored ) self::complete_transaction(); else self::block_transaction( 'mu_bootstrap_refresh_post_replace_rollback_failed' );
+			$status['blocker'] = $restored ? 'mu_bootstrap_refresh_post_replace_integrity_failed' : 'mu_bootstrap_refresh_post_replace_rollback_failed';
 			self::$status = $status;
 			return $status;
 		}
@@ -150,11 +258,18 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		);
 		if ( is_wp_error( $event ) ) {
 			$restored = self::restore_bytes( $destination, $before );
+			if ( $restored ) self::complete_transaction(); else self::block_transaction( 'audit_failed_mu_refresh_rollback_failed' );
 			$status['blocker'] = $restored ? 'audit_failed_mu_refresh_rolled_back' : 'audit_failed_mu_refresh_rollback_failed';
 			self::$status = $status;
 			return $status;
 		}
 
+		if ( ! self::complete_transaction() ) {
+			self::block_transaction( 'mu_bootstrap_refresh_transaction_finalize_failed' );
+			$status['blocker'] = 'mu_bootstrap_refresh_transaction_finalize_failed';
+			self::$status = $status;
+			return $status;
+		}
 		$status['refresh_applied'] = true;
 		$status['next_request_required'] = true;
 		$status['state'] = 'managed_mu_refreshed_for_next_request';
@@ -173,7 +288,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( false === $written ) return false;
 		if ( ! @rename( $temp, $destination ) ) { @unlink( $temp ); return false; }
 		clearstatcache( true, $destination );
-		return true;
+		$expected = hash( 'sha256', $bytes );
+		$actual = is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
+		return is_string( $actual ) && hash_equals( $expected, $actual );
 	}
 
 	private static function repair_lifecycle_allowed() {
@@ -211,6 +328,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'managed' => false,
 			'integrity_before' => false,
 			'refresh_applied' => false,
+			'transaction_pending' => false,
 			'next_request_required' => false,
 			'state' => $eligible ? 'inspection_pending' : 'ineligible',
 			'blocker' => $blocker,
