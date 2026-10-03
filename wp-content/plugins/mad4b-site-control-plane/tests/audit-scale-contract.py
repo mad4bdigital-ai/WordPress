@@ -10,13 +10,6 @@ def require(src, marker, label):
     if marker not in src:
         raise SystemExit(f"FAIL {label}: missing {marker}")
 
-for marker in (
-    "const SCALE_CONTRACT = 'mad4b.audit-scale.v1';",
-    "const HIGH_VOLUME_THRESHOLD_EVENTS = 100000;",
-    "'append_integrity_mode' =",
-):
-    pass
-
 require(audit, "const SCALE_CONTRACT = 'mad4b.audit-scale.v1';", "scale-contract")
 require(audit, "const HIGH_VOLUME_THRESHOLD_EVENTS = 100000;", "scale-threshold")
 require(audit, "'append_integrity_mode'] = 'committed_count_head_tail_consistency';", "append-integrity")

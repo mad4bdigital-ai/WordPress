@@ -178,6 +178,11 @@ outbound HTTP during profile/recovery work.
 - PHP 7.4/8.3 boundary coverage, local simulation, two WordPress versions and a
   synthetic competing provider do not prove every hosting stack, database/cache
   drop-in, arbitrary MU priority, WAF/proxy or third-party plugin combination.
+- Audit append readiness retains committed count/head/tail consistency and the
+  `chain_sequence` index; full hash-chain verification is explicit and processed
+  in batches of 500 events rather than on every append. Reaching 100,000 audit
+  events marks deployment-specific load qualification as required; the runtime
+  deliberately does not self-claim a high-volume load-test certification.
 - Runtime recovery reports pending next-request verification. Deployment requires
   a fresh authorized endpoint job, canonical ownership of all critical classes,
   the expected tool catalog, then independent real OAuth/acceptance evidence.
