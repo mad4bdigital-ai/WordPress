@@ -45,6 +45,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			'production_write_confirmed' => ! empty( $_POST['production_write_confirmed'] ),
 			'production_write_confirmation' => isset( $_POST['production_write_confirmation'] ) ? wp_unslash( $_POST['production_write_confirmation'] ) : '',
 			'expected_revision' => isset( $_POST['expected_revision'] ) ? absint( $_POST['expected_revision'] ) : 0,
+			'expected_profile_digest' => isset( $_POST['expected_profile_digest'] ) && is_string( $_POST['expected_profile_digest'] ) ? wp_unslash( $_POST['expected_profile_digest'] ) : null,
 			'provider_isolation_enabled' => ! empty( $_POST['provider_isolation_enabled'] ),
 			'managed_runtime_enabled' => ! empty( $_POST['managed_runtime_enabled'] ),
 			'acceptance_enabled' => ! empty( $_POST['acceptance_enabled'] ),
@@ -166,6 +167,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<form id="mad4b-site-profile-settings" class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-site-profile-workspace" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
 				<input type="hidden" name="expected_revision" value="<?php echo esc_attr( (string) ( isset( $status['revision'] ) ? absint( $status['revision'] ) : 0 ) ); ?>" />
+				<input type="hidden" name="expected_profile_digest" value="<?php echo esc_attr( (string) ( $status['profile_digest'] ?? '' ) ); ?>" />
 				<?php wp_nonce_field( self::ACTION_SAVE ); ?>
 				<table class="form-table" role="presentation">
 					<tr><th><label for="mad4b-environment"><?php esc_html_e( 'MAD4B environment', 'mad4b-site-control-plane' ); ?></label></th><td>

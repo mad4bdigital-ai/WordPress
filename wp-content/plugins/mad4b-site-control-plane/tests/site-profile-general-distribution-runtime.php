@@ -221,7 +221,14 @@ ok(!is_wp_error($production)&&'production'===$production['configured_environment
 ok($production['site_uuid']!==$second['site_uuid'],'environment rebind cannot reuse staging authority identity');
 ok(MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($transition,$production,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'AJAX accepts exact rebind readback even when revision resets');
 ok(!MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($transition,$second,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'AJAX rejects stale environment identity readback');
-$back=$staging;$back['expected_revision']=1;
+// A tab loaded on staging revision 1 must not overwrite production revision 1.
+$old_tab=$staging;$old_tab['expected_revision']=1;$old_tab['expected_profile_digest']=$first['profile_digest'];
+$before_replay=MAD4B_SCP_Site_Profile::profile();
+$replay=MAD4B_SCP_Site_Profile::save_current_site($old_tab);
+ok(is_wp_error($replay)&&'mad4b_site_profile_identity_stale'===$replay->get_error_code()&&$before_replay===MAD4B_SCP_Site_Profile::profile(),'old identity form rejected despite equal revision');
+$malformed=$old_tab;$malformed['expected_profile_digest']=array($production['profile_digest']);
+ok(is_wp_error(MAD4B_SCP_Site_Profile::save_current_site($malformed)),'array-valued profile digest is rejected');
+$back=$staging;$back['expected_revision']=1;$back['expected_profile_digest']=$production['profile_digest'];
 $again=MAD4B_SCP_Site_Profile::save_current_site($back);
 ok(!is_wp_error($again)&&'staging'===$again['configured_environment'],'Production to Staging saves without Production write confirmation');
 ok(empty(MAD4B_SCP_Site_Profile::profile()['features']['production_write_confirmed']),'Production write acknowledgement is not carried into staging');

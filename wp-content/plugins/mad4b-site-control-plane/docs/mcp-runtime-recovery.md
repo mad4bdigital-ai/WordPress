@@ -47,7 +47,11 @@ with write requires both the checkbox and the exact phrase
 
 Environment rebinding creates a new site identity and may reset its revision to
 1. AJAX verifies the committed UUID, revision, digest, origin and environment,
-without assuming the revision must exceed that of the old identity. The whole
+without assuming the revision must exceed that of the old identity. The save form
+also submits its expected profile digest: an old tab cannot overwrite a different
+UUID that happens to share revision 1. Forms opened before this change must reload.
+This catches stale tabs; it does not assert atomic compare-and-swap for simultaneous
+database writers. The whole
 profile workspace refreshes after success, including the displayed environment.
 
 FormData is captured before controls are disabled; one-time acknowledgement fields

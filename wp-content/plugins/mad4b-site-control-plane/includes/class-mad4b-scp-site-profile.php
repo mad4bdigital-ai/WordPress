@@ -443,6 +443,14 @@ final class MAD4B_SCP_Site_Profile {
 		$current_revision = $existing_valid && isset( $existing_normalized['revision'] ) ? absint( $existing_normalized['revision'] ) : 0;
 		$expected_revision = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : $current_revision;
 		if ( $expected_revision !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before saving.' );
+		// Revision resets on identity rebind. A UI tab must also match the exact
+		// profile it displayed, so old revision 1 cannot overwrite new revision 1.
+		if ( array_key_exists( 'expected_profile_digest', $input ) ) {
+			$current_digest = $existing_valid ? self::digest_record( $existing_normalized ) : '';
+			if ( ! is_string( $input['expected_profile_digest'] ) || ! hash_equals( $current_digest, $input['expected_profile_digest'] ) ) {
+				return new WP_Error( 'mad4b_site_profile_identity_stale', 'Site Profile identity changed since this form was loaded. Reload before saving.' );
+			}
+		}
 		$existing_identity_matches = $existing_valid
 			&& hash_equals( (string) $existing_normalized['environment'], $environment )
 			&& hash_equals( (string) $existing_normalized['canonical_origin'], $origin );
