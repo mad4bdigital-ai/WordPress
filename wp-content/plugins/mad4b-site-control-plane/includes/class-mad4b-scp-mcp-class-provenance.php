@@ -59,7 +59,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'blocker' => '',
 			'provider' => self::PROVIDER,
 			'certified_version' => '',
-			'class_count' => count( self::critical_classes( $contract ) ),
+			'class_count' => 0,
 			'verified_count' => 0,
 			'failure_count' => 0,
 			'unobserved_count' => 0,
