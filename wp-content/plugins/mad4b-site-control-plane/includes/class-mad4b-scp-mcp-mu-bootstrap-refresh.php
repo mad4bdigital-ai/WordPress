@@ -76,13 +76,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( $database_cas ) {
 			if ( null === $replacement ) {
 				$sql = $wpdb->prepare(
-					"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+					"DELETE FROM {$wpdb->options} WHERE option_name = %s AND BINARY option_value = BINARY %s",
 					self::TRANSACTION_OPTION,
 					maybe_serialize( $expected )
 				);
 			} else {
 				$sql = $wpdb->prepare(
-					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
 					maybe_serialize( $replacement ),
 					self::TRANSACTION_OPTION,
 					maybe_serialize( $expected )
