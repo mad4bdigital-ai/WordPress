@@ -110,7 +110,8 @@ $GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']=$ori
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy_record('staging',$origin,2);
 $legacy_default=MAD4B_SCP_Site_Profile::status();
 ok(!empty($legacy_default['configured'])&&'legacy_v1_migrated'===($legacy_default['source']??''),'exact legacy staging identity migrates across implicit WordPress Production default');
-ok('staging'===($legacy_default['environment']??'')&&'production'===($legacy_default['wordpress_environment']??''),'legacy migration resolves effective Staging without wp-config edit');
+ok('production'===($legacy_default['environment']??'')&&'staging'===($legacy_default['configured_environment']??'')&&'production'===($legacy_default['wordpress_environment']??''),'legacy migration remains on implicit Production until non-production override is confirmed');
+ok('nonproduction_override_unconfirmed'===($legacy_default['binding_state']??'')&&!empty($legacy_default['profile_authority_quarantined']),'legacy implicit non-production override is quarantined pending exact attestation');
 ok(empty($legacy_default['write_enabled'])&&empty($legacy_default['oauth_enabled'])&&empty($legacy_default['skills_enabled']),'legacy environment continuity restores no authority');
 
 // Exact v1 record migrates only as identity; every authority-bearing field fails closed.
