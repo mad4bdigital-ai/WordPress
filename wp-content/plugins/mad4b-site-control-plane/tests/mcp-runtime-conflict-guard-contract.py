@@ -147,6 +147,14 @@ for marker in (
     'mu_bootstrap_transaction_not_owner',
     'mu_bootstrap_transaction_in_progress',
     'TRANSACTION_STALE_AFTER',
+    'private static function read_transaction_option()',
+    "wp_cache_delete( self::TRANSACTION_OPTION, 'options' )",
+    "'persistent_object_cache_authoritative' => false",
+    "'transaction_store' => 'wp_options_unique_option'",
+    "'filesystem_replace_strategy' => 'same_directory_atomic_rename'",
+    "'filesystem_replace_atomicity_required' => true",
+    "'non_atomic_replace_fallback' => false",
+    "'shared_filesystem_certified' => false",
     "'next_request_required' => true",
 ):
     require(refresh, marker, 'mu-refresh')
@@ -154,8 +162,15 @@ for marker in (
 for forbidden in (
     'deactivate_plugins(', 'activate_plugin(', 'delete_plugins(', 'wp_remote_get(',
     'wp_remote_post(', 'curl_exec(', 'active_sitewide_plugins', 'switch_to_blog(',
+    '@unlink( $destination )',
 ):
     forbid(refresh, forbidden, 'mu-refresh-bounded')
+
+transaction_reader = refresh.split('private static function read_transaction_option()', 1)[1].split('private static function transaction_record_for_owner', 1)[0]
+if 'return self::read_transaction_option();' in transaction_reader:
+    raise SystemExit('FAIL transaction-cache: authoritative option reader recurses instead of reading wp_options')
+if "return get_option( self::TRANSACTION_OPTION, array() );" not in transaction_reader:
+    raise SystemExit('FAIL transaction-cache: authoritative option reader no longer reaches WordPress Options API')
 
 require(bootstrap, "class-mad4b-scp-mcp-mu-bootstrap-refresh.php", 'bootstrap-load-refresh')
 require(bootstrap, "add_action( 'init', array( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'bootstrap' ), 20 );", 'bootstrap-schedule-refresh')
