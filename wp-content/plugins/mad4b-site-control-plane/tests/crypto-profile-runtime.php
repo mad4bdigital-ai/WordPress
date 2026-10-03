@@ -17,6 +17,15 @@ function wp_normalize_path($v){return str_replace('\\','/',(string)$v);}
 
 require dirname(__DIR__).'/includes/class-mad4b-scp-time-policy.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-crypto-profile.php';
+if('1'===getenv('MAD4B_CRYPTO_VERIFY_CHILD')){
+ MAD4B_SCP_Time_Policy::set_test_clock((int)(getenv('MAD4B_CRYPTO_TEST_EPOCH')?:2000086401),500000);
+ $payload=json_decode((string)file_get_contents(getenv('MAD4B_CRYPTO_VERIFY_FILE')),true);
+ if(!is_array($payload)){fwrite(STDERR,"payload_invalid\n");exit(3);}
+ $verified=MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($payload['signature'],$payload['digest'],'execution_receipt');
+ if(is_wp_error($verified)){fwrite(STDERR,$verified->get_error_code().PHP_EOL);exit(4);}
+ echo json_encode(array('valid'=>true,'kid'=>$verified['kid'])).PHP_EOL;
+ exit(0);
+}
 if('1'===getenv('MAD4B_CRYPTO_CONCURRENCY_CHILD')){
  MAD4B_SCP_Time_Policy::set_test_clock((int)(getenv('MAD4B_CRYPTO_TEST_EPOCH')?:2000086402),500000);
  $child=MAD4B_SCP_Crypto_Profile::rotate('execution-receipt-rs256-v1');
@@ -61,8 +70,22 @@ $old_verify=MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($sig,$digest,'ex
 $check(is_array($old_verify)&&!empty($old_verify['valid']),'old signature failed during rotation overlap',$old_verify);
 MAD4B_SCP_Time_Policy::advance_test_clock(86401,86401000);
 $check('mad4b_crypto_signature_overlap_expired'===$code(MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($sig,$digest,'execution_receipt')),'expired rotation overlap still verified');
-$new_sig=MAD4B_SCP_Crypto_Profile::sign_digest_for_purpose('execution_receipt',hash('sha256','receipt-b'));
+$new_digest=hash('sha256','receipt-b');
+$new_sig=MAD4B_SCP_Crypto_Profile::sign_digest_for_purpose('execution_receipt',$new_digest);
 $check(is_array($new_sig)&&$rot['current_kid']===$new_sig['kid'],'rotated current key not used for signing',$new_sig);
+
+// Node A signs; an independent Node B process verifies against the same shared keyring.
+$verify_file=$tmp.'/node-b-verify.json';
+file_put_contents($verify_file,json_encode(array('digest'=>$new_digest,'signature'=>$new_sig)));
+$verify_cmd=escapeshellarg(PHP_BINARY).' '.escapeshellarg(__FILE__);
+$verify_env=array('MAD4B_CRYPTO_TEST_DIR'=>$tmp,'MAD4B_CRYPTO_VERIFY_CHILD'=>'1','MAD4B_CRYPTO_TEST_EPOCH'=>'2000086401','MAD4B_CRYPTO_VERIFY_FILE'=>$verify_file);
+$verify_spec=array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w'));
+$verify_pipes=array();$verify_proc=proc_open($verify_cmd,$verify_spec,$verify_pipes,null,$verify_env);
+$check(is_resource($verify_proc),'node B verification process failed to start');
+fclose($verify_pipes[0]);$verify_out=stream_get_contents($verify_pipes[1]);$verify_err=stream_get_contents($verify_pipes[2]);fclose($verify_pipes[1]);fclose($verify_pipes[2]);
+$verify_exit=proc_close($verify_proc);@unlink($verify_file);
+$check(0===$verify_exit,'node B could not verify node A receipt through shared keyring',array($verify_out,$verify_err));
+
 $rev=MAD4B_SCP_Crypto_Profile::revoke($p1,$old_kid);
 $check(is_array($rev),'old key revocation failed',$rev);
 $check('mad4b_crypto_signature_key_revoked'===$code(MAD4B_SCP_Crypto_Profile::verify_digest($sig,$digest)),'revoked key still verified');
@@ -95,6 +118,13 @@ $check(0===$exit1&&0===$exit2,'concurrent rotations did not serialize',array($ou
 $after=MAD4B_SCP_Crypto_Profile::status($p1);
 $check((int)$after['revision']===$before_revision+2,'concurrent rotations lost a manifest update',$after);
 
+// Keyring DR uses an external encrypted backup, while the plugin attests exact restore identity without exposing key bytes.
+$recovery=MAD4B_SCP_Crypto_Profile::recovery_manifest($p1);
+$check(is_array($recovery)&&1===preg_match('/^[a-f0-9]{64}$/',$recovery['recovery_generation_sha256']),'keyring recovery manifest unavailable',$recovery);
+$check(!isset($recovery['private_key_pem'])&&!isset($recovery['private_key']),'recovery manifest exposed private key material',$recovery);
+$verified_recovery=MAD4B_SCP_Crypto_Profile::assert_recovery_generation($p1,$recovery['recovery_generation_sha256']);
+$check(is_array($verified_recovery)&&!empty($verified_recovery['verified'])&&!empty($verified_recovery['post_restore_recertification_required']),'recovery generation verification failed',$verified_recovery);
+
 // A private-key file symlink must never be followed.
 $manifest_data=json_decode((string)file_get_contents($manifest),true);
 $current_kid=(string)$manifest_data['current_kid'];$private_file=(string)$manifest_data['keys'][$current_kid]['private_key_file'];
@@ -117,4 +147,4 @@ if(@symlink($exposed,$tmp.'/keys')){
 }else{rename($real_keys,$tmp.'/keys');}
 
 MAD4B_SCP_Time_Policy::reset_test_clock();
-echo "mad4b.crypto-profile.runtime.v3: PASS\n";
+echo "mad4b.crypto-profile.runtime.v4: PASS\n";

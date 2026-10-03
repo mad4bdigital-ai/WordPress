@@ -282,10 +282,83 @@ final class MAD4B_SCP_Crypto_Profile {
 			'overlap_until'=>(int)$key['overlap_until'],'revoked_at'=>(int)$key['revoked_at'],
 			'private_key_exposed'=>false
 		);
+		$recovery = self::recovery_manifest( $profile_id );
 		return array(
 			'contract'=>'mad4b.crypto-profile-status.v1','profile_id'=>$profile_id,'profile_sha256'=>$profile['profile_sha256'],
 			'algorithm'=>$profile['algorithm'],'current_kid'=>(string)$manifest['current_kid'],'revision'=>(int)$manifest['revision'],
-			'keys'=>$keys,'private_key_stored_in_database'=>false,'private_key_exposed'=>false,'authorizing'=>false
+			'keys'=>$keys,'private_key_stored_in_database'=>false,'private_key_exposed'=>false,
+			'cluster_keyring_model'=>'shared_filesystem_or_single_signer',
+			'shared_keyring_required_for_multi_node'=>true,
+			'recovery_generation_sha256'=>is_array($recovery)?(string)$recovery['recovery_generation_sha256']:'',
+			'backup_encryption_required'=>true,
+			'post_restore_recertification_required'=>true,
+			'revocation_on_key_loss_required'=>true,
+			'authorizing'=>false
+		);
+	}
+
+	public static function recovery_manifest( $profile_id ) {
+		$profile = self::profile( $profile_id );
+		if ( is_wp_error( $profile ) ) return $profile;
+		$manifest = self::manifest( $profile_id );
+		if ( is_wp_error( $manifest ) ) return $manifest;
+		$dir = self::keyring_dir();
+		if ( is_wp_error( $dir ) ) return $dir;
+		$manifest_path = trailingslashit( $dir ) . 'keyring-' . sanitize_key( (string) $profile_id ) . '.json';
+		if ( ! is_file( $manifest_path ) || ! is_readable( $manifest_path ) || is_link( $manifest_path ) ) {
+			return new WP_Error( 'mad4b_crypto_recovery_manifest_unavailable', 'Receipt keyring manifest is unavailable for recovery attestation.' );
+		}
+		$files = array(
+			basename( $manifest_path ) => hash_file( 'sha256', $manifest_path ),
+		);
+		foreach ( $manifest['keys'] as $key ) {
+			$file = isset( $key['private_key_file'] ) ? basename( (string) $key['private_key_file'] ) : '';
+			if ( '' === $file ) continue;
+			$path = trailingslashit( $dir ) . $file;
+			if ( is_link( $path ) || ! is_file( $path ) || ! is_readable( $path ) ) {
+				return new WP_Error( 'mad4b_crypto_recovery_private_key_unavailable', 'Receipt private-key recovery material is missing or unsafe.' );
+			}
+			$files[ $file ] = hash_file( 'sha256', $path );
+		}
+		ksort( $files, SORT_STRING );
+		$material = array(
+			'contract' => 'mad4b.crypto-keyring-recovery-manifest.v1',
+			'profile_id' => $profile_id,
+			'profile_sha256' => (string) $profile['profile_sha256'],
+			'revision' => (int) $manifest['revision'],
+			'current_kid' => (string) $manifest['current_kid'],
+			'files' => $files,
+			'contains_private_material' => true,
+			'backup_encryption_required' => true,
+			'post_restore_recertification_required' => true,
+			'revocation_on_key_loss_required' => true,
+			'authorizing' => false,
+		);
+		$material['recovery_generation_sha256'] = self::digest( $material );
+		return $material;
+	}
+
+	public static function assert_recovery_generation( $profile_id, $expected_sha256 ) {
+		$expected_sha256 = strtolower( trim( (string) $expected_sha256 ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_sha256 ) ) {
+			return new WP_Error( 'mad4b_crypto_recovery_generation_invalid', 'Expected keyring recovery generation is invalid.' );
+		}
+		$current = self::recovery_manifest( $profile_id );
+		if ( is_wp_error( $current ) ) return $current;
+		if ( ! hash_equals( $expected_sha256, (string) $current['recovery_generation_sha256'] ) ) {
+			return new WP_Error( 'mad4b_crypto_recovery_generation_mismatch', 'Recovered keyring does not match the attested backup generation.', array(
+				'post_restore_recertification_required' => true,
+				'write_ready' => false,
+				'authorizing' => false,
+			) );
+		}
+		return array(
+			'contract' => 'mad4b.crypto-keyring-recovery-verification.v1',
+			'profile_id' => $profile_id,
+			'recovery_generation_sha256' => $expected_sha256,
+			'verified' => true,
+			'post_restore_recertification_required' => true,
+			'authorizing' => false,
 		);
 	}
 
@@ -311,6 +384,7 @@ final class MAD4B_SCP_Crypto_Profile {
 	private static function manifest( $profile_id ) {
 		$dir=self::keyring_dir(); if(is_wp_error($dir))return$dir;
 		$path=trailingslashit($dir).'keyring-'.sanitize_key((string)$profile_id).'.json';
+		if(is_link($path))return new WP_Error('mad4b_crypto_keyring_manifest_symlink_denied','Receipt keyring manifest may not be a symbolic link.');
 		if(!is_file($path))return array('contract'=>self::KEYRING_CONTRACT,'profile_id'=>sanitize_key((string)$profile_id),'revision'=>0,'current_kid'=>'','keys'=>array(),'updated_at'=>0);
 		if(!is_readable($path))return new WP_Error('mad4b_crypto_keyring_unreadable','Receipt keyring manifest is unreadable.');
 		$data=json_decode((string)file_get_contents($path),true);
