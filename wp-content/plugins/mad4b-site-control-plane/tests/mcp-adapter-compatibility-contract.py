@@ -56,7 +56,7 @@ if "|| ! class_exists( 'WP\\\\MCP\\\\Domain\\\\Tools\\\\McpToolValidator' )" in 
     fail("catalog preflight still requires removed v0.7.0 McpToolValidator")
 for marker in (
     "MAD4B_SCP_MCP_Adapter_Compatibility::build_ability_wire",
-    "MAD4B_SCP_MCP_Adapter_Compatibility::server_tools",
+    "MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools",
     "MAD4B_SCP_MCP_Adapter_Compatibility::wire_name",
     "MAD4B_SCP_MCP_Adapter_Compatibility::wire_data",
 ):
