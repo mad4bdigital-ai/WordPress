@@ -50,6 +50,8 @@ with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
     target = Path(tmp)
     (target / 'includes').mkdir()
     (target / 'tests').mkdir()
+    (target / 'config').mkdir()
+    shutil.copy2(root / 'config' / 'semantic-content-field-contracts.json', target / 'config' / 'semantic-content-field-contracts.json')
     for test in {m[4] for m in mutations}:
         shutil.copy2(root / 'tests' / test, target / 'tests' / test)
     for name in files:
