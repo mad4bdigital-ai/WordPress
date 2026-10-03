@@ -522,8 +522,7 @@ final class MAD4B_SCP_Context_Preflight {
 				isset( $receipt['blockers'] ) && is_array( $receipt['blockers'] ) ? $receipt['blockers'] : array(),
 				array( 'context_receipt_transport_budget_exceeded' )
 			) ) );
-			$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
-			$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
+			$receipt = self::finalize_receipt_signature( $receipt );
 			$compacted_json = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			if ( ! is_string( $compacted_json ) || strlen( $compacted_json ) > self::MAX_RECEIPT_TRANSPORT_BYTES ) {
 				// Pathological metadata must not create an untransportable receipt
@@ -537,8 +536,7 @@ final class MAD4B_SCP_Context_Preflight {
 					'blockers' => array( 'context_receipt_transport_budget_exceeded' ),
 					'observed_at' => gmdate( 'c' ),
 				);
-				$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
-				$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
+				$receipt = self::finalize_receipt_signature( $receipt );
 			}
 		}
 		return $receipt;

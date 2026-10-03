@@ -31,8 +31,8 @@ if "hash_hmac" in prep or "wp_salt" in prep:
     raise SystemExit("FAIL preparation receipt retains legacy local HMAC signing")
 for marker in ["RECEIPT_CRYPTO_PURPOSE = 'context_receipt'","sign_digest_for_purpose","verify_digest_for_purpose"]:
     if marker not in context: raise SystemExit("FAIL context receipt crypto migration missing "+marker)
-if "receipt_signature_key" in context or "hash_hmac" in context or "wp_salt" in context:
-    raise SystemExit("FAIL context receipt retains legacy local HMAC signing")
+if "receipt_signature_key" in context or "self::receipt_signature(" in context or "hash_hmac" in context or "wp_salt" in context:
+    raise SystemExit("FAIL context receipt retains legacy local HMAC signing/callsite")
 if "verify_digest_for_purpose( $receipt['signature'], $expected, 'execution_receipt' )" not in execution:
     raise SystemExit("FAIL execution receipt verification is not purpose-bound")
 print("mad4b.receipt-crypto-profile.contract.v1: PASS")
