@@ -14,7 +14,7 @@ function sanitize_key( $v ){ return strtolower( preg_replace( '/[^a-z0-9_\-]/', 
 function absint( $v ){ return abs( (int) $v ); }
 function get_option( $k, $d = false ){ return array_key_exists( $k, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $k ] : $d; }
 function add_option( $k, $v, $deprecated = '', $autoload = null ){ if ( array_key_exists( $k, $GLOBALS['mad4b_test_options'] ) ) return false; $GLOBALS['mad4b_test_options'][$k]=$v; return true; }
-function update_option( $k, $v, $autoload = null ){ $GLOBALS['mad4b_test_options'][$k]=$v; return true; }
+function update_option( $k, $v, $autoload = null ){ if(array_key_exists($k,$GLOBALS['mad4b_test_options'])&&serialize($GLOBALS['mad4b_test_options'][$k])===serialize($v))return false; $GLOBALS['mad4b_test_options'][$k]=$v; return true; }
 function delete_option( $k ){ unset( $GLOBALS['mad4b_test_options'][$k] ); return true; }
 function wp_generate_uuid4(){ static $n=0; ++$n; return sprintf( '11111111-1111-4111-8111-%012d', $n ); }
 
@@ -57,6 +57,11 @@ ok( ! empty( $soft_preflight['soft_lease_expired'] ), 'soft-expired preflight ev
 $refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' );
 ok( true === $refresh, 'owner must renew lease' );
 ok( MAD4B_SCP_Runtime_Maintenance_Lease::owned( $token, 'runtime_convergence' ), 'renewed token must retain ownership' );
+// A second refresh inside the same second produces byte-identical expiry and
+// timestamp fields. WordPress/MySQL report that no-op as false/0; it must remain
+// a verified owned lease rather than a false lease-lost signal.
+$refresh_same_second = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' );
+ok( true === $refresh_same_second, 'same-second no-op refresh must preserve verified ownership' );
 
 $wrong = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( 'wrong-token', 'runtime_convergence' );
 ok( is_wp_error( $wrong ) && 'mad4b_runtime_maintenance_lease_lost' === $wrong->get_error_code(), 'stale token must be fenced' );

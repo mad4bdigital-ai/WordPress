@@ -177,8 +177,8 @@ for forbidden in (
 transaction_reader = refresh.split('private static function read_transaction_option()', 1)[1].split('private static function transaction_record_for_owner', 1)[0]
 if 'return self::read_transaction_option();' in transaction_reader:
     raise SystemExit('FAIL transaction-cache: authoritative option reader recurses instead of reading wp_options')
-if "return get_option( self::TRANSACTION_OPTION, array() );" not in transaction_reader:
-    raise SystemExit('FAIL transaction-cache: authoritative option reader no longer reaches WordPress Options API')
+if "return get_option( self::TRANSACTION_OPTION, null );" not in transaction_reader:
+    raise SystemExit('FAIL transaction-cache: authoritative option reader no longer distinguishes an absent transaction through WordPress Options API')
 
 require(bootstrap, "class-mad4b-scp-mcp-mu-bootstrap-refresh.php", 'bootstrap-load-refresh')
 require(bootstrap, "add_action( 'init', array( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'bootstrap' ), 20 );", 'bootstrap-schedule-refresh')

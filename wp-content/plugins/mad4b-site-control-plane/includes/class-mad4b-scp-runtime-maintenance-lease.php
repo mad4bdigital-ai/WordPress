@@ -36,6 +36,14 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 
 	private static function compare_and_swap_option( $option, array $expected, $replacement = null ) {
 		self::read_option_strong( $option );
+		// MySQL and WordPress both report an unchanged write as "0/false". A
+		// same-second lease refresh can therefore be a verified no-op rather than
+		// lost ownership. Only admit that case when expected and replacement are
+		// byte-identical, then let the caller's strong readback fence any race.
+		if ( null !== $replacement && serialize( $expected ) === serialize( $replacement ) ) {
+			$current = self::read_option_strong( $option );
+			return serialize( $current ) === serialize( $expected );
+		}
 		global $wpdb;
 		$database_cas = is_object( $wpdb )
 			&& isset( $wpdb->options )
