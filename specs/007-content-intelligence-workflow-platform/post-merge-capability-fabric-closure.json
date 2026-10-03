@@ -1,0 +1,461 @@
+{
+  "contract": "mad4b.capability-fabric-post-merge-closure.v1",
+  "phase": 37,
+  "baseline_merge_commit": "f03041b8132ea955184fc3af5ad82abf461c7715",
+  "production_authorized": false,
+  "breakglass_widened": false,
+  "generic_shell_authorized": false,
+  "generic_raw_sql_authorized": false,
+  "critical_kernel_terminal_gate_unchanged": true,
+  "critical_kernel_terminal_gate": "critical_kernel_vertical_slice_verified",
+  "completeness_claim": "NOT_YET_PROVEN",
+  "status_vocabulary": [
+    "OPEN",
+    "PARTIAL",
+    "DONE",
+    "DEFERRED"
+  ],
+  "workstreams": [
+    {
+      "id": "canonical_capability_semantics",
+      "status": "OPEN",
+      "task_ids": [
+        "T3701",
+        "T3702",
+        "T3703",
+        "T3704",
+        "T3705",
+        "T3706"
+      ],
+      "quality_families": [
+        "QSEMANTICS",
+        "QGOVERNANCE",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [],
+      "interim_behavior": "Any descriptor/consumer disagreement blocks preparation/execution; presentation remains non-authorizing.",
+      "evidence_strategy": "Contract/property/mutation evidence across Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization."
+    },
+    {
+      "id": "semantic_content_and_resource_constraints",
+      "status": "OPEN",
+      "task_ids": [
+        "T3707",
+        "T3708",
+        "T3709",
+        "T3710",
+        "T3711"
+      ],
+      "quality_families": [
+        "QSEMANTICS",
+        "QSECURITY",
+        "QGOVERNANCE"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics"
+      ],
+      "interim_behavior": "Unknown provider fields/resources cannot widen a reviewed mutation; unsupported constraints deny execution.",
+      "evidence_strategy": "Provider field contracts plus compiler/property/mutation fixtures and exact digest binding evidence."
+    },
+    {
+      "id": "postconditions_execution_state_identifiers",
+      "status": "OPEN",
+      "task_ids": [
+        "T3712",
+        "T3713",
+        "T3714",
+        "T3715",
+        "T3716",
+        "T3717",
+        "T3718"
+      ],
+      "quality_families": [
+        "QCORRECTNESS",
+        "QRESILIENCE",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics"
+      ],
+      "interim_behavior": "Ambiguous provider effects remain RECONCILING/UNKNOWN; legacy identifiers cannot be silently reinterpreted.",
+      "evidence_strategy": "Per-family postcondition readers, contradiction matrices and identifier migration fixtures."
+    },
+    {
+      "id": "catalog_backend_cache_concurrency",
+      "status": "OPEN",
+      "task_ids": [
+        "T3719",
+        "T3720",
+        "T3721",
+        "T3722",
+        "T3723",
+        "T3724"
+      ],
+      "quality_families": [
+        "QCORRECTNESS",
+        "QCOMPAT",
+        "QPERF"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics"
+      ],
+      "interim_behavior": "Current options/CAS backend remains authoritative until parity/cutover proof; stale publishers/readers cannot authorize execution.",
+      "evidence_strategy": "Shadow-read parity, fencing, cache-coherence, multi-worker and rollback evidence."
+    },
+    {
+      "id": "durable_multisite_network",
+      "status": "OPEN",
+      "task_ids": [
+        "T3725",
+        "T3726",
+        "T3727",
+        "T3728",
+        "T3729"
+      ],
+      "quality_families": [
+        "QRESILIENCE",
+        "QSECURITY",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [
+        "postconditions_execution_state_identifiers"
+      ],
+      "interim_behavior": "Partial completion is preserved; failed sites do not trigger blind replay or cross-site credential/evidence reuse.",
+      "evidence_strategy": "Durable NetworkOperation journal and crash/resume/fan-out isolation fixtures."
+    },
+    {
+      "id": "projection_mcp_evolution",
+      "status": "OPEN",
+      "task_ids": [
+        "T3730",
+        "T3731",
+        "T3732",
+        "T3733",
+        "T3734",
+        "T3735"
+      ],
+      "quality_families": [
+        "QCOMPAT",
+        "QSEMANTICS",
+        "QSECURITY"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics"
+      ],
+      "interim_behavior": "Fixed dispatch remains correctness path; stale/unknown projection/protocol state cannot widen authority.",
+      "evidence_strategy": "Client/protocol compatibility, stale projection, refresh and mixed-generation transport fixtures."
+    },
+    {
+      "id": "provider_resilience_wp_lifecycle",
+      "status": "OPEN",
+      "task_ids": [
+        "T3736",
+        "T3737",
+        "T3738",
+        "T3739",
+        "T3740"
+      ],
+      "quality_families": [
+        "QRESILIENCE",
+        "QCOMPAT",
+        "QRECOVERY"
+      ],
+      "dependencies": [
+        "postconditions_execution_state_identifiers"
+      ],
+      "interim_behavior": "Breaker/lifecycle health can only constrain eligibility; no probe or lifecycle event grants authority.",
+      "evidence_strategy": "Durable breaker transitions and WordPress lifecycle parity/recovery tests."
+    },
+    {
+      "id": "tracing_slo_observability",
+      "status": "OPEN",
+      "task_ids": [
+        "T3741",
+        "T3742",
+        "T3743",
+        "T3744",
+        "T3745",
+        "T3746"
+      ],
+      "quality_families": [
+        "QPERF",
+        "QOPERABILITY",
+        "QDATA"
+      ],
+      "dependencies": [
+        "durable_multisite_network"
+      ],
+      "interim_behavior": "Telemetry is non-authorizing; mandatory audit/evidence failure for governed writes remains fail closed.",
+      "evidence_strategy": "Trace propagation/privacy, percentile SLO and observability-outage evidence."
+    },
+    {
+      "id": "impact_approval_receipt_routing",
+      "status": "OPEN",
+      "task_ids": [
+        "T3747",
+        "T3748",
+        "T3749",
+        "T3750",
+        "T3751",
+        "T3752",
+        "T3753"
+      ],
+      "quality_families": [
+        "QGOVERNANCE",
+        "QEXECUTIONMODEL",
+        "QSEMANTICS"
+      ],
+      "dependencies": [
+        "semantic_content_and_resource_constraints",
+        "postconditions_execution_state_identifiers"
+      ],
+      "interim_behavior": "Any impact/resource/dependency drift invalidates approval; routing never grants capability eligibility.",
+      "evidence_strategy": "Impact digest invalidation, decision graph and independently verified execution-receipt fixtures."
+    },
+    {
+      "id": "crypto_time_replay_abuse",
+      "status": "OPEN",
+      "task_ids": [
+        "T3754",
+        "T3755",
+        "T3756",
+        "T3757",
+        "T3758",
+        "T3759",
+        "T3760",
+        "T3761",
+        "T3762"
+      ],
+      "quality_families": [
+        "QSECURITY",
+        "QGOVERNANCE",
+        "QCOMPAT",
+        "QTEST"
+      ],
+      "dependencies": [
+        "impact_approval_receipt_routing"
+      ],
+      "interim_behavior": "Unknown crypto/time/replay/canonicalization conditions deny or require reprepare; abuse limits never bypass stronger policy.",
+      "evidence_strategy": "Rotation/skew/replay/fuzz/rate/TLS/DNS/backward-compatibility/hermetic-CI evidence."
+    },
+    {
+      "id": "maintainability_config",
+      "status": "OPEN",
+      "task_ids": [
+        "T3763",
+        "T3764",
+        "T3765",
+        "T3766",
+        "T3767"
+      ],
+      "quality_families": [
+        "QCOMPAT",
+        "QOPERABILITY",
+        "QSEMANTICS"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics"
+      ],
+      "interim_behavior": "Refactors/config changes preserve existing authority contracts; hidden dependency/config widening is forbidden.",
+      "evidence_strategy": "Behavior parity, dependency-direction checks, reason-code schema and config-generation tests."
+    },
+    {
+      "id": "ownership_closure",
+      "status": "OPEN",
+      "task_ids": [
+        "T3768",
+        "T3769",
+        "T3770"
+      ],
+      "quality_families": [
+        "QGOVERNANCE",
+        "QSEMANTICS"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics",
+        "semantic_content_and_resource_constraints",
+        "postconditions_execution_state_identifiers",
+        "catalog_backend_cache_concurrency",
+        "durable_multisite_network",
+        "projection_mcp_evolution",
+        "provider_resilience_wp_lifecycle",
+        "tracing_slo_observability",
+        "impact_approval_receipt_routing",
+        "crypto_time_replay_abuse",
+        "maintainability_config"
+      ],
+      "interim_behavior": "No completeness claim while a P0/P1 dimension lacks owner, interim behavior or evidence path.",
+      "evidence_strategy": "Machine-validated dimension/task ownership and traceability/non-authorizing checks."
+    },
+    {
+      "id": "request_scope_db_hooks",
+      "status": "OPEN",
+      "task_ids": [
+        "T3771",
+        "T3772",
+        "T3773",
+        "T3774",
+        "T3775",
+        "T3776",
+        "T3777"
+      ],
+      "quality_families": [
+        "QCORRECTNESS",
+        "QSECURITY",
+        "QCOMPAT",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics"
+      ],
+      "interim_behavior": "Stale request/static/replica/hook state cannot authorize or commit; ambiguous DB outcomes reconcile.",
+      "evidence_strategy": "Long-lived worker, replica, deadlock, hook-priority, reentrancy and infrastructure-profile fixtures."
+    },
+    {
+      "id": "clone_restore_subject_lifecycle",
+      "status": "OPEN",
+      "task_ids": [
+        "T3778",
+        "T3779",
+        "T3780",
+        "T3781",
+        "T3782",
+        "T3783"
+      ],
+      "quality_families": [
+        "QSECURITY",
+        "QRECOVERY",
+        "QGOVERNANCE",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [
+        "request_scope_db_hooks",
+        "impact_approval_receipt_routing"
+      ],
+      "interim_behavior": "Foreign clones quarantine; restored old state and changed subjects cannot replay previously valid authority artifacts.",
+      "evidence_strategy": "Clone/restore/replay epoch plus user demotion/deletion/remapping fixtures."
+    },
+    {
+      "id": "contract_mixed_runtime",
+      "status": "OPEN",
+      "task_ids": [
+        "T3784",
+        "T3785",
+        "T3786",
+        "T3787"
+      ],
+      "quality_families": [
+        "QCOMPAT",
+        "QSECURITY",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [
+        "request_scope_db_hooks"
+      ],
+      "interim_behavior": "Unknown/newer persisted versions and stale code generations fail closed; rollback cannot reinterpret security state.",
+      "evidence_strategy": "N/N-1 rolling deploy, downgrade/rollback and stale-worker generation-fence tests."
+    },
+    {
+      "id": "evidence_failure_ordering",
+      "status": "OPEN",
+      "task_ids": [
+        "T3788",
+        "T3789",
+        "T3790",
+        "T3791",
+        "T3792"
+      ],
+      "quality_families": [
+        "QRECOVERY",
+        "QOPERABILITY",
+        "QDATA",
+        "QRESILIENCE"
+      ],
+      "dependencies": [
+        "postconditions_execution_state_identifiers",
+        "contract_mixed_runtime"
+      ],
+      "interim_behavior": "Provider side effect without required durable evidence can never be terminal success; it becomes reconciliation-required.",
+      "evidence_strategy": "Crash-point matrix, storage exhaustion, archival/hash-chain, truncation and fatal-interruption fixtures."
+    },
+    {
+      "id": "cancel_transport_cross_fault",
+      "status": "OPEN",
+      "task_ids": [
+        "T3793",
+        "T3794",
+        "T3795"
+      ],
+      "quality_families": [
+        "QRESILIENCE",
+        "QCOMPAT",
+        "QEXECUTIONMODEL",
+        "QRECOVERY"
+      ],
+      "dependencies": [
+        "clone_restore_subject_lifecycle",
+        "evidence_failure_ordering",
+        "projection_mcp_evolution"
+      ],
+      "interim_behavior": "Post-side-effect cancellation and incomplete/mixed-generation transport stay nonterminal/denied until evidence resolves them.",
+      "evidence_strategy": "Cancellation propagation, chunk integrity/decompression bounds and composed cross-fault certification."
+    },
+    {
+      "id": "canonical_db_storage",
+      "status": "OPEN",
+      "task_ids": [
+        "T3796",
+        "T3797",
+        "T3798",
+        "T3799"
+      ],
+      "quality_families": [
+        "QCORRECTNESS",
+        "QSECURITY",
+        "QCOMPAT",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics",
+        "request_scope_db_hooks",
+        "contract_mixed_runtime"
+      ],
+      "interim_behavior": "Security identity uses canonical encodings only; uncertain collation/storage-engine/transaction ownership blocks governed mutation rather than degrading to alternate identity or non-atomic persistence.",
+      "evidence_strategy": "Canonicalization negatives, binary/collation alias tests, SHOW TABLE STATUS/engine capability evidence and nested transaction/savepoint-or-deny fixtures."
+    }
+  ],
+  "quality_family_vocabulary": [
+    "QCORRECTNESS",
+    "QRESILIENCE",
+    "QSECURITY",
+    "QSUPPLYCHAIN",
+    "QDATA",
+    "QPERF",
+    "QEVAL",
+    "QRECOVERY",
+    "QCOMPAT",
+    "QGOVERNANCE",
+    "QCONTENTSTATE",
+    "QRIGHTS",
+    "QOPERABILITY",
+    "QPORTABILITY",
+    "QROOTTRUST",
+    "QEXECUTIONMODEL",
+    "QLIVENESS",
+    "QSEMANTICS",
+    "QTEST"
+  ],
+  "completion_requires_workstreams": [
+    "ownership_closure",
+    "cancel_transport_cross_fault",
+    "canonical_db_storage"
+  ],
+  "closure_rules": {
+    "exact_phase37_task_coverage": true,
+    "unique_task_ownership": true,
+    "dependency_graph_acyclic": true,
+    "unknown_quality_family_forbidden": true,
+    "docs_only_cannot_close_runtime_or_live_work": true,
+    "non_authorizing": true
+  }
+}

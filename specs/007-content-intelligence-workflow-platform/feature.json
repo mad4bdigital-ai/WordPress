@@ -138,7 +138,7 @@
   "coverage_status": "architecture-frozen-root-trust-separated-brand-context-v2-with-durable-idempotency-provider-gateway-and-crash-safe-rollback",
   "quality_model": "mad4b.feature007.quality.v1",
   "operating_model": "long-lived-multi-site-governed-platform",
-  "required_phase_count": 37,
+  "required_phase_count": 38,
   "baseline_sync_policy": "PR base must be an ancestor of Feature HEAD; last_reviewed_master_parent_sha must equal the exact reviewed PR base; deployable runtime release identity is tracked independently and recaptured only after runtime-affecting changes",
   "architecture_freeze": true,
   "critical_kernel_document": "critical-kernel.md",
@@ -163,12 +163,12 @@
   "tool_execution_contract": "mad4b.governed-tool-execution.v1",
   "cli_host_runner_contract": "mad4b.cli-host-runner.v1",
   "host_provider_validation_profile": "mad4b.host-provider-validation-profile.v1",
-  "baseline_checked_at": "2026-10-01",
+  "baseline_checked_at": "2026-10-03",
   "implementation_closure_document": "implementation-closure.md",
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
-  "last_reviewed_master_parent_sha": "68aed08a1d4c5fd32159eb25633d802d80c38cbd",
+  "last_reviewed_master_parent_sha": "f03041b8132ea955184fc3af5ad82abf461c7715",
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
@@ -236,5 +236,12 @@
       ".github/workflows/mad4b-site-control-plane.yml"
     ],
     "release_critical_workflows_must_be_baseline_owned": true
-  }
+  },
+  "post_merge_capability_fabric_audit_document": "post-merge-capability-fabric-audit.md",
+  "post_merge_capability_fabric_phase": 37,
+  "post_merge_capability_fabric_semantics": "post-merge backlog and completeness closure; non-authorizing",
+  "post_merge_capability_fabric_closure_ledger": "post-merge-capability-fabric-closure.json",
+  "post_merge_capability_fabric_contract": "mad4b.capability-fabric-post-merge-completeness.v1",
+  "post_merge_capability_fabric_contract_document": "contracts/capability-fabric-post-merge-completeness.md",
+  "post_merge_capability_fabric_completeness_claim": "NOT_YET_PROVEN"
 }
