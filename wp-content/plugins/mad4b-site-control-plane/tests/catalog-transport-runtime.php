@@ -47,6 +47,7 @@ class FixtureAbility {
 }
 require __DIR__ . '/../includes/class-mad4b-scp-distributed-lock.php';
 require __DIR__ . '/../includes/class-mad4b-scp-catalog-object-store.php';
+require __DIR__ . '/../includes/class-mad4b-scp-mcp-adapter-compatibility.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
 function request( $input ) { return MAD4B_SCP_Ability_Catalog_Transport::handle( $input ); }
