@@ -95,6 +95,58 @@ final class MAD4B_SCP_MCP_Adapter_Compatibility {
 		}
 	}
 
+	/**
+	 * Return a bounded projected inventory without traversing an oversized 0.7+
+	 * registry. Adapter 0.7 exposes count_tools(), which is intentionally neutral
+	 * and does not construct revision-specific wire Records. Legacy 0.6 lacks that
+	 * API, so its already-projected DTO inventory is read exactly once and then
+	 * bounded.
+	 */
+	public static function bounded_server_tools( $server, $limit, $revision = self::DEFAULT_REVISION ) {
+		$limit = max( 0, (int) $limit );
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) ) {
+			return new WP_Error( 'mad4b_mcp_server_tools_unavailable', 'MCP server tool inventory is unavailable.' );
+		}
+
+		try {
+			if ( method_exists( $server, 'count_tools' ) ) {
+				$count = $server->count_tools();
+				if ( ! is_int( $count ) || $count < 0 ) {
+					return new WP_Error( 'mad4b_mcp_tool_count_invalid', 'MCP server neutral tool count is invalid.' );
+				}
+				if ( $count > $limit ) {
+					return new WP_Error(
+						'mad4b_mcp_tool_inventory_overflow',
+						'MCP server tool inventory exceeds the governed bound.',
+						array( 'count' => $count, 'limit' => $limit )
+					);
+				}
+				$tools = self::server_tools( $server, $revision );
+				if ( is_wp_error( $tools ) ) return $tools;
+				if ( ! is_array( $tools ) || count( $tools ) !== $count ) {
+					return new WP_Error( 'mad4b_mcp_tool_count_projection_drift', 'MCP neutral tool count does not match projected inventory.' );
+				}
+				return $tools;
+			}
+
+			$tools = self::server_tools( $server, $revision );
+			if ( is_wp_error( $tools ) ) return $tools;
+			if ( ! is_array( $tools ) ) {
+				return new WP_Error( 'mad4b_mcp_server_tools_invalid', 'MCP server tool inventory is invalid.' );
+			}
+			if ( count( $tools ) > $limit ) {
+				return new WP_Error(
+					'mad4b_mcp_tool_inventory_overflow',
+					'MCP server tool inventory exceeds the governed bound.',
+					array( 'count' => count( $tools ), 'limit' => $limit )
+				);
+			}
+			return $tools;
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_mcp_server_tools_projection_failed', 'Unable to inspect the MCP server tool inventory.' );
+		}
+	}
+
 	public static function runtime_tool_wire( $tool, $server = null, $revision = self::DEFAULT_REVISION ) {
 		if ( ! is_object( $tool ) ) return new WP_Error( 'mad4b_mcp_runtime_tool_unavailable', 'MCP runtime tool is unavailable.' );
 		try {
