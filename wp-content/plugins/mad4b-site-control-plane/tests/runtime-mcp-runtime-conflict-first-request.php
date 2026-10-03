@@ -36,7 +36,7 @@ if ( ! empty( $guard['load_order_repair_applied'] ) ) $fail( 'canonical active_p
 if ( empty( $guard['mu_bootstrap_present'] ) || empty( $guard['mu_bootstrap_integrity'] ) ) $fail( 'managed MU bootstrap must be installed with matching integrity' . $evidence() );
 if ( ! empty( $guard['mu_bootstrap_executed'] ) ) $fail( 'newly installed MU bootstrap cannot execute retroactively in the current request' . $evidence() );
 if ( empty( $guard['next_request_required'] ) ) $fail( 'current PHP request cannot replace an already-declared class' . $evidence() );
-if ( 'mu_bootstrap_installed_for_next_request' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) ) $fail( 'unexpected guard state' . $evidence() );
+if ( 'mu_bootstrap_installed_for_class_set_next_request' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) ) $fail( 'unexpected class-set repair state' . $evidence() );
 
 if ( ! empty( $bridge['adapter_runtime_from_official_plugin'] ) ) $fail( 'current request should still expose the preloaded legacy runtime' . $evidence() );
 if ( '0.1.0' !== ( isset( $bridge['adapter_runtime_version'] ) ? (string) $bridge['adapter_runtime_version'] : '' ) ) $fail( 'expected simulated Hostinger runtime version 0.1.0' . $evidence() );
