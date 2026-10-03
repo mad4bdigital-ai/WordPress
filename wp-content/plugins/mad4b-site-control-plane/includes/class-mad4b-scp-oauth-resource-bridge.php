@@ -559,6 +559,18 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( '' === $resource ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
 
+		if ( class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) && method_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'runtime_transaction_gate' ) ) {
+			$transaction_gate = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::runtime_transaction_gate();
+			if ( empty( $transaction_gate['ready'] ) ) {
+				return self::unauthorized_response(
+					isset( $transaction_gate['blocker'] ) ? (string) $transaction_gate['blocker'] : 'mu_bootstrap_transaction_pending',
+					'MAD4B protected resources are quarantined until the managed MU filesystem transaction is reconciled.',
+					503,
+					$resource
+				);
+			}
+		}
+
 		$status = self::status();
 		if ( empty( $status['effective'] ) ) return self::unauthorized_response( 'mad4b_oauth_resource_bridge_not_effective', 'OAuth resource bridge is not effective for this environment.', 503, $resource );
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
