@@ -317,9 +317,13 @@ jobs:
           PID_A=$!
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php" "$OP_ID" 202 worker-b reconciling --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-worker-b.json &
           PID_B=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php" "$OP_ID" 404 worker-crash crash --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-worker-crash.json &
+          PID_C=$!
           wait "$PID_A"
           wait "$PID_B"
+          wait "$PID_C"
           cat /tmp/network-worker-a.json
           cat /tmp/network-worker-b.json
+          cat /tmp/network-worker-crash.json
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php" "$OP_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 

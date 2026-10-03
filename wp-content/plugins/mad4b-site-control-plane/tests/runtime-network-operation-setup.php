@@ -22,13 +22,19 @@ $input=array(
 $targets=array(
  $target(101,'11111111-1111-4111-8111-111111111111','site-a','11111111-aaaa-4aaa-8aaa-111111111111'),
  $target(202,'22222222-2222-4222-8222-222222222222','site-b','22222222-bbbb-4bbb-8bbb-222222222222'),
- $target(303,'33333333-3333-4333-8333-333333333333','site-c','33333333-cccc-4ccc-8ccc-333333333333')
+ $target(303,'33333333-3333-4333-8333-333333333333','site-c','33333333-cccc-4ccc-8ccc-333333333333'),
+ $target(404,'44444444-4444-4444-8444-444444444444','site-d','44444444-dddd-4ddd-8ddd-444444444444')
 );
 $operation_id=wp_generate_uuid4();
 $created=MAD4B_SCP_Network_Operation_Journal::create($operation_id,$input,$targets);
 $check(!is_wp_error($created)&&$operation_id===$created['network_operation_id']&&!empty($created['event_chain_valid']),'NetworkOperation creation failed.',$created);
-$duplicate=MAD4B_SCP_Network_Operation_Journal::create(wp_generate_uuid4(),$input,$targets);
-$check(!is_wp_error($duplicate)&&!empty($duplicate['deduplicated'])&&$operation_id===$duplicate['network_operation_id'],'Network idempotency did not deduplicate exact repeated plan.',$duplicate);
+$reordered=array_reverse($targets);
+$duplicate=MAD4B_SCP_Network_Operation_Journal::create(wp_generate_uuid4(),$input,$reordered);
+$check(!is_wp_error($duplicate)&&!empty($duplicate['deduplicated'])&&$operation_id===$duplicate['network_operation_id'],'Network idempotency did not deduplicate the same target set in a different order.',$duplicate);
+$target_conflict=$targets;$target_conflict[1]['context_sha256']=$d('site-b:conflicting-context');
+$target_conflict_result=MAD4B_SCP_Network_Operation_Journal::create(wp_generate_uuid4(),$input,$target_conflict);
+$data=is_wp_error($target_conflict_result)?$target_conflict_result->get_error_data():array();
+$check(is_wp_error($target_conflict_result)&&isset($data['reason_code'])&&'network_operation_idempotency_conflict'===$data['reason_code'],'Network idempotency ignored target-set drift.',$target_conflict_result);
 $conflict_input=$input;$conflict_input['plan_sha256']=$d('origin:conflicting-plan');
 $conflict=MAD4B_SCP_Network_Operation_Journal::create(wp_generate_uuid4(),$conflict_input,$targets);
 $check(is_wp_error($conflict),'Network idempotency accepted conflicting plan.',$conflict);
