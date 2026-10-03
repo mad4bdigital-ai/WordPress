@@ -813,25 +813,28 @@ final class MAD4B_SCP_Site_Profile {
 
 	public static function disable_authority( $expected_revision = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to change site authority.' );
-		$profile = self::profile();
-		if ( empty( $profile ) ) return self::status();
+		$before = function_exists( 'get_option' ) ? get_option( self::OPTION, null ) : null;
+		if ( ! is_array( $before ) || ! self::valid_record( $before ) ) return self::status();
+		$profile = self::normalize_record( $before );
 		if ( 'pending_audit' === ( $profile['mutation_state'] ?? '' ) ) return new WP_Error( 'mad4b_site_profile_mutation_pending', 'Pending Site Profile mutation must be reconciled before authority can be changed.' );
-		$current_revision = self::revision();
+		$current_revision = absint( $profile['revision'] ?? 0 );
 		if ( null !== $expected_revision && absint( $expected_revision ) !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before disabling authority.' );
-		$profile['revision'] = $current_revision + 1;
-		if ( ! isset( $profile['features'] ) || ! is_array( $profile['features'] ) ) $profile['features'] = array();
-		$profile['features']['write'] = false;
-		$profile['features']['production_write_confirmed'] = false;
-		$profile['updated_at'] = gmdate( 'c' );
-		if ( ! self::persist_record_exact( $profile ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile authority state could not be persisted and verified by readback.' );
-		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-			MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-disabled', array(
-				'site_uuid' => self::site_uuid(),
-				'previous_revision' => $current_revision,
-				'revision' => self::revision(),
-				'profile_digest' => self::profile_digest(),
-			), 'ok' );
-		}
+
+		$next = $profile;
+		$next['revision'] = $current_revision + 1;
+		if ( ! isset( $next['features'] ) || ! is_array( $next['features'] ) ) $next['features'] = array();
+		$next['features']['write'] = false;
+		$next['features']['production_write_confirmed'] = false;
+		$next['updated_at'] = gmdate( 'c' );
+
+		$committed = self::commit_record_with_audit(
+			$before,
+			$next,
+			'mad4b/site-profile-write-disabled',
+			array( 'write_enabled' => false ),
+			'mad4b_site_profile_disable_authority'
+		);
+		if ( is_wp_error( $committed ) ) return $committed;
 		return self::status();
 	}
 
