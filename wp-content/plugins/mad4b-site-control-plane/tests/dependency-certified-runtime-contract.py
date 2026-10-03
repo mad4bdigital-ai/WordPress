@@ -19,6 +19,10 @@ for marker in (
     "'installed_critical_integrity' => $installed_integrity",
     "self::installed_mcp_adapter_integrity( $certified )",
     "self::redirect_result( 'integrity_mismatch' )",
+    "'multisite_network_activation_unsupported'",
+    "'network_activation_supported' => false",
+    "'site_scoped_activation_supported' => true",
+    "activate_plugin( self::MCP_PLUGIN_FILE, '', false )",
 ):
     assert marker in dep, marker
 assert "elseif ( ! $active ) $hard_blockers[] = 'mcp_adapter_inactive';" not in dep
