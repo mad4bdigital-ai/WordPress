@@ -815,13 +815,13 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ### 37J — Cryptography, time, replay, canonicalization and abuse resistance
 - [x] T3754 P0 Define recursive structural redaction/classification for provider/plugin errors, callback return data, metadata and nested arrays/objects; add adversarial fuzz cases for unexpected secret field names.
-- [ ] T3755 P0 Introduce versioned cryptographic profiles/key IDs for preparation/context/execution receipts with rotation, overlap, revocation and algorithm-agility rules.
+- [x] T3755 P0 Introduce versioned cryptographic profiles/key IDs for preparation/context/execution receipts with rotation, overlap, revocation and algorithm-agility rules.
 - [x] T3756 P0 Define clock-skew and monotonic-time policy for receipt TTL, lease deadlines, breaker windows, offline authorization and reconciliation observation windows.
 - [x] T3757 P0 Define replay semantics by operation risk class, including when preparation evidence is reusable versus single-use and how replay prevention composes with idempotency.
 - [x] T3758 P0 Define Unicode/canonicalization/confusable policy for ability names, semantic operation IDs, resource identifiers, URLs, paths, headers and canonical JSON/hash inputs.
 - [x] T3759 P0 Add per-principal/site/client rate limits and complexity budgets for discovery/prepare/execute, deep nesting, schema bombs, pathological regex/search terms and oversized metadata.
-- [ ] T3760 P1 Extend egress policy beyond SSRF with TLS verification, proxy trust, redirect revalidation, DNS-answer changes and certificate/hostname failure semantics.
-- [ ] T3761 P1 Define backward-compatible migration/deprecation telemetry for legacy unprepared dispatcher callers, versioned error contracts and explicit sunset gates.
+- [x] T3760 P1 Extend egress policy beyond SSRF with TLS verification, proxy trust, redirect revalidation, DNS-answer changes and certificate/hostname failure semantics.
+- [x] T3761 P1 Define backward-compatible migration/deprecation telemetry for legacy unprepared dispatcher callers, versioned error contracts and explicit sunset gates.
 - [ ] T3762 P1 Make critical CI hermetic/deterministic with injectable clocks, bounded deterministic test randomness, stable fixtures and no flaky-check bypass for release gates.
 
 ### 37K — Maintainability, change architecture and configuration governance

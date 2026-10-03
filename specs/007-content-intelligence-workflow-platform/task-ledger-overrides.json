@@ -1793,16 +1793,20 @@
       "reason": "Recursive structural redaction classifies and bounds nested provider/plugin errors, callback and metadata surfaces; adversarial secret-key/value, URL-credential, private-key, JWT-like, depth and truncation fixtures are covered and shared evidence surfaces consume the redactor."
     },
     "T3755": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/preparation-receipt-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py",
+        "workflow_run:37139490468"
       ],
-      "reason": "Versioned RSA crypto profiles, key IDs, rotation overlap, revocation, independent public verification and RS256/RS512 algorithm agility are implemented for unified execution receipts. The task remains PARTIAL because preparation/context receipt families have not all migrated from their legacy/local signing semantics to the same versioned key-ID lifecycle."
+      "reason": "Preparation, Context and Execution receipts now use versioned purpose-bound RSA crypto profiles with key IDs, RS256/RS512 agility, bounded rotation overlap, revocation/retirement and fail-closed legacy-HMAC rejection."
     },
     "T3756": {
       "status": "DONE",
@@ -1851,6 +1855,43 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php"
       ],
       "reason": "Deny-only per-site/principal/client rate buckets and complexity budgets cover discovery, preparation and execution, including depth/node/string/metadata/schema/search/regex limits; transactional bucket updates and contract tests prove every governed discovery/execute surface consumes the appropriate budget."
+    },
+    "T3760": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-egress-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-contract.py",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Governed outbound transport requires HTTPS/TLS verification, explicit proxy trust, zero-redirect exact-endpoint policy with origin binding, public DNS answers with within-request change detection, and normalized certificate/hostname verification failure semantics."
+    },
+    "T3761": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/legacy-dispatch-migration.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-legacy-dispatch-migration.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-contract.py",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Legacy unprepared dispatcher callers receive a stable versioned denial contract with migration action, bounded telemetry and explicit fail-closed sunset gates; no compatibility bypass or schema-only admission remains."
+    },
+    "T3762": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-entropy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "specs/007-content-intelligence-workflow-platform/feature007-hermetic-critical-gate-handoff.json",
+        "workflow_run:37137981870",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Injectable clocks, bounded deterministic test entropy and repeatable fixture comparison are implemented and proven. Final wiring into the baseline-owned Feature 007 Critical Kernel remains a separate governance-root change that can only land after the runtime files from PR #236 are merged to master."
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "652faab39a3acdcf24909bc9b14752a281b0e397",
-  "override_git_blob_sha": "a92ab2323b52ad6c4b13301017b04650f9ffca8a",
+  "source_tasks_git_blob_sha": "2797fb0d6d7294ba303338cdbbe823af3f0f9451",
+  "override_git_blob_sha": "5a1c49c43faf8133d4c6496e39de5e688f553791",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,22 +10,22 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 122,
-    "OPEN": 566,
+    "DONE": 125,
+    "OPEN": 563,
     "PARTIAL": 67
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 90,
+      "DONE": 91,
       "OPEN": 451,
-      "PARTIAL": 44
+      "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 30,
-      "OPEN": 94,
-      "PARTIAL": 22
+      "DONE": 32,
+      "OPEN": 91,
+      "PARTIAL": 23
     },
     "P2": {
       "DEFERRED": 2,
@@ -7856,17 +7856,21 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Introduce versioned cryptographic profiles/key IDs for preparation/context/execution receipts with rotation, overlap, revocation and algorithm-agility rules.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/preparation-receipt-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py",
+        "workflow_run:37139490468"
       ],
-      "reason": "Versioned RSA crypto profiles, key IDs, rotation overlap, revocation, independent public verification and RS256/RS512 algorithm agility are implemented for unified execution receipts. The task remains PARTIAL because preparation/context receipt families have not all migrated from their legacy/local signing semantics to the same versioned key-ID lifecycle."
+      "reason": "Preparation, Context and Execution receipts now use versioned purpose-bound RSA crypto profiles with key IDs, RS256/RS512 agility, bounded rotation overlap, revocation/retirement and fail-closed legacy-HMAC rejection."
     },
     {
       "task_id": "T3756",
@@ -7941,30 +7945,52 @@
       "phase": 37,
       "priority": "P1",
       "summary": "Extend egress policy beyond SSRF with TLS verification, proxy trust, redirect revalidation, DNS-answer changes and certificate/hostname failure semantics.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-egress-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-contract.py",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Governed outbound transport requires HTTPS/TLS verification, explicit proxy trust, zero-redirect exact-endpoint policy with origin binding, public DNS answers with within-request change detection, and normalized certificate/hostname verification failure semantics."
     },
     {
       "task_id": "T3761",
       "phase": 37,
       "priority": "P1",
       "summary": "Define backward-compatible migration/deprecation telemetry for legacy unprepared dispatcher callers, versioned error contracts and explicit sunset gates.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/legacy-dispatch-migration.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-legacy-dispatch-migration.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-contract.py",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Legacy unprepared dispatcher callers receive a stable versioned denial contract with migration action, bounded telemetry and explicit fail-closed sunset gates; no compatibility bypass or schema-only admission remains."
     },
     {
       "task_id": "T3762",
       "phase": 37,
       "priority": "P1",
       "summary": "Make critical CI hermetic/deterministic with injectable clocks, bounded deterministic test randomness, stable fixtures and no flaky-check bypass for release gates.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-entropy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "specs/007-content-intelligence-workflow-platform/feature007-hermetic-critical-gate-handoff.json",
+        "workflow_run:37137981870",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Injectable clocks, bounded deterministic test entropy and repeatable fixture comparison are implemented and proven. Final wiring into the baseline-owned Feature 007 Critical Kernel remains a separate governance-root change that can only land after the runtime files from PR #236 are merged to master."
     },
     {
       "task_id": "T3763",
