@@ -61,7 +61,13 @@ final class MAD4B_SCP_MCP_Adapter_Compatibility {
 
 			$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $ability );
 			if ( is_wp_error( $built ) ) return $built;
-			if ( ! is_array( $built ) || ! isset( $built['tool'] ) || ! is_object( $built['tool'] ) ) {
+			if (
+				! is_array( $built )
+				|| ! isset( $built['tool'] )
+				|| ! is_object( $built['tool'] )
+				|| ! method_exists( $built['tool'], 'getName' )
+				|| ! method_exists( $built['tool'], 'toArray' )
+			) {
 				return new WP_Error( 'mad4b_mcp_legacy_builder_contract_invalid', 'Legacy MCP builder returned an unexpected contract.' );
 			}
 			return array(
