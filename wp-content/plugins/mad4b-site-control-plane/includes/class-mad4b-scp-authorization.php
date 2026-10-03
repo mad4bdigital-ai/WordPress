@@ -461,12 +461,22 @@ final class MAD4B_SCP_Authorization {
 		$decision['reason_code'] = 'execution_claimed';
 		$decision['execution_side_effects'] = true;
 		$decision['approval_claimed'] = ! empty( $decision['approval_required'] );
+		$decision['execution_attempt_sha256'] = self::execution_attempt_sha256( $decision );
 		$decision['budget'] = array(
 			'configured' => ! empty( $budget_reservation['active'] ),
 			'costs' => isset( $budget_reservation['costs'] ) ? $budget_reservation['costs'] : array(),
 			'reservations' => isset( $budget_reservation['reservations'] ) ? $budget_reservation['reservations'] : array(),
 		);
-		self::audit( $ability_name, $decision, 'allowed' );
+		$claim_audit = self::audit( $ability_name, $decision, 'allowed' );
+		if ( is_wp_error( $claim_audit ) ) {
+			if ( ! empty( $decision['approval_required'] ) ) MAD4B_SCP_Approval_Tickets::finalize_claim( $decision['approval_ticket_id'], 'failed', $claim_audit->get_error_code() );
+			return $claim_audit;
+		}
+		$claimed_checkpoint = self::execution_checkpoint( $decision, 'approval_claimed' );
+		if ( is_wp_error( $claimed_checkpoint ) ) {
+			if ( ! empty( $decision['approval_required'] ) ) MAD4B_SCP_Approval_Tickets::finalize_claim( $decision['approval_ticket_id'], 'failed', $claimed_checkpoint->get_error_code() );
+			return $claimed_checkpoint;
+		}
 		return $decision;
 	}
 
@@ -539,12 +549,30 @@ final class MAD4B_SCP_Authorization {
 					$claim['commit_guard_receipt'] = $post_epoch_guard;
 				}
 			}
+			$provider_entry = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_entry_possible' );
+			if ( is_wp_error( $provider_entry ) ) {
+				MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $provider_entry );
+				return $provider_entry;
+			}
 			MAD4B_SCP_Authorization::mark_execution_callback_started( $name );
 			try {
 				$result = call_user_func( $original, $input );
 			} catch ( \Throwable $throwable ) {
+				MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_returned', array( 'provider_exception' => true ) );
 				MAD4B_SCP_Authorization::finalize_execution_claim( $claim, new WP_Error( 'mad4b_execution_exception', 'Governed mutation threw before a successful verified result.' ) );
 				throw $throwable;
+			}
+			$provider_returned = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_returned' );
+			if ( is_wp_error( $provider_returned ) ) {
+				$fault = class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' )
+					? MAD4B_SCP_Execution_Evidence_Policy::terminal_persistence_error(
+						$provider_returned->get_error_code(),
+						'Provider returned but the durable provider-return checkpoint could not be persisted. Reconcile provider state before any retry.',
+						array( 'execution_attempt_sha256'=>isset($claim['execution_attempt_sha256'])?(string)$claim['execution_attempt_sha256']:'' )
+					)
+					: $provider_returned;
+				MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $fault );
+				return $fault;
 			}
 			$final = MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $result );
 			if ( is_wp_error( $final ) ) return $final;
@@ -558,6 +586,70 @@ final class MAD4B_SCP_Authorization {
 			$args['meta']['mcp']['mad4b_local_admin_planner_compatibility'] = 'local_only_remote_claim_required';
 		}
 		return $args;
+	}
+
+	public static function execution_checkpoint( array $claim, $point, array $extra = array() ) {
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
+			return new WP_Error( 'mad4b_execution_checkpoint_policy_unavailable', 'Execution checkpoint policy is unavailable.', array(
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+			) );
+		}
+		$state = MAD4B_SCP_Execution_Evidence_Policy::crash_point( $point );
+		if ( is_wp_error( $state ) ) return $state;
+		$attempt = isset( $claim['execution_attempt_sha256'] ) ? strtolower( trim( (string) $claim['execution_attempt_sha256'] ) ) : self::execution_attempt_sha256( $claim );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $attempt ) ) {
+			return new WP_Error( 'mad4b_execution_attempt_identity_invalid', 'Execution checkpoint requires a stable attempt identity.', array(
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+			) );
+		}
+		$summary = array_merge( array(
+			'reason_code' => 'execution_checkpoint',
+			'execution_attempt_sha256' => $attempt,
+			'crash_point' => (string) $state['crash_point'],
+			'recovery_state' => (string) $state['state'],
+			'reconciliation_required' => ! empty( $state['reconciliation_required'] ),
+			'blind_retry_allowed' => false,
+			'client_action' => isset( $state['client_action'] ) ? (string) $state['client_action'] : '',
+			'ability' => isset( $claim['ability'] ) ? (string) $claim['ability'] : '',
+			'provider' => isset( $claim['provider'] ) ? sanitize_key( (string) $claim['provider'] ) : 'core',
+			'request_id' => isset( $claim['request_id'] ) ? substr( (string) $claim['request_id'], 0, 100 ) : '',
+			'target_fingerprint' => isset( $claim['target_fingerprint'] ) ? strtolower( trim( (string) $claim['target_fingerprint'] ) ) : '',
+			'authorizing' => false,
+		), $extra );
+		$entry = self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', $summary, 'execution_checkpoint' );
+		if ( is_wp_error( $entry ) ) {
+			return new WP_Error( 'mad4b_execution_checkpoint_persist_failed', 'Execution checkpoint could not be durably persisted.', array_merge( $state, array(
+				'reason_code' => sanitize_key( (string) $entry->get_error_code() ),
+				'execution_attempt_sha256' => $attempt,
+				'terminal_success' => false,
+			) ) );
+		}
+		return array(
+			'contract' => MAD4B_SCP_Execution_Evidence_Policy::CRASH_CONTRACT,
+			'execution_attempt_sha256' => $attempt,
+			'crash_point' => (string) $state['crash_point'],
+			'state' => (string) $state['state'],
+			'audit_event_id' => isset( $entry['event_id'] ) ? (string) $entry['event_id'] : '',
+			'audit_entry_hash' => isset( $entry['entry_hash'] ) ? (string) $entry['entry_hash'] : '',
+			'authorizing' => false,
+		);
+	}
+
+	private static function execution_attempt_sha256( array $claim ) {
+		$material = array(
+			'contract' => 'mad4b.execution-attempt-identity.v1',
+			'ability' => isset( $claim['ability'] ) ? (string) $claim['ability'] : '',
+			'provider' => isset( $claim['provider'] ) ? sanitize_key( (string) $claim['provider'] ) : 'core',
+			'server_id' => isset( $claim['server_id'] ) ? sanitize_key( (string) $claim['server_id'] ) : '',
+			'request_id' => isset( $claim['request_id'] ) ? substr( (string) $claim['request_id'], 0, 100 ) : '',
+			'approval_ticket_id' => isset( $claim['approval_ticket_id'] ) ? strtolower( trim( (string) $claim['approval_ticket_id'] ) ) : '',
+			'target_fingerprint' => isset( $claim['target_fingerprint'] ) ? strtolower( trim( (string) $claim['target_fingerprint'] ) ) : '',
+			'policy_decision_sha256' => isset( $claim['policy_decision_sha256'] ) ? strtolower( trim( (string) $claim['policy_decision_sha256'] ) ) : '',
+		);
+		$json = wp_json_encode( $material, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $json ) ? hash( 'sha256', $json ) : '';
 	}
 
 	public static function execution_boundary_verified( $ability ) {
