@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Canonicalization' ) ) require_once __DIR__ . '/class-mad4b-scp-canonicalization.php';
 
 /**
  * Provider-neutral operation discovery layer.
@@ -97,20 +98,25 @@ final class MAD4B_SCP_Operation_Registry {
 				self::$catalog = new WP_Error( 'mad4b_operation_registry_item_invalid', 'MAD4B operation registry contains an incomplete operation.' );
 				return self::$catalog;
 			}
-			$id = strtolower( trim( (string) $row['id'] ) );
-			$planner = strtolower( trim( (string) $row['planner'] ) );
-			$executor = strtolower( trim( (string) $row['executor'] ) );
-			if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,95}$/', $id ) ) {
-				self::$catalog = new WP_Error( 'mad4b_operation_registry_id_invalid', 'MAD4B operation registry contains an invalid operation id.' );
+			$id = (string) $row['id'];
+			$planner = (string) $row['planner'];
+			$executor = (string) $row['executor'];
+			$id_guard = MAD4B_SCP_Canonicalization::semantic_operation_id( $id );
+			if ( is_wp_error( $id_guard ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_id_invalid', 'MAD4B operation registry contains a non-canonical/confusable operation id.' );
 				return self::$catalog;
 			}
-			if ( ! preg_match( '#^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$#', $planner ) ) {
-				self::$catalog = new WP_Error( 'mad4b_operation_registry_planner_invalid', 'MAD4B operation registry contains an invalid planner ability name.' );
+			$planner_guard = MAD4B_SCP_Canonicalization::ability_name( $planner );
+			if ( is_wp_error( $planner_guard ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_planner_invalid', 'MAD4B operation registry contains a non-canonical planner ability name.' );
 				return self::$catalog;
 			}
-			if ( 'exact_executor_from_plan' !== $executor && ! preg_match( '#^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$#', $executor ) ) {
-				self::$catalog = new WP_Error( 'mad4b_operation_registry_executor_invalid', 'MAD4B operation registry contains an invalid executor ability name.' );
-				return self::$catalog;
+			if ( 'exact_executor_from_plan' !== $executor ) {
+				$executor_guard = MAD4B_SCP_Canonicalization::ability_name( $executor );
+				if ( is_wp_error( $executor_guard ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_executor_invalid', 'MAD4B operation registry contains a non-canonical executor ability name.' );
+					return self::$catalog;
+				}
 			}
 			if ( isset( $row['required_runtime'] ) && ! is_bool( $row['required_runtime'] ) ) {
 				self::$catalog = new WP_Error( 'mad4b_operation_registry_required_runtime_invalid', 'MAD4B operation registry required_runtime must be boolean.' );
@@ -126,7 +132,8 @@ final class MAD4B_SCP_Operation_Registry {
 		foreach ( $aliases as $alias => $target_id ) {
 			$alias = (string) $alias;
 			$target_id = (string) $target_id;
-			if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/', $alias ) || ! isset( $ids[ $target_id ] ) ) {
+			$alias_guard = MAD4B_SCP_Canonicalization::semantic_operation_id( $alias );
+			if ( is_wp_error( $alias_guard ) || strlen( $alias ) > 64 || ! isset( $ids[ $target_id ] ) ) {
 				self::$catalog = new WP_Error( 'mad4b_operation_registry_alias_invalid', 'MAD4B operation registry contains an invalid alias or target.' );
 				return self::$catalog;
 			}
@@ -325,11 +332,12 @@ final class MAD4B_SCP_Operation_Registry {
 	}
 
 	public static function operation( $operation_id ) {
-		$operation_id = strtolower( trim( (string) $operation_id ) );
+		$operation_id = MAD4B_SCP_Canonicalization::semantic_operation_id( $operation_id );
+		if ( is_wp_error( $operation_id ) ) return $operation_id;
 		$catalog = self::catalog();
 		if ( is_wp_error( $catalog ) ) return $catalog;
 		foreach ( $catalog['operations'] as $row ) {
-			if ( isset( $row['id'] ) && $operation_id === strtolower( trim( (string) $row['id'] ) ) ) return self::bind_operation_descriptors( $row );
+			if ( isset( $row['id'] ) && $operation_id === (string) $row['id'] ) return self::bind_operation_descriptors( $row );
 		}
 		return new WP_Error( 'mad4b_operation_not_registered', 'Requested operation is not present in the governed operation registry.' );
 	}

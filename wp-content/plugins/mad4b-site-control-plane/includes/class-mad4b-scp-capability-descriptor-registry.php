@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Canonicalization' ) ) require_once __DIR__ . '/class-mad4b-scp-canonicalization.php';
 
 /** Canonical selected-capability view. No cached authority decisions. */
 final class MAD4B_SCP_Capability_Descriptor_Registry {
@@ -43,6 +44,9 @@ final class MAD4B_SCP_Capability_Descriptor_Registry {
 	}
 
 	public static function describe( $name ) {
+		$canonical_name = MAD4B_SCP_Canonicalization::ability_name( $name );
+		if ( is_wp_error( $canonical_name ) ) return $canonical_name;
+		$name = $canonical_name;
 		if ( ! class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
 			return new WP_Error( 'mad4b_capability_inspector_unavailable', 'Canonical Ability contract inspection is unavailable.' );
 		}

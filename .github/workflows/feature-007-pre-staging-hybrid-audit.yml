@@ -113,6 +113,14 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py
 
+      - name: Unicode confusable and canonical identity policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-contract.py
+
+
       - name: Catalog table backend shadow and cutover contract
         shell: bash
         run: |

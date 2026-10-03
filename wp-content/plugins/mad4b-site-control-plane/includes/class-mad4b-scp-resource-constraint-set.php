@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Canonicalization' ) ) require_once __DIR__ . '/class-mad4b-scp-canonicalization.php';
 
 /**
  * Provider-neutral compiled resource constraints.
@@ -17,7 +18,8 @@ final class MAD4B_SCP_Resource_Constraint_Set {
 	public static function clear_cache() { self::$config = null; }
 
 	public static function compile( $ability_name, $provider, $input ) {
-		$ability_name = trim( (string) $ability_name );
+		$ability_name = MAD4B_SCP_Canonicalization::ability_name( $ability_name );
+		if ( is_wp_error( $ability_name ) ) return $ability_name;
 		$provider = sanitize_key( (string) $provider );
 		if ( '' === $provider ) $provider = 'core';
 		$input = is_array( $input ) ? $input : array();
@@ -193,8 +195,10 @@ final class MAD4B_SCP_Resource_Constraint_Set {
 			if ( is_array( $value ) || is_object( $value ) ) continue;
 			$id = trim( (string) $value );
 			if ( '' === $id ) continue;
-			if ( strlen( $id ) > $max_bytes || preg_match( '/[\x00-\x1F\x7F]/', $id ) || self::has_wildcard( $id ) ) return new WP_Error( 'mad4b_resource_provider_object_invalid', 'Provider object identifier is not a bounded exact identifier.' );
-			$out[] = $id;
+			if ( self::has_wildcard( $id ) ) return new WP_Error( 'mad4b_resource_provider_object_invalid', 'Provider object identifier is not a bounded exact identifier.' );
+			$canonical_id = MAD4B_SCP_Canonicalization::resource_identifier( $id, $max_bytes );
+			if ( is_wp_error( $canonical_id ) ) return new WP_Error( 'mad4b_resource_provider_object_invalid', 'Provider object identifier is not canonical/confusable-safe.' );
+			$out[] = $canonical_id;
 		}
 		$out = array_values( array_unique( $out ) );
 		sort( $out, SORT_STRING );
@@ -207,8 +211,10 @@ final class MAD4B_SCP_Resource_Constraint_Set {
 			if ( is_array( $value ) ) continue;
 			$id = trim( (string) $value );
 			if ( '' === $id ) continue;
-			if ( self::has_wildcard( $id ) || 1 !== preg_match( '/^[A-Za-z0-9_$-]{1,191}$/', $id ) ) return new WP_Error( 'mad4b_resource_database_identifier_invalid', 'Database ' . $kind . ' must be an exact bounded identifier.' );
-			$out[] = $id;
+			if ( self::has_wildcard( $id ) ) return new WP_Error( 'mad4b_resource_database_identifier_invalid', 'Database ' . $kind . ' must be an exact bounded identifier.' );
+			$canonical_id = MAD4B_SCP_Canonicalization::resource_identifier( $id, 191 );
+			if ( is_wp_error( $canonical_id ) ) return new WP_Error( 'mad4b_resource_database_identifier_invalid', 'Database ' . $kind . ' is not canonical/confusable-safe.' );
+			$out[] = $canonical_id;
 		}
 		$out = array_values( array_unique( $out ) );
 		sort( $out, SORT_STRING );
@@ -216,10 +222,11 @@ final class MAD4B_SCP_Resource_Constraint_Set {
 	}
 
 	private static function relative_path( $value, $max_bytes ) {
-		$path = trim( (string) $value );
-		if ( '' === $path || strlen( $path ) > $max_bytes || false !== strpos( $path, "\0" ) || self::has_wildcard( $path ) ) return new WP_Error( 'mad4b_resource_path_invalid', 'Filesystem resource path must be a bounded exact relative path.' );
-		if ( false !== strpos( $path, '\\' ) || 0 === strpos( $path, '/' ) || false !== strpos( $path, '//' ) || preg_match( '#(^|/)\.\.?(/|$)#', $path ) || preg_match( '/%2e|%2f|%5c/i', $path ) ) return new WP_Error( 'mad4b_resource_path_alias_denied', 'Filesystem resource path aliases or traversal are denied.' );
-		return $path;
+		$path = (string) $value;
+		if ( self::has_wildcard( $path ) ) return new WP_Error( 'mad4b_resource_path_invalid', 'Filesystem resource path must be a bounded exact relative path.' );
+		$canonical = MAD4B_SCP_Canonicalization::relative_path( $path, $max_bytes );
+		if ( is_wp_error( $canonical ) ) return new WP_Error( 'mad4b_resource_path_alias_denied', 'Filesystem resource path is not canonical/confusable-safe.' );
+		return $canonical;
 	}
 
 	private static function has_wildcard( $value ) { return 1 === preg_match( '/[\*\?\[\]\{\}]/', (string) $value ); }
