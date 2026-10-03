@@ -140,6 +140,28 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		return $record;
 	}
 
+	public static function acquire_managed_filesystem_lock( $destination ) {
+		$directory = dirname( (string) $destination );
+		if ( '' === $directory || ! is_dir( $directory ) || ! is_writable( $directory ) ) {
+			return new WP_Error( 'mu_bootstrap_filesystem_lock_directory_unavailable', 'Managed MU filesystem lock directory is unavailable.' );
+		}
+		$path = trailingslashit( $directory ) . '.mad4b-mcp-mu.lock';
+		$handle = @fopen( $path, 'c' );
+		if ( ! is_resource( $handle ) ) return new WP_Error( 'mu_bootstrap_filesystem_lock_open_failed', 'Managed MU filesystem lock could not be opened.' );
+		@chmod( $path, 0600 );
+		if ( ! function_exists( 'flock' ) || ! @flock( $handle, LOCK_EX | LOCK_NB ) ) {
+			@fclose( $handle );
+			return new WP_Error( 'mu_bootstrap_filesystem_lock_busy', 'Another worker owns the managed MU filesystem lock.' );
+		}
+		return $handle;
+	}
+
+	public static function release_managed_filesystem_lock( $handle ) {
+		if ( ! is_resource( $handle ) ) return;
+		if ( function_exists( 'flock' ) ) @flock( $handle, LOCK_UN );
+		@fclose( $handle );
+	}
+
 	public static function verify_transaction_owner( $transaction_id, $expected_state = '' ) {
 		$record = self::transaction_record_for_owner( $transaction_id );
 		if ( is_wp_error( $record ) ) return $record;
@@ -239,22 +261,35 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( ! self::valid_transaction_hash( $previous, true ) || ! self::valid_transaction_hash( $target ) ) {
 			return new WP_Error( 'mu_bootstrap_transaction_invalid', 'Malformed MU filesystem hashes block runtime loading.' );
 		}
-		$current = is_file( $destination ) && is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
-		$current = is_string( $current ) ? strtolower( $current ) : '';
-		if ( hash_equals( $previous, $current ) ) return self::complete_transaction( $transaction_id ) ? true : new WP_Error( 'mu_bootstrap_transaction_clear_failed', 'Rolled-back MU transaction marker could not be cleared.' );
-		if ( hash_equals( $target, $current ) ) {
-			$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
-			if ( empty( $audit['ready'] ) ) return new WP_Error( 'mu_bootstrap_transaction_audit_unavailable', 'MU transaction reached target bytes but audit storage is unavailable.' );
-			$event = MAD4B_SCP_Audit::record( 'mad4b/mcp-mu-filesystem-transaction-recovered', array(
-				'contract' => self::TRANSACTION_CONTRACT,
-				'operation' => sanitize_key( (string) ( $record['operation'] ?? '' ) ),
-				'previous_sha256' => $previous,
-				'target_sha256' => $target,
-			), 'ok' );
-			if ( is_wp_error( $event ) ) return new WP_Error( 'mu_bootstrap_transaction_recovery_audit_failed', 'MU transaction target bytes require successful recovery audit before use.' );
-			return self::complete_transaction( $transaction_id ) ? true : new WP_Error( 'mu_bootstrap_transaction_clear_failed', 'Recovered MU transaction marker could not be cleared.' );
+		$filesystem_lock = self::acquire_managed_filesystem_lock( $destination );
+		if ( is_wp_error( $filesystem_lock ) ) return $filesystem_lock;
+		try {
+			// Re-read after acquiring the filesystem mutex. A different journal
+			// generation means another worker won before this recovery entered the
+			// byte-critical section.
+			$fresh = self::read_transaction_option();
+			if ( serialize( $fresh ) !== serialize( $record ) ) {
+				return new WP_Error( 'mu_bootstrap_transaction_generation_changed', 'MU filesystem transaction changed before stale reconciliation acquired the filesystem lock.' );
+			}
+			$current = is_file( $destination ) && is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
+			$current = is_string( $current ) ? strtolower( $current ) : '';
+			if ( hash_equals( $previous, $current ) ) return self::complete_transaction( $transaction_id ) ? true : new WP_Error( 'mu_bootstrap_transaction_clear_failed', 'Rolled-back MU transaction marker could not be cleared.' );
+			if ( hash_equals( $target, $current ) ) {
+				$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+				if ( empty( $audit['ready'] ) ) return new WP_Error( 'mu_bootstrap_transaction_audit_unavailable', 'MU transaction reached target bytes but audit storage is unavailable.' );
+				$event = MAD4B_SCP_Audit::record( 'mad4b/mcp-mu-filesystem-transaction-recovered', array(
+					'contract' => self::TRANSACTION_CONTRACT,
+					'operation' => sanitize_key( (string) ( $record['operation'] ?? '' ) ),
+					'previous_sha256' => $previous,
+					'target_sha256' => $target,
+				), 'ok' );
+				if ( is_wp_error( $event ) ) return new WP_Error( 'mu_bootstrap_transaction_recovery_audit_failed', 'MU transaction target bytes require successful recovery audit before use.' );
+				return self::complete_transaction( $transaction_id ) ? true : new WP_Error( 'mu_bootstrap_transaction_clear_failed', 'Recovered MU transaction marker could not be cleared.' );
+			}
+			return new WP_Error( 'mu_bootstrap_transaction_bytes_ambiguous', 'MU filesystem bytes do not match either side of the pending transaction.' );
+		} finally {
+			self::release_managed_filesystem_lock( $filesystem_lock );
 		}
-		return new WP_Error( 'mu_bootstrap_transaction_bytes_ambiguous', 'MU filesystem bytes do not match either side of the pending transaction.' );
 	}
 
 	public static function bootstrap() {
@@ -348,6 +383,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			return $status;
 		}
 
+		$filesystem_lock = self::acquire_managed_filesystem_lock( $destination );
+		if ( is_wp_error( $filesystem_lock ) ) {
+			$status['blocker'] = $filesystem_lock->get_error_code();
+			self::$status = $status;
+			return $status;
+		}
+		try {
 		$temp = $destination . '.refresh-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 		if ( ! @copy( $source, $temp ) ) {
 			$status['blocker'] = 'mu_bootstrap_refresh_temp_write_failed';
@@ -442,6 +484,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$status['destination_sha256_after'] = $status['source_sha256'];
 		self::$status = $status;
 		return $status;
+		} finally {
+			self::release_managed_filesystem_lock( $filesystem_lock );
+		}
 	}
 
 	public static function status() {
