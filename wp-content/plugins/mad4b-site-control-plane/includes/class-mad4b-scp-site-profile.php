@@ -641,7 +641,10 @@ final class MAD4B_SCP_Site_Profile {
 			return new WP_Error( $error_prefix . '_conflict', 'Site Profile changed concurrently before this mutation could enter audit.' );
 		}
 
+		// Caller-supplied context may add fields but must never override the exact
+		// mutation identity/digests used by reconciliation evidence.
 		$payload = array_merge(
+			$audit_payload,
 			array(
 				'site_uuid' => isset( $next['site_uuid'] ) ? (string) $next['site_uuid'] : '',
 				'previous_revision' => isset( $before['revision'] ) ? (int) $before['revision'] : 0,
@@ -649,8 +652,7 @@ final class MAD4B_SCP_Site_Profile {
 				'previous_profile_digest' => self::digest_record( self::normalize_record( $before ) ),
 				'profile_digest' => self::digest_record( self::normalize_record( $next ) ),
 				'mutation_id' => $pending['mutation_id'],
-			),
-			$audit_payload
+			)
 		);
 		$audit = MAD4B_SCP_Audit::record( $audit_action, $payload, 'ok' );
 		if ( is_wp_error( $audit ) ) {
@@ -1408,7 +1410,9 @@ final class MAD4B_SCP_Site_Profile {
 				if ( isset( $record[ $digest_field ] ) && '' !== (string) $record[ $digest_field ] && 1 !== preg_match( '/^[a-f0-9]{64}$/D', strtolower( trim( (string) $record[ $digest_field ] ) ) ) ) return false;
 			}
 			if ( isset( $record['mutation_previous_mode'] ) && ! in_array( $record['mutation_previous_mode'], array( 'restore', 'delete' ), true ) ) return false;
-			if ( isset( $record['mutation_previous_record'] ) && null !== $record['mutation_previous_record'] && ! is_array( $record['mutation_previous_record'] ) ) return false;
+			if ( isset( $record['mutation_previous_record'] ) && null !== $record['mutation_previous_record'] ) {
+				if ( ! is_array( $record['mutation_previous_record'] ) || isset( $record['mutation_previous_record']['mutation_state'] ) || ! self::valid_record( $record['mutation_previous_record'] ) ) return false;
+			}
 			if ( isset( $record['mutation_reconcile_claim'] ) && ( ! is_string( $record['mutation_reconcile_claim'] ) || 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/i', $record['mutation_reconcile_claim'] ) ) ) return false;
 			if ( isset( $record['mutation_reconcile_started_at'] ) && ! is_string( $record['mutation_reconcile_started_at'] ) ) return false;
 		}
