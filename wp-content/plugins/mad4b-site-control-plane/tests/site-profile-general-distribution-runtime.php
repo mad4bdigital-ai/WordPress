@@ -369,7 +369,9 @@ $GLOBALS['mad4b_test_audit_fail']=true;
 $disable_failed=MAD4B_SCP_Site_Profile::disable_authority((int)$disable_first['revision']);
 $GLOBALS['mad4b_test_audit_fail']=false;MAD4B_SCP_Site_Profile::reset_cache();
 ok(is_wp_error($disable_failed)&&'mad4b_site_profile_disable_authority_audit_failed'===$disable_failed->get_error_code(),'authority disable audit failure did not surface');
-ok($disable_before===get_option(MAD4B_SCP_Site_Profile::OPTION,null)&&!empty(MAD4B_SCP_Site_Profile::status()['write_enabled']),'failed authority disable changed the committed profile');
+$disable_error_data=$disable_failed->get_error_data();
+ok(is_array($disable_error_data)&&!empty($disable_error_data['authority_disabled']),'authority disable audit failure did not report committed revocation');
+ok($disable_before!==get_option(MAD4B_SCP_Site_Profile::OPTION,null)&&empty(MAD4B_SCP_Site_Profile::status()['write_enabled'])&&2===MAD4B_SCP_Site_Profile::revision(),'audit failure re-enabled or rolled back disabled authority');
 
 // Double failure: audit fails and rollback persistence fails. The only remaining
 // record is explicitly pending_audit, so a fresh read cannot grant authority.
