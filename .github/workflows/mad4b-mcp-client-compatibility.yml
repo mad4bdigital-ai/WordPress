@@ -222,6 +222,12 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove table catalog shadow cutover cache isolation and rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Prove explicit offline catalog retirement preserves authority
         shell: bash
         run: |

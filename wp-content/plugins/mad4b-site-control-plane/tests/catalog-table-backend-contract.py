@@ -21,3 +21,10 @@ if "MAD4B_SCP_Catalog_Backend_Controller::storage_scope" not in store:
 if "fallback_on_table_failure'=>false" not in controller.replace(" ", ""):
     raise SystemExit("FAIL table authority fallback policy is not fail-closed")
 print("mad4b.catalog-table-backend.contract.v1: PASS")
+
+scope_body=controller.split("public static function storage_scope()",1)[1].split("const CONTRACT",1)[0]
+if "site_uuid" in scope_body:
+    raise SystemExit("FAIL storage scope changes with Site Profile enrollment")
+for forbidden in ["get_option(", "wp_cache_get(", "get_transient("]:
+    if forbidden in backend:
+        raise SystemExit("FAIL table backend depends on WordPress object/option cache: "+forbidden)

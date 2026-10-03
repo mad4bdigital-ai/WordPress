@@ -12,8 +12,7 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 		global $wpdb;
 		$prefix = isset( $wpdb->prefix ) ? (string)$wpdb->prefix : '';
 		$blog_id = function_exists( 'get_current_blog_id' ) ? (int)get_current_blog_id() : 1;
-		$site_uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? (string)MAD4B_SCP_Site_Profile::site_uuid() : '';
-		return hash( 'sha256', 'mad4b.catalog-storage-scope.v1|' . $blog_id . '|' . $prefix . '|' . $site_uuid );
+		return hash( 'sha256', 'mad4b.catalog-storage-scope.v1|' . $blog_id . '|' . $prefix );
 	}
 
 	const CONTRACT = 'mad4b.catalog-backend-controller.v1';
