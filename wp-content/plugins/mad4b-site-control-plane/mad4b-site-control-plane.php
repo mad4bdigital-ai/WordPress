@@ -193,6 +193,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-runner.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-core.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-request-context-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-jwt-header-guard.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-egress-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-outbound-budget-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-gate.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-client-profile-registry.php';

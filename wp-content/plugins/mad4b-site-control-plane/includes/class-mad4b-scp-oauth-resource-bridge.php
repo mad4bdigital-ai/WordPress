@@ -817,8 +817,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		}
 
 		foreach ( self::authorization_server_metadata_urls( $issuer ) as $url ) {
-			$response = wp_safe_remote_get( $url, array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ), 'mad4b_oauth_fetch' => 'discovery' ) );
-			if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) continue;
+			$args = array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ), 'mad4b_oauth_fetch' => 'discovery' );
+			if ( class_exists( 'MAD4B_SCP_Egress_Policy' ) ) { $args = MAD4B_SCP_Egress_Policy::mark_request( 'oauth_discovery', $url, $issuer, $args ); if ( is_wp_error( $args ) ) return $args; }
+			$response = wp_safe_remote_get( $url, $args );
+			if ( is_wp_error( $response ) ) { $response = class_exists( 'MAD4B_SCP_Egress_Policy' ) ? MAD4B_SCP_Egress_Policy::classify_transport_error( $response, 'oauth_discovery' ) : $response; if ( 0 === strpos( (string) $response->get_error_code(), 'mad4b_egress_' ) ) return $response; continue; }
+			if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) continue;
 			$body = (string) wp_remote_retrieve_body( $response );
 			if ( '' === $body || strlen( $body ) > self::MAX_DISCOVERY_BYTES ) continue;
 			$metadata = json_decode( $body, true );
@@ -863,8 +866,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			return $bounded;
 		}
 
-		$response = wp_safe_remote_get( $jwks_uri, array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ), 'mad4b_oauth_fetch' => 'jwks' ) );
-		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'mad4b_oauth_jwks_unavailable', 'OAuth JWKS endpoint is unavailable.' );
+		$args = array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ), 'mad4b_oauth_fetch' => 'jwks' );
+		if ( class_exists( 'MAD4B_SCP_Egress_Policy' ) ) { $args = MAD4B_SCP_Egress_Policy::mark_request( 'oauth_jwks', $jwks_uri, $issuer, $args ); if ( is_wp_error( $args ) ) return $args; }
+		$response = wp_safe_remote_get( $jwks_uri, $args );
+		if ( is_wp_error( $response ) ) { $response = class_exists( 'MAD4B_SCP_Egress_Policy' ) ? MAD4B_SCP_Egress_Policy::classify_transport_error( $response, 'oauth_jwks' ) : $response; if ( 0 === strpos( (string) $response->get_error_code(), 'mad4b_egress_' ) ) return $response; return new WP_Error( 'mad4b_oauth_jwks_unavailable', 'OAuth JWKS endpoint is unavailable.' ); }
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'mad4b_oauth_jwks_unavailable', 'OAuth JWKS endpoint is unavailable.' );
 		$body = (string) wp_remote_retrieve_body( $response );
 		if ( '' === $body || strlen( $body ) > self::MAX_JWKS_BYTES ) return new WP_Error( 'mad4b_oauth_jwks_invalid', 'OAuth JWKS payload is empty or exceeds its size bound.' );
 		$jwks = json_decode( $body, true );
