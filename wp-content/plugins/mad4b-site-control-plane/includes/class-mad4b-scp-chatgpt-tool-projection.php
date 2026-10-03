@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) require_once __DIR__ . '/class-mad4b-scp-projection-hotset-recommender.php';
 
 /**
  * Governed dynamic projection of registered WordPress Abilities into the compact
@@ -265,10 +266,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( '' === $name ) {
 			return new WP_Error( 'mad4b_projection_ability_identity_missing', 'Dynamic projected execution requires an exact Ability identity.' );
 		}
-		if ( class_exists( 'MAD4B_SCP_Execution_Fence' ) ) {
-			$requirement = MAD4B_SCP_Execution_Fence::require_projected_call_seal( $name );
-			if ( is_wp_error( $requirement ) ) return $requirement;
-		}
 		$state = self::raw_state();
 		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Dynamic projection is not bound to this enrolled Staging runtime.' );
 		$row = self::effective_row( $name, $state, true );
@@ -294,6 +291,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) {
 			return new WP_Error( 'mad4b_projection_final_execution_admission_required', 'Projected Ability is missing the final execution-admission wrapper.' );
 		}
+		$requirement = MAD4B_SCP_Execution_Fence::require_projected_call_seal( $name );
+		if ( is_wp_error( $requirement ) ) return $requirement;
 		$seal = MAD4B_SCP_Execution_Fence::seal_projected_call( $name, $args, $tool, $server );
 		if ( is_wp_error( $seal ) ) return $seal;
 		if ( class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) MAD4B_SCP_Projection_Hotset_Recommender::record_usage( $name, 'direct_projection' );
