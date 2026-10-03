@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "405831208c6b473480b3766e6804c943d8bd0b84",
-  "override_git_blob_sha": "95ecb78a86243d1f8a010b3b3ef804c358883cb7",
+  "source_tasks_git_blob_sha": "04f008486413ed92eb9863f0d045d51aaa4f9d40",
+  "override_git_blob_sha": "bd1aa4eb12767ac1c331a6497c7de6f2570914b8",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,22 +10,22 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 88,
-    "OPEN": 590,
-    "PARTIAL": 77
+    "DONE": 110,
+    "OPEN": 579,
+    "PARTIAL": 66
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 73,
-      "OPEN": 464,
-      "PARTIAL": 48
+      "DONE": 81,
+      "OPEN": 461,
+      "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 13,
-      "OPEN": 105,
-      "PARTIAL": 28
+      "DONE": 27,
+      "OPEN": 97,
+      "PARTIAL": 22
     },
     "P2": {
       "DEFERRED": 2,
@@ -7234,7 +7234,7 @@
       "priority": "P1",
       "summary": "Design a dedicated immutable catalog table backend with content-addressed rows, generation directory, indexed expiry/GC and explicit capacity accounting.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
@@ -7251,7 +7251,7 @@
       "priority": "P1",
       "summary": "Implement shadow-read parity and bounded cutover from options storage with one authoritative publisher at a time; no dual-authority catalog state.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
@@ -7267,7 +7267,7 @@
       "priority": "P1",
       "summary": "Add storage-level publication fencing token/CAS semantics so lost/reused DB connections cannot publish a stale generation.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php",
@@ -7284,7 +7284,7 @@
       "priority": "P1",
       "summary": "Certify persistent object-cache/Redis behavior: stale option/object cache cannot resurrect retired objects, bypass CAS, or hide a newer catalog directory.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php",
@@ -7301,7 +7301,7 @@
       "priority": "P1",
       "summary": "Run multi-PHP-worker and multi-host concurrency tests proving process-local caches/mutexes are never authoritative and DB-scoped locks remain isolated.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-distributed-lock.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php",
@@ -7319,7 +7319,7 @@
       "priority": "P1",
       "summary": "GATE Prove backend rollback/retirement preserves projection/grants/approvals/audit/site profile and leaves no orphan capacity accounting.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
@@ -7337,7 +7337,7 @@
       "priority": "P0",
       "summary": "Define a durable NetworkOperation journal with per-site target identity, authority scope, plan/preparation digest, state and evidence refs.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
@@ -7353,7 +7353,7 @@
       "priority": "P0",
       "summary": "Define partial-completion, pause, resume and reconciliation semantics; completed sites are never falsely rolled back because another site failed.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
@@ -7368,7 +7368,7 @@
       "priority": "P0",
       "summary": "Add network idempotency/deduplication keys and duplicate/reordered site-dispatch tests across independent workers.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
@@ -7384,7 +7384,7 @@
       "priority": "P0",
       "summary": "Prove credentials, catalog ownership, receipts, approvals, context and authority remain site-bound during concurrent fan-out and cannot cross sites.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
         "wp-content/plugins/mad4b-site-control-plane/client/network-catalog-client.mjs",
@@ -7401,7 +7401,7 @@
       "priority": "P0",
       "summary": "GATE Crash mid-fan-out and reconnect/resume must reconstruct exact completed/pending/reconciling site sets from durable evidence without replaying committed mutations.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
@@ -7505,7 +7505,7 @@
       "priority": "P0",
       "summary": "Implement a durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN states, bounded timers and persisted transition evidence.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
@@ -7522,7 +7522,7 @@
       "priority": "P0",
       "summary": "Breaker probe success may restore transport eligibility only; it never grants provider certification, write authority, approval or Production eligibility.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
@@ -7538,7 +7538,7 @@
       "priority": "P0",
       "summary": "Define deterministic precedence among breaker state, provider quarantine, release ring, kill switch, certification and authority; strongest deny wins.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
@@ -7556,7 +7556,7 @@
       "priority": "P1",
       "summary": "Define a WordPress-native lifecycle migration profile and parity certification before replacing provenance wrappers/Reflection-based compatibility paths.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/config/wordpress-lifecycle-migration-profile.json",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php",
@@ -7573,7 +7573,7 @@
       "priority": "P1",
       "summary": "Add activate/deactivate/update/uninstall/network-activate lifecycle tests proving governance retention, bounded catalog cleanup, multisite isolation and rollback compatibility.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php",
@@ -7591,7 +7591,7 @@
       "priority": "P1",
       "summary": "Propagate a standards-compatible trace context across discovery, preparation, policy, approval, commit guard, provider call, readback, reconciliation and network fan-out.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
         "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
@@ -7612,7 +7612,7 @@
       "priority": "P1",
       "summary": "Define tenant-safe trace/span identity, sampling, cardinality ceilings and recursive payload redaction; raw inputs/tokens/secrets/provider payloads are excluded by default.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
         "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
@@ -7630,7 +7630,7 @@
       "priority": "P1",
       "summary": "Measure stage-level P50/P95/P99 for discovery, prepare, authorization, provider execution, readback, reconciliation and catalog rebuild, not only hard budgets.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
         "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
@@ -7649,7 +7649,7 @@
       "priority": "P1",
       "summary": "Bind stage SLOs to error-budget/burn-rate policies and operator evidence without converting telemetry into authority.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
         "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
@@ -7668,7 +7668,7 @@
       "priority": "P1",
       "summary": "Define observability-backend outage semantics: optional telemetry failure cannot block safe reads, while mandatory audit/evidence persistence for governed writes remains fail closed.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
         "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
@@ -7686,7 +7686,7 @@
       "priority": "P1",
       "summary": "GATE Cross-provider/network traces must preserve causal continuity without cross-tenant correlation leakage or unbounded high-cardinality labels.",
       "status": "DONE",
-      "checked": false,
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
         "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
