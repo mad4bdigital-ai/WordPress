@@ -87,6 +87,14 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			) );
 		}
 		if ( is_wp_error( $result ) ) self::redirect( $result->get_error_code() );
+		// Native admin-post uses the same committed-intent proof as AJAX. A 302
+		// success is never published from the write result alone.
+		MAD4B_SCP_Site_Profile::reset_cache();
+		$status = MAD4B_SCP_Site_Profile::status();
+		$profile = MAD4B_SCP_Site_Profile::profile();
+		if ( ! self::persisted_readback_matches( $input, $result, $status, $profile ) ) {
+			self::redirect( 'mad4b_site_profile_readback_mismatch' );
+		}
 		self::redirect( 'saved' );
 	}
 
