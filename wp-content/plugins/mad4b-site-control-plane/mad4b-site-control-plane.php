@@ -225,6 +225,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-preparation-receipt.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-object-store.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ability-catalog-transport.php';
 MAD4B_SCP_Ability_Catalog_Transport::boot();
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-adapter-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-capability-gateway.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-autoconfig.php';
