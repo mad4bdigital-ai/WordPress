@@ -1,5 +1,5 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'transaction_owner_replaced', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: ' . count( $cases ) . '/' . count( $cases ) . ' PASS' . PHP_EOL; exit;
@@ -108,6 +108,28 @@ if ( 'persistent_cache_stale' === $case ) {
 	check_recovery( is_wp_error( $reconcile ) && 'mu_bootstrap_transaction_in_progress' === $reconcile->get_error_code(), 'stale persistent cache hid authoritative transaction row' );
 	check_recovery( ( $GLOBALS['cache_delete_calls'] ?? 0 ) > $before_cache_deletes, 'transaction read did not invalidate persistent option cache' );
 	check_recovery( MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $first ), 'owner could not complete cache regression transaction' );
+	echo $case . ': PASS' . PHP_EOL;
+	exit;
+}
+if ( 'transaction_owner_replaced' === $case ) {
+	$first = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', str_repeat( 'a', 64 ) );
+	check_recovery( is_string( $first ) && 32 === strlen( $first ), 'old worker failed to acquire transaction' );
+	$newer = array(
+		'contract' => MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_CONTRACT,
+		'transaction_id' => str_repeat( 'b', 32 ),
+		'state' => 'prepared',
+		'operation' => 'refresh',
+		'previous_sha256' => str_repeat( 'c', 64 ),
+		'target_sha256' => str_repeat( 'd', 64 ),
+		'created_at' => time(),
+	);
+	$GLOBALS['options'][ MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_OPTION ] = $newer;
+	$marked = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::mark_transaction_replaced( $first );
+	check_recovery( is_wp_error( $marked ) && 'mu_bootstrap_transaction_not_owner' === $marked->get_error_code(), 'stale owner marked newer transaction replaced' );
+	$blocked = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'stale_worker', $first );
+	check_recovery( is_wp_error( $blocked ) && 'mu_bootstrap_transaction_not_owner' === $blocked->get_error_code(), 'stale owner blocked newer transaction' );
+	check_recovery( ! MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $first ), 'stale owner deleted newer transaction' );
+	check_recovery( $newer === get_option( MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_OPTION, null ), 'newer transaction changed under stale owner' );
 	echo $case . ': PASS' . PHP_EOL;
 	exit;
 }
