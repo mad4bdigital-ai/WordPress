@@ -1128,6 +1128,69 @@
         "workflow_job:111018866869"
       ],
       "reason": "Real database rehearsal restores old approved-ticket, completed-idempotency, active-lease and projection state while external epoch remains newer; pre-ack replay is quarantined and governed acknowledgement revokes approvals, expires/reconciliation-marks idempotency, fails active leases and clears projection before rebinding."
+    },
+    "T3784": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/persisted-contract-compatibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-persisted-generation-compatibility.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Persisted profiles/approvals/receipts/journal/catalog/execution generations are explicitly versioned/fail-closed; unknown/future versions and downgrade reinterpretation are rejected, and exact-head compatibility tests pass across PHP 7.4/8.3 plus MySQL/MariaDB."
+    },
+    "T3785": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Rolling N/N-1 mixed-worker rehearsal is wired into MCP compatibility; schema/policy/catalog/runtime generation drift cannot widen authority or corrupt persisted evidence, and the exact-head matrix passed."
+    },
+    "T3786": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-persisted-generation-compatibility.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Rollback/downgrade semantics reject future schema/security generations and stale runtime interpretations instead of resurrecting older authority semantics; exact-head runtime compatibility proof passed."
+    },
+    "T3787": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Stale long-lived workers are fenced by boot-vs-disk runtime identity plus policy/catalog/persisted generations; commit admission revalidates the generation and rolling-worker tests require recycle on drift."
+    },
+    "T3788": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-bulk-hardening-contract.py",
+        "workflow_run:37088812158",
+        "workflow_job:111104546229"
+      ],
+      "reason": "A machine-readable crash-point table now maps intent/claim/provider-entry/provider-return/readback/audit/receipt boundaries to exactly one conservative execution state, reconciliation rule and non-blind client action; unknown points fail closed."
+    },
+    "T3791": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
+        "workflow_run:37088812158",
+        "workflow_job:111104546229"
+      ],
+      "reason": "Oversized audit evidence is compacted with a digest while mandatory reason codes, identity/digest/fingerprint fields and reconciliation pointers are preserved; if mandatory evidence alone exceeds the bound, persistence fails closed instead of silently dropping fields."
     }
   }
 }

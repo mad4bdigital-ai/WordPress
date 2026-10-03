@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "43745bdb6d9eda4492c442cb8bf62252a779b4d5",
-  "override_git_blob_sha": "9697eabd905a1cc1e423f8a2e16ffe428398e6e4",
+  "source_tasks_git_blob_sha": "02532e7e790c09f17cf14e4dd1ed48b5cc4aa804",
+  "override_git_blob_sha": "ca6bd74ffb771fc2f32c7e67ee246f5c1a79aeb6",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,21 +10,21 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 59,
-    "OPEN": 631,
+    "DONE": 65,
+    "OPEN": 625,
     "PARTIAL": 65
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 51,
-      "OPEN": 491,
+      "DONE": 56,
+      "OPEN": 486,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 7,
-      "OPEN": 118,
+      "DONE": 8,
+      "OPEN": 117,
       "PARTIAL": 21
     },
     "P2": {
@@ -7923,50 +7923,77 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define persisted contract/schema version compatibility for profiles, approvals, receipts, journal rows, catalog objects and execution records: unknown/newer versions fail closed and downgrade never silently reinterprets newer security fields.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/persisted-contract-compatibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-persisted-generation-compatibility.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Persisted profiles/approvals/receipts/journal/catalog/execution generations are explicitly versioned/fail-closed; unknown/future versions and downgrade reinterpretation are rejected, and exact-head compatibility tests pass across PHP 7.4/8.3 plus MySQL/MariaDB."
     },
     {
       "task_id": "T3785",
       "phase": 37,
       "priority": "P0",
       "summary": "Add rolling-deploy N/N-1 worker compatibility tests across PHP workers for schema, receipts, policy/config generations, catalog state and durable records; mixed workers cannot widen authority or corrupt evidence.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Rolling N/N-1 mixed-worker rehearsal is wired into MCP compatibility; schema/policy/catalog/runtime generation drift cannot widen authority or corrupt persisted evidence, and the exact-head matrix passed."
     },
     {
       "task_id": "T3786",
       "phase": 37,
       "priority": "P0",
       "summary": "Define upgrade rollback/downgrade semantics with explicit durable-identity preservation or invalidation; rollback may not resurrect an older interpretation of a newer approval/receipt/authority record.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-persisted-generation-compatibility.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Rollback/downgrade semantics reject future schema/security generations and stale runtime interpretations instead of resurrecting older authority semantics; exact-head runtime compatibility proof passed."
     },
     {
       "task_id": "T3787",
       "phase": 37,
       "priority": "P1",
       "summary": "Prove stale long-lived workers/processes loaded before plugin/package update cannot commit after runtime/code generation changes; they must observe a generation fence or terminate/reload before governed mutation.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Stale long-lived workers are fenced by boot-vs-disk runtime identity plus policy/catalog/persisted generations; commit admission revalidates the generation and rolling-worker tests require recycle on drift."
     },
     {
       "task_id": "T3788",
       "phase": 37,
       "priority": "P0",
       "summary": "Define a mutation crash-point table covering intent persistence, approval claim, provider entry, provider return, readback, audit/journal append, durable receipt and terminal state; every boundary maps to exactly one conservative recovery state.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-bulk-hardening-contract.py",
+        "workflow_run:37088812158",
+        "workflow_job:111104546229"
+      ],
+      "reason": "A machine-readable crash-point table now maps intent/claim/provider-entry/provider-return/readback/audit/receipt boundaries to exactly one conservative execution state, reconciliation rule and non-blind client action; unknown points fail closed."
     },
     {
       "task_id": "T3789",
@@ -7993,10 +8020,16 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define bounded evidence truncation semantics: oversized provider/error metadata may be summarized/redacted, but mandatory reason codes, digests, target identity and reconciliation pointers can never be silently dropped.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
+        "workflow_run:37088812158",
+        "workflow_job:111104546229"
+      ],
+      "reason": "Oversized audit evidence is compacted with a digest while mandatory reason codes, identity/digest/fingerprint fields and reconciliation pointers are preserved; if mandatory evidence alone exceeds the bound, persistence fails closed instead of silently dropping fields."
     },
     {
       "task_id": "T3792",

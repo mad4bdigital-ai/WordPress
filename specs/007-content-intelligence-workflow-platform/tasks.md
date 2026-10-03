@@ -854,16 +854,16 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3783 P0 GATE Approve an operation, then demote/delete the subject or alter its enrolled mapping before provider entry/commit; execution must fail closed without consuming a successful terminal receipt.
 
 ### 37O — Persisted contract evolution and mixed-runtime safety
-- [ ] T3784 P0 Define persisted contract/schema version compatibility for profiles, approvals, receipts, journal rows, catalog objects and execution records: unknown/newer versions fail closed and downgrade never silently reinterprets newer security fields.
-- [ ] T3785 P0 Add rolling-deploy N/N-1 worker compatibility tests across PHP workers for schema, receipts, policy/config generations, catalog state and durable records; mixed workers cannot widen authority or corrupt evidence.
-- [ ] T3786 P0 Define upgrade rollback/downgrade semantics with explicit durable-identity preservation or invalidation; rollback may not resurrect an older interpretation of a newer approval/receipt/authority record.
-- [ ] T3787 P1 Prove stale long-lived workers/processes loaded before plugin/package update cannot commit after runtime/code generation changes; they must observe a generation fence or terminate/reload before governed mutation.
+- [x] T3784 P0 Define persisted contract/schema version compatibility for profiles, approvals, receipts, journal rows, catalog objects and execution records: unknown/newer versions fail closed and downgrade never silently reinterprets newer security fields.
+- [x] T3785 P0 Add rolling-deploy N/N-1 worker compatibility tests across PHP workers for schema, receipts, policy/config generations, catalog state and durable records; mixed workers cannot widen authority or corrupt evidence.
+- [x] T3786 P0 Define upgrade rollback/downgrade semantics with explicit durable-identity preservation or invalidation; rollback may not resurrect an older interpretation of a newer approval/receipt/authority record.
+- [x] T3787 P1 Prove stale long-lived workers/processes loaded before plugin/package update cannot commit after runtime/code generation changes; they must observe a generation fence or terminate/reload before governed mutation.
 
 ### 37P — Evidence commit ordering and infrastructure exhaustion
-- [ ] T3788 P0 Define a mutation crash-point table covering intent persistence, approval claim, provider entry, provider return, readback, audit/journal append, durable receipt and terminal state; every boundary maps to exactly one conservative recovery state.
+- [x] T3788 P0 Define a mutation crash-point table covering intent persistence, approval claim, provider entry, provider return, readback, audit/journal append, durable receipt and terminal state; every boundary maps to exactly one conservative recovery state.
 - [ ] T3789 P0 GATE Inject audit/journal/receipt database failure, read-only filesystem, disk-full/quota exhaustion and evidence-store unavailability before/after provider side effects; terminal success is forbidden unless required durable evidence is committed.
 - [ ] T3790 P1 Preserve evidence hash-chain/trust references through archival, tiering, export/import, retention and legal-hold workflows; moving evidence cannot weaken verification or recreate authority.
-- [ ] T3791 P0 Define bounded evidence truncation semantics: oversized provider/error metadata may be summarized/redacted, but mandatory reason codes, digests, target identity and reconciliation pointers can never be silently dropped.
+- [x] T3791 P0 Define bounded evidence truncation semantics: oversized provider/error metadata may be summarized/redacted, but mandatory reason codes, digests, target identity and reconciliation pointers can never be silently dropped.
 - [ ] T3792 P0 Add fatal-error/OOM/process-kill fixtures around provider entry and evidence persistence; recovery must distinguish not-started, possible-side-effect and committed-with-missing-receipt without inferring success.
 
 ### 37Q — Cancellation, transport integrity and cross-fault closure
