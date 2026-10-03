@@ -16,6 +16,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 define( 'MAD4B_SCP_VERSION', '0.4.0-rc.88' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
+define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
+$mad4b_scp_boot_provenance_path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
+define( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256', is_readable( $mad4b_scp_boot_provenance_path ) ? hash_file( 'sha256', $mad4b_scp_boot_provenance_path ) : '' );
+unset( $mad4b_scp_boot_provenance_path );
 
 // Keep this tiny lifecycle hook available even on the foreign REST kernel.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';
@@ -95,6 +99,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-manager.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-topology.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-failure-semantics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-persisted-contract-compatibility.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-generation-fence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-transaction-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-durable-execution.php';

@@ -53,7 +53,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( ! self::same( $expected_material, $current, 'provider' ) ) {
 			return self::error( 'RECERTIFICATION_REQUIRED', 'Provider capability or artifact evidence changed before commit.' );
 		}
-		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'restore_epoch', 'candidate', 'database_storage', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
+		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'restore_epoch', 'candidate', 'database_storage', 'persisted_contracts', 'runtime_generation', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
 			if ( ! self::same( $expected_material, $current, $dependency ) ) {
 				return self::error( 'REAPPROVAL_REQUIRED', 'A material authorization dependency changed before commit.', array( 'dependency' => $dependency ) );
 			}
@@ -105,6 +105,14 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 				'blockers' => is_array( $data ) && isset( $data['blockers'] ) ? $data['blockers'] : array( $compatibility_status->get_error_code() ),
 			) );
 		}
+		if ( ! class_exists( 'MAD4B_SCP_Persisted_Contract_Compatibility' ) ) return self::error( 'DENIED', 'Persisted-contract compatibility service is unavailable at commit guard.' );
+		$persisted_contracts = MAD4B_SCP_Persisted_Contract_Compatibility::assert_write_compatible();
+		if ( is_wp_error( $persisted_contracts ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Persisted security/governance generation is incompatible with this runtime.', array( 'cause' => $persisted_contracts->get_error_code() ) );
+
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Generation_Fence' ) ) return self::error( 'DENIED', 'Runtime generation fence is unavailable at commit guard.' );
+		$runtime_generation = MAD4B_SCP_Runtime_Generation_Fence::capture();
+		if ( is_wp_error( $runtime_generation ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Loaded runtime generation is stale or incompatible.', array( 'cause' => $runtime_generation->get_error_code() ) );
+
 		$runtime_compatibility = array(
 			'contract' => isset( $compatibility_status['contract'] ) ? (string) $compatibility_status['contract'] : '',
 			'profile_sha256' => isset( $compatibility_status['profile_sha256'] ) ? (string) $compatibility_status['profile_sha256'] : '',
@@ -236,6 +244,8 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'site_profile' => $profile,
 			'candidate' => $candidate,
 			'database_storage' => $database_storage,
+			'persisted_contracts' => $persisted_contracts,
+			'runtime_generation' => $runtime_generation,
 			'runtime_compatibility' => $runtime_compatibility,
 			'provider' => $provider_material,
 			'kill_switch' => $kill_switch,

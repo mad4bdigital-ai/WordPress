@@ -63,6 +63,10 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 	}
 
 	public static function preflight( array $required_table_keys = array(), $refresh = false ) {
+		if ( class_exists( 'MAD4B_SCP_Runtime_Generation_Fence' ) ) {
+			$runtime_generation = MAD4B_SCP_Runtime_Generation_Fence::assert_current();
+			if ( is_wp_error( $runtime_generation ) ) return $runtime_generation;
+		}
 		$topology = MAD4B_SCP_Database_Topology::assert_write_ready( true );
 		if ( is_wp_error( $topology ) ) return $topology;
 		$storage = self::assert_storage( $required_table_keys, $refresh );

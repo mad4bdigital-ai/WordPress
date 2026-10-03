@@ -56,6 +56,12 @@ final class MAD4B_SCP_Schema {
 		$engines = array();
 		$collations = array();
 		$blockers = array();
+		$installed_schema_version = (int) get_option( self::OPTION, 0 );
+		if ( self::VERSION !== $installed_schema_version || ! self::is_ready() ) {
+			$blockers[] = $installed_schema_version > self::VERSION
+				? 'future_schema_downgrade_forbidden'
+				: ( $installed_schema_version < self::VERSION ? 'schema_upgrade_required' : 'governance_schema_generation_not_current' );
+		}
 		$topology = class_exists( 'MAD4B_SCP_Database_Topology' )
 			? MAD4B_SCP_Database_Topology::status( (bool) $refresh )
 			: array( 'ready' => false, 'blockers' => array( 'database_topology_service_unavailable' ) );
@@ -90,6 +96,8 @@ final class MAD4B_SCP_Schema {
 			: hash( 'sha256', self::stable_json( $connection_basis ) );
 		$status = array(
 			'contract' => 'mad4b.database-transactional-storage.v1',
+			'installed_schema_version' => $installed_schema_version,
+			'supported_schema_version' => self::VERSION,
 			'required_table_keys' => $required,
 			'engines' => $engines,
 			'collations' => $collations,
