@@ -39,6 +39,41 @@ final class MAD4B_SCP_Provider_Contracts {
 		return isset( $contracts[ $provider ] ) && is_array( $contracts[ $provider ] ) ? $contracts[ $provider ] : array();
 	}
 
+	/**
+	 * Return one exact certified provider version without falling back to the
+	 * repository baseline when the requested version is unknown.
+	 *
+	 * Runtime release-set planning uses this stricter resolver so a newly
+	 * discovered upstream version can never inherit stale integrity hashes.
+	 */
+	public static function get_for_version( $provider, $version ) {
+		$provider = sanitize_key( (string) $provider );
+		$version = trim( (string) $version );
+		if ( '' === $provider || '' === $version ) return array();
+
+		$base = self::get( $provider );
+		if ( empty( $base ) ) return array();
+		if ( ! empty( $base['version'] ) && hash_equals( (string) $base['version'], $version ) ) return $base;
+
+		$profiles = self::profiles();
+		if ( empty( $profiles[ $provider ][ $version ] ) || ! self::valid_profile( $version, $profiles[ $provider ][ $version ] ) ) return array();
+
+		$profile = $profiles[ $provider ][ $version ];
+		$contract = array_replace_recursive( $base, $profile );
+		$replace_fields = array(
+			'critical_files',
+			'runtime_classes',
+			'native_abilities',
+			'verified_absent_abilities',
+			'verified_contracts',
+			'known_upstream_constraints',
+			'native_mcp',
+			'native_mcp_security',
+		);
+		foreach ( $replace_fields as $field ) if ( array_key_exists( $field, $profile ) ) $contract[ $field ] = $profile[ $field ];
+		return $contract;
+	}
+
 	public static function profile_catalog() {
 		if ( null !== self::$profile_catalog ) return self::$profile_catalog;
 		$path = MAD4B_SCP_DIR . 'config/certified-provider-profiles.json';
@@ -147,6 +182,7 @@ final class MAD4B_SCP_Provider_Contracts {
 		// numeric-array tails from being inherited silently by a newer provider.
 		$replace_fields = array(
 			'critical_files',
+			'runtime_classes',
 			'native_abilities',
 			'verified_absent_abilities',
 			'verified_contracts',
