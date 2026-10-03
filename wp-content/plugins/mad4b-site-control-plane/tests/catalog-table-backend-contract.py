@@ -28,3 +28,7 @@ if "site_uuid" in scope_body:
 for forbidden in ["get_option(", "wp_cache_get(", "get_transient("]:
     if forbidden in backend:
         raise SystemExit("FAIL table backend depends on WordPress object/option cache: "+forbidden)
+
+for marker in ["catalog_table_capacity_exhausted","capacity_remaining_bytes","current_options_logical_digest","mad4b_catalog_cutover_options_drift","mad4b_catalog_rollback_options_drift","expired_generation_rows","expired_object_rows"]:
+    if marker not in backend and marker not in controller:
+        raise SystemExit("FAIL catalog backend hardening marker missing: "+marker)

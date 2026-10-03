@@ -78,6 +78,10 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 			|| (int)$expected_fencing_token !== (int)$shadow['table_fencing_token'] ) {
 			return new WP_Error( 'mad4b_catalog_cutover_expectation_mismatch', 'Catalog cutover expectations do not match the latest parity evidence.' );
 		}
+		$current_options_digest = self::current_options_logical_digest();
+		if ( is_wp_error( $current_options_digest ) || ! hash_equals( (string)$expected_options_logical_sha256, (string)$current_options_digest ) ) {
+			return new WP_Error( 'mad4b_catalog_cutover_options_drift', 'Options catalog authority changed after shadow parity evidence.' );
+		}
 		$table = new MAD4B_SCP_Catalog_Table_Backend( $scope );
 		$head = $table->head();
 		if ( is_wp_error( $head ) || (int)$head['fencing_token'] !== (int)$expected_fencing_token || ! hash_equals( (string)$head['directory_sha256'], (string)$expected_table_directory_sha256 ) ) {
@@ -87,6 +91,7 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 		$next['authority_backend'] = 'table';
 		$next['storage_scope_sha256'] = $scope;
 		$next['cutover'] = array(
+			'options_logical_sha256'=>(string)$expected_options_logical_sha256,
 			'table_directory_sha256'=>(string)$head['directory_sha256'],'table_generation_id'=>(string)$head['generation_id'],
 			'table_fencing_token'=>(int)$head['fencing_token'],'cutover_at'=>time(),
 			'rollback_deadline'=>time()+self::ROLLBACK_WINDOW_SECONDS,'authorizing'=>false
@@ -99,6 +104,10 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 		$state = self::state();
 		if ( 'table' !== $state['authority_backend'] || ! isset( $state['cutover'] ) || ! is_array( $state['cutover'] ) ) return new WP_Error( 'mad4b_catalog_rollback_not_applicable', 'Catalog table authority is not active.' );
 		if ( time() > (int)$state['cutover']['rollback_deadline'] ) return new WP_Error( 'mad4b_catalog_rollback_window_expired', 'Catalog backend rollback window has expired.' );
+		$current_options_digest = self::current_options_logical_digest();
+		if ( is_wp_error( $current_options_digest ) || empty( $state['cutover']['options_logical_sha256'] ) || ! hash_equals( (string)$state['cutover']['options_logical_sha256'], (string)$current_options_digest ) ) {
+			return new WP_Error( 'mad4b_catalog_rollback_options_drift', 'Frozen options catalog source changed after table cutover; automatic rollback is denied.' );
+		}
 		$table = new MAD4B_SCP_Catalog_Table_Backend( $scope );
 		$head = $table->head();
 		if ( is_wp_error( $head ) || (int)$head['fencing_token'] !== (int)$state['cutover']['table_fencing_token'] || ! hash_equals( (string)$head['generation_id'], (string)$state['cutover']['table_generation_id'] ) ) {
@@ -134,6 +143,20 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 		}
 		if ( ! in_array( isset($value['authority_backend'])?(string)$value['authority_backend']:'', array('options','table'), true ) ) $value['authority_backend']='options';
 		return $value;
+	}
+
+	private static function current_options_logical_digest() {
+		if ( ! class_exists( 'MAD4B_SCP_Catalog_Object_Store' ) ) return new WP_Error( 'mad4b_catalog_options_backend_unavailable', 'Options catalog backend is unavailable.' );
+		$directory = get_option( MAD4B_SCP_Catalog_Object_Store::DIRECTORY, array() );
+		if ( ! is_array( $directory ) ) return new WP_Error( 'mad4b_catalog_options_directory_invalid', 'Options catalog directory is invalid.' );
+		$entries = array();
+		foreach ( $directory as $key => $entry ) {
+			if ( 0 === strpos( (string)$key, 'retired:' ) || ! is_array( $entry ) || empty( $entry['option'] ) || (int)$entry['expires'] <= time() ) continue;
+			$value = get_option( (string)$entry['option'], false );
+			if ( false === $value ) return new WP_Error( 'mad4b_catalog_options_payload_missing', 'Options catalog payload is missing during backend transition.' );
+			$entries[ (string)$key ] = array( 'value'=>$value, 'expires'=>(int)$entry['expires'] );
+		}
+		return MAD4B_SCP_Catalog_Table_Backend::logical_digest( $entries );
 	}
 
 	private static function record_shadow( $scope, $options_sha, $table_sha, $fence, $parity, $error_code ) {

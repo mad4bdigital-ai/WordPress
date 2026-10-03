@@ -54,7 +54,15 @@ $readback = $table_reader->get( $key );
 $check( $value === $readback, 'Stale options/object cache hid or replaced the table-authoritative catalog object.', array( 'readback'=>$readback ) );
 
 $table_status = MAD4B_SCP_Catalog_Table_Backend::status( $scope_a );
-$check( ! empty( $table_status['ready'] ) && (int)$table_status['object_count'] > 0 && (int)$table_status['physical_bytes'] > 0, 'Table catalog bytes are not explicitly accounted.', $table_status );
+$check(
+	! empty( $table_status['ready'] )
+		&& (int)$table_status['object_count'] > 0
+		&& (int)$table_status['physical_bytes'] > 0
+		&& (int)$table_status['capacity_bytes'] >= (int)$table_status['physical_bytes']
+		&& (int)$table_status['capacity_remaining_bytes'] === max( 0, (int)$table_status['capacity_bytes'] - (int)$table_status['physical_bytes'] ),
+	'Table catalog bytes/capacity are not explicitly accounted.',
+	$table_status
+);
 
 $rollback = MAD4B_SCP_Catalog_Backend_Controller::rollback( $scope_a );
 $check( ! is_wp_error( $rollback ) && 'options' === $rollback['authority_backend'] && empty( $rollback['dual_authority'] ), 'Bounded catalog rollback failed.', $rollback );

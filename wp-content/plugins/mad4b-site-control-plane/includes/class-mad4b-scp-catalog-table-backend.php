@@ -134,6 +134,9 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		if ( is_wp_error( $transaction ) ) return $transaction;
 		$t = MAD4B_SCP_Schema::tables();
 		try {
+			$physical_bytes = $wpdb->get_var( "SELECT COALESCE(SUM(payload_bytes),0) FROM {$t['catalog_objects']}" );
+			if ( null === $physical_bytes || ! is_numeric( $physical_bytes ) ) throw new RuntimeException( 'catalog_table_capacity_measurement_failed' );
+			$physical_bytes = (int) $physical_bytes;
 			$head = $wpdb->get_row( $wpdb->prepare(
 				"SELECT * FROM {$t['catalog_heads']} WHERE BINARY storage_scope_sha256=BINARY %s FOR UPDATE",
 				$this->scope
@@ -164,18 +167,23 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 				$bytes = strlen( $payload );
 				$expires = (int) $entry['expires'];
 				$retain = max( $expires, time() + 3600 );
-				$insert = $wpdb->query( $wpdb->prepare(
-					"INSERT IGNORE INTO {$t['catalog_objects']}
-					 (object_sha256,object_kind,wire_generation,payload_blob,payload_sha256,payload_bytes,expires_at,retain_until,created_at)
-					 VALUES (%s,'catalog_object',%s,%s,%s,%d,FROM_UNIXTIME(%d),FROM_UNIXTIME(%d),UTC_TIMESTAMP())",
-					$object_sha, $wire_generation, $payload, $payload_sha, $bytes, $expires, $retain
-				) );
-				if ( false === $insert ) throw new RuntimeException( 'catalog_table_object_write_failed' );
 				$existing = $wpdb->get_row( $wpdb->prepare(
 					"SELECT payload_sha256,wire_generation,payload_bytes FROM {$t['catalog_objects']} WHERE BINARY object_sha256=BINARY %s LIMIT 1",
 					$object_sha
 				), ARRAY_A );
-				if ( ! is_array( $existing ) || ! hash_equals( $payload_sha, (string)$existing['payload_sha256'] ) || ! hash_equals( $wire_generation, (string)$existing['wire_generation'] ) || $bytes !== (int)$existing['payload_bytes'] ) {
+				if ( ! is_array( $existing ) ) {
+					if ( $physical_bytes + $bytes > self::capacity() ) throw new RuntimeException( 'catalog_table_capacity_exhausted' );
+					$insert = $wpdb->query( $wpdb->prepare(
+						"INSERT INTO {$t['catalog_objects']}
+						 (object_sha256,object_kind,wire_generation,payload_blob,payload_sha256,payload_bytes,expires_at,retain_until,created_at)
+						 VALUES (%s,'catalog_object',%s,%s,%s,%d,FROM_UNIXTIME(%d),FROM_UNIXTIME(%d),UTC_TIMESTAMP())",
+						$object_sha, $wire_generation, $payload, $payload_sha, $bytes, $expires, $retain
+					) );
+					if ( 1 !== (int) $insert ) throw new RuntimeException( 'catalog_table_object_write_failed' );
+					$physical_bytes += $bytes;
+					$existing = array( 'payload_sha256'=>$payload_sha, 'wire_generation'=>$wire_generation, 'payload_bytes'=>$bytes );
+				}
+				if ( ! hash_equals( $payload_sha, (string)$existing['payload_sha256'] ) || ! hash_equals( $wire_generation, (string)$existing['wire_generation'] ) || $bytes !== (int)$existing['payload_bytes'] ) {
 					throw new RuntimeException( 'catalog_table_object_collision' );
 				}
 				$directory[ self::key_sha( $key ) ] = array( 'object_sha256'=>$object_sha, 'expires'=>$expires );
@@ -253,6 +261,10 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		return hash( 'sha256', self::DIRECTORY_DOMAIN . '|' . wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 
+	private static function capacity() {
+		return max( 1048576, (int) apply_filters( 'mad4b_scp_catalog_storage_capacity_bytes', 134217728 ) );
+	}
+
 	public static function status( $scope = '' ) {
 		global $wpdb;
 		$scope = 1 === preg_match( '/^[a-f0-9]{64}$/D', (string)$scope ) ? (string)$scope : hash( 'sha256', 'mad4b.catalog-table.default-scope.v1' );
@@ -262,9 +274,11 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		$objects = $wpdb->get_var( "SELECT COUNT(*) FROM {$t['catalog_objects']}" );
 		$generations = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT generation_id) FROM {$t['catalog_generations']} WHERE BINARY storage_scope_sha256=BINARY %s", $scope ) );
 		$head = ( new self( $scope ) )->head();
+		$physical = is_numeric( $bytes ) ? (int) $bytes : 0;
 		return array(
 			'contract'=>self::CONTRACT,'ready'=>true,'storage_scope_sha256'=>$scope,
-			'object_count'=>is_numeric($objects)?(int)$objects:0,'physical_bytes'=>is_numeric($bytes)?(int)$bytes:0,
+			'object_count'=>is_numeric($objects)?(int)$objects:0,'physical_bytes'=>$physical,
+			'capacity_bytes'=>self::capacity(),'capacity_remaining_bytes'=>max(0,self::capacity()-$physical),
 			'generation_count'=>is_numeric($generations)?(int)$generations:0,'head'=>is_wp_error($head)?array():$head,'authorizing'=>false
 		);
 	}
@@ -275,16 +289,26 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		$t = MAD4B_SCP_Schema::tables();
 		// Never delete the generation referenced by any current head.
 		$wpdb->query(
-			"DELETE g FROM {$t['catalog_generations']} g
-			 LEFT JOIN {$t['catalog_heads']} h ON h.generation_id=g.generation_id AND h.storage_scope_sha256=g.storage_scope_sha256
-			 WHERE h.storage_scope_sha256 IS NULL AND g.object_expires_at<UTC_TIMESTAMP()
-			 LIMIT 500"
+			"DELETE FROM {$t['catalog_generations']}
+			 WHERE id IN (
+				SELECT id FROM (
+					SELECT g.id FROM {$t['catalog_generations']} g
+					LEFT JOIN {$t['catalog_heads']} h ON h.generation_id=g.generation_id AND h.storage_scope_sha256=g.storage_scope_sha256
+					WHERE h.storage_scope_sha256 IS NULL AND g.object_expires_at<UTC_TIMESTAMP()
+					ORDER BY g.id LIMIT 500
+				) expired_generation_rows
+			)"
 		);
 		$wpdb->query(
-			"DELETE o FROM {$t['catalog_objects']} o
-			 LEFT JOIN {$t['catalog_generations']} g ON g.object_sha256=o.object_sha256
-			 WHERE g.object_sha256 IS NULL AND o.retain_until<UTC_TIMESTAMP()
-			 LIMIT 500"
+			"DELETE FROM {$t['catalog_objects']}
+			 WHERE object_sha256 IN (
+				SELECT object_sha256 FROM (
+					SELECT o.object_sha256 FROM {$t['catalog_objects']} o
+					LEFT JOIN {$t['catalog_generations']} g ON g.object_sha256=o.object_sha256
+					WHERE g.object_sha256 IS NULL AND o.retain_until<UTC_TIMESTAMP()
+					ORDER BY o.object_sha256 LIMIT 500
+				) expired_object_rows
+			)"
 		);
 	}
 
