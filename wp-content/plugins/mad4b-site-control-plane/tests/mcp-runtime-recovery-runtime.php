@@ -1,10 +1,11 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'cli_generic_refresh', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: 18/18 PASS' . PHP_EOL; exit;
 }
 $case = $argv[1];
+if ( 'cli_generic_refresh' === $case && ! defined( 'WP_CLI' ) ) define( 'WP_CLI', true );
 $root = sys_get_temp_dir() . '/mad4b-recovery-' . getmypid();
 $source = dirname( __DIR__ );
 define( 'ABSPATH', $root . '/' ); define( 'WP_PLUGIN_DIR', $root . '/plugins' ); define( 'WPMU_PLUGIN_DIR', $root . '/mu' ); define( 'MAD4B_SCP_DIR', $source . '/' ); define( 'MAD4B_SCP_FILE', $source . '/mad4b-site-control-plane.php' );
@@ -73,6 +74,14 @@ require $source . '/includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';
 require $source . '/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';
 require $source . '/includes/class-mad4b-scp-mcp-runtime-recovery.php';
 $destination = WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php';
+if ( 'cli_generic_refresh' === $case ) {
+	$status = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
+	check_recovery( ! empty( $status['refresh_deferred'] ) && 'deferred_request_hotpath' === ( $status['state'] ?? '' ), 'generic WP-CLI entered MCP filesystem repair lifecycle' );
+	check_recovery( ! file_exists( WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php' ), 'generic WP-CLI mutated MU filesystem' );
+	echo $case . ': PASS' . PHP_EOL;
+	exit;
+}
+
 if ( 'persistent_cache_stale' === $case ) {
 	$first = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', str_repeat( 'd', 64 ) );
 	check_recovery( is_string( $first ) && 32 === strlen( $first ), 'persistent-cache fixture failed to acquire transaction' );
