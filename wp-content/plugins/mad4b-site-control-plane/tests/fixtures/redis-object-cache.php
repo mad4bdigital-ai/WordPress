@@ -83,6 +83,7 @@ class MAD4B_CI_Redis_Object_Cache extends WP_Object_Cache {
 	}
 	public function flush_runtime() { return method_exists( get_parent_class($this), 'flush_runtime' ) ? parent::flush_runtime() : true; }
 	public function switch_to_blog( $blog_id ) { $this->blog_id=(int)$blog_id; if(method_exists(get_parent_class($this),'switch_to_blog')) parent::switch_to_blog($blog_id); }
+	public function add_non_persistent_groups( $groups ) { unset( $groups ); return true; }
 	public function close() { try { $this->redis->close(); } catch ( Throwable $e ) {} return true; }
 	public function supports( $feature ) { return in_array((string)$feature,array('add_multiple','set_multiple','get_multiple','delete_multiple','flush_runtime','flush_group'),true); }
 }
