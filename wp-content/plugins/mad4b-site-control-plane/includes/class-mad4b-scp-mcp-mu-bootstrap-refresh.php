@@ -62,7 +62,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
 			wp_cache_delete( 'notoptions', 'options' );
 		}
-		return get_option( self::TRANSACTION_OPTION, array() );
+		return get_option( self::TRANSACTION_OPTION, null );
 	}
 
 	private static function compare_and_swap_transaction_record( array $expected, $replacement = null ) {
@@ -105,6 +105,26 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		return null === $replacement
 			? null === $readback
 			: serialize( $readback ) === serialize( $replacement );
+	}
+
+	public static function runtime_transaction_gate() {
+		$record = self::read_transaction_option();
+		if ( null === $record ) return array( 'ready' => true, 'state' => 'absent', 'blocker' => '' );
+		if ( ! is_array( $record ) || empty( $record ) ) {
+			return array( 'ready' => false, 'state' => 'invalid', 'blocker' => 'mu_bootstrap_transaction_invalid' );
+		}
+		$transaction_id = isset( $record['transaction_id'] ) && is_string( $record['transaction_id'] ) ? strtolower( trim( $record['transaction_id'] ) ) : '';
+		$state = isset( $record['state'] ) ? sanitize_key( (string) $record['state'] ) : '';
+		$previous = isset( $record['previous_sha256'] ) ? strtolower( trim( (string) $record['previous_sha256'] ) ) : '';
+		$target = isset( $record['target_sha256'] ) ? strtolower( trim( (string) $record['target_sha256'] ) ) : '';
+		$valid = self::TRANSACTION_CONTRACT === ( $record['contract'] ?? '' )
+			&& 1 === preg_match( '/^[a-f0-9]{32}$/D', $transaction_id )
+			&& in_array( $state, array( 'prepared', 'replaced_pending_audit', 'blocked' ), true )
+			&& self::valid_transaction_hash( $previous, true )
+			&& self::valid_transaction_hash( $target );
+		return $valid
+			? array( 'ready' => false, 'state' => 'pending', 'transaction_state' => $state, 'blocker' => 'mu_bootstrap_transaction_pending' )
+			: array( 'ready' => false, 'state' => 'invalid', 'blocker' => 'mu_bootstrap_transaction_invalid' );
 	}
 
 	private static function transaction_record_for_owner( $transaction_id ) {
@@ -188,7 +208,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 
 	public static function reconcile_transaction( $destination ) {
 		$record = self::read_transaction_option();
-		if ( ! is_array( $record ) || empty( $record ) ) return true;
+		if ( null === $record ) return true;
+		if ( ! is_array( $record ) || empty( $record ) ) return new WP_Error( 'mu_bootstrap_transaction_invalid', 'Malformed MU filesystem transaction state blocks runtime loading.' );
 		if ( self::TRANSACTION_CONTRACT !== ( $record['contract'] ?? '' ) ) return new WP_Error( 'mu_bootstrap_transaction_invalid', 'Unknown MU filesystem transaction state blocks runtime loading.' );
 		$transaction_id = isset( $record['transaction_id'] ) && is_string( $record['transaction_id'] ) ? strtolower( trim( $record['transaction_id'] ) ) : '';
 		$state = isset( $record['state'] ) ? sanitize_key( (string) $record['state'] ) : '';
