@@ -111,9 +111,7 @@ jobs:
               if failures:
                   raise SystemExit('MCP Adapter exact critical-file certification failed: '+', '.join(failures[:20]))
               text=archive.read(main).decode('utf-8', errors='replace')
-              match=re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)          print(f'mad4b.mcp-adapter-upstream-certification.v1: PASS version={version} files={len(critical)}')
-          PY
-, text)
+              match=re.search(r'(?mi)^\\s*\\*\\s*Version:\\s*([^\\r\\n]+)$', text)
               if not match or match.group(1).strip()!=version:
                   raise SystemExit('MCP Adapter plugin header version mismatch')
           print(f'mad4b.mcp-adapter-upstream-certification.v1: PASS version={version} files={len(critical)}')
