@@ -14,6 +14,7 @@ commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php"
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 runtime_convergence = (root / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+plugin = (root / "includes" / "class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 readback_runtime = (root / "tests" / "self-update-readback-runtime.php").read_text(encoding="utf-8")
 handoff = json.loads((root / "config" / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
 
@@ -553,13 +554,19 @@ if servers.count("'mad4b/control-plane-native-apply'") != 2:
 if impact.count("'mad4b/control-plane-native-apply'") < 2:
     raise SystemExit("Control Plane native apply must be classified as certified-package and high-impact")
 
-# Bootstrap must load and boot the coordinator.
+# Bootstrap must load the coordinator and route its definition-only boot through
+# the centralized catalog registration graph. Signed endpoint diagnostics need
+# the exact same definitions without gaining lifecycle authority.
+if "class-mad4b-scp-self-update.php" not in bootstrap:
+    raise SystemExit("self-update bootstrap invariant missing: class-mad4b-scp-self-update.php")
 for marker in (
-    "class-mad4b-scp-self-update.php",
-    "MAD4B_SCP_Self_Update::boot();",
+    "public static function bind_catalog_registration_wiring()",
+    "array( 'MAD4B_SCP_Self_Update', 'boot' )",
 ):
-    if marker not in bootstrap:
-        raise SystemExit(f"self-update bootstrap invariant missing: {marker}")
+    if marker not in plugin:
+        raise SystemExit(f"self-update catalog-registration invariant missing: {marker}")
+if "MAD4B_SCP_Plugin::bind_catalog_registration_wiring();" not in bootstrap:
+    raise SystemExit("self-update catalog-registration graph is not invoked by bootstrap")
 
 channels = handoff.get("self_update", {}).get("channels", {})
 if handoff.get("self_update", {}).get("purpose") != "permanent_multi_channel_control_plane_updates_after_first_bootstrap":
