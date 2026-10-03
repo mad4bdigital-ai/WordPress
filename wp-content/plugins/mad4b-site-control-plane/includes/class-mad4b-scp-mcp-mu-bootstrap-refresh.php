@@ -385,7 +385,12 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 
 	private static function repair_lifecycle_allowed() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active() ) return true;
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
+			// Generic WP-CLI commands are not MCP repair lifecycles. Explicit MCP
+			// CLI work opts in before WordPress/MU bootstrap; authorized recovery
+			// remains covered by the active() branch above.
+			return defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && true === constant( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+		}
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
 		if ( is_admin() ) {
 
