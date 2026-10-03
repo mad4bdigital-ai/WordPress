@@ -2,7 +2,9 @@
 define( 'ABSPATH', __DIR__ . '/' );
 $tmp = sys_get_temp_dir() . '/mad4b-impact-routing-' . getmypid();
 @mkdir( $tmp . '/config', 0777, true );
+@mkdir( $tmp . '/keys', 0777, true );
 define( 'MAD4B_SCP_DIR', $tmp . '/' );
+define( 'MAD4B_SCP_CRYPTO_KEYRING_DIR', $tmp . '/keys' );
 
 $GLOBALS['mad4b_resource_version'] = 'r1';
 $GLOBALS['mad4b_descriptor_version'] = 'd1';
@@ -16,6 +18,9 @@ function wp_register_ability($name,$args){return true;}
 function wp_has_ability($name){return false;}
 function sanitize_key($value){return strtolower(preg_replace('/[^a-z0-9_\-]/i','',(string)$value));}
 function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
+function wp_mkdir_p($d){return is_dir($d)||mkdir($d,0777,true);}
+function trailingslashit($v){return rtrim((string)$v,'/\\\\').'/';}
+function wp_normalize_path($v){return str_replace('\\\\','/',(string)$v);}
 function is_wp_error($value){return $value instanceof WP_Error;}
 
 class WP_Error {
@@ -87,9 +92,11 @@ final class MAD4B_SCP_Authorization {
 
 $config=array('providers'=>array('fixture'=>array('capabilities'=>array('publish.v1'=>array('abilities'=>array('fixture/do-write'))))));
 file_put_contents($tmp.'/config/provider-capability-contracts.json',json_encode($config));
+copy(dirname(__DIR__).'/config/crypto-profiles.json',$tmp.'/config/crypto-profiles.json');
 
 require dirname(__DIR__).'/includes/class-mad4b-scp-approval-impact-binding.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-authorization-decision-graph.php';
+require dirname(__DIR__).'/includes/class-mad4b-scp-crypto-profile.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-execution-receipt.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-semantic-intent-router.php';
 
@@ -140,6 +147,9 @@ foreach($dgraph['steps'] as $step){if('impact_approval'===$step['stage'])$impact
 $check('FAIL'===$impact_step['status']&&'NOT_EVALUATED'===$policy_step['status']&&!empty($impact_step['evidence_refs']),'failure decision graph did not preserve redacted impact evidence',$dgraph);
 $check('secret-ticket'!==$impact_step['evidence_refs'][0]['sha256'],'failure graph exposed raw ticket identity');
 
+$profile=MAD4B_SCP_Crypto_Profile::default_profile('execution_receipt');
+$check(is_string($profile)&&!is_wp_error(MAD4B_SCP_Crypto_Profile::provision_for_lifecycle($profile)),'execution receipt crypto profile provisioning failed',$profile);
+
 $claim=array(
 	'ability'=>'fixture/do-write','provider'=>'fixture','request_id'=>'req-1','target_fingerprint'=>'target-1',
 	'resource_set_sha256'=>str_repeat('1',64),'approval_required'=>true,'approval_ticket_id'=>'11111111-1111-4111-8111-111111111111',
@@ -151,9 +161,11 @@ $terminal=array('receipt_id'=>'receipt:v1:'.str_repeat('6',64),'receipt_sha256'=
 $receipt=MAD4B_SCP_Execution_Receipt::build($claim,array('readback'=>array('ok'=>true)),$terminal);
 $check(is_array($receipt)&&0===strpos($receipt['receipt_id'],'execution-receipt:v1:')&&'PASS'===$receipt['stages']['approval']['status'],'execution receipt build failed',$receipt);
 $verification=MAD4B_SCP_Execution_Receipt::verify($receipt);
-$check(is_array($verification)&&!empty($verification['valid'])&&false===$verification['cryptographic_signature_verified'],'execution receipt independent integrity verification failed',$verification);
+$check(is_array($verification)&&!empty($verification['valid'])&&!empty($verification['cryptographic_signature_verified']),'execution receipt cryptographic verification failed',$verification);
 $export=MAD4B_SCP_Execution_Receipt::export($receipt);
-$check(is_array($export)&&'mad4b.execution-receipt-export.v1'===$export['contract'],'execution receipt export failed',$export);
+$check(is_array($export)&&'mad4b.execution-receipt-export.v1'===$export['contract']&&!empty($export['verification_key']['public_key_pem']),'execution receipt export/public verification key failed',$export);
+$external=MAD4B_SCP_Crypto_Profile::verify_with_public_key($receipt['signature'],$receipt['receipt_sha256'],$export['verification_key']);
+$check(is_array($external)&&!empty($external['valid']),'execution receipt independent public-key verification failed',$external);
 
 $missing=$claim;unset($missing['context_receipt_sha256']);
 $missing_receipt=MAD4B_SCP_Execution_Receipt::build($missing,array(),$terminal);
@@ -176,5 +188,6 @@ $GLOBALS['mad4b_route_authority_allowed']=true;
 $missing_input_route=MAD4B_SCP_Semantic_Intent_Router::route(array('intent'=>'publish','target_kind'=>'post'));
 $check(0===$missing_input_route['eligible_count']&&'semantic_exact_execution_input_required'===$missing_input_route['candidates'][0]['reason_code'],'semantic router selected without exact execution/resource input',$missing_input_route);
 
-@unlink($tmp.'/config/provider-capability-contracts.json');@rmdir($tmp.'/config');@rmdir($tmp);
+@unlink($tmp.'/config/provider-capability-contracts.json');@unlink($tmp.'/config/crypto-profiles.json');
+foreach(glob($tmp.'/keys/*')?:array() as $f)@unlink($f);@rmdir($tmp.'/keys');@rmdir($tmp.'/config');@rmdir($tmp);
 echo "mad4b.impact-approval-receipt-routing.runtime.v1: PASS\n";

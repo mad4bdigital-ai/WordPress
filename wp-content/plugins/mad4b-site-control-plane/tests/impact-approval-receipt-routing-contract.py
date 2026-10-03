@@ -17,11 +17,11 @@ for marker in ["probe_mutation(", "'approval_impact_binding_sha256'", "'approval
 for marker in ["PASS","FAIL","NOT_EVALUATED","evidence_refs","redacted","decision_sha256"]:
     if marker not in graph:
         raise SystemExit("FAIL authorization decision graph missing "+marker)
-for marker in ["approval_required","execution-receipt:v1:","mad4b_execution_receipt_identity_invalid","cryptographic_signature_verified"]:
+for marker in ["approval_required","execution-receipt:v1:","mad4b_execution_receipt_identity_invalid","cryptographic_signature_verified","MAD4B_SCP_Crypto_Profile::sign_digest","MAD4B_SCP_Crypto_Profile::verify_digest","verification_key"]:
     if marker not in receipt:
         raise SystemExit("FAIL execution receipt invariant missing "+marker)
-if "SIGNATURE_STATE = 'crypto_profile_required'" not in receipt or "'signature' => ''" not in receipt:
-    raise SystemExit("FAIL execution receipt must explicitly remain signature-profile pending until T3755 closes")
+if "SIGNATURE_STATE = 'signed'" not in receipt or "MAD4B_SCP_Crypto_Profile::sign_digest" not in receipt:
+    raise SystemExit("FAIL execution receipt is not cryptographically signed")
 for marker in ["execution_input","probe_mutation","authority_eligible","semantic_exact_execution_input_required","semantic_executor_not_mounted_on_governed_surface","authority_created'=>false","authorizing'=>false"]:
     if marker not in router.replace(" ", "") and marker not in router:
         raise SystemExit("FAIL semantic routing authority constraint missing "+marker)
