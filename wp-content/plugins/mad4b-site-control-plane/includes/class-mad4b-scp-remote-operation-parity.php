@@ -24,6 +24,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';
 	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
 	const WORK_CANCEL_ABILITY = 'mad4b/remote-operation-work-cancel';
+	const WORK_CANCEL_SIGNAL_ABILITY = 'mad4b/remote-operation-work-cancel-signal';
+	const WORK_PROVIDER_CHECKPOINT_ABILITY = 'mad4b/remote-operation-work-provider-checkpoint';
+	const WORK_CANCEL_ACK_ABILITY = 'mad4b/remote-operation-work-cancel-ack';
 	const SKILLS_STATE_OPTION = 'mad4b_scp_remote_skills_reconciliation_v1';
 	const SKILLS_LOCK_OPTION = 'mad4b_scp_remote_skills_reconciliation_lock_v1';
 	const SKILLS_LOCK_TTL = 900;
@@ -58,6 +61,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
 			self::WORK_CANCEL_ABILITY,
+			self::WORK_CANCEL_SIGNAL_ABILITY,
+			self::WORK_PROVIDER_CHECKPOINT_ABILITY,
+			self::WORK_CANCEL_ACK_ABILITY,
 		);
 
 		// During Ability registration keep the deterministic built-in seed only.
@@ -228,6 +234,33 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::work_cancel_schema(),
 			array( __CLASS__, 'cancel_remote_work' ),
 			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_CANCEL_SIGNAL_ABILITY,
+			'Read Remote Work Cancellation Signal',
+			'Read the exact durable cancellation generation and provider-boundary state for an active external-executor lease.',
+			self::work_lease_schema(),
+			array( __CLASS__, 'remote_work_cancellation_signal' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_PROVIDER_CHECKPOINT_ABILITY,
+			'Record Remote Work Provider Checkpoint',
+			'Record provider entry/return under the active fenced lease. Entry is denied if cancellation won the race before provider execution.',
+			self::work_provider_checkpoint_schema(),
+			array( __CLASS__, 'provider_checkpoint_remote_work' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_CANCEL_ACK_ABILITY,
+			'Acknowledge Remote Work Cancellation',
+			'Acknowledge cancellation as verified no-effect only when the durable queue proves the provider was never entered.',
+			self::work_cancel_ack_schema(),
+			array( __CLASS__, 'acknowledge_remote_work_cancellation' ),
+			false
 		);
 	}
 
@@ -1255,6 +1288,33 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
+	private static function work_lease_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
+		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+$' );
+		$properties['lease_token'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id', 'executor_id', 'lease_token' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_provider_checkpoint_schema() {
+		$schema = self::work_lease_schema();
+		$schema['properties']['checkpoint'] = array( 'type' => 'string', 'enum' => array( 'provider_entered', 'provider_returned' ) );
+		$schema['required'][] = 'checkpoint';
+		return $schema;
+	}
+
+	private static function work_cancel_ack_schema() {
+		$schema = self::work_lease_schema();
+		$schema['properties']['cancel_generation'] = array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 2147483647 );
+		$schema['required'][] = 'cancel_generation';
+		return $schema;
+	}
+
 	private static function work_complete_schema() {
 		$properties = self::exact_build_properties();
 		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
@@ -1365,6 +1425,73 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'reconciliation_required' => ! empty( $result['job']['reconciliation_required'] ),
 			'blind_retry_allowed' => false,
 			'reason_code' => isset( $input['reason_code'] ) ? sanitize_key( (string) $input['reason_code'] ) : 'cancel_requested',
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function remote_work_cancellation_signal( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::cancellation_signal(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token']
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_CANCEL_SIGNAL_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'cancel_requested' => ! empty( $result['cancel_requested'] ),
+			'cancel_generation' => isset( $result['cancel_generation'] ) ? (int) $result['cancel_generation'] : 0,
+			'provider_checkpoint' => isset( $result['provider_checkpoint'] ) ? (string) $result['provider_checkpoint'] : 'not_entered',
+			'provider_side_effect_possible' => ! empty( $result['provider_side_effect_possible'] ),
+			'authorizing' => false,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function provider_checkpoint_remote_work( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::provider_checkpoint(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token'],
+			(string) $input['checkpoint']
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_PROVIDER_CHECKPOINT_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'provider_checkpoint' => isset( $result['job']['provider_checkpoint'] ) ? (string) $result['job']['provider_checkpoint'] : '',
+			'provider_side_effect_possible' => ! empty( $result['job']['provider_side_effect_possible'] ),
+			'reconciliation_required' => ! empty( $result['job']['reconciliation_required'] ),
+			'blind_retry_allowed' => false,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function acknowledge_remote_work_cancellation( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::acknowledge_cancellation(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token'],
+			(int) $input['cancel_generation']
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_CANCEL_ACK_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'cancel_generation' => (int) $input['cancel_generation'],
+			'cancel_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'provider_checkpoint' => isset( $result['job']['provider_checkpoint'] ) ? (string) $result['job']['provider_checkpoint'] : '',
+			'provider_side_effect_possible' => ! empty( $result['job']['provider_side_effect_possible'] ),
+			'blind_retry_allowed' => false,
 		) );
 		return is_wp_error( $audit ) ? $audit : $result;
 	}
