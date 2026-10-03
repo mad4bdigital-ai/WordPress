@@ -265,8 +265,14 @@ final class MAD4B_SCP_Plugin_Package {
 
 	private static function authority( $provider, $component ) {
 		if ( '' === $provider || ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_plugin_package_provider_required', 'A cataloged provider_id is required.' );
-		$contract = MAD4B_SCP_Provider_Contracts::get( $provider );
-		if ( ! is_array( $contract ) || empty( $contract ) ) return new WP_Error( 'mad4b_plugin_package_provider_uncertified', 'Provider has no repository certification authority.' );
+		$target_version = class_exists( 'MAD4B_SCP_Runtime_Release_Set', false )
+			&& MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress( $provider )
+			? MAD4B_SCP_Runtime_Release_Set::active_component_target_version( $provider )
+			: '';
+		$contract = '' !== $target_version && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
+			? MAD4B_SCP_Provider_Contracts::get_for_version( $provider, $target_version )
+			: MAD4B_SCP_Provider_Contracts::get( $provider );
+		if ( ! is_array( $contract ) || empty( $contract ) ) return new WP_Error( 'mad4b_plugin_package_provider_uncertified', 'Provider has no exact repository certification authority for the requested runtime release-set version.' );
 
 		$authority = $contract;
 		if ( '' !== $component ) {
@@ -296,12 +302,20 @@ final class MAD4B_SCP_Plugin_Package {
 			'archive_sha256' => $sha,
 			'critical_files' => $critical,
 			'repository_artifact_path' => $repository_artifact_path,
+			'package_url' => isset( $authority['package_url'] ) ? trim( (string) $authority['package_url'] ) : '',
+			'archive_bytes' => isset( $authority['archive_bytes'] ) ? (int) $authority['archive_bytes'] : 0,
 		);
 	}
 
 	private static function source_state( $source, $plugin_file, array $authority ) {
 		$source = sanitize_key( (string) $source );
 		if ( 'auto_certified' === $source ) {
+			$upstream = self::certified_upstream_release_state( $authority );
+			if ( ! empty( $upstream['available'] ) ) {
+				$upstream['requested_source'] = 'auto_certified';
+				$upstream['resolved_source'] = 'certified_upstream_release';
+				return $upstream;
+			}
 			$offer = self::wordpress_update_offer_state( $plugin_file, $authority );
 			if ( ! empty( $offer['available'] ) ) {
 				$offer['requested_source'] = 'auto_certified';
@@ -322,10 +336,38 @@ final class MAD4B_SCP_Plugin_Package {
 			}
 			return new WP_Error( 'certified_package_source_unavailable', 'No exact server-resolved certified package source is currently available.' );
 		}
+		if ( 'certified_upstream_release' === $source ) return self::certified_upstream_release_state( $authority );
 		if ( 'certified_local_archive' === $source ) return self::certified_local_archive_state( $authority );
 		if ( 'certified_repository_archive' === $source ) return self::certified_repository_archive_state( $authority );
 		if ( 'wordpress_update_offer' === $source ) return self::wordpress_update_offer_state( $plugin_file, $authority );
-		return new WP_Error( 'plugin_package_source_not_allowed', 'Only server-resolved auto_certified, certified_repository_archive, certified_local_archive, or wordpress_update_offer sources are allowed.' );
+		return new WP_Error( 'plugin_package_source_not_allowed', 'Only server-resolved auto_certified, certified_upstream_release, certified_repository_archive, certified_local_archive, or wordpress_update_offer sources are allowed.' );
+	}
+
+	private static function certified_upstream_release_state( array $authority ) {
+		$url = isset( $authority['package_url'] ) ? trim( (string) $authority['package_url'] ) : '';
+		$bytes = isset( $authority['archive_bytes'] ) ? (int) $authority['archive_bytes'] : 0;
+		$valid = self::certified_upstream_url_allowed( $url )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', isset( $authority['archive_sha256'] ) ? (string) $authority['archive_sha256'] : '' )
+			&& $bytes > 0;
+		return array(
+			'source' => 'certified_upstream_release',
+			'resolved_source' => 'certified_upstream_release',
+			'available' => $valid,
+			'package_sha256_verified' => false,
+			'package_sha256_verified_at_apply' => true,
+			'expected_bytes' => $bytes,
+			'caller_supplied_location_allowed' => false,
+			'remote_request_performed' => false,
+		);
+	}
+
+	private static function certified_upstream_url_allowed( $url ) {
+		$url = trim( (string) $url );
+		if ( '' === $url || 'https' !== strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) ) ) return false;
+		if ( 'github.com' !== strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) ) ) return false;
+		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+		if ( 1 !== preg_match( '#^/WordPress/mcp-adapter/releases/download/v[0-9A-Za-z._-]+/mcp-adapter\\.zip$#', $path ) ) return false;
+		return function_exists( 'wp_http_validate_url' ) ? (bool) wp_http_validate_url( $url ) : true;
 	}
 
 	private static function certified_local_archive_state( array $authority ) {
@@ -400,6 +442,22 @@ final class MAD4B_SCP_Plugin_Package {
 	}
 
 	private static function materialize_package( $source, $plugin_file, array $authority ) {
+		if ( 'certified_upstream_release' === $source ) {
+			$url = isset( $authority['package_url'] ) ? trim( (string) $authority['package_url'] ) : '';
+			if ( ! self::certified_upstream_url_allowed( $url ) ) return new WP_Error( 'mad4b_certified_upstream_release_url_invalid', 'Certified upstream package URL is unavailable or outside the exact MCP Adapter release authority.' );
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			$tmp = download_url( $url, 300 );
+			if ( is_wp_error( $tmp ) ) return new WP_Error( 'mad4b_certified_upstream_release_download_failed', 'Exact certified upstream MCP Adapter package download failed.' );
+			$bytes = is_file( $tmp ) ? (int) filesize( $tmp ) : 0;
+			$expected_bytes = isset( $authority['archive_bytes'] ) ? (int) $authority['archive_bytes'] : 0;
+			$sha = is_file( $tmp ) ? strtolower( (string) hash_file( 'sha256', $tmp ) ) : '';
+			if ( $expected_bytes < 1 || $bytes !== $expected_bytes || '' === $sha || ! hash_equals( $authority['archive_sha256'], $sha ) ) {
+				@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				return new WP_Error( 'mad4b_certified_upstream_release_identity_mismatch', 'Downloaded upstream MCP Adapter package does not match the exact certified size and SHA-256.' );
+			}
+			return array( 'path' => $tmp, 'sha256' => $sha, 'temporary' => true, 'resolved_source' => $source );
+		}
+
 		if ( 'certified_local_archive' === $source ) {
 			$path = self::local_archive_path( $authority['archive'] );
 			if ( '' === $path || ! is_file( $path ) ) return new WP_Error( 'mad4b_certified_local_archive_missing', 'Certified local archive is missing.' );
@@ -600,7 +658,12 @@ final class MAD4B_SCP_Plugin_Package {
 
 	private static function protected_plugin( $plugin_file ) {
 		$self = plugin_basename( MAD4B_SCP_FILE );
-		return $plugin_file === $self || 0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' ) || MAD4B_SCP_Policy::plugin_lifecycle_protected( $plugin_file );
+		if ( $plugin_file === $self ) return true;
+		if ( 0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' ) ) {
+			return ! ( class_exists( 'MAD4B_SCP_Runtime_Release_Set', false )
+				&& MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress( 'mcp_adapter' ) );
+		}
+		return MAD4B_SCP_Policy::plugin_lifecycle_protected( $plugin_file );
 	}
 
 	private static function cleanup_package( array $package ) {
@@ -613,7 +676,7 @@ final class MAD4B_SCP_Plugin_Package {
 			'properties' => array(
 				'provider_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 80 ),
 				'component' => array( 'type' => 'string', 'maxLength' => 80, 'default' => '' ),
-				'source' => array( 'type' => 'string', 'enum' => array( 'auto_certified', 'wordpress_update_offer', 'certified_repository_archive', 'certified_local_archive' ), 'default' => 'auto_certified' ),
+				'source' => array( 'type' => 'string', 'enum' => array( 'auto_certified', 'certified_upstream_release', 'wordpress_update_offer', 'certified_repository_archive', 'certified_local_archive' ), 'default' => 'auto_certified' ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
 			),
 			'required' => array( 'provider_id', 'reason' ),

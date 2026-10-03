@@ -48,7 +48,129 @@
       }
     },
     "jetengine": {},
-    "jetsmartfilters": {}
+    "jetsmartfilters": {},
+    "mcp_adapter": {
+      "0.7.0": {
+        "version": "0.7.0",
+        "archive": "mcp-adapter-0.7.0.zip",
+        "archive_sha256": "9168c18dbd018428ff14ee28e7018aa0399d4b8819b7c98b406f6610731c3a79",
+        "archive_bytes": 435201,
+        "certification_authority": "github.com/WordPress/mcp-adapter/releases/tag/v0.7.0",
+        "package_url": "https://github.com/WordPress/mcp-adapter/releases/download/v0.7.0/mcp-adapter.zip",
+        "contract_mode": "official_wordpress_mcp_adapter_revision_aware",
+        "verified_contracts": [
+          "create_server",
+          "mcp_adapter_default_server_config",
+          "default_server_public_exposure_filtering",
+          "mcp_2026_07_28",
+          "exact_revision_schema_projection",
+          "default_abilities_register_before_abilities_api_init",
+          "sessionless_server_discover"
+        ],
+        "known_upstream_constraints": [
+          {
+            "issue": "WordPress/mcp-adapter v0.7.0 migration",
+            "constraint": "Generated DTO classes and McpToolValidator were removed in v0.7.0.",
+            "mad4b_policy": "Runtime class provenance is version-scoped; never inherit the v0.6.1 class set into v0.7.0."
+          },
+          {
+            "issue": "WordPress/mcp-adapter v0.7.0 migration",
+            "constraint": "Custom transports must delegate to HttpRequestHandler or McpWireOrchestrator.",
+            "mad4b_policy": "MAD4B transport certification requires the official HttpRequestHandler/McpWireOrchestrator path and exact class hashes."
+          },
+          {
+            "issue": "WordPress/mcp-adapter v0.7.0 release",
+            "constraint": "MCP 2026-07-28 uses exact-revision schemas while older clients are projected through the supported compatibility revision.",
+            "mad4b_policy": "Endpoint acceptance must prove requested/served revision compatibility rather than assuming one global DTO schema."
+          }
+        ],
+        "runtime_classes": {
+          "adapter": {
+            "class": "WP\\MCP\\Core\\McpAdapter",
+            "file": "includes/Core/McpAdapter.php"
+          },
+          "ability_builder": {
+            "class": "WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool",
+            "file": "includes/Domain/Tools/RegisterAbilityAsMcpTool.php"
+          },
+          "tool_runtime": {
+            "class": "WP\\MCP\\Domain\\Tools\\McpTool",
+            "file": "includes/Domain/Tools/McpTool.php"
+          },
+          "schema_transformer": {
+            "class": "WP\\MCP\\Domain\\Utils\\SchemaTransformer",
+            "file": "includes/Domain/Utils/SchemaTransformer.php"
+          },
+          "annotation_mapper": {
+            "class": "WP\\MCP\\Domain\\Utils\\McpAnnotationMapper",
+            "file": "includes/Domain/Utils/McpAnnotationMapper.php"
+          },
+          "validator_utils": {
+            "class": "WP\\MCP\\Domain\\Utils\\McpValidator",
+            "file": "includes/Domain/Utils/McpValidator.php"
+          },
+          "request_context": {
+            "class": "WP\\MCP\\Core\\McpRequestContext",
+            "file": "includes/Core/McpRequestContext.php"
+          },
+          "version_negotiator": {
+            "class": "WP\\MCP\\Core\\McpVersionNegotiator",
+            "file": "includes/Core/McpVersionNegotiator.php"
+          },
+          "http_request_handler": {
+            "class": "WP\\MCP\\Transport\\Infrastructure\\HttpRequestHandler",
+            "file": "includes/Transport/Infrastructure/HttpRequestHandler.php"
+          },
+          "wire_orchestrator": {
+            "class": "WP\\MCP\\Transport\\Infrastructure\\McpWireOrchestrator",
+            "file": "includes/Transport/Infrastructure/McpWireOrchestrator.php"
+          },
+          "request_router": {
+            "class": "WP\\MCP\\Transport\\Infrastructure\\RequestRouter",
+            "file": "includes/Transport/Infrastructure/RequestRouter.php"
+          }
+        },
+        "critical_files": {
+          "mcp-adapter.php": "715ed306fdb355e645f238129abe8a840e0223704c9613cea6a3c7e4d0a4e558",
+          "includes/Autoloader.php": "238bbaf41ebc50cc25daf893fa57490d05615ad033d0f03110bf8e4dc6062868",
+          "includes/Plugin.php": "16b5065c7149bb33b18d0d133d1c4e7b27ab25a1c43a4214ca54ec2c720e8301",
+          "includes/Abilities/DiscoverAbilitiesAbility.php": "0c4de588848b3e386626ca7a9c3b5916aaf9724fccfad18585da15cee546af49",
+          "includes/Abilities/ExecuteAbilityAbility.php": "ec099c463eb4c62ee3afe1ba89e3e30affac429b0ff4646ad2cb8acc7319e0ab",
+          "includes/Abilities/GetAbilityInfoAbility.php": "14eff70bab65cc9c06d59160211468beb5410fd1c843b623ebe9556567d0b19b",
+          "includes/Abilities/McpAbilityExposure.php": "df7b7dc39a0519ff9dcc21764c45dc1e472ba75eea0c76959333a6ca6766d0d7",
+          "includes/Abilities/McpAbilityHelperTrait.php": "7e17e8e93d691e6f375e46b031fababc8faff2896febe4d246a613f1f48ce006",
+          "includes/Core/McpAdapter.php": "42220f2c2a02dc11fce110f668f95be1278b33a12f48d25b93fc48270b2a1efd",
+          "includes/Core/McpComponentRegistry.php": "6461cabd43e8d9c03b88d2689486cf6e790d4bb47bae2fe3a6fd9da72c06d2c9",
+          "includes/Core/McpRequestContext.php": "d9344a18419db1a9bdb69951bf06a7c4094791d8a142a7f6ea6b67e5d67772f2",
+          "includes/Core/McpServer.php": "d4287d82fa58fa601c802d1033f6c94f92f62c3e536348fe79558a7ea030faaf",
+          "includes/Core/McpTransportFactory.php": "b9579036f6b8b39342cb3cbbe18d66c96a18d3483b4e3af1ef90baf2a41896f8",
+          "includes/Core/McpVersionNegotiator.php": "46fbf823c825c0c9fb5cb8f5033bd925ee7926eaf072679ddca98c4613d27c44",
+          "includes/Servers/DefaultServerFactory.php": "3b562a64af3019180d36c5f2ab2d6afb85332fd122204861524f50388d7c7553",
+          "includes/Domain/Tools/McpTool.php": "a01dd841e6de017ff1282b74f86ec42f02766ea8760067706510e782af4b2d44",
+          "includes/Domain/Tools/McpInputRequired.php": "90cc358acae55a2c2e602bad0d5caca69300bbe9f176cb6aff839f4a2db5708b",
+          "includes/Domain/Tools/RegisterAbilityAsMcpTool.php": "7343f925ba937a61b9df515218861336993e9d23432f572d8728171cf484213c",
+          "includes/Domain/Utils/AbilityArgumentNormalizer.php": "ae8c9fcdec9eee095a433700106080a5653d6fedab61a8e99d8cd94e36410328",
+          "includes/Domain/Utils/McpAnnotationMapper.php": "7dcb2e53ee95e77d634e24b08b5070cf305352ac096e5961109629b08ca17c6d",
+          "includes/Domain/Utils/McpValidator.php": "45f04b51d1ab26cc86e711da22aaecee79d12401768d511e8b248436afe71d98",
+          "includes/Domain/Utils/SchemaTransformer.php": "eba29a2fb8906557cbd8004e8503e1bced0cbfd4343e2274f5824d2fd1f78cb4",
+          "includes/Transport/HttpTransport.php": "12c4b340bc88db9be23dbaee92e7db8d17599873ca4f11b4adef9a4871ea74a3",
+          "includes/Transport/Infrastructure/HttpRequestHandler.php": "9dbf0538663e96800d1df9c1fd1cc7ef72e42d98a4ce1668a5b2abffb66c7ede",
+          "includes/Transport/Infrastructure/HttpSessionValidator.php": "1c950ebfc377b26e1d4f3ac32794b4912b2ed0c66c7bf10b87f7e69cacf0717e",
+          "includes/Transport/Infrastructure/McpWireOrchestrator.php": "828e9d2c3bddb41716447a113ad4530aa9720cdaf20334d96617c526f23a6fe1",
+          "includes/Transport/Infrastructure/RequestRouter.php": "a4f1b49ac452c1843a4fe1eb8b86c9f7dde3a73b91a558e63fef43cce5a072c2",
+          "includes/Transport/Infrastructure/SessionManager.php": "70cc27038911811810a0a7186e2b24a968266b7cd63f94ef0ccfc13a71147b7c"
+        },
+        "evidence": {
+          "upstream_release": "WordPress/mcp-adapter v0.7.0",
+          "release_asset_digest_source": "GitHub Releases asset digest",
+          "release_asset_sha256": "9168c18dbd018428ff14ee28e7018aa0399d4b8819b7c98b406f6610731c3a79",
+          "release_asset_bytes": 435201,
+          "source_tag": "v0.7.0",
+          "breaking_runtime_class_set_recognized": true,
+          "mutation_authority": false
+        }
+      }
+    }
   },
   "premium_provider_policy": {
     "jetengine": {

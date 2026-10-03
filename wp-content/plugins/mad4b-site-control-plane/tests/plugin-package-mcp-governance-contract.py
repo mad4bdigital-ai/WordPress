@@ -65,13 +65,15 @@ for marker in [
     "exact_build_source_bound",
     "package_sha256_verified_at_apply",
     "remote_request_performed",
-
+    "certified_upstream_release",
+    "certified_upstream_url_allowed",
+    "MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress",
+    "MAD4B_SCP_Runtime_Release_Set::active_component_target_version",
     "authority_created' => false",
 ]:
     require(marker in package, f"plugin package governance marker missing: {marker}")
 
 for forbidden in [
-    "'package_url'",
     "'download_url'",
     "'archive_path'",
     "'plugin_file' => array(",
@@ -88,7 +90,7 @@ for primitive in ["eval", "assert", "exec", "shell_exec", "system", "passthru", 
 
 schema = package.split("private static function plan_schema()", 1)[1]
 require("'provider_id'" in schema and "'component'" in schema and "'source'" in schema and "'reason'" in schema, "bounded caller schema missing")
-require("auto_certified" in schema and "wordpress_update_offer" in schema and "certified_repository_archive" in schema and "certified_local_archive" in schema, "server-resolved package sources missing")
+require("auto_certified" in schema and "certified_upstream_release" in schema and "wordpress_update_offer" in schema and "certified_repository_archive" in schema and "certified_local_archive" in schema, "server-resolved package sources missing")
 require("'default' => 'auto_certified'" in schema, "zero-touch source selection must remain the default")
 require("additionalProperties' => false" in schema, "package input schema must reject unknown caller fields")
 
@@ -132,6 +134,20 @@ require("raw.githubusercontent.com/mad4bdigital-ai/WordPress/" in repository_fn,
 require("repository_source_commit_sha()" in repository_fn, "repository package must bind to exact packaged source SHA")
 require("wp-content/plugins/" in package and "repository_artifact_path" in package, "repository package path must derive from certified provider authority")
 require("'package_url'" not in schema and "'archive_path'" not in schema and "'repository_url'" not in schema, "caller must never select repository package location")
+
+upstream_guard = package.split("private static function certified_upstream_url_allowed", 1)[1].split("private static function certified_local_archive_state", 1)[0]
+require("'github.com'" in upstream_guard, "certified upstream package host must remain fixed to github.com")
+require("/WordPress/mcp-adapter/releases/download/v" in upstream_guard, "certified upstream package path must remain fixed to official MCP Adapter releases")
+require("wp_http_validate_url" in upstream_guard, "certified upstream package URL must pass WordPress URL validation")
+
+authority_body = package.split("private static function authority(", 1)[1].split("private static function source_state", 1)[0]
+require("MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress( $provider )" in authority_body, "versioned Adapter authority must be request-local release-set scoped")
+require("MAD4B_SCP_Provider_Contracts::get_for_version( $provider, $target_version )" in authority_body, "release-set component must resolve exact versioned provider certification")
+require("'package_url' => isset( $authority['package_url'] )" in authority_body, "certified upstream URL must derive only from provider authority")
+
+protected_body = package.split("private static function protected_plugin", 1)[1].split("private static function cleanup_package", 1)[0]
+require("0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' )" in protected_body, "MCP Adapter generic package protection missing")
+require("MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress( 'mcp_adapter' )" in protected_body, "MCP Adapter protection may only open in the release-set component context")
 
 
 subprocess.run(

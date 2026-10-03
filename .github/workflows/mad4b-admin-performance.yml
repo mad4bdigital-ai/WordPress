@@ -156,7 +156,8 @@ jobs:
               "const CONTRACT = 'mad4b.mcp-adapter-metadata-bridge.v1'",
               "MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )",
               "const SLUG = 'mcp-adapter'",
-              "const VERSION = '0.6.1'",
+              "public static function certified_version()",
+              "MAD4B_SCP_Runtime_Release_Set::target_adapter_version()",
               "false !== $result",
               "'plugin_information' !== (string) $action",
               "'production_changed' => false",
@@ -167,6 +168,9 @@ jobs:
           ]:
               if marker_text not in metadata_bridge:
                   raise SystemExit('Missing MCP Adapter metadata invariant: ' + marker_text)
+
+          if "const VERSION = '0.6.1'" in metadata_bridge:
+              raise SystemExit('MCP Adapter metadata bridge must not pin a fixed Adapter version')
 
           for forbidden in [
               "add_filter( 'pre_http_request'",

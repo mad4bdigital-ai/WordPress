@@ -531,6 +531,7 @@ final class MAD4B_SCP_Servers {
 		$candidates = array();
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $candidates[] = MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Self_Update' ) ) $candidates[] = MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY;
+		if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ) $candidates[] = MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) $candidates[] = MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) $candidates[] = MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_catalog_tools' ) ) {
@@ -689,6 +690,7 @@ final class MAD4B_SCP_Servers {
 			class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools() : array(),
 			$full_staging_catalog,
 			class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Self_Update::chatgpt_step_up_tools() : array(),
+			class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) && method_exists( 'MAD4B_SCP_Runtime_Release_Set', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_catalog_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
@@ -1008,7 +1010,9 @@ final class MAD4B_SCP_Servers {
 				? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()
 				: array();
 			$reviewed_optional = array_values( array_intersect(
-				array_values( array_unique( array_merge( self::chatgpt_reviewed_direct_step_up_tools(), $dynamic_optional ) ) ),
+				// Persisted dynamic selections are explicit reviewed intent and therefore
+				// outrank convenience direct step-ups inside the optional catalog budget.
+				array_values( array_unique( array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() ) ) ),
 				$tools
 			) );
 			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, $reviewed_optional );
