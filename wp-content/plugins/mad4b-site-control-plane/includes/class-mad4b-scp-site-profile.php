@@ -567,6 +567,72 @@ final class MAD4B_SCP_Site_Profile {
 		return $verified;
 	}
 
+	/**
+	 * Commit an exact existing Site Profile mutation without exposing authority
+	 * before append-only audit succeeds. All authority-sensitive secondary
+	 * mutation surfaces should use this primitive rather than update_option.
+	 */
+	public static function commit_record_with_audit( array $before, array $next, $audit_action, array $audit_payload = array(), $error_prefix = 'mad4b_site_profile_mutation' ) {
+		$error_prefix = sanitize_key( (string) $error_prefix );
+		if ( '' === $error_prefix ) $error_prefix = 'mad4b_site_profile_mutation';
+		if ( ! self::valid_record( $before ) || ! self::valid_record( $next ) ) {
+			return new WP_Error( $error_prefix . '_record_invalid', 'Site Profile mutation records are invalid.' );
+		}
+		if ( isset( $before['mutation_state'] ) || isset( $next['mutation_state'] ) ) {
+			return new WP_Error( $error_prefix . '_mutation_state_invalid', 'Site Profile mutation inputs must be committed records.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( $error_prefix . '_audit_unavailable', 'Append-only audit storage is unavailable.' );
+		$audit_status = MAD4B_SCP_Audit::storage_status();
+		if ( empty( $audit_status['ready'] ) ) return new WP_Error( $error_prefix . '_audit_unavailable', 'Ready append-only audit storage is required.' );
+
+		$pending = $next;
+		$pending['mutation_state'] = 'pending_audit';
+		$pending['mutation_id'] = function_exists( 'wp_generate_uuid4' )
+			? strtolower( wp_generate_uuid4() )
+			: substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 32 );
+		if ( ! self::persist_record_compare_and_swap( $before, $pending ) ) {
+			return new WP_Error( $error_prefix . '_conflict', 'Site Profile changed concurrently before this mutation could enter audit.' );
+		}
+
+		$payload = array_merge(
+			array(
+				'site_uuid' => isset( $next['site_uuid'] ) ? (string) $next['site_uuid'] : '',
+				'previous_revision' => isset( $before['revision'] ) ? (int) $before['revision'] : 0,
+				'revision' => isset( $next['revision'] ) ? (int) $next['revision'] : 0,
+				'previous_profile_digest' => self::digest_record( self::normalize_record( $before ) ),
+				'profile_digest' => self::digest_record( self::normalize_record( $next ) ),
+				'mutation_id' => $pending['mutation_id'],
+			),
+			$audit_payload
+		);
+		$audit = MAD4B_SCP_Audit::record( sanitize_key( (string) $audit_action ), $payload, 'ok' );
+		if ( is_wp_error( $audit ) ) {
+			$restored = self::restore_record_compare_and_swap( $pending, $before );
+			if ( ! $restored ) {
+				self::reset_cache();
+				return new WP_Error(
+					$error_prefix . '_audit_rollback_failed',
+					'Site Profile audit failed and the exact pending generation could not be rolled back; authority remains quarantined.',
+					array( 'audit_error' => $audit->get_error_code(), 'mutation_id' => $pending['mutation_id'] )
+				);
+			}
+			return new WP_Error( $error_prefix . '_audit_failed', 'Site Profile mutation was rolled back because append-only audit evidence could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
+		}
+		if ( ! self::persist_record_compare_and_swap( $pending, $next ) ) {
+			self::reset_cache();
+			return new WP_Error(
+				$error_prefix . '_finalize_failed',
+				'Site Profile audit succeeded but the exact pending generation could not be finalized; authority remains quarantined.',
+				array( 'mutation_id' => $pending['mutation_id'] )
+			);
+		}
+		return array(
+			'revision' => isset( $next['revision'] ) ? (int) $next['revision'] : 0,
+			'profile_digest' => self::digest_record( self::normalize_record( $next ) ),
+			'mutation_id' => $pending['mutation_id'],
+		);
+	}
+
 	public static function save_current_site( array $input ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
 		self::bootstrap();
