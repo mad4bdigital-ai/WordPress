@@ -1,5 +1,5 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'cli_generic_refresh', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: 18/18 PASS' . PHP_EOL; exit;
@@ -21,7 +21,7 @@ function home_url( $p = '' ) { return 'https://staging.fixture.test' . $p; }
 function wp_parse_url( $v, $part = -1 ) { return parse_url( $v, $part ); }
 function current_user_can( $c ) { return 'capability' !== $GLOBALS['case']; }
 function is_admin() { return true; }
-function wp_doing_cron() { return false; }
+function wp_doing_cron() { return 'cron_generic_refresh' === $GLOBALS['case']; }
 function wp_verify_nonce( $v, $action ) { return 'nonce' !== $GLOBALS['case'] && 'valid' === $v; }
 function get_option( $k, $default = null ) {
 	if ( isset( $GLOBALS['option_cache'] ) && array_key_exists( $k, $GLOBALS['option_cache'] ) ) return $GLOBALS['option_cache'][ $k ];
@@ -78,6 +78,14 @@ if ( 'cli_generic_refresh' === $case ) {
 	$status = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 	check_recovery( ! empty( $status['refresh_deferred'] ) && 'deferred_request_hotpath' === ( $status['state'] ?? '' ), 'generic WP-CLI entered MCP filesystem repair lifecycle' );
 	check_recovery( ! file_exists( WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php' ), 'generic WP-CLI mutated MU filesystem' );
+	echo $case . ': PASS' . PHP_EOL;
+	exit;
+}
+
+if ( 'cron_generic_refresh' === $case ) {
+	$status = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
+	check_recovery( ! empty( $status['refresh_deferred'] ) && 'deferred_request_hotpath' === ( $status['state'] ?? '' ), 'generic wp-cron entered MCP filesystem repair lifecycle' );
+	check_recovery( ! file_exists( WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php' ), 'generic wp-cron mutated MU filesystem' );
 	echo $case . ': PASS' . PHP_EOL;
 	exit;
 }
