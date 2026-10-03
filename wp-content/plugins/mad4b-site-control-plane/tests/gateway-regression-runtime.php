@@ -83,6 +83,14 @@ class MAD4B_SCP_Replay_Policy {
   return array( 'contract' => self::CONTRACT, 'completed' => true, 'authorizing' => false );
  }
 }
+class MAD4B_SCP_Abuse_Budget {
+ const CONTRACT = 'mad4b.abuse-budget.fixture.v1';
+ static function admit( $surface, $input = array() ) {
+  ++$GLOBALS['abuse_admit_calls'];
+  if ( 'prepare' !== $surface ) return new WP_Error( 'fixture_abuse_surface_unknown' );
+  return array( 'contract' => self::CONTRACT, 'surface' => $surface, 'authorizing' => false );
+ }
+}
 class MAD4B_SCP_Transport_Context { static function with_write_dispatch_target( $name, $digest, $callback ) { return $callback(); } }
 class MAD4B_SCP_Staging_Write_Planning_Guard {
  const ABILITY = 'mad4b/approval-plan';
@@ -110,7 +118,7 @@ class GatewayFixture {
   ++$this->calls; return array( 'ok' => true );
  }
 }
-$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0; $GLOBALS['replay_begin_calls'] = 0; $GLOBALS['replay_complete_calls'] = 0;
+$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0; $GLOBALS['replay_begin_calls'] = 0; $GLOBALS['replay_complete_calls'] = 0; $GLOBALS['abuse_admit_calls'] = 0;
 require __DIR__ . '/../includes/class-mad4b-scp-identifiers.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
@@ -144,6 +152,7 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  check_gateway( $execution['dispatch_tool'] === 'mad4b/write-execute' && $execution['expected_execution_lane'] === $lane, 'Mutation lane lost stable dispatch/original identity: ' . $lane );
  $identity = prepared_dispatch_identity( $name );
  check_gateway( ! is_wp_error( $identity ), 'Unable to issue prepared identity: ' . $lane );
+ check_gateway( 0 < $GLOBALS['abuse_admit_calls'], 'Preparation fixture bypassed abuse-budget admission: ' . $lane );
  $input = array_merge( array( 'ability_name' => $name, 'input' => array() ), $identity );
  $approval_id = '00000000-0000-4000-8000-000000000001';
  $invalid_permission = $input; $invalid_permission['preparation_receipt'] .= '0'; $invalid_permission['_mad4b_approval_ticket_id'] = $approval_id;
