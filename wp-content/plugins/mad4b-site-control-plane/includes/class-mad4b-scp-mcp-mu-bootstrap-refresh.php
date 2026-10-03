@@ -95,15 +95,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( '' !== $target && hash_equals( $target, $current ) ) {
 			$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 			if ( empty( $audit['ready'] ) ) return new WP_Error( 'mu_bootstrap_transaction_audit_unavailable', 'MU transaction reached target bytes but audit storage is unavailable.' );
-			$marked = self::mark_transaction_replaced();
-		if ( is_wp_error( $marked ) ) {
-			self::block_transaction( $marked->get_error_code() );
-			$status['blocker'] = $marked->get_error_code();
-			self::$status = $status;
-			return $status;
-		}
-
-		$event = MAD4B_SCP_Audit::record( 'mad4b/mcp-mu-filesystem-transaction-recovered', array(
+			$event = MAD4B_SCP_Audit::record( 'mad4b/mcp-mu-filesystem-transaction-recovered', array(
 				'contract' => self::TRANSACTION_CONTRACT,
 				'operation' => sanitize_key( (string) ( $record['operation'] ?? '' ) ),
 				'previous_sha256' => $previous,
@@ -239,6 +231,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			$restored = self::restore_bytes( $destination, $before );
 			if ( $restored ) self::complete_transaction(); else self::block_transaction( 'mu_bootstrap_refresh_post_replace_rollback_failed' );
 			$status['blocker'] = $restored ? 'mu_bootstrap_refresh_post_replace_integrity_failed' : 'mu_bootstrap_refresh_post_replace_rollback_failed';
+			self::$status = $status;
+			return $status;
+		}
+		$marked = self::mark_transaction_replaced();
+		if ( is_wp_error( $marked ) ) {
+			self::block_transaction( $marked->get_error_code() );
+			$status['blocker'] = $marked->get_error_code();
 			self::$status = $status;
 			return $status;
 		}
