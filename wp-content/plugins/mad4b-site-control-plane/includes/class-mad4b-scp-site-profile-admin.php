@@ -130,7 +130,34 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$profile_users = self::normalize_user_ids( $profile['oauth_user_ids'] ?? array() );
 		sort( $requested_users, SORT_NUMERIC );
 		sort( $profile_users, SORT_NUMERIC );
-		return $requested_users === $profile_users;
+		if ( $requested_users !== $profile_users ) return false;
+
+		$related = isset( $profile['related_origins'] ) && is_array( $profile['related_origins'] ) ? $profile['related_origins'] : array();
+		foreach ( array( 'development', 'staging', 'production' ) as $related_environment ) {
+			$actual = isset( $related[ $related_environment ] ) ? self::normalize_origin_for_intent( $related[ $related_environment ] ) : '';
+			$expected = $related_environment === $environment
+				? self::normalize_origin_for_intent( $profile['canonical_origin'] ?? '' )
+				: self::normalize_origin_for_intent( $input[ $related_environment . '_origin' ] ?? '' );
+			if ( $actual !== $expected ) return false;
+		}
+		if ( ! empty( $input['nonproduction_override_confirmed'] ) && 'production' !== $environment
+			&& empty( $profile['implicit_production_override_confirmed'] ) ) return false;
+		return true;
+	}
+
+	private static function normalize_origin_for_intent( $url ) {
+		if ( ! is_string( $url ) ) return '';
+		$url = trim( $url );
+		if ( '' === $url ) return '';
+		$parts = wp_parse_url( $url );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
+		$scheme = strtolower( (string) $parts['scheme'] );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) return '';
+		$origin = $scheme . '://' . strtolower( rtrim( (string) $parts['host'], '.' ) );
+		if ( isset( $parts['port'] ) ) $origin .= ':' . absint( $parts['port'] );
+		$path = isset( $parts['path'] ) ? '/' . ltrim( (string) $parts['path'], '/' ) : '';
+		$path = '/' === $path ? '' : rtrim( $path, '/' );
+		return $origin . $path;
 	}
 
 	private static function normalize_user_ids( $value ) {
