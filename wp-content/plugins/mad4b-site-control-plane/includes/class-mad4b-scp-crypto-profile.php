@@ -70,65 +70,77 @@ final class MAD4B_SCP_Crypto_Profile {
 	public static function rotate( $profile_id ) {
 		$profile = self::profile( $profile_id );
 		if ( is_wp_error( $profile ) ) return $profile;
-		$manifest = self::manifest( $profile_id );
-		if ( is_wp_error( $manifest ) ) return $manifest;
 		$dir = self::keyring_dir();
 		if ( is_wp_error( $dir ) ) return $dir;
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) return new WP_Error( 'mad4b_crypto_keyring_directory_unavailable', 'Unable to create receipt keyring directory.' );
 		@chmod( $dir, 0700 );
+		$dir = self::keyring_dir();
+		if ( is_wp_error( $dir ) ) return $dir;
 
-		$private = openssl_pkey_new( array( 'private_key_bits'=>$profile['key_bits'], 'private_key_type'=>OPENSSL_KEYTYPE_RSA ) );
-		if ( false === $private ) return new WP_Error( 'mad4b_crypto_key_generation_failed', 'Unable to generate receipt signing key.' );
-		$pem = '';
-		if ( ! openssl_pkey_export( $private, $pem ) || '' === $pem ) return new WP_Error( 'mad4b_crypto_key_export_failed', 'Unable to export receipt signing key.' );
-		$details = openssl_pkey_get_details( $private );
-		if ( ! is_array( $details ) || empty( $details['key'] ) || empty( $details['bits'] ) || (int)$details['bits'] < $profile['key_bits'] ) {
-			return new WP_Error( 'mad4b_crypto_public_key_unavailable', 'Unable to derive receipt public key.' );
-		}
-		$public_pem = (string) $details['key'];
-		$kid = hash( 'sha256', self::SIGNATURE_CONTRACT . '|' . $profile_id . '|' . $public_pem );
-		$private_file = 'private-' . $profile_id . '-' . $kid . '.pem';
-		$private_path = trailingslashit( $dir ) . $private_file;
-		$write = self::atomic_private_write( $private_path, $pem );
-		if ( is_wp_error( $write ) ) return $write;
+		return self::with_keyring_lock( $profile_id, static function () use ( $profile_id, $profile, $dir ) {
+			$manifest = self::manifest( $profile_id );
+			if ( is_wp_error( $manifest ) ) return $manifest;
+			$expected_revision = (int) $manifest['revision'];
 
-		$now = self::now_epoch();
-		$old = isset( $manifest['current_kid'] ) ? strtolower( trim( (string)$manifest['current_kid'] ) ) : '';
-		if ( '' !== $old && isset( $manifest['keys'][ $old ] ) ) {
-			$manifest['keys'][ $old ]['signing_not_after'] = $now;
-			$manifest['keys'][ $old ]['overlap_until'] = $now + $profile['overlap_seconds'];
-			$manifest['keys'][ $old ]['state'] = 'overlap';
-		}
-		$manifest['keys'][ $kid ] = array(
-			'kid'=>$kid,'profile_id'=>$profile_id,'algorithm'=>$profile['algorithm'],
-			'public_key_pem'=>$public_pem,'private_key_file'=>$private_file,
-			'created_at'=>$now,'not_before'=>$now,'signing_not_after'=>0,'overlap_until'=>0,
-			'revoked_at'=>0,'state'=>'current'
-		);
-		$manifest['current_kid'] = $kid;
-		$manifest['revision'] = (int)$manifest['revision'] + 1;
-		$manifest['updated_at'] = $now;
-		self::retire_excess_keys( $manifest, $profile );
-		$saved = self::write_manifest( $profile_id, $manifest );
-		if ( is_wp_error( $saved ) ) return $saved;
-		return self::status( $profile_id );
+			$private = openssl_pkey_new( array( 'private_key_bits'=>$profile['key_bits'], 'private_key_type'=>OPENSSL_KEYTYPE_RSA ) );
+			if ( false === $private ) return new WP_Error( 'mad4b_crypto_key_generation_failed', 'Unable to generate receipt signing key.' );
+			$pem = '';
+			if ( ! openssl_pkey_export( $private, $pem ) || '' === $pem ) return new WP_Error( 'mad4b_crypto_key_export_failed', 'Unable to export receipt signing key.' );
+			$details = openssl_pkey_get_details( $private );
+			if ( ! is_array( $details ) || empty( $details['key'] ) || empty( $details['bits'] ) || (int)$details['bits'] < $profile['key_bits'] ) {
+				return new WP_Error( 'mad4b_crypto_public_key_unavailable', 'Unable to derive receipt public key.' );
+			}
+			$public_pem = (string) $details['key'];
+			$kid = hash( 'sha256', self::SIGNATURE_CONTRACT . '|' . $profile_id . '|' . $public_pem );
+			$private_file = 'private-' . $profile_id . '-' . $kid . '.pem';
+			$private_path = trailingslashit( $dir ) . $private_file;
+			$write = self::atomic_private_write( $private_path, $pem );
+			if ( is_wp_error( $write ) ) return $write;
+
+			$now = self::now_epoch();
+			$old = isset( $manifest['current_kid'] ) ? strtolower( trim( (string)$manifest['current_kid'] ) ) : '';
+			if ( '' !== $old && isset( $manifest['keys'][ $old ] ) ) {
+				$manifest['keys'][ $old ]['signing_not_after'] = $now;
+				$manifest['keys'][ $old ]['overlap_until'] = $now + $profile['overlap_seconds'];
+				$manifest['keys'][ $old ]['state'] = 'overlap';
+			}
+			$manifest['keys'][ $kid ] = array(
+				'kid'=>$kid,'profile_id'=>$profile_id,'algorithm'=>$profile['algorithm'],
+				'public_key_pem'=>$public_pem,'private_key_file'=>$private_file,
+				'created_at'=>$now,'not_before'=>$now,'signing_not_after'=>0,'overlap_until'=>0,
+				'revoked_at'=>0,'state'=>'current'
+			);
+			$manifest['current_kid'] = $kid;
+			$manifest['revision'] = $expected_revision + 1;
+			$manifest['updated_at'] = $now;
+			self::retire_excess_keys( $manifest, $profile );
+			$saved = self::write_manifest( $profile_id, $manifest, $expected_revision );
+			if ( is_wp_error( $saved ) ) {
+				@unlink( $private_path );
+				return $saved;
+			}
+			return self::status( $profile_id );
+		} );
 	}
 
 	public static function revoke( $profile_id, $kid ) {
 		$profile = self::profile( $profile_id );
 		if ( is_wp_error( $profile ) ) return $profile;
-		$manifest = self::manifest( $profile_id );
-		if ( is_wp_error( $manifest ) ) return $manifest;
 		$kid = strtolower( trim( (string) $kid ) );
-		if ( empty( $manifest['keys'][ $kid ] ) ) return new WP_Error( 'mad4b_crypto_key_unknown', 'Receipt signing key is not registered.' );
-		$manifest['keys'][ $kid ]['revoked_at'] = self::now_epoch();
-		$manifest['keys'][ $kid ]['state'] = 'revoked';
-		if ( isset( $manifest['current_kid'] ) && hash_equals( (string)$manifest['current_kid'], $kid ) ) $manifest['current_kid'] = '';
-		$manifest['revision'] = (int)$manifest['revision'] + 1;
-		$manifest['updated_at'] = self::now_epoch();
-		$saved = self::write_manifest( $profile_id, $manifest );
-		if ( is_wp_error( $saved ) ) return $saved;
-		return self::status( $profile_id );
+		return self::with_keyring_lock( $profile_id, static function () use ( $profile_id, $kid ) {
+			$manifest = self::manifest( $profile_id );
+			if ( is_wp_error( $manifest ) ) return $manifest;
+			$expected_revision = (int) $manifest['revision'];
+			if ( empty( $manifest['keys'][ $kid ] ) ) return new WP_Error( 'mad4b_crypto_key_unknown', 'Receipt signing key is not registered.' );
+			$manifest['keys'][ $kid ]['revoked_at'] = self::now_epoch();
+			$manifest['keys'][ $kid ]['state'] = 'revoked';
+			if ( isset( $manifest['current_kid'] ) && hash_equals( (string)$manifest['current_kid'], $kid ) ) $manifest['current_kid'] = '';
+			$manifest['revision'] = $expected_revision + 1;
+			$manifest['updated_at'] = self::now_epoch();
+			$saved = self::write_manifest( $profile_id, $manifest, $expected_revision );
+			if ( is_wp_error( $saved ) ) return $saved;
+			return self::status( $profile_id );
+		} );
 	}
 
 	public static function sign_digest_for_purpose( $purpose, $payload_sha256 ) {
@@ -160,6 +172,7 @@ final class MAD4B_SCP_Crypto_Profile {
 		$dir = self::keyring_dir();
 		if ( is_wp_error( $dir ) ) return $dir;
 		$path = trailingslashit( $dir ) . basename( (string)$key['private_key_file'] );
+		if ( is_link( $path ) ) return new WP_Error( 'mad4b_crypto_private_key_symlink_denied', 'Receipt private signing key may not be a symbolic link.' );
 		if ( ! is_readable( $path ) ) return new WP_Error( 'mad4b_crypto_private_key_unavailable', 'Receipt private signing key is unavailable.' );
 		$pem = file_get_contents( $path );
 		if ( ! is_string( $pem ) || strlen( $pem ) > 32768 || false === strpos( $pem, 'PRIVATE KEY' ) ) return new WP_Error( 'mad4b_crypto_private_key_invalid', 'Receipt private signing key is invalid.' );
@@ -305,19 +318,44 @@ final class MAD4B_SCP_Crypto_Profile {
 		return$data;
 	}
 
-	private static function write_manifest( $profile_id, array $manifest ) {
+	private static function write_manifest( $profile_id, array $manifest, $expected_revision = null ) {
 		$dir=self::keyring_dir();if(is_wp_error($dir))return$dir;
 		if(!is_dir($dir)&&!wp_mkdir_p($dir))return new WP_Error('mad4b_crypto_keyring_directory_unavailable','Unable to create receipt keyring directory.');
 		@chmod($dir,0700);
 		$manifest['contract']=self::KEYRING_CONTRACT;$manifest['profile_id']=sanitize_key((string)$profile_id);
+		$path=trailingslashit($dir).'keyring-'.$manifest['profile_id'].'.json';
+		if ( is_link( $path ) ) return new WP_Error( 'mad4b_crypto_keyring_manifest_symlink_denied', 'Receipt keyring manifest may not be a symbolic link.' );
+		if ( null !== $expected_revision ) {
+			$current = self::manifest( $profile_id );
+			if ( is_wp_error( $current ) ) return $current;
+			if ( (int) $current['revision'] !== (int) $expected_revision ) return new WP_Error(
+				'mad4b_crypto_keyring_revision_conflict',
+				'Receipt keyring manifest changed during mutation; reread before retrying.',
+				array( 'expected_revision'=>(int)$expected_revision, 'current_revision'=>(int)$current['revision'] )
+			);
+		}
 		$json=wp_json_encode($manifest,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
 		if(!is_string($json))return new WP_Error('mad4b_crypto_keyring_encode_failed','Receipt keyring manifest could not be encoded.');
-		$path=trailingslashit($dir).'keyring-'.$manifest['profile_id'].'.json';
 		$tmp=$path.'.tmp-'.substr(hash('sha256',uniqid('',true)),0,12);
 		if(false===file_put_contents($tmp,$json."\n",LOCK_EX)){@unlink($tmp);return new WP_Error('mad4b_crypto_keyring_write_failed','Unable to write receipt keyring manifest.');}
 		@chmod($tmp,0600);
 		if(!@rename($tmp,$path)){@unlink($tmp);return new WP_Error('mad4b_crypto_keyring_commit_failed','Unable to atomically commit receipt keyring manifest.');}
 		@chmod($path,0600);return true;
+	}
+
+	private static function with_keyring_lock( $profile_id, $callback ) {
+		$dir=self::keyring_dir();if(is_wp_error($dir))return$dir;
+		if(!is_dir($dir)&&!wp_mkdir_p($dir))return new WP_Error('mad4b_crypto_keyring_directory_unavailable','Unable to create receipt keyring directory.');
+		@chmod($dir,0700);
+		$dir=self::keyring_dir();if(is_wp_error($dir))return$dir;
+		$lock_path=trailingslashit($dir).'keyring-'.sanitize_key((string)$profile_id).'.lock';
+		if(is_link($lock_path))return new WP_Error('mad4b_crypto_keyring_lock_symlink_denied','Receipt keyring lock may not be a symbolic link.');
+		$handle=@fopen($lock_path,'c+');
+		if(false===$handle)return new WP_Error('mad4b_crypto_keyring_lock_unavailable','Receipt keyring mutation lock is unavailable.');
+		@chmod($lock_path,0600);
+		if(!@flock($handle,LOCK_EX)){@fclose($handle);return new WP_Error('mad4b_crypto_keyring_lock_failed','Receipt keyring mutation lock could not be acquired.');}
+		try{return call_user_func($callback);}
+		finally{@flock($handle,LOCK_UN);@fclose($handle);}
 	}
 
 	private static function keyring_dir() {
@@ -345,17 +383,37 @@ final class MAD4B_SCP_Crypto_Profile {
 			}
 		}
 		if ( '' === $path || 1 !== preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', $path ) ) return new WP_Error( 'mad4b_crypto_keyring_path_invalid', 'Receipt keyring path must be absolute.' );
-		$norm = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( $path ) : str_replace( '\\', '/', $path );
-		$wp = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( ABSPATH ) : str_replace( '\\', '/', ABSPATH );
-		if ( 0 === strpos( trailingslashit( $norm ), trailingslashit( $wp ) ) ) return new WP_Error( 'mad4b_crypto_keyring_path_wordpress_exposed', 'Receipt keyring path must be outside WordPress root.' );
-		if ( '' !== $doc ) {
-			$doc = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( $doc ) : str_replace( '\\', '/', $doc );
-			if ( 0 === strpos( trailingslashit( $norm ), trailingslashit( $doc ) ) ) return new WP_Error( 'mad4b_crypto_keyring_path_document_root_exposed', 'Receipt keyring path must be outside HTTP document root.' );
+		$canonical=self::canonicalize_policy_path($path);if(is_wp_error($canonical))return$canonical;
+		$wp=self::canonicalize_policy_path(ABSPATH);if(is_wp_error($wp))return$wp;
+		if(self::path_within($canonical,$wp))return new WP_Error('mad4b_crypto_keyring_path_wordpress_exposed','Receipt keyring path must be outside WordPress root after canonical path resolution.');
+		if(''!==$doc){$canonical_doc=self::canonicalize_policy_path($doc);if(is_wp_error($canonical_doc))return$canonical_doc;if(self::path_within($canonical,$canonical_doc))return new WP_Error('mad4b_crypto_keyring_path_document_root_exposed','Receipt keyring path must be outside HTTP document root after canonical path resolution.');}
+		if(is_link($path))return new WP_Error('mad4b_crypto_keyring_path_symlink_denied','Receipt keyring directory may not be a symbolic link.');
+		return rtrim($canonical,'/\\\\');
+	}
+
+	private static function canonicalize_policy_path( $path ) {
+		$path=rtrim((string)$path,'/\\\\');
+		if(''===$path)return new WP_Error('mad4b_crypto_keyring_path_invalid','Receipt keyring path is empty.');
+		$probe=$path;$tail=array();
+		while(!file_exists($probe)&&!is_link($probe)){
+			$base=basename($probe);if(''===$base||'.'===$base)break;
+			array_unshift($tail,$base);$parent=dirname($probe);if($parent===$probe)break;$probe=$parent;
 		}
-		return rtrim( $path, '/\\' );
+		$resolved=realpath($probe);
+		if(false===$resolved)return new WP_Error('mad4b_crypto_keyring_path_unresolvable','Receipt keyring path cannot be canonically resolved from its nearest existing parent.');
+		foreach($tail as$component)$resolved=rtrim($resolved,'/\\\\').DIRECTORY_SEPARATOR.$component;
+		return function_exists('wp_normalize_path')?wp_normalize_path($resolved):str_replace('\\\\','/',$resolved);
+	}
+
+	private static function path_within( $candidate, $root ) {
+		$candidate=rtrim(str_replace('\\\\','/',(string)$candidate),'/').'/';
+		$root=rtrim(str_replace('\\\\','/',(string)$root),'/').'/';
+		if('\\\\'===DIRECTORY_SEPARATOR){$candidate=strtolower($candidate);$root=strtolower($root);}
+		return 0===strpos($candidate,$root);
 	}
 
 	private static function atomic_private_write( $path, $pem ) {
+		if(is_link($path))return new WP_Error('mad4b_crypto_private_key_symlink_denied','Receipt private key destination may not be a symbolic link.');
 		$tmp=$path.'.tmp-'.substr(hash('sha256',uniqid('',true)),0,12);
 		if(false===file_put_contents($tmp,(string)$pem,LOCK_EX)){@unlink($tmp);return new WP_Error('mad4b_crypto_private_key_write_failed','Unable to write receipt private key.');}
 		@chmod($tmp,0600);
