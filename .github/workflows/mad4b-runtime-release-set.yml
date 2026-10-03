@@ -80,7 +80,7 @@ jobs:
           test "$(stat -c '%s' /tmp/mcp-adapter.zip)" = "$BYTES"
           echo "$SHA  /tmp/mcp-adapter.zip" | sha256sum --check --strict
           python3 - <<'PY'
-          import hashlib, json, zipfile
+          import hashlib, json, re, zipfile
           from pathlib import Path
 
           root=Path('wp-content/plugins/mad4b-site-control-plane/config')
@@ -111,7 +111,10 @@ jobs:
               if failures:
                   raise SystemExit('MCP Adapter exact critical-file certification failed: '+', '.join(failures[:20]))
               text=archive.read(main).decode('utf-8', errors='replace')
-              if f'Version: {version}' not in text:
+              match=re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)          print(f'mad4b.mcp-adapter-upstream-certification.v1: PASS version={version} files={len(critical)}')
+          PY
+, text)
+              if not match or match.group(1).strip()!=version:
                   raise SystemExit('MCP Adapter plugin header version mismatch')
           print(f'mad4b.mcp-adapter-upstream-certification.v1: PASS version={version} files={len(critical)}')
           PY
