@@ -198,6 +198,13 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove exact MCP protocol negotiation and projection refresh semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Prove ChatGPT server contains the refresh-safe minimal governed tool inventory
         shell: bash
         run: |

@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	const CONTRACT = 'mad4b.chatgpt-tool-projection.v1';
+	const ISOLATION_SCOPE = 'site_global';
+	const CONTENTION_POLICY = 'optimistic_cas_single_winner';
 	const OPTION = 'mad4b_scp_chatgpt_tool_projection_v1';
 	const STATUS_ABILITY = 'mad4b/chatgpt-tool-projection-status';
 	const DISCOVER_ABILITY = 'mad4b/chatgpt-tool-projection-discover';
@@ -172,6 +174,21 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$state['abilities'] = isset( $state['abilities'] ) && is_array( $state['abilities'] ) ? $state['abilities'] : array();
 		if ( count( $state['abilities'] ) > self::MAX_SELECTED ) { $state['abilities'] = array(); $state['quarantine_reason'] = 'registry_size_exceeded'; }
 		return $state;
+	}
+
+	public static function projection_revision() { return (int) self::raw_state()['revision']; }
+
+	public static function isolation_contract() {
+		return array(
+			'contract' => self::CONTRACT,
+			'isolation_scope' => self::ISOLATION_SCOPE,
+			'session_scoped_hot_set' => false,
+			'contention_policy' => self::CONTENTION_POLICY,
+			'stale_writer_policy' => 'reject_and_replan',
+			'fixed_dispatch_correctness_independent' => true,
+			'visibility_creates_authority' => false,
+			'authorizing' => false,
+		);
 	}
 
 	public static function bounded_metadata( $value, $bytes ) {
@@ -485,6 +502,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'unprojectable_abilities' => $unprojectable,
 			'ready_for_apply' => $ready_for_apply,
 			'projection_changes_authority' => false,
+			'isolation' => self::isolation_contract(),
 			'execution_permission_callbacks_preserved' => true,
 			'read_only' => true,
 			'mutation_performed' => false,
@@ -676,6 +694,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'schema_size_policy' => 'bounded_direct_projection_with_dispatcher_fallback',
 			),
 			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
+			'isolation' => self::isolation_contract(),
+			'protocol_profile' => class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ? MAD4B_SCP_MCP_Protocol_Profile::status() : array(),
 			'primary_execution_mode' => 'fixed_dispatch',
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
