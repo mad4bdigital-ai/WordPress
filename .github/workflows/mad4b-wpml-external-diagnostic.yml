@@ -268,6 +268,7 @@ jobs:
           }
 
           probe runtime-build "$origin/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt?mad4b_probe=$SOURCE_SHA"
+          probe build-provenance "$origin/wp-content/plugins/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json?mad4b_probe=$SOURCE_SHA"
           probe rest-index "$origin/wp-json/?mad4b_probe=$SOURCE_SHA"
           probe rest-core-types "$origin/wp-json/wp/v2/types/post?context=view&mad4b_probe=$SOURCE_SHA"
           probe rest-wpml "$origin/wp-json/wpml/v1/rest/status?test_get_parameter=1&mad4b_probe=$SOURCE_SHA&mad4b_hotpath=1"
@@ -286,6 +287,7 @@ jobs:
           origin = 'https://staging.egypttourgates.com'
           targets = {
               'runtime-build': origin + '/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt',
+              'build-provenance': origin + '/wp-content/plugins/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json',
               'rest-index': origin + '/wp-json/',
               'rest-core-types': origin + '/wp-json/wp/v2/types/post',
               'rest-wpml': origin + '/wp-json/wpml/v1/rest/status?test_get_parameter=1',
@@ -619,6 +621,7 @@ jobs:
           targets = evidence.get('targets') or {}
           expected_status = {
               'runtime-build': {200},
+              'build-provenance': {200},
               'rest-index': {200},
               'rest-core-types': {200},
               'rest-wpml': {200},
@@ -665,11 +668,26 @@ jobs:
           if not isinstance(jwks, dict) or not isinstance(jwks.get('keys'), list) or not jwks.get('keys'):
               failures.append('oauth-jwks:keys_missing')
 
+          live_provenance_row = targets.get('build-provenance') or {}
+          live_provenance = live_provenance_row.get('json_payload')
+          if not isinstance(live_provenance, dict):
+              live_provenance = {}
+          source_sha = os.environ.get('SOURCE_SHA', '').strip().lower()
+          live_source_sha = str(live_provenance.get('source_commit_sha') or '').strip().lower()
+          live_build_fingerprint = str(live_provenance.get('build_fingerprint') or '').strip().lower()
+          live_package_manifest_digest = str(live_provenance.get('package_manifest_digest') or '').strip().lower()
+          provenance_contract = str(live_provenance.get('contract') or '').strip()
+
           runtime_identity_match = (
               bool(live_build.get('contract'))
               and live_build.get('contract') == expected_build.get('contract')
               and bool(live_build.get('release'))
               and live_build.get('release') == expected_build.get('release')
+              and provenance_contract == 'mad4b.build-provenance.v1'
+              and len(source_sha) == 40
+              and live_source_sha == source_sha
+              and len(live_build_fingerprint) == 64
+              and len(live_package_manifest_digest) == 64
           )
           deployment_drift = not runtime_identity_match
 
@@ -710,9 +728,16 @@ jobs:
                   'contract': live_build.get('contract', ''),
                   'release': live_build.get('release', ''),
               },
+              'live_build_provenance': {
+                  'contract': provenance_contract,
+                  'source_commit_sha': live_source_sha,
+                  'build_fingerprint': live_build_fingerprint,
+                  'package_manifest_digest': live_package_manifest_digest,
+              },
               'expected_runtime_build': {
                   'contract': expected_build.get('contract', ''),
                   'release': expected_build.get('release', ''),
+                  'source_commit_sha': source_sha,
               },
               'runtime_identity_match': runtime_identity_match,
               'deployment_drift': deployment_drift,
