@@ -77,7 +77,7 @@ final class MAD4B_SCP_Execution_Evidence_Policy {
 			'approval_ticket_id' => isset( $claim['approval_ticket_id'] ) ? strtolower( trim( (string) $claim['approval_ticket_id'] ) ) : '',
 			'target_fingerprint' => isset( $claim['target_fingerprint'] ) ? strtolower( trim( (string) $claim['target_fingerprint'] ) ) : '',
 			'context_receipt_sha256' => isset( $claim['context_receipt_sha256'] ) ? strtolower( trim( (string) $claim['context_receipt_sha256'] ) ) : '',
-			'commit_guard_material_sha256' => isset( $claim['commit_guard_receipt']['material_sha256'] ) ? strtolower( trim( (string) $claim['commit_guard_receipt']['material_sha256'] ) : '',
+			'commit_guard_material_sha256' => isset( $claim['commit_guard_receipt']['material_sha256'] ) ? strtolower( trim( (string) $claim['commit_guard_receipt']['material_sha256'] ) ) : '',
 			'result_sha256' => $result_sha256,
 			'provider_side_effect_possible' => true,
 			'authorizing' => false,
