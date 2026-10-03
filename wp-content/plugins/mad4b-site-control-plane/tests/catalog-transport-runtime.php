@@ -7,6 +7,7 @@ class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['allowed']
 class MAD4B_SCP_Ability_Contract_Inspector { static function site_binding() { return array( 'origin' => 'https://ci.test', 'revision' => $GLOBALS['binding'] ); } }
 class MAD4B_SCP_Capability_Descriptor_Registry { static function describe( $name ) { return array( 'lane' => 'read', 'readonly' => true, 'execution_eligible' => true, 'input_schema_sha256' => str_repeat( 'a', 64 ), 'classification_sha256' => str_repeat( 'b', 64 ) ); } }
 function wp_json_encode( $v ) { return json_encode( $v ); }
+function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\\-]/i', '', (string) $value ) ); }
 function get_current_user_id() { return $GLOBALS['user']; }
 function wp_get_current_user() { return (object) array( 'allcaps' => array( 'read' => true ) ); }
 function wp_salt( $v ) { return 'test-signing-key'; }
