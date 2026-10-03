@@ -26,6 +26,9 @@ $mad4b_mcp_mu_status = array(
 	'official_plugin_active' => false,
 	'control_plane_active' => false,
 	'official_plugin_file' => '',
+	'adapter_version' => '',
+	'adapter_profile_source' => '',
+	'adapter_profile_ready' => false,
 	'control_plane_plugin_file' => '',
 	'plugin_identity_ambiguous' => false,
 	'plugin_directory_discovery' => 'active_plugins_unique_main_file',
@@ -86,6 +89,55 @@ $mad4b_mcp_mu_control_plane_root = '' !== $mad4b_mcp_mu_control_plane_plugin
 $mad4b_mcp_mu_root = '' !== $mad4b_mcp_mu_adapter_plugin
 	? trailingslashit( WP_PLUGIN_DIR . '/' . dirname( $mad4b_mcp_mu_adapter_plugin ) )
 	: '';
+
+$mad4b_mcp_mu_baseline_file = $mad4b_mcp_mu_control_plane_root . 'config/certified-providers.json';
+$mad4b_mcp_mu_profiles_file = $mad4b_mcp_mu_control_plane_root . 'config/certified-provider-profiles.json';
+$mad4b_mcp_mu_adapter_main = '' !== $mad4b_mcp_mu_root ? $mad4b_mcp_mu_root . 'mcp-adapter.php' : '';
+$mad4b_mcp_mu_adapter_version = '';
+if ( is_readable( $mad4b_mcp_mu_adapter_main ) ) {
+	if ( function_exists( 'get_file_data' ) ) {
+		$mad4b_mcp_mu_adapter_header = get_file_data( $mad4b_mcp_mu_adapter_main, array( 'Version' => 'Version' ), 'plugin' );
+		if ( is_array( $mad4b_mcp_mu_adapter_header ) && isset( $mad4b_mcp_mu_adapter_header['Version'] ) ) {
+			$mad4b_mcp_mu_adapter_version = trim( (string) $mad4b_mcp_mu_adapter_header['Version'] );
+		}
+	}
+	if ( '' === $mad4b_mcp_mu_adapter_version ) {
+		$mad4b_mcp_mu_adapter_head = file_get_contents( $mad4b_mcp_mu_adapter_main, false, null, 0, 16384 );
+		if ( is_string( $mad4b_mcp_mu_adapter_head ) && preg_match( '/^[ \t*#@\/]*Version:\s*([^\r\n]+)/mi', $mad4b_mcp_mu_adapter_head, $mad4b_mcp_mu_adapter_match ) ) {
+			$mad4b_mcp_mu_adapter_version = trim( (string) $mad4b_mcp_mu_adapter_match[1] );
+		}
+	}
+}
+$mad4b_mcp_mu_status['adapter_version'] = substr( sanitize_text_field( $mad4b_mcp_mu_adapter_version ), 0, 64 );
+
+$mad4b_mcp_mu_baseline_catalog = is_readable( $mad4b_mcp_mu_baseline_file )
+	? json_decode( (string) file_get_contents( $mad4b_mcp_mu_baseline_file ), true )
+	: array();
+$mad4b_mcp_mu_profiles_catalog = is_readable( $mad4b_mcp_mu_profiles_file )
+	? json_decode( (string) file_get_contents( $mad4b_mcp_mu_profiles_file ), true )
+	: array();
+$mad4b_mcp_mu_base_profile = isset( $mad4b_mcp_mu_baseline_catalog['providers']['mcp_adapter'] ) && is_array( $mad4b_mcp_mu_baseline_catalog['providers']['mcp_adapter'] )
+	? $mad4b_mcp_mu_baseline_catalog['providers']['mcp_adapter']
+	: array();
+$mad4b_mcp_mu_selected_profile = array();
+if ( '' !== $mad4b_mcp_mu_adapter_version
+	&& isset( $mad4b_mcp_mu_base_profile['version'] )
+	&& hash_equals( (string) $mad4b_mcp_mu_base_profile['version'], $mad4b_mcp_mu_adapter_version ) ) {
+	$mad4b_mcp_mu_selected_profile = $mad4b_mcp_mu_base_profile;
+	$mad4b_mcp_mu_status['adapter_profile_source'] = 'certified-providers';
+} elseif ( '' !== $mad4b_mcp_mu_adapter_version
+	&& isset( $mad4b_mcp_mu_profiles_catalog['providers']['mcp_adapter'][ $mad4b_mcp_mu_adapter_version ] )
+	&& is_array( $mad4b_mcp_mu_profiles_catalog['providers']['mcp_adapter'][ $mad4b_mcp_mu_adapter_version ] ) ) {
+	$mad4b_mcp_mu_candidate_profile = $mad4b_mcp_mu_profiles_catalog['providers']['mcp_adapter'][ $mad4b_mcp_mu_adapter_version ];
+	if ( isset( $mad4b_mcp_mu_candidate_profile['version'] )
+		&& hash_equals( $mad4b_mcp_mu_adapter_version, (string) $mad4b_mcp_mu_candidate_profile['version'] ) ) {
+		$mad4b_mcp_mu_selected_profile = $mad4b_mcp_mu_candidate_profile;
+		$mad4b_mcp_mu_status['adapter_profile_source'] = 'certified-provider-profiles';
+	}
+}
+$mad4b_mcp_mu_critical_hashes = isset( $mad4b_mcp_mu_selected_profile['critical_files'] ) && is_array( $mad4b_mcp_mu_selected_profile['critical_files'] )
+	? $mad4b_mcp_mu_selected_profile['critical_files']
+	: array();
 
 // Reuse the same pure exact-origin/environment decision as the regular plugin.
 // Raw WordPress production defaults are not explicit Production enrollment.
