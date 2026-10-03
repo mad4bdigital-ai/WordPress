@@ -222,7 +222,7 @@ assert "MAD4B_SCP_Site_Profile::diagnostic_mu_proof()" in mu_bootstrap
 assert "canonical_runtime_pinned_diagnostic_deferred" in mu_bootstrap
 assert "managed_mu_transaction_pending" in mu_bootstrap
 mu_tx_cache_delete = "wp_cache_delete( 'mad4b_scp_mcp_mu_refresh_transaction_v1', 'options' )"
-mu_tx_read = "get_option( 'mad4b_scp_mcp_mu_refresh_transaction_v1', array() )"
+mu_tx_read = "get_option( 'mad4b_scp_mcp_mu_refresh_transaction_v1', null )"
 assert mu_tx_cache_delete in mu_bootstrap
 assert mu_tx_read in mu_bootstrap
 assert mu_bootstrap.index(mu_tx_cache_delete) < mu_bootstrap.index(mu_tx_read), 'MU safety read must evict persistent cache before get_option'
