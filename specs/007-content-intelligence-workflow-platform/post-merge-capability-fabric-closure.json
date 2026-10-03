@@ -98,7 +98,7 @@
     },
     {
       "id": "catalog_backend_cache_concurrency",
-      "status": "PARTIAL",
+      "status": "DONE",
       "task_ids": [
         "T3719",
         "T3720",
@@ -116,22 +116,22 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Current options/CAS backend remains authoritative until parity/cutover proof; stale publishers/readers cannot authorize execution.",
-      "evidence_strategy": "Shadow-read parity, fencing, cache-coherence, multi-worker and rollback evidence.",
+      "evidence_strategy": "Closed: schema v13 table backend, shadow parity/cutover, fencing, Redis cache isolation, independent-worker/host publication and rollback/retirement accounting all pass the exact-head certified runtime matrix.",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php",
-        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
-      ],
-      "remainder": [
-        "Exact-head Redis/persistent-cache and horizontal catalog runtime matrix must complete successfully across the certified MySQL/MariaDB and PHP 7.4/8.3 profiles before T3719-T3724 are promoted from PARTIAL to DONE."
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ]
     },
     {
       "id": "durable_multisite_network",
-      "status": "PARTIAL",
+      "status": "DONE",
       "task_ids": [
         "T3725",
         "T3726",
@@ -148,7 +148,7 @@
         "postconditions_execution_state_identifiers"
       ],
       "interim_behavior": "Partial completion is preserved; failed sites do not trigger blind replay or cross-site credential/evidence reuse.",
-      "evidence_strategy": "Durable NetworkOperation journal and crash/resume/fan-out isolation fixtures.",
+      "evidence_strategy": "Closed: durable NetworkOperation fan-out, site-bound identity/authority, dedup/claim fencing, partial completion and crash/reconnect reconstruction all pass the exact-head certified runtime matrix.",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
@@ -156,10 +156,9 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs",
-        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
-      ],
-      "remainder": [
-        "Exact-head fan-out runtime matrix must pass on WordPress 6.9/PHP 7.4/MySQL 8 and latest/PHP 8.3 on MySQL 8 and MariaDB 11.8 before T3725-T3729 and this workstream are promoted to DONE."
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ]
     },
     {

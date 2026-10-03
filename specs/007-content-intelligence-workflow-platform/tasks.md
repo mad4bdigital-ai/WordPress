@@ -767,19 +767,19 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3718 P1 Provide compatibility/migration semantics for legacy non-canonical operation identifiers without rewriting historical journal identity.
 
 ### 37D — Catalog backend, cache coherence and horizontal concurrency
-- [ ] T3719 P1 Design a dedicated immutable catalog table backend with content-addressed rows, generation directory, indexed expiry/GC and explicit capacity accounting.
-- [ ] T3720 P1 Implement shadow-read parity and bounded cutover from options storage with one authoritative publisher at a time; no dual-authority catalog state.
-- [ ] T3721 P1 Add storage-level publication fencing token/CAS semantics so lost/reused DB connections cannot publish a stale generation.
-- [ ] T3722 P1 Certify persistent object-cache/Redis behavior: stale option/object cache cannot resurrect retired objects, bypass CAS, or hide a newer catalog directory.
-- [ ] T3723 P1 Run multi-PHP-worker and multi-host concurrency tests proving process-local caches/mutexes are never authoritative and DB-scoped locks remain isolated.
-- [ ] T3724 P1 GATE Prove backend rollback/retirement preserves projection/grants/approvals/audit/site profile and leaves no orphan capacity accounting.
+- [x] T3719 P1 Design a dedicated immutable catalog table backend with content-addressed rows, generation directory, indexed expiry/GC and explicit capacity accounting.
+- [x] T3720 P1 Implement shadow-read parity and bounded cutover from options storage with one authoritative publisher at a time; no dual-authority catalog state.
+- [x] T3721 P1 Add storage-level publication fencing token/CAS semantics so lost/reused DB connections cannot publish a stale generation.
+- [x] T3722 P1 Certify persistent object-cache/Redis behavior: stale option/object cache cannot resurrect retired objects, bypass CAS, or hide a newer catalog directory.
+- [x] T3723 P1 Run multi-PHP-worker and multi-host concurrency tests proving process-local caches/mutexes are never authoritative and DB-scoped locks remain isolated.
+- [x] T3724 P1 GATE Prove backend rollback/retirement preserves projection/grants/approvals/audit/site profile and leaves no orphan capacity accounting.
 
 ### 37E — Durable multisite/network orchestration
-- [ ] T3725 P0 Define a durable NetworkOperation journal with per-site target identity, authority scope, plan/preparation digest, state and evidence refs.
-- [ ] T3726 P0 Define partial-completion, pause, resume and reconciliation semantics; completed sites are never falsely rolled back because another site failed.
-- [ ] T3727 P0 Add network idempotency/deduplication keys and duplicate/reordered site-dispatch tests across independent workers.
-- [ ] T3728 P0 Prove credentials, catalog ownership, receipts, approvals, context and authority remain site-bound during concurrent fan-out and cannot cross sites.
-- [ ] T3729 P0 GATE Crash mid-fan-out and reconnect/resume must reconstruct exact completed/pending/reconciling site sets from durable evidence without replaying committed mutations.
+- [x] T3725 P0 Define a durable NetworkOperation journal with per-site target identity, authority scope, plan/preparation digest, state and evidence refs.
+- [x] T3726 P0 Define partial-completion, pause, resume and reconciliation semantics; completed sites are never falsely rolled back because another site failed.
+- [x] T3727 P0 Add network idempotency/deduplication keys and duplicate/reordered site-dispatch tests across independent workers.
+- [x] T3728 P0 Prove credentials, catalog ownership, receipts, approvals, context and authority remain site-bound during concurrent fan-out and cannot cross sites.
+- [x] T3729 P0 GATE Crash mid-fan-out and reconnect/resume must reconstruct exact completed/pending/reconciling site sets from durable evidence without replaying committed mutations.
 
 ### 37F — Projection isolation and MCP protocol evolution
 - [x] T3730 P1 Decide and codify direct hot-set isolation semantics (site-global versus client/session scoped), including contention behavior and explicit statement that fixed dispatch correctness is independent.

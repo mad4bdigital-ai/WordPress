@@ -1350,106 +1350,133 @@
       "reason": "Legacy operation identifiers are admitted only through an exact-byte legacy-read-only lane and are never rewritten into new journal identity."
     },
     "T3719": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-table-backend-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-table-backend-contract.py",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Schema v13 provides immutable content-addressed catalog objects, generation directories, indexed expiry/GC, fenced heads and explicit physical capacity accounting."
+      "reason": "Schema v13 immutable content-addressed catalog storage, generation directories, indexed expiry/GC and capacity accounting are exact-head runtime certified across the Feature 007 matrix."
     },
     "T3720": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Options remain the sole authority until exact shadow parity; cutover is CAS-bound and table authority never silently falls back, preventing dual authority."
+      "reason": "Shadow parity, single-authority CAS cutover, fail-closed table authority and bounded rollback are exact-head runtime certified with no dual-authority fallback."
     },
     "T3721": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Table publication uses transactional row locking plus generation/fencing-token CAS so stale or reused connections cannot publish an obsolete head."
+      "reason": "Transactional head locking plus storage-level generation/fencing-token CAS are exact-head certified, including stale-writer and independent-worker publication fencing."
     },
     "T3722": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php",
-        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "A hermetic Redis object-cache fixture plus cross-process setup/verify tests are implemented; exact-head Redis runtime certification is still pending."
+      "reason": "Hermetic Redis persistent object-cache tests prove stale cross-process option/object cache cannot resurrect retired authority, bypass CAS or hide the table-authoritative catalog directory."
     },
     "T3723": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-distributed-lock.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Independent PHP workers with distinct host identities and DB-scoped locking/fencing fixtures are implemented; exact-head horizontal runtime certification is still pending."
+      "reason": "Independent PHP workers with distinct host identities prove process-local state is non-authoritative and DB-scoped locking/fencing preserves a single publication lineage."
     },
     "T3724": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
-        "wp-content/plugins/mad4b-site-control-plane/tools/catalog-decommission.php"
+        "wp-content/plugins/mad4b-site-control-plane/tools/catalog-decommission.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Bounded rollback, reader-drained fenced retirement, projection/governance preservation and referenced/orphan capacity readback are implemented; exact-head retirement runtime certification is still pending."
+      "reason": "Rollback plus reader-drained fenced retirement preserve projection/governance state and exact readback proves no retained scope generations or orphan capacity remain."
     },
     "T3725": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Durable NetworkOperation, per-site target and append-only event-journal storage are implemented in schema v13 and bound to exact site, authority, plan/preparation and evidence identities; exact-head runtime certification remains pending."
+      "reason": "Durable NetworkOperation storage and append-only event journal are exact-head certified with per-site target identity, authority, plan/preparation and evidence bindings."
     },
     "T3726": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Partial completion, pause/resume and conservative reconciling state derivation are implemented; completed sites remain immutable and are excluded from resume candidates; exact-head runtime certification remains pending."
+      "reason": "Partial completion, pause/resume and conservative reconciling semantics are exact-head certified; completed sites remain immutable and are never rolled back because another target fails."
     },
     "T3727": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Network-level and per-target idempotency, claim epochs, duplicate terminal callback handling and stale/reordered dispatch denial are implemented with independent worker fixtures; exact-head runtime certification remains pending."
+      "reason": "Network and per-target idempotency, target-set binding, claim epochs, duplicate callback handling and reordered-dispatch denial are exact-head certified across independent workers."
     },
     "T3728": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
         "wp-content/plugins/mad4b-site-control-plane/client/network-catalog-client.mjs",
         "wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Per-site target binding covers Site UUID, origin, authority, catalog, approval, context, credential and receipt-binding digests, with existing network catalog ownership isolation tests; exact-head fan-out runtime certification remains pending."
+      "reason": "Concurrent fan-out preserves site-bound credentials, catalog ownership, approvals, context, authority and receipt bindings with cross-site substitution denied."
     },
     "T3729": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
-        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
       ],
-      "reason": "Fresh-process setup/parallel workers/reconstruction fixtures model a mid-fan-out crash boundary and prove only pending sites are resume candidates while committed mutations are never replayed; exact-head certified database matrix remains pending."
+      "reason": "Crash/reconnect/resume certification reconstructs exact completed/pending/reconciling target sets from durable evidence and never blindly replays committed or ambiguous mutations."
     },
     "T3730": {
       "status": "DONE",
