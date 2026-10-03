@@ -482,10 +482,13 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		} );
 	}
 
-	private static function reconciliation_completion_valid( array $verified_result ) {
+	private static function reconciliation_completion_valid( array $verified_result, array $job ) {
 		$effect = isset( $verified_result['provider_effect_state'] ) ? sanitize_key( (string) $verified_result['provider_effect_state'] ) : '';
 		$ref = isset( $verified_result['provider_execution_ref'] ) ? trim( (string) $verified_result['provider_execution_ref'] ) : '';
 		$sha = isset( $verified_result['evidence_sha256'] ) ? strtolower( trim( (string) $verified_result['evidence_sha256'] ) ) : '';
+		$checkpoint = isset( $job['provider_checkpoint'] ) ? (string) $job['provider_checkpoint'] : 'not_entered';
+		$provider_entry_proven = in_array( $checkpoint, array( 'provider_entered', 'provider_returned' ), true ) && ! empty( $job['provider_side_effect_possible'] );
+		if ( 'applied' === $effect && ! $provider_entry_proven ) return false;
 		return ! empty( $verified_result['postcondition_verified'] )
 			&& in_array( $effect, array( 'applied', 'no_effect' ), true )
 			&& '' !== $ref && strlen( $ref ) <= 191
@@ -505,7 +508,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			$status = isset( $job['status'] ) ? (string) $job['status'] : '';
 			$reconciling = 'reconciling' === $status;
 			if ( ! in_array( $status, array( 'claimed', 'reconciling' ), true ) ) return new WP_Error( 'mad4b_remote_work_job_not_claimed', 'Remote work job has no active claim.' );
-			if ( $reconciling && ! self::reconciliation_completion_valid( $verified_result ) ) {
+			if ( $reconciling && ! self::reconciliation_completion_valid( $verified_result, $job ) ) {
 				return new WP_Error( 'mad4b_remote_work_reconciliation_required', 'Cancelled or lease-expired claimed work requires explicit provider postcondition evidence before terminalization.', array(
 					'reconciliation_required' => true,
 					'blind_retry_allowed' => false,
