@@ -301,6 +301,7 @@ final class MAD4B_SCP_Connector_Resilience {
 				$original_data = method_exists( $result, 'get_error_data' ) ? $result->get_error_data( $original_error_code ) : array();
 				$mutation_evidence = is_array( $original_data ) && isset( $original_data['mad4b_mutation_evidence'] ) && is_array( $original_data['mad4b_mutation_evidence'] ) ? $original_data['mad4b_mutation_evidence'] : array();
 				$postcondition_recovery = isset( $mutation_evidence['postcondition_recovery'] ) && is_array( $mutation_evidence['postcondition_recovery'] ) ? $mutation_evidence['postcondition_recovery'] : array();
+				if ( class_exists( 'MAD4B_SCP_Structural_Redaction' ) ) $postcondition_recovery = MAD4B_SCP_Structural_Redaction::redact( $postcondition_recovery, 'provider_error_metadata' );
 				$dispatch_not_started = self::wp_error_proves_mutation_not_started( $original_error_code );
 				if ( class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ) MAD4B_SCP_Provider_Circuit_Breaker::record_result( $breaker, false, isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown' );
 				$code_suffix = $dispatch_not_started

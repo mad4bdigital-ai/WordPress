@@ -544,7 +544,8 @@ final class MAD4B_SCP_Audit {
 	}
 
 	private static function summary_payload( array $summary ) {
-		$clean = self::sanitize_summary_array( $summary, 0 );
+		if ( class_exists( 'MAD4B_SCP_Structural_Redaction' ) ) $summary = MAD4B_SCP_Structural_Redaction::redact( $summary, 'audit_summary' );
+		$clean = self::sanitize_summary_array( is_array( $summary ) ? $summary : array(), 0 );
 		$json = wp_json_encode( $clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $json ) return new WP_Error( 'mad4b_audit_summary_invalid', 'Audit summary could not be encoded.' );
 		if ( strlen( $json ) > self::SUMMARY_MAX_BYTES ) {

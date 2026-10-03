@@ -303,6 +303,7 @@ final class MAD4B_SCP_Observability {
 	}
 
 	public static function redact( $value, $depth = 0 ) {
+		if ( 0 === (int)$depth && class_exists( 'MAD4B_SCP_Structural_Redaction' ) ) return MAD4B_SCP_Structural_Redaction::redact( $value, 'observability' );
 		if($depth>=self::MAX_DEPTH)return '[TRUNCATED]';
 		if(is_object($value))$value=get_object_vars($value);
 		if(is_array($value)){
@@ -375,6 +376,6 @@ final class MAD4B_SCP_Observability {
 		return str_repeat('0',$bytes*2)===$hex ? substr(hash('sha256',$hex.'|nonzero'),0,$bytes*2) : $hex;
 	}
 	private static function valid_hex( $value, $length ) { return strlen((string)$value)===(int)$length && 1===preg_match('/^[a-f0-9]+$/D',(string)$value) && str_repeat('0',$length)!==(string)$value; }
-	private static function sensitive_key( $key ) { return 1===preg_match('/(?:authorization|bearer|token|secret|password|passwd|cookie|credential|api[_-]?key|client[_-]?secret|raw(?:_|$)|payload|prompt|post_content|request_body|response_body)/i',(string)$key); }
+	private static function sensitive_key( $key ) { return class_exists( 'MAD4B_SCP_Structural_Redaction' ) ? MAD4B_SCP_Structural_Redaction::sensitive_key( $key ) : 1===preg_match('/(?:authorization|bearer|token|secret|password|passwd|cookie|credential|api[_-]?key|client[_-]?secret|raw(?:_|$)|payload|prompt|post_content|request_body|response_body)/i',(string)$key); }
 	private static function scalar_string( $value ) { return is_scalar($value)?(string)$value:wp_json_encode(self::redact($value)); }
 }

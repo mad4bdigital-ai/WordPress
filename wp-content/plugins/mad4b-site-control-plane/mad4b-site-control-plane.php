@@ -109,6 +109,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-canonicalization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-resource-constraint-set.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-journal.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-structural-redaction.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-evidence-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-metrics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-observability.php';
