@@ -170,8 +170,13 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
           php wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/preparation-receipt-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php
