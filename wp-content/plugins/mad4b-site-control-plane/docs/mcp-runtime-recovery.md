@@ -67,7 +67,7 @@ and Production classification does not become an update-policy escape hatch.
 
 ## Verification
 
-CI includes 31 fresh-process MU boundary cases, 16 lifecycle/recovery cases,
+CI includes 35 fresh-process MU boundary cases, 16 lifecycle/recovery cases,
 settings submission regressions and Staging/Production rebind/readback tests.
 The real WordPress 6.9/latest mixed-class fixture removes WP_ENVIRONMENT_TYPE to
 model the implicit Production default, verifies first-request fail-closed repair,
@@ -96,6 +96,7 @@ plugin database tables on WordPress 6.9 and the workflow's `latest` version.
 | Audit append fails after profile persistence | Exact previous profile restored; no recovery scheduled for the failed change | Matrix |
 | Options storage drops profile/result writes | No successful persistence or armed recovery result reported | Matrix |
 | Valid borrowed convergence lease / forged token / lease stolen during audit | Preserve caller ownership; reject invalid fencing; never publish success after losing fence | Matrix with real lease implementation |
+| Negative identity/version, array environment or text `"false"` feature | Invalid stored profile quarantined before coercion; no regular/MU authority | MU boundary processes |
 | Missing, disabled or tampered Adapter/baseline | Fail closed before executable pin bytes run | MU boundary processes and installed-integrity fixtures |
 | Plain permalinks, subdirectory URL, custom REST prefix | Same exact owned MCP route; no foreign AJAX/front-end shortcut | MU boundary processes |
 | Official Adapter + foreign validator/DTO ownership | Current request remains blocked; next CLI/AJAX request pins canonical classes and exposes 26 ChatGPT tools | Real mixed-class WordPress fixture |

@@ -565,6 +565,7 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	public static function validate_record_for_test( array $record, $environment, $origin ) {
+		if ( ! self::valid_record( $record ) ) return false;
 		$record = self::normalize_record( $record );
 		if ( ! self::valid_record( $record ) ) return false;
 		return sanitize_key( (string) $environment ) === (string) $record['environment']
@@ -573,7 +574,7 @@ final class MAD4B_SCP_Site_Profile {
 
 
 	private static function valid_legacy_record( $record ) {
-		if ( ! is_array( $record ) ) return false;
+		if ( ! self::valid_record_shape( $record ) ) return false;
 		if ( self::LEGACY_CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) return false;
 		if ( self::LEGACY_VERSION !== absint( isset( $record['version'] ) ? $record['version'] : 0 ) ) return false;
 		if ( ! self::valid_uuid( isset( $record['site_uuid'] ) ? $record['site_uuid'] : '' ) ) return false;
@@ -713,7 +714,7 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	private static function valid_record( $record ) {
-		if ( ! is_array( $record ) ) return false;
+		if ( ! self::valid_record_shape( $record ) ) return false;
 		if ( self::CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) return false;
 		if ( self::VERSION !== absint( isset( $record['version'] ) ? $record['version'] : 0 ) ) return false;
 		if ( ! self::valid_uuid( isset( $record['site_uuid'] ) ? $record['site_uuid'] : '' ) ) return false;
@@ -721,6 +722,30 @@ final class MAD4B_SCP_Site_Profile {
 		$environment = sanitize_key( isset( $record['environment'] ) ? (string) $record['environment'] : '' );
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return false;
 		return '' !== self::normalize_origin( isset( $record['canonical_origin'] ) ? $record['canonical_origin'] : '' );
+	}
+
+	/** Validate before coercion: corrupt stored data must never become authority. */
+	private static function valid_record_shape( $record ) {
+		if ( ! is_array( $record ) ) return false;
+		foreach ( array( 'contract', 'site_uuid', 'environment', 'canonical_origin' ) as $field ) {
+			if ( ! isset( $record[ $field ] ) || ! is_string( $record[ $field ] ) ) return false;
+		}
+		foreach ( array( 'version', 'revision' ) as $field ) {
+			$value = $record[ $field ] ?? null;
+			if ( ! is_int( $value ) && ! is_string( $value ) ) return false;
+			if ( 1 !== preg_match( '/^[1-9][0-9]*$/D', (string) $value ) || false === filter_var( $value, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 1 ) ) ) ) return false;
+		}
+		if ( ! in_array( $record['environment'], array( 'local', 'development', 'staging', 'production' ), true ) ) return false;
+		if ( isset( $record['features'] ) ) {
+			if ( ! is_array( $record['features'] ) ) return false;
+			foreach ( $record['features'] as $value ) {
+				if ( ! in_array( $value, array( true, false, 1, 0, '1', '0' ), true ) ) return false;
+			}
+		}
+		foreach ( array( 'display_name', 'chatgpt_app_id', 'legacy_agent_slug', 'created_at', 'updated_at' ) as $field ) {
+			if ( isset( $record[ $field ] ) && ! is_string( $record[ $field ] ) ) return false;
+		}
+		return true;
 	}
 
 	private static function normalize_record( array $record ) {
@@ -746,7 +771,8 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	private static function normalize_origin( $url ) {
-		$url = trim( (string) $url );
+		if ( ! is_string( $url ) ) return '';
+		$url = trim( $url );
 		if ( '' === $url ) return '';
 		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
@@ -763,6 +789,7 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	private static function valid_uuid( $value ) {
+		if ( ! is_string( $value ) ) return false;
 		return 1 === preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', trim( (string) $value ) );
 	}
 

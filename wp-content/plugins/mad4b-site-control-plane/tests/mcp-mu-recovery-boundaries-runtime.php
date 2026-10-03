@@ -1,6 +1,6 @@
 <?php
 /** Exercise the shipped MU loader before regular plugins, in fresh PHP processes. */
-$cases = array( 'implicit', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only' );
+$cases = array( 'implicit', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'frontend', 'foreign_ajax', 'diagnostic', 'developer', 'developer_breakglass', 'tampered_autoloader', 'tampered_validator', 'preclaimed', 'local', 'development', 'explicit_staging', 'plain_route', 'subdirectory', 'custom_rest_prefix', 'diagnostic_get', 'diagnostic_array', 'adapter_inactive', 'control_plane_inactive', 'missing_manifest', 'missing_baseline', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) {
 		passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code );
@@ -18,6 +18,7 @@ function trailingslashit( $v ) { return rtrim( $v, '/' ) . '/'; }
 function wp_normalize_path( $v ) { return str_replace( '\\', '/', $v ); }
 function home_url( $v = '' ) { return 'https://staging.fixture.test' . $v; }
 function wp_parse_url( $v, $part = -1 ) { return parse_url( $v, $part ); }
+function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 function wp_unslash( $v ) { return $v; }
 function wp_get_environment_type() { return defined( 'WP_ENVIRONMENT_TYPE' ) ? WP_ENVIRONMENT_TYPE : ( getenv( 'WP_ENVIRONMENT_TYPE' ) ?: 'production' ); }
 function apply_filters( $hook, $v, ...$args ) { return 'explicit_filter' === $GLOBALS['case'] && 'mad4b_scp_wordpress_environment_explicit' === $hook ? true : $v; }
@@ -36,6 +37,10 @@ $profile = array( 'contract' => 'mad4b.site-profile.v2', 'version' => 2, 'site_u
 if ( 'foreign_origin' === $case ) $profile['canonical_origin'] = 'https://production.fixture.test';
 if ( 'invalid_uuid' === $case ) $profile['site_uuid'] = 'invalid';
 if ( 'invalid_revision' === $case ) $profile['revision'] = 0;
+if ( 'negative_revision' === $case ) $profile['revision'] = -2;
+if ( 'negative_version' === $case ) $profile['version'] = -2;
+if ( 'array_environment' === $case ) $profile['environment'] = array( 'staging' );
+if ( 'string_feature' === $case ) $profile['features']['managed_runtime'] = 'false';
 if ( 'disabled' === $case ) $profile['features']['managed_runtime'] = false;
 if ( 'reenrollment' === $case ) $profile['migration_requires_reenrollment'] = true;
 if ( 'production' === $case ) $profile['environment'] = 'production';
@@ -86,8 +91,11 @@ if ( 'tampered_validator' === $case ) file_put_contents( WP_PLUGIN_DIR . '/mcp-a
 if ( 'preclaimed' === $case ) eval( 'namespace WP\\MCP\\Domain\\Tools; class McpToolValidator {}' );
 require $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 $status = $GLOBALS['mad4b_scp_mcp_mu_bootstrap'];
-if ( in_array( $case, array( 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only' ), true ) ) {
+if ( in_array( $case, array( 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 	boundary_check( ! $status['eligible'] && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'ineligible binding loaded a provider class' );
+	if ( in_array( $case, array( 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
+		boundary_check( ! MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::oauth_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled(), 'malformed profile gained regular-plugin authority' );
+	}
 } elseif ( in_array( $case, array( 'frontend', 'foreign_ajax', 'diagnostic_get', 'diagnostic_array' ), true ) ) {
 	boundary_check( $status['request_scope_bypassed'] && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'foreign request loaded MCP' );
 } elseif ( in_array( $case, array( 'tampered_autoloader', 'tampered_validator', 'missing_manifest', 'missing_baseline' ), true ) ) {
