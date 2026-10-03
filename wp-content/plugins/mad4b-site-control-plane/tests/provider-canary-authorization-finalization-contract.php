@@ -16,9 +16,11 @@ function apply_filters( $hook, $value ) { return $value; }
 class WP_Error {
 	private $code;
 	private $message;
-	public function __construct( $code = '', $message = '' ) { $this->code = (string) $code; $this->message = (string) $message; }
+	private $data;
+	public function __construct( $code = '', $message = '', $data = array() ) { $this->code = (string) $code; $this->message = (string) $message; $this->data = $data; }
 	public function get_error_code() { return $this->code; }
 	public function get_error_message() { return $this->message; }
+	public function get_error_data() { return $this->data; }
 }
 
 final class MAD4B_SCP_Audit {
