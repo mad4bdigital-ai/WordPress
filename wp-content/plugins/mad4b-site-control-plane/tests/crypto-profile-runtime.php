@@ -1,5 +1,5 @@
 <?php
-$tmp=sys_get_temp_dir().'/mad4b-crypto-profile-'.getmypid();
+$tmp=getenv('MAD4B_CRYPTO_TEST_DIR')?:sys_get_temp_dir().'/mad4b-crypto-profile-'.getmypid();
 @mkdir($tmp.'/www',0777,true);@mkdir($tmp.'/keys',0777,true);
 define('ABSPATH',$tmp.'/www/');
 define('MAD4B_SCP_DIR',dirname(__DIR__).'/');
@@ -17,6 +17,13 @@ function wp_normalize_path($v){return str_replace('\\','/',(string)$v);}
 
 require dirname(__DIR__).'/includes/class-mad4b-scp-time-policy.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-crypto-profile.php';
+if('1'===getenv('MAD4B_CRYPTO_CONCURRENCY_CHILD')){
+ MAD4B_SCP_Time_Policy::set_test_clock((int)(getenv('MAD4B_CRYPTO_TEST_EPOCH')?:2000086402),500000);
+ $child=MAD4B_SCP_Crypto_Profile::rotate('execution-receipt-rs256-v1');
+ if(is_wp_error($child)){fwrite(STDERR,$child->get_error_code().PHP_EOL);exit(2);}
+ echo json_encode(array('kid'=>$child['current_kid'],'revision'=>$child['revision'])).PHP_EOL;
+ exit(0);
+}
 $fail=static function($m,$v=null){fwrite(STDERR,'FAIL crypto-profile-runtime: '.$m.(null===$v?'':' '.json_encode($v)).PHP_EOL);exit(1);};
 $check=static function($c,$m,$v=null)use($fail){if(!$c)$fail($m,$v);};
 $code=static function($v){return is_wp_error($v)?$v->get_error_code():'';};
@@ -72,5 +79,42 @@ $check(is_array($status)&&empty($status['private_key_exposed'])&&empty($status['
 $manifest=$tmp.'/keys/keyring-'.$p1.'.json';$raw=is_file($manifest)?file_get_contents($manifest):'';
 $check(false===strpos((string)$raw,'PRIVATE KEY'),'private key leaked into keyring manifest');
 foreach(glob($tmp.'/keys/private-*.pem')?:array() as$pem)$check(false!==strpos((string)file_get_contents($pem),'PRIVATE KEY'),'private key file missing key material');
+
+// Two writers sharing one keyring must serialize read-modify-write and advance revision twice.
+$before=MAD4B_SCP_Crypto_Profile::status($p1);$before_revision=(int)$before['revision'];
+$cmd=escapeshellarg(PHP_BINARY).' '.escapeshellarg(__FILE__);
+$env=array('MAD4B_CRYPTO_TEST_DIR'=>$tmp,'MAD4B_CRYPTO_CONCURRENCY_CHILD'=>'1','MAD4B_CRYPTO_TEST_EPOCH'=>'2000086402');
+$spec=array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w'));
+$pipes1=array();$pipes2=array();$proc1=proc_open($cmd,$spec,$pipes1,null,$env);$proc2=proc_open($cmd,$spec,$pipes2,null,$env);
+$check(is_resource($proc1)&&is_resource($proc2),'concurrency workers failed to start');
+fclose($pipes1[0]);fclose($pipes2[0]);
+$out1=stream_get_contents($pipes1[1]);$err1=stream_get_contents($pipes1[2]);fclose($pipes1[1]);fclose($pipes1[2]);
+$out2=stream_get_contents($pipes2[1]);$err2=stream_get_contents($pipes2[2]);fclose($pipes2[1]);fclose($pipes2[2]);
+$exit1=proc_close($proc1);$exit2=proc_close($proc2);
+$check(0===$exit1&&0===$exit2,'concurrent rotations did not serialize',array($out1,$err1,$out2,$err2));
+$after=MAD4B_SCP_Crypto_Profile::status($p1);
+$check((int)$after['revision']===$before_revision+2,'concurrent rotations lost a manifest update',$after);
+
+// A private-key file symlink must never be followed.
+$manifest_data=json_decode((string)file_get_contents($manifest),true);
+$current_kid=(string)$manifest_data['current_kid'];$private_file=(string)$manifest_data['keys'][$current_kid]['private_key_file'];
+$private_path=$tmp.'/keys/'.$private_file;$private_backup=$private_path.'.real';
+$check(rename($private_path,$private_backup),'private-key symlink fixture rename failed');
+if(@symlink($private_backup,$private_path)){
+ $symlink_sign=MAD4B_SCP_Crypto_Profile::sign_digest($p1,hash('sha256','symlink-private-key'));
+ $check('mad4b_crypto_private_key_symlink_denied'===$code($symlink_sign),'private-key symlink was followed',$symlink_sign);
+ unlink($private_path);rename($private_backup,$private_path);
+}else{rename($private_backup,$private_path);}
+
+// A lexical keyring path outside WordPress that resolves into DOCUMENT_ROOT must fail closed.
+$real_keys=$tmp.'/keys-real';
+$check(rename($tmp.'/keys',$real_keys),'keyring symlink fixture rename failed');
+$exposed=$tmp.'/www/exposed-keyring';@mkdir($exposed,0777,true);
+if(@symlink($exposed,$tmp.'/keys')){
+ $symlink_dir=MAD4B_SCP_Crypto_Profile::status($p1);
+ $check(in_array($code($symlink_dir),array('mad4b_crypto_keyring_path_document_root_exposed','mad4b_crypto_keyring_path_wordpress_exposed'),true),'keyring canonical containment failed',$symlink_dir);
+ unlink($tmp.'/keys');rename($real_keys,$tmp.'/keys');
+}else{rename($real_keys,$tmp.'/keys');}
+
 MAD4B_SCP_Time_Policy::reset_test_clock();
-echo "mad4b.crypto-profile.runtime.v2: PASS\n";
+echo "mad4b.crypto-profile.runtime.v3: PASS\n";
