@@ -4,6 +4,8 @@ function mad4b_mixed_class_fail( $message, $data = null ) {
 	fwrite( STDERR, 'FAIL: ' . $message . ( null !== $data ? ' ' . wp_json_encode( $data ) : '' ) . PHP_EOL );
 	exit( 1 );
 }
+$repair = MAD4B_SCP_MCP_Runtime_Recovery::run( '', true );
+if ( is_wp_error( $repair ) ) mad4b_mixed_class_fail( 'governed recovery failed before mixed-class readback', $repair->get_error_code() );
 $guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::status();
 $provenance = MAD4B_SCP_MCP_Class_Provenance::status( true );
 
