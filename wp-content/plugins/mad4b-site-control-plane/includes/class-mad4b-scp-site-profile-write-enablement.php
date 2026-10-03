@@ -329,7 +329,4 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		);
 	}
 
-	private static function restore_profile( array $profile ) {
-		return MAD4B_SCP_Site_Profile::persist_record_exact( $profile );
-	}
 }
