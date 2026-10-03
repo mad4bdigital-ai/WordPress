@@ -57,8 +57,12 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 		$active = array_values( array_map( 'strval', $active ) );
-		$official_index = array_search( self::OFFICIAL_PLUGIN, $active, true );
+		$official_identity = self::official_plugin_identity( $active );
+		$official_plugin = isset( $official_identity['plugin_file'] ) ? (string) $official_identity['plugin_file'] : '';
+		$official_index = '' !== $official_plugin ? array_search( $official_plugin, $active, true ) : false;
 		$hostinger_index = self::hostinger_index( $active );
+		$status['official_plugin_file'] = $official_plugin;
+		$status['official_plugin_identity_ambiguous'] = ! empty( $official_identity['ambiguous'] );
 		$status['official_plugin_active'] = false !== $official_index;
 		$status['hostinger_bundle_active'] = false !== $hostinger_index;
 		$status['official_index'] = false === $official_index ? -1 : (int) $official_index;
@@ -70,6 +74,11 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		// repaired for the next request, while unseen classes remain unmeasured.
 		$status = array_merge( $status, self::runtime_provenance(), self::mu_bootstrap_status() );
 
+		if ( ! empty( $official_identity['ambiguous'] ) ) {
+			$status['blocker'] = 'official_mcp_adapter_identity_ambiguous';
+			self::$status = $status;
+			return $status;
+		}
 		if ( false === $official_index ) {
 			$status['blocker'] = 'official_mcp_adapter_not_active';
 			self::$status = $status;
@@ -195,7 +204,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				self::$status = $status;
 				return $status;
 			}
-			array_splice( $new, (int) $hostinger_index_after_remove, 0, array( self::OFFICIAL_PLUGIN ) );
+			array_splice( $new, (int) $hostinger_index_after_remove, 0, array( $official_plugin ) );
 			$new = array_values( $new );
 			$updated = update_option( 'active_plugins', $new );
 			$stored = get_option( 'active_plugins', array() );
@@ -247,7 +256,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				'contract' => self::CONTRACT,
 				'environment' => isset( $status['environment'] ) ? $status['environment'] : 'unknown',
 				'host' => isset( $status['host'] ) ? $status['host'] : '',
-				'official_plugin' => self::OFFICIAL_PLUGIN,
+				'official_plugin' => $official_plugin,
+				'preferred_official_plugin' => self::OFFICIAL_PLUGIN,
 				'reviewed_conflict_family' => 'hostinger-ai-assistant',
 				'runtime_source' => isset( $status['runtime_source'] ) ? sanitize_text_field( (string) $status['runtime_source'] ) : '',
 				'runtime_version' => isset( $status['runtime_version'] ) ? sanitize_text_field( (string) $status['runtime_version'] ) : '',
@@ -297,6 +307,22 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		return ! empty( self::$status ) ? self::$status : array_merge( self::base_status(), self::runtime_provenance(), self::mu_bootstrap_status() );
 	}
 
+	private static function official_plugin_identity( array $active ) {
+		$matches = array();
+		foreach ( $active as $plugin_file ) {
+			$plugin_file = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( (string) $plugin_file ) : str_replace( '\\', '/', (string) $plugin_file );
+			$plugin_file = ltrim( trim( $plugin_file ), '/' );
+			if ( '' === $plugin_file || false !== strpos( $plugin_file, '../' ) || in_array( '..', explode( '/', $plugin_file ), true ) ) continue;
+			if ( 'mcp-adapter.php' === basename( $plugin_file ) ) $matches[] = $plugin_file;
+		}
+		$matches = array_values( array_unique( $matches ) );
+		return array(
+			'plugin_file' => 1 === count( $matches ) ? $matches[0] : '',
+			'ambiguous' => count( $matches ) > 1,
+			'candidate_count' => count( $matches ),
+		);
+	}
+
 	private static function hostinger_index( array $active ) {
 		foreach ( $active as $index => $plugin ) {
 			if ( 0 === strpos( (string) $plugin, self::HOSTINGER_PREFIX ) ) return (int) $index;
@@ -328,7 +354,11 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$file = $reflection->getFileName();
 			$resolved = $file ? realpath( $file ) : false;
 			$plugin_root = realpath( WP_PLUGIN_DIR );
-			$official_root = realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' );
+			$active = get_option( 'active_plugins', array() );
+			$active = is_array( $active ) ? array_values( array_map( 'strval', $active ) ) : array();
+			$official_identity = self::official_plugin_identity( $active );
+			$official_plugin = isset( $official_identity['plugin_file'] ) ? (string) $official_identity['plugin_file'] : '';
+			$official_root = '' !== $official_plugin ? realpath( trailingslashit( WP_PLUGIN_DIR ) . dirname( $official_plugin ) ) : false;
 			$hostinger_root = realpath( trailingslashit( WP_PLUGIN_DIR ) . 'hostinger-ai-assistant' );
 			if ( $resolved && $plugin_root ) {
 				$normalized = wp_normalize_path( $resolved );
@@ -527,6 +557,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'state' => $eligible ? 'inspection_pending' : 'ineligible',
 			'blocker' => $blocker,
 			'official_plugin_active' => false,
+			'official_plugin_file' => '',
+			'official_plugin_identity_ambiguous' => false,
 			'hostinger_bundle_active' => false,
 			'official_loads_before_hostinger' => false,
 			'collision_risk_detected' => false,
