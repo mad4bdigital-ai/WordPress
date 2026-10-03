@@ -217,4 +217,17 @@ assert "MAD4B_SCP_MCP_CLI_REQUEST" in mu_bootstrap
 assert "cli_mcp_opt_in" in mu_bootstrap
 assert "active_plugins_unique_main_file" in mu_bootstrap
 assert "plugin_identity_ambiguous" in mu_bootstrap
+mu_cleanup = mu_bootstrap.split("unset(", 1)[1]
+for marker in (
+    '$mad4b_mcp_mu_transaction',
+    '$mad4b_mcp_mu_find_active',
+    '$mad4b_mcp_mu_control_plane_matches',
+    '$mad4b_mcp_mu_adapter_matches',
+    '$mad4b_mcp_mu_control_plane_root',
+    '$mad4b_mcp_mu_proof',
+    '$mad4b_mcp_mu_expected_proof',
+    '$mad4b_mcp_mu_is_cli',
+    '$mad4b_mcp_mu_cli_opt_in',
+):
+    assert marker in mu_cleanup, f'MU global cleanup missing {marker}'
 assert mu_bootstrap.index("Validate every executable pin") < mu_bootstrap.index("foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once")
