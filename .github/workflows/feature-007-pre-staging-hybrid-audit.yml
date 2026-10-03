@@ -124,6 +124,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py
+
+      - name: Durable provider circuit breaker contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py
           node wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs
 
 
@@ -314,6 +320,12 @@ jobs:
           RUN_ID="redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove durable provider circuit breaker state machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove durable network fan-out crash reconstruction and site binding
         shell: bash
