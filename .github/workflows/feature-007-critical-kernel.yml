@@ -167,6 +167,21 @@ jobs:
           set -euo pipefail
           python3 -m py_compile             tools/verify_release_root_trust.py             tools/mad4b_recovery_plane.py
 
+      - name: Hermetic deterministic security kernel
+        shell: bash
+        env:
+          MAD4B_TEST_SEED: feature007-hermetic-v1
+          MAD4B_TEST_WALL_EPOCH: '2000000000'
+          MAD4B_TEST_MONOTONIC_MS: '500000'
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php > /tmp/mad4b-critical-hermetic-a.json
+          php wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php > /tmp/mad4b-critical-hermetic-b.json
+          cmp -s /tmp/mad4b-critical-hermetic-a.json /tmp/mad4b-critical-hermetic-b.json
+          cat /tmp/mad4b-critical-hermetic-a.json
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py
+
+
       - name: Verify external release root-trust contract
         shell: bash
         run: |
