@@ -32,7 +32,11 @@ $check('mad4b_abuse_schema_properties_exceeded'===$code(MAD4B_SCP_Abuse_Budget::
 $evil=array('query'=>'(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+(.*)+');
 $check('mad4b_abuse_search_complexity_denied'===$code(MAD4B_SCP_Abuse_Budget::admit('discovery',$evil)),'pathological search/regex term was accepted');
 $huge=array('metadata'=>str_repeat('x',20000));
-$check('mad4b_abuse_metadata_bytes_exceeded'===$code(MAD4B_SCP_Abuse_Budget::admit('discovery',$huge)),'oversized metadata was accepted');
+$check('mad4b_abuse_metadata_bytes_exceeded'===$code(MAD4B_SCP_Abuse_Budget::admit('discovery',$huge)),'oversized metadata did not hit the metadata budget');
+$nested_metadata=array('context'=>array('part_a'=>str_repeat('a',7000),'part_b'=>str_repeat('b',7000),'part_c'=>str_repeat('c',7000)));
+$check('mad4b_abuse_metadata_bytes_exceeded'===$code(MAD4B_SCP_Abuse_Budget::admit('discovery',$nested_metadata)),'nested metadata aggregate escaped the metadata byte budget');
+$oversized_string=array('payload'=>str_repeat('x',9000));
+$check('mad4b_abuse_string_bytes_exceeded'===$code(MAD4B_SCP_Abuse_Budget::admit('discovery',$oversized_string)),'oversized non-metadata string escaped its byte budget');
 $second=MAD4B_SCP_Abuse_Budget::admit('discovery',array('query'=>'safe'));
 $check(is_array($second)&&2===$second['rate']['count'],'atomic per-identity bucket did not increment',$second);
 echo "mad4b.abuse-budget.runtime.v1: PASS\n";
