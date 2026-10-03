@@ -10,6 +10,13 @@ $GLOBALS['mad4b_test_audit_ready'] = true;
 $GLOBALS['mad4b_test_audit_fail'] = false;
 $GLOBALS['mad4b_test_audit_events'] = array();
 $GLOBALS['mad4b_test_explicit_environment_filter'] = null;
+$GLOBALS['mad4b_test_deployment_binding'] = '';
+$GLOBALS['mad4b_test_drop_profile_writes'] = false;
+$GLOBALS['mad4b_test_nested_save_input'] = null;
+$GLOBALS['mad4b_test_nested_save_result'] = null;
+$GLOBALS['mad4b_test_fail_profile_writes_after_audit'] = false;
+$GLOBALS['mad4b_test_preset_migration_enabled'] = false;
+$GLOBALS['mad4b_test_preset_file'] = '';
 
 class WP_Error { private $code; private $message; private $data; public function __construct($c,$m='',$d=null){$this->code=$c;$this->message=$m;$this->data=$d;} public function get_error_code(){return $this->code;} public function get_error_message(){return $this->message;} public function get_error_data(){return $this->data;} }
 function is_wp_error($v){return $v instanceof WP_Error;}
@@ -24,6 +31,9 @@ function site_url($p=''){return home_url($p);}
 function wp_get_environment_type(){return $GLOBALS['mad4b_test_environment'];}
 function apply_filters($tag,$value,...$args){
 	if('mad4b_scp_wordpress_environment_explicit'===$tag && null!==$GLOBALS['mad4b_test_explicit_environment_filter']) return (bool)$GLOBALS['mad4b_test_explicit_environment_filter'];
+	if('mad4b_scp_deployment_binding'===$tag) return (string)$GLOBALS['mad4b_test_deployment_binding'];
+	if('mad4b_scp_enable_legacy_site_profile_presets'===$tag) return (bool)$GLOBALS['mad4b_test_preset_migration_enabled'];
+	if('mad4b_scp_legacy_site_profile_preset_file'===$tag && ''!==$GLOBALS['mad4b_test_preset_file']) return (string)$GLOBALS['mad4b_test_preset_file'];
 	return $value;
 }
 function current_user_can($c){return 'manage_options'===$c ? !empty($GLOBALS['mad4b_test_is_admin']) : false;}
@@ -32,14 +42,45 @@ function get_current_blog_id(){return 1;}
 function wp_get_current_user(){return (object)array('ID'=>(int)$GLOBALS['mad4b_test_user_id'],'allcaps'=>array('manage_options'=>true));}
 function wp_check_invalid_utf8($v,$strip=false){return (string)$v;}
 function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['mad4b_test_options'])?$GLOBALS['mad4b_test_options'][$k]:$d;}
-function update_option($k,$v,$a=null){$GLOBALS['mad4b_test_options'][$k]=$v;return true;}
+function update_option($k,$v,$a=null){if($k===MAD4B_SCP_Site_Profile::OPTION&&!empty($GLOBALS['mad4b_test_drop_profile_writes']))return false;$GLOBALS['mad4b_test_options'][$k]=$v;return true;}
 function delete_option($k){unset($GLOBALS['mad4b_test_options'][$k]);return true;}
 function wp_generate_uuid4(){static $n=0;++$n;return sprintf('11111111-1111-4111-8111-%012d',$n);}
 function get_userdata($id){return absint($id)>0?(object)array('ID'=>absint($id)):false;}
 function user_can($u,$c){return is_object($u)&&'manage_options'===$c;}
 function get_bloginfo($k){return 'Client Test';}
 function wp_register_ability(){}
-final class MAD4B_SCP_Audit { public static function storage_status(){return array('ready'=>!empty($GLOBALS['mad4b_test_audit_ready']));} public static function record($a,$s,$st){if(!empty($GLOBALS['mad4b_test_audit_fail']))return new WP_Error('audit_failed','forced');$GLOBALS['mad4b_test_audit_events'][]=array($a,$s,$st);return true;} }
+final class MAD4B_SCP_Audit {
+ public static function storage_status(){return array('ready'=>!empty($GLOBALS['mad4b_test_audit_ready']));}
+ public static function record($a,$s,$st){
+  if('mad4b/site-profile-updated'===$a && is_array($GLOBALS['mad4b_test_nested_save_input'])){
+   $nested=$GLOBALS['mad4b_test_nested_save_input'];$GLOBALS['mad4b_test_nested_save_input']=null;
+   $GLOBALS['mad4b_test_nested_save_result']=MAD4B_SCP_Site_Profile::save_current_site($nested);
+  }
+  if(!empty($GLOBALS['mad4b_test_fail_profile_writes_after_audit']))$GLOBALS['mad4b_test_drop_profile_writes']=true;
+  if(!empty($GLOBALS['mad4b_test_audit_fail']))return new WP_Error('audit_failed','forced');
+  $GLOBALS['mad4b_test_audit_events'][]=array($a,$s,$st);return true;
+ }
+ public static function site_profile_revocation_events($revocation_id,$profile_digest,$limit=5){
+  if(empty($GLOBALS['mad4b_test_audit_ready']))return new WP_Error('audit_unavailable','forced');
+  $events=array();
+  foreach($GLOBALS['mad4b_test_audit_events'] as $event){
+   if(($event[0]??'')!=='mad4b/site-profile-write-disabled')continue;$summary=$event[1]??array();
+   if(($summary['revocation_id']??'')!==$revocation_id||($summary['profile_digest']??'')!==$profile_digest)continue;
+   $events[]=array('ability'=>$event[0],'summary'=>$summary,'status'=>$event[2]??'');
+  }
+  return array('count'=>count($events),'events'=>$events);
+ }
+ public static function site_profile_mutation_events($ability,$mutation_id,$profile_digest,$limit=5){
+  if(empty($GLOBALS['mad4b_test_audit_ready']))return new WP_Error('audit_unavailable','forced');
+  $events=array();
+  foreach($GLOBALS['mad4b_test_audit_events'] as $event){
+   if(($event[0]??'')!==$ability)continue;$summary=$event[1]??array();
+   if(($summary['mutation_id']??'')!==$mutation_id||($summary['profile_digest']??'')!==$profile_digest)continue;
+   $events[]=array('ability'=>$event[0],'summary'=>$summary,'status'=>$event[2]??'');
+  }
+  return array('count'=>count($events),'events'=>$events);
+ }
+}
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-environment.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-ability-contract-inspector.php';
@@ -48,7 +89,7 @@ require_once dirname(__DIR__).'/includes/class-mad4b-scp-chatgpt-tool-projection
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-approval-tickets.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-durable-execution.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: {$m}\n");exit(1);}}
-function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;$GLOBALS['mad4b_test_explicit_environment_filter']=null;putenv('WP_ENVIRONMENT_TYPE');MAD4B_SCP_Site_Profile::reset_cache(); }
+function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;$GLOBALS['mad4b_test_explicit_environment_filter']=null;$GLOBALS['mad4b_test_deployment_binding']='';$GLOBALS['mad4b_test_drop_profile_writes']=false;$GLOBALS['mad4b_test_nested_save_input']=null;$GLOBALS['mad4b_test_nested_save_result']=null;$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=false;$GLOBALS['mad4b_test_preset_migration_enabled']=false;$GLOBALS['mad4b_test_preset_file']='';putenv('WP_ENVIRONMENT_TYPE');MAD4B_SCP_Site_Profile::reset_cache(); }
 function legacy_record($env,$origin,$revision=4){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>$revision,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy Client','chatgpt_app_id'=>'plugin_asdk_app_legacy123','oauth_user_ids'=>array(7,8),'related_origins'=>array($env=>$origin),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy-agent','legacy_zero_touch'=>true,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z');}
 
 
@@ -89,6 +130,8 @@ $dynamic=MAD4B_SCP_Site_Profile::save_current_site(array(
     'oauth_enabled'=>false,
     'skills_enabled'=>false,
     'write_enabled'=>false,
+    'nonproduction_override_confirmed'=>true,
+    'nonproduction_override_confirmation'=>MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION,
 ));
 ok(!is_wp_error($dynamic),'explicit site enrollment can use advisory environment without wp-config edit');
 ok('staging'===MAD4B_SCP_Site_Profile::current_environment(),'exact Site Profile becomes MAD4B environment authority');
@@ -115,7 +158,8 @@ $GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']=$ori
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy_record('staging',$origin,2);
 $legacy_default=MAD4B_SCP_Site_Profile::status();
 ok(!empty($legacy_default['configured'])&&'legacy_v1_migrated'===($legacy_default['source']??''),'exact legacy staging identity migrates across implicit WordPress Production default');
-ok('staging'===($legacy_default['environment']??'')&&'production'===($legacy_default['wordpress_environment']??''),'legacy migration resolves effective Staging without wp-config edit');
+ok('production'===($legacy_default['environment']??'')&&'staging'===($legacy_default['configured_environment']??'')&&'production'===($legacy_default['wordpress_environment']??''),'legacy migration remains on implicit Production until non-production override is confirmed');
+ok('nonproduction_override_unconfirmed'===($legacy_default['binding_state']??'')&&!empty($legacy_default['profile_authority_quarantined']),'legacy implicit non-production override is quarantined pending exact attestation');
 ok(empty($legacy_default['write_enabled'])&&empty($legacy_default['oauth_enabled'])&&empty($legacy_default['skills_enabled']),'legacy environment continuity restores no authority');
 
 // Exact v1 record migrates only as identity; every authority-bearing field fails closed.
@@ -212,6 +256,23 @@ $s=MAD4B_SCP_Site_Profile::status();
 ok(empty($s['configured'])&&'stored_invalid'===$s['source'],'invalid v2 record blocks legacy fallback');
 ok(!MAD4B_SCP_Site_Profile::write_enabled(),'invalid v2 state remains zero-authority');
 
+// Stored legacy/OAuth identity values must fail closed before normalization.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://shape.client.test/';
+$shape=legacy_record('staging','https://shape.client.test',4);
+$shape['contract']=MAD4B_SCP_Site_Profile::CONTRACT;$shape['version']=MAD4B_SCP_Site_Profile::VERSION;
+$shape['legacy_zero_touch']='false';$shape['oauth_user_ids']=array();
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$shape;
+ok(empty(MAD4B_SCP_Site_Profile::status()['configured'])&&!MAD4B_SCP_Site_Profile::user_is_enrolled(7),'text legacy_zero_touch was coerced into authority');
+
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://shape.client.test/';
+$shape=legacy_record('staging','https://shape.client.test',4);
+$shape['contract']=MAD4B_SCP_Site_Profile::CONTRACT;$shape['version']=MAD4B_SCP_Site_Profile::VERSION;
+$shape['oauth_user_ids']=array(array(7));
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$shape;
+ok(empty(MAD4B_SCP_Site_Profile::status()['configured']),'nested OAuth user id shape was accepted');
+
 // Legacy Production write confirmation never migrates; explicit v2 confirmation is required again.
 reset_state();
 $GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://client.example/';
@@ -225,5 +286,250 @@ ok(is_wp_error($denied)&&'mad4b_site_profile_production_write_confirmation_requi
 $prod['production_write_confirmation']=MAD4B_SCP_Site_Profile::PRODUCTION_WRITE_CONFIRMATION;
 $allowed=MAD4B_SCP_Site_Profile::save_current_site($prod);
 ok(!is_wp_error($allowed)&&!empty($allowed['write_enabled']),'exact explicit v2 production confirmation succeeds');
+
+// Environment rebinding must persist, and AJAX must verify the new identity,
+// even when its revision resets below the previous environment's revision.
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile-admin.php';
+reset_state();
+$GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://staging.client.test/';
+$staging=array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'write_enabled'=>true,'managed_runtime_enabled'=>true,'nonproduction_override_confirmed'=>true,'nonproduction_override_confirmation'=>MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION);
+$first=MAD4B_SCP_Site_Profile::save_current_site($staging);
+$staging['expected_revision']=1;$second=MAD4B_SCP_Site_Profile::save_current_site($staging);
+$before=MAD4B_SCP_Site_Profile::profile();
+$transition=$staging;$transition['expected_revision']=2;$transition['environment']='production';
+$blocked=MAD4B_SCP_Site_Profile::save_current_site($transition);
+ok(is_wp_error($blocked)&&$before===MAD4B_SCP_Site_Profile::profile(),'Production write transition without confirmation leaves exact staging identity intact');
+$transition['write_enabled']=false;
+$production=MAD4B_SCP_Site_Profile::save_current_site($transition);
+ok(!is_wp_error($production)&&'production'===$production['configured_environment']&&1===(int)$production['revision'],'Production without writes saves with a new identity');
+ok($production['site_uuid']!==$second['site_uuid'],'environment rebind cannot reuse staging authority identity');
+ok(MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($transition,$production,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'AJAX accepts exact rebind readback even when revision resets');
+ok(!MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($transition,$second,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'AJAX rejects stale environment identity readback');
+// A tab loaded on staging revision 1 must not overwrite production revision 1.
+$old_tab=$staging;$old_tab['expected_revision']=1;$old_tab['expected_profile_digest']=$first['profile_digest'];
+$before_replay=MAD4B_SCP_Site_Profile::profile();
+$replay=MAD4B_SCP_Site_Profile::save_current_site($old_tab);
+ok(is_wp_error($replay)&&'mad4b_site_profile_identity_stale'===$replay->get_error_code()&&$before_replay===MAD4B_SCP_Site_Profile::profile(),'old identity form rejected despite equal revision');
+$malformed=$old_tab;$malformed['expected_profile_digest']=array($production['profile_digest']);
+ok(is_wp_error(MAD4B_SCP_Site_Profile::save_current_site($malformed)),'array-valued profile digest is rejected');
+$back=$staging;$back['expected_revision']=1;$back['expected_profile_digest']=$production['profile_digest'];
+$again=MAD4B_SCP_Site_Profile::save_current_site($back);
+ok(!is_wp_error($again)&&'staging'===$again['configured_environment'],'Production to Staging saves without Production write confirmation');
+ok(empty(MAD4B_SCP_Site_Profile::profile()['features']['production_write_confirmed']),'Production write acknowledgement is not carried into staging');
+$transition['write_enabled']=true;$transition['production_write_confirmed']=true;$transition['production_write_confirmation']=MAD4B_SCP_Site_Profile::PRODUCTION_WRITE_CONFIRMATION;$transition['expected_revision']=1;
+$confirmed=MAD4B_SCP_Site_Profile::save_current_site($transition);
+ok(!is_wp_error($confirmed)&&!empty($confirmed['write_enabled']),'explicitly confirmed Staging to Production write transition saves');
+ok(empty(MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible']),'Production profile disables managed runtime recovery');
+
+// Optional host binding protects independent same-origin clones without exposing
+// the raw host secret in WordPress storage.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://same-origin.client.test/';
+$GLOBALS['mad4b_test_deployment_binding']='deployment-a';
+$bound=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'oauth_enabled'=>true));
+ok(!is_wp_error($bound)&&!empty($bound['same_origin_clone_protection']),'deployment binding did not become active');
+$bound_uuid=$bound['site_uuid'];
+$GLOBALS['mad4b_test_deployment_binding']='deployment-b';MAD4B_SCP_Site_Profile::reset_cache();
+$clone=MAD4B_SCP_Site_Profile::status();
+ok('deployment_drift'===($clone['binding_state']??'')&&!empty($clone['profile_authority_quarantined'])&&empty($clone['oauth_enabled']),'same-origin clone inherited authority across deployment binding');
+$reb=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>(int)$clone['revision'],'expected_profile_digest'=>$clone['profile_digest'],'oauth_user_ids'=>array(7),'oauth_enabled'=>true));
+ok(!is_wp_error($reb)&&$bound_uuid!==$reb['site_uuid']&&1===(int)$reb['revision'],'same-origin clone reenrollment reused source deployment identity');
+
+// Implicit WordPress Production cannot be downgraded by a select value alone.
+reset_state();
+$GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://staging.override.test/';
+$blocked_override=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7)));
+ok(is_wp_error($blocked_override)&&'mad4b_site_profile_nonproduction_override_confirmation_required'===$blocked_override->get_error_code(),'implicit Production downgrade succeeded without local attestation');
+$accepted_override=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'nonproduction_override_confirmed'=>true,'nonproduction_override_confirmation'=>MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION));
+ok(!is_wp_error($accepted_override)&&!empty(MAD4B_SCP_Site_Profile::profile()['implicit_production_override_confirmed']),'exact non-Production attestation was not persisted');
+
+// Existing implicit-Production profiles without the new attestation are
+// configured but quarantined on read until an administrator confirms them.
+reset_state();
+$GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://staging.legacy-override.test/';
+$unconfirmed=legacy_record('staging','https://staging.legacy-override.test',7);
+$unconfirmed['contract']=MAD4B_SCP_Site_Profile::CONTRACT;
+$unconfirmed['version']=MAD4B_SCP_Site_Profile::VERSION;
+unset($unconfirmed['implicit_production_override_confirmed']);
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$unconfirmed;
+MAD4B_SCP_Site_Profile::reset_cache();
+$unconfirmed_status=MAD4B_SCP_Site_Profile::status();
+ok('production'===MAD4B_SCP_Site_Profile::current_environment(),'unconfirmed implicit override became effective');
+ok('nonproduction_override_unconfirmed'===($unconfirmed_status['binding_state']??''),'unconfirmed implicit override was not diagnosed');
+ok(empty($unconfirmed_status['authority_ready'])&&!empty($unconfirmed_status['profile_authority_quarantined']),'unconfirmed implicit override retained authority');
+ok(!MAD4B_SCP_Site_Profile::origin_enrolled()&&!MAD4B_SCP_Site_Profile::oauth_enabled()&&!MAD4B_SCP_Site_Profile::write_enabled()&&!MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'],'unconfirmed implicit override remained executable');
+
+$unconfirmed['implicit_production_override_confirmed']=true;
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$unconfirmed;
+MAD4B_SCP_Site_Profile::reset_cache();
+$confirmed_status=MAD4B_SCP_Site_Profile::status();
+ok('staging'===MAD4B_SCP_Site_Profile::current_environment()&&!empty($confirmed_status['authority_ready']),'confirmed implicit override did not restore exact staging authority');
+
+
+// Atomic save protocol: a second save arriving while the first generation is
+// pending audit cannot also succeed on the same revision/digest.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://cas.client.test/';
+$cas_first=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'oauth_enabled'=>true));
+ok(!is_wp_error($cas_first),'CAS fixture initial save failed');
+$cas_before=MAD4B_SCP_Site_Profile::status();
+$GLOBALS['mad4b_test_nested_save_input']=array(
+ 'environment'=>'staging','expected_revision'=>(int)$cas_before['revision'],'expected_profile_digest'=>$cas_before['profile_digest'],
+ 'oauth_user_ids'=>array(7),'oauth_enabled'=>true,'skills_enabled'=>true
+);
+$cas_outer=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>(int)$cas_before['revision'],'expected_profile_digest'=>$cas_before['profile_digest'],
+ 'oauth_user_ids'=>array(7),'oauth_enabled'=>true,'display_name'=>'outer-wins'
+));
+ok(!is_wp_error($cas_outer),'CAS outer save failed');
+ok(is_wp_error($GLOBALS['mad4b_test_nested_save_result'])&&'mad4b_site_profile_mutation_pending'===$GLOBALS['mad4b_test_nested_save_result']->get_error_code(),'concurrent save succeeded while prior generation was pending audit');
+ok(2===MAD4B_SCP_Site_Profile::revision()&&'outer-wins'===MAD4B_SCP_Site_Profile::profile()['display_name'],'concurrent save changed committed winner');
+
+// Authority disable is an audited CAS mutation too: success finalizes exactly
+// one new generation, while audit failure restores the prior committed record.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://disable.client.test/';
+$disable_first=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),
+ 'write_enabled'=>true,'oauth_enabled'=>true
+));
+ok(!is_wp_error($disable_first)&&!empty($disable_first['write_enabled']),'disable-authority fixture initial save failed');
+$disable_before=get_option(MAD4B_SCP_Site_Profile::OPTION,null);
+$disable_ok=MAD4B_SCP_Site_Profile::disable_authority((int)$disable_first['revision']);
+ok(!is_wp_error($disable_ok)&&empty($disable_ok['write_enabled'])&&2===(int)$disable_ok['revision'],'audited authority disable did not commit exactly one generation');
+$disable_event=end($GLOBALS['mad4b_test_audit_events']);
+ok(is_array($disable_event)&&'mad4b/site-profile-write-disabled'===($disable_event[0]??''),'authority disable did not append its audit event');
+$disable_event_count=count($GLOBALS['mad4b_test_audit_events']);
+$disable_noop=MAD4B_SCP_Site_Profile::disable_authority(2);
+ok(!is_wp_error($disable_noop)&&!empty($disable_noop['authority_already_disabled'])&&2===MAD4B_SCP_Site_Profile::revision(),'repeated authority disable created a new profile generation');
+ok($disable_event_count===count($GLOBALS['mad4b_test_audit_events']),'repeated authority disable emitted duplicate revocation evidence');
+
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://disable-fail.client.test/';
+$disable_first=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),
+ 'write_enabled'=>true,'oauth_enabled'=>true
+));
+ok(!is_wp_error($disable_first),'disable-authority rollback fixture initial save failed');
+$disable_before=get_option(MAD4B_SCP_Site_Profile::OPTION,null);
+$GLOBALS['mad4b_test_audit_fail']=true;
+$disable_failed=MAD4B_SCP_Site_Profile::disable_authority((int)$disable_first['revision']);
+$GLOBALS['mad4b_test_audit_fail']=false;MAD4B_SCP_Site_Profile::reset_cache();
+ok(is_wp_error($disable_failed)&&'mad4b_site_profile_disable_authority_audit_failed'===$disable_failed->get_error_code(),'authority disable audit failure did not surface');
+$disable_error_data=$disable_failed->get_error_data();
+ok(is_array($disable_error_data)&&!empty($disable_error_data['authority_disabled']),'authority disable audit failure did not report committed revocation');
+ok($disable_before!==get_option(MAD4B_SCP_Site_Profile::OPTION,null)&&empty(MAD4B_SCP_Site_Profile::status()['write_enabled'])&&2===MAD4B_SCP_Site_Profile::revision(),'audit failure re-enabled or rolled back disabled authority');
+$disable_error_data=$disable_failed->get_error_data();
+ok(is_array($disable_error_data)&&!empty($disable_error_data['revocation_evidence_pending'])&&!empty($disable_error_data['revocation_id']),'audit failure did not queue durable revocation evidence');
+$outbox_status=MAD4B_SCP_Site_Profile::revocation_audit_outbox_status();
+ok(1===($outbox_status['pending_count']??0)&&!empty($outbox_status['pending']),'revocation outbox did not expose one pending evidence record');
+$flush=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(!is_wp_error($flush)&&1===($flush['recorded']??0)&&0===($flush['remaining']??-1),'revocation outbox did not append and clear recovered evidence');
+ok(0===(MAD4B_SCP_Site_Profile::revocation_audit_outbox_status()['pending_count']??-1),'revocation outbox remained pending after successful flush');
+// Replay deduplication: retain an exact already-audited entry and prove flush
+// removes it without emitting a duplicate append-only event.
+$replay=$disable_error_data;
+$revocation_id=$replay['revocation_id'];
+$recorded_event=end($GLOBALS['mad4b_test_audit_events']);$recorded_summary=$recorded_event[1]??array();
+update_option(MAD4B_SCP_Site_Profile::REVOCATION_AUDIT_OUTBOX_OPTION,array($revocation_id=>$recorded_summary),false);
+$before_event_count=count($GLOBALS['mad4b_test_audit_events']);
+$dedupe=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(!is_wp_error($dedupe)&&1===($dedupe['deduplicated']??0)&&$before_event_count===count($GLOBALS['mad4b_test_audit_events']),'revocation replay duplicated an already committed audit event');
+$bad_revocation='22222222-2222-4222-8222-222222222222';
+update_option(MAD4B_SCP_Site_Profile::REVOCATION_AUDIT_OUTBOX_OPTION,array($bad_revocation=>array('contract'=>'tampered')),false);
+$bad_outbox_status=MAD4B_SCP_Site_Profile::revocation_audit_outbox_status();
+ok(empty($bad_outbox_status['integrity_valid'])&&1===($bad_outbox_status['invalid_count']??0),'tampered revocation outbox was reported healthy');
+$bad_flush=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(is_wp_error($bad_flush)&&'mad4b_site_profile_revocation_outbox_integrity_invalid'===$bad_flush->get_error_code(),'tampered revocation outbox was replayed or silently skipped');
+update_option(MAD4B_SCP_Site_Profile::REVOCATION_AUDIT_OUTBOX_OPTION,'corrupt-scalar',false);
+$scalar_status=MAD4B_SCP_Site_Profile::revocation_audit_outbox_status();
+ok(empty($scalar_status['storage_valid'])&&empty($scalar_status['integrity_valid'])&&1===($scalar_status['invalid_count']??0),'scalar-corrupt revocation outbox masqueraded as empty healthy storage');
+$scalar_flush=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(is_wp_error($scalar_flush)&&'mad4b_site_profile_revocation_outbox_storage_invalid'===$scalar_flush->get_error_code(),'scalar-corrupt revocation outbox was silently discarded');
+
+// Double failure: audit fails and rollback persistence fails. The only remaining
+// record is explicitly pending_audit, so a fresh read cannot grant authority.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://double-fail.client.test/';
+$df_first=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'oauth_enabled'=>true,'skills_enabled'=>true,'managed_runtime_enabled'=>true));
+ok(!is_wp_error($df_first),'double-failure fixture initial save failed');
+$df_before=MAD4B_SCP_Site_Profile::status();
+$GLOBALS['mad4b_test_audit_fail']=true;
+$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=true;
+$df_result=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>(int)$df_before['revision'],'expected_profile_digest'=>$df_before['profile_digest'],
+ 'oauth_user_ids'=>array(7),'oauth_enabled'=>true,'skills_enabled'=>true,'managed_runtime_enabled'=>true
+));
+ok(is_wp_error($df_result)&&'mad4b_site_profile_audit_rollback_failed'===$df_result->get_error_code(),'audit+rollback double failure did not surface');
+$GLOBALS['mad4b_test_drop_profile_writes']=false;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=false;
+MAD4B_SCP_Site_Profile::reset_cache();
+$df_status=MAD4B_SCP_Site_Profile::status();
+ok(!empty($df_status['mutation_pending_audit'])&&'mutation_pending_audit'===($df_status['binding_state']??''),'double failure did not persist quarantine state');
+ok(empty($df_status['authority_ready'])&&empty($df_status['oauth_enabled'])&&empty($df_status['skills_enabled'])&&!MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'],'double failure left pending Site Profile executable');
+
+// A stale pending generation with no committed audit evidence can be claimed and
+// rolled back exactly; fresh generations stay inside the writer grace period.
+$df_pending=get_option(MAD4B_SCP_Site_Profile::OPTION,null);
+$df_mutation_id=$df_pending['mutation_id']??'';
+$df_fresh_plan=MAD4B_SCP_Site_Profile::pending_mutation_reconciliation_plan($df_mutation_id);
+ok(!is_wp_error($df_fresh_plan)&&'active_writer_grace_period'===($df_fresh_plan['state']??''),'fresh pending mutation became recoverable before writer grace period elapsed');
+$df_pending['mutation_started_at']='2026-01-01T00:00:00Z';
+update_option(MAD4B_SCP_Site_Profile::OPTION,$df_pending,false);MAD4B_SCP_Site_Profile::reset_cache();
+$df_plan=MAD4B_SCP_Site_Profile::pending_mutation_reconciliation_plan($df_mutation_id);
+ok(!is_wp_error($df_plan)&&'rollback'===($df_plan['recommended_action']??'')&&!empty($df_plan['automatic_reconciliation_allowed']),'stale unaudited pending mutation did not produce exact rollback plan');
+$df_reconciled=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($df_mutation_id,'rollback',$df_plan['pending_record_sha256']);
+ok(!is_wp_error($df_reconciled)&&!empty($df_reconciled['reconciliation_applied'])&&'rollback'===($df_reconciled['reconciliation_decision']??''),'stale unaudited pending mutation rollback failed');
+ok(empty(MAD4B_SCP_Site_Profile::status()['mutation_pending_audit'])&&1===MAD4B_SCP_Site_Profile::revision(),'pending mutation rollback did not restore exact prior generation');
+
+// Simulate audit-committed/finalize-failed: exact audit evidence must select
+// finalize, not rollback, and stale plan bytes must be rejected.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://finalize-fail.client.test/';
+$ff_first=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'oauth_enabled'=>true));
+ok(!is_wp_error($ff_first),'finalize-failure fixture initial save failed');
+$ff_before=MAD4B_SCP_Site_Profile::status();
+$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=true;
+$ff_result=MAD4B_SCP_Site_Profile::save_current_site(array(
+ 'environment'=>'staging','expected_revision'=>(int)$ff_before['revision'],'expected_profile_digest'=>$ff_before['profile_digest'],
+ 'oauth_user_ids'=>array(7),'oauth_enabled'=>true,'skills_enabled'=>true
+));
+$GLOBALS['mad4b_test_drop_profile_writes']=false;$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=false;MAD4B_SCP_Site_Profile::reset_cache();
+ok(is_wp_error($ff_result)&&'mad4b_site_profile_commit_finalize_failed'===$ff_result->get_error_code(),'audit-committed finalize failure did not surface');
+$ff_pending=get_option(MAD4B_SCP_Site_Profile::OPTION,null);$ff_mutation_id=$ff_pending['mutation_id']??'';
+$ff_pending['mutation_started_at']='2026-01-01T00:00:00Z';update_option(MAD4B_SCP_Site_Profile::OPTION,$ff_pending,false);MAD4B_SCP_Site_Profile::reset_cache();
+$ff_plan=MAD4B_SCP_Site_Profile::pending_mutation_reconciliation_plan($ff_mutation_id);
+ok(!is_wp_error($ff_plan)&&'finalize'===($ff_plan['recommended_action']??''),'committed audit evidence did not select finalize');
+$ff_stale=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($ff_mutation_id,'finalize',str_repeat('0',64));
+ok(is_wp_error($ff_stale)&&'mad4b_site_profile_reconciliation_plan_stale'===$ff_stale->get_error_code(),'stale pending digest was accepted');
+$ff_done=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($ff_mutation_id,'finalize',$ff_plan['pending_record_sha256']);
+ok(!is_wp_error($ff_done)&&!empty($ff_done['reconciliation_applied'])&&2===MAD4B_SCP_Site_Profile::revision()&&MAD4B_SCP_Site_Profile::skills_enabled(),'audited pending mutation did not finalize exact target');
+
+
+// Legacy preset migration is opt-in and validates raw data before any coercion.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://preset.client.test/';
+$preset_path=sys_get_temp_dir().'/mad4b-site-profile-preset-'.getmypid().'.json';
+$valid_preset=array(
+ 'contract'=>MAD4B_SCP_Site_Profile::CONTRACT,'version'=>MAD4B_SCP_Site_Profile::VERSION,
+ 'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>1,'environment'=>'staging',
+ 'canonical_origin'=>'https://preset.client.test','display_name'=>'Preset','chatgpt_app_id'=>'',
+ 'oauth_user_ids'=>array(7),'related_origins'=>array('staging'=>'https://preset.client.test'),
+ 'features'=>array('oauth'=>false,'skills'=>false,'write'=>false,'production_write_confirmed'=>false,'provider_isolation'=>false,'managed_runtime'=>false,'acceptance'=>false),
+ 'legacy_agent_slug'=>'','legacy_zero_touch'=>false,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z'
+);
+file_put_contents($preset_path,json_encode(array('contract'=>MAD4B_SCP_Site_Profile::PRESET_CONTRACT,'profiles'=>array($valid_preset))));
+$GLOBALS['mad4b_test_preset_file']=$preset_path;
+$matching=new ReflectionMethod('MAD4B_SCP_Site_Profile','matching_preset');$matching->setAccessible(true);
+ok(array()===$matching->invoke(null),'preset migration ran without explicit opt-in');
+$GLOBALS['mad4b_test_preset_migration_enabled']=true;
+$matched=$matching->invoke(null);
+ok(is_array($matched)&&'123e4567-e89b-42d3-a456-426614174000'===($matched['site_uuid']??''),'valid raw preset was not available after explicit opt-in');
+
+$invalid_preset=$valid_preset;
+$invalid_preset['revision']=-2;
+$invalid_preset['features']['oauth']='false';
+file_put_contents($preset_path,json_encode(array('contract'=>MAD4B_SCP_Site_Profile::PRESET_CONTRACT,'profiles'=>array($invalid_preset))));
+ok(array()===$matching->invoke(null),'invalid preset was normalized into an authoritative record');
+@unlink($preset_path);
 
 fwrite(STDOUT,"MAD4B Site Profile v2 general distribution runtime: PASS\n");
