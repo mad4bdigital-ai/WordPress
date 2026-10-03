@@ -29,9 +29,9 @@ final class MAD4B_SCP_Transport_Context {
 			return new WP_Error( 'mad4b_transport_request_unavailable', 'The MCP transport request route is unavailable.' );
 		}
 
-		$route = (string) $request->get_route();
+		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
 		$expected_route = '/mcp/' . $server_id;
-		if ( $route !== $expected_route ) {
+		if ( ! hash_equals( $expected_route, $route ) ) {
 			return new WP_Error(
 				'mad4b_transport_route_mismatch',
 				'The MCP request route does not match the server permission callback.',
