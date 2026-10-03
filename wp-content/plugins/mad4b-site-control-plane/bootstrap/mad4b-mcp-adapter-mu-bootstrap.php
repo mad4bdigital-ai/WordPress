@@ -110,11 +110,17 @@ if ( function_exists( 'wp_cache_delete' ) ) {
 	wp_cache_delete( 'notoptions', 'options' );
 }
 $mad4b_mcp_mu_transaction = function_exists( 'get_option' )
-	? get_option( 'mad4b_scp_mcp_mu_refresh_transaction_v1', array() )
-	: array();
-if ( is_array( $mad4b_mcp_mu_transaction ) && ! empty( $mad4b_mcp_mu_transaction ) ) {
+	? get_option( 'mad4b_scp_mcp_mu_refresh_transaction_v1', null )
+	: null;
+if ( null !== $mad4b_mcp_mu_transaction ) {
 	$mad4b_mcp_mu_status['transaction_pending'] = true;
-	$mad4b_mcp_mu_status['state'] = 'managed_mu_transaction_pending';
+	$mad4b_mcp_mu_valid_transaction = is_array( $mad4b_mcp_mu_transaction )
+		&& ! empty( $mad4b_mcp_mu_transaction )
+		&& 'mad4b.mcp-mu-filesystem-transaction.v1' === ( $mad4b_mcp_mu_transaction['contract'] ?? '' )
+		&& isset( $mad4b_mcp_mu_transaction['transaction_id'] )
+		&& is_string( $mad4b_mcp_mu_transaction['transaction_id'] )
+		&& 1 === preg_match( '/^[a-f0-9]{32}$/D', strtolower( $mad4b_mcp_mu_transaction['transaction_id'] ) );
+	$mad4b_mcp_mu_status['state'] = $mad4b_mcp_mu_valid_transaction ? 'managed_mu_transaction_pending' : 'managed_mu_transaction_invalid';
 	$mad4b_mcp_mu_profile_enrolled = false;
 }
 
