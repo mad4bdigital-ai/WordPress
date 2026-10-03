@@ -18,7 +18,7 @@
   "workstreams": [
     {
       "id": "canonical_capability_semantics",
-      "status": "OPEN",
+      "status": "DONE",
       "task_ids": [
         "T3701",
         "T3702",
@@ -34,11 +34,16 @@
       ],
       "dependencies": [],
       "interim_behavior": "Any descriptor/consumer disagreement blocks preparation/execution; presentation remains non-authorizing.",
-      "evidence_strategy": "Contract/property/mutation evidence across Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization."
+      "evidence_strategy": "Contract/property/mutation evidence across Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization.",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-audit.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ]
     },
     {
       "id": "semantic_content_and_resource_constraints",
-      "status": "OPEN",
+      "status": "DONE",
       "task_ids": [
         "T3707",
         "T3708",
@@ -55,11 +60,16 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Unknown provider fields/resources cannot widen a reviewed mutation; unsupported constraints deny execution.",
-      "evidence_strategy": "Provider field contracts plus compiler/property/mutation fixtures and exact digest binding evidence."
+      "evidence_strategy": "Provider field contracts plus compiler/property/mutation fixtures and exact digest binding evidence.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py"
+      ]
     },
     {
       "id": "postconditions_execution_state_identifiers",
-      "status": "OPEN",
+      "status": "DONE",
       "task_ids": [
         "T3712",
         "T3713",
@@ -78,11 +88,17 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Ambiguous provider effects remain RECONCILING/UNKNOWN; legacy identifiers cannot be silently reinterpreted.",
-      "evidence_strategy": "Per-family postcondition readers, contradiction matrices and identifier migration fixtures."
+      "evidence_strategy": "Per-family postcondition readers, contradiction matrices and identifier migration fixtures.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-postcondition-binding-contract.py"
+      ]
     },
     {
       "id": "catalog_backend_cache_concurrency",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3719",
         "T3720",
@@ -100,7 +116,18 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Current options/CAS backend remains authoritative until parity/cutover proof; stale publishers/readers cannot authorize execution.",
-      "evidence_strategy": "Shadow-read parity, fencing, cache-coherence, multi-worker and rollback evidence."
+      "evidence_strategy": "Shadow-read parity, fencing, cache-coherence, multi-worker and rollback evidence.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "remainder": [
+        "Exact-head Redis/persistent-cache and horizontal catalog runtime matrix must complete successfully across the certified MySQL/MariaDB and PHP 7.4/8.3 profiles before T3719-T3724 are promoted from PARTIAL to DONE."
+      ]
     },
     {
       "id": "durable_multisite_network",

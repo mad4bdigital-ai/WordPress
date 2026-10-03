@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "02532e7e790c09f17cf14e4dd1ed48b5cc4aa804",
-  "override_git_blob_sha": "ca6bd74ffb771fc2f32c7e67ee246f5c1a79aeb6",
+  "source_tasks_git_blob_sha": "267a59754c7d0061f25bc1e4c461cc2a9ec9f4fc",
+  "override_git_blob_sha": "68dde3a71fbbf5edf257ef1deb471efe1b7e8193",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,22 +10,22 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 65,
-    "OPEN": 625,
-    "PARTIAL": 65
+    "DONE": 83,
+    "OPEN": 601,
+    "PARTIAL": 71
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 56,
-      "OPEN": 486,
+      "DONE": 73,
+      "OPEN": 469,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 8,
-      "OPEN": 117,
-      "PARTIAL": 21
+      "DONE": 9,
+      "OPEN": 110,
+      "PARTIAL": 27
     },
     "P2": {
       "DEFERRED": 2,
@@ -6986,240 +6986,333 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Build a post-merge Capability Fabric dimension matrix mapping every reviewed dimension to an owning contract, task, gate, evidence source and explicit status; no P0/P1 dimension may remain unowned.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-audit.md",
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json"
+      ],
+      "reason": "The post-merge dimension matrix assigns reviewed Capability Fabric dimensions to explicit contracts, tasks, gates, evidence sources and statuses with no P0/P1 ownership gap in this workstream."
     },
     {
       "task_id": "T3702",
       "phase": 37,
       "priority": "P0",
       "summary": "Bind Operation Registry entries to the canonical Capability Descriptor identity instead of independently re-deriving execution/classification facts.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Operation Registry now consumes canonical Capability Descriptor identity/generation material instead of re-deriving execution truth independently."
     },
     {
       "task_id": "T3703",
       "phase": 37,
       "priority": "P0",
       "summary": "Bind Capability Traits profiles to the canonical descriptor/classification generation roots and prove trait metadata cannot override execution truth.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Capability Traits are bound to canonical descriptor/classification generation roots and remain descriptive/non-authorizing."
     },
     {
       "task_id": "T3704",
       "phase": 37,
       "priority": "P0",
       "summary": "Bind Servers/catalog/direct projection rows to descriptor identity and generation roots; presentation layers remain consumers only.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Servers and projection/catalog presentation rows consume canonical descriptor identity and generation roots rather than becoming execution authority."
     },
     {
       "task_id": "T3705",
       "phase": 37,
       "priority": "P0",
       "summary": "Bind Authorization admission/readback to canonical descriptor identity while preserving live grant/approval/policy revalidation and no cached authority grant.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Authorization admission/readback binds canonical descriptor identity while retaining live grant, approval and policy revalidation."
     },
     {
       "task_id": "T3706",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Add cross-consumer drift/property/mutation tests proving Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization fail closed on any schema/lane/classification/generation disagreement.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Cross-consumer runtime/contract fixtures fail closed on schema, lane, classification and generation drift across Descriptor consumers."
     },
     {
       "task_id": "T3707",
       "phase": 37,
       "priority": "P0",
       "summary": "Define provider-specific semantic content-field contracts for posts, SEO, media, WooCommerce, Elementor, JetEngine and future plugins; generic string heuristics become fallback evidence only.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php"
+      ],
+      "reason": "Provider-specific semantic field contracts cover core posts, SEO, media, WooCommerce, Elementor and JetEngine with extensible explicit provider contracts."
     },
     {
       "task_id": "T3708",
       "phase": 37,
       "priority": "P0",
       "summary": "Unknown or newly introduced brand-bearing provider fields require explicit classification/review and cannot silently inherit mutation eligibility.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php"
+      ],
+      "reason": "Unknown/new brand-bearing provider fields fail closed into explicit classification/review instead of silently inheriting mutation eligibility."
     },
     {
       "task_id": "T3709",
       "phase": 37,
       "priority": "P0",
       "summary": "Define and compile a provider-neutral resource-constraint DSL for post IDs/types, taxonomies, filesystem zones/paths, DB tables/columns, provider object IDs, mutation counts and byte/value limits.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/resource-constraint-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resource-constraint-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php"
+      ],
+      "reason": "A provider-neutral resource constraint compiler covers IDs/types, taxonomies, paths/zones, DB resources, provider IDs, mutation counts and size/value bounds."
     },
     {
       "task_id": "T3710",
       "phase": 37,
       "priority": "P0",
       "summary": "Bind the compiled resource-set digest to plan, preparation evidence, approval, execution guard and readback evidence.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resource-constraint-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py"
+      ],
+      "reason": "The compiled resource-set digest is explicitly carried through planning/preparation, approval, authorization/commit guard and execution evidence/readback."
     },
     {
       "task_id": "T3711",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Mutation/property tests must reject resource widening, alternate identifiers, wildcard expansion, path aliasing and provider-side object substitution after approval.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py"
+      ],
+      "reason": "Negative fixtures reject widening, alternate identifiers, wildcard expansion, path aliasing and provider-side substitution after approval."
     },
     {
       "task_id": "T3712",
       "phase": 37,
       "priority": "P0",
       "summary": "Define a ProviderPostconditionProfile per mutation family with authoritative committed/no-effect/unknown readers and exact evidence freshness requirements.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-postcondition-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-postcondition-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-runtime.php"
+      ],
+      "reason": "Certified ProviderPostconditionProfile records define authoritative reader identity, freshness and committed/no-effect/unknown semantics for every registered mutation family."
     },
     {
       "task_id": "T3713",
       "phase": 37,
       "priority": "P0",
       "summary": "Durable retry/reclaim eligibility requires a certified postcondition reader for that mutation family; unsupported families remain reconciliation-required and blind-retry denied.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-postcondition-binding-contract.py"
+      ],
+      "reason": "Durable reclaim/retry now requires certified, current and fresh postcondition evidence; unsupported/missing families remain reconciliation-required and blind-retry denied."
     },
     {
       "task_id": "T3714",
       "phase": 37,
       "priority": "P0",
       "summary": "Add timeout-after-possible-side-effect, lost-response, duplicate-callback and provider-commit/readback-delay fixtures for every certified mutation family.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-postcondition-profiles.json"
+      ],
+      "reason": "The profile runtime loops every certified family through timeout-after-side-effect, lost-response/no-effect, duplicate callback, delayed readback, stale evidence and unsupported-reader cases."
     },
     {
       "task_id": "T3715",
       "phase": 37,
       "priority": "P0",
       "summary": "Formalize Execution State View precedence across Operation Journal, Durable Execution and Connector Resilience, including a complete contradictory-evidence matrix.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-state-view.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php"
+      ],
+      "reason": "Execution State View combines Journal, Durable Execution and Connector Resilience conservatively with explicit cross-source contradiction handling."
     },
     {
       "task_id": "T3716",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Prove Execution State View is fully recomputable, owns no durable state, and can never promote unknown/contradictory evidence to COMMITTED or retryable.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Execution State View is recomputable/read-only and fixtures prove unknown or contradictory evidence remains reconciling instead of being promoted to committed/retryable."
     },
     {
       "task_id": "T3717",
       "phase": 37,
       "priority": "P0",
       "summary": "Define a canonical identifier-policy registry for operation/job/approval/receipt/provider IDs with UUIDv4 or explicitly versioned opaque formats, normalization and length/entropy requirements.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/identifier-policies.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identifiers.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py"
+      ],
+      "reason": "The identifier policy registry centrally defines canonical UUIDv4/versioned opaque/provider/receipt identities, normalization and bounded formats."
     },
     {
       "task_id": "T3718",
       "phase": 37,
       "priority": "P1",
       "summary": "Provide compatibility/migration semantics for legacy non-canonical operation identifiers without rewriting historical journal identity.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py"
+      ],
+      "reason": "Legacy operation identifiers are admitted only through an exact-byte legacy-read-only lane and are never rewritten into new journal identity."
     },
     {
       "task_id": "T3719",
       "phase": 37,
       "priority": "P1",
       "summary": "Design a dedicated immutable catalog table backend with content-addressed rows, generation directory, indexed expiry/GC and explicit capacity accounting.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-table-backend-contract.py"
+      ],
+      "reason": "Schema v13 provides immutable content-addressed catalog objects, generation directories, indexed expiry/GC, fenced heads and explicit physical capacity accounting."
     },
     {
       "task_id": "T3720",
       "phase": 37,
       "priority": "P1",
       "summary": "Implement shadow-read parity and bounded cutover from options storage with one authoritative publisher at a time; no dual-authority catalog state.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php"
+      ],
+      "reason": "Options remain the sole authority until exact shadow parity; cutover is CAS-bound and table authority never silently falls back, preventing dual authority."
     },
     {
       "task_id": "T3721",
       "phase": 37,
       "priority": "P1",
       "summary": "Add storage-level publication fencing token/CAS semantics so lost/reused DB connections cannot publish a stale generation.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php"
+      ],
+      "reason": "Table publication uses transactional row locking plus generation/fencing-token CAS so stale or reused connections cannot publish an obsolete head."
     },
     {
       "task_id": "T3722",
       "phase": 37,
       "priority": "P1",
       "summary": "Certify persistent object-cache/Redis behavior: stale option/object cache cannot resurrect retired objects, bypass CAS, or hide a newer catalog directory.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "A hermetic Redis object-cache fixture plus cross-process setup/verify tests are implemented; exact-head Redis runtime certification is still pending."
     },
     {
       "task_id": "T3723",
       "phase": 37,
       "priority": "P1",
       "summary": "Run multi-PHP-worker and multi-host concurrency tests proving process-local caches/mutexes are never authoritative and DB-scoped locks remain isolated.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-distributed-lock.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php"
+      ],
+      "reason": "Independent PHP workers with distinct host identities and DB-scoped locking/fencing fixtures are implemented; exact-head horizontal runtime certification is still pending."
     },
     {
       "task_id": "T3724",
       "phase": 37,
       "priority": "P1",
       "summary": "GATE Prove backend rollback/retirement preserves projection/grants/approvals/audit/site profile and leaves no orphan capacity accounting.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tools/catalog-decommission.php"
+      ],
+      "reason": "Bounded rollback, reader-drained fenced retirement, projection/governance preservation and referenced/orphan capacity readback are implemented; exact-head retirement runtime certification is still pending."
     },
     {
       "task_id": "T3725",

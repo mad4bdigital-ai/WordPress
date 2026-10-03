@@ -743,28 +743,28 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 ## Phase 37 — Post-merge Capability Fabric completeness
 
 ### 37A — Canonical capability semantics and drift elimination
-- [ ] T3701 P0 Build a post-merge Capability Fabric dimension matrix mapping every reviewed dimension to an owning contract, task, gate, evidence source and explicit status; no P0/P1 dimension may remain unowned.
-- [ ] T3702 P0 Bind Operation Registry entries to the canonical Capability Descriptor identity instead of independently re-deriving execution/classification facts.
-- [ ] T3703 P0 Bind Capability Traits profiles to the canonical descriptor/classification generation roots and prove trait metadata cannot override execution truth.
-- [ ] T3704 P0 Bind Servers/catalog/direct projection rows to descriptor identity and generation roots; presentation layers remain consumers only.
-- [ ] T3705 P0 Bind Authorization admission/readback to canonical descriptor identity while preserving live grant/approval/policy revalidation and no cached authority grant.
-- [ ] T3706 P0 GATE Add cross-consumer drift/property/mutation tests proving Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization fail closed on any schema/lane/classification/generation disagreement.
+- [x] T3701 P0 Build a post-merge Capability Fabric dimension matrix mapping every reviewed dimension to an owning contract, task, gate, evidence source and explicit status; no P0/P1 dimension may remain unowned.
+- [x] T3702 P0 Bind Operation Registry entries to the canonical Capability Descriptor identity instead of independently re-deriving execution/classification facts.
+- [x] T3703 P0 Bind Capability Traits profiles to the canonical descriptor/classification generation roots and prove trait metadata cannot override execution truth.
+- [x] T3704 P0 Bind Servers/catalog/direct projection rows to descriptor identity and generation roots; presentation layers remain consumers only.
+- [x] T3705 P0 Bind Authorization admission/readback to canonical descriptor identity while preserving live grant/approval/policy revalidation and no cached authority grant.
+- [x] T3706 P0 GATE Add cross-consumer drift/property/mutation tests proving Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization fail closed on any schema/lane/classification/generation disagreement.
 
 ### 37B — Semantic content fields and least-privilege resource constraints
-- [ ] T3707 P0 Define provider-specific semantic content-field contracts for posts, SEO, media, WooCommerce, Elementor, JetEngine and future plugins; generic string heuristics become fallback evidence only.
-- [ ] T3708 P0 Unknown or newly introduced brand-bearing provider fields require explicit classification/review and cannot silently inherit mutation eligibility.
-- [ ] T3709 P0 Define and compile a provider-neutral resource-constraint DSL for post IDs/types, taxonomies, filesystem zones/paths, DB tables/columns, provider object IDs, mutation counts and byte/value limits.
-- [ ] T3710 P0 Bind the compiled resource-set digest to plan, preparation evidence, approval, execution guard and readback evidence.
-- [ ] T3711 P0 GATE Mutation/property tests must reject resource widening, alternate identifiers, wildcard expansion, path aliasing and provider-side object substitution after approval.
+- [x] T3707 P0 Define provider-specific semantic content-field contracts for posts, SEO, media, WooCommerce, Elementor, JetEngine and future plugins; generic string heuristics become fallback evidence only.
+- [x] T3708 P0 Unknown or newly introduced brand-bearing provider fields require explicit classification/review and cannot silently inherit mutation eligibility.
+- [x] T3709 P0 Define and compile a provider-neutral resource-constraint DSL for post IDs/types, taxonomies, filesystem zones/paths, DB tables/columns, provider object IDs, mutation counts and byte/value limits.
+- [x] T3710 P0 Bind the compiled resource-set digest to plan, preparation evidence, approval, execution guard and readback evidence.
+- [x] T3711 P0 GATE Mutation/property tests must reject resource widening, alternate identifiers, wildcard expansion, path aliasing and provider-side object substitution after approval.
 
 ### 37C — Provider postconditions, reconciliation and execution-state truth
-- [ ] T3712 P0 Define a ProviderPostconditionProfile per mutation family with authoritative committed/no-effect/unknown readers and exact evidence freshness requirements.
-- [ ] T3713 P0 Durable retry/reclaim eligibility requires a certified postcondition reader for that mutation family; unsupported families remain reconciliation-required and blind-retry denied.
-- [ ] T3714 P0 Add timeout-after-possible-side-effect, lost-response, duplicate-callback and provider-commit/readback-delay fixtures for every certified mutation family.
-- [ ] T3715 P0 Formalize Execution State View precedence across Operation Journal, Durable Execution and Connector Resilience, including a complete contradictory-evidence matrix.
-- [ ] T3716 P0 GATE Prove Execution State View is fully recomputable, owns no durable state, and can never promote unknown/contradictory evidence to COMMITTED or retryable.
-- [ ] T3717 P0 Define a canonical identifier-policy registry for operation/job/approval/receipt/provider IDs with UUIDv4 or explicitly versioned opaque formats, normalization and length/entropy requirements.
-- [ ] T3718 P1 Provide compatibility/migration semantics for legacy non-canonical operation identifiers without rewriting historical journal identity.
+- [x] T3712 P0 Define a ProviderPostconditionProfile per mutation family with authoritative committed/no-effect/unknown readers and exact evidence freshness requirements.
+- [x] T3713 P0 Durable retry/reclaim eligibility requires a certified postcondition reader for that mutation family; unsupported families remain reconciliation-required and blind-retry denied.
+- [x] T3714 P0 Add timeout-after-possible-side-effect, lost-response, duplicate-callback and provider-commit/readback-delay fixtures for every certified mutation family.
+- [x] T3715 P0 Formalize Execution State View precedence across Operation Journal, Durable Execution and Connector Resilience, including a complete contradictory-evidence matrix.
+- [x] T3716 P0 GATE Prove Execution State View is fully recomputable, owns no durable state, and can never promote unknown/contradictory evidence to COMMITTED or retryable.
+- [x] T3717 P0 Define a canonical identifier-policy registry for operation/job/approval/receipt/provider IDs with UUIDv4 or explicitly versioned opaque formats, normalization and length/entropy requirements.
+- [x] T3718 P1 Provide compatibility/migration semantics for legacy non-canonical operation identifiers without rewriting historical journal identity.
 
 ### 37D — Catalog backend, cache coherence and horizontal concurrency
 - [ ] T3719 P1 Design a dedicated immutable catalog table backend with content-addressed rows, generation directory, indexed expiry/GC and explicit capacity accounting.
