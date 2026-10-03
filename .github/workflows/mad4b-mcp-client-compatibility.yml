@@ -34,6 +34,7 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-class-provenance.php"
           php -l "$root/includes/class-mad4b-scp-identifiers.php"
           php -l "$root/includes/class-mad4b-scp-identity-context.php"
           php -l "$root/includes/class-mad4b-scp-ability-contract-inspector.php"
@@ -57,6 +58,9 @@ jobs:
           php "$root/tests/intent-registry-contract.php"
           php "$root/tests/catalog-lifecycle-runtime.php"
           php "$root/tests/catalog-decommission-bootstrap.php"
+          php "$root/tests/mcp-class-provenance-runtime.php"
+          php "$root/tests/mcp-preflight-registration-failure-runtime.php"
+          python3 "$root/tests/mcp-class-provenance-contract.py"
           python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
           php -l "$root/tests/runtime-unified-capability-gateway.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
@@ -98,6 +102,7 @@ jobs:
           php "$root/tests/execution-state-view-runtime.php"
           php "$root/tests/intent-registry-contract.php"
           php "$root/tests/catalog-lifecycle-runtime.php"
+          php "$root/tests/mcp-class-provenance-runtime.php"
           php "$root/tests/catalog-decommission-bootstrap.php"
           python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
 

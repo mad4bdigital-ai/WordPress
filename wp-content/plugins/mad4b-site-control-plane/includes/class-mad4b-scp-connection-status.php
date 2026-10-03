@@ -445,9 +445,26 @@ final class MAD4B_SCP_Connection_Status {
 		foreach ( array_slice( $failures, 0, 12 ) as $failure ) {
 			if ( ! is_array( $failure ) ) continue;
 			$bounded = array();
-			foreach ( array( 'failing_ability', 'stage', 'error_class', 'error_code', 'source_schema_fingerprint', 'schema_fingerprint' ) as $key ) $bounded[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 160 ) : '';
+			foreach ( array( 'failing_ability', 'stage', 'error_class', 'error_code', 'validator_reason', 'source_schema_fingerprint', 'schema_fingerprint' ) as $key ) $bounded[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 160 ) : '';
 			$bounded['tool_bytes'] = isset( $failure['tool_bytes'] ) && is_numeric( $failure['tool_bytes'] ) ? max( 0, (int) $failure['tool_bytes'] ) : null;
 			$server['preflight_failures'][] = $bounded;
+		}
+		$provenance = isset( $preflight['runtime_class_provenance'] ) && is_array( $preflight['runtime_class_provenance'] ) ? $preflight['runtime_class_provenance'] : array();
+		$server['runtime_class_provenance_enforced'] = $provenance ? ! empty( $provenance['enforced'] ) : null;
+		$server['runtime_class_provenance_ready'] = $provenance ? ! empty( $provenance['ready'] ) : null;
+		$server['runtime_class_provenance_state'] = isset( $provenance['state'] ) ? sanitize_key( (string) $provenance['state'] ) : '';
+		$server['runtime_class_provenance_blocker'] = isset( $provenance['blocker'] ) ? sanitize_key( (string) $provenance['blocker'] ) : '';
+		$server['runtime_class_failure_count'] = isset( $provenance['failure_count'] ) ? max( 0, (int) $provenance['failure_count'] ) : 0;
+		$server['runtime_class_failures'] = array();
+		foreach ( isset( $provenance['failures'] ) && is_array( $provenance['failures'] ) ? array_slice( $provenance['failures'], 0, 12 ) : array() as $failure ) {
+			if ( ! is_array( $failure ) ) continue;
+			$row = array();
+			foreach ( array( 'alias', 'class', 'expected_source', 'observed_source', 'reason' ) as $key ) $row[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 220 ) : '';
+			foreach ( array( 'expected_sha256', 'actual_sha256' ) as $key ) {
+				$value = isset( $failure[ $key ] ) ? strtolower( (string) $failure[ $key ] ) : '';
+				$row[ $key ] = preg_match( '/^[a-f0-9]{64}$/D', $value ) ? $value : '';
+			}
+			$server['runtime_class_failures'][] = $row;
 		}
 		$server['local_endpoint_ready'] = true === ( $server['registered'] ?? null ) && true === ( $server['route_registered'] ?? null ) && true === ( $server['permission_callback_match'] ?? null ) && $server['catalog_materialized'] && true === $server['catalog_count_match'] && empty( $server['registration_error'] ) && ( 'mad4b-chatgpt' !== $server_id || true === ( $server['catalog_ready'] ?? null ) );
 		return $server;

@@ -64,6 +64,16 @@ final class MAD4B_SCP_Dependency_Manager {
 		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin;
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $expected_sha );
+		$installed_integrity = $installed ? self::installed_mcp_adapter_integrity( $certified ) : array(
+			'contract' => 'mad4b.mcp-adapter-installed-integrity.v1',
+			'ready' => false,
+			'state' => 'not_installed',
+			'expected_count' => 0,
+			'verified_count' => 0,
+			'mismatch_count' => 0,
+			'mismatches' => array(),
+		);
+		$installed_integrity_ready = ! empty( $installed_integrity['ready'] );
 
 		$wp_version = self::wordpress_version();
 		$core = array(
@@ -89,6 +99,7 @@ final class MAD4B_SCP_Dependency_Manager {
 		foreach ( $core as $key => $check ) if ( empty( $check['ready'] ) ) $hard_blockers[] = 'dependency_' . sanitize_key( $key ) . '_unavailable';
 		if ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
 		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
+		elseif ( ! $installed_integrity_ready ) $hard_blockers[] = 'mcp_adapter_integrity_mismatch';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
 		elseif ( ! $runtime_from_official_plugin ) $hard_blockers[] = 'mcp_adapter_runtime_provenance_mismatch';
 		elseif ( ! $runtime_contract_ok ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
@@ -127,6 +138,7 @@ final class MAD4B_SCP_Dependency_Manager {
 				'installed' => $installed,
 				'installed_version' => $installed_version,
 				'version_match' => $version_match,
+				'installed_critical_integrity' => $installed_integrity,
 				'active' => (bool) $active,
 				'runtime_loaded' => $runtime_loaded,
 				'runtime_contract_ok' => $runtime_contract_ok,
@@ -209,6 +221,8 @@ final class MAD4B_SCP_Dependency_Manager {
 		$plugins = self::plugins( true );
 		$installed_version = isset( $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) ? (string) $plugins[ self::MCP_PLUGIN_FILE ]['Version'] : '';
 		if ( '' === $expected_version || ! hash_equals( $expected_version, $installed_version ) ) self::redirect_result( 'version_mismatch' );
+		$integrity = self::installed_mcp_adapter_integrity( $certified );
+		if ( empty( $integrity['ready'] ) ) self::redirect_result( 'integrity_mismatch' );
 		self::redirect_result( 'success' );
 	}
 
@@ -223,6 +237,75 @@ final class MAD4B_SCP_Dependency_Manager {
 		if ( '' === $path || ! is_readable( $path ) ) return array();
 		$decoded = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		return is_array( $decoded ) && ! empty( $decoded['providers']['mcp_adapter'] ) && is_array( $decoded['providers']['mcp_adapter'] ) ? $decoded['providers']['mcp_adapter'] : array();
+	}
+
+	private static function installed_mcp_adapter_integrity( array $certified ) {
+		$out = array(
+			'contract' => 'mad4b.mcp-adapter-installed-integrity.v1',
+			'ready' => false,
+			'state' => 'inspection',
+			'expected_count' => 0,
+			'verified_count' => 0,
+			'mismatch_count' => 0,
+			'mismatches' => array(),
+		);
+		$critical = isset( $certified['critical_files'] ) && is_array( $certified['critical_files'] ) ? $certified['critical_files'] : array();
+		$root = defined( 'WP_PLUGIN_DIR' ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' ) : false;
+		if ( empty( $critical ) ) {
+			$out['state'] = 'baseline_missing';
+			$out['mismatches'][] = array( 'file' => '', 'reason' => 'critical_file_baseline_missing' );
+			$out['mismatch_count'] = 1;
+			return $out;
+		}
+		if ( ! $root || ! is_dir( $root ) ) {
+			$out['state'] = 'plugin_root_missing';
+			$out['mismatches'][] = array( 'file' => '', 'reason' => 'installed_plugin_root_missing' );
+			$out['mismatch_count'] = 1;
+			return $out;
+		}
+		$root = rtrim( wp_normalize_path( $root ), '/' );
+		foreach ( $critical as $relative => $expected_sha ) {
+			$relative = ltrim( wp_normalize_path( (string) $relative ), '/' );
+			$expected_sha = strtolower( trim( (string) $expected_sha ) );
+			$out['expected_count']++;
+			$reason = '';
+			$actual_sha = '';
+			if ( '' === $relative
+				|| false !== strpos( $relative, '../' )
+				|| 0 === strpos( $relative, '..' )
+				|| 1 !== preg_match( '#^[A-Za-z0-9._/\-]+$#D', $relative )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_sha ) ) {
+				$reason = 'invalid_certified_critical_file';
+			} else {
+				$file = realpath( $root . '/' . $relative );
+				$normalized = $file ? wp_normalize_path( $file ) : '';
+				if ( ! $file || ! is_file( $file ) || 0 !== strpos( $normalized, $root . '/' ) ) {
+					$reason = 'critical_file_missing';
+				} else {
+					$hash = is_readable( $file ) ? hash_file( 'sha256', $file ) : false;
+					$actual_sha = is_string( $hash ) ? strtolower( $hash ) : '';
+					if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $actual_sha ) ) {
+						$reason = 'critical_file_hash_unavailable';
+					} elseif ( ! hash_equals( $expected_sha, $actual_sha ) ) {
+						$reason = 'critical_file_sha256_mismatch';
+					}
+				}
+			}
+			if ( '' === $reason ) {
+				$out['verified_count']++;
+				continue;
+			}
+			$out['mismatches'][] = array(
+				'file' => substr( $relative, 0, 220 ),
+				'reason' => $reason,
+				'expected_sha256' => preg_match( '/^[a-f0-9]{64}$/D', $expected_sha ) ? $expected_sha : '',
+				'actual_sha256' => preg_match( '/^[a-f0-9]{64}$/D', $actual_sha ) ? $actual_sha : '',
+			);
+		}
+		$out['mismatch_count'] = count( $out['mismatches'] );
+		$out['ready'] = $out['expected_count'] > 0 && 0 === $out['mismatch_count'] && $out['verified_count'] === $out['expected_count'];
+		$out['state'] = $out['ready'] ? 'certified_disk_set' : 'integrity_mismatch';
+		return $out;
 	}
 
 	private static function bundled_archive_status( $expected_sha ) {

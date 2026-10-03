@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * A previously installed managed MU file executes before regular plugins, so a
  * new Control Plane source cannot change the already-running request. On the
  * explicitly enrolled governed non-production site only, this reconciler atomically replaces a
- * recognized MAD4B v2/v3 MU bootstrap with the current source and records the
+ * recognized MAD4B v2/v3/v4 MU bootstrap with the current source and records the
  * change in the append-only audit. Reconciliation is lifecycle-only and is
  * deferred until init so ordinary request-serving GET/HEAD pages never perform
  * filesystem mutation. The next request then executes the new file.
@@ -85,7 +85,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
-		$status['managed'] = false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v2" ) || false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v3" );
+		$status['managed'] = false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v2" )
+			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v3" )
+			|| false !== strpos( $before, "mad4b.mcp-adapter-mu-bootstrap.v4" );
 		if ( ! $status['managed'] ) {
 			$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 			self::$status = $status;
