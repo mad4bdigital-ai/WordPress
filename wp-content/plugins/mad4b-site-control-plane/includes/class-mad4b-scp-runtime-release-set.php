@@ -18,6 +18,8 @@ final class MAD4B_SCP_Runtime_Release_Set {
 	const TRANSACTION_OPTION = 'mad4b_runtime_release_transaction_v1';
 	const LAST_RECEIPT_OPTION = 'mad4b_runtime_release_receipt_v1';
 	const CONFIRMATION = 'APPLY CERTIFIED STAGING RUNTIME RELEASE SET';
+	const BOOTSTRAP_APPLY_CONTRACT = 'mad4b.runtime-release-set-bootstrap-apply.v1';
+	const BOOTSTRAP_APPLY_ABILITY = 'mad4b/runtime-release-set-bootstrap-apply';
 
 	private static $booted = false;
 	private static $component_context = array();
@@ -100,6 +102,39 @@ final class MAD4B_SCP_Runtime_Release_Set {
 				)
 			);
 		}
+
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::BOOTSTRAP_APPLY_ABILITY ) ) {
+			wp_register_ability(
+				self::BOOTSTRAP_APPLY_ABILITY,
+				array(
+					'label' => 'Bootstrap Certified Runtime Release Set',
+					'description' => 'Apply the exact certified Staging Control Plane and MCP Adapter release set using the dedicated OAuth authority step-up lane without enabling general Write, Developer, Breakglass, or raw SQL authority.',
+					'category' => 'mad4b-admin',
+					'execute_callback' => array( __CLASS__, 'bootstrap_apply' ),
+					'permission_callback' => array( __CLASS__, 'can_bootstrap_apply' ),
+					'input_schema' => self::apply_schema(),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => array(
+						'public' => false,
+						'show_in_rest' => false,
+						'mcp' => array(
+							'public' => false,
+							'type' => 'tool',
+							'surface' => 'enrollment',
+							'chatgpt_direct_step_up' => true,
+							'exact_chatgpt_client_required' => true,
+							'bootstrap_only' => true,
+							'normal_write_authority_required' => false,
+							'authority_mutation_allowed' => false,
+							'production_allowed' => false,
+							'generic_raw_sql_breakglass_included' => false,
+						),
+						'annotations' => array( 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
+					),
+				)
+			);
+		}
+
 	}
 
 	public static function can_apply( $input = null ) {
@@ -116,6 +151,57 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			'core',
 			is_array( $input ) ? $input : array()
 		);
+	}
+
+
+	public static function can_bootstrap_apply( $input = null ) {
+		$admin = MAD4B_SCP_Policy::can_admin();
+		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
+		if ( ! current_user_can( 'update_plugins' ) ) return new WP_Error( 'mad4b_runtime_release_set_bootstrap_update_capability_required', 'Plugin update capability is required.' );
+		$staging = self::staging_guard();
+		if ( is_wp_error( $staging ) ) return $staging;
+		if ( self::breakglass_active() ) return new WP_Error( 'mad4b_runtime_release_set_bootstrap_breakglass_denied', 'Runtime release-set bootstrap is unavailable while Breakglass is active.' );
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) {
+			return new WP_Error( 'mad4b_runtime_release_set_bootstrap_bearer_required', 'Runtime release-set bootstrap requires a verified OAuth bearer.' );
+		}
+		if ( ! defined( 'MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+			return new WP_Error( 'mad4b_runtime_release_set_bootstrap_step_up_scope_required', 'Runtime release-set bootstrap requires the dedicated Staging authority step-up scope.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
+			return new WP_Error( 'mad4b_runtime_release_set_bootstrap_chatgpt_client_required', 'Runtime release-set bootstrap requires OAuth attribution to the exact ChatGPT CIMD client.' );
+		}
+		$user_id = get_current_user_id();
+		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
+			return new WP_Error( 'mad4b_runtime_release_set_bootstrap_subject_not_enrolled', 'Runtime release-set bootstrap requires the enrolled administrator.' );
+		}
+		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) {
+			return new WP_Error( 'mad4b_runtime_release_set_bootstrap_profile_write_disabled', 'Runtime release-set bootstrap requires the enrolled Site Profile write flag.' );
+		}
+		return true;
+	}
+
+	public static function chatgpt_step_up_tools() {
+		$access = self::can_bootstrap_apply();
+		return is_wp_error( $access ) || ! $access ? array() : array( self::BOOTSTRAP_APPLY_ABILITY );
+	}
+
+	public static function bootstrap_apply( $input ) {
+		$access = self::can_bootstrap_apply( $input );
+		if ( is_wp_error( $access ) || ! $access ) return $access;
+		$result = self::apply_internal( $input, true );
+		if ( is_wp_error( $result ) ) return $result;
+		if ( is_array( $result ) ) {
+			$result['bootstrap_contract'] = self::BOOTSTRAP_APPLY_CONTRACT;
+			$result['bootstrap_only'] = true;
+			$result['normal_write_authority_required'] = false;
+			$result['authority_mutation_performed'] = false;
+			$result['developer_authority_mutation_performed'] = false;
+			$result['developer_breakglass_mutation_performed'] = false;
+			$result['production_mutation_performed'] = false;
+		}
+		return $result;
 	}
 
 	public static function target_adapter_version() {
