@@ -130,6 +130,7 @@ $initialize = $dispatch(
 		'method' => 'initialize',
 		'params' => array(
 			'protocolVersion' => '2025-11-25',
+			'capabilities' => array(),
 			'clientInfo' => array( 'name' => 'chatgpt-live-shape-ci', 'version' => '1.0.0' ),
 		),
 	),
@@ -406,6 +407,7 @@ $step_initialize = $dispatch(
 		'method' => 'initialize',
 		'params' => array(
 			'protocolVersion' => '2025-11-25',
+			'capabilities' => array(),
 			'clientInfo' => array( 'name' => 'chatgpt-step-up-ci', 'version' => '1.0.0' ),
 		),
 	),
@@ -556,6 +558,7 @@ $foreign_initialize = $dispatch(
 		'method' => 'initialize',
 		'params' => array(
 			'protocolVersion' => '2025-11-25',
+			'capabilities' => array(),
 			'clientInfo' => array( 'name' => 'foreign-step-up-ci', 'version' => '1.0.0' ),
 		),
 	),
@@ -625,6 +628,7 @@ $initialize = $dispatch(
 		'method' => 'initialize',
 		'params' => array(
 			'protocolVersion' => '2025-11-25',
+			'capabilities' => array(),
 			'clientInfo' => array( 'name' => 'chatgpt-read-restore-ci', 'version' => '1.0.0' ),
 		),
 	),
