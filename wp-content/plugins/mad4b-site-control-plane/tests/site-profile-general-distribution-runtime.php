@@ -15,6 +15,8 @@ $GLOBALS['mad4b_test_drop_profile_writes'] = false;
 $GLOBALS['mad4b_test_nested_save_input'] = null;
 $GLOBALS['mad4b_test_nested_save_result'] = null;
 $GLOBALS['mad4b_test_fail_profile_writes_after_audit'] = false;
+$GLOBALS['mad4b_test_preset_migration_enabled'] = false;
+$GLOBALS['mad4b_test_preset_file'] = '';
 
 class WP_Error { private $code; private $message; private $data; public function __construct($c,$m='',$d=null){$this->code=$c;$this->message=$m;$this->data=$d;} public function get_error_code(){return $this->code;} public function get_error_message(){return $this->message;} public function get_error_data(){return $this->data;} }
 function is_wp_error($v){return $v instanceof WP_Error;}
@@ -29,6 +31,8 @@ function wp_get_environment_type(){return $GLOBALS['mad4b_test_environment'];}
 function apply_filters($tag,$value,...$args){
 	if('mad4b_scp_wordpress_environment_explicit'===$tag && null!==$GLOBALS['mad4b_test_explicit_environment_filter']) return (bool)$GLOBALS['mad4b_test_explicit_environment_filter'];
 	if('mad4b_scp_deployment_binding'===$tag) return (string)$GLOBALS['mad4b_test_deployment_binding'];
+	if('mad4b_scp_enable_legacy_site_profile_presets'===$tag) return (bool)$GLOBALS['mad4b_test_preset_migration_enabled'];
+	if('mad4b_scp_legacy_site_profile_preset_file'===$tag && ''!==$GLOBALS['mad4b_test_preset_file']) return (string)$GLOBALS['mad4b_test_preset_file'];
 	return $value;
 }
 function current_user_can($c){return 'manage_options'===$c ? !empty($GLOBALS['mad4b_test_is_admin']) : false;}
@@ -56,7 +60,7 @@ final class MAD4B_SCP_Audit {
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-environment.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: {$m}\n");exit(1);}}
-function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;$GLOBALS['mad4b_test_explicit_environment_filter']=null;$GLOBALS['mad4b_test_deployment_binding']='';$GLOBALS['mad4b_test_drop_profile_writes']=false;$GLOBALS['mad4b_test_nested_save_input']=null;$GLOBALS['mad4b_test_nested_save_result']=null;$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=false;putenv('WP_ENVIRONMENT_TYPE');MAD4B_SCP_Site_Profile::reset_cache(); }
+function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;$GLOBALS['mad4b_test_explicit_environment_filter']=null;$GLOBALS['mad4b_test_deployment_binding']='';$GLOBALS['mad4b_test_drop_profile_writes']=false;$GLOBALS['mad4b_test_nested_save_input']=null;$GLOBALS['mad4b_test_nested_save_result']=null;$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=false;$GLOBALS['mad4b_test_preset_migration_enabled']=false;$GLOBALS['mad4b_test_preset_file']='';putenv('WP_ENVIRONMENT_TYPE');MAD4B_SCP_Site_Profile::reset_cache(); }
 function legacy_record($env,$origin,$revision=4){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>$revision,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy Client','chatgpt_app_id'=>'plugin_asdk_app_legacy123','oauth_user_ids'=>array(7,8),'related_origins'=>array($env=>$origin),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy-agent','legacy_zero_touch'=>true,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z');}
 
 
@@ -357,5 +361,33 @@ MAD4B_SCP_Site_Profile::reset_cache();
 $df_status=MAD4B_SCP_Site_Profile::status();
 ok(!empty($df_status['mutation_pending_audit'])&&'mutation_pending_audit'===($df_status['binding_state']??''),'double failure did not persist quarantine state');
 ok(empty($df_status['authority_ready'])&&empty($df_status['oauth_enabled'])&&empty($df_status['skills_enabled'])&&!MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'],'double failure left pending Site Profile executable');
+
+
+// Legacy preset migration is opt-in and validates raw data before any coercion.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://preset.client.test/';
+$preset_path=sys_get_temp_dir().'/mad4b-site-profile-preset-'.getmypid().'.json';
+$valid_preset=array(
+ 'contract'=>MAD4B_SCP_Site_Profile::CONTRACT,'version'=>MAD4B_SCP_Site_Profile::VERSION,
+ 'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>1,'environment'=>'staging',
+ 'canonical_origin'=>'https://preset.client.test','display_name'=>'Preset','chatgpt_app_id'=>'',
+ 'oauth_user_ids'=>array(7),'related_origins'=>array('staging'=>'https://preset.client.test'),
+ 'features'=>array('oauth'=>false,'skills'=>false,'write'=>false,'production_write_confirmed'=>false,'provider_isolation'=>false,'managed_runtime'=>false,'acceptance'=>false),
+ 'legacy_agent_slug'=>'','legacy_zero_touch'=>false,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z'
+);
+file_put_contents($preset_path,json_encode(array('contract'=>MAD4B_SCP_Site_Profile::PRESET_CONTRACT,'profiles'=>array($valid_preset))));
+$GLOBALS['mad4b_test_preset_file']=$preset_path;
+$matching=new ReflectionMethod('MAD4B_SCP_Site_Profile','matching_preset');$matching->setAccessible(true);
+ok(array()===$matching->invoke(null),'preset migration ran without explicit opt-in');
+$GLOBALS['mad4b_test_preset_migration_enabled']=true;
+$matched=$matching->invoke(null);
+ok(is_array($matched)&&'123e4567-e89b-42d3-a456-426614174000'===($matched['site_uuid']??''),'valid raw preset was not available after explicit opt-in');
+
+$invalid_preset=$valid_preset;
+$invalid_preset['revision']=-2;
+$invalid_preset['features']['oauth']='false';
+file_put_contents($preset_path,json_encode(array('contract'=>MAD4B_SCP_Site_Profile::PRESET_CONTRACT,'profiles'=>array($invalid_preset))));
+ok(array()===$matching->invoke(null),'invalid preset was normalized into an authoritative record');
+@unlink($preset_path);
 
 fwrite(STDOUT,"MAD4B Site Profile v2 general distribution runtime: PASS\n");
