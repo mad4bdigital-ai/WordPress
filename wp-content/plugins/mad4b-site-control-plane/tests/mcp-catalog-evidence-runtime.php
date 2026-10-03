@@ -11,6 +11,26 @@ class FixtureTool { public $name; public $ability; function __construct( $name, 
 class FixtureServer { public $tools; function __construct( $tools ) { $this->tools = $tools; } function get_tools() { return $this->tools; } function get_mcp_tool( $name ) { return $this->tools[$name]; } }
 class FixtureRequest { public $method = 'tools/list'; public $route = '/mcp/mad4b-chatgpt'; function get_route() { return $this->route; } function get_method() { return 'POST'; } function get_json_params() { return array( 'method' => $this->method, 'params' => array( 'secret' => 'DO_NOT_COPY' ) ); } function get_header( $key ) { return 'DO_NOT_COPY'; } }
 class FixtureResponse { public $data; public $headers = array(); public $status = 200; function __construct( $data ) { $this->data = $data; } function get_data() { return $this->data; } function get_status() { return $this->status; } function header( $key, $value ) { $this->headers[$key] = $value; } }
+class FixtureGeneratedRecord implements JsonSerializable {
+	private $values;
+	function __construct( array $values ) { $this->values = $values; }
+	#[\ReturnTypeWillChange]
+	function jsonSerialize() { return (object) $this->values; }
+}
+$record_wire = new FixtureGeneratedRecord( array(
+	'name' => 'mad4b-record-fixture',
+	'inputSchema' => (object) array( 'type' => 'object', 'properties' => (object) array() ),
+	'annotations' => new FixtureGeneratedRecord( array( 'readOnlyHint' => true ) ),
+	'execution' => new FixtureGeneratedRecord( array( 'taskSupport' => 'forbidden' ) ),
+	'icons' => array( new FixtureGeneratedRecord( array( 'src' => 'https://example.test/icon.svg' ) ) ),
+) );
+$record_data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $record_wire );
+check( is_array( $record_data ), 'revision-aware Record did not normalize to top-level array' );
+check( isset( $record_data['inputSchema'] ) && $record_data['inputSchema'] instanceof stdClass, 'raw inputSchema object identity was collapsed' );
+check( isset( $record_data['inputSchema']->properties ) && $record_data['inputSchema']->properties instanceof stdClass, 'empty properties object was collapsed to an array' );
+check( isset( $record_data['annotations'] ) && is_array( $record_data['annotations'] ) && true === $record_data['annotations']['readOnlyHint'], 'nested annotations Record was not normalized' );
+check( isset( $record_data['execution'] ) && is_array( $record_data['execution'] ) && 'forbidden' === $record_data['execution']['taskSupport'], 'nested execution Record was not normalized' );
+check( isset( $record_data['icons'][0] ) && is_array( $record_data['icons'][0] ), 'nested icon Record was not normalized' );
 // Provider growth may shed reviewed optional projections, never core transport.
 $required = array_map( static function ( $i ) { return 'required/tool-' . $i; }, range( 1, 30 ) );
 $optional = array_map( static function ( $i ) { return 'optional/tool-' . $i; }, range( 1, 100 ) );
