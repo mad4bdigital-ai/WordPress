@@ -665,6 +665,56 @@ final class MAD4B_SCP_Authorization {
 		return is_string( $json ) ? hash( 'sha256', $json ) : '';
 	}
 
+	public static function execution_attempt_state( $execution_attempt_sha256 ) {
+		$attempt = strtolower( trim( (string) $execution_attempt_sha256 ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $attempt ) ) {
+			return new WP_Error( 'mad4b_execution_attempt_identity_invalid', 'Execution attempt identity is invalid.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! method_exists( 'MAD4B_SCP_Audit', 'execution_checkpoint_events' ) ) {
+			return new WP_Error( 'mad4b_execution_attempt_recovery_unavailable', 'Execution checkpoint recovery evidence is unavailable.', array(
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+			) );
+		}
+		$lookup = MAD4B_SCP_Audit::execution_checkpoint_events( $attempt, 50 );
+		if ( is_wp_error( $lookup ) ) return $lookup;
+		$events = isset( $lookup['events'] ) && is_array( $lookup['events'] ) ? $lookup['events'] : array();
+		if ( empty( $events ) ) {
+			return array(
+				'contract' => 'mad4b.execution-attempt-recovery.v1',
+				'execution_attempt_sha256' => $attempt,
+				'state' => 'UNKNOWN',
+				'tterminal' => false,
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+				'client_action' => 'reconcile_execution_state_before_any_retry',
+				'evidence_count' => 0,
+				'authorizing' => false,
+			);
+		}
+		$last = end( $events );
+		$summary = is_array( $last ) && isset( $last['summary'] ) && is_array( $last['summary'] ) ? $last['summary'] : array();
+		$point = isset( $summary['crash_point'] ) ? sanitize_key( (string) $summary['crash_point'] ) : '';
+		if ( 'unified_execution_receipt_committed' === ( isset( $summary['reason_code'] ) ? sanitize_key( (string) $summary['reason_code'] ) : '' ) ) {
+			$point = 'durable_receipt_committed';
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
+			return new WP_Error( 'mad4b_execution_checkpoint_policy_unavailable', 'Execution checkpoint policy is unavailable.' );
+		}
+		$state = MAD4B_SCP_Execution_Evidence_Policy::crash_point( $point );
+		if ( is_wp_error( $state ) ) return $state;
+		return array_merge( $state, array(
+			'contract' => 'mad4b.execution-attempt-recovery.v1',
+			'execution_attempt_sha256' => $attempt,
+			'evidence_count' => count( $events ),
+			'last_audit_event_id' => isset( $last['event_id'] ) ? (string) $last['event_id'] : '',
+			'last_audit_entry_hash' => isset( $last['entry_hash'] ) ? (string) $last['entry_hash'] : '',
+			'chain_valid' => ! empty( $lookup['chain_valid'] ),
+			'head_consistent' => ! empty( $lookup['head_consistent'] ),
+			'authorizing' => false,
+		) );
+	}
+
 	public static function execution_boundary_verified( $ability ) {
 		try {
 			$name = $ability->get_name();
@@ -764,6 +814,8 @@ final class MAD4B_SCP_Authorization {
 			}
 			$receipt_audit = self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
 				'reason_code'=>'unified_execution_receipt_committed',
+				'execution_attempt_sha256'=>isset($claim['execution_attempt_sha256'])?(string)$claim['execution_attempt_sha256']:self::execution_attempt_sha256($claim),
+				'crash_point'=>'durable_receipt_committed',
 				'execution_receipt'=>$execution_receipt,
 				'execution_receipt_sha256'=>(string)$execution_receipt['receipt_sha256'],
 				'execution_receipt_signature_state'=>(string)$execution_receipt['signature_state'],
