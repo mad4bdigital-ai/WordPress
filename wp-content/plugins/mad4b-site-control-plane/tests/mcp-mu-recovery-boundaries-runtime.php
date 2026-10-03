@@ -119,9 +119,10 @@ if ( 'tampered_validator' === $case ) file_put_contents( WP_PLUGIN_DIR . '/' . $
 if ( 'preclaimed' === $case ) eval( 'namespace WP\\MCP\\Domain\\Tools; class McpToolValidator {}' );
 require $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 $status = $GLOBALS['mad4b_scp_mcp_mu_bootstrap'];
-if ( in_array( $case, array( 'ambiguous_plugin_identity', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'transaction_pending', 'transaction_cached_negative', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
+if ( in_array( $case, array( 'implicit_unconfirmed', 'ambiguous_plugin_identity', 'explicit_constant', 'explicit_environment', 'explicit_filter', 'foreign_origin', 'invalid_uuid', 'invalid_revision', 'disabled', 'reenrollment', 'production', 'adapter_inactive', 'control_plane_inactive', 'network_only', 'transaction_pending', 'transaction_cached_negative', 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 	boundary_check( ! $status['eligible'] && ! class_exists( 'WP\\MCP\\Core\\McpAdapter', false ), 'ineligible binding loaded a provider class' );
 	if ( 'ambiguous_plugin_identity' === $case ) boundary_check( ! empty( $status['plugin_identity_ambiguous'] ), 'ambiguous main-file identity was not reported' );
+	if ( 'implicit_unconfirmed' === $case ) boundary_check( ! MAD4B_SCP_Site_Profile::origin_enrolled() && 'production' === MAD4B_SCP_Site_Profile::current_environment(), 'unconfirmed implicit Production override retained authority' );
 	if ( in_array( $case, array( 'negative_revision', 'negative_version', 'array_environment', 'string_feature' ), true ) ) {
 		boundary_check( ! MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::oauth_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled(), 'malformed profile gained regular-plugin authority' );
 	}
