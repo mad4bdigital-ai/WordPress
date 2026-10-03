@@ -1,5 +1,5 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'transaction_owner_replaced', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'transaction_owner_replaced', 'filesystem_lock_busy', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: ' . count( $cases ) . '/' . count( $cases ) . ' PASS' . PHP_EOL; exit;
@@ -99,6 +99,21 @@ if ( in_array( $case, array( 'cli_direct_recovery_denied', 'cron_direct_recovery
 	exit;
 }
 
+if ( 'filesystem_lock_busy' === $case ) {
+	$lock = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::acquire_managed_filesystem_lock( $destination );
+	check_recovery( ! is_wp_error( $lock ), 'fixture could not acquire filesystem lock' );
+	try {
+		$second = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::acquire_managed_filesystem_lock( $destination );
+		check_recovery( is_wp_error( $second ) && 'mu_bootstrap_filesystem_lock_busy' === $second->get_error_code(), 'second writer acquired managed filesystem mutex' );
+	} finally {
+		MAD4B_SCP_MCP_MU_Bootstrap_Refresh::release_managed_filesystem_lock( $lock );
+	}
+	$after = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::acquire_managed_filesystem_lock( $destination );
+	check_recovery( ! is_wp_error( $after ), 'filesystem lock remained stuck after owner release' );
+	MAD4B_SCP_MCP_MU_Bootstrap_Refresh::release_managed_filesystem_lock( $after );
+	echo $case . ': PASS' . PHP_EOL;
+	exit;
+}
 if ( 'persistent_cache_stale' === $case ) {
 	$first = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::begin_transaction( 'install', '', str_repeat( 'd', 64 ) );
 	check_recovery( is_string( $first ) && 32 === strlen( $first ), 'persistent-cache fixture failed to acquire transaction' );
