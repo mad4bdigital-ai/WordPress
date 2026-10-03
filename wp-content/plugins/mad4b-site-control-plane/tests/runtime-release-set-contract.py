@@ -59,6 +59,12 @@ require("get_for_version( self::PROVIDER, $installed_version )" in provenance, "
 require("version_profile_unavailable" in provenance, "unknown Adapter version does not fail closed")
 require("$contract['runtime_classes']" in provenance, "version-scoped class set is not consumed")
 
+dependency = (INCLUDES / "class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
+require("private static function bootstrap_mcp_adapter()" in dependency, "bootstrap MCP Adapter resolver missing")
+require("$bundle = self::bundled_archive_status( $bootstrap_sha );" in dependency, "bundled repair is not pinned to bootstrap Adapter identity")
+require("$installed_certified = '' !== $installed_version ? self::certified_mcp_adapter( $installed_version ) : array();" in dependency, "installed MCP Adapter is not version-certified exactly")
+require("'transition_supported' => $transition_supported" in dependency, "dependency status does not expose transition compatibility")
+
 bridge = (INCLUDES / "class-mad4b-scp-mcp-adapter-metadata-bridge.php").read_text(encoding="utf-8")
 require("const VERSION = '0.6.1'" not in bridge, "metadata bridge still pins Adapter 0.6.1")
 require("public static function certified_version()" in bridge, "dynamic certified Adapter version resolver missing")
