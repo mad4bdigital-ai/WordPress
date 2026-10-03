@@ -41,6 +41,42 @@ $check( class_exists( 'MAD4B_SCP_Transport_Context' ), 'Transport context class 
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/connection-status' ), 'Connection status ability is not registered.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-status' ), 'Connection status ability is not mounted on mad4b-read.' );
 $check( class_exists( 'MAD4B_SCP_Read_Consistency' ), 'Read consistency class unavailable.' );
+$check( class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ), 'MCP MU transaction gate unavailable.' );
+$check( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ), 'OAuth resource bridge unavailable for transaction quarantine proof.' );
+
+// A normal WordPress request may load the certified Adapter after MU phase. The
+// durable transaction gate must still quarantine both MCP transport and REST
+// aliases when the journal is malformed or pending.
+$tx_option = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_OPTION;
+$tx_original = get_option( $tx_option, null );
+foreach ( array(
+	'malformed' => 'corrupt-scalar',
+	'pending' => array(
+		'contract' => MAD4B_SCP_MCP_MU_Bootstrap_Refresh::TRANSACTION_CONTRACT,
+		'transaction_id' => str_repeat( 'a', 32 ),
+		'state' => 'prepared',
+		'operation' => 'install',
+		'previous_sha256' => '',
+		'target_sha256' => str_repeat( 'b', 64 ),
+		'created_at' => time(),
+	),
+) as $tx_case => $tx_value ) {
+	update_option( $tx_option, $tx_value, false );
+	if ( function_exists( 'wp_cache_delete' ) ) { wp_cache_delete( $tx_option, 'options' ); wp_cache_delete( 'notoptions', 'options' ); }
+	$transport_request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
+	$transport_denied = MAD4B_SCP_Servers::can_chatgpt_transport( $transport_request );
+	$expected_code = 'malformed' === $tx_case ? 'mu_bootstrap_transaction_invalid' : 'mu_bootstrap_transaction_pending';
+	$check( is_wp_error( $transport_denied ) && $expected_code === $transport_denied->get_error_code(), $tx_case . ' transaction did not quarantine MCP transport after normal plugin load.' );
+
+	wp_set_current_user( 0 );
+	$alias_request = new WP_REST_Request( 'GET', '/mad4b/v1/ability-catalog/capabilities' );
+	$alias_denied = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, rest_get_server(), $alias_request );
+	$check( $alias_denied instanceof WP_REST_Response && 503 === (int) $alias_denied->get_status(), $tx_case . ' transaction did not quarantine protected REST alias.' );
+}
+if ( null === $tx_original ) delete_option( $tx_option ); else update_option( $tx_option, $tx_original, false );
+if ( function_exists( 'wp_cache_delete' ) ) { wp_cache_delete( $tx_option, 'options' ); wp_cache_delete( 'notoptions', 'options' ); }
+
+
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/session-safe-diagnostics' ), 'Session-safe diagnostics ability is not registered.' );
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/read-snapshot-header' ), 'Read snapshot header ability is not registered.' );
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle ability is not registered.' );
