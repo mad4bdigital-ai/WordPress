@@ -22,9 +22,11 @@ if('crash'===$outcome){
  return;
 }
 if($epoch>0){
- $stale=MAD4B_SCP_Network_Operation_Journal::record_target_outcome($operation_id,$blog_id,$epoch-1,$worker_id,$outcome,'evidence:stale:'.$worker_id,'',$row['receipt_binding_sha256']);
+ $invalid_epoch=MAD4B_SCP_Network_Operation_Journal::record_target_outcome($operation_id,$blog_id,0,$worker_id,$outcome,'evidence:invalid-epoch:'.$worker_id,'',$row['receipt_binding_sha256']);
+ $check(is_wp_error($invalid_epoch)&&'mad4b_network_target_outcome_invalid'===$invalid_epoch->get_error_code(),'Zero/invalid dispatch epoch crossed outcome validation.',$invalid_epoch);
+ $stale=MAD4B_SCP_Network_Operation_Journal::record_target_outcome($operation_id,$blog_id,$epoch+1,$worker_id,$outcome,'evidence:stale:'.$worker_id,'',$row['receipt_binding_sha256']);
  $data=is_wp_error($stale)?$stale->get_error_data():array();
- $check(is_wp_error($stale)&&isset($data['reason_code'])&&'network_target_claim_epoch_stale'===$data['reason_code'],'Reordered/stale dispatch epoch was not denied.',$stale);
+ $check(is_wp_error($stale)&&isset($data['reason_code'])&&'network_target_claim_epoch_stale'===$data['reason_code'],'Positive stale/reordered dispatch epoch was not denied.',$stale);
 }
 $receipt='committed'===$outcome?hash('sha256','receipt|'.$operation_id.'|'.$blog_id.'|'.$epoch):'';
 $evidence='evidence:network:'.$worker_id.':'.$epoch;
