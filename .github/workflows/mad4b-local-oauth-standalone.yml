@@ -460,7 +460,7 @@ jobs:
             -H 'Accept: application/json, text/event-stream' \
             -H 'Content-Type: application/json' \
             -H 'MCP-Protocol-Version: 2025-11-25' \
-            --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
+            --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
           INIT_STATUS="${INIT_META%% *}"
           INIT_TIME="${INIT_META#* }"
           echo "HTTP MCP initialize status=$INIT_STATUS time=$INIT_TIME"
