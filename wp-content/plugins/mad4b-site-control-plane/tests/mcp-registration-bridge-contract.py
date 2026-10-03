@@ -74,7 +74,9 @@ for marker in (
 require(bridge, "endpoint_diagnostic_routing_server_id()", 'diagnostic-routing-before-registry-materialization')
 for marker in (
     'public static function endpoint_diagnostic_routing_server_id()',
+    "'mad4b.mcp-adapter-mu-bootstrap.v6'",
     "'diagnostic_mu_proof_valid'",
+    "'diagnostic_server_id'",
     "MAD4B_SCP_Servers::expected_server_ids()",
     "'endpoint_diagnostic_routing_server_id' => self::endpoint_diagnostic_routing_server_id()",
 ):
@@ -93,6 +95,7 @@ for forbidden in (
     'add_option(',
     'delete_option(',
     '$wpdb',
+    "$_POST['server_id']",
 ):
     forbid(routing_method, forbidden, 'routing-hint-non-authorizing')
 
