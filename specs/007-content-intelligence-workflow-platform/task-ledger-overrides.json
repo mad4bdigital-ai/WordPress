@@ -1534,6 +1534,67 @@
         ".github/workflows/mad4b-mcp-client-compatibility.yml"
       ],
       "reason": "Runtime evidence proves exact database CAS admits one projection writer and rejects the stale loser, cached removed hot-set tools fail closed, schema/classification/callback drift deactivates direct projection, and the same Ability remains correct through fixed dispatch independent of visibility."
+    },
+    "T3736": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
+        "workflow_run:37114470059",
+        "workflow_run:37114470020",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN state, bounded backoff/probe timers and hash-chained persisted transition evidence is exact-head runtime certified."
+    },
+    "T3737": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
+        "workflow_run:37114470059",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "HALF_OPEN probe success restores transport eligibility only; certification, authority, approval and Production eligibility remain false/non-authorizing and are exact-head certified."
+    },
+    "T3738": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py",
+        "workflow_run:37114469942",
+        "workflow_run:37114470059",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Provider mutation transport applies deterministic strongest-deny precedence across kill switch, authority, quarantine, certification, release ring and breaker before callback entry; runtime tests prove the ordering."
+    },
+    "T3739": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/wordpress-lifecycle-migration-profile.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py",
+        "workflow_run:37114469882",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "WordPress-native lifecycle migration profile and parity certification are implemented fail-closed while legacy provenance remains authoritative until exact parity; no automatic cutover is performed."
+    },
+    "T3740": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-lifecycle-runtime.php",
+        "workflow_run:37114469882",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Activation/deactivation/update/uninstall/network-activation lifecycle coverage proves governance retention, catalog cleanup/rollback compatibility and multisite scope isolation across the certified runtime matrix."
     }
   }
 }

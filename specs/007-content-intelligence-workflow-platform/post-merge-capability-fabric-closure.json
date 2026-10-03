@@ -198,7 +198,7 @@
     },
     {
       "id": "provider_resilience_wp_lifecycle",
-      "status": "OPEN",
+      "status": "DONE",
       "task_ids": [
         "T3736",
         "T3737",
@@ -215,7 +215,30 @@
         "postconditions_execution_state_identifiers"
       ],
       "interim_behavior": "Breaker/lifecycle health can only constrain eligibility; no probe or lifecycle event grants authority.",
-      "evidence_strategy": "Durable breaker transitions and WordPress lifecycle parity/recovery tests."
+      "evidence_strategy": "Closed: durable provider circuit breaking, non-authorizing HALF_OPEN recovery, strongest-deny transport precedence, WordPress-native lifecycle parity planning and activate/deactivate/update/uninstall/network lifecycle continuity all pass the certified exact-head runtime matrix.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
+        "workflow_run:37114470059",
+        "workflow_run:37114470020",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py",
+        "workflow_run:37114469942",
+        "wp-content/plugins/mad4b-site-control-plane/config/wordpress-lifecycle-migration-profile.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py",
+        "workflow_run:37114469882",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-lifecycle-runtime.php"
+      ]
     },
     {
       "id": "tracing_slo_observability",

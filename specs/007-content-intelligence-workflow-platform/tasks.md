@@ -790,11 +790,11 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3735 P1 GATE Concurrent projection changes or stale clients cannot alter fixed-dispatch schema/lane/classification/authority validation or execute a removed hot-set item by visibility alone.
 
 ### 37G — Durable provider resilience and WordPress lifecycle
-- [ ] T3736 P0 Implement a durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN states, bounded timers and persisted transition evidence.
-- [ ] T3737 P0 Breaker probe success may restore transport eligibility only; it never grants provider certification, write authority, approval or Production eligibility.
-- [ ] T3738 P0 Define deterministic precedence among breaker state, provider quarantine, release ring, kill switch, certification and authority; strongest deny wins.
-- [ ] T3739 P1 Define a WordPress-native lifecycle migration profile and parity certification before replacing provenance wrappers/Reflection-based compatibility paths.
-- [ ] T3740 P1 Add activate/deactivate/update/uninstall/network-activate lifecycle tests proving governance retention, bounded catalog cleanup, multisite isolation and rollback compatibility.
+- [x] T3736 P0 Implement a durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN states, bounded timers and persisted transition evidence.
+- [x] T3737 P0 Breaker probe success may restore transport eligibility only; it never grants provider certification, write authority, approval or Production eligibility.
+- [x] T3738 P0 Define deterministic precedence among breaker state, provider quarantine, release ring, kill switch, certification and authority; strongest deny wins.
+- [x] T3739 P1 Define a WordPress-native lifecycle migration profile and parity certification before replacing provenance wrappers/Reflection-based compatibility paths.
+- [x] T3740 P1 Add activate/deactivate/update/uninstall/network-activate lifecycle tests proving governance retention, bounded catalog cleanup, multisite isolation and rollback compatibility.
 
 ### 37H — Distributed tracing, SLOs and observability failure semantics
 - [ ] T3741 P1 Propagate a standards-compatible trace context across discovery, preparation, policy, approval, commit guard, provider call, readback, reconciliation and network fan-out.
