@@ -330,6 +330,17 @@ MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
 
 $mad4b_passive_admin_read = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 	&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+$mad4b_diagnostic_catalog_target = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+	&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'endpoint_diagnostic_routing_server_id' )
+	? (string) MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_routing_server_id()
+	: '';
+
+// Catalog registration is definition-only and may follow an exact MU-signed
+// diagnostic routing hint before worker authorization. Heavy lifecycle work
+// remains forbidden until the normal non-passive request path below.
+if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
+	MAD4B_SCP_Plugin::bind_catalog_registration_wiring();
+}
 
 // Ordinary Control Plane GET/HEAD pages are render requests, not lifecycle jobs.
 // Keep the global request bootstrap intentionally narrow: page-specific render
@@ -344,46 +355,8 @@ if ( ! $mad4b_passive_admin_read ) {
 	MAD4B_SCP_Production_Unchanged_Attestation::boot_early();
 	MAD4B_SCP_WPML_Response_Contract::boot_early();
 	MAD4B_SCP_Live_Truth::boot_early();
-	MAD4B_SCP_Staging_Certification::boot();
-	MAD4B_SCP_Acceptance_Core::boot_early();
-	MAD4B_SCP_Connection_Ability::boot();
-	MAD4B_SCP_Read_Consistency::boot();
-	MAD4B_SCP_Multi_Authority_Registry::boot();
-	MAD4B_SCP_Context_Authority::boot();
-	MAD4B_SCP_AI_Approval::boot();
 	MAD4B_SCP_Context_Provider_Gateway::boot();
 	MAD4B_SCP_Brand_Context_Builder::boot();
-	MAD4B_SCP_Provider_Transport_Registry::boot();
-	MAD4B_SCP_Dependency_Impact_Graph::boot();
-	MAD4B_SCP_Operation_Registry::boot();
-	MAD4B_SCP_Operation_Pipeline::boot();
-	MAD4B_SCP_Provider_Autopilot::boot();
-	MAD4B_SCP_Plugin_Transaction::boot();
-	MAD4B_SCP_Operation_Resume::boot();
-	MAD4B_SCP_Plugin_Lifecycle::boot();
-	MAD4B_SCP_Plugin_Package::boot();
-	MAD4B_SCP_Remote_Plugin_Update::boot();
-	MAD4B_SCP_Self_Update::boot();
-	MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::boot();
-	MAD4B_SCP_Code_Snippets_Runtime_Diagnostic::boot();
-	MAD4B_SCP_Workflow_Providers::boot();
-	MAD4B_SCP_Addon_Registry::boot();
-	MAD4B_SCP_Operating_Model::boot();
-	MAD4B_SCP_Governed_Ability_Overrides::boot();
-	$mad4b_write_augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
-	if ( false === has_filter( 'wp_register_ability_args', $mad4b_write_augment ) ) add_filter( 'wp_register_ability_args', $mad4b_write_augment, 70, 2 );
-	unset( $mad4b_write_augment );
-	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ), 35 );
-	MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::boot();
-	MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
-	MAD4B_SCP_Staging_Write_Candidate_Binding::boot();
-	MAD4B_SCP_Staging_Write_Planning_Guard::boot();
-	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_REST_Compatibility', 'register_ability' ), 36 );
-	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'register_ability' ), 37 );
-	MAD4B_SCP_Governance_Abilities::boot();
-	MAD4B_SCP_Skill_Abilities::boot();
-	MAD4B_SCP_Skills_Adapter::boot();
-	MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
 	remove_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
 
 	MAD4B_SCP_Skill_Autoconfig::bootstrap();
@@ -410,4 +383,4 @@ MAD4B_SCP_MCP_Provider_Isolation::boot_early();
 MAD4B_SCP_Context_Admin_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
 add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );
-unset( $mad4b_passive_admin_read );
+unset( $mad4b_passive_admin_read, $mad4b_diagnostic_catalog_target );
