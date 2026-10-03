@@ -136,14 +136,15 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		try {
 			// Materialize the scope head before taking FOR UPDATE. Locking a missing
 			// primary-key row lets concurrent first publishers acquire competing gap
-			// locks and deadlock while both try to INSERT the same head. INSERT IGNORE
-			// serializes that one-time materialization; all publications after it are
-			// fenced UPDATE-CAS transitions.
+			// locks and deadlock while both try to INSERT the same head. The duplicate-key
+			// UPDATE path takes the head row lock up front for both cold and warm heads;
+			// all publications after it are fenced UPDATE-CAS transitions.
 			$seed_expiry = time() + 60;
 			$seeded = $wpdb->query( $wpdb->prepare(
-				"INSERT IGNORE INTO {$t['catalog_heads']}
+				"INSERT INTO {$t['catalog_heads']}
 				 (storage_scope_sha256,generation_id,directory_sha256,fencing_token,previous_generation_id,published_at,expires_at,updated_at)
-				 VALUES (%s,'','',0,'',UTC_TIMESTAMP(),FROM_UNIXTIME(%d),UTC_TIMESTAMP())",
+				 VALUES (%s,'','',0,'',UTC_TIMESTAMP(),FROM_UNIXTIME(%d),UTC_TIMESTAMP())
+				 ON DUPLICATE KEY UPDATE storage_scope_sha256=storage_scope_sha256",
 				$this->scope, $seed_expiry
 			) );
 			if ( false === $seeded ) throw new RuntimeException( 'catalog_table_head_seed_failed' );

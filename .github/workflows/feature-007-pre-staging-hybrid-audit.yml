@@ -293,6 +293,16 @@ jobs:
           cat /tmp/catalog-worker-a.json
           cat /tmp/catalog-worker-b.json
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          RUN_ID_WARM="${RUN_ID}-warm"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID_WARM" worker-a host-a --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-warm-a.json &
+          PID_WA=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID_WARM" worker-b host-b --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-warm-b.json &
+          PID_WB=$!
+          wait "$PID_WA"
+          wait "$PID_WB"
+          cat /tmp/catalog-worker-warm-a.json
+          cat /tmp/catalog-worker-warm-b.json
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php" "$RUN_ID_WARM" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove persistent Redis cache cannot resurrect catalog authority
         shell: bash
