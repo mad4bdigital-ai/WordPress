@@ -1024,8 +1024,12 @@ final class MAD4B_SCP_Site_Profile {
 		$record['features'] = isset( $record['features'] ) && is_array( $record['features'] ) ? array_map( 'boolval', $record['features'] ) : array();
 		$record['legacy_agent_slug'] = isset( $record['legacy_agent_slug'] ) ? sanitize_key( (string) $record['legacy_agent_slug'] ) : '';
 		$record['legacy_zero_touch'] = isset( $record['legacy_zero_touch'] ) && true === $record['legacy_zero_touch'];
-		$record['mutation_state'] = isset( $record['mutation_state'] ) && is_string( $record['mutation_state'] ) ? sanitize_key( $record['mutation_state'] ) : '';
-		$record['mutation_id'] = isset( $record['mutation_id'] ) && is_string( $record['mutation_id'] ) ? strtolower( trim( $record['mutation_id'] ) ) : '';
+		if ( isset( $record['mutation_state'] ) && is_string( $record['mutation_state'] ) && 'pending_audit' === sanitize_key( $record['mutation_state'] ) ) {
+			$record['mutation_state'] = 'pending_audit';
+			$record['mutation_id'] = isset( $record['mutation_id'] ) && is_string( $record['mutation_id'] ) ? strtolower( trim( $record['mutation_id'] ) ) : '';
+		} else {
+			unset( $record['mutation_state'], $record['mutation_id'] );
+		}
 		return $record;
 	}
 
