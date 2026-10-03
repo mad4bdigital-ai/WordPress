@@ -27,6 +27,11 @@ class MAD4B_SCP_Policy {
  static function can_breakglass() { $GLOBALS['identity_checks']++; return false; }
 }
 class MAD4B_SCP_Authorization { static function execution_boundary_verified( $ability ) { return false; } }
+class MAD4B_SCP_Execution_Fence {
+ static function require_projected_call_seal( $ability ) { $GLOBALS['projection_seal_requirements'][] = (string) $ability; return true; }
+ static function final_execution_wrapper_verified( $ability ) { return true; }
+ static function seal_projected_call( $ability, $args, $tool, $server ) { return true; }
+}
 class MAD4B_SCP_Servers {
  static function chatgpt_base_tools() { return array(); } static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
  static function core_tools( $server ) { return array(); } static function provider_for_ability( $server, $ability ) { return 'fixture'; }
@@ -43,7 +48,7 @@ class Ability {
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
-$name = 'fixture/breakglass'; $GLOBALS['abilities'][$name] = new Ability(); $GLOBALS['identity_checks'] = 0;
+$name = 'fixture/breakglass'; $GLOBALS['abilities'][$name] = new Ability(); $GLOBALS['identity_checks'] = 0; $GLOBALS['projection_seal_requirements'] = array();
 $row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $name );
 $GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION] = array( 'contract' => MAD4B_SCP_ChatGPT_Tool_Projection::CONTRACT, 'revision' => 1, 'binding' => MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(), 'abilities' => array( $name => $row ) );
 if ( array( $name ) !== MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() || 0 !== $GLOBALS['identity_checks'] ) throw new RuntimeException( 'Registration evaluated pre-auth identity' );
@@ -58,6 +63,7 @@ $tool = new class { function get_adapter_meta() { return array( 'ability' => 'fi
 $server = new class { function get_server_id() { return 'mad4b-chatgpt'; } };
 $denied = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), 'fixture-breakglass', $tool, $server );
 if ( ! is_wp_error( $denied ) || 'mad4b_projection_breakglass_disabled' !== $denied->get_error_code() || 1 !== $GLOBALS['identity_checks'] ) throw new RuntimeException( 'Execution did not check post-auth authority' );
+if ( array( $name ) !== $GLOBALS['projection_seal_requirements'] ) throw new RuntimeException( 'Execution did not arm final projected-call admission before authority checks' );
 $wire_error = MAD4B_SCP_Ability_Catalog_Transport::mcp_result( new WP_Error( 'mad4b_catalog_snapshot_expired', 'Expired', array( 'status' => 410, 'private' => 'do not expose' ) ) );
 $envelope = json_decode( $wire_error->get_error_message(), true );
 if ( 410 !== $envelope['status'] || isset( $envelope['private'] ) ) throw new RuntimeException( 'Bounded MCP error contract lost status or exposed data' );
