@@ -162,3 +162,13 @@ for marker in [
     require(marker in PROJECTION, f"exact resulting catalog preflight missing: {marker}")
 
 print("mad4b.chatgpt-dynamic-tool-projection.v1: PASS")
+
+# Fixed dispatch is an independently governed child operation. Projection
+# visibility may require a direct-call seal, but cannot poison the base
+# dispatcher path for the same Ability.
+for marker in [
+    "governed_child_permit_matches( $name, $input )",
+    "with_governed_child( $ability_name, $params, $execute_target, 'fixed_dispatch' )",
+]:
+    if marker not in (FENCE + ABILITIES):
+        raise SystemExit("fixed-dispatch/projection isolation guard missing: " + marker)

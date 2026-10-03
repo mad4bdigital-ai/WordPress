@@ -307,7 +307,9 @@ try {
 	}
 	$removed_fixed_identity = mad4b_test_prepared_dispatch_identity( 'mad4b/diagnostics-health' );
 	if ( is_wp_error( $removed_fixed_identity ) ) $fail( 'Removed-hot-set fixed-dispatch preparation failed.', $removed_fixed_identity->get_error_code() );
-	$removed_fixed = ( new MAD4B_SCP_Abilities() )->read_execute( array_merge(
+	$fixed_dispatch = wp_get_ability( 'mad4b/read-execute' );
+	if ( ! is_object( $fixed_dispatch ) ) $fail( 'Governed fixed read dispatcher Ability is unavailable.' );
+	$removed_fixed = $fixed_dispatch->execute( array_merge(
 		array( 'ability_name' => 'mad4b/diagnostics-health', 'input' => array() ),
 		$removed_fixed_identity
 	) );

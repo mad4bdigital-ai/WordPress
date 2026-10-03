@@ -423,10 +423,16 @@ final class MAD4B_SCP_Abilities {
 		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
+		$execute_target = static function () use ( $ability, $params ) {
+			return $ability->execute( $params );
+		};
 		$execution = MAD4B_SCP_Connector_Resilience::execute_read(
 			$ability_name,
-			static function () use ( $ability, $params ) {
-				return $ability->execute( $params );
+			static function () use ( $ability_name, $params, $execute_target ) {
+				if ( class_exists( 'MAD4B_SCP_Execution_Fence' ) && MAD4B_SCP_Execution_Fence::has_active_frame() ) {
+					return MAD4B_SCP_Execution_Fence::with_governed_child( $ability_name, $params, $execute_target, 'fixed_dispatch' );
+				}
+				return call_user_func( $execute_target );
 			}
 		);
 		if ( is_wp_error( $execution ) ) return $execution;

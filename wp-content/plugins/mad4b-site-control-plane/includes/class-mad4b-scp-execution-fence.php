@@ -122,7 +122,8 @@ final class MAD4B_SCP_Execution_Fence {
 		$original = $args['execute_callback'];
 
 		$outer = static function ( $input = null ) use ( $original, $name, $mutation ) {
-			if ( MAD4B_SCP_Execution_Fence::projected_call_requires_seal( $name ) ) {
+			$governed_child = MAD4B_SCP_Execution_Fence::governed_child_permit_matches( $name, $input );
+			if ( MAD4B_SCP_Execution_Fence::projected_call_requires_seal( $name ) && ! $governed_child ) {
 				$seal = MAD4B_SCP_Execution_Fence::consume_projected_call( $name, $input );
 				if ( is_wp_error( $seal ) ) return $seal;
 			}
@@ -280,6 +281,19 @@ final class MAD4B_SCP_Execution_Fence {
 		}
 	}
 
+	public static function governed_child_permit_matches( $ability_name, $input ) {
+		if ( empty( self::$execution_stack ) || empty( self::$child_permit ) ) return false;
+		$parent = self::$execution_stack[ count( self::$execution_stack ) - 1 ];
+		$permit = self::$child_permit;
+		$input_sha = self::digest( 'mad4b.child-operation-input.v1', $input );
+		$evidence_sha = self::evidence_sha256( $input );
+		return self::CHILD_OPERATION_CONTRACT === ( isset( $permit['contract'] ) ? (string) $permit['contract'] : '' )
+			&& isset( $permit['parent_frame_id'] ) && hash_equals( (string) $parent['frame_id'], (string) $permit['parent_frame_id'] )
+			&& isset( $permit['child_ability'] ) && hash_equals( (string) $permit['child_ability'], (string) $ability_name )
+			&& isset( $permit['child_input_sha256'] ) && '' !== $input_sha && hash_equals( (string) $permit['child_input_sha256'], $input_sha )
+			&& isset( $permit['child_evidence_sha256'] ) && '' !== $evidence_sha && hash_equals( (string) $permit['child_evidence_sha256'], $evidence_sha );
+	}
+
 	public static function status() {
 		return array(
 			'contract' => self::CONTRACT,
@@ -307,9 +321,11 @@ final class MAD4B_SCP_Execution_Fence {
 
 	public static function enter_execution_frame( $ability_name, $input, $mutation ) {
 		$parent = empty( self::$execution_stack ) ? null : self::$execution_stack[ count( self::$execution_stack ) - 1 ];
-		if ( $parent && $mutation ) {
+		if ( $parent && ! empty( self::$child_permit ) ) {
 			$permit = self::consume_child_permit( $parent, $ability_name, $input );
 			if ( is_wp_error( $permit ) ) return $permit;
+		} elseif ( $parent && $mutation ) {
+			return new WP_Error( 'mad4b_recursive_dispatch_child_operation_required', 'Nested governed mutation requires an explicit one-time governed child operation.' );
 		}
 		try {
 			$frame_id = bin2hex( random_bytes( 16 ) );
