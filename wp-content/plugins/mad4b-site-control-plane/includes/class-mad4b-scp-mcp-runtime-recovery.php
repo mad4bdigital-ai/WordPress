@@ -89,7 +89,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			$guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap( true );
 			if ( empty( $guard['mu_bootstrap_present'] ) || empty( $guard['mu_bootstrap_integrity'] )
 				|| ! in_array( $guard['blocker'] ?? '', array( '', 'mcp_adapter_class_provenance_mismatch' ), true ) ) return new WP_Error( $guard['blocker'] ?: 'mad4b_mcp_repair_readback_failed', 'Managed bootstrap was not verified.' );
-			$result = array( 'contract' => 'mad4b.mcp-runtime-recovery.v1', 'state' => 'armed_for_next_request', 'next_request_required' => true, 'connection_certified' => false, 'production_mutation' => false );
+			$result = array( 'contract' => 'mad4b.mcp-runtime-recovery.v1', 'state' => 'armed_for_next_request', 'next_request_required' => true, 'connection_certified' => false, 'runtime_node_scope' => 'current_node', 'shared_filesystem_certified' => false, 'cluster_convergence_required' => true, 'production_mutation' => false );
 			// A slow filesystem/audit phase may outlive its fence. Do not publish an
 			// armed result after another worker takes ownership or storage drops it.
 			$fence = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease, $own_lease ? 'mcp_runtime_recovery' : 'runtime_convergence' );
