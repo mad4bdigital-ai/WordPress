@@ -44,7 +44,7 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 			) );
 			$row = self::locked_row( $identity['breaker_key_sha256'] );
 			if ( ! is_array( $row ) ) throw new RuntimeException( 'provider_breaker_row_missing' );
-			$now = time();
+			$now = self::now_epoch();
 			$probe_token = '';
 			$probe = false;
 			if ( self::STATE_OPEN === (string) $row['state'] ) {
@@ -117,7 +117,7 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 			$row = self::locked_row( $identity['breaker_key_sha256'] );
 			if ( ! is_array( $row ) ) throw new RuntimeException( 'provider_breaker_row_missing' );
 			$state = (string) $row['state'];
-			$now = time();
+			$now = self::now_epoch();
 			if ( self::STATE_OPEN === $state ) {
 				$committed=MAD4B_SCP_Database_Transaction_Guard::commit($tx); if(is_wp_error($committed))return $committed;
 				return array('contract'=>self::CONTRACT,'recorded'=>false,'late_result_ignored'=>true,'state'=>$state,'authority_effect'=>'none','authorizing'=>false);
@@ -230,9 +230,12 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 	private static function verify_chain(array $row,array $events){$sequence=1;$previous=str_repeat('0',64);foreach($events as $event){if((int)$event['sequence']!==$sequence||!hash_equals($previous,(string)$event['previous_event_sha256']))return new WP_Error('mad4b_provider_breaker_event_chain_invalid','Provider breaker event sequence/hash chain is invalid.');$metadata=json_decode((string)$event['safe_metadata_json'],true);if(!is_array($metadata))$metadata=array();$payload=array('contract'=>self::EVENT_CONTRACT,'breaker_key_sha256'=>(string)$event['breaker_key_sha256'],'sequence'=>(int)$event['sequence'],'event_type'=>(string)$event['event_type'],'from_state'=>(string)$event['from_state'],'to_state'=>(string)$event['to_state'],'failure_class'=>(string)$event['failure_class'],'safe_metadata'=>$metadata,'previous_event_sha256'=>(string)$event['previous_event_sha256']);$sha=hash('sha256',self::canonical_json($payload));if(!hash_equals($sha,(string)$event['event_sha256']))return new WP_Error('mad4b_provider_breaker_event_hash_invalid','Provider breaker event hash is invalid.');$previous=$sha;$sequence++;}if((int)$row['revision']!==count($events)||!hash_equals((string)$row['latest_event_sha256'],$previous))return new WP_Error('mad4b_provider_breaker_event_head_invalid','Provider breaker head disagrees with transition evidence.');return true;}
 	private static function admission_receipt(array $identity,array $row,$probe,$probe_token){return array_merge($identity,array('contract'=>self::CONTRACT,'applicable'=>true,'state'=>(string)$row['state'],'transport_eligible'=>true,'half_open_probe'=>(bool)$probe,'probe_token'=>(string)$probe_token,'breaker_revision'=>(int)$row['revision'],'max_read_attempts'=>$probe?1:2,'probe_restores_transport_only'=>true,'certification_granted'=>false,'authority_granted'=>false,'approval_granted'=>false,'production_eligibility_granted'=>false,'authority_effect'=>'none','authorizing'=>false));}
 	private static function is_breaker_failure($failure_class){return in_array(sanitize_key((string)$failure_class),array('timeout','transport','upstream_unavailable','session_terminated','rate_limit'),true);}
-	private static function open_seconds($open_count){$power=max(0,min(4,(int)$open_count-1));return min(self::MAX_OPEN_SECONDS,self::BASE_OPEN_SECONDS*(int)pow(2,$power));}
-	private static function new_probe_token($key,$revision){return hash('sha256','mad4b.provider-breaker-probe.v1|'.$key.'|'.(int)$revision.'|'.wp_generate_uuid4().'|'.microtime(true));}
+	private static function open_seconds($open_count){$power=max(0,min(4,(int)$open_count-1));$requested=min(self::MAX_OPEN_SECONDS,self::BASE_OPEN_SECONDS*(int)pow(2,$power));if(class_exists('MAD4B_SCP_Time_Policy')){$v=MAD4B_SCP_Time_Policy::bounded_ttl('provider_breaker',$requested);if(!is_wp_error($v))return(int)$v;}return$requested;}
+	private static function new_probe_token($key,$revision){return hash('sha256','mad4b.provider-breaker-probe.v1|'.$key.'|'.(int)$revision.'|'.wp_generate_uuid4().'|'.( self::monotonic_ms() / 1000 ));}
 	private static function mysql_epoch($value){if(null===$value||''===$value)return 0;$v=strtotime((string)$value.' UTC');return false===$v?0:(int)$v;}
 	private static function canonical_json($value){return wp_json_encode(self::canonicalize($value),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);}
 	private static function canonicalize($value){if(!is_array($value))return $value;$list=empty($value)||array_keys($value)===range(0,count($value)-1);if($list)return array_map(array(__CLASS__,'canonicalize'),$value);ksort($value,SORT_STRING);foreach($value as $k=>$v)$value[$k]=self::canonicalize($v);return $value;}
+
+	private static function now_epoch(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::now_epoch():time();}
+	private static function monotonic_ms(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::monotonic_ms():(int)floor(microtime(true)*1000);}
 }

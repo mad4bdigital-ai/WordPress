@@ -39,15 +39,15 @@ final class MAD4B_SCP_Durable_Execution {
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
 		$request_sha256 = strtolower( trim( (string) $request_sha256 ) );
-		$ttl_seconds = max( 3600, min( 2592000, absint( $ttl_seconds ) ) );
+		$ttl_seconds = self::bounded_ttl( 'idempotency', $ttl_seconds, 3600, 2592000 );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) ) return new WP_Error( 'mad4b_idempotency_scope_invalid', 'Idempotency scope must be a SHA-256 digest.' );
 		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_request_hash_invalid', 'Idempotency request hash must be SHA-256.' );
 		$topology = self::write_topology_preflight();
 		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
-		$expires = gmdate( 'Y-m-d H:i:s', time() + $ttl_seconds );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
+		$expires = gmdate( 'Y-m-d H:i:s', self::now_epoch() + $ttl_seconds );
 		$wpdb->last_error = '';
 		$inserted = $wpdb->query( $wpdb->prepare(
 			"INSERT IGNORE INTO {$t['idempotency']} (scope_key,idempotency_key,request_sha256,claim_epoch,status,result_json,result_sha256,reconciliation_ref,expires_at,created_at,updated_at) VALUES (%s,%s,%s,1,'pending',NULL,'','',%s,%s,%s)",
@@ -111,7 +111,7 @@ final class MAD4B_SCP_Durable_Execution {
 			}
 			return new WP_Error( 'mad4b_idempotency_in_progress', 'The same idempotent operation was reclaimed concurrently after verified no-effect reconciliation.' );
 		}
-		$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= time();
+		$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= self::now_epoch();
 		if ( 'pending' === (string) $row['status'] && $expired ) {
 			return new WP_Error(
 				'mad4b_idempotency_reconciliation_required',
@@ -161,7 +161,7 @@ final class MAD4B_SCP_Durable_Execution {
 		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['idempotency']} SET status='completed',result_json=%s,result_sha256=%s,updated_at=%s WHERE scope_key=%s AND idempotency_key=%s AND request_sha256=%s AND claim_epoch=%d AND status='pending' AND expires_at>%s",
-			$json, $sha, gmdate( 'Y-m-d H:i:s' ), (string) $claim['scope_key'], (string) $claim['idempotency_key'], (string) $claim['request_sha256'], absint( $claim['claim_epoch'] ), gmdate( 'Y-m-d H:i:s' )
+			$json, $sha, gmdate( 'Y-m-d H:i:s', self::now_epoch() ), (string) $claim['scope_key'], (string) $claim['idempotency_key'], (string) $claim['request_sha256'], absint( $claim['claim_epoch'] ), gmdate( 'Y-m-d H:i:s', self::now_epoch() )
 		) );
 		if ( false === $updated ) return self::database_write_failure( 'mad4b_idempotency_complete_conflict', 'Idempotency completion persistence failed.', 'idempotency_complete', (string) $wpdb->last_error );
 		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_idempotency_complete_conflict', 'Idempotency record is no longer pending for this request.', array( 'blind_retry_allowed' => false ) );
@@ -190,7 +190,7 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( strlen( $json ) > 262144 ) return new WP_Error( 'mad4b_idempotency_result_too_large', 'Reconciled idempotency result exceeds bounded storage.' );
 		$result_sha256 = hash( 'sha256', $json );
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$transaction = self::begin_owned_transaction( 'durable_idempotency_complete_reconciliation', array( 'idempotency' ) );
 		if ( is_wp_error( $transaction ) ) return $transaction;
 		try {
@@ -287,7 +287,7 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! is_string( $observation_json ) || strlen( $observation_json ) > 65536 ) return new WP_Error( 'mad4b_idempotency_observation_invalid', 'Reconciliation observation is not serializable within the certified bound.' );
 		$observation_sha256 = hash( 'sha256', $observation_json );
 		$t = MAD4B_SCP_Schema::tables();
-		$now_epoch = time();
+		$now_epoch = self::now_epoch();
 		$now = gmdate( 'Y-m-d H:i:s', $now_epoch );
 		$transaction = self::begin_owned_transaction( 'durable_idempotency_observation', array( 'idempotency' ) );
 		if ( is_wp_error( $transaction ) ) return $transaction;
@@ -427,7 +427,7 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( strlen( $json ) > 262144 ) return new WP_Error( 'mad4b_idempotency_result_too_large', 'No-effect reconciliation proof exceeds bounded storage.' );
 		$result_sha256 = hash( 'sha256', $json );
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$transaction = self::begin_owned_transaction( 'durable_idempotency_release_no_effect', array( 'idempotency' ) );
 		if ( is_wp_error( $transaction ) ) return $transaction;
 		try {
@@ -560,12 +560,12 @@ final class MAD4B_SCP_Durable_Execution {
 		$idempotency_key = trim( (string) $idempotency_key );
 		$request_sha256 = strtolower( trim( (string) $request_sha256 ) );
 		$reconciliation_ref = trim( (string) $reconciliation_ref );
-		$ttl_seconds = max( 3600, min( 2592000, absint( $ttl_seconds ) ) );
+		$ttl_seconds = self::bounded_ttl( 'idempotency', $ttl_seconds, 3600, 2592000 );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) || ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_reclaim_identity_invalid', 'Idempotency reclaim identity is invalid.' );
 		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
 		if ( '' === $reconciliation_ref || strlen( $reconciliation_ref ) > 191 ) return new WP_Error( 'mad4b_idempotency_reconciliation_evidence_required', 'Idempotency reclaim requires bounded reconciliation evidence.' );
 		$t = MAD4B_SCP_Schema::tables();
-		$now_ts = time();
+		$now_ts = self::now_epoch();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
 		$transaction = self::begin_owned_transaction( 'durable_idempotency_reclaim', array( 'idempotency' ) );
@@ -656,9 +656,9 @@ final class MAD4B_SCP_Durable_Execution {
 		global $wpdb;
 		$valid = self::validate_lease_identity( $work_id, $aggregate_type, $aggregate_id, $worker_id, $expected_revision );
 		if ( is_wp_error( $valid ) ) return $valid;
-		$ttl_seconds = max( 30, min( 3600, absint( $ttl_seconds ) ) );
+		$ttl_seconds = self::bounded_ttl( 'durable_lease', $ttl_seconds, 30, 3600 );
 		$t = MAD4B_SCP_Schema::tables();
-		$now_ts = time();
+		$now_ts = self::now_epoch();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
 		$transaction = self::begin_owned_transaction( 'durable_lease_acquire', array( 'work_leases' ) );
@@ -722,9 +722,9 @@ final class MAD4B_SCP_Durable_Execution {
 		$reconciliation_ref = trim( (string) $reconciliation_ref );
 		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $work_id ) || '' === $worker_id || strlen( $worker_id ) > 191 ) return new WP_Error( 'mad4b_lease_identity_invalid', 'Lease reclaim identity is invalid.' );
 		if ( '' === $reconciliation_ref || strlen( $reconciliation_ref ) > 191 ) return new WP_Error( 'mad4b_lease_reconciliation_evidence_required', 'Lease reclaim requires bounded reconciliation evidence.' );
-		$ttl_seconds = max( 30, min( 3600, absint( $ttl_seconds ) ) );
+		$ttl_seconds = self::bounded_ttl( 'durable_lease', $ttl_seconds, 30, 3600 );
 		$t = MAD4B_SCP_Schema::tables();
-		$now_ts = time();
+		$now_ts = self::now_epoch();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
 		$transaction = self::begin_owned_transaction( 'durable_lease_reclaim', array( 'work_leases' ) );
@@ -787,11 +787,11 @@ final class MAD4B_SCP_Durable_Execution {
 		$work_id = strtolower( trim( (string) $work_id ) );
 		$worker_id = trim( (string) $worker_id );
 		$lease_epoch = absint( $lease_epoch );
-		$ttl_seconds = max( 30, min( 3600, absint( $ttl_seconds ) ) );
+		$ttl_seconds = self::bounded_ttl( 'durable_lease', $ttl_seconds, 30, 3600 );
 		$topology = self::write_topology_preflight();
 		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
-		$now_ts = time();
+		$now_ts = self::now_epoch();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
 		$wpdb->last_error = '';
@@ -826,7 +826,7 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( (int) $lease_epoch > (int) $row['lease_epoch'] ) return new WP_Error( 'mad4b_fence_epoch_unknown', 'Provided fencing epoch is ahead of the authoritative lease.' );
 		if ( ! hash_equals( (string) $row['worker_id'], trim( (string) $worker_id ) ) ) return new WP_Error( 'mad4b_fence_worker_mismatch', 'Worker does not own the authoritative lease epoch.' );
 		if ( 'active' !== (string) $row['status'] ) return new WP_Error( 'mad4b_fence_lease_inactive', 'Authoritative lease is not active.' );
-		if ( empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= time() ) return new WP_Error( 'mad4b_fence_lease_expired', 'Authoritative lease expired before commit.' );
+		if ( empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= self::now_epoch() ) return new WP_Error( 'mad4b_fence_lease_expired', 'Authoritative lease expired before commit.' );
 		if ( (int) $row['expected_aggregate_revision'] !== absint( $expected_revision ) ) return new WP_Error( 'mad4b_fence_revision_mismatch', 'Lease expected aggregate revision changed.' );
 		return self::lease_receipt_from_row( $row );
 	}
@@ -840,7 +840,7 @@ final class MAD4B_SCP_Durable_Execution {
 		$topology = self::write_topology_preflight();
 		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['work_leases']} SET status=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active' AND expires_at>%s",
@@ -882,7 +882,7 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$outbox_id = wp_generate_uuid4();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$available = $now;
 		if ( array_key_exists( 'available_at', $record ) && null !== $record['available_at'] && '' !== trim( (string) $record['available_at'] ) ) {
 			$available_ts = is_string( $record['available_at'] ) ? strtotime( $record['available_at'] ) : false;
@@ -949,7 +949,7 @@ final class MAD4B_SCP_Durable_Execution {
 		$topology = self::write_topology_preflight();
 		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$wpdb->last_error = '';
 		$inserted = $wpdb->insert( $t['inbox'], array(
 			'provider_id' => $provider_id,
@@ -1191,4 +1191,7 @@ final class MAD4B_SCP_Durable_Execution {
 			'reconciliation_ref' => (string) $reconciliation_ref,
 		);
 	}
+
+	private static function now_epoch(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::now_epoch():time();}
+	private static function bounded_ttl($purpose,$requested,$minimum,$maximum){if(class_exists('MAD4B_SCP_Time_Policy')){$v=MAD4B_SCP_Time_Policy::bounded_ttl($purpose,absint($requested));if(!is_wp_error($v))return(int)$v;}return max((int)$minimum,min((int)$maximum,absint($requested)));}
 }

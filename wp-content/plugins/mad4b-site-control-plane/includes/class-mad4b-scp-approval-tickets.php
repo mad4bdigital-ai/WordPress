@@ -84,12 +84,12 @@ final class MAD4B_SCP_Approval_Tickets {
 
 		$reason = trim( sanitize_text_field( $reason ) );
 		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_approval_reason_invalid', 'Approval reason must be between 3 and 500 characters.' );
-		$ttl = max( 60, min( self::MAX_TTL, absint( $ttl ) ) );
+		$ttl = self::bounded_ttl( $ttl );
 		$payload_hash = self::canonical_payload_hash( $agent_public_id, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $payload_hash ) ) return $payload_hash;
 
 		$t = MAD4B_SCP_Schema::tables();
-		$now = time();
+		$now = self::now_epoch();
 		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( wp_generate_uuid4() ) : '';
 		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_identity_invalid', 'Approval ticket generator did not produce a canonical UUIDv4 identity.' );
 		$data = array(
@@ -168,7 +168,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		$ticket = self::get( $ticket_id );
 		if ( ! $ticket ) return new WP_Error( 'mad4b_approval_missing', 'Approval ticket is missing.' );
 		if ( 'pending' !== (string) $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is no longer pending.' );
-		if ( strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) return new WP_Error( 'mad4b_approval_expired', 'Approval ticket has expired.' );
+		if ( strtotime( $ticket['expires_at'] . ' UTC' ) < self::now_epoch() ) return new WP_Error( 'mad4b_approval_expired', 'Approval ticket has expired.' );
 		if ( empty( $ticket['payload_sha256'] ) || ! hash_equals( strtolower( (string) $ticket['payload_sha256'] ), $expected_payload_sha256 ) ) return new WP_Error( 'mad4b_approval_payload_mismatch', 'Approval ticket payload changed or does not match the reviewed operation.' );
 		if ( 'approve' === $decision && self::is_governed_remote_mutation( $ticket['ticket_class'], $ticket['server_id'] ) ) {
 			$fresh = self::validate_ticket_candidate_binding( $ticket, $expected_payload_sha256 );
@@ -176,7 +176,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		}
 
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		if ( 'approve' === $decision ) {
 			$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'approved', approved_by = %d, approved_at = %s WHERE id = %d AND ticket_id = %s AND status = 'pending' AND payload_sha256 = %s AND expires_at >= %s", get_current_user_id(), $now, (int) $ticket['id'], $ticket_id, $expected_payload_sha256, $now ) );
 		} else {
@@ -234,7 +234,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		}
 
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		if ( 'approve' === $decision ) {
 			$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'approved', approved_by = 0, approved_at = %s WHERE id = %d AND ticket_id = %s AND status = 'pending' AND payload_sha256 = %s AND expires_at >= %s", $now, (int) $ticket['id'], $ticket_id, $expected_payload_sha256, $now ) );
 		} else {
@@ -275,13 +275,13 @@ final class MAD4B_SCP_Approval_Tickets {
 		$ticket = self::get( $ticket_id );
 		if ( ! $ticket || 'pending' !== (string) $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
 		$expires_at = isset( $ticket['expires_at'] ) ? strtotime( (string) $ticket['expires_at'] . ' UTC' ) : false;
-		if ( false === $expires_at || $expires_at < time() ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
+		if ( false === $expires_at || $expires_at < self::now_epoch() ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
 		if ( self::is_governed_remote_mutation( $ticket['ticket_class'], $ticket['server_id'] ) ) {
 			$fresh = self::validate_ticket_candidate_binding( $ticket, (string) $ticket['payload_sha256'] );
 			if ( is_wp_error( $fresh ) ) return $fresh;
 		}
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'approved', approved_by = %d, approved_at = %s WHERE ticket_id = %s AND status = 'pending' AND expires_at >= %s", get_current_user_id(), $now, (string) $ticket_id, $now ) );
 		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, stale, or no longer pending.' );
 		MAD4B_SCP_Audit::record( 'mad4b/approval-approved', array( 'ticket_id' => $ticket_id ), 'ok' );
@@ -312,7 +312,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		$status = isset( $ticket['status'] ) ? (string) $ticket['status'] : '';
 		if ( in_array( $status, array( 'used', 'executing', 'failed' ), true ) ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket is terminal or already claimed; replay is denied.' );
 		if ( 'approved' !== $status ) return new WP_Error( 'mad4b_approval_not_approved', 'Approval ticket is not approved.' );
-		if ( strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) return new WP_Error( 'mad4b_approval_expired', 'Approval ticket has expired.' );
+		if ( strtotime( $ticket['expires_at'] . ' UTC' ) < self::now_epoch() ) return new WP_Error( 'mad4b_approval_expired', 'Approval ticket has expired.' );
 		if ( (int) $ticket['agent_id'] !== (int) $agent['id'] ) return new WP_Error( 'mad4b_approval_agent_mismatch', 'Approval ticket belongs to another agent.' );
 		if ( sanitize_key( (string) $ticket['server_id'] ) !== sanitize_key( (string) $server_id ) ) return new WP_Error( 'mad4b_approval_server_mismatch', 'Approval ticket server does not match this operation.' );
 		if ( (string) $ticket['ability_name'] !== (string) $ability_name ) return new WP_Error( 'mad4b_approval_ability_mismatch', 'Approval ticket ability does not match this operation.' );
@@ -372,7 +372,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Stored approval ticket id is not canonical.' );
 		$hash = $validated['payload_sha256'];
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'executing' WHERE id = %d AND status = 'approved' AND payload_sha256 = %s AND expires_at >= %s", (int) $ticket['id'], $hash, $now ) );
 		if ( false === $updated ) {
@@ -398,7 +398,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		$execution_error_code = substr( sanitize_key( (string) $execution_error_code ), 0, 96 );
 		if ( ! in_array( $terminal_status, array( 'used', 'failed' ), true ) ) return new WP_Error( 'mad4b_approval_finalize_status_invalid', 'Approval ticket final status must be used or failed.' );
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
+		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		$wpdb->last_error = '';
 		if ( 'used' === $terminal_status ) $updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'used', used_at = %s WHERE ticket_id = %s AND status = 'executing'", $now, (string) $ticket_id ) );
 		else $updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'failed' WHERE ticket_id = %s AND status = 'executing'", (string) $ticket_id ) );
@@ -510,7 +510,7 @@ final class MAD4B_SCP_Approval_Tickets {
 				'site_uuid' => isset( $binding['site_uuid'] ) ? strtolower( (string) $binding['site_uuid'] ) : '',
 				'site_profile_revision' => isset( $binding['profile_revision'] ) ? absint( $binding['profile_revision'] ) : 0,
 				'site_profile_digest' => isset( $binding['profile_digest'] ) ? strtolower( (string) $binding['profile_digest'] ) : '',
-				'bound_at' => false === $bound_at ? gmdate( 'Y-m-d H:i:s' ) : gmdate( 'Y-m-d H:i:s', $bound_at ),
+				'bound_at' => false === $bound_at ? gmdate( 'Y-m-d H:i:s', self::now_epoch() ) : gmdate( 'Y-m-d H:i:s', $bound_at ),
 			),
 			array( 'ticket_id' => (string) $binding['ticket_id'], 'status' => 'pending' ),
 			array( '%s','%s','%s','%s','%s','%s','%d','%s','%s' ),
@@ -624,6 +624,9 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( is_float( $value ) && is_finite( $value ) ) return $value;
 		return new WP_Error( 'mad4b_approval_payload_invalid', 'Approval payload contains an unsupported value type.' );
 	}
+
+	private static function now_epoch(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::now_epoch():time();}
+	private static function bounded_ttl($ttl){if(class_exists('MAD4B_SCP_Time_Policy')){$v=MAD4B_SCP_Time_Policy::bounded_ttl('approval_ticket',absint($ttl));if(!is_wp_error($v))return(int)$v;}return max(60,min(self::MAX_TTL,absint($ttl)));}
 }
 
 require_once __DIR__ . '/class-mad4b-scp-approval-repository.php';

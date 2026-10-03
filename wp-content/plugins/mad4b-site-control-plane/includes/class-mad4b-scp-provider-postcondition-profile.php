@@ -90,9 +90,9 @@ final class MAD4B_SCP_Provider_Postcondition_Profile {
 	}
 
 	public static function decision_from_hashes( array $profile, $before_sha256, $expected_after_sha256, $observed_sha256, $observed_at_epoch = null ) {
-		$now = time();
+		$now = self::now_epoch();
 		$observed_at = null === $observed_at_epoch ? $now : (int) $observed_at_epoch;
-		$fresh = $observed_at > 0 && $observed_at <= $now + 5 && ( $now - $observed_at ) <= (int) ( $profile['freshness_seconds'] ?? 0 );
+		$fresh = $observed_at > 0 && $observed_at <= $now + self::future_skew() && ( $now - $observed_at ) <= (int) ( $profile['freshness_seconds'] ?? 0 );
 		$before = strtolower( trim( (string) $before_sha256 ) );
 		$after = strtolower( trim( (string) $expected_after_sha256 ) );
 		$observed = strtolower( trim( (string) $observed_sha256 ) );
@@ -160,8 +160,8 @@ final class MAD4B_SCP_Provider_Postcondition_Profile {
 			return new WP_Error( 'mad4b_postcondition_profile_stale', 'Postcondition observation was produced under a different reader/profile generation.', array( 'ability_name' => $ability, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
 		}
 		$observed_at = isset( $observation['observed_at_epoch'] ) ? (int) $observation['observed_at_epoch'] : 0;
-		$now = time();
-		if ( $observed_at < 1 || $observed_at > $now + 5 || ( $now - $observed_at ) > (int) $current['freshness_seconds'] || empty( $observation['fresh'] ) ) {
+		$now = self::now_epoch();
+		if ( $observed_at < 1 || $observed_at > $now + self::future_skew() || ( $now - $observed_at ) > (int) $current['freshness_seconds'] || empty( $observation['fresh'] ) ) {
 			return new WP_Error( 'mad4b_postcondition_observation_stale', 'Postcondition observation is outside the certified freshness window.', array( 'ability_name' => $ability, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
 		}
 		$state = isset( $observation['postcondition_state'] ) ? sanitize_key( (string) $observation['postcondition_state'] ) : 'unknown';
@@ -229,4 +229,7 @@ final class MAD4B_SCP_Provider_Postcondition_Profile {
 		foreach ( $value as $k => $v ) $value[ $k ] = self::sort_value( $v );
 		return $value;
 	}
+
+	private static function now_epoch(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::now_epoch():time();}
+	private static function future_skew(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::future_skew_seconds('reconciliation_observation'):5;}
 }
