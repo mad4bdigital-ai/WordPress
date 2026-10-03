@@ -321,6 +321,11 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 				"SELECT COUNT(*) FROM {$t['catalog_generations']} WHERE BINARY storage_scope_sha256=BINARY %s",
 				$this->scope
 			) );
+			$scope_object_shas = $wpdb->get_col( $wpdb->prepare(
+				"SELECT DISTINCT object_sha256 FROM {$t['catalog_generations']} WHERE BINARY storage_scope_sha256=BINARY %s ORDER BY object_sha256",
+				$this->scope
+			) );
+			$scope_object_shas = is_array( $scope_object_shas ) ? array_values( array_filter( array_map( 'strval', $scope_object_shas ) ) ) : array();
 			if ( is_array( $head ) ) {
 				if ( ! hash_equals( $expected_generation_id, (string)$head['generation_id'] ) || $expected_fencing_token !== (int)$head['fencing_token'] ) {
 					throw new RuntimeException( 'catalog_table_retirement_fence_mismatch' );
@@ -333,9 +338,9 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 			} elseif ( 0 === $scope_rows ) {
 				$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $transaction );
 				if ( is_wp_error( $committed ) ) return $committed;
-				self::purge_unreferenced_objects( 10000 );
 				$status = self::status( $this->scope );
 				$status['retirement_idempotent'] = true;
+				$status['purged_unreferenced_objects'] = 0;
 				return $status;
 			} else {
 				throw new RuntimeException( 'catalog_table_retirement_head_missing' );
@@ -354,7 +359,7 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 				'storage_scope_sha256'=>$this->scope,'authorizing'=>false
 			) );
 		}
-		$purged = self::purge_unreferenced_objects( 10000 );
+		$purged = self::purge_unreferenced_objects( $scope_object_shas );
 		if ( is_wp_error( $purged ) ) return $purged;
 		$status = self::status( $this->scope );
 		$head_after = isset( $status['head'] ) && is_array( $status['head'] ) ? $status['head'] : array();
@@ -368,35 +373,39 @@ final class MAD4B_SCP_Catalog_Table_Backend {
 		return $status;
 	}
 
-	private static function purge_unreferenced_objects( $max_rows = 10000 ) {
+	private static function purge_unreferenced_objects( array $candidate_shas ) {
 		global $wpdb;
 		$t = MAD4B_SCP_Schema::tables();
-		$remaining = max( 1, min( 10000, (int)$max_rows ) );
+		$candidate_shas = array_values( array_unique( array_filter( array_map( static function( $sha ) {
+			$sha = strtolower( trim( (string)$sha ) );
+			return 1 === preg_match( '/^[a-f0-9]{64}$/D', $sha ) ? $sha : '';
+		}, $candidate_shas ) ) ) );
+		if ( empty( $candidate_shas ) ) return 0;
 		$deleted = 0;
-		while ( $remaining > 0 ) {
-			$batch = min( 500, $remaining );
-			$count = $wpdb->query(
-				"DELETE FROM {$t['catalog_objects']}
-				 WHERE object_sha256 IN (
-					SELECT object_sha256 FROM (
-						SELECT o.object_sha256 FROM {$t['catalog_objects']} o
-						LEFT JOIN {$t['catalog_generations']} g ON BINARY g.object_sha256=BINARY o.object_sha256
-						WHERE g.object_sha256 IS NULL
-						ORDER BY o.object_sha256 LIMIT {$batch}
-					) unreferenced_object_rows
-				)"
-			);
-			if ( false === $count ) return new WP_Error( 'mad4b_catalog_table_retirement_gc_failed', 'Catalog table retirement could not purge unreferenced objects.' );
-			$count = (int)$count;
-			$deleted += $count;
-			$remaining -= $count;
-			if ( $count < $batch ) break;
+		foreach ( array_chunk( $candidate_shas, 200 ) as $batch ) {
+			$placeholders = implode( ',', array_fill( 0, count( $batch ), '%s' ) );
+			$sql = "DELETE FROM {$t['catalog_objects']}
+				WHERE object_sha256 IN ({$placeholders})
+				AND NOT EXISTS (
+					SELECT 1 FROM {$t['catalog_generations']} g
+					WHERE BINARY g.object_sha256=BINARY {$t['catalog_objects']}.object_sha256
+				)";
+			$count = $wpdb->query( $wpdb->prepare( $sql, $batch ) );
+			if ( false === $count ) return new WP_Error( 'mad4b_catalog_table_retirement_gc_failed', 'Catalog table retirement could not purge its own unreferenced objects.' );
+			$deleted += (int)$count;
 		}
-		$orphans = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$t['catalog_objects']} o
-			 WHERE NOT EXISTS (SELECT 1 FROM {$t['catalog_generations']} g WHERE BINARY g.object_sha256=BINARY o.object_sha256)"
-		);
-		if ( is_numeric( $orphans ) && (int)$orphans > 0 ) return new WP_Error( 'mad4b_catalog_table_retirement_gc_incomplete', 'Catalog table retirement left unreferenced objects outside the bounded purge.' );
+		$remaining = 0;
+		foreach ( array_chunk( $candidate_shas, 200 ) as $batch ) {
+			$placeholders = implode( ',', array_fill( 0, count( $batch ), '%s' ) );
+			$count = $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM {$t['catalog_objects']} o
+				 WHERE o.object_sha256 IN ({$placeholders})
+				 AND NOT EXISTS (SELECT 1 FROM {$t['catalog_generations']} g WHERE BINARY g.object_sha256=BINARY o.object_sha256)",
+				$batch
+			) );
+			if ( is_numeric( $count ) ) $remaining += (int)$count;
+		}
+		if ( $remaining > 0 ) return new WP_Error( 'mad4b_catalog_table_retirement_gc_incomplete', 'Catalog table retirement left its own unreferenced objects after bounded purge.' );
 		return $deleted;
 	}
 
