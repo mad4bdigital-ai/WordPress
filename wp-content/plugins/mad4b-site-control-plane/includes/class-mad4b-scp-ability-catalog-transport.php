@@ -189,9 +189,10 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return self::error( 'mad4b_catalog_blog_switch_denied', 409 );
 		if ( true !== MAD4B_SCP_Policy::can_read() ) return self::error( 'mad4b_catalog_forbidden', 403 );
 		if ( ! is_string( $name ) || ! wp_has_ability( $name ) ) return self::error( 'mad4b_catalog_ability_unavailable', 404 );
-		$store = new MAD4B_SCP_Catalog_Object_Store();
+		$scope = self::scope();
+		$store = new MAD4B_SCP_Catalog_Object_Store( $scope );
 		try {
-			$a = wp_get_ability( $name ); $scope = self::scope();
+			$a = wp_get_ability( $name );
 			$source = self::publish_schema( array( 'inputSchema' => $a->get_input_schema(), 'outputSchema' => $a->get_output_schema() ), $store, false );
 			$item = array( 'ability_name' => $name, 'schema_sha256' => $source['sha256'], 'schema_bytes' => $source['bytes'], 'source' => array( 'sha256' => $source['sha256'], 'bytes' => $source['bytes'] ) );
 			try {
@@ -215,9 +216,10 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( isset( $input['query'] ) && ( ! is_string( $input['query'] ) || strlen( $input['query'] ) > 640 ) ) return self::error( 'mad4b_catalog_query_invalid' );
 		if ( isset( $input['schema_format'] ) && ! in_array( $input['schema_format'], array( 'source', 'wire' ), true ) ) return self::error( 'mad4b_catalog_format_invalid' );
 		foreach ( array( 'limit', 'chunk_index', 'chunk_bytes' ) as $f ) if ( isset( $input[ $f ] ) && ( false === filter_var( $input[ $f ], FILTER_VALIDATE_INT ) || $input[ $f ] < 0 || $input[ $f ] > 2147483647 ) ) return self::error( 'mad4b_catalog_integer_invalid' );
-		$store = new MAD4B_SCP_Catalog_Object_Store();
+		$scope = self::scope();
+		$store = new MAD4B_SCP_Catalog_Object_Store( $scope );
 		try {
-			$scope = self::scope(); $action = $input['transport_action'] ?? 'manifest';
+			$action = $input['transport_action'] ?? 'manifest';
 			if ( 'capabilities' === $action ) return self::capabilities();
 			if ( 'manifest' === $action ) $result = self::manifest( $input, $scope, $store );
 			elseif ( in_array( $action, array( 'schema', 'chunk' ), true ) ) $result = self::schema( $input, $scope, $store, $binary );

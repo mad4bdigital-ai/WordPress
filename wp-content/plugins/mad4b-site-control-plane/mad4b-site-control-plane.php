@@ -233,6 +233,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operating-model.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-ability-overrides.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-distributed-lock.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-table-backend.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-backend-controller.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ability-contract-inspector.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-descriptor-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-preparation-receipt.php';
