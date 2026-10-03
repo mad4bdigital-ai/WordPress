@@ -70,20 +70,21 @@ final class MAD4B_SCP_Abuse_Budget {
 		return $metrics;
 	}
 
-	private static function walk( $value, $depth, $key, array &$metrics, array $limits ) {
+	private static function walk( $value, $depth, $key, array &$metrics, array $limits, $metadata_context = false ) {
 		++$metrics['nodes'];
 		$metrics['max_depth'] = max( $metrics['max_depth'], (int)$depth );
 		if ( $metrics['nodes'] > (int)$limits['max_nodes'] ) return self::complexity_error( 'mad4b_abuse_node_budget_exceeded', 'Request contains too many nested values.', $metrics, $limits );
 		if ( $depth > (int)$limits['max_depth'] ) return self::complexity_error( 'mad4b_abuse_depth_exceeded', 'Request nesting exceeds the certified complexity budget.', $metrics, $limits );
+		$metadata_context = $metadata_context || 1 === preg_match( '/(?:metadata|meta|headers|context|evidence)/i', (string)$key );
 
 		if ( is_string( $value ) ) {
 			$bytes = strlen( $value );
 			$metrics['max_string_bytes'] = max( $metrics['max_string_bytes'], $bytes );
-			if ( $bytes > (int)$limits['max_string_bytes'] ) return self::complexity_error( 'mad4b_abuse_string_bytes_exceeded', 'Request contains an oversized string value.', $metrics, $limits );
-			if ( preg_match( '/(?:metadata|meta|headers|context|evidence)/i', (string)$key ) ) {
+			if ( $metadata_context ) {
 				$metrics['metadata_bytes'] += $bytes;
 				if ( $metrics['metadata_bytes'] > (int)$limits['max_metadata_bytes'] ) return self::complexity_error( 'mad4b_abuse_metadata_bytes_exceeded', 'Request metadata exceeds the certified byte budget.', $metrics, $limits );
 			}
+			if ( $bytes > (int)$limits['max_string_bytes'] ) return self::complexity_error( 'mad4b_abuse_string_bytes_exceeded', 'Request contains an oversized string value.', $metrics, $limits );
 			if ( preg_match( '/(?:query|search|term|pattern|regex)/i', (string)$key ) ) {
 				$trimmed = trim( $value );
 				$terms = '' === $trimmed ? 0 : count( preg_split( '/\s+/', $trimmed, -1, PREG_SPLIT_NO_EMPTY ) );
@@ -109,7 +110,7 @@ final class MAD4B_SCP_Abuse_Budget {
 				if ( $metrics['schema_alternatives'] > (int)$limits['max_schema_alternatives'] ) return self::complexity_error( 'mad4b_abuse_schema_alternatives_exceeded', 'Schema alternatives exceed the certified complexity budget.', $metrics, $limits );
 			}
 			foreach ( $value as $child_key => $child ) {
-				$result = self::walk( $child, $depth + 1, is_string($child_key)?$child_key:(string)$key, $metrics, $limits );
+				$result = self::walk( $child, $depth + 1, is_string($child_key)?$child_key:(string)$key, $metrics, $limits, $metadata_context );
 				if ( is_wp_error( $result ) ) return $result;
 			}
 		}
