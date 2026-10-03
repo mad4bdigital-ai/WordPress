@@ -192,4 +192,4 @@ final class MAD4B_SCP_Catalog_Backend_Controller {
 		wp_cache_delete( self::STATE_OPTION, 'options' ); wp_cache_delete( 'alloptions', 'options' ); wp_cache_delete( 'notoptions', 'options' );
 		return get_option( self::STATE_OPTION, array() ) === $next;
 	}
-}}
+}
