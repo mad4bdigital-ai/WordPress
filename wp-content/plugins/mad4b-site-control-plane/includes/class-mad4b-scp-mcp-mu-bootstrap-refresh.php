@@ -140,6 +140,20 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		return $record;
 	}
 
+	public static function verify_transaction_owner( $transaction_id, $expected_state = '' ) {
+		$record = self::transaction_record_for_owner( $transaction_id );
+		if ( is_wp_error( $record ) ) return $record;
+		$expected_state = sanitize_key( (string) $expected_state );
+		if ( '' !== $expected_state && $expected_state !== sanitize_key( (string) ( $record['state'] ?? '' ) ) ) {
+			return new WP_Error( 'mu_bootstrap_transaction_state_invalid', 'MU filesystem transaction owner no longer holds the expected state.' );
+		}
+		return true;
+	}
+
+	public static function invalidate_managed_opcode_for_lifecycle( $path ) {
+		return self::invalidate_managed_opcode( $path );
+	}
+
 	public static function begin_transaction( $operation, $previous_sha256, $target_sha256 ) {
 		$operation = sanitize_key( (string) $operation );
 		$previous_sha256 = strtolower( trim( (string) $previous_sha256 ) );
@@ -459,27 +473,11 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	}
 
 	private static function repair_lifecycle_allowed() {
-		if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_MCP_Runtime_Recovery::active() ) return true;
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
-			// Generic WP-CLI commands are not MCP repair lifecycles. Explicit MCP
-			// CLI work opts in before WordPress/MU bootstrap; authorized recovery
-			// remains covered by the active() branch above.
-			return defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && true === constant( 'MAD4B_SCP_MCP_CLI_REQUEST' );
-		}
-		// Generic wp-cron.php is also infrastructure, not mutation authority. The
-		// dedicated recovery hook and Runtime Convergence both set Recovery::active()
-		// before calling bootstrap(), so they are admitted by the first branch.
-		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return false;
-		if ( is_admin() ) {
-
-			global $pagenow;
-			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
-			$lifecycle_screen = in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true );
-			if ( $lifecycle_screen
-				&& function_exists( 'current_user_can' )
-				&& current_user_can( 'update_plugins' ) ) return true;
-		}
-		return false;
+		// Every filesystem writer must be inside the Recovery coordinator, which
+		// owns or borrows the shared maintenance lease. CLI/admin/cron context by
+		// itself is never mutation authority.
+		return class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false )
+			&& MAD4B_SCP_MCP_Runtime_Recovery::active();
 	}
 
 	private static function base_status() {
