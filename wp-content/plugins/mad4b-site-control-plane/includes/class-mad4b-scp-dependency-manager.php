@@ -56,6 +56,11 @@ final class MAD4B_SCP_Dependency_Manager {
 		$plugin_identity_ambiguous = ! empty( $mcp_plugin_identity['ambiguous'] );
 		$installed = '' !== $mcp_plugin_file && isset( $plugins[ $mcp_plugin_file ] ) && is_array( $plugins[ $mcp_plugin_file ] );
 		$installed_version = $installed && isset( $plugins[ $mcp_plugin_file ]['Version'] ) ? trim( (string) $plugins[ $mcp_plugin_file ]['Version'] ) : '';
+		$installed_certified = '' !== $installed_version ? self::certified_mcp_adapter( $installed_version ) : array();
+		$supported_transition_versions = self::supported_transition_versions();
+		$transition_supported = $installed
+			&& ! empty( $installed_certified )
+			&& in_array( $installed_version, $supported_transition_versions, true );
 		$multisite_enabled = function_exists( 'is_multisite' ) && is_multisite();
 		$network_control_plane = $multisite_enabled && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) );
 		$network_mcp_adapter = $multisite_enabled && '' !== $mcp_plugin_file && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $mcp_plugin_file );
@@ -70,7 +75,7 @@ final class MAD4B_SCP_Dependency_Manager {
 		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin;
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $expected_sha );
-		$installed_integrity = $installed ? self::installed_mcp_adapter_integrity( $certified, $mcp_plugin_file ) : array(
+		$installed_integrity = $installed ? self::installed_mcp_adapter_integrity( $installed_certified, $mcp_plugin_file ) : array(
 			'contract' => 'mad4b.mcp-adapter-installed-integrity.v1',
 			'ready' => false,
 			'state' => 'not_installed',
@@ -106,7 +111,7 @@ final class MAD4B_SCP_Dependency_Manager {
 		if ( $network_control_plane || $network_mcp_adapter ) $hard_blockers[] = 'multisite_network_activation_unsupported';
 		if ( $plugin_identity_ambiguous ) $hard_blockers[] = 'mcp_adapter_plugin_identity_ambiguous';
 		elseif ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
-		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
+		elseif ( ! $transition_supported ) $hard_blockers[] = 'mcp_adapter_version_drift';
 		elseif ( ! $installed_integrity_ready ) $hard_blockers[] = 'mcp_adapter_integrity_mismatch';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
 		elseif ( ! $runtime_from_official_plugin ) $hard_blockers[] = 'mcp_adapter_runtime_provenance_mismatch';
@@ -149,6 +154,9 @@ final class MAD4B_SCP_Dependency_Manager {
 				'installed' => $installed,
 				'installed_version' => $installed_version,
 				'version_match' => $version_match,
+				'transition_supported' => $transition_supported,
+				'supported_transition_versions' => $supported_transition_versions,
+				'installed_certified_version' => isset( $installed_certified['version'] ) ? (string) $installed_certified['version'] : '',
 				'installed_critical_integrity' => $installed_integrity,
 				'active' => (bool) $active,
 				'runtime_loaded' => $runtime_loaded,
@@ -261,11 +269,68 @@ final class MAD4B_SCP_Dependency_Manager {
 		exit;
 	}
 
-	private static function certified_mcp_adapter() {
-		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/certified-providers.json' : '';
-		if ( '' === $path || ! is_readable( $path ) ) return array();
-		$decoded = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		return is_array( $decoded ) && ! empty( $decoded['providers']['mcp_adapter'] ) && is_array( $decoded['providers']['mcp_adapter'] ) ? $decoded['providers']['mcp_adapter'] : array();
+	private static function certified_mcp_adapter( $version = '' ) {
+		$version = trim( (string) $version );
+		if ( '' === $version ) $version = self::target_mcp_adapter_version();
+
+		if ( '' !== $version && class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' ) ) {
+			$contract = MAD4B_SCP_Provider_Contracts::get_for_version( 'mcp_adapter', $version );
+			if ( is_array( $contract ) && ! empty( $contract ) ) return $contract;
+		}
+
+		$base_path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/certified-providers.json' : '';
+		$profile_path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/certified-provider-profiles.json' : '';
+		$base = array();
+		if ( '' !== $base_path && is_readable( $base_path ) ) {
+			$decoded = json_decode( (string) file_get_contents( $base_path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$base = is_array( $decoded ) && ! empty( $decoded['providers']['mcp_adapter'] ) && is_array( $decoded['providers']['mcp_adapter'] )
+				? $decoded['providers']['mcp_adapter']
+				: array();
+		}
+		if ( '' === $version ) return $base;
+		if ( ! empty( $base['version'] ) && hash_equals( (string) $base['version'], $version ) ) return $base;
+
+		if ( '' !== $profile_path && is_readable( $profile_path ) ) {
+			$decoded = json_decode( (string) file_get_contents( $profile_path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$profile = is_array( $decoded ) && ! empty( $decoded['providers']['mcp_adapter'][ $version ] ) && is_array( $decoded['providers']['mcp_adapter'][ $version ] )
+				? $decoded['providers']['mcp_adapter'][ $version ]
+				: array();
+			if ( ! empty( $profile['version'] ) && hash_equals( $version, (string) $profile['version'] ) && ! empty( $profile['critical_files'] ) ) {
+				return array_replace_recursive( $base, $profile );
+			}
+		}
+		return array();
+	}
+
+	private static function target_mcp_adapter_version() {
+		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/runtime-release-policy.json' : '';
+		if ( '' !== $path && is_readable( $path ) ) {
+			$decoded = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$version = is_array( $decoded ) ? trim( (string) ( $decoded['target_adapter_version'] ?? '' ) ) : '';
+			if ( '' !== $version ) return $version;
+		}
+		$base_path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/certified-providers.json' : '';
+		if ( '' === $base_path || ! is_readable( $base_path ) ) return '';
+		$decoded = json_decode( (string) file_get_contents( $base_path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		return is_array( $decoded ) ? trim( (string) ( $decoded['providers']['mcp_adapter']['version'] ?? '' ) ) : '';
+	}
+
+	private static function supported_transition_versions() {
+		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/runtime-release-policy.json' : '';
+		$versions = array();
+		if ( '' !== $path && is_readable( $path ) ) {
+			$decoded = json_decode( (string) file_get_contents( $path ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$raw = is_array( $decoded ) && isset( $decoded['supported_transition_adapter_versions'] ) && is_array( $decoded['supported_transition_adapter_versions'] )
+				? $decoded['supported_transition_adapter_versions']
+				: array();
+			foreach ( $raw as $version ) {
+				$version = trim( (string) $version );
+				if ( '' !== $version && empty( self::certified_mcp_adapter( $version ) ) === false ) $versions[] = $version;
+			}
+		}
+		$target = self::target_mcp_adapter_version();
+		if ( '' !== $target && ! empty( self::certified_mcp_adapter( $target ) ) ) $versions[] = $target;
+		return array_values( array_unique( $versions ) );
 	}
 
 	/** Canonical runtime/update identity for the installed MCP Adapter main file. */
@@ -286,7 +351,9 @@ final class MAD4B_SCP_Dependency_Manager {
 			'mismatch_count' => 1,
 			'mismatches' => array( array( 'file' => '', 'reason' => 'plugin_identity_ambiguous' ) ),
 		);
-		return self::installed_mcp_adapter_integrity( self::certified_mcp_adapter(), (string) ( $identity['plugin_file'] ?? '' ) );
+		$plugin_file = (string) ( $identity['plugin_file'] ?? '' );
+		$version = isset( $plugins[ $plugin_file ]['Version'] ) ? trim( (string) $plugins[ $plugin_file ]['Version'] ) : '';
+		return self::installed_mcp_adapter_integrity( self::certified_mcp_adapter( $version ), $plugin_file );
 	}
 
 	private static function installed_mcp_adapter_integrity( array $certified, $plugin_file = '' ) {
