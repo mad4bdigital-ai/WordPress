@@ -182,15 +182,17 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 	public static function release_ring_for_status( array $status, $environment ) {
 		$declared = isset( $status['release_ring'] ) ? strtoupper( trim( (string) $status['release_ring'] ) ) : '';
 		if ( in_array( $declared, array( self::R0,self::R1,self::R2,self::R3,self::R4 ), true ) ) return $declared;
-		$activation = isset( $status['activation_stage'] ) ? (string) $status['activation_stage'] : '';
-		if ( defined( 'MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_ACTIVE' )
-			&& MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_ACTIVE === $activation ) {
+		$activation = isset( $status['activation_stage'] ) ? strtolower( trim( (string) $status['activation_stage'] ) ) : '';
+		$active_value = defined( 'MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_ACTIVE' )
+			? (string) MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_ACTIVE : 'active';
+		$canary_value = defined( 'MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_CANARY' )
+			? (string) MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_CANARY : 'canary';
+		if ( hash_equals( strtolower( $active_value ), $activation ) ) {
 			// Compatibility bridge is conservative: ACTIVE may imply general
 			// Staging eligibility, never Production eligibility.
 			return self::R3;
 		}
-		if ( defined( 'MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_CANARY' )
-			&& MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_CANARY === $activation ) return self::R1;
+		if ( hash_equals( strtolower( $canary_value ), $activation ) ) return self::R1;
 		return self::R0;
 	}
 
