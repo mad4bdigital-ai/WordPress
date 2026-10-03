@@ -92,7 +92,7 @@ $mad4b_mcp_mu_root = '' !== $mad4b_mcp_mu_adapter_plugin
 
 $mad4b_mcp_mu_baseline_file = $mad4b_mcp_mu_control_plane_root . 'config/certified-providers.json';
 $mad4b_mcp_mu_profiles_file = $mad4b_mcp_mu_control_plane_root . 'config/certified-provider-profiles.json';
-$mad4b_mcp_mu_adapter_main = '' !== $mad4b_mcp_mu_root ? $mad4b_mcp_mu_root . 'mcp-adapter.php' : '';
+$mad4b_mcp_mu_adapter_main = '' !== $mad4b_mcp_mu_adapter_plugin ? trailingslashit( WP_PLUGIN_DIR ) . $mad4b_mcp_mu_adapter_plugin : '';
 $mad4b_mcp_mu_adapter_version = '';
 if ( is_readable( $mad4b_mcp_mu_adapter_main ) ) {
 	if ( function_exists( 'get_file_data' ) ) {
