@@ -1679,6 +1679,111 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php"
       ],
       "reason": "Cross-provider/network tracing preserves causal continuity through tenant forks without reusing cross-tenant trace IDs, leaking tenant identity or admitting unbounded labels."
+    },
+    "T3747": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Approval identity is bound to canonical exact-input, compiled resource-set, dependency-generation and impact/blast-radius digests; the binding is non-authorizing and canonically hashed."
+    },
+    "T3748": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Authorization recomputes the impact-bound approval payload and rejects drift in exact input, resource set, dependency generation, impact graph/classification or target fingerprint before commit."
+    },
+    "T3749": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Authorization emits a non-authorizing decision graph with PASS/FAIL/NOT_EVALUATED stages, stable reason codes, policy/evidence versions and hashed/redacted evidence references."
+    },
+    "T3750": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "mad4b.execution-receipt.v1 links preparation, descriptor, policy decision, approval when required, idempotency/journal when present, provider evidence, readback/reconciliation and terminal outcome; required stages are fail-closed."
+    },
+    "T3751": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "The unified receipt is content-addressed, independently integrity-verifiable/exportable and cannot represent terminal success with a missing required stage. Cryptographic signing remains intentionally blocked by signature_state=crypto_profile_required until T3755 supplies versioned crypto profiles/key IDs/rotation semantics."
+    },
+    "T3752": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Semantic intent routing maps intent and target kind through required traits/provider candidates to exact capabilities with confidence, evidence, ambiguity and human-review semantics."
+    },
+    "T3753": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Semantic routing is explicitly non-authorizing and reuses current Authorization probe/resource/policy/descriptor/provider eligibility; unauthorized or insufficiently bound candidates remain unselected and require review."
     }
   }
 }

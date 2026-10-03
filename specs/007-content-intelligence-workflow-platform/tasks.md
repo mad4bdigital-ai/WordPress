@@ -805,13 +805,13 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3746 P1 GATE Cross-provider/network traces must preserve causal continuity without cross-tenant correlation leakage or unbounded high-cardinality labels.
 
 ### 37I — Impact-bound approvals, explainability, execution receipts and semantic routing
-- [ ] T3747 P0 Extend approval identity with exact input digest, constrained resource set, dependency generation and blast-radius/impact digest.
-- [ ] T3748 P0 Invalidate approval when the resource set, dependency generation, impact graph or target fingerprint materially changes before commit.
-- [ ] T3749 P1 Implement an authorization decision graph exposing PASS/FAIL/NOT_EVALUATED steps, stable reason codes, policy/evidence versions and redacted evidence refs without revealing secrets.
-- [ ] T3750 P0 Define mad4b.execution-receipt.v1 linking preparation, descriptor, policy decision, approval, idempotency claim, operation journal, provider evidence, readback/reconciliation and terminal outcome.
+- [x] T3747 P0 Extend approval identity with exact input digest, constrained resource set, dependency generation and blast-radius/impact digest.
+- [x] T3748 P0 Invalidate approval when the resource set, dependency generation, impact graph or target fingerprint materially changes before commit.
+- [x] T3749 P1 Implement an authorization decision graph exposing PASS/FAIL/NOT_EVALUATED steps, stable reason codes, policy/evidence versions and redacted evidence refs without revealing secrets.
+- [x] T3750 P0 Define mad4b.execution-receipt.v1 linking preparation, descriptor, policy decision, approval, idempotency claim, operation journal, provider evidence, readback/reconciliation and terminal outcome.
 - [ ] T3751 P0 Hash/sign the unified execution receipt, support independent verification/export and prove no missing stage can be represented as terminal success.
-- [ ] T3752 P1 Implement provider-neutral semantic intent routing: user intent → required traits → provider candidates → exact capability, with confidence/evidence/ambiguity/human-review semantics.
-- [ ] T3753 P1 GATE Semantic routing remains non-authorizing and cannot choose a capability outside current certification, authority, environment, resource constraints or risk policy.
+- [x] T3752 P1 Implement provider-neutral semantic intent routing: user intent → required traits → provider candidates → exact capability, with confidence/evidence/ambiguity/human-review semantics.
+- [x] T3753 P1 GATE Semantic routing remains non-authorizing and cannot choose a capability outside current certification, authority, environment, resource constraints or risk policy.
 
 ### 37J — Cryptography, time, replay, canonicalization and abuse resistance
 - [ ] T3754 P0 Define recursive structural redaction/classification for provider/plugin errors, callback return data, metadata and nested arrays/objects; add adversarial fuzz cases for unexpected secret field names.

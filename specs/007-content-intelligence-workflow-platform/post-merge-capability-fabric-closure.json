@@ -273,7 +273,7 @@
     },
     {
       "id": "impact_approval_receipt_routing",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3747",
         "T3748",
@@ -293,7 +293,21 @@
         "postconditions_execution_state_identifiers"
       ],
       "interim_behavior": "Any impact/resource/dependency drift invalidates approval; routing never grants capability eligibility.",
-      "evidence_strategy": "Impact digest invalidation, decision graph and independently verified execution-receipt fixtures."
+      "evidence_strategy": "Approval impact binding, authorization decision graph, unified execution-receipt integrity/export and semantic-routing authority constraints are exact-head certified; cryptographic receipt signing remains gated on T3755.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "remainder": [
+        "T3751 remains PARTIAL only for cryptographic signing: receipt hashing, independent verification/export and required-stage completeness are certified, while signature_state remains crypto_profile_required until T3755 closes versioned crypto-profile/key-rotation semantics."
+      ]
     },
     {
       "id": "crypto_time_replay_abuse",
