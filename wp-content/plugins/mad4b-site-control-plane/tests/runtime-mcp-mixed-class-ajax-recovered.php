@@ -6,7 +6,12 @@ define( 'WP_ADMIN', true ); define( 'DOING_AJAX', true ); define( 'DISABLE_WP_CR
 $_SERVER['REQUEST_URI']='/wp-admin/admin-ajax.php';
 $_SERVER['REQUEST_METHOD']='POST';
 $_SERVER['HTTP_HOST']='mad4b-runtime.test';
-$_POST=array( 'action'=>'mad4b_connection_endpoint_diagnostic' );
+$mu_proof = getenv( 'MAD4B_TEST_MU_PROOF' );
+if ( ! is_string( $mu_proof ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $mu_proof ) ) {
+	fwrite( STDERR, "FAIL: missing bounded diagnostic MU routing proof\n" );
+	exit( 1 );
+}
+$_POST=array( 'action'=>'mad4b_connection_endpoint_diagnostic', 'mu_proof'=>$mu_proof );
 $_REQUEST=$_POST;
 require $path . '/wp-load.php';
 function ajax_recovery_check( $ok, $message, $data = null ) {

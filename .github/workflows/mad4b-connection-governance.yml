@@ -369,7 +369,13 @@ jobs:
           # converges to a single canonical runtime.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
-          MAD4B_TEST_WP_PATH="$WP_PATH" php "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-ajax-recovered.php"
+          # The real admin UI obtains the bounded routing proof on the page request
+          # and submits it with the diagnostic POST. Reproduce that exact handoff:
+          # derive the proof from the already-enrolled profile in a separate normal
+          # request, then start a fresh non-CLI HTTP-style bootstrap carrying it.
+          MU_PROOF="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_Site_Profile::diagnostic_mu_proof();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          [[ "$MU_PROOF" =~ ^[a-f0-9]{64}$ ]]
+          MAD4B_TEST_WP_PATH="$WP_PATH" MAD4B_TEST_MU_PROOF="$MU_PROOF" php "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-ajax-recovered.php"
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           rm -f "$FOREIGN_VALIDATOR"
 
