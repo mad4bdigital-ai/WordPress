@@ -418,6 +418,11 @@ $bad_outbox_status=MAD4B_SCP_Site_Profile::revocation_audit_outbox_status();
 ok(empty($bad_outbox_status['integrity_valid'])&&1===($bad_outbox_status['invalid_count']??0),'tampered revocation outbox was reported healthy');
 $bad_flush=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
 ok(is_wp_error($bad_flush)&&'mad4b_site_profile_revocation_outbox_integrity_invalid'===$bad_flush->get_error_code(),'tampered revocation outbox was replayed or silently skipped');
+update_option(MAD4B_SCP_Site_Profile::REVOCATION_AUDIT_OUTBOX_OPTION,'corrupt-scalar',false);
+$scalar_status=MAD4B_SCP_Site_Profile::revocation_audit_outbox_status();
+ok(empty($scalar_status['storage_valid'])&&empty($scalar_status['integrity_valid'])&&1===($scalar_status['invalid_count']??0),'scalar-corrupt revocation outbox masqueraded as empty healthy storage');
+$scalar_flush=MAD4B_SCP_Site_Profile::flush_revocation_audit_outbox();
+ok(is_wp_error($scalar_flush)&&'mad4b_site_profile_revocation_outbox_storage_invalid'===$scalar_flush->get_error_code(),'scalar-corrupt revocation outbox was silently discarded');
 
 // Double failure: audit fails and rollback persistence fails. The only remaining
 // record is explicitly pending_audit, so a fresh read cannot grant authority.

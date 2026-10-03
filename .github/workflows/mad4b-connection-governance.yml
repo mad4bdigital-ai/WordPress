@@ -72,6 +72,7 @@ jobs:
           python3 "$root/tests/mcp-provider-isolation-contract.py"
           python3 "$root/tests/mcp-registration-bridge-contract.py"
           python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
+          python3 "$root/tests/audit-scale-contract.py"
           php "$root/tests/mcp-mu-recovery-boundaries-runtime.php"
           php "$root/tests/mcp-runtime-recovery-runtime.php"
           php "$root/tests/site-profile-general-distribution-runtime.php"

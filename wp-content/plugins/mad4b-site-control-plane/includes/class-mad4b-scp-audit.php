@@ -14,6 +14,8 @@ final class MAD4B_SCP_Audit {
 	const SUMMARY_MAX_ITEMS = 50;
 	const SUMMARY_MAX_BYTES = 65536;
 	const VERIFY_BATCH = 500;
+	const SCALE_CONTRACT = 'mad4b.audit-scale.v1';
+	const HIGH_VOLUME_THRESHOLD_EVENTS = 100000;
 
 	private static $request_id = '';
 	private static $pending_dispatch = array();
@@ -159,8 +161,19 @@ final class MAD4B_SCP_Audit {
 		$status['retention_contract'] = 'mad4b.audit-retention.v1';
 		$status['retention_mode'] = 'append_only_no_automatic_deletion';
 		$status['automatic_deletion_enabled'] = false;
-		$status['retention_review_threshold_events'] = 100000;
-		$status['retention_review_recommended'] = $event_count >= 100000;
+		$status['retention_review_threshold_events'] = self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['retention_review_recommended'] = $event_count >= self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['scale_contract'] = self::SCALE_CONTRACT;
+		$status['append_integrity_mode'] = 'committed_count_head_tail_consistency';
+		$status['append_integrity_event_count_guard'] = true;
+		$status['append_count_index'] = 'chain_sequence';
+		$status['full_chain_verification_mode'] = 'explicit_batched';
+		$status['full_chain_verification_batch_events'] = self::VERIFY_BATCH;
+		$status['full_chain_verification_on_append'] = false;
+		$status['high_volume_threshold_events'] = self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['high_volume_threshold_reached'] = $event_count >= self::HIGH_VOLUME_THRESHOLD_EVENTS;
+		$status['high_volume_load_test_certified'] = false;
+		$status['high_volume_load_test_required'] = $event_count >= self::HIGH_VOLUME_THRESHOLD_EVENTS;
 		$status['redaction_contract'] = 'mad4b.audit-redaction.v1';
 		$status['sensitive_key_redaction_enabled'] = true;
 		$status['summary_max_depth'] = self::SUMMARY_MAX_DEPTH;

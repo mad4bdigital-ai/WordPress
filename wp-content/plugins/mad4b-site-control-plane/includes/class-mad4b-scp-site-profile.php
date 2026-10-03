@@ -1016,12 +1016,26 @@ final class MAD4B_SCP_Site_Profile {
 		return true;
 	}
 
+	private static function revocation_outbox_snapshot() {
+		if ( ! function_exists( 'get_option' ) ) return array( 'exists' => false, 'storage_valid' => true, 'entries' => array(), 'raw_type' => 'unavailable' );
+		$raw = get_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, null );
+		if ( null === $raw ) return array( 'exists' => false, 'storage_valid' => true, 'entries' => array(), 'raw_type' => 'absent' );
+		return array(
+			'exists' => true,
+			'storage_valid' => is_array( $raw ),
+			'entries' => is_array( $raw ) ? $raw : array(),
+			'raw_type' => gettype( $raw ),
+		);
+	}
+
 	private static function revocation_outbox_read() {
-		$value = function_exists( 'get_option' ) ? get_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, array() ) : array();
-		return is_array( $value ) ? $value : array();
+		$snapshot = self::revocation_outbox_snapshot();
+		return $snapshot['entries'];
 	}
 
 	private static function revocation_outbox_compare_and_swap( array $expected, array $replacement ) {
+		$snapshot = self::revocation_outbox_snapshot();
+		if ( empty( $snapshot['storage_valid'] ) ) return false;
 		global $wpdb;
 		$database_cas = is_object( $wpdb )
 			&& isset( $wpdb->options )
@@ -1029,7 +1043,7 @@ final class MAD4B_SCP_Site_Profile {
 			&& method_exists( $wpdb, 'query' )
 			&& function_exists( 'maybe_serialize' );
 		if ( $database_cas ) {
-			$exists = null !== get_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, null );
+			$exists = ! empty( $snapshot['exists'] );
 			if ( ! $exists ) {
 				if ( ! empty( $expected ) ) return false;
 				return add_option( self::REVOCATION_AUDIT_OUTBOX_OPTION, $replacement, '', false );
@@ -1079,7 +1093,8 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	public static function revocation_audit_outbox_status() {
-		$outbox = self::revocation_outbox_read();
+		$snapshot = self::revocation_outbox_snapshot();
+		$outbox = $snapshot['entries'];
 		$invalid = 0;
 		foreach ( $outbox as $revocation_id => $event ) {
 			if ( ! is_array( $event ) || ! self::valid_revocation_audit_event( $revocation_id, $event ) ) ++$invalid;
@@ -1088,10 +1103,12 @@ final class MAD4B_SCP_Site_Profile {
 			'contract' => self::REVOCATION_AUDIT_OUTBOX_CONTRACT,
 			'read_only' => true,
 			'mutation_performed' => false,
+			'storage_valid' => ! empty( $snapshot['storage_valid'] ),
+			'storage_type' => sanitize_key( (string) $snapshot['raw_type'] ),
 			'pending_count' => count( $outbox ),
 			'pending' => ! empty( $outbox ),
-			'integrity_valid' => 0 === $invalid,
-			'invalid_count' => $invalid,
+			'integrity_valid' => ! empty( $snapshot['storage_valid'] ) && 0 === $invalid,
+			'invalid_count' => $invalid + ( empty( $snapshot['storage_valid'] ) ? 1 : 0 ),
 		);
 	}
 
@@ -1101,7 +1118,11 @@ final class MAD4B_SCP_Site_Profile {
 		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) || ! method_exists( 'MAD4B_SCP_Audit', 'site_profile_revocation_events' ) ) {
 			return new WP_Error( 'mad4b_site_profile_revocation_audit_storage_unavailable', 'Append-only audit storage is not ready for revocation evidence reconciliation.' );
 		}
-		$outbox = self::revocation_outbox_read();
+		$snapshot = self::revocation_outbox_snapshot();
+		if ( empty( $snapshot['storage_valid'] ) ) {
+			return new WP_Error( 'mad4b_site_profile_revocation_outbox_storage_invalid', 'Revocation audit outbox storage has an invalid type; automatic replay stopped.' );
+		}
+		$outbox = $snapshot['entries'];
 		$processed = 0;
 		$recorded = 0;
 		$deduplicated = 0;
