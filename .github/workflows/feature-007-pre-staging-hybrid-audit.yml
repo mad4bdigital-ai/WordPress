@@ -119,6 +119,14 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/catalog-table-backend-contract.py
 
+      - name: Durable network orchestration contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py
+          node wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs
+
+
       - name: WordPress Plugin Check (generic distribution hygiene)
         uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
         with:
@@ -296,4 +304,22 @@ jobs:
           RUN_ID="redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove durable network fan-out crash reconstruction and site binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="network-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-setup.json
+          cat /tmp/network-setup.json
+          OP_ID="$(python3 -c 'import json; print(json.load(open("/tmp/network-setup.json"))["network_operation_id"])')"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php" "$OP_ID" 101 worker-a committed --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-worker-a.json &
+          PID_A=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php" "$OP_ID" 202 worker-b reconciling --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-worker-b.json &
+          PID_B=$!
+          wait "$PID_A"
+          wait "$PID_B"
+          cat /tmp/network-worker-a.json
+          cat /tmp/network-worker-b.json
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php" "$OP_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
