@@ -39,7 +39,18 @@
         "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-audit.md",
         "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php",
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "capability_semantics",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#canonical_capability_semantics",
+      "test_strategy": "Contract/property/mutation evidence across Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization.",
+      "evidence_sources": [
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-audit.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "semantic_content_and_resource_constraints",
@@ -65,7 +76,18 @@
         "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "content_resource_contracts",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#semantic_content_and_resource_constraints",
+      "test_strategy": "Provider field contracts plus compiler/property/mutation fixtures and exact digest binding evidence.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "postconditions_execution_state_identifiers",
@@ -94,7 +116,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/durable-postcondition-binding-contract.py"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "execution_state_reconciliation",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#postconditions_execution_state_identifiers",
+      "test_strategy": "Per-family postcondition readers, contradiction matrices and identifier migration fixtures.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-postcondition-binding-contract.py"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "catalog_backend_cache_concurrency",
@@ -127,7 +161,24 @@
         "workflow_run:37114470060",
         "workflow_run:37114469942",
         "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
-      ]
+      ],
+      "priority": "P1",
+      "owner": "catalog_transport",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#catalog_backend_cache_concurrency",
+      "test_strategy": "Closed: schema v13 table backend, shadow parity/cutover, fencing, Redis cache isolation, independent-worker/host publication and rollback/retirement accounting all pass the exact-head certified runtime matrix.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "durable_multisite_network",
@@ -159,7 +210,24 @@
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         "workflow_run:37114470060",
         "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "durable_execution",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#durable_multisite_network",
+      "test_strategy": "Closed: durable NetworkOperation fan-out, site-bound identity/authority, dedup/claim fencing, partial completion and crash/reconnect reconstruction all pass the exact-head certified runtime matrix.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "projection_mcp_evolution",
@@ -194,7 +262,23 @@
       ],
       "remainder": [
         "T3734 remains PARTIAL because the exact successor MCP Adapter package is not certified. Once a successor is certified, run the required dual-protocol regression across tool schemas, pagination/chunk transport, refresh semantics, notifications and error normalization before promoting the workstream to DONE."
-      ]
+      ],
+      "priority": "P1",
+      "owner": "mcp_protocol_evolution",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#projection_mcp_evolution",
+      "test_strategy": "Exact site-global projection isolation/CAS, telemetry-only recommendations, certified protocol negotiation/refresh, stale-client removal and fixed-dispatch independence are runtime-certified; successor protocol migration remains separately gated.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "provider_resilience_wp_lifecycle",
@@ -238,7 +322,36 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/catalog-lifecycle-runtime.php"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "provider_resilience",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#provider_resilience_wp_lifecycle",
+      "test_strategy": "Closed: durable provider circuit breaking, non-authorizing HALF_OPEN recovery, strongest-deny transport precedence, WordPress-native lifecycle parity planning and activate/deactivate/update/uninstall/network lifecycle continuity all pass the certified exact-head runtime matrix.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
+        "workflow_run:37114470059",
+        "workflow_run:37114470020",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py",
+        "workflow_run:37114469942",
+        "wp-content/plugins/mad4b-site-control-plane/config/wordpress-lifecycle-migration-profile.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py",
+        "workflow_run:37114469882",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-lifecycle-runtime.php"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "tracing_slo_observability",
@@ -269,7 +382,22 @@
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         "workflow_run:37114470060",
         "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
-      ]
+      ],
+      "priority": "P1",
+      "owner": "observability",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#tracing_slo_observability",
+      "test_strategy": "Closed: W3C-compatible tenant-safe tracing, bounded/redacted span attributes, stage percentiles, error-budget burn-rate evidence, optional telemetry outage semantics and cross-provider/network causal continuity all pass the exact-head Feature 007 audit.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "impact_approval_receipt_routing",
@@ -303,7 +431,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py"
       ],
-      "remainder": []
+      "remainder": [],
+      "priority": "P0",
+      "owner": "authorization_receipts",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#impact_approval_receipt_routing",
+      "test_strategy": "Approval impact binding, authorization decision graph, signed unified execution-receipt integrity/export and semantic-routing authority constraints are implemented and runtime-tested.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "crypto_time_replay_abuse",
@@ -353,7 +496,31 @@
         "T3760 remains OPEN for TLS verification, proxy trust, redirect revalidation, DNS-answer change and certificate/hostname failure semantics.",
         "T3761 remains OPEN for legacy unprepared-dispatch migration/deprecation telemetry, versioned error contracts and explicit sunset gates.",
         "T3762 remains OPEN for end-to-end hermetic deterministic critical CI with bounded deterministic randomness and no flaky-gate bypass."
-      ]
+      ],
+      "priority": "P0",
+      "owner": "security_kernel",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#crypto_time_replay_abuse",
+      "test_strategy": "Structural redaction, execution-receipt cryptography, unified time policy, replay/idempotency binding, canonicalization and per-identity abuse budgets are implemented and runtime/contract tested; remaining work is explicitly bounded to full receipt-family crypto migration plus T3760-T3762.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-structural-redaction.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/time-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-replay-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-canonicalization.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/abuse-budget.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abuse-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "maintainability_config",
@@ -374,7 +541,18 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Refactors/config changes preserve existing authority contracts; hidden dependency/config widening is forbidden.",
-      "evidence_strategy": "Behavior parity, dependency-direction checks, reason-code schema and config-generation tests."
+      "evidence_strategy": "Behavior parity, dependency-direction checks, reason-code schema and config-generation tests.",
+      "priority": "P1",
+      "owner": "architecture_governance",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#maintainability_config",
+      "test_strategy": "Behavior parity, dependency-direction checks, reason-code schema and config-generation tests.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-fence-runtime.php",
+        ".github/workflows/feature-007-critical-kernel.yml"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "ownership_closure",
@@ -402,7 +580,19 @@
         "maintainability_config"
       ],
       "interim_behavior": "No completeness claim while a P0/P1 dimension lacks owner, interim behavior or evidence path.",
-      "evidence_strategy": "Machine-validated dimension/task ownership and traceability/non-authorizing checks."
+      "evidence_strategy": "Machine-validated dimension/task ownership and traceability/non-authorizing checks.",
+      "priority": "P0",
+      "owner": "capability_fabric_governance",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#ownership_closure",
+      "test_strategy": "Machine-validated dimension/task ownership and traceability/non-authorizing checks.",
+      "evidence_sources": [
+        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+        "specs/007-content-intelligence-workflow-platform/traceability.md",
+        "specs/007-content-intelligence-workflow-platform/quality-model.md"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "request_scope_db_hooks",
@@ -438,7 +628,25 @@
         "workflow_job:110887688410",
         "workflow_job:110887688518",
         "workflow_job:110887688583"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "runtime_isolation",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#request_scope_db_hooks",
+      "test_strategy": "Closed: request-scope isolation, authoritative DB topology/read-your-writes, database failure semantics, final hook-order execution seal, recursive child-permit fencing and infrastructure compatibility profile all pass the certified PHP/MySQL/MariaDB runtime matrix.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-failure-semantics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "clone_restore_subject_lifecycle",
@@ -473,7 +681,24 @@
         "workflow_job:111018866439",
         "workflow_job:111018866648",
         "workflow_job:111018866869"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "recovery_authority",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#clone_restore_subject_lifecycle",
+      "test_strategy": "Foreign-clone quarantine, monotonic external restore epoch, same-origin rollback detection, durable replay quarantine, governed post-restore reconciliation, and subject lifecycle invalidation are exact-head certified across the supported WordPress/PHP/MySQL/MariaDB matrix.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "contract_mixed_runtime",
@@ -499,7 +724,19 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
         "workflow_run:37088812158"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "runtime_compatibility",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#contract_mixed_runtime",
+      "test_strategy": "Exact-head persisted-contract, downgrade/rollback and rolling N/N-1 worker generation tests pass across the certified PHP/MySQL/MariaDB matrix.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
+        "workflow_run:37088812158"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "evidence_failure_ordering",
@@ -528,7 +765,19 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
         "workflow_run:37088812158"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "evidence_durability",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#evidence_failure_ordering",
+      "test_strategy": "Crash-point state semantics and mandatory bounded evidence compaction are exact-head certified. Storage-exhaustion injection, archival/hash-chain movement and fatal process interruption remain open.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
+        "workflow_run:37088812158"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "cancel_transport_cross_fault",
@@ -550,7 +799,20 @@
         "projection_mcp_evolution"
       ],
       "interim_behavior": "Post-side-effect cancellation and incomplete/mixed-generation transport stay nonterminal/denied until evidence resolves them.",
-      "evidence_strategy": "Cancellation propagation, chunk integrity/decompression bounds and composed cross-fault certification."
+      "evidence_strategy": "Cancellation propagation, chunk integrity/decompression bounds and composed cross-fault certification.",
+      "priority": "P0",
+      "owner": "resilience_cross_fault",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#cancel_transport_cross_fault",
+      "test_strategy": "Cancellation propagation, chunk integrity/decompression bounds and composed cross-fault certification.",
+      "evidence_sources": [
+        "specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-chunk-reassembly-adversarial.mjs",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     },
     {
       "id": "canonical_db_storage",
@@ -581,7 +843,21 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
         "workflow_run:36996652203"
-      ]
+      ],
+      "priority": "P0",
+      "owner": "storage_integrity",
+      "contract_or_non_goal": "mad4b.capability-fabric-post-merge-completeness.v1#canonical_db_storage",
+      "test_strategy": "Canonicalization negatives, binary/collation alias tests, SHOW TABLE STATUS/engine capability evidence and nested transaction/savepoint-or-deny fixtures.",
+      "evidence_sources": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-catalog-transport.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "traceability_family": "CAPFAB",
+      "authorizing": false
     }
   ],
   "quality_family_vocabulary": [
@@ -617,5 +893,8 @@
     "unknown_quality_family_forbidden": true,
     "docs_only_cannot_close_runtime_or_live_work": true,
     "non_authorizing": true
-  }
+  },
+  "dimension_ownership_contract": "mad4b.capability-fabric-dimension-ownership.v1",
+  "open_priority_policy": "P0_P1_REQUIRE_EXPLICIT_DEPENDENCIES_FAIL_CLOSED_INTERIM_AND_EVIDENCE_PATH",
+  "traceability_family": "CAPFAB"
 }

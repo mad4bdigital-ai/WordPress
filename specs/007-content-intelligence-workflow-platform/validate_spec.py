@@ -517,6 +517,7 @@ if capfab_path.exists() and tasks_path.exists():
     workstream_ids=[r.get("id") for r in rows if isinstance(r,dict)]
     if not rows or None in workstream_ids or len(workstream_ids) != len(set(workstream_ids)): errors.append("capability_fabric_closure:workstream_ids_invalid")
     mapped=[]
+    task_priorities={m.group(1):m.group(2) for m in re.finditer(r"^- \\[\[ x\]\\] (T37\\d{2}) (P[0-2])\\b", task_txt, flags=re.MULTILINE)}
     expected_status={"OPEN","PARTIAL","DONE","DEFERRED"}
     allowed_status=set(capfab.get("status_vocabulary",[]))
     if allowed_status != expected_status:
@@ -531,6 +532,15 @@ if capfab_path.exists() and tasks_path.exists():
     required_terminal={"ownership_closure","cancel_transport_cross_fault","canonical_db_storage"}
     if set(capfab.get("completion_requires_workstreams",[])) != required_terminal:
         errors.append("capability_fabric_closure:completion_workstreams_mismatch")
+    if capfab.get("dimension_ownership_contract") != "mad4b.capability-fabric-dimension-ownership.v1":
+        errors.append("capability_fabric_closure:dimension_ownership_contract_missing")
+    if capfab.get("open_priority_policy") != "P0_P1_REQUIRE_EXPLICIT_DEPENDENCIES_FAIL_CLOSED_INTERIM_AND_EVIDENCE_PATH":
+        errors.append("capability_fabric_closure:open_priority_policy_missing")
+    if capfab.get("traceability_family") != "CAPFAB":
+        errors.append("capability_fabric_closure:traceability_family_missing")
+    traceability_path=require_file("traceability.md")
+    if traceability_path.exists() and "| CAPFAB |" not in traceability_path.read_text(encoding="utf-8"):
+        errors.append("capability_fabric_closure:traceability_capfab_mapping_missing")
     rules=capfab.get("closure_rules",{})
     for key in ["exact_phase37_task_coverage","unique_task_ownership","dependency_graph_acyclic","unknown_quality_family_forbidden","docs_only_cannot_close_runtime_or_live_work","non_authorizing"]:
         if rules.get(key) is not True:
@@ -543,6 +553,29 @@ if capfab_path.exists() and tasks_path.exists():
             errors.append(f"capability_fabric_closure:task_ids_missing:{row.get('id')}"); continue
         mapped.extend(tids)
         if row.get("status") not in allowed_status: errors.append(f"capability_fabric_closure:invalid_status:{row.get('id')}:{row.get('status')}")
+        priorities=[task_priorities.get(t) for t in tids if task_priorities.get(t)]
+        expected_priority=sorted(priorities,key=lambda p:int(p[1:]))[0] if priorities else None
+        if row.get("priority") not in {"P0","P1","P2"}:
+            errors.append(f"capability_fabric_closure:priority_missing_or_invalid:{row.get('id')}")
+        elif expected_priority and row.get("priority") != expected_priority:
+            errors.append(f"capability_fabric_closure:priority_drift:{row.get('id')}:{row.get('priority')}:{expected_priority}")
+        for field in ["owner","contract_or_non_goal","test_strategy","traceability_family"]:
+            if not isinstance(row.get(field),str) or not row.get(field).strip():
+                errors.append(f"capability_fabric_closure:{field}_missing:{row.get('id')}")
+        if row.get("traceability_family") != "CAPFAB":
+            errors.append(f"capability_fabric_closure:traceability_family_invalid:{row.get('id')}")
+        if row.get("authorizing") is not False:
+            errors.append(f"capability_fabric_closure:workstream_must_be_non_authorizing:{row.get('id')}")
+        sources=row.get("evidence_sources",[])
+        if not isinstance(sources,list) or not sources or any(not isinstance(x,str) or not x.strip() for x in sources):
+            errors.append(f"capability_fabric_closure:evidence_sources_missing:{row.get('id')}")
+        if row.get("status") in {"OPEN","PARTIAL"} and row.get("priority") in {"P0","P1"}:
+            if not isinstance(row.get("dependencies",[]),list):
+                errors.append(f"capability_fabric_closure:open_priority_dependencies_invalid:{row.get('id')}")
+            if not isinstance(row.get("interim_behavior"),str) or not row.get("interim_behavior").strip():
+                errors.append(f"capability_fabric_closure:open_priority_interim_missing:{row.get('id')}")
+            if not sources:
+                errors.append(f"capability_fabric_closure:open_priority_evidence_path_missing:{row.get('id')}")
         if not isinstance(row.get("quality_families",[]),list) or not row.get("quality_families"):
             errors.append(f"capability_fabric_closure:quality_family_missing:{row.get('id')}")
         else:
