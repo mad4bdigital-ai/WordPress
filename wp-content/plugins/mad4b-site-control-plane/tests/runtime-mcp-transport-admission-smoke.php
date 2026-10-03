@@ -75,7 +75,7 @@ if (
 // Prove the catalog fail-closed gate is preserved as its own stage rather than
 // becoming a generic adapter permission denial.
 wp_set_current_user( $admin_user_id );
-$adapter = class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ? \\WP\\MCP\\Core\\McpAdapter::instance() : null;
+$adapter = class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ? \WP\MCP\Core\McpAdapter::instance() : null;
 if ( ! is_object( $adapter ) || ! is_object( $adapter->get_server( 'mad4b-chatgpt' ) ) ) {
 	$fail( 'Official ChatGPT MCP server is unavailable for catalog admission proof.' );
 }
