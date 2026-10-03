@@ -67,6 +67,25 @@ $before = serialize( $response->data );
 check( $response === MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $response, null, $request ), 'response identity preserved' );
 check( 'ready' === $response->headers['X-MAD4B-MCP-Outcome'] && $before === serialize( $response->data ), 'protocol payload remains unchanged' );
 check( false === strpos( json_encode( $response->headers ), 'DO_NOT_COPY' ), 'headers do not leak request/session material' );
+
+// MCP Adapter 0.7 serializes the outer JSON-RPC response to stdClass while the
+// nested result remains a generated JsonSerializable Record. Diagnostics must
+// classify that response without mutating or leaking its payload.
+$record_result = new FixtureGeneratedRecord( array(
+	'tools' => array( new FixtureGeneratedRecord( array(
+		'name' => 'mad4b-site-info',
+		'inputSchema' => (object) array( 'type' => 'object', 'properties' => (object) array() ),
+	) ) ),
+) );
+$record_response = new FixtureResponse( (object) array(
+	'jsonrpc' => '2.0',
+	'id' => 2,
+	'result' => $record_result,
+) );
+$record_before = serialize( $record_response->data );
+MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $record_response, null, $request );
+check( 'ready' === $record_response->headers['X-MAD4B-MCP-Outcome'], 'revision-aware nested result Record was misclassified' );
+check( $record_before === serialize( $record_response->data ), 'revision-aware diagnostic observation mutated protocol payload' );
 MAD4B_SCP_OAuth_Resource_Bridge::$verified = false;
 $response = new FixtureResponse( array() );
 MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $response, null, $request );
