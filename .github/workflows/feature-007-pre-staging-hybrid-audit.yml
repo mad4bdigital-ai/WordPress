@@ -34,6 +34,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
 
       - name: Setup PHP 7.4
         uses: shivammathur/setup-php@v2
@@ -48,6 +49,19 @@ jobs:
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \
             | sort -z \
             | xargs -0 -n1 php -l
+
+      - name: Architecture maintainability and change-slice gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --pr-number "${{ github.event.pull_request.number || 0 }}" \
+            --output /tmp/mad4b-architecture-dependency-graph.json
+          php wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-contract.py
+
 
       - name: Dynamic Skill distribution contract
         shell: bash
@@ -253,7 +267,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: feature-007-pre-staging-hybrid-audit-${{ github.event.pull_request.head.sha || github.sha }}
-          path: dist/pre-staging-hybrid-audit.json
+          path: |
+            dist/pre-staging-hybrid-audit.json
+            /tmp/mad4b-architecture-dependency-graph.json
           if-no-files-found: error
           retention-days: 14
 

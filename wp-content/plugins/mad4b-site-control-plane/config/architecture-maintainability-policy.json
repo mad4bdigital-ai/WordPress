@@ -1,0 +1,53 @@
+{
+  "contract": "mad4b.architecture-maintainability-policy.v1",
+  "authorizing": false,
+  "change_slice_policy": {
+    "contract": "mad4b.change-slice-policy.v1",
+    "max_changed_files_without_slice_manifest": 80,
+    "max_additions_without_slice_manifest": 6000,
+    "max_files_per_slice": 35,
+    "exact_head_certification_required": true,
+    "semantic_unit_required": true,
+    "explicit_revert_boundary_required": true,
+    "manifest_path": "specs/007-content-intelligence-workflow-platform/change-slices.json",
+    "grandfathered_pull_requests": [
+      236
+    ],
+    "grandfathering_scope": "current_inflight_pr_only",
+    "future_prs_must_comply": true
+  },
+  "size_budgets": {
+    "new_php_domain_service_max_lines": 900,
+    "legacy_facades": {
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php": 2300,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": 1700,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php": 1250,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php": 1100,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php": 1025
+    },
+    "legacy_facade_growth_policy": "absolute_line_budget_no_growth_beyond_declared_ceiling",
+    "touched_legacy_facade_requires_parity_test_reference": true
+  },
+  "dependency_policy": {
+    "contract": "mad4b.architecture-dependency-policy.v1",
+    "authority_truth_paths": [
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php"
+    ],
+    "forbidden_target_path_prefixes": [
+      "wp-content/plugins/mad4b-site-control-plane/includes/adapters/"
+    ],
+    "forbidden_target_name_fragments": [
+      "-admin-ui.php",
+      "-admin-settings-persistence.php"
+    ],
+    "rule": "authority_and_contract_truth_must_not_depend_on_adapter_or_presentation_layers",
+    "graph_output_contract": "mad4b.architecture-dependency-graph.v1"
+  }
+}
