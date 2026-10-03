@@ -28,6 +28,8 @@ transport_context=(ROOT/"includes/class-mad4b-scp-transport-context.php").read_t
 identity=(ROOT/"includes/class-mad4b-scp-identity-context.php").read_text(encoding="utf-8")
 abilities=(ROOT/"includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 mcp_scope=(ROOT/"includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+remote_work_queue=(ROOT/"includes/class-mad4b-scp-remote-work-queue.php").read_text(encoding="utf-8")
+remote_operation_parity=(ROOT/"includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
 
 def need(cond,msg):
     if not cond:
@@ -81,6 +83,10 @@ need("reset_owners" in request_generation and "MAD4B_SCP_Agent_Registry" in requ
 need("request_scope_state" in identity and "reset_request_cache" in identity, "identity request-local reset contract missing")
 need("request_scope_state" in abilities and "reset_request_cache" in abilities, "dispatcher governance-envelope reset contract missing")
 need("request_scope_transition_safe" in mcp_scope, "MCP hook-lifecycle transition safety contract missing")
+need("public static function cancel(" in remote_work_queue and "'cancelled_no_effect'" in remote_work_queue and "'reconciling'" in remote_work_queue, "remote work cancellation state machine missing")
+need("mad4b_remote_work_reconciliation_required" in remote_work_queue and "reconcile_provider_state_before_any_retry" in remote_work_queue, "claimed cancellation/lease expiry does not reconcile first")
+need("reconciliation_completion_valid" in remote_work_queue and "postcondition_verified" in remote_work_queue, "reconciling work can terminalize without provider postcondition proof")
+need("WORK_CANCEL_ABILITY" in remote_operation_parity and "cancel_remote_work" in remote_operation_parity, "governed remote cancellation ability missing")
 need("mad4b.final-execution-admission.v1" in execution_fence, "final execution admission wrapper contract missing")
 need("PHP_INT_MAX" in execution_fence and "wrap_final_execution_admission" in execution_fence, "final ability wrapper is not registered at terminal priority")
 need("mad4b.projected-call-seal.v1" in execution_fence and "consume_projected_call" in execution_fence, "projected call one-time seal missing")
