@@ -279,45 +279,70 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 
 	/** Official validator plus exact wire serialization. Only bounded diagnostic fields escape. */
 	public static function dto_failure( $dto ) {
-		$stage = 'dto_serialization'; $fingerprint = '';
+		$stage = 'wire_serialization'; $fingerprint = '';
 		try {
-			if ( ! is_object( $dto ) || ! method_exists( $dto, 'toArray' ) ) throw new RuntimeException( 'dto_unavailable' );
-			$data = $dto->toArray();
+			if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) throw new RuntimeException( 'adapter_compatibility_unavailable' );
+			$data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $dto );
+			if ( is_wp_error( $data ) || ! is_array( $data ) ) throw new RuntimeException( 'wire_data_unavailable' );
 			$fingerprint = hash( 'sha256', serialize( array( $data['inputSchema'] ?? null, $data['outputSchema'] ?? null ) ) );
 			$json = json_encode( $data, JSON_THROW_ON_ERROR );
+
+			// MCP Adapter <=0.6 exposes its own DTO validator. Adapter >=0.7
+			// projects through exact php-mcp-schema Records instead, so successful
+			// projection itself is the official schema validation boundary.
 			$stage = 'official_schema_validation';
-			if ( class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) ) {
+			if ( class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' )
+				&& method_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator', 'validate_tool_dto' )
+				&& is_object( $dto )
+				&& method_exists( $dto, 'toArray' ) ) {
 				$valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
 				if ( is_wp_error( $valid ) ) return array(
 					'stage' => $stage,
 					'error_class' => 'WP_Error',
 					'error_code' => sanitize_key( $valid->get_error_code() ),
-					'validator_reason' => self::validator_reason( $valid, is_array( $data ) ? $data : array() ),
+					'validator_reason' => self::validator_reason( $valid, $data ),
 					'schema_fingerprint' => $fingerprint,
 				);
 			}
-			// JSON Schema permits object schemas without a properties keyword.
-			// A supplied properties keyword must still serialize as an object.
+
+			// Keep MAD4B's generation-neutral structural invariants after official
+			// projection. They protect the compact external catalog without
+			// pretending to replace the Adapter's revision schema validation.
 			$stage = 'wire_schema_shape'; $wire = json_decode( $json );
 			if ( ! is_object( $wire ) || ! isset( $wire->inputSchema ) || ! is_object( $wire->inputSchema ) || 'object' !== ( $wire->inputSchema->type ?? '' ) || ( property_exists( $wire->inputSchema, 'properties' ) && ! is_object( $wire->inputSchema->properties ) ) ) throw new RuntimeException( 'wire_input_schema_invalid' );
 			if ( isset( $wire->outputSchema ) && ( ! is_object( $wire->outputSchema ) || 'object' !== ( $wire->outputSchema->type ?? '' ) ) ) throw new RuntimeException( 'wire_output_schema_invalid' );
 			return null;
-		} catch ( Throwable $error ) { return array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_tool_serialization_invalid', 'schema_fingerprint' => $fingerprint ); }
+		} catch ( Throwable $error ) {
+			return array(
+				'stage' => $stage,
+				'error_class' => get_class( $error ),
+				'error_code' => 'mcp_tool_serialization_invalid',
+				'schema_fingerprint' => $fingerprint,
+			);
+		}
 	}
 
 	/** Freeze reviewed identity/classification once, at server materialization, before OAuth. */
 	public static function capture_classification( $server, array $expected ) {
-		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
 		$reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 		$dynamic_rows = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? MAD4B_SCP_ChatGPT_Tool_Projection::effective_projection_rows()
 			: array();
+		$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
+		if ( is_wp_error( $tools ) || ! is_array( $tools ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
+
 		$captured = array();
-		foreach ( $server->get_tools() as $name => $dto ) {
+		foreach ( $tools as $key => $dto ) {
+			$name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto );
+			if ( '' === $name || ( is_string( $key ) && '' !== $key && $key !== $name ) ) throw new RuntimeException( 'mad4b_catalog_capture_identity_invalid' );
 			$bound = $server->get_mcp_tool( $name );
-			$meta = $bound ? $bound->get_adapter_meta() : array();
+			$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
 			$ability = isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
-			if ( ! in_array( $ability, $expected, true ) || $name !== $dto->getName() ) throw new RuntimeException( 'mad4b_catalog_capture_identity_invalid' );
+			if ( ! in_array( $ability, $expected, true ) ) throw new RuntimeException( 'mad4b_catalog_capture_identity_invalid' );
+			$wire_data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $dto );
+			if ( is_wp_error( $wire_data ) || ! is_array( $wire_data ) ) throw new RuntimeException( 'mad4b_catalog_capture_serialization_invalid' );
+
 			$dynamic = isset( $dynamic_rows[ $ability ] ) && is_array( $dynamic_rows[ $ability ] );
 			$dynamic_readonly = $dynamic && 'read' === $dynamic_rows[ $ability ]['lane'] && ! empty( $dynamic_rows[ $ability ]['readonly'] );
 			$dynamic_breakglass = $dynamic && ! empty( $dynamic_rows[ $ability ]['breakglass'] );
@@ -328,7 +353,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				'dynamic_projection' => $dynamic,
 				'input_schema_sha256' => $dynamic ? $dynamic_rows[ $ability ]['input_schema_sha256'] : '',
 				'classification_sha256' => $dynamic ? $dynamic_rows[ $ability ]['classification_sha256'] : '',
-				'wire_sha256' => $dynamic ? hash( 'sha256', wp_json_encode( $dto->toArray() ) ) : '',
+				'wire_sha256' => $dynamic ? hash( 'sha256', wp_json_encode( $wire_data ) ) : '',
 				'dynamic_readonly' => $dynamic_readonly,
 				'dynamic_breakglass' => $dynamic_breakglass,
 				'exact_chatgpt_client_required' => $direct_step_up || ( $dynamic && ! $dynamic_readonly ),
@@ -341,8 +366,14 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	}
 
 	public static function materialized_callbacks_match( $tool, $server ) {
-		$name = $tool->get_protocol_dto()->getName();
-		return spl_object_hash( $server ) === self::$classification_server && isset( self::$registered_callbacks[ $name ] ) && self::$registered_callbacks[ $name ] === MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $tool );
+		if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) return false;
+		$wire = MAD4B_SCP_MCP_Adapter_Compatibility::runtime_tool_wire( $tool, $server );
+		if ( is_wp_error( $wire ) ) return false;
+		$name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $wire );
+		return '' !== $name
+			&& spl_object_hash( $server ) === self::$classification_server
+			&& isset( self::$registered_callbacks[ $name ] )
+			&& self::$registered_callbacks[ $name ] === MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $tool );
 	}
 
 	public static function classification_snapshot() { return self::$registered_classification; }
@@ -373,7 +404,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID );
 		$safe = array();
 		foreach ( $tools as $dto ) {
-			$name = is_object( $dto ) && method_exists( $dto, 'getName' ) ? $dto->getName() : '';
+			$name = class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ? MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto ) : '';
 			$bound = $name ? $server->get_mcp_tool( $name ) : null;
 			$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
 			$ability = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
@@ -444,15 +475,16 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 
 	public static function inspect( $server, array $expected_abilities ) {
 		$out = array( 'contract' => self::CONTRACT, 'observed' => false, 'ready' => false, 'tool_count' => 0, 'actual_names' => array(), 'actual_abilities' => array(), 'missing_abilities' => array(), 'unexpected_abilities' => array(), 'blocker' => 'mcp_server_not_materialized' );
-		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) ) return $out;
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) return $out;
 		try {
-			$tools = $server->get_tools();
-			if ( ! is_array( $tools ) ) return $out;
+			$tools = MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server );
+			if ( is_wp_error( $tools ) || ! is_array( $tools ) ) { $out['blocker'] = 'mcp_server_tool_projection_failed'; return $out; }
 			$out['observed'] = true;
 			$out['tool_count'] = count( $tools );
 			if ( count( $tools ) > self::MAX_TOOLS || count( $expected_abilities ) > self::MAX_TOOLS ) { $out['blocker'] = 'mcp_catalog_budget_exceeded'; return $out; }
-			foreach ( $tools as $name => $dto ) {
-				if ( ! is_string( $name ) || ! preg_match( '/^[A-Za-z0-9_.-]{1,128}$/D', $name ) || ! is_object( $dto ) || ! method_exists( $dto, 'getName' ) || $name !== $dto->getName() ) { $out['blocker'] = 'mcp_tool_identity_invalid'; return $out; }
+			foreach ( $tools as $key => $dto ) {
+				$name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $dto );
+				if ( '' === $name || ! preg_match( '/^[A-Za-z0-9_.-]{1,128}$/D', $name ) || ( is_string( $key ) && '' !== $key && $key !== $name ) ) { $out['blocker'] = 'mcp_tool_identity_invalid'; return $out; }
 				$tool = $server->get_mcp_tool( $name );
 				$meta = is_object( $tool ) && method_exists( $tool, 'get_adapter_meta' ) ? $tool->get_adapter_meta() : array();
 				$ability = is_array( $meta ) && isset( $meta['ability'] ) && is_string( $meta['ability'] ) ? $meta['ability'] : '';
