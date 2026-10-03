@@ -82,6 +82,16 @@ for marker in [
     "[string]$ClientId = 'mad4b-governed-canary'",
     "[string]$RedirectUri = 'http://127.0.0.1:8765/callback'",
     'PKCE RFC 7636 self-test failed',
+    'Invoke-McpRequest',
+    "method='initialize'",
+    "method='tools/list'",
+    "method='tools/call'",
+    'Mcp-Session-Id',
+    'MCP-Protocol-Version',
+    'mad4b-site-profile-status',
+    'mad4b-session-safe-diagnostics',
+    'mad4b-site-info',
+    'X-MAD4B-MCP-Admission-Code',
     'The access token was intentionally not printed or persisted.',
 ]:
     if marker not in ps1:
