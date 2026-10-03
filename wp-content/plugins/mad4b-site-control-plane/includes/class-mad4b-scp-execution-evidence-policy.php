@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Identifiers' ) ) require_once __DIR__ . '/class-mad4b-scp-identifiers.php';
 
 /**
  * Non-authorizing execution evidence policy.
@@ -110,6 +111,8 @@ final class MAD4B_SCP_Execution_Evidence_Policy {
 		);
 		$receipt['receipt_sha256'] = self::canonical_digest( self::TERMINAL_RECEIPT_CONTRACT, $receipt );
 		if ( is_wp_error( $receipt['receipt_sha256'] ) ) return $receipt['receipt_sha256'];
+		$receipt['receipt_id'] = MAD4B_SCP_Identifiers::receipt_id_from_sha256( $receipt['receipt_sha256'] );
+		if ( '' === $receipt['receipt_id'] ) return self::terminal_persistence_error( 'receipt_identity_invalid', 'Terminal execution receipt identity could not be canonicalized.' );
 		return $receipt;
 	}
 

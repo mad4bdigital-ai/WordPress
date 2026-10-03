@@ -1,6 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 if ( ! class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) ) require_once __DIR__ . '/class-mad4b-scp-database-transaction-guard.php';
+if ( ! class_exists( 'MAD4B_SCP_Identifiers' ) ) require_once __DIR__ . '/class-mad4b-scp-identifiers.php';
 
 final class MAD4B_SCP_Operation_Journal {
 	const CONTRACT = 'mad4b.dynamic-operation-journal.v1';
@@ -97,8 +98,9 @@ final class MAD4B_SCP_Operation_Journal {
 
 	public static function head( $operation_id ) {
 		global $wpdb;
-		$operation_id = strtolower( trim( (string) $operation_id ) );
-		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );
+		$identity = MAD4B_SCP_Identifiers::operation_lookup( $operation_id );
+		if ( is_wp_error( $identity ) ) return $identity;
+		$operation_id = (string) $identity['value'];
 		$t = MAD4B_SCP_Schema::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE BINARY operation_id=BINARY %s LIMIT 1", $operation_id ), ARRAY_A );
 		return is_array( $row ) ? $row : new WP_Error( 'mad4b_operation_not_found', 'Operation journal head was not found.' );
@@ -128,9 +130,10 @@ final class MAD4B_SCP_Operation_Journal {
 
 	public static function trace( $operation_id, $limit = 200 ) {
 		global $wpdb;
-		$operation_id = strtolower( trim( (string) $operation_id ) );
+		$identity = MAD4B_SCP_Identifiers::operation_lookup( $operation_id );
+		if ( is_wp_error( $identity ) ) return $identity;
+		$operation_id = (string) $identity['value'];
 		$limit = max( 1, min( 1000, absint( $limit ) ) );
-		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );
 		$t = MAD4B_SCP_Schema::tables();
 		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['operation_events']} WHERE BINARY operation_id=BINARY %s ORDER BY sequence ASC LIMIT %d", $operation_id, $limit ), ARRAY_A );
 		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_operation_trace_read_failed', 'Unable to read operation trace.' );
@@ -164,7 +167,7 @@ final class MAD4B_SCP_Operation_Journal {
 		$head = self::head( $operation_id );
 		$complete = ! is_wp_error( $head ) && (int)$head['latest_sequence'] === count( $events );
 		if ( $complete && ! empty( $events ) && ! hash_equals( (string)$head['latest_event_sha256'], (string)$previous ) ) $valid = false;
-		return array( 'contract'=>'mad4b.dynamic-operation-trace.v1','operation_id'=>$operation_id,'chain_valid'=>$valid,'complete'=>$complete,'count'=>count($events),'events'=>$events,'read_only'=>true,'mutation_performed'=>false );
+		return array( 'contract'=>'mad4b.dynamic-operation-trace.v1','operation_id'=>$operation_id,'operation_identity_class'=>(string)$identity['identity_class'],'historical_identity_preserved'=>!empty($identity['historical_identity_preserved']),'rewrite_allowed'=>!empty($identity['rewrite_allowed']),'chain_valid'=>$valid,'complete'=>$complete,'count'=>count($events),'events'=>$events,'read_only'=>true,'mutation_performed'=>false );
 	}
 
 	public static function status( $operation_id ) {
@@ -199,7 +202,8 @@ final class MAD4B_SCP_Operation_Journal {
 
 	private static function validate_context( array $context ) {
 		foreach ( array( 'operation_id', 'operation_key', 'operation_binding_sha256', 'hard_deadline_at' ) as $key ) if ( empty( $context[ $key ] ) ) return new WP_Error( 'mad4b_operation_context_incomplete', 'Operation context is incomplete.', array( 'missing' => $key ) );
-		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', strtolower( (string) $context['operation_id'] ) ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );
+		$canonical_operation_id = MAD4B_SCP_Identifiers::operation_id_for_write( $context['operation_id'] );
+		if ( '' === $canonical_operation_id || ! hash_equals( $canonical_operation_id, (string) $context['operation_id'] ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'New operation journal writes require a canonical lowercase UUIDv4 identity.' );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $context['operation_binding_sha256'] ) ) ) return new WP_Error( 'mad4b_operation_binding_invalid', 'Operation binding digest is invalid.' );
 		return true;
 	}

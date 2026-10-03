@@ -106,6 +106,13 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php
           ! grep -Eq 'update_option|add_option|delete_option|wpdb->(insert|update|delete|query)' wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-state-view.php
 
+      - name: Canonical and legacy identifier policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py
+
       - name: WordPress Plugin Check (generic distribution hygiene)
         uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
         with:
