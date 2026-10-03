@@ -12,6 +12,25 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function apply_filters( $hook, $value ) { return $value; }
+function trailingslashit( $value ) { return rtrim( (string) $value, "/\\" ) . '/'; }
+function wp_normalize_path( $value ) { return str_replace( '\\', '/', (string) $value ); }
+function wp_mkdir_p( $target ) {
+	if ( is_dir( $target ) ) return true;
+	return @mkdir( $target, 0700, true ) || is_dir( $target );
+}
+
+$mad4b_fixture_keyring = rtrim( sys_get_temp_dir(), "/\\" ) . '/mad4b-provider-canary-finalization-' . getmypid();
+define( 'MAD4B_SCP_CRYPTO_KEYRING_DIR', $mad4b_fixture_keyring );
+register_shutdown_function( static function () use ( $mad4b_fixture_keyring ) {
+	if ( ! is_dir( $mad4b_fixture_keyring ) ) return;
+	$items = scandir( $mad4b_fixture_keyring );
+	if ( is_array( $items ) ) foreach ( $items as $item ) {
+		if ( '.' === $item || '..' === $item ) continue;
+		$path = $mad4b_fixture_keyring . '/' . $item;
+		if ( is_file( $path ) || is_link( $path ) ) @unlink( $path );
+	}
+	@rmdir( $mad4b_fixture_keyring );
+} );
 
 class WP_Error {
 	private $code;
@@ -55,6 +74,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 	}
 }
 
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-crypto-profile.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-execution-evidence-policy.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-authorization.php';
 
