@@ -4,7 +4,7 @@
  *
  * Enrolled non-production early loader that ensures the canonical MCP Adapter owns the
  * runtime before normal plugins load, but only for MAD4B-owned MCP requests,
- * explicit MAD4B Control Plane admin pages, and WP-CLI. Unrelated WordPress
+ * explicit MAD4B Control Plane admin pages, and explicit MAD4B MCP WP-CLI opt-in. Unrelated WordPress
  * requests must retain the provider/host baseline and therefore never load or
  * instantiate the official MCP Adapter from MU scope.
  *
@@ -25,6 +25,10 @@ $mad4b_mcp_mu_status = array(
 	'state' => 'ineligible',
 	'official_plugin_active' => false,
 	'control_plane_active' => false,
+	'official_plugin_file' => '',
+	'control_plane_plugin_file' => '',
+	'plugin_identity_ambiguous' => false,
+	'plugin_directory_discovery' => 'active_plugins_unique_main_file',
 	'runtime_preclaimed' => false,
 	'preclaimed_symbol' => '',
 	'canonical_symbols_pinned' => false,
@@ -52,9 +56,41 @@ if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
 	$mad4b_mcp_mu_status['host'] = is_string( $mad4b_mcp_mu_host ) ? strtolower( rtrim( trim( $mad4b_mcp_mu_host ), '.' ) ) : '';
 }
 
+// Resolve active plugin roots by unique main-file identity. Directory names are
+// not authority and may be renamed; ambiguous candidates remain fail-closed.
+$mad4b_mcp_mu_active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
+$mad4b_mcp_mu_active = is_array( $mad4b_mcp_mu_active ) ? array_values( array_map( 'strval', $mad4b_mcp_mu_active ) ) : array();
+$mad4b_mcp_mu_find_active = static function ( array $plugins, $main_file ) {
+	$matches = array();
+	foreach ( $plugins as $plugin_file ) {
+		$plugin_file = trim( (string) $plugin_file );
+		$plugin_file = function_exists( 'wp_normalize_path' ) ? wp_normalize_path( $plugin_file ) : str_replace( '\\', '/', $plugin_file );
+		if ( '' === $plugin_file || '/' === substr( $plugin_file, 0, 1 ) ) continue;
+		$segments = explode( '/', $plugin_file );
+		if ( in_array( '..', $segments, true ) ) continue;
+		if ( basename( $plugin_file ) === $main_file ) $matches[] = $plugin_file;
+	}
+	return array_values( array_unique( $matches ) );
+};
+$mad4b_mcp_mu_control_plane_matches = $mad4b_mcp_mu_find_active( $mad4b_mcp_mu_active, 'mad4b-site-control-plane.php' );
+$mad4b_mcp_mu_adapter_matches = $mad4b_mcp_mu_find_active( $mad4b_mcp_mu_active, 'mcp-adapter.php' );
+$mad4b_mcp_mu_control_plane_plugin = 1 === count( $mad4b_mcp_mu_control_plane_matches ) ? $mad4b_mcp_mu_control_plane_matches[0] : '';
+$mad4b_mcp_mu_adapter_plugin = 1 === count( $mad4b_mcp_mu_adapter_matches ) ? $mad4b_mcp_mu_adapter_matches[0] : '';
+$mad4b_mcp_mu_status['plugin_identity_ambiguous'] = count( $mad4b_mcp_mu_control_plane_matches ) > 1 || count( $mad4b_mcp_mu_adapter_matches ) > 1;
+$mad4b_mcp_mu_status['control_plane_plugin_file'] = $mad4b_mcp_mu_control_plane_plugin;
+$mad4b_mcp_mu_status['official_plugin_file'] = $mad4b_mcp_mu_adapter_plugin;
+$mad4b_mcp_mu_control_plane_root = '' !== $mad4b_mcp_mu_control_plane_plugin
+	? trailingslashit( WP_PLUGIN_DIR . '/' . dirname( $mad4b_mcp_mu_control_plane_plugin ) )
+	: '';
+$mad4b_mcp_mu_root = '' !== $mad4b_mcp_mu_adapter_plugin
+	? trailingslashit( WP_PLUGIN_DIR . '/' . dirname( $mad4b_mcp_mu_adapter_plugin ) )
+	: '';
+
 // Reuse the same pure exact-origin/environment decision as the regular plugin.
 // Raw WordPress production defaults are not explicit Production enrollment.
-$mad4b_mcp_mu_binding_file = trailingslashit( WP_PLUGIN_DIR ) . 'mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php';
+$mad4b_mcp_mu_binding_file = '' !== $mad4b_mcp_mu_control_plane_root
+	? $mad4b_mcp_mu_control_plane_root . 'includes/class-mad4b-scp-site-profile.php'
+	: '';
 $mad4b_mcp_mu_binding = array( 'eligible' => false );
 if ( is_readable( $mad4b_mcp_mu_binding_file ) ) {
 	require_once $mad4b_mcp_mu_binding_file;
@@ -77,11 +113,11 @@ if ( is_array( $mad4b_mcp_mu_transaction ) && ! empty( $mad4b_mcp_mu_transaction
 }
 
 if ( $mad4b_mcp_mu_profile_enrolled ) {
-	$mad4b_mcp_mu_active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
-	$mad4b_mcp_mu_active = is_array( $mad4b_mcp_mu_active ) ? array_values( array_map( 'strval', $mad4b_mcp_mu_active ) ) : array();
-	$mad4b_mcp_mu_status['official_plugin_active'] = in_array( 'mcp-adapter/mcp-adapter.php', $mad4b_mcp_mu_active, true );
-	$mad4b_mcp_mu_status['control_plane_active'] = in_array( 'mad4b-site-control-plane/mad4b-site-control-plane.php', $mad4b_mcp_mu_active, true );
-	$mad4b_mcp_mu_status['eligible'] = $mad4b_mcp_mu_status['official_plugin_active'] && $mad4b_mcp_mu_status['control_plane_active'];
+	$mad4b_mcp_mu_status['official_plugin_active'] = '' !== $mad4b_mcp_mu_adapter_plugin;
+	$mad4b_mcp_mu_status['control_plane_active'] = '' !== $mad4b_mcp_mu_control_plane_plugin;
+	$mad4b_mcp_mu_status['eligible'] = ! $mad4b_mcp_mu_status['plugin_identity_ambiguous']
+		&& $mad4b_mcp_mu_status['official_plugin_active']
+		&& $mad4b_mcp_mu_status['control_plane_active'];
 
 	if ( $mad4b_mcp_mu_status['eligible'] ) {
 		$mad4b_mcp_mu_allowed_routes = array(
@@ -201,14 +237,13 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			}
 		}
 
-		$mad4b_mcp_mu_root = trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter/';
 		$mad4b_mcp_mu_pin_files = array(
 			$mad4b_mcp_mu_root . 'includes/Autoloader.php',
 			$mad4b_mcp_mu_root . 'includes/Core/McpAdapter.php',
 			$mad4b_mcp_mu_root . 'includes/Plugin.php',
 		);
 		$mad4b_mcp_mu_autoloader = $mad4b_mcp_mu_root . 'vendor/autoload_packages.php';
-		$mad4b_mcp_mu_baseline_file = trailingslashit( WP_PLUGIN_DIR ) . 'mad4b-site-control-plane/config/certified-providers.json';
+		$mad4b_mcp_mu_baseline_file = $mad4b_mcp_mu_control_plane_root . 'config/certified-providers.json';
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] ) {
 			foreach ( array_merge( $mad4b_mcp_mu_pin_files, array( $mad4b_mcp_mu_autoloader ) ) as $mad4b_mcp_mu_required_file ) {
