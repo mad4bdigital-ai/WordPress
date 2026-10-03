@@ -2,7 +2,7 @@
 $cases = array( 'authorized', 'transaction_contention', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
-	echo 'mad4b.mcp-runtime-recovery.v1: 18/18 PASS' . PHP_EOL; exit;
+	echo 'mad4b.mcp-runtime-recovery.v1: ' . count( $cases ) . '/' . count( $cases ) . ' PASS' . PHP_EOL; exit;
 }
 $case = $argv[1];
 if ( in_array( $case, array( 'cli_generic_refresh', 'cli_direct_recovery_denied' ), true ) && ! defined( 'WP_CLI' ) ) define( 'WP_CLI', true );
