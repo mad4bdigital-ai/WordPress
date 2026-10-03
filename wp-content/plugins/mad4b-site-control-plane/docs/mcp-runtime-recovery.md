@@ -5,14 +5,18 @@ or DTO classes from Rank Math or another Jetpack package. A successful OAuth log
 does not certify this PHP class set or its tool catalog.
 
 The managed MU loader now uses the regular Site Profile's pure early binding.
-An exact valid enrolled profile can override WordPress's implicit Production
-DEFAULT. Explicit host Production, foreign origins, invalid profiles, disabled
-managed-runtime and reenrollment-required profiles remain ineligible.
+An exact valid enrolled profile may override WordPress's implicit Production
+DEFAULT only after the explicit one-time non-Production attestation for that
+bound identity/environment. Profiles that request this downgrade without the
+attestation are quarantined on read. Explicit host Production, foreign origins,
+deployment-binding drift, invalid profiles, disabled managed-runtime and
+reenrollment-required profiles remain ineligible.
 
-On the exact diagnostic AJAX POST, MU scope pins the certified classes but leaves
-singleton arming and REST materialization to the worker after its nonce,
-administrator, target and build checks. Foreign frontend/AJAX requests bypass the
-loader. Developer and developer-breakglass MCP routes use the same class set;
+On the exact diagnostic AJAX POST, MU scope first requires the bounded Site
+Profile HMAC routing proof; an external caller cannot trigger early MCP
+hashing/loading merely by naming the AJAX action. The worker still owns nonce,
+administrator, target and build authorization. Foreign frontend/AJAX requests
+bypass the loader. Developer and developer-breakglass MCP routes use the same class set;
 transport permission and grants still determine access.
 
 All executable pin files and the package autoloader are hashed before execution.
@@ -23,7 +27,11 @@ An already declared foreign class cannot be replaced in the current request.
 - Connection > MCP Endpoints offers a separate `Repair MCP runtime for next request`
   POST protected by update_plugins, manage_options, nonce and build fingerprint.
 - Recovery validates the installed certified disk set, owns the shared maintenance
-  lease, refreshes recognized managed MU bytes and arms the class set with audit.
+  lease, and replaces only exact historical MAD4B MU fingerprints. Filesystem
+  install/refresh uses a durable option-row transaction with atomic `add_option`
+  ownership, owner tokens, stale-worker fencing, persistent-cache eviction,
+  byte readback and audit-before-finalization. A pending/ambiguous transaction
+  makes the MU loader fail closed on the next request.
 - Plugin update/activation schedules a new-code cron request. Profile saves schedule
   recovery only for exact non-production managed-runtime enrollment. Production or
   disabled enrollment cancels that scheduled recovery.
@@ -56,7 +64,16 @@ profile workspace refreshes after success, including the displayed environment.
 
 FormData is captured before controls are disabled; one-time acknowledgement fields
 are cleared after successful persistence. Staging does not retain a Production
-write acknowledgement.
+write acknowledgement. When WordPress is using its implicit Production default,
+selecting Local/Development/Staging additionally requires the exact
+`CONFIRM THIS ORIGIN IS NON-PRODUCTION` phrase; the persisted attestation is
+part of the bound identity and is checked again on every authority read.
+
+Hosts that need protection against independent same-origin database clones may set
+`MAD4B_SCP_DEPLOYMENT_BINDING` outside the database. Only its SHA-256 digest is
+stored. All nodes of one intentional deployment/cluster must share the same
+value; an independent clone must use a different value. A mismatch quarantines
+OAuth/Skills/Write and managed-runtime authority.
 
 ## Update channel states
 
@@ -71,8 +88,11 @@ and Production classification does not become an update-policy escape hatch.
 
 ## Verification
 
-CI includes 35 fresh-process MU boundary cases, 16 lifecycle/recovery cases,
-settings submission regressions and Staging/Production rebind/readback tests.
+CI includes expanded fresh-process MU boundary cases, lifecycle/recovery
+contention and persistent-cache cases, settings submission regressions,
+Staging/Production rebind/readback tests, renamed-plugin-root cases, generic
+WP-CLI bypass plus explicit MCP CLI opt-in, diagnostic-proof checks and
+same-origin deployment-binding checks.
 The real WordPress 6.9/latest mixed-class fixture removes WP_ENVIRONMENT_TYPE to
 model the implicit Production default, verifies first-request fail-closed repair,
 then verifies CLI and HTTP-style AJAX recovery with all 26 tools. The AJAX fixture
@@ -90,12 +110,15 @@ plugin database tables on WordPress 6.9 and the workflow's `latest` version.
 | Scenario | Required result | Evidence |
 | --- | --- | --- |
 | Unknown origin, including a hostname beginning with `staging` | No OAuth, Skills or Write enrollment; no runtime-repair schedule | Lifecycle matrix and fresh WordPress journeys |
-| Local / Development / Staging selected on an implicit Production default | Exact enrolled origin controls effective environment; non-production managed recovery may run | All-environment journeys and MU boundary processes |
+| Local / Development / Staging selected on an implicit Production default | Requires exact non-Production attestation; without it all Site Profile authority and early managed runtime stay quarantined | All-environment journeys and MU boundary processes |
 | Explicit host environment disagrees with selected profile | Save rejected without persistence or scheduling | Lifecycle matrix and WordPress journeys |
 | Production without Write | Saves without write acknowledgement; managed recovery stays disabled | WordPress journeys |
 | Production with Write | Exact one-time checkbox and phrase required; audit readiness required | Profile regressions and WordPress journeys |
 | Staging ↔ Production on the implicit default | New UUID/revision 1; exact committed readback; recovery schedule follows new eligibility | Profile regressions and WordPress journeys |
 | Copy database to another origin, even a related origin | All authority and early runtime binding quarantined | Matrix and WordPress journeys |
+| Independent database clone with the same public origin | Configure a distinct host-side deployment binding; mismatch quarantines authority without storing the raw secret | Site Profile general-distribution regression |
+| Concurrent MU repair workers / stale persistent option cache | Exactly one transaction owner; other workers fail closed until stale/blocked reconciliation; cache cannot hide the database marker | Recovery contention/cache regressions |
+| Generic WP-CLI | Does not load/arm MCP; only commands/tests defining the explicit MCP CLI request marker enter the early runtime | MU boundary and connection lifecycle fixtures |
 | Stale form / anonymous enrollment / nonexistent OAuth user | Rejected; no successful-save hook | Matrix and WordPress journeys |
 | Audit append fails after profile persistence | Exact previous profile restored; no recovery scheduled for the failed change | Matrix |
 | Options storage drops profile/result writes | No successful persistence or armed recovery result reported | Matrix |
@@ -123,6 +146,11 @@ outbound HTTP during profile/recovery work.
 
 ### Limits and deployment acceptance
 
+- Runtime recovery currently certifies only the current serving node. The result
+  reports `runtime_node_scope=current_node`, does not claim a shared filesystem,
+  and marks cluster convergence as required. Multi-webhead deployments must either
+  use a shared/identical `WPMU_PLUGIN_DIR` or perform an external per-node
+  convergence/readback before external certification.
 - Network-only plugin activation in WordPress Multisite is not supported by this
   managed-runtime loader: it reads per-site `active_plugins`, and its network-only
   fixture fails closed. Do not treat a shared network activation or subdirectory
