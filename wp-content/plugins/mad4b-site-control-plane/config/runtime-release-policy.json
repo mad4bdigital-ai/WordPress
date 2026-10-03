@@ -1,0 +1,37 @@
+{
+  "contract": "mad4b.runtime-release-policy.v1",
+  "provider": "mcp_adapter",
+  "target_adapter_version": "0.7.0",
+  "supported_transition_adapter_versions": [
+    "0.6.1",
+    "0.7.0"
+  ],
+  "update_order": [
+    "control_plane",
+    "mcp_adapter"
+  ],
+  "pair_certification_required": true,
+  "exact_provider_profile_required": true,
+  "runtime_class_provenance_required": true,
+  "transport_revalidation_required": true,
+  "catalog_parity_required": true,
+  "rollback": {
+    "adapter_same_request_disk_readback": true,
+    "transition_pair_must_remain_supported": true,
+    "automatic_production_rollback": false
+  },
+  "authority": {
+    "staging_only": true,
+    "production_auto_apply": false,
+    "developer_required": false,
+    "breakglass_required": false,
+    "raw_sql_required": false
+  },
+  "source_policy": {
+    "caller_url_allowed": false,
+    "caller_path_allowed": false,
+    "caller_package_bytes_allowed": false,
+    "certified_profile_package_url_allowed": true,
+    "archive_sha256_required": true
+  }
+}

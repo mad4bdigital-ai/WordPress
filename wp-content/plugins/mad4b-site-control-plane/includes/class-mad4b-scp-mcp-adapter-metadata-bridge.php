@@ -22,7 +22,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 	const CONTRACT = 'mad4b.mcp-adapter-metadata-bridge.v1';
 	const RANK_MATH_META_CONTRACT = 'mad4b.rank-math-mcp-meta-compat.v1';
 	const SLUG = 'mcp-adapter';
-	const VERSION = '0.6.1';
+	const LEGACY_VERSION = '0.6.1';
 
 	private static $booted = false;
 	private static $hook_registered = false;
@@ -91,6 +91,22 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 	 * Short-circuit the exact Core plugin_information query only when no earlier
 	 * provider has already supplied a result.
 	 */
+	public static function certified_version() {
+		if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set', false ) ) {
+			$target = MAD4B_SCP_Runtime_Release_Set::target_adapter_version();
+			if ( '' !== $target ) return $target;
+		}
+		if ( class_exists( 'MAD4B_SCP_Provider_Contracts', false ) ) {
+			$versions = MAD4B_SCP_Provider_Contracts::certified_versions( 'mcp_adapter' );
+			$versions = array_values( array_filter( array_map( 'strval', (array) $versions ) ) );
+			if ( ! empty( $versions ) ) {
+				usort( $versions, 'version_compare' );
+				return (string) end( $versions );
+			}
+		}
+		return self::LEGACY_VERSION;
+	}
+
 	public static function filter_plugin_information( $result, $action, $args ) {
 		if ( false !== $result ) return $result;
 		if ( 'plugin_information' !== (string) $action ) return $result;
@@ -102,7 +118,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 		return (object) array(
 			'name' => 'MCP Adapter',
 			'slug' => self::SLUG,
-			'version' => self::VERSION,
+			'version' => self::certified_version(),
 			'author' => 'WP Core AI Team',
 			'homepage' => 'https://github.com/WordPress/mcp-adapter',
 			'requires' => '6.9',
@@ -126,7 +142,9 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 			'admin_request_only' => true,
 			'fallback_priority' => PHP_INT_MAX,
 			'slug' => self::SLUG,
-			'version' => self::VERSION,
+			'version' => self::certified_version(),
+			'installed_version' => class_exists( 'MAD4B_SCP_Provider_Contracts', false ) ? MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' ) : '',
+			'version_source' => class_exists( 'MAD4B_SCP_Runtime_Release_Set', false ) ? 'runtime_release_set' : 'provider_certification',
 			'short_circuit_count' => self::$short_circuit_count,
 			'rank_math_meta_contract' => self::RANK_MATH_META_CONTRACT,
 			'rank_math_meta_governed_nonproduction_only' => true,

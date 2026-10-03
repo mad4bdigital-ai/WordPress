@@ -1,0 +1,118 @@
+name: MAD4B Runtime Release Set
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-runtime-release-set.yml'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-runtime-release-set.yml'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-runtime-release-set-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Runtime release-set contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Verify runtime release-set source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/runtime-release-set-contract.py
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json >/dev/null
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json >/dev/null
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-class-provenance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
+
+      - name: Verify exact upstream MCP Adapter release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/mad4b-adapter.env
+          import json, shlex
+          from pathlib import Path
+          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
+          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
+          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
+          version=str(policy['target_adapter_version'])
+          profile=profiles['providers']['mcp_adapter'][version]
+          for key,value in {
+              'VERSION':version,
+              'SHA':profile['archive_sha256'],
+              'BYTES':str(profile['archive_bytes']),
+              'URL':profile['package_url'],
+          }.items():
+              print(f'{key}={shlex.quote(str(value))}')
+          PY
+          source /tmp/mad4b-adapter.env
+          curl --fail --location --silent --show-error "$URL" -o /tmp/mcp-adapter.zip
+          test "$(stat -c '%s' /tmp/mcp-adapter.zip)" = "$BYTES"
+          echo "$SHA  /tmp/mcp-adapter.zip" | sha256sum --check --strict
+          python3 - <<'PY'
+          import hashlib, json, zipfile
+          from pathlib import Path
+
+          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
+          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
+          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
+          version=str(policy['target_adapter_version'])
+          profile=profiles['providers']['mcp_adapter'][version]
+          critical=profile.get('critical_files') or {}
+          if not critical:
+              raise SystemExit('critical file manifest missing')
+
+          with zipfile.ZipFile('/tmp/mcp-adapter.zip') as archive:
+              names=archive.namelist()
+              mains=[name for name in names if name.endswith('/mcp-adapter.php') or name == 'mcp-adapter.php']
+              if len(mains) != 1:
+                  raise SystemExit(f'unexpected MCP Adapter archive roots: {mains}')
+              main=mains[0]
+              prefix=main[:-len('mcp-adapter.php')]
+              failures=[]
+              for rel,expected in sorted(critical.items()):
+                  name=prefix+rel
+                  if name not in names:
+                      failures.append(f'{rel}:missing')
+                      continue
+                  actual=hashlib.sha256(archive.read(name)).hexdigest()
+                  if actual.lower()!=str(expected).lower():
+                      failures.append(f'{rel}:sha256:{actual}')
+              if failures:
+                  raise SystemExit('MCP Adapter exact critical-file certification failed: '+', '.join(failures[:20]))
+              text=archive.read(main).decode('utf-8', errors='replace')
+              version_lines=[line for line in text.splitlines() if line.lstrip().startswith('* Version:')]
+              if len(version_lines)!=1 or version_lines[0].split(':',1)[1].strip()!=version:
+                  raise SystemExit('MCP Adapter plugin header version mismatch')
+          print(f'mad4b.mcp-adapter-upstream-certification.v1: PASS version={version} files={len(critical)}')
+          PY

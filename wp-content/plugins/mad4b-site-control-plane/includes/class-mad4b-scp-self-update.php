@@ -2196,6 +2196,40 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! isset( $manifest['release_verdict_success'] ) || true !== $manifest['release_verdict_success'] ) return new WP_Error( 'mad4b_self_update_release_verdict_missing', 'Update manifest is not bound to a successful Release Verdict.' );
 		if ( ! isset( $manifest['published_from_master'] ) || true !== $manifest['published_from_master'] ) return new WP_Error( 'mad4b_self_update_master_publication_missing', 'Update manifest is not bound to an exact master publication.' );
 		if ( ! isset( $manifest['release_root_trust_verified'] ) || true !== $manifest['release_root_trust_verified'] ) return new WP_Error( 'mad4b_self_update_release_root_trust_missing', 'Update manifest is not bound to verified release-root trust.' );
+
+		if ( isset( $manifest['runtime_release_set'] ) ) {
+			$set = $manifest['runtime_release_set'];
+			if ( ! is_array( $set ) || 'mad4b.runtime-release-set.v1' !== ( isset( $set['contract'] ) ? (string) $set['contract'] : '' ) ) {
+				return new WP_Error( 'mad4b_self_update_runtime_release_set_invalid', 'Runtime release-set contract is invalid.' );
+			}
+			$adapter = isset( $set['mcp_adapter'] ) && is_array( $set['mcp_adapter'] ) ? $set['mcp_adapter'] : array();
+			$adapter_version = isset( $adapter['version'] ) ? trim( (string) $adapter['version'] ) : '';
+			$adapter_sha = isset( $adapter['archive_sha256'] ) ? strtolower( trim( (string) $adapter['archive_sha256'] ) ) : '';
+			$adapter_bytes = isset( $adapter['archive_bytes'] ) ? absint( $adapter['archive_bytes'] ) : 0;
+			$adapter_url = isset( $adapter['package_url'] ) ? trim( (string) $adapter['package_url'] ) : '';
+			if ( '' === $adapter_version || strlen( $adapter_version ) > 64 || 1 !== preg_match( '/^[a-f0-9]{64}$/', $adapter_sha ) || $adapter_bytes < 1 ) {
+				return new WP_Error( 'mad4b_self_update_runtime_release_set_adapter_identity_invalid', 'Runtime release-set MCP Adapter identity is incomplete.' );
+			}
+			$adapter_parts = wp_parse_url( $adapter_url );
+			$expected_adapter_path = '/WordPress/mcp-adapter/releases/download/v' . $adapter_version . '/mcp-adapter.zip';
+			if ( ! is_array( $adapter_parts )
+				|| 'https' !== ( isset( $adapter_parts['scheme'] ) ? strtolower( (string) $adapter_parts['scheme'] ) : '' )
+				|| 'github.com' !== ( isset( $adapter_parts['host'] ) ? strtolower( (string) $adapter_parts['host'] ) : '' )
+				|| $expected_adapter_path !== ( isset( $adapter_parts['path'] ) ? (string) $adapter_parts['path'] : '' )
+				|| ! empty( $adapter_parts['user'] ) || ! empty( $adapter_parts['pass'] ) || ! empty( $adapter_parts['port'] )
+				|| ! empty( $adapter_parts['query'] ) || ! empty( $adapter_parts['fragment'] ) ) {
+				return new WP_Error( 'mad4b_self_update_runtime_release_set_adapter_url_invalid', 'Runtime release-set MCP Adapter package URL is outside the certified upstream release channel.' );
+			}
+			$set['mcp_adapter'] = array(
+				'version' => $adapter_version,
+				'archive_sha256' => $adapter_sha,
+				'archive_bytes' => $adapter_bytes,
+				'package_url' => $adapter_url,
+			);
+			$set['pair_certification_required'] = true;
+			$set['production_auto_apply'] = false;
+			$manifest['runtime_release_set'] = $set;
+		}
 		return true;
 	}
 
@@ -2519,7 +2553,7 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	private static function public_manifest( array $manifest ) {
-		return array(
+		$out = array(
 			'version' => $manifest['version'],
 			'display_version' => $manifest['display_version'],
 			'source_commit_sha' => $manifest['source_commit_sha'],
@@ -2532,6 +2566,10 @@ final class MAD4B_SCP_Self_Update {
 			'release_root_trust_verified' => ! empty( $manifest['release_root_trust_verified'] ),
 			'published_from_master' => ! empty( $manifest['published_from_master'] ),
 		);
+		if ( ! empty( $manifest['runtime_release_set'] ) && is_array( $manifest['runtime_release_set'] ) ) {
+			$out['runtime_release_set'] = $manifest['runtime_release_set'];
+		}
+		return $out;
 	}
 
 	private static function audit( $channel, array $target, $success, array $extra = array() ) {

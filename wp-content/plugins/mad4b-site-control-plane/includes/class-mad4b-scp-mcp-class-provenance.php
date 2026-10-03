@@ -17,7 +17,22 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 
 	private static $cache = array();
 
-	public static function critical_classes() {
+	public static function critical_classes( array $contract = array() ) {
+		if ( ! empty( $contract['runtime_classes'] ) && is_array( $contract['runtime_classes'] ) ) {
+			$classes = array();
+			foreach ( $contract['runtime_classes'] as $alias => $spec ) {
+				$alias = sanitize_key( (string) $alias );
+				if ( '' === $alias || ! is_array( $spec ) ) continue;
+				$class = isset( $spec['class'] ) ? trim( (string) $spec['class'] ) : '';
+				$file = isset( $spec['file'] ) ? ltrim( self::normalize_path( (string) $spec['file'] ), '/' ) : '';
+				if ( '' === $class || '' === $file || false !== strpos( $file, '../' ) ) continue;
+				$classes[ $alias ] = array( 'class' => $class, 'file' => $file );
+			}
+			if ( ! empty( $classes ) ) return $classes;
+		}
+
+		// Legacy v0.6.1 class set. New Adapter versions must declare their own
+		// runtime_classes in the exact version profile and never inherit this list.
 		return array(
 			'adapter' => array( 'class' => 'WP\\MCP\\Core\\McpAdapter', 'file' => 'includes/Core/McpAdapter.php' ),
 			'ability_builder' => array( 'class' => 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool', 'file' => 'includes/Domain/Tools/RegisterAbilityAsMcpTool.php' ),
@@ -44,7 +59,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'blocker' => '',
 			'provider' => self::PROVIDER,
 			'certified_version' => '',
-			'class_count' => count( self::critical_classes() ),
+			'class_count' => 0,
 			'verified_count' => 0,
 			'failure_count' => 0,
 			'unobserved_count' => 0,
@@ -61,14 +76,20 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			self::$cache[ $cache_key ] = $out;
 			return self::$cache[ $cache_key ];
 		}
-		$contract = MAD4B_SCP_Provider_Contracts::get( self::PROVIDER );
+		$installed_version = MAD4B_SCP_Provider_Contracts::installed_version( self::PROVIDER );
+		$contract = method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
+			? MAD4B_SCP_Provider_Contracts::get_for_version( self::PROVIDER, $installed_version )
+			: MAD4B_SCP_Provider_Contracts::get( self::PROVIDER );
 		if ( empty( $contract ) || ! is_array( $contract ) ) {
 			$out['enforced'] = true;
-			$out['state'] = 'baseline_unavailable';
+			$out['certified_version'] = '';
+			$out['installed_version'] = $installed_version;
+			$out['state'] = 'version_profile_unavailable';
 			$out['blocker'] = self::BLOCKER;
 			self::$cache[ $cache_key ] = $out;
 			return self::$cache[ $cache_key ];
 		}
+		$out['installed_version'] = $installed_version;
 		$runtime_root = self::active_mcp_adapter_root();
 		if ( '' === $runtime_root ) {
 			$out['enforced'] = true;
@@ -122,7 +143,9 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			$runtime_root_relative = ltrim( substr( $root_normalized, strlen( $plugin_root_normalized ) ), '/' );
 		}
 
-		foreach ( self::critical_classes() as $alias => $spec ) {
+		$critical_classes = self::critical_classes( $contract );
+		$out['class_count'] = count( $critical_classes );
+		foreach ( $critical_classes as $alias => $spec ) {
 			$class = $spec['class'];
 			$relative = ltrim( self::normalize_path( $spec['file'] ), '/' );
 			$expected_sha = isset( $manifest[ $relative ] ) ? strtolower( trim( (string) $manifest[ $relative ] ) ) : '';

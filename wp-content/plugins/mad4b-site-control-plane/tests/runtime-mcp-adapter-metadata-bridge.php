@@ -65,10 +65,15 @@ if ( is_wp_error( $result ) || ! is_object( $result ) ) {
 	exit( 1 );
 }
 
+$expected_version = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::certified_version();
+if ( '' === $expected_version ) {
+	fwrite( STDERR, "Dynamic certified MCP Adapter version is unavailable.\n" );
+	exit( 1 );
+}
 $expected = array(
 	'name' => 'MCP Adapter',
 	'slug' => 'mcp-adapter',
-	'version' => '0.6.1',
+	'version' => $expected_version,
 );
 foreach ( $expected as $field => $value ) {
 	if ( ! isset( $result->{$field} ) || $value !== (string) $result->{$field} ) {
