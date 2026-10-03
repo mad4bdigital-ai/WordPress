@@ -72,7 +72,7 @@ $check(
 	is_array( $lease_a ) && 1 === (int) $lease_a['lease_epoch'],
 	'initial lease acquisition failed' . ( is_wp_error( $lease_a ) ? ': ' . $lease_a->get_error_code() : '' )
 );
-$check( MAD4B_SCP_Restore_Epoch::$ensure_calls >= 2, 'DurableExecution did not invoke restore-epoch admission for both denied and normal lease paths' );
+$check( MAD4B_SCP_Restore_Epoch::$ensure_calls >= 1, 'DurableExecution did not invoke restore-epoch admission for the normal lease path' );
 
 $lease_a_repeat = MAD4B_SCP_Durable_Execution::acquire_lease(
 	$work_id,

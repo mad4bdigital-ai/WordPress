@@ -194,7 +194,7 @@ final class MAD4B_SCP_Execution_Fence {
 		}
 		$identity = self::projected_execution_identity( $ability_name );
 		if ( is_wp_error( $identity ) ) return $identity;
-		$input_sha = self::digest( 'mad4b.projected-call-input.v1', $input );
+		$input_sha = self::projected_call_input_sha256( $input );
 		$identity_sha = self::digest( self::PROJECTED_CALL_SEAL_CONTRACT, $identity );
 		if ( '' === $input_sha || '' === $identity_sha ) return new WP_Error( 'mad4b_projection_execution_seal_digest_failed', 'Projected execution seal could not bind the exact call identity.' );
 		self::$projected_call_seals[ $ability_name ] = array(
@@ -221,7 +221,7 @@ final class MAD4B_SCP_Execution_Fence {
 		}
 		$seal = self::$projected_call_seals[ $ability_name ];
 		unset( self::$projected_call_seals[ $ability_name ] );
-		$input_sha = self::digest( 'mad4b.projected-call-input.v1', $input );
+		$input_sha = self::projected_call_input_sha256( $input );
 		if ( '' === $input_sha || ! hash_equals( (string) $seal['input_sha256'], $input_sha ) ) {
 			return new WP_Error( 'mad4b_projection_execution_seal_mismatch', 'Projected call arguments changed after final pre-tool admission.' );
 		}
@@ -386,6 +386,15 @@ final class MAD4B_SCP_Execution_Fence {
 			'authority_scope_sha256' => class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) ? MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope() : '',
 			'request_context_sha256' => $request_context_sha,
 		) );
+	}
+
+	private static function projected_call_input_sha256( $input ) {
+		// MCP `tools/call` arguments are an object. For an empty object the Adapter
+		// pre-tool hook may expose `array()` while WP_Ability invokes a callback
+		// with its default `null`. Canonicalize only that protocol-equivalent empty
+		// representation; every non-empty argument remains byte-semantically bound.
+		if ( null === $input ) $input = array();
+		return self::digest( 'mad4b.projected-call-input.v1', $input );
 	}
 
 	private static function evidence_sha256( $input ) {
