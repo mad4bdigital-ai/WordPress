@@ -154,6 +154,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php

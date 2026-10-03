@@ -86,7 +86,7 @@ final class MAD4B_SCP_Crypto_Profile {
 		$write = self::atomic_private_write( $private_path, $pem );
 		if ( is_wp_error( $write ) ) return $write;
 
-		$now = time();
+		$now = self::now_epoch();
 		$old = isset( $manifest['current_kid'] ) ? strtolower( trim( (string)$manifest['current_kid'] ) ) : '';
 		if ( '' !== $old && isset( $manifest['keys'][ $old ] ) ) {
 			$manifest['keys'][ $old ]['signing_not_after'] = $now;
@@ -115,11 +115,11 @@ final class MAD4B_SCP_Crypto_Profile {
 		if ( is_wp_error( $manifest ) ) return $manifest;
 		$kid = strtolower( trim( (string) $kid ) );
 		if ( empty( $manifest['keys'][ $kid ] ) ) return new WP_Error( 'mad4b_crypto_key_unknown', 'Receipt signing key is not registered.' );
-		$manifest['keys'][ $kid ]['revoked_at'] = time();
+		$manifest['keys'][ $kid ]['revoked_at'] = self::now_epoch();
 		$manifest['keys'][ $kid ]['state'] = 'revoked';
 		if ( isset( $manifest['current_kid'] ) && hash_equals( (string)$manifest['current_kid'], $kid ) ) $manifest['current_kid'] = '';
 		$manifest['revision'] = (int)$manifest['revision'] + 1;
-		$manifest['updated_at'] = time();
+		$manifest['updated_at'] = self::now_epoch();
 		$saved = self::write_manifest( $profile_id, $manifest );
 		if ( is_wp_error( $saved ) ) return $saved;
 		return self::status( $profile_id );
@@ -161,7 +161,7 @@ final class MAD4B_SCP_Crypto_Profile {
 		return array(
 			'contract'=>self::SIGNATURE_CONTRACT,'profile_id'=>$profile_id,'profile_sha256'=>$profile['profile_sha256'],
 			'algorithm'=>$profile['algorithm'],'kid'=>$kid,'signed_sha256'=>$payload_sha256,
-			'signed_at'=>time(),'signature_b64url'=>self::b64url( $signature ),'authorizing'=>false
+			'signed_at'=>self::now_epoch(),'signature_b64url'=>self::b64url( $signature ),'authorizing'=>false
 		);
 	}
 
@@ -184,6 +184,7 @@ final class MAD4B_SCP_Crypto_Profile {
 		$key = $manifest['keys'][ $kid ];
 		if ( ! empty( $key['revoked_at'] ) ) return new WP_Error( 'mad4b_crypto_signature_key_revoked', 'Receipt signature key is revoked.' );
 		$signed_at = isset($signature['signed_at'])?(int)$signature['signed_at']:0;
+		if(class_exists('MAD4B_SCP_Time_Policy')){$tc=MAD4B_SCP_Time_Policy::assert_timestamp('crypto_signature',$signed_at);if(is_wp_error($tc))return$tc;}
 		if ( $signed_at < (int)$key['not_before'] || ( ! empty($key['signing_not_after']) && $signed_at > (int)$key['signing_not_after'] ) ) {
 			return new WP_Error( 'mad4b_crypto_signature_time_invalid', 'Receipt signature time is outside the key signing interval.' );
 		}
@@ -352,4 +353,6 @@ final class MAD4B_SCP_Crypto_Profile {
 	private static function canon($value){if(!is_array($value))return$value;$keys=array_keys($value);$list=empty($value)||$keys===range(0,count($value)-1);if($list)return array_map(array(__CLASS__,'canon'),$value);ksort($value,SORT_STRING);foreach($value as$k=>$v)$value[$k]=self::canon($v);return$value;}
 	private static function b64url($value){return rtrim(strtr(base64_encode((string)$value),'+/','-_'),'=');}
 	private static function b64url_decode($value){$value=strtr((string)$value,'-_','+/');$pad=strlen($value)%4;if($pad)$value.=str_repeat('=',4-$pad);return base64_decode($value,true);}
+
+	private static function now_epoch(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::now_epoch():time();}
 }
