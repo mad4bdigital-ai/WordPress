@@ -176,6 +176,7 @@ jobs:
               'TARGET_SHA':profile['archive_sha256'],
               'TARGET_BYTES':str(profile['archive_bytes']),
               'TARGET_URL':profile['package_url'],
+              'TARGET_AUTOLOAD_SHA':str((profile.get('critical_files') or {}).get('vendor/autoload_packages.php') or ''),
           }.items():
               print(f'{key}={shlex.quote(str(value))}')
           PY
@@ -191,8 +192,13 @@ jobs:
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "$ADAPTER_ARCHIVE" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
           if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
             test -r "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php"
-            echo "MAD4B target 0.7.0 vendor/autoload_packages.php SHA256:"
-            sha256sum "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php"
+            OBSERVED_AUTOLOAD_SHA="$(sha256sum "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php" | awk '{print $1}')"
+            echo "MAD4B_TARGET_070_AUTOLOAD_PACKAGES_SHA256=$OBSERVED_AUTOLOAD_SHA"
+            if ! [[ "$TARGET_AUTOLOAD_SHA" =~ ^[a-f0-9]{64}$ ]]; then
+              echo "::error::Exact 0.7.0 vendor/autoload_packages.php SHA is missing from certified-provider-profiles.json; observed=$OBSERVED_AUTOLOAD_SHA"
+              exit 1
+            fi
+            test "$OBSERVED_AUTOLOAD_SHA" = "$TARGET_AUTOLOAD_SHA"
           fi
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
