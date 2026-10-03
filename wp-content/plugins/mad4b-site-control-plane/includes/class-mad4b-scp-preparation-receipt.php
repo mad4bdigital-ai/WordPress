@@ -24,6 +24,11 @@ final class MAD4B_SCP_Preparation_Receipt {
 			'issued_at' => $now,
 			'expires_at' => $now + self::ttl(),
 		);
+		if ( class_exists( 'MAD4B_SCP_Replay_Policy' ) ) {
+			$replay_policy_sha256 = MAD4B_SCP_Replay_Policy::policy_sha256();
+			if ( '' === $replay_policy_sha256 ) return '';
+			$payload['replay_policy_sha256'] = $replay_policy_sha256;
+		}
 		$json = wp_json_encode( $payload );
 		if ( ! is_string( $json ) ) return '';
 		$body = rtrim( strtr( base64_encode( $json ), '+/', '-_' ), '=' );
@@ -31,6 +36,11 @@ final class MAD4B_SCP_Preparation_Receipt {
 		return strlen( $token ) <= self::MAX_BYTES ? $token : '';
 	}
 	public static function verify( $token, $name ) {
+		$claims = self::claims( $token, $name );
+		return is_wp_error( $claims ) ? $claims : true;
+	}
+
+	public static function claims( $token, $name ) {
 		if ( ! is_string( $token ) || strlen( $token ) > self::MAX_BYTES || 1 !== preg_match( '/^([A-Za-z0-9_-]+)\.([a-f0-9]{64})$/D', $token, $parts ) ) return self::failure();
 		if ( ! hash_equals( hash_hmac( 'sha256', $parts[1], self::key() ), $parts[2] ) ) return self::failure();
 		$json = base64_decode( strtr( $parts[1], '-_', '+/' ), true );
@@ -40,9 +50,17 @@ final class MAD4B_SCP_Preparation_Receipt {
 		if ( is_wp_error( $issued_time ) || ! is_array( $p ) || ( $p['contract'] ?? '' ) !== self::CONTRACT || ( $p['ability_name'] ?? '' ) !== $name || ! isset( $p['nonce'] ) || ! is_string( $p['nonce'] ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $p['nonce'] ) || ! isset( $p['issued_at'], $p['expires_at'] ) || ! is_int( $p['issued_at'] ) || ! is_int( $p['expires_at'] ) || $p['issued_at'] > $now || $p['expires_at'] <= $now || $p['expires_at'] - $p['issued_at'] !== self::ttl() ) return self::failure();
 		foreach ( array( 'descriptor_sha256', 'authority_scope_sha256' ) as $key ) if ( ! isset( $p[$key] ) || ! is_string( $p[$key] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $p[$key] ) ) return self::failure();
 		if ( ! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $p['authority_scope_sha256'] ) ) return self::failure();
+		if ( class_exists( 'MAD4B_SCP_Replay_Policy' ) ) {
+			$current_replay_policy_sha256 = MAD4B_SCP_Replay_Policy::policy_sha256();
+			if ( '' === $current_replay_policy_sha256
+				|| empty( $p['replay_policy_sha256'] )
+				|| ! is_string( $p['replay_policy_sha256'] )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $p['replay_policy_sha256'] )
+				|| ! hash_equals( $current_replay_policy_sha256, $p['replay_policy_sha256'] ) ) return self::failure();
+		}
 		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $name );
 		if ( is_wp_error( $row ) || empty( $row['execution_eligible'] ) || ! hash_equals( $row['descriptor_sha256'], $p['descriptor_sha256'] ) ) return self::failure();
-		return true;
+		return $p;
 	}
 
 	private static function now_epoch(){return class_exists('MAD4B_SCP_Time_Policy')?MAD4B_SCP_Time_Policy::now_epoch():time();}

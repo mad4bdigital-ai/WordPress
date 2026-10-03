@@ -78,6 +78,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'preparation_receipt' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 4096 ),
+				'idempotency_key' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
 				'_mad4b_approval_ticket_id' => array( 'type' => 'string', 'pattern' => MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN ),
 				'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
@@ -938,6 +939,41 @@ final class MAD4B_SCP_Abilities {
 			if ( is_wp_error( $planner_preflight ) ) return $this->approval_plan_dispatch_preflight_failure( $planner_preflight );
 		}
 
+		if ( ! class_exists( 'MAD4B_SCP_Replay_Policy' ) ) {
+			return new WP_Error( 'mad4b_replay_policy_unavailable', 'Preparation replay policy is unavailable.' );
+		}
+		$replay_provider = class_exists( 'MAD4B_SCP_Servers' )
+			? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability_name )
+			: null;
+		if ( ! is_string( $replay_provider ) || '' === $replay_provider ) {
+			return new WP_Error( 'mad4b_replay_provider_unavailable', 'Canonical provider identity is unavailable for replay classification.' );
+		}
+		$replay_idempotency_key = isset( $input['idempotency_key'] ) && is_string( $input['idempotency_key'] )
+			? trim( $input['idempotency_key'] )
+			: ( is_array( $params ) && isset( $params['idempotency_key'] ) && is_string( $params['idempotency_key'] ) ? trim( $params['idempotency_key'] ) : '' );
+		$replay_admission = MAD4B_SCP_Replay_Policy::begin(
+			(string) $input['preparation_receipt'],
+			$ability_name,
+			$replay_provider,
+			$params,
+			$replay_idempotency_key
+		);
+		if ( is_wp_error( $replay_admission ) ) return $replay_admission;
+		if ( ! empty( $replay_admission['replayed'] ) ) {
+			$recorded = isset( $replay_admission['dispatch_result'] ) ? $replay_admission['dispatch_result'] : null;
+			if ( is_array( $recorded ) ) {
+				$recorded['replay'] = array(
+					'contract'=>MAD4B_SCP_Replay_Policy::CONTRACT,
+					'replayed'=>true,
+					'mode'=>(string)$replay_admission['mode'],
+					'risk_tier'=>(string)$replay_admission['risk_tier'],
+					'policy_sha256'=>(string)$replay_admission['policy_sha256'],
+					'authorizing'=>false,
+				);
+			}
+			return $recorded;
+		}
+
 		$target_entered = false;
 		if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'begin_execution_callback_observation' ) ) {
 			MAD4B_SCP_Authorization::begin_execution_callback_observation( $ability_name );
@@ -1056,7 +1092,7 @@ final class MAD4B_SCP_Abilities {
 				return $execution;
 			}
 		}
-		return array(
+		$dispatch_result = array(
 			'contract' => 'mad4b.chatgpt-write-execute.v1',
 			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
 			'ability_name' => $ability_name,
@@ -1066,7 +1102,18 @@ final class MAD4B_SCP_Abilities {
 			'attempts' => 1,
 			'elapsed_ms' => isset( $execution['elapsed_ms'] ) ? (int) $execution['elapsed_ms'] : 0,
 			'automatic_retry_performed' => false,
+			'replay' => array(
+				'contract'=>MAD4B_SCP_Replay_Policy::CONTRACT,
+				'replayed'=>false,
+				'mode'=>(string)$replay_admission['mode'],
+				'risk_tier'=>(string)$replay_admission['risk_tier'],
+				'policy_sha256'=>(string)$replay_admission['policy_sha256'],
+				'authorizing'=>false,
+			),
 		);
+		$replay_completion = MAD4B_SCP_Replay_Policy::complete( $replay_admission, $dispatch_result );
+		if ( is_wp_error( $replay_completion ) ) return $replay_completion;
+		return $dispatch_result;
 	}
 
 	private function governed_enrollment_target( $ability_name ) {
