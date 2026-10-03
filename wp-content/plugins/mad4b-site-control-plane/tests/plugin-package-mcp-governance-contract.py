@@ -67,7 +67,6 @@ for marker in [
     "remote_request_performed",
     "certified_upstream_release",
     "certified_upstream_url_allowed",
-    "https://github.com/WordPress/mcp-adapter/releases/download/v",
     "MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress",
     "MAD4B_SCP_Runtime_Release_Set::active_component_target_version",
     "authority_created' => false",
