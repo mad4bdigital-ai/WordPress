@@ -482,14 +482,37 @@ try {
 	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
 	if ( ! empty( $isolated['ready'] ) || 'mcp_required_tool_preflight_failed' !== $isolated['blocker'] ) $fail( 'Required preflight failure must not degrade.', $isolated );
 } finally { $ability_description->setValue( $required_ability, $original_description ); }
-// Inject malformed UTF-8 into a real official Tool DTO at the last filter seam.
-// The production filter must remove only the known optional projection and preserve prior role reductions.
-$bad_projection = static function ( $list, $server ) {
+// Inject malformed UTF-8 at the last list-filter seam using the exact object
+// type supplied by each Adapter generation. 0.6.x exposes DTOs; 0.7.x exposes
+// immutable generated Records. This fixture mutates only a clone and never
+// touches the registered runtime tool.
+$corrupt_tool_description = static function ( $wire ) {
+	$copy = clone $wire;
+	if ( $copy instanceof \\WP\\McpSchema\\Record\\Tool ) {
+		$values = new ReflectionProperty( 'WP\\McpSchema\\Record', 'values' );
+		$values->setAccessible( true );
+		$data = $values->getValue( $copy );
+		if ( ! is_array( $data ) ) throw new RuntimeException( 'Generated Tool record values are unavailable.' );
+		$data['description'] = "\xB1\x31";
+		$values->setValue( $copy, $data );
+		return $copy;
+	}
+	if ( $copy instanceof \\WP\\McpSchema\\Server\\Tools\\DTO\\Tool ) {
+		$description = new ReflectionProperty( 'WP\\McpSchema\\Server\\Tools\\DTO\\Tool', 'description' );
+		$description->setAccessible( true );
+		$description->setValue( $copy, "\xB1\x31" );
+		return $copy;
+	}
+	throw new RuntimeException( 'Unknown MCP tool list projection type: ' . get_class( $copy ) );
+};
+
+// The production filter must remove only the known optional projection and
+// preserve prior role reductions.
+$bad_projection = static function ( $list, $server ) use ( $corrupt_tool_description ) {
 	if ( 'mad4b-chatgpt' !== $server->get_server_id() ) return $list;
 	foreach ( $list as $key => $dto ) {
 		if ( 'mad4b-full-staging-authority-apply' !== $dto->getName() ) continue;
-		$copy = clone $dto; $description = new ReflectionProperty( 'WP\\McpSchema\\Server\\Tools\\DTO\\Tool', 'description' ); $description->setAccessible( true ); $description->setValue( $copy, "\xB1\x31" );
-		$list[$key] = $copy;
+		$list[$key] = $corrupt_tool_description( $dto );
 	}
 	return $list;
 };
@@ -500,9 +523,11 @@ $degraded_wire = json_decode( json_encode( $degraded->get_data(), JSON_THROW_ON_
 $degraded_names = array_column( $degraded_wire['result']['tools'] ?? array(), 'name' );
 if ( 200 !== $degraded->get_status() || count( $degraded_names ) !== count( $catalog_names ) - 1 || in_array( 'mad4b-full-staging-authority-apply', $degraded_names, true ) || ! in_array( 'mad4b-read-execute', $degraded_names, true ) ) $fail( 'Optional malformed DTO must degrade without losing stable read discovery.', array( 'http_status' => $degraded->get_status(), 'actual_count' => count( $degraded_names ), 'expected_count' => count( $catalog_names ) - 1, 'optional_present' => in_array( 'mad4b-full-staging-authority-apply', $degraded_names, true ), 'read_present' => in_array( 'mad4b-read-execute', $degraded_names, true ), 'rpc_error_code' => $degraded_wire['error']['code'] ?? null, 'verified' => MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active(), 'filter_registered' => false !== has_filter( 'mcp_adapter_tools_list', array( 'MAD4B_SCP_MCP_Catalog_Diagnostics', 'filter_serializable_tools' ) ) ) );
 // Failure in a required core read must stay fail-closed rather than masquerading as a ready subset.
-$bad_core = static function ( $list, $server ) {
+$bad_core = static function ( $list, $server ) use ( $corrupt_tool_description ) {
 	if ( 'mad4b-chatgpt' !== $server->get_server_id() ) return $list;
-	foreach ( $list as $key => $dto ) if ( 'mad4b-site-info' === $dto->getName() ) { $copy = clone $dto; $description = new ReflectionProperty( 'WP\\McpSchema\\Server\\Tools\\DTO\\Tool', 'description' ); $description->setAccessible( true ); $description->setValue( $copy, "\xB1\x31" ); $list[$key] = $copy; }
+	foreach ( $list as $key => $dto ) {
+		if ( 'mad4b-site-info' === $dto->getName() ) $list[$key] = $corrupt_tool_description( $dto );
+	}
 	return $list;
 };
 add_filter( 'mcp_adapter_tools_list', $bad_core, 999, 2 );
