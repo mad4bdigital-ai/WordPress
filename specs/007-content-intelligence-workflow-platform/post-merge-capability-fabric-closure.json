@@ -164,7 +164,7 @@
     },
     {
       "id": "projection_mcp_evolution",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3730",
         "T3731",
@@ -182,7 +182,20 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Fixed dispatch remains correctness path; stale/unknown projection/protocol state cannot widen authority.",
-      "evidence_strategy": "Client/protocol compatibility, stale projection, refresh and mixed-generation transport fixtures."
+      "evidence_strategy": "Exact site-global projection isolation/CAS, telemetry-only recommendations, certified protocol negotiation/refresh, stale-client removal and fixed-dispatch independence are runtime-certified; successor protocol migration remains separately gated.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "remainder": [
+        "T3734 remains PARTIAL because the exact successor MCP Adapter package is not certified. Once a successor is certified, run the required dual-protocol regression across tool schemas, pagination/chunk transport, refresh semantics, notifications and error normalization before promoting the workstream to DONE."
+      ]
     },
     {
       "id": "provider_resilience_wp_lifecycle",

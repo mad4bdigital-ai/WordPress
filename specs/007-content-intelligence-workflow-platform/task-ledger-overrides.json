@@ -1450,6 +1450,63 @@
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
       ],
       "reason": "Fresh-process setup/parallel workers/reconstruction fixtures model a mid-fan-out crash boundary and prove only pending sites are resume candidates while committed mutations are never replayed; exact-head certified database matrix remains pending."
+    },
+    "T3730": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php"
+      ],
+      "reason": "Direct hot-set isolation is explicitly site-global, session_scoped_hot_set=false, contention is optimistic_cas_single_winner with reject-and-replan stale writers, and exact runtime tests prove fixed-dispatch correctness remains independent under another-session replacement."
+    },
+    "T3731": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php"
+      ],
+      "reason": "Telemetry-driven hot-set recommendations use bounded quota/window/candidate budgets, are read-only and non-authorizing, never auto-apply, and runtime evidence proves privileged, mutating and Breakglass abilities remain excluded even when their observed usage is higher."
+    },
+    "T3732": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "reason": "Certified protocol profiles define exact projection-revision tracking and pull refresh semantics: fresh clients do nothing, stale clients refresh tools/list, cached stale clients reconnect then tools/list, listChanged remains false and no push notification is invented."
+    },
+    "T3733": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py"
+      ],
+      "reason": "Protocol negotiation is bound to the exact packaged Adapter and certified protocol revisions; unknown/newer versions and unknown/malformed feature claims fail closed without fallback negotiation or authority effects."
+    },
+    "T3734": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "specs/007-content-intelligence-workflow-platform/contracts/mcp-protocol-evolution.md"
+      ],
+      "reason": "The current Adapter v0.6.1 is regression-tested across all three certified protocol revisions and the successor gate is fail-closed, but the catalog truthfully records successor_certification_state=not_certified. The required successor-Adapter dual-protocol matrix cannot be claimed DONE until an exact successor package is certified."
+    },
+    "T3735": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-dynamic-tool-projection-contract.py",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "reason": "Runtime evidence proves exact database CAS admits one projection writer and rejects the stale loser, cached removed hot-set tools fail closed, schema/classification/callback drift deactivates direct projection, and the same Ability remains correct through fixed dispatch independent of visibility."
     }
   }
 }

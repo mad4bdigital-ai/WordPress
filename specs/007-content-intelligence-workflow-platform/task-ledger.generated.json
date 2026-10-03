@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "267a59754c7d0061f25bc1e4c461cc2a9ec9f4fc",
-  "override_git_blob_sha": "0cee65271c86860997825079e7bec5f6a45e5275",
+  "source_tasks_git_blob_sha": "405831208c6b473480b3766e6804c943d8bd0b84",
+  "override_git_blob_sha": "95ecb78a86243d1f8a010b3b3ef804c358883cb7",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,9 +10,9 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 83,
-    "OPEN": 596,
-    "PARTIAL": 76
+    "DONE": 88,
+    "OPEN": 590,
+    "PARTIAL": 77
   },
   "counts_by_priority": {
     "P0": {
@@ -23,14 +23,14 @@
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 9,
-      "OPEN": 110,
-      "PARTIAL": 27
+      "DONE": 13,
+      "OPEN": 105,
+      "PARTIAL": 28
     },
     "P2": {
       "DEFERRED": 2,
-      "DONE": 1,
-      "OPEN": 22,
+      "DONE": 2,
+      "OPEN": 21,
       "PARTIAL": 1
     }
   },
@@ -7390,60 +7390,87 @@
       "phase": 37,
       "priority": "P1",
       "summary": "Decide and codify direct hot-set isolation semantics (site-global versus client/session scoped), including contention behavior and explicit statement that fixed dispatch correctness is independent.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php"
+      ],
+      "reason": "Direct hot-set isolation is explicitly site-global, session_scoped_hot_set=false, contention is optimistic_cas_single_winner with reject-and-replan stale writers, and exact runtime tests prove fixed-dispatch correctness remains independent under another-session replacement."
     },
     {
       "task_id": "T3731",
       "phase": 37,
       "priority": "P2",
       "summary": "Add telemetry-driven adaptive hot-set recommendations with bounded quotas; recommendation/ranking can never grant authority or auto-project privileged capabilities.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php"
+      ],
+      "reason": "Telemetry-driven hot-set recommendations use bounded quota/window/candidate budgets, are read-only and non-authorizing, never auto-apply, and runtime evidence proves privileged, mutating and Breakglass abilities remain excluded even when their observed usage is higher."
     },
     {
       "task_id": "T3732",
       "phase": 37,
       "priority": "P1",
       "summary": "Define exact tools/list refresh/reconnect/listChanged behavior per certified MCP client/protocol profile, including stale projection detection.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "reason": "Certified protocol profiles define exact projection-revision tracking and pull refresh semantics: fresh clients do nothing, stale clients refresh tools/list, cached stale clients reconnect then tools/list, listChanged remains false and no push notification is invented."
     },
     {
       "task_id": "T3733",
       "phase": 37,
       "priority": "P1",
       "summary": "Add exact protocol capability negotiation and fail-closed behavior for unknown/newer protocol features rather than opportunistic assumptions.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py"
+      ],
+      "reason": "Protocol negotiation is bound to the exact packaged Adapter and certified protocol revisions; unknown/newer versions and unknown/malformed feature claims fail closed without fallback negotiation or authority effects."
     },
     {
       "task_id": "T3734",
       "phase": 37,
       "priority": "P1",
       "summary": "Add dual-protocol regression for tool schemas, pagination/chunk transport, refresh semantics, notifications and error normalization when a successor Adapter is certified.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "specs/007-content-intelligence-workflow-platform/contracts/mcp-protocol-evolution.md"
+      ],
+      "reason": "The current Adapter v0.6.1 is regression-tested across all three certified protocol revisions and the successor gate is fail-closed, but the catalog truthfully records successor_certification_state=not_certified. The required successor-Adapter dual-protocol matrix cannot be claimed DONE until an exact successor package is certified."
     },
     {
       "task_id": "T3735",
       "phase": 37,
       "priority": "P1",
       "summary": "GATE Concurrent projection changes or stale clients cannot alter fixed-dispatch schema/lane/classification/authority validation or execute a removed hot-set item by visibility alone.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-dynamic-tool-projection-contract.py",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "reason": "Runtime evidence proves exact database CAS admits one projection writer and rejects the stale loser, cached removed hot-set tools fail closed, schema/classification/callback drift deactivates direct projection, and the same Ability remains correct through fixed dispatch independent of visibility."
     },
     {
       "task_id": "T3736",

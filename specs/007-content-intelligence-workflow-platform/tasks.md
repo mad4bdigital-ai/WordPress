@@ -782,12 +782,12 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3729 P0 GATE Crash mid-fan-out and reconnect/resume must reconstruct exact completed/pending/reconciling site sets from durable evidence without replaying committed mutations.
 
 ### 37F — Projection isolation and MCP protocol evolution
-- [ ] T3730 P1 Decide and codify direct hot-set isolation semantics (site-global versus client/session scoped), including contention behavior and explicit statement that fixed dispatch correctness is independent.
-- [ ] T3731 P2 Add telemetry-driven adaptive hot-set recommendations with bounded quotas; recommendation/ranking can never grant authority or auto-project privileged capabilities.
-- [ ] T3732 P1 Define exact tools/list refresh/reconnect/listChanged behavior per certified MCP client/protocol profile, including stale projection detection.
-- [ ] T3733 P1 Add exact protocol capability negotiation and fail-closed behavior for unknown/newer protocol features rather than opportunistic assumptions.
+- [x] T3730 P1 Decide and codify direct hot-set isolation semantics (site-global versus client/session scoped), including contention behavior and explicit statement that fixed dispatch correctness is independent.
+- [x] T3731 P2 Add telemetry-driven adaptive hot-set recommendations with bounded quotas; recommendation/ranking can never grant authority or auto-project privileged capabilities.
+- [x] T3732 P1 Define exact tools/list refresh/reconnect/listChanged behavior per certified MCP client/protocol profile, including stale projection detection.
+- [x] T3733 P1 Add exact protocol capability negotiation and fail-closed behavior for unknown/newer protocol features rather than opportunistic assumptions.
 - [ ] T3734 P1 Add dual-protocol regression for tool schemas, pagination/chunk transport, refresh semantics, notifications and error normalization when a successor Adapter is certified.
-- [ ] T3735 P1 GATE Concurrent projection changes or stale clients cannot alter fixed-dispatch schema/lane/classification/authority validation or execute a removed hot-set item by visibility alone.
+- [x] T3735 P1 GATE Concurrent projection changes or stale clients cannot alter fixed-dispatch schema/lane/classification/authority validation or execute a removed hot-set item by visibility alone.
 
 ### 37G — Durable provider resilience and WordPress lifecycle
 - [ ] T3736 P0 Implement a durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN states, bounded timers and persisted transition evidence.
