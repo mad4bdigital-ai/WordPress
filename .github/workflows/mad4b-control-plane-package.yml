@@ -12,6 +12,7 @@ on:
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/mad4b-runtime-release-set.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
   push:
     branches:
@@ -26,6 +27,7 @@ on:
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/mad4b-runtime-release-set.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
   workflow_dispatch:
 
@@ -99,6 +101,7 @@ jobs:
               '.github/workflows/mad4b-control-plane-package.yml',
               '.github/workflows/mad4b-live-acceptance-evidence.yml',
               '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/mad4b-runtime-release-set.yml',
               '.github/workflows/feature-007-critical-kernel.yml',
           }
           for trigger in ('pull_request', 'push'):
@@ -241,14 +244,45 @@ jobs:
           )
           PY
 
-      - name: Verify certified MCP Adapter asset
+      - name: Resolve and verify certified MCP Adapter release
         shell: bash
         run: |
           set -euo pipefail
-          expected='1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
-          echo "$expected  wp-content/plugins/mcp-adapter.zip" | sha256sum --check --strict
-          test "$(stat -c '%s' wp-content/plugins/mcp-adapter.zip)" = '455463'
-          unzip -tqq wp-content/plugins/mcp-adapter.zip
+          eval "$(python3 - <<'PY'
+          import json, shlex
+          from pathlib import Path
+          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
+          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
+          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
+          if policy.get('contract')!='mad4b.runtime-release-policy.v1':
+              raise SystemExit('runtime release policy contract mismatch')
+          version=str(policy.get('target_adapter_version') or '')
+          profile=((profiles.get('providers') or {}).get('mcp_adapter') or {}).get(version) or {}
+          if profile.get('version')!=version:
+              raise SystemExit('target MCP Adapter profile missing')
+          sha=str(profile.get('archive_sha256') or '').lower()
+          size=int(profile.get('archive_bytes') or 0)
+          url=str(profile.get('package_url') or '')
+          archive=str(profile.get('archive') or f'mcp-adapter-{version}.zip')
+          if len(sha)!=64 or size<1 or not url.startswith('https://github.com/WordPress/mcp-adapter/releases/download/v'):
+              raise SystemExit('target MCP Adapter profile identity invalid')
+          values={'MCP_ADAPTER_VERSION':version,'MCP_ADAPTER_SHA':sha,'MCP_ADAPTER_BYTES':str(size),'MCP_ADAPTER_URL':url,'MCP_ADAPTER_ARCHIVE':archive,'MCP_ADAPTER_STAGE_PATH':'/tmp/mad4b-certified-mcp-adapter.zip'}
+          for key,value in values.items():
+              print(f'{key}={shlex.quote(value)}')
+          PY
+          )"
+          {
+            echo "MCP_ADAPTER_VERSION=$MCP_ADAPTER_VERSION"
+            echo "MCP_ADAPTER_SHA=$MCP_ADAPTER_SHA"
+            echo "MCP_ADAPTER_BYTES=$MCP_ADAPTER_BYTES"
+            echo "MCP_ADAPTER_URL=$MCP_ADAPTER_URL"
+            echo "MCP_ADAPTER_ARCHIVE=$MCP_ADAPTER_ARCHIVE"
+            echo "MCP_ADAPTER_STAGE_PATH=$MCP_ADAPTER_STAGE_PATH"
+          } >> "$GITHUB_ENV"
+          curl --fail --location --silent --show-error "$MCP_ADAPTER_URL" --output "$MCP_ADAPTER_STAGE_PATH"
+          test "$(stat -c '%s' "$MCP_ADAPTER_STAGE_PATH")" = "$MCP_ADAPTER_BYTES"
+          echo "$MCP_ADAPTER_SHA  $MCP_ADAPTER_STAGE_PATH" | sha256sum --check --strict
+          unzip -tqq "$MCP_ADAPTER_STAGE_PATH"
 
       - name: Generate exact functional-gap repository evidence
         shell: bash
@@ -374,19 +408,19 @@ jobs:
           mkdir -p "$stage/package/mad4b-site-control-plane"
           cp -a "$plugin"/. "$stage/package/mad4b-site-control-plane/"
           rm -rf "$stage/package/mad4b-site-control-plane/tests"
-          cp wp-content/plugins/mcp-adapter.zip "$stage/mcp-adapter-0.6.1.zip"
+          cp "$MCP_ADAPTER_STAGE_PATH" "$stage/mcp-adapter-$MCP_ADAPTER_VERSION.zip"
 
           export MAD4B_CONTROL_VERSION="$version"
           export MAD4B_CONTROL_STAGE="$stage/package/mad4b-site-control-plane"
-          export MAD4B_ADAPTER_SHA="$(sha256sum "$stage/mcp-adapter-0.6.1.zip" | awk '{print $1}')"
-          test "$MAD4B_ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+          export MAD4B_ADAPTER_SHA="$(sha256sum "$stage/mcp-adapter-$MCP_ADAPTER_VERSION.zip" | awk '{print $1}')"
+          test "$MAD4B_ADAPTER_SHA" = "$MCP_ADAPTER_SHA"
 
           python3 wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py \
             --root "$MAD4B_CONTROL_STAGE" \
             --output-zip "$stage/mad4b-site-control-plane-${version}.zip" \
             --version "$version" \
             --source-sha "$SOURCE_SHA" \
-            --adapter-version "0.6.1" \
+            --adapter-version "$MCP_ADAPTER_VERSION" \
             --adapter-sha "$MAD4B_ADAPTER_SHA" \
             --provenance-output "$stage/MAD4B-BUILD-PROVENANCE.json" \
             --build-fingerprint-output "$stage/BUILD-FINGERPRINT.txt" \
@@ -451,7 +485,7 @@ jobs:
                   {
                       'type': 'library',
                       'name': 'wordpress-mcp-adapter',
-                      'version': '0.6.1',
+                      'version': os.environ['MCP_ADAPTER_VERSION'],
                       'hashes': [{'alg': 'SHA-256', 'content': os.environ['ADAPTER_SHA']}],
                   }
               ],
@@ -462,7 +496,7 @@ jobs:
           export SBOM_SHA="$sbom_sha"
 
           printf '%s  %s\n' "$control_sha" "mad4b-site-control-plane-${version}.zip" > "$stage/SHA256SUMS"
-          printf '%s  %s\n' "$adapter_sha" 'mcp-adapter-0.6.1.zip' >> "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$adapter_sha" "mcp-adapter-$MCP_ADAPTER_VERSION.zip" >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$sbom_sha" 'MAD4B-SBOM.cdx.json' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/MAD4B-BUILD-PROVENANCE.json" | awk '{print $1}')" 'MAD4B-BUILD-PROVENANCE.json' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/BUILD-FINGERPRINT.txt" | awk '{print $1}')" 'BUILD-FINGERPRINT.txt' >> "$stage/SHA256SUMS"
@@ -546,10 +580,13 @@ jobs:
                   'package_file_count_semantics': receipt.get('package_file_count_semantics', ''),
               },
               'mcp_adapter': {
-                  'version': '0.6.1',
-                  'archive': 'mcp-adapter-0.6.1.zip',
+                  'version': os.environ['MCP_ADAPTER_VERSION'],
+                  'archive': f"mcp-adapter-{os.environ['MCP_ADAPTER_VERSION']}.zip",
                   'sha256': os.environ['ADAPTER_SHA'],
-                  'official_release_sha256': '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676',
+                  'official_release_sha256': os.environ['MCP_ADAPTER_SHA'],
+                  'archive_bytes': int(os.environ['MCP_ADAPTER_BYTES']),
+                  'package_url': os.environ['MCP_ADAPTER_URL'],
+                  'pair_certification_required': True,
               },
               'supply_chain': {
                   'sbom_format': 'CycloneDX-1.5',
@@ -567,7 +604,7 @@ jobs:
                   'promotion_authorized': False,
                   'runtime_shell_required': False,
               },
-              'install_order': ['mcp-adapter-0.6.1.zip', f'mad4b-site-control-plane-{version}.zip'],
+              'install_order': [f"mcp-adapter-{os.environ['MCP_ADAPTER_VERSION']}.zip", f'mad4b-site-control-plane-{version}.zip'],
               'reviewed_invariants': {
                   'exact_source_bound': True,
                   'runtime_provenance_bound': True,
@@ -629,7 +666,7 @@ jobs:
           cat > "$stage/INSTALL-GENERAL-DISTRIBUTION.md" <<'EOF'
           # MAD4B Site Control Plane — General Distribution installation kit
 
-          1. Install and activate the exact `mcp-adapter-0.6.1.zip` first.
+          1. Install and activate the exact certified `mcp-adapter-<version>.zip` included in this kit first, or use the governed Runtime Release Set updater on an enrolled Staging site.
           2. Install and activate the provenance-bound MAD4B Site Control Plane ZIP. Fresh installation is deliberately zero-authority: installation does not enroll a tenant, enable OAuth, enable Skills, grant write authority, or enable Production write.
           3. Read `mad4b/build-provenance-status` and require `manifest_present=true`, `manifest_valid=true`, `runtime_manifest_match=true`, and `stale=false`.
           4. Explicitly enroll the current WordPress site through Site Profile v2. The enrolled canonical origin and environment must match the live site. Public package presets are empty.
@@ -803,8 +840,9 @@ jobs:
           digest = hashlib.sha256(b''.join(sorted(lines))).hexdigest()
           if digest != p.get('package_manifest_digest'):
               raise SystemExit('provenance package manifest digest mismatch')
-          adapter_sha = hashlib.sha256((stage / 'mcp-adapter-0.6.1.zip').read_bytes()).hexdigest()
-          payload = f"mad4b.build-fingerprint.v1\n{p['control_plane_version']}\n{p['source_commit_sha']}\n{digest}\n0.6.1\n{adapter_sha}\n".encode()
+          adapter_file = stage / f"mcp-adapter-{os.environ['MCP_ADAPTER_VERSION']}.zip"
+          adapter_sha = hashlib.sha256(adapter_file.read_bytes()).hexdigest()
+          payload = f"mad4b.build-fingerprint.v1\n{p['control_plane_version']}\n{p['source_commit_sha']}\n{digest}\n{os.environ['MCP_ADAPTER_VERSION']}\n{adapter_sha}\n".encode()
           fingerprint = hashlib.sha256(payload).hexdigest()
           if fingerprint != p.get('build_fingerprint'):
               raise SystemExit('provenance build fingerprint mismatch')
@@ -872,7 +910,7 @@ jobs:
         with:
           subject-path: |
             /tmp/mad4b-install-kit/mad4b-site-control-plane-*.zip
-            /tmp/mad4b-install-kit/mcp-adapter-0.6.1.zip
+            /tmp/mad4b-install-kit/mcp-adapter-*.zip
             /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
             /tmp/mad4b-install-kit/install-manifest.json
             /tmp/mad4b-install-kit/SHA256SUMS
@@ -989,7 +1027,7 @@ jobs:
           name: mad4b-site-control-plane-general-distribution-kit-${{ env.SOURCE_SHA }}
           path: |
             /tmp/mad4b-install-kit/mad4b-site-control-plane-*.zip
-            /tmp/mad4b-install-kit/mcp-adapter-0.6.1.zip
+            /tmp/mad4b-install-kit/mcp-adapter-*.zip
             /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
             /tmp/mad4b-install-kit/BUILD-FINGERPRINT.txt
             /tmp/mad4b-install-kit/PACKAGE-MANIFEST-DIGEST.txt
@@ -1052,7 +1090,7 @@ jobs:
               'distribution_artifact_sha256':sys.argv[3],
               'control_plane_archive':sys.argv[4],
               'control_plane_archive_sha256':hashlib.sha256((stage/sys.argv[4]).read_bytes()).hexdigest(),
-              'mcp_adapter_sha256':hashlib.sha256((stage/'mcp-adapter-0.6.1.zip').read_bytes()).hexdigest(),
+              'mcp_adapter_sha256':hashlib.sha256((stage/f"mcp-adapter-{os.environ['MCP_ADAPTER_VERSION']}.zip").read_bytes()).hexdigest(),
               'sbom_sha256':hashlib.sha256((stage/'MAD4B-SBOM.cdx.json').read_bytes()).hexdigest(),
               'build_fingerprint':(stage/'BUILD-FINGERPRINT.txt').read_text().strip(),
               'package_manifest_digest':(stage/'PACKAGE-MANIFEST-DIGEST.txt').read_text().strip(),
