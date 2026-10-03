@@ -145,10 +145,16 @@ final class MAD4B_SCP_Authorization {
 		return new WP_Error( 'mad4b_target_fingerprint_invalid_value', 'Mutation target input contains an unsupported value type.' );
 	}
 
+	public static function probe_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
+		$result = self::authorize_mutation_impl( $ability_name, $server_id, $provider, $input );
+		return class_exists( 'MAD4B_SCP_Authorization_Decision_Graph' )
+			? MAD4B_SCP_Authorization_Decision_Graph::decorate( $result, $ability_name, $server_id, $provider )
+			: $result;
+	}
+
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		$call = static function() use ( $ability_name, $server_id, $provider, $input ) {
-			$result = self::authorize_mutation_impl( $ability_name, $server_id, $provider, $input );
-			return MAD4B_SCP_Authorization_Decision_Graph::decorate( $result, $ability_name, $server_id, $provider );
+			return self::probe_mutation( $ability_name, $server_id, $provider, $input );
 		};
 		return class_exists( 'MAD4B_SCP_Observability' )
 			? MAD4B_SCP_Observability::run_stage( 'authorization', $call, '', array(

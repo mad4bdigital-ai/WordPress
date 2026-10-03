@@ -150,6 +150,14 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/projection-hotset-recommender-contract.py
 
+      - name: Impact approvals receipts and semantic routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py
+
+
 
       - name: WordPress Plugin Check (generic distribution hygiene)
         uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
