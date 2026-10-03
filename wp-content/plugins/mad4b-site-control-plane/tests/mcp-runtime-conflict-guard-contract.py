@@ -40,6 +40,8 @@ for marker in (
     "'mixed_runtime_class_set'",
     "'mcp_adapter_class_provenance_mismatch'",
     "MAD4B_SCP_MCP_Class_Provenance::status( false, false )",
+    "if ( ! empty( $status['runtime_from_official_plugin'] ) || $preventive ) {",
+    'competing vendor may',
     'ensure_mu_bootstrap()',
     "hash_file( 'sha256'",
     'hash_equals(',
@@ -56,6 +58,8 @@ for marker in (
     require(guard, marker, 'conflict-guard')
 if "realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' )" in guard:
     raise SystemExit('FAIL conflict-guard: renamed MCP directories regressed to a hardcoded root')
+if "( $preventive && empty( $status['runtime_class_loaded'] ) )" in guard:
+    raise SystemExit('FAIL conflict-guard: governed recovery must not be limited by the current competing runtime source')
 
 for forbidden in (
     'deactivate_plugins(', 'activate_plugin(', 'delete_plugins(', 'wp_remote_get(',
