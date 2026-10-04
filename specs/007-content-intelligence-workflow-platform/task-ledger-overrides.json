@@ -2189,8 +2189,8 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
-        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
-        "workflow_run:37242306513"
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
       ],
       "reason": "Canonical Search Runtime Fact, Search Profile and Effective Search Context v1 contracts are implemented with deterministic fingerprints and non-authorizing semantics."
     },
@@ -2199,8 +2199,8 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
-        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
-        "workflow_run:37242306513"
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
       ],
       "reason": "Search Profile uses separate storage and implements revision-bound exact-plan plan/apply/verify; site identity is immutable and no Site Profile or Production authority is granted."
     },
@@ -2209,8 +2209,8 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
-        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
-        "workflow_run:37242306513"
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
       ],
       "reason": "Brand, market, language, surface, experiment and request-safe overlays compose through deterministic precedence with stable output fingerprints."
     },
@@ -2219,8 +2219,8 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
-        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
-        "workflow_run:37242306513"
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
       ],
       "reason": "Runtime and tests deny protected authority, Production, Breakglass, egress, secret and WordPress-mutation fields in business overlays while governance constraints remain external and constraining."
     },
@@ -2229,8 +2229,8 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
-        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
-        "workflow_run:37242306513"
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
       ],
       "reason": "Dependency fingerprints cover PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA and emit minimal projection invalidation while preserving historical evidence."
     },
@@ -2239,8 +2239,8 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
-        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
-        "workflow_run:37242306513"
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
       ],
       "reason": "Effective context emits deterministic reason chains and a read-only non-authorizing status projection."
     }
