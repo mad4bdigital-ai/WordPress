@@ -15,6 +15,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 	const MAX_HELPER_BYTES = 65536;
 	const MARKER_META = '_mad4b_content_experience_profile';
 	const REVISION_META = '_mad4b_content_experience_revision';
+	const AUTHORITY_META = '_mad4b_content_experience_authority';
 	const CREATION_BINDING_META = '_mad4b_content_experience_creation_binding';
 
 	private static function helper_adapter( $helper_id ) {
@@ -550,6 +551,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( 'publish' !== $operation ) {
 				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
 				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
+				update_post_meta( $post_id, self::AUTHORITY_META, (string) $profile['authority_sha256'] );
 				$mutated = true;
 			}
 			$meta_result = self::apply_meta( $post_id, $normalized['meta'] );
@@ -565,6 +567,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( 'publish' === $operation ) {
 				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
 				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
+				update_post_meta( $post_id, self::AUTHORITY_META, (string) $profile['authority_sha256'] );
 				$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] ), true );
 				if ( is_wp_error( $result ) ) return self::compensated_error( $result, $before );
 			}
@@ -614,7 +617,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				'value' => get_post_meta( $post_id, $key, true ),
 			);
 		}
-		foreach ( array( self::MARKER_META, self::REVISION_META, self::CREATION_BINDING_META ) as $key ) {
+		foreach ( array( self::MARKER_META, self::REVISION_META, self::AUTHORITY_META, self::CREATION_BINDING_META ) as $key ) {
 			$meta[ $key ] = array(
 				'exists' => metadata_exists( 'post', $post_id, $key ),
 				'value' => get_post_meta( $post_id, $key, true ),
@@ -755,8 +758,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 	}
 
 	public static function restore_reversible_state( array $target, array $state ) {
-		$slug = isset( $target['slug'] ) ? (string) $target['slug'] : '';
-		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+		$profile = self::profile_from_target( $target );
 		if ( is_wp_error( $profile ) ) return $profile;
 		$operation = isset( $target['operation'] ) ? sanitize_key( (string) $target['operation'] ) : '';
 		if ( 'create' === $operation ) {
@@ -797,6 +799,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		}
 		$marker = (string) get_post_meta( $post_id, self::MARKER_META, true );
 		$revision = (int) get_post_meta( $post_id, self::REVISION_META, true );
+		$stored_authority = (string) get_post_meta( $post_id, self::AUTHORITY_META, true );
 		$helper_context = array( 'profile' => $profile, 'post_id' => $post_id );
 		$helper_verification = array();
 		foreach ( (array) $profile['enabled_helpers'] as $helper_id ) {
