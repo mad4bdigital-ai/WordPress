@@ -15,6 +15,7 @@ required=[
     "mad4b.production-live-gate-evidence.v1",
     "mad4b.multi-authority-live-canary.v1",
     "mad4b.production-policy-probe.v1",
+    "mad4b.production-security-live-canary.v1",
     "MAD4B_SCP_MCP_Peer_Governance::status()",
     "MAD4B_SCP_Multi_Authority_Registry::snapshot()",
     "MAD4B_SCP_Identity_Context::current()",
@@ -52,6 +53,10 @@ expected={
     "policy_resolution_canary":(
         "mad4b/production-certification-readonly-evidence#policy-probe",
         "mad4b.production-policy-probe.v1",
+    ),
+    "security_fault_canary":(
+        "mad4b/production-certification-readonly-evidence#security-fault-canary",
+        "mad4b.production-security-live-canary.v1",
     ),
     "operator_doctor":(
         "mad4b/production-certification-readonly-evidence#operator-doctor",
