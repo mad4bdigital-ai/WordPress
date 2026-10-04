@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.adaptive-search-intelligence-review.v1",
-  "status": "APPROVED_WITH_GAPS",
+  "status": "APPROVED_P0_CLOSED_P1_OPEN",
   "authorizing": false,
   "assessed_contract": "mad4b.adaptive-search-intelligence.v1",
   "scores": {
@@ -18,10 +18,11 @@
     "overall": 88
   },
   "summary": {
-    "p0_open": 12,
+    "p0_open": 0,
     "p1_open": 6,
     "p2_open": 0,
-    "recommendation": "continue_spec_and_foundation_only_close_p0_semantics_before_broad_runtime_implementation"
+    "recommendation": "p0_semantics_closed_continue_phase38_p1_and_provider_execution_work",
+    "p0_closed": 12
   },
   "findings": [
     {
@@ -31,6 +32,13 @@
       "tasks": [
         "T3861",
         "T3862"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3861",
+        "task:T3862"
       ]
     },
     {
@@ -39,6 +47,12 @@
       "title": "query-canonicalization-versioning",
       "tasks": [
         "T3863"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3863"
       ]
     },
     {
@@ -47,6 +61,12 @@
       "title": "owned-url-identity-and-matching",
       "tasks": [
         "T3864"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3864"
       ]
     },
     {
@@ -55,6 +75,12 @@
       "title": "normalized-rank-semantics",
       "tasks": [
         "T3865"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3865"
       ]
     },
     {
@@ -63,6 +89,12 @@
       "title": "capture-completeness-and-not-found-semantics",
       "tasks": [
         "T3866"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3866"
       ]
     },
     {
@@ -71,6 +103,12 @@
       "title": "search-eligibility-envelope",
       "tasks": [
         "T3867"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3867"
       ]
     },
     {
@@ -79,6 +117,12 @@
       "title": "surface-admission-cardinality",
       "tasks": [
         "T3868"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3868"
       ]
     },
     {
@@ -88,6 +132,13 @@
       "tasks": [
         "T3869",
         "T3870"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3869",
+        "task:T3870"
       ]
     },
     {
@@ -96,7 +147,8 @@
       "title": "first-party-search-performance-composition",
       "tasks": [
         "T3871"
-      ]
+      ],
+      "status": "OPEN"
     },
     {
       "id": "ASIR-010",
@@ -104,7 +156,8 @@
       "title": "query-language-transcreation-provenance",
       "tasks": [
         "T3872"
-      ]
+      ],
+      "status": "OPEN"
     },
     {
       "id": "ASIR-011",
@@ -112,6 +165,12 @@
       "title": "provider-evidence-licensing-retention",
       "tasks": [
         "T3873"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3873"
       ]
     },
     {
@@ -120,6 +179,12 @@
       "title": "deterministic-decision-policy",
       "tasks": [
         "T3874"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3874"
       ]
     },
     {
@@ -128,7 +193,8 @@
       "title": "adaptive-ux-stability-and-controls",
       "tasks": [
         "T3875"
-      ]
+      ],
+      "status": "OPEN"
     },
     {
       "id": "ASIR-014",
@@ -136,7 +202,8 @@
       "title": "storage-worker-portability",
       "tasks": [
         "T3876"
-      ]
+      ],
+      "status": "OPEN"
     },
     {
       "id": "ASIR-015",
@@ -144,6 +211,12 @@
       "title": "machine-measurable-gate-criteria",
       "tasks": [
         "T3877"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3877"
       ]
     },
     {
@@ -152,7 +225,8 @@
       "title": "open-serp-feature-schema",
       "tasks": [
         "T3878"
-      ]
+      ],
+      "status": "OPEN"
     },
     {
       "id": "ASIR-017",
@@ -160,7 +234,8 @@
       "title": "decision-factor-provenance",
       "tasks": [
         "T3879"
-      ]
+      ],
+      "status": "OPEN"
     },
     {
       "id": "ASIR-018",
@@ -168,8 +243,21 @@
       "title": "composed-cross-fault-acceptance",
       "tasks": [
         "T3880"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
+        "workflow_run:37236946924",
+        "task:T3880"
       ]
     }
   ],
-  "no_completion_claim": true
+  "no_completion_claim": true,
+  "p0_closure": {
+    "exact_head_sha": "178ec73281a19fd7c78a8e83ff110dd11027b684",
+    "workflow_run": 37236946924,
+    "evidence_status": "PASS",
+    "closed_at": "2026-10-05",
+    "contract": "mad4b.adaptive-search-p0-closure.v1"
+  }
 }
