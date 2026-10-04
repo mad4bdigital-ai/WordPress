@@ -19,7 +19,7 @@
       "id": "runtime_root_trust",
       "gate": "runtime_root_trust_readback",
       "mutation_class": "read_only",
-      "producer": "release_root_trust_readback",
+      "producer": "tools/verify_release_root_trust.py#trusted-master-release-root",
       "evidence_contract": "mad4b.release-root-trust-verification.v1",
       "rollback_required": false
     },
@@ -27,7 +27,7 @@
       "id": "host_runner_parity",
       "gate": "recovery_tooling_available",
       "mutation_class": "reversible_staging_mutation",
-      "producer": "tools/mad4b_host_runner.py",
+      "producer": "mad4b/host-operation-apply#workspace.file.replace+workspace.file.rollback",
       "evidence_contract": "mad4b.tool-execution-receipt.v1",
       "rollback_required": true
     },
@@ -35,7 +35,7 @@
       "id": "protected_backup_restore",
       "gate": "protected_backup_recovery_ready",
       "mutation_class": "reversible_staging_mutation",
-      "producer": "tools/mad4b_recovery_plane.py",
+      "producer": "tools/mad4b_recovery_plane.py#plan-backup+apply-backup+verify-backup+plan-backup-restore+apply-backup-restore",
       "evidence_contract": "mad4b.protected-backup-restore-receipt.v1",
       "rollback_required": true
     },
@@ -43,7 +43,7 @@
       "id": "out_of_band_recovery",
       "gate": "recovery_live_verified",
       "mutation_class": "reversible_staging_mutation",
-      "producer": "tools/mad4b_recovery_plane.py",
+      "producer": "tools/mad4b_recovery_plane.py#plan-restore+apply-restore",
       "evidence_contract": "mad4b.recovery-receipt.v1",
       "rollback_required": true
     },
@@ -81,7 +81,7 @@
       "id": "consistency_fault_canary",
       "gate": "authoritative_execution_verified",
       "mutation_class": "reversible_staging_mutation",
-      "producer": "governed_runtime_fault_canary",
+      "producer": "mad4b-write#media/set-featured+mad4b/mutation-undo",
       "evidence_contract": "mad4b.production-live-gate-evidence.v1",
       "rollback_required": true
     },
@@ -89,8 +89,8 @@
       "id": "security_fault_canary",
       "gate": "kernel_quality_verified",
       "mutation_class": "read_only",
-      "producer": "governed_runtime_fault_canary",
-      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "producer": "mad4b/production-certification-readonly-evidence#security-fault-canary",
+      "evidence_contract": "mad4b.production-security-live-canary.v1",
       "rollback_required": false
     },
     {
@@ -115,7 +115,7 @@
       "id": "request_receipt_rollback_vertical_slice",
       "gate": "critical_kernel_vertical_slice_verified",
       "mutation_class": "reversible_staging_mutation",
-      "producer": "governed_runtime_vertical_slice",
+      "producer": "mad4b/host-operation-apply#request-receipt-rollback-vertical-slice",
       "evidence_contract": "mad4b.production-live-gate-evidence.v1",
       "rollback_required": true
     }
