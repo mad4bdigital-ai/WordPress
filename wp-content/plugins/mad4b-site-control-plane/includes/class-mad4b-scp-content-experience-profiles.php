@@ -550,12 +550,20 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'operational_fields' => array( 'profile', 'expected_revision', 'plan_sha256' ),
 				'brand_key_regex' => '',
 				'operational_key_regex' => '.*',
-				'root_operational_paths' => array( 'profile', 'expected_revision', 'plan_sha256', '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ),
+				'root_operational_paths' => array( 'profile', 'profile.*', 'expected_revision', 'plan_sha256', '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ),
 				'dynamic_profile_contract' => true,
 				'profile_configuration_only' => true,
 			);
 		}
 		if ( ! in_array( $ability_name, self::brand_bearing_mutation_abilities(), true ) ) return array();
+
+		/*
+		 * The dynamic mutation payload itself is the semantic container. The first
+		 * pass classifies every leaf as brand-bearing, explicitly operational, or
+		 * fallback-review evidence. root_operational_paths below prevents the
+		 * generic outer-container pass from classifying the same root payload a
+		 * second time; it does not make brand fields operational.
+		 */
 		return array(
 			'provider' => 'core',
 			'mode' => 'object_fields',
@@ -566,7 +574,18 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'post_id', 'expected_modified_gmt', 'post_name', 'post_parent', 'menu_order',
 				'featured_media_id', 'taxonomies', 'post_status', 'plan_sha256',
 			),
-			'operational_key_regex' => '^(?:term_ids?|taxonomy|taxonomies|post_status|post_id|featured_media_id|menu_order|post_parent|expected_modified_gmt|plan_sha256)
+			'operational_key_regex' => '^(?:term_ids?|taxonomy|taxonomies|post_status|post_id|featured_media_id|menu_order|post_parent|expected_modified_gmt|plan_sha256|id|ids|uuid|hash|checksum|status|enabled|disabled|price|amount|count|order|priority|color|size|width|height|position|timestamp|date|url|path)$',
+			'root_operational_paths' => array(
+				'post_id', 'expected_modified_gmt',
+				'post_title', 'post_content', 'post_excerpt',
+				'post_name', 'post_parent', 'menu_order', 'featured_media_id',
+				'post_status', 'plan_sha256',
+				'meta.*', 'taxonomies.*', 'helpers.*',
+				'_mad4b_approval_ticket_id', '_mad4b_context_receipt',
+			),
+			'dynamic_profile_contract' => true,
+		);
+	}
 	private static function dynamic_context( $ability_name ) {
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
