@@ -7,7 +7,7 @@ function check( $condition, $message ) { ++$GLOBALS['assertions']; if ( ! $condi
 function ok( $value, $message ) { check( ! is_wp_error( $value ), $message . ( is_wp_error( $value ) ? ': ' . $value->get_error_code() : '' ) ); return $value; }
 function denied( $value, $suffix, $message ) { check( is_wp_error( $value ) && false !== strpos( $value->get_error_code(), $suffix ), $message ); }
 function scenario( $id, $callback ) { $GLOBALS['cases'][ $id ] = $callback; }
-function receipt( $units, $cycle = 'cycle.1' ) { return array( 'remaining' => $units, 'observed_at' => time(), 'reset_at' => time() + 86400, 'cycle_id' => $cycle, 'generation' => hash( 'sha256', 'generation' ) ); }
+function receipt( $units, $cycle = 'cycle.1', $clock = null ) { $clock = null === $clock ? time() : (int) $clock; return array( 'remaining' => $units, 'observed_at' => $clock, 'reset_at' => $clock + 86400, 'cycle_id' => $cycle, 'generation' => hash( 'sha256', 'generation' ) ); }
 function capture( $input ) { $plan = ok( MAD4B_SCP_Search_Runtime::capture_plan( $input ), 'capture plan' ); return array( ok( MAD4B_SCP_Search_Runtime::capture_apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'capture apply' ), $plan ); }
 function sample_snapshot( $request = null, $data = null, $at = null, $descriptor = null ) {
 	$request = $request ?: array_merge( asi_candidate(), array( 'query_id' => hash( 'sha256', 'query' ), 'depth' => 3 ) );
@@ -104,20 +104,20 @@ scenario( 'fairness_aging_and_minimum_coverage_no_starvation', static function (
 } );
 scenario( 'budget_hierarchy_protected_reserve_depth_rate_and_expiry', static function () {
 	$p = asi_policy_nodes( 20, 2 ); $p['reserve_fraction'] = 0.25; $child = $p['nodes'][0]; $child['id'] = 'brand'; $child['selectors'] = array( 'brand_id' => 'limited' ); $child['monthly_units'] = 1; $child['max_depth'] = 3; $p['nodes'][] = $child;
-	$now = time(); ok( MAD4B_SCP_Search_Budgets::configure( 'quota.account', $p, receipt( 20 ), $now ), 'quota configure' ); $id = hash( 'sha256', 'one' );
+	$now = time(); ok( MAD4B_SCP_Search_Budgets::configure( 'quota.account', $p, receipt( 20, 'cycle.1', $now ), $now ), 'quota configure' ); $id = hash( 'sha256', 'one' );
 	$r = ok( MAD4B_SCP_Search_Budgets::reserve( 'quota.account', $id, array( 'brand_id' => 'limited', 'depth' => 3 ), 1, 5, $now ), 'child reserve' );
 	denied( MAD4B_SCP_Search_Budgets::reserve( 'quota.account', hash( 'sha256', 'two' ), array( 'brand_id' => 'limited', 'depth' => 3 ), 1, 5, $now ), 'node_exhausted', 'child cap cannot be bypassed' );
 	denied( MAD4B_SCP_Search_Budgets::reserve( 'quota.account', hash( 'sha256', 'deep' ), array( 'brand_id' => 'limited', 'depth' => 10 ), 1, 5, $now ), 'depth_exceeded', 'depth budget constrained' );
 	denied( MAD4B_SCP_Search_Budgets::reserve( 'quota.account', hash( 'sha256', 'reserve' ), array(), 15, 5, $now ), 'reserve_protected', 'protected fraction held' );
 	ok( MAD4B_SCP_Search_Budgets::transition( 'quota.account', $id, $r['epoch'], 'entered', $now ), 'entry' );
 	ok( MAD4B_SCP_Search_Budgets::transition( 'quota.account', $id, $r['epoch'], 'unknown', $now ), 'unknown effect' );
-	denied( MAD4B_SCP_Search_Budgets::configure( 'quota.account', $p, receipt( 20, 'cycle.2' ), $now ), 'reconciliation_required', 'reset cannot discard unknown effect' );
+	denied( MAD4B_SCP_Search_Budgets::configure( 'quota.account', $p, receipt( 20, 'cycle.2', $now ), $now ), 'reconciliation_required', 'reset cannot discard unknown effect' );
 	check( 'unknown' === MAD4B_SCP_Search_Budgets::status( 'quota.account' )['reservations'][ $id ]['state'], 'unknown holds survive lease expiry' );
 	denied( MAD4B_SCP_Search_Budgets::reserve( 'quota.account', hash( 'sha256', 'late' ), array(), 1, 5, $now + 86401 ), 'reset', 'billing reset needs observed receipt' );
-	denied( MAD4B_SCP_Search_Budgets::configure( 'negative', $p, receipt( -1 ), $now ), 'unknown', 'negative allowance fails closed' );
+	denied( MAD4B_SCP_Search_Budgets::configure( 'negative', $p, receipt( -1, 'cycle.1', $now ), $now ), 'unknown', 'negative allowance fails closed' );
 	$local = new class implements MAD4B_SCP_Search_Store_Backend { private $rows = array(); public function read( $key ) { return isset( $this->rows[ $key ] ) ? $this->rows[ $key ] : null; } public function compare_exchange( $key, $old, array $next ) { $this->rows[ $key ] = $next; return true; } public function scan( $a, $b, $c ) { return array(); } };
 	add_filter( 'mad4b_scp_search_account_budget_backend', static function () use ( $local ) { return $local; } );
-	$state = ok( MAD4B_SCP_Search_Budgets::configure( 'local.account', asi_policy_nodes(), receipt( 100 ), $now ), 'local budget' ); check( ! $state['hard_global_enforcement'] && 'local_allocation' === $state['authority_scope'], 'honest downgrade without shared authority' );
+	$state = ok( MAD4B_SCP_Search_Budgets::configure( 'local.account', asi_policy_nodes(), receipt( 100, 'cycle.1', $now ), $now ), 'local budget' ); check( ! $state['hard_global_enforcement'] && 'local_allocation' === $state['authority_scope'], 'honest downgrade without shared authority' );
 } );
 scenario( 'shared_account_race_across_processes_and_sites', static function () {
 	check( function_exists( 'pcntl_fork' ), 'process race support required' );
@@ -126,7 +126,7 @@ scenario( 'shared_account_race_across_processes_and_sites', static function () {
 		// scenario-start clock makes later fresh receipts appear to come from the
 		// future and correctly trips the runtime's fail-closed freshness check.
 		$now = time();
-		$account = 'race.' . $round; ok( MAD4B_SCP_Search_Budgets::configure( $account, asi_policy_nodes( 1 ), receipt( 1 ), $now ), 'last-unit configure' ); $children = array();
+		$account = 'race.' . $round; ok( MAD4B_SCP_Search_Budgets::configure( $account, asi_policy_nodes( 1 ), receipt( 1, 'cycle.1', $now ), $now ), 'last-unit configure' ); $children = array();
 		for ( $worker = 0; $worker < 12; ++$worker ) { $pid = pcntl_fork(); if ( 0 === $pid ) { $GLOBALS['fixture_store']->reconnect(); $GLOBALS['fixture_site'] = sprintf( '%08d-1111-4111-8111-111111111111', $worker + 1 ); $value = MAD4B_SCP_Search_Budgets::reserve( $account, hash( 'sha256', $round . ':' . $worker ), array(), 1, 5, $now ); exit( is_wp_error( $value ) ? 0 : 3 ); } check( $pid > 0, 'fork launched' ); $children[] = $pid; }
 		$admitted = 0; foreach ( $children as $pid ) { pcntl_waitpid( $pid, $status ); check( pcntl_wifexited( $status ), 'worker exited normally' ); if ( 3 === pcntl_wexitstatus( $status ) ) ++$admitted; else check( 0 === pcntl_wexitstatus( $status ), 'worker returned known denial' ); }
 		check( 1 === $admitted, 'exactly one winner from 12 workers on shared last unit' );
@@ -287,10 +287,10 @@ scenario( 'pre_entry_crash_and_unused_quota_reconciliation', static function () 
 } );
 scenario( 'quota_reset_fencing_cost_overrun_and_rate_limit', static function () {
 	$now = time(); $p = asi_policy_nodes( 10 ); $p['nodes'][0]['per_minute'] = 1;
-	ok( MAD4B_SCP_Search_Budgets::configure( 'limits', $p, receipt( 10 ), $now ), 'rate budget' ); $id = hash( 'sha256', 'held' ); $r = ok( MAD4B_SCP_Search_Budgets::reserve( 'limits', $id, array(), 1, 5, $now ), 'admit' );
+	ok( MAD4B_SCP_Search_Budgets::configure( 'limits', $p, receipt( 10, 'cycle.1', $now ), $now ), 'rate budget' ); $id = hash( 'sha256', 'held' ); $r = ok( MAD4B_SCP_Search_Budgets::reserve( 'limits', $id, array(), 1, 5, $now ), 'admit' );
 	ok( MAD4B_SCP_Search_Budgets::transition( 'limits', $id, $r['epoch'], 'entered', $now ), 'entered' ); ok( MAD4B_SCP_Search_Budgets::transition( 'limits', $id, $r['epoch'], 'spent', $now, 1, 5 ), 'receipt' );
 	denied( MAD4B_SCP_Search_Budgets::reserve( 'limits', hash( 'sha256', 'too-fast' ), array(), 1, 5, $now ), 'node_exhausted', 'rate includes completed requests' );
-	$n = ok( MAD4B_SCP_Search_Budgets::configure( 'limits', $p, receipt( 10, 'cycle.2' ), $now + 1 ), 'observed reset' ); check( $n['epoch'] > $r['epoch'], 'billing-cycle fence advanced' );
+	$n = ok( MAD4B_SCP_Search_Budgets::configure( 'limits', $p, receipt( 10, 'cycle.2', $now + 1 ), $now + 1 ), 'observed reset' ); check( $n['epoch'] > $r['epoch'], 'billing-cycle fence advanced' );
 	denied( MAD4B_SCP_Search_Budgets::transition( 'limits', $id, $r['epoch'], 'spent', $now + 1, 1, 5 ), 'fence', 'old cycle receipt cannot debit new allowance' );
 	$id = hash( 'sha256', 'overrun' ); $r = MAD4B_SCP_Search_Budgets::reserve( 'limits', $id, array(), 1, 5, $now + 1 ); MAD4B_SCP_Search_Budgets::transition( 'limits', $id, $r['epoch'], 'entered', $now + 1 );
 	$unknown = ok( MAD4B_SCP_Search_Budgets::transition( 'limits', $id, $r['epoch'], 'spent', $now + 1, 2, 10 ), 'unexpected vendor charge' ); check( 'unknown' === $unknown['state'], 'unbounded charge cannot become an invented valid receipt' );
@@ -303,7 +303,7 @@ scenario( 'compile_timestamp_stability_and_seo_generation_drift', static functio
 	$source->fields['title']['value'] = 'Changed effective title'; denied( MAD4B_SCP_Search_Runtime::compile_apply( array_merge( $args, array( 'plan_sha256' => $first['plan_sha256'] ) ) ), 'plan_drift', 'material SEO change rejects stale plan' );
 } );
 scenario( 'billing_window_pacing_and_bounded_burst_admission', static function () {
-	$now = time(); $r = receipt( 100 ); $r['reset_at'] = $now + 30 * 86400; $p = asi_policy_nodes();
+	$now = time(); $r = receipt( 100, 'cycle.1', $now ); $r['reset_at'] = $now + 30 * 86400; $p = asi_policy_nodes();
 	ok( MAD4B_SCP_Search_Budgets::configure( 'paced', $p, $r, $now ), 'paced cycle' );
 	for ( $i = 0; $i < 3; ++$i ) { $id = hash( 'sha256', 'paced.' . $i ); $held = ok( MAD4B_SCP_Search_Budgets::reserve( 'paced', $id, array(), 1, 0, $now ), 'daily paced admission' ); MAD4B_SCP_Search_Budgets::transition( 'paced', $id, $held['epoch'], 'entered', $now ); MAD4B_SCP_Search_Budgets::transition( 'paced', $id, $held['epoch'], 'spent', $now, 1, 0 ); }
 	denied( MAD4B_SCP_Search_Budgets::reserve( 'paced', hash( 'sha256', 'fourth' ), array(), 1, 0, $now ), 'pacing_exhausted', 'cannot spend month allowance on first day' );
