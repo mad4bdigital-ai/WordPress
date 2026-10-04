@@ -129,7 +129,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-draft.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-publication-verification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-pack.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-research-intelligence.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-measurement.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-measurement.php';\nrequire_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-runtime-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-eligibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-evidence-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-account-budget-authority.php';
