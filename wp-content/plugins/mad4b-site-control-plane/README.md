@@ -4,7 +4,11 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.90**.
+Current plugin version: **0.4.0-rc.91**.
+
+### rc.91 decoupled Staging Write authority
+
+rc.91 adds an exact-plan Staging-only governed Write convergence surface that is independent from Developer and Developer Breakglass. It can create or reconcile the canonical governed-write agent, OAuth subjects and exact current-environment grants, then bind the exact current package candidate as the final commit point. The surface requires the enrolled normal OAuth administrator, the dedicated authority step-up scope, the exact ChatGPT CIMD client and current build provenance; it fails closed on wildcard, unreviewed stale, explicit-deny, unmounted-provider or Breakglass state. It never enables Developer, Developer Breakglass, generic raw-SQL Breakglass or Production mutation authority. Full Staging Authority remains available as a separate higher-authority composite.
 
 ### rc.90 dynamic MCP runtime-surface certification
 

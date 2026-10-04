@@ -187,6 +187,9 @@ for forbidden_direct in [
 
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in SERVERS, "bounded Write Authority plan must be projectable on enrolled Staging")
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in SERVERS, "bounded Write Authority apply must be conditionally projectable as a single-app step-up tool")
+require("MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY" in SERVERS, "write-only authority convergence apply must be conditionally projectable as one reviewed direct step-up tool")
+require("MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()" not in direct_read_helper, "write-only authority handshake must remain behind governed read dispatch to preserve the direct tool budget")
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in direct_read_helper, "low-level grant reconciliation plan must remain behind governed read dispatch so one dynamic projection slot survives exact MCP preflight")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be projectable on enrolled Staging")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in SERVERS, "full staging apply must be conditionally projectable as a single-app step-up tool")
 require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in SERVERS, "bootstrap Control Plane self-update must be conditionally projectable as a bounded single-app step-up tool")
@@ -212,7 +215,7 @@ require("array_merge( $base, $dynamic )" in chatgpt_body, "dynamic projection mu
 for forbidden in ("self::external_write_tools()", "self::write_tools()", "$registry->ability_names( 'read' )"):
     require(forbidden not in chatgpt_body, f"dynamic composition wrapper rebuilt a broad catalog: {forbidden}")
 reviewed = SERVERS.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
-for marker in ("MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY", "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY", "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY", "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()", "MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY"):
+for marker in ("MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY", "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY", "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY", "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY", "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()", "MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY"):
     require(marker in reviewed, "reviewed step-up source missing: " + marker)
 for primitive in ("Site_Profile_Enrollment", "Site_Profile_Write_Enablement", "Staging_Write_Grant_Reconciliation", "Staging_Write_Candidate_Binding"):
     require("MAD4B_SCP_" + primitive + "::chatgpt_step_up_tools()" not in base_chatgpt_body, "internal primitive entered required base transport")
@@ -249,6 +252,8 @@ for marker in [
 require("'mad4b/database-raw-query'" in full and "array_diff" in full, "Raw SQL must remain explicitly excluded")
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in full, "logical discovery must include the bounded Write Authority plan")
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full, "logical discovery must include the bounded Write Authority step-up when eligible")
+require("MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_catalog_read_tools()" in full, "logical discovery must include write-only authority status/plan/handshake")
+require("MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded write-only convergence apply")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded full-authority composite step-up when it is eligible")
 require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded bootstrap Control Plane self-update step-up when it is eligible")
 
@@ -263,6 +268,7 @@ for low_level in [
 
 enrollment_projection = SERVERS.split("private static function chatgpt_enrollment_candidates()", 1)[1].split("public static function chatgpt_full_catalog_candidates()", 1)[0]
 require("self::chatgpt_internal_enrollment_mutations()" in enrollment_projection, "logical ChatGPT discovery must remove low-level enrollment mutations")
+require("MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools()" in enrollment_projection, "write-only authority convergence must not fall through generic enrollment dispatch")
 
 print("mad4b.chatgpt-refresh-minimal-catalog.v6: PASS")
 
