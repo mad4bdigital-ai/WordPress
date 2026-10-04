@@ -273,6 +273,16 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		}
 		$profile = self::normalize_profile( $raw, $current_revision + 1 );
 		if ( is_wp_error( $profile ) ) return $profile;
+		$current_routes = is_array( $current ) && isset( $current['routes'] ) && is_array( $current['routes'] ) ? array_values( $current['routes'] ) : array();
+		foreach ( array_values( $profile['routes'] ) as $route ) {
+			if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $route ) && ! in_array( $route, $current_routes, true ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_route_collision',
+					'Generated experience route collides with an Ability already registered by this site.',
+					array( 'ability' => $route )
+				);
+			}
+		}
 		$plan = array(
 			'contract' => self::PROFILE_PLAN_CONTRACT,
 			'profile' => $profile,
@@ -530,7 +540,22 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	}
 
 	public static function semantic_contract_for_ability( $ability_name ) {
-		if ( ! in_array( (string) $ability_name, self::brand_bearing_mutation_abilities(), true ) ) return array();
+		$ability_name = (string) $ability_name;
+		if ( self::PROFILE_APPLY_ABILITY === $ability_name ) {
+			return array(
+				'provider' => 'core',
+				'mode' => 'object_fields',
+				'container_path' => '',
+				'brand_fields' => array(),
+				'operational_fields' => array( 'profile', 'expected_revision', 'plan_sha256' ),
+				'brand_key_regex' => '',
+				'operational_key_regex' => '.*',
+				'root_operational_paths' => array( 'profile', 'expected_revision', 'plan_sha256', '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ),
+				'dynamic_profile_contract' => true,
+				'profile_configuration_only' => true,
+			);
+		}
+		if ( ! in_array( $ability_name, self::brand_bearing_mutation_abilities(), true ) ) return array();
 		return array(
 			'provider' => 'core',
 			'mode' => 'object_fields',
