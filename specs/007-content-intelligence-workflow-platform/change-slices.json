@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 305,
+  "changed_file_count": 300,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -218,7 +218,7 @@
     },
     {
       "id": "tests-authority-security-01",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 1",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 1",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -257,7 +257,7 @@
     },
     {
       "id": "tests-authority-security-02",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 2",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 2",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -295,7 +295,7 @@
     },
     {
       "id": "tests-authority-security-03",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 3",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 3",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -428,7 +428,6 @@
       "revert_boundary": "Revert this Search implementation slice while retaining the certified Phase 38 foundations and existing authority boundaries.",
       "certification": "exact_head",
       "path_globs": [
-        ".github/workflows/mad4b-adaptive-search-intelligence.yml",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
         "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
@@ -439,6 +438,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "2c1c7137719f356272b878fc366a46cd2ed4fcf122330250ea0406f4bc5a4c1c",
+  "changed_paths_sha256": "889f76c38823aaeb35b5670b058468a5d5338c529ea57ead8adee0113d3132ed",
   "changed_paths_sha256_mode": "sorted_relative_paths_newline_sha256"
 }
