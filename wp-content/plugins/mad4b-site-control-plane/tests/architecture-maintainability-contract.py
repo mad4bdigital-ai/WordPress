@@ -104,8 +104,9 @@ if over_limit and not grandfathered:
         raise SystemExit("CHANGE_SLICE_FILE_COUNT_INVALID")
     scope_material="\\n".join(sorted(changed))+"\\n"
     expected_scope_sha256=hashlib.sha256(scope_material.encode("utf-8")).hexdigest()
-    if manifest.get("changed_paths_sha256")!=expected_scope_sha256:
-        raise SystemExit("CHANGE_SLICE_SCOPE_DIGEST_INVALID")
+    observed_scope_sha256=str(manifest.get("changed_paths_sha256") or "")
+    if observed_scope_sha256!=expected_scope_sha256:
+        raise SystemExit(f"CHANGE_SLICE_SCOPE_DIGEST_INVALID:expected={expected_scope_sha256}:observed={observed_scope_sha256}")
     slices=manifest.get("slices")
     if not isinstance(slices,list) or not slices:
         raise SystemExit("CHANGE_SLICE_MANIFEST_EMPTY")
