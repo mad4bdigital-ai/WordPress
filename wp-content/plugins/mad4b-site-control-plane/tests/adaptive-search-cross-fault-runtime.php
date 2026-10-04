@@ -16,6 +16,7 @@ require $root.'/includes/class-mad4b-scp-search-measurement.php';
 require $root.'/includes/class-mad4b-scp-search-eligibility.php';
 require $root.'/includes/class-mad4b-scp-provider-account-budget-authority.php';
 require $root.'/includes/class-mad4b-scp-adaptive-search-acceptance.php';
+require $root.'/includes/class-mad4b-scp-adaptive-search-fault-guard.php';
 
 $fail=static function($m){fwrite(STDERR,"FAIL adaptive-search-cross-fault-runtime: $m\n");exit(1);};
 $check=static function($c,$m)use($fail){if(!$c)$fail($m);};
@@ -46,6 +47,48 @@ $check(is_wp_error($explosion)&&'mad4b_search_surface_cardinality_exceeded'===$e
 $hard=MAD4B_SCP_Provider_Account_Budget_Authority::reserve(array('provider_id'=>'serp','credential_ref'=>'ref','enforcement_mode'=>'hard_global','units'=>1,'hard_allowance'=>10,'protected_reserve'=>1,'billing_cycle_id'=>'2026-10','idempotency_key'=>'cross-fault'));
 $check(is_wp_error($hard)&&'mad4b_provider_budget_shared_authority_required'===$hard->get_error_code(),'hard-global budget silently downgraded');
 
+// Composed fault guard exercises material dependencies and derives operator state.
+$healthy=array(
+ 'profile_generation_match'=>true,'provider_generation_match'=>true,'surface_fingerprint_match'=>true,
+ 'target_type'=>'owned_rank_tracking','language_live'=>true,'budget_cycle_match'=>true,
+ 'budget_reservation_valid'=>true,'lease_valid'=>true,'provider_effect_state'=>'none',
+ 'capture_complete'=>true,'target_found'=>true,'cache_context_comparable'=>true,'cache_fresh'=>true,
+);
+$guard=MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($healthy);
+$check($guard['execution_allowed']&&'ACTIVE'===$guard['experience_state'],'healthy composed state did not execute');
+
+$profile_drift=$healthy;$profile_drift['profile_generation_match']=false;
+$g=MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($profile_drift);
+$check(!$g['execution_allowed']&&in_array('profile_drift',$g['blockers'],true)&&'PROFILE_DRIFT'===$g['experience_state'],'profile drift not fenced');
+
+$provider_drift=$healthy;$provider_drift['provider_generation_match']=false;
+$check(!MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($provider_drift)['execution_allowed'],'provider generation drift not fenced');
+
+$language_drift=$healthy;$language_drift['language_live']=false;
+$check(!MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($language_drift)['execution_allowed'],'owned target language drift not fenced');
+
+$surface_drift=$healthy;$surface_drift['surface_fingerprint_match']=false;
+$check(!MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($surface_drift)['execution_allowed'],'surface drift not fenced');
+
+$budget_drift=$healthy;$budget_drift['budget_cycle_match']=false;
+$g=MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($budget_drift);
+$check(!$g['execution_allowed']&&'DEGRADED_BUDGET'===$g['experience_state'],'budget cycle drift did not degrade safely');
+
+$lease_loss=$healthy;$lease_loss['lease_valid']=false;
+$check(!MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($lease_loss)['execution_allowed'],'lease loss not fenced');
+
+$uncertain=$healthy;$uncertain['provider_effect_state']='unknown';
+$g=MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($uncertain);
+$check(!$g['execution_allowed']&&!$g['provider_retry_allowed']&&'RECONCILIATION_REQUIRED'===$g['experience_state'],'uncertain provider effect did not require reconciliation');
+
+$partial_state=$healthy;$partial_state['capture_complete']=false;$partial_state['target_found']=false;$partial_state['cache_fresh']=false;
+$g=MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($partial_state);
+$check(!$g['loss_signal_allowed']&&'EVIDENCE_STALE'===$g['experience_state'],'partial capture created loss or wrong experience state');
+
+$cache_bad=$healthy;$cache_bad['cache_context_comparable']=false;
+$g=MAD4B_SCP_Adaptive_Search_Fault_Guard::evaluate($cache_bad);
+$check(!$g['cache_reusable']&&in_array('cache_context_incomparable',$g['warnings'],true),'incomparable cache was reused');
+
 // Acceptance reducer proves composition fails when one cross-fault fixture is missing.
 $ev=array();
 foreach(MAD4B_SCP_Adaptive_Search_Acceptance::gates() as $gate=>$def){
@@ -55,5 +98,6 @@ foreach(MAD4B_SCP_Adaptive_Search_Acceptance::gates() as $gate=>$def){
 $check(MAD4B_SCP_Adaptive_Search_Acceptance::evaluate($ev)['pass'],'full cross-fault acceptance did not pass');
 $ev['ADAPTIVE_SEARCH_CROSS_FAULT_ACCEPTANCE_PASS']['fixtures']['budget_race']=false;
 $check(!MAD4B_SCP_Adaptive_Search_Acceptance::evaluate($ev)['pass'],'missing budget-race fixture did not fail composed acceptance');
+$check(15===count(MAD4B_SCP_Adaptive_Search_Acceptance::phase_gates()),'not every Phase 38 gate has measurable acceptance criteria');
 
 echo "mad4b.adaptive-search-cross-fault-runtime.v1: PASS\n";
