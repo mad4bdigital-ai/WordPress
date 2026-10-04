@@ -185,6 +185,8 @@ def build_backup_plan(
     state = target_state(wordpress_root)
     if not state["plugin_present"] or not state["plugin_tree_sha256"]:
         raise ValueError("Control Plane plugin is absent; protected backup has no source")
+    runtime_identity = verify_installed_provenance(Path(state["plugin_path"]))
+    state["runtime_identity"] = runtime_identity
     plan = {
         "contract": BACKUP_PLAN_CONTRACT,
         "action": "create_control_plane_backup",
@@ -229,6 +231,12 @@ def assert_backup_plan_current(plan: dict[str, Any]) -> Path:
     for key in ("wordpress_root", "wp_config_sha256", "plugin_present", "plugin_tree_sha256"):
         if current.get(key) != target.get(key):
             raise ValueError(f"protected backup target changed since plan: {key}")
+    expected_identity = target.get("runtime_identity")
+    if not isinstance(expected_identity, dict):
+        raise ValueError("protected backup target runtime identity missing")
+    current_identity = verify_installed_provenance(root / "wp-content" / "plugins" / PLUGIN_SLUG)
+    if current_identity != expected_identity:
+        raise ValueError("protected backup target runtime identity changed since plan")
     return root
 
 
@@ -292,6 +300,10 @@ def apply_backup(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, 
         planned_tree = str(plan["target"]["plugin_tree_sha256"])
         if not hmac.compare_digest(copied_tree, planned_tree):
             raise ValueError("protected backup tree differs from exact planned runtime")
+        copied_identity = verify_installed_provenance(snapshot)
+        planned_identity = plan["target"].get("runtime_identity")
+        if copied_identity != planned_identity:
+            raise ValueError("protected backup provenance differs from exact planned runtime")
 
         manifest_material = [
             f"{row['path']}\0{row['bytes']}\0{row['sha256']}\n".encode()
@@ -302,6 +314,7 @@ def apply_backup(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, 
             "contract": "mad4b.protected-backup-manifest.v1",
             "backup_id": backup_id,
             "source_plugin_tree_sha256": planned_tree,
+            "source_runtime_identity": copied_identity,
             "file_count": len(rows),
             "manifest_sha256": manifest_digest,
             "files": rows,
@@ -320,6 +333,7 @@ def apply_backup(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, 
             "wp_config_sha256": plan["target"]["wp_config_sha256"],
             "plugin_slug": PLUGIN_SLUG,
             "plugin_tree_sha256": planned_tree,
+            "runtime_identity": copied_identity,
             "backup_manifest_sha256": manifest_digest,
             "backup_file_count": len(rows),
             "production_authorized": False,
@@ -340,7 +354,11 @@ def apply_backup(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, 
         if tree_digest(final / PLUGIN_SLUG) != planned_tree:
             raise RuntimeError("protected backup post-commit tree readback failed")
         persisted = json.loads((final / "BACKUP-RECEIPT.json").read_text(encoding="utf-8"))
-        if persisted.get("plan_sha256") != plan_sha or persisted.get("plugin_tree_sha256") != planned_tree:
+        if (
+            persisted.get("plan_sha256") != plan_sha
+            or persisted.get("plugin_tree_sha256") != planned_tree
+            or persisted.get("runtime_identity") != copied_identity
+        ):
             raise RuntimeError("protected backup receipt readback failed")
         receipt["backup_path"] = str(final)
         receipt["readback_verified"] = True
@@ -423,6 +441,13 @@ def verify_protected_backup(wordpress_root: Path, backup_id: str) -> dict[str, A
         raise ValueError("protected backup manifest tree digest mismatch")
     if int(receipt.get("backup_file_count") or -1) != len(rows) or int(manifest.get("file_count") or -1) != len(rows):
         raise ValueError("protected backup file count mismatch")
+    snapshot_identity = verify_installed_provenance(snapshot)
+    receipt_identity = receipt.get("runtime_identity")
+    manifest_identity = manifest.get("source_runtime_identity")
+    if not isinstance(receipt_identity, dict) or snapshot_identity != receipt_identity:
+        raise ValueError("protected backup runtime identity mismatch")
+    if not isinstance(manifest_identity, dict) or snapshot_identity != manifest_identity:
+        raise ValueError("protected backup manifest runtime identity mismatch")
 
     return {
         "contract": "mad4b.protected-backup-verification.v1",
@@ -433,6 +458,7 @@ def verify_protected_backup(wordpress_root: Path, backup_id: str) -> dict[str, A
         "wordpress_root": str(root),
         "wp_config_sha256": current_wp_config,
         "plugin_tree_sha256": tree_sha,
+        "runtime_identity": snapshot_identity,
         "backup_manifest_sha256": manifest_sha,
         "file_count": len(rows),
         "source_backup_plan_sha256": str(receipt.get("plan_sha256") or ""),
@@ -462,6 +488,7 @@ def build_backup_restore_plan(
         "backup": {
             "backup_id": verification["backup_id"],
             "plugin_tree_sha256": verification["plugin_tree_sha256"],
+            "runtime_identity": verification["runtime_identity"],
             "backup_manifest_sha256": verification["backup_manifest_sha256"],
             "source_backup_plan_sha256": verification["source_backup_plan_sha256"],
         },
@@ -517,6 +544,8 @@ def assert_backup_restore_plan_current(plan: dict[str, Any]) -> tuple[Path, dict
     for key in ("plugin_tree_sha256", "backup_manifest_sha256", "source_backup_plan_sha256"):
         if str(verification.get(key) or "") != str(backup.get(key) or ""):
             raise ValueError(f"protected backup restore source drift: {key}")
+    if verification.get("runtime_identity") != backup.get("runtime_identity"):
+        raise ValueError("protected backup restore source drift: runtime_identity")
     return root, verification
 
 
@@ -552,6 +581,10 @@ def apply_backup_restore(plan: dict[str, Any], owner_attest_plan_sha: str) -> di
     if not hmac.compare_digest(tree_digest(stage), expected_tree):
         shutil.rmtree(stage, ignore_errors=True)
         raise ValueError("protected backup restore staged tree verification failed")
+    expected_runtime_identity = verification["runtime_identity"]
+    if verify_installed_provenance(stage) != expected_runtime_identity:
+        shutil.rmtree(stage, ignore_errors=True)
+        raise ValueError("protected backup restore staged runtime identity mismatch")
 
     live = root / "wp-content" / "plugins" / PLUGIN_SLUG
     before = plan["target_before"]
@@ -567,6 +600,7 @@ def apply_backup_restore(plan: dict[str, Any], owner_attest_plan_sha: str) -> di
         "expected_post_identity": {
             "plugin_present": True,
             "plugin_tree_sha256": expected_tree,
+            "runtime_identity": expected_runtime_identity,
         },
         "created_at": utc_now(),
     }
@@ -593,6 +627,9 @@ def apply_backup_restore(plan: dict[str, Any], owner_attest_plan_sha: str) -> di
 
         if not hmac.compare_digest(tree_digest(live), expected_tree):
             raise RuntimeError("protected backup restore postcondition readback failed")
+        restored_runtime_identity = verify_installed_provenance(live)
+        if restored_runtime_identity != expected_runtime_identity:
+            raise RuntimeError("protected backup restore runtime identity readback failed")
 
         receipt = {
             "contract": BACKUP_RESTORE_RECEIPT_CONTRACT,
@@ -610,6 +647,7 @@ def apply_backup_restore(plan: dict[str, Any], owner_attest_plan_sha: str) -> di
             "previous_plugin_present": bool(before["plugin_present"]),
             "previous_plugin_tree_sha256": str(before["plugin_tree_sha256"]),
             "restored_plugin_tree_sha256": expected_tree,
+            "restored_runtime_identity": restored_runtime_identity,
             "rollback_path": str(rollback) if moved_old else "",
             "readback_verified": True,
             "production_authorized": False,
@@ -621,7 +659,11 @@ def apply_backup_restore(plan: dict[str, Any], owner_attest_plan_sha: str) -> di
         }
         atomic_json_write(receipt_path, receipt)
         persisted = json.loads(receipt_path.read_text(encoding="utf-8"))
-        if persisted.get("plan_sha256") != plan_sha or persisted.get("restored_plugin_tree_sha256") != expected_tree:
+        if (
+            persisted.get("plan_sha256") != plan_sha
+            or persisted.get("restored_plugin_tree_sha256") != expected_tree
+            or persisted.get("restored_runtime_identity") != expected_runtime_identity
+        ):
             raise RuntimeError("protected backup restore receipt readback failed")
 
         completed = dict(started)
