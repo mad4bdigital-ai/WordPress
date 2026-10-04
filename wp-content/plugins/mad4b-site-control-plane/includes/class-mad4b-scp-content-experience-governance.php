@@ -14,17 +14,29 @@ final class MAD4B_SCP_Content_Experience_Governance {
 		add_filter( 'mad4b_scp_capability_descriptor_generation_roots', array( __CLASS__, 'descriptor_roots' ), 20, 3 );
 	}
 
-	public static function authority_payload( array $profile ) {
-		$helpers = array();
+	private static function live_helper_binding( $helper_id ) {
 		$catalog = class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ? MAD4B_SCP_Content_Experience_Profiles::helper_catalog() : array();
-		foreach ( isset( $profile['enabled_helpers'] ) ? (array) $profile['enabled_helpers'] : array() as $helper_id ) {
-			$row = isset( $catalog[ $helper_id ] ) && is_array( $catalog[ $helper_id ] ) ? $catalog[ $helper_id ] : array();
-			$helpers[ (string) $helper_id ] = array(
-				'adapter_id' => isset( $row['adapter_id'] ) ? (string) $row['adapter_id'] : '',
-				'provider' => isset( $row['provider'] ) ? (string) $row['provider'] : '',
-				'certification_ability' => isset( $row['certification_ability'] ) ? (string) $row['certification_ability'] : '',
-				'reversible' => ! empty( $row['reversible'] ),
-			);
+		$row = isset( $catalog[ $helper_id ] ) && is_array( $catalog[ $helper_id ] ) ? $catalog[ $helper_id ] : array();
+		if ( empty( $row ) ) return array();
+		$binding = array(
+			'helper_id' => (string) $helper_id,
+			'adapter_id' => isset( $row['adapter_id'] ) ? (string) $row['adapter_id'] : '',
+			'provider' => isset( $row['provider'] ) ? (string) $row['provider'] : '',
+			'certification_ability' => isset( $row['certification_ability'] ) ? (string) $row['certification_ability'] : '',
+			'operations' => array_values( isset( $row['operations'] ) ? (array) $row['operations'] : array() ),
+			'reversible' => ! empty( $row['reversible'] ),
+		);
+		$binding['binding_sha256'] = hash( 'sha256', wp_json_encode( $binding, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		return $binding;
+	}
+
+	public static function authority_payload( array $profile ) {
+		$helpers = isset( $profile['helper_bindings'] ) && is_array( $profile['helper_bindings'] ) ? $profile['helper_bindings'] : array();
+		if ( empty( $helpers ) ) {
+			foreach ( isset( $profile['enabled_helpers'] ) ? (array) $profile['enabled_helpers'] : array() as $helper_id ) {
+				$binding = self::live_helper_binding( $helper_id );
+				if ( $binding ) $helpers[ (string) $helper_id ] = $binding;
+			}
 		}
 		ksort( $helpers, SORT_STRING );
 		$payload = array(
@@ -73,9 +85,23 @@ final class MAD4B_SCP_Content_Experience_Governance {
 		if ( '' === $stored || ! hash_equals( $stored, $current ) ) {
 			return new WP_Error( 'mad4b_content_experience_profile_authority_drift', 'Content experience profile authority fingerprint changed; reconcile the profile before execution.', array( 'current_authority_sha256' => $current ) );
 		}
-		// Global helper-catalog drift is diagnostic only. authority_sha256 already
-		// binds the exact enabled helper adapter/provider/certification contracts,
-		// so unrelated helper additions cannot disable otherwise unchanged profiles.
+		// Only helpers enabled by this profile are authority-bearing. Unrelated
+		// catalog additions remain diagnostic and cannot disable this profile.
+		foreach ( isset( $profile['enabled_helpers'] ) ? (array) $profile['enabled_helpers'] : array() as $helper_id ) {
+			$helper_guard = self::helper_binding_guard( $profile, $helper_id );
+			if ( is_wp_error( $helper_guard ) ) return $helper_guard;
+		}
+		return true;
+	}
+
+	public static function helper_binding_guard( array $profile, $helper_id ) {
+		$helper_id = (string) $helper_id;
+		$stored = isset( $profile['helper_bindings'][ $helper_id ] ) && is_array( $profile['helper_bindings'][ $helper_id ] ) ? $profile['helper_bindings'][ $helper_id ] : array();
+		$live = self::live_helper_binding( $helper_id );
+		if ( empty( $stored ) || empty( $live ) || empty( $stored['binding_sha256'] ) || empty( $live['binding_sha256'] )
+			|| ! hash_equals( (string) $stored['binding_sha256'], (string) $live['binding_sha256'] ) ) {
+			return new WP_Error( 'mad4b_content_experience_helper_binding_drift', 'Enabled helper authority binding changed; re-apply the profile before new mutation.', array( 'helper_id' => $helper_id ) );
+		}
 		return true;
 	}
 
