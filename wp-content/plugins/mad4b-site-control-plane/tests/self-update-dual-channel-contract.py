@@ -57,7 +57,7 @@ required_self_update = [
     "manifest_unavailable",
     "policy_blocked",
     "native_update_environment_policy_blocked",
-    "Retry MAD4B update check",
+    "Check for updates",
     "'ui_state' =>",
     "'ui_blockers' =>",
     "handle_native_update",
@@ -358,6 +358,63 @@ for marker in (
 ):
     if marker not in self_update:
         raise SystemExit(f"WordPress auto-update observation invariant missing: {marker}")
+
+# The Plugins screen must look like an ordinary WordPress plugin while
+# retaining the governed updater behind the visible actions.
+action_link = self_update.split("private static function native_update_action_link", 1)[1].split("private static function native_update_ui_state", 1)[0]
+for marker in (
+    "Check for updates",
+    "mad4b_control_plane_refresh_update",
+):
+    if marker not in action_link:
+        raise SystemExit(f"native update action-link UX marker missing: {marker}")
+for forbidden in (
+    "Retry MAD4B update check",
+    "Update MAD4B to",
+    "MAD4B update blocked by policy",
+):
+    if forbidden in action_link:
+        raise SystemExit(f"internal/custom update state leaked into plugin action row: {forbidden}")
+
+render_row = self_update.split("public static function render_update_row(", 1)[1].split("public static function render_update_row_fallback", 1)[0]
+for marker in (
+    "if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;",
+    "There is a new version of %1$s available. Version %2$s.",
+    "Update now",
+):
+    if marker not in render_row:
+        raise SystemExit(f"WordPress-native update row marker missing: {marker}")
+for forbidden in (
+    "mad4b_self_update_manifest_not_cached",
+    "manifest_unavailable",
+    "policy_blocked",
+    "Retry update check",
+    "$reason",
+    "ui['blockers']",
+):
+    if forbidden in render_row:
+        raise SystemExit(f"diagnostic state leaked into Plugins update row: {forbidden}")
+
+notice = self_update.split("public static function native_update_notice()", 1)[1].split("private static function redirect_native_result", 1)[0]
+for forbidden in (
+    "Reason: %s",
+    "Maintenance state: %s",
+    "Owner: %s",
+    "Fence source: %s",
+    "Active fences: %d",
+):
+    if forbidden in notice:
+        raise SystemExit(f"internal update diagnostic leaked into admin notice: {forbidden}")
+for marker in (
+    "review Update diagnostics in MAD4B Control Plane",
+    "Another governed maintenance operation is active",
+):
+    if marker not in notice:
+        raise SystemExit(f"operator-facing update notice marker missing: {marker}")
+
+refresh_handler = self_update.split("public static function handle_refresh_update()", 1)[1].split("public static function handle_native_update()", 1)[0]
+if "delete_site_transient( 'update_plugins' )" in refresh_handler:
+    raise SystemExit("explicit MAD4B update check must not clear WordPress core plugin-update metadata")
 
 # The wp-admin update affordance must survive basename drift without enrolling
 # WordPress core updater transients or bypassing the governed verifier.
