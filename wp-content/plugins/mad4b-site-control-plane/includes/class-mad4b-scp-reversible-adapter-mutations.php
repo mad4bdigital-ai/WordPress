@@ -29,7 +29,8 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		$ability_name = (string) $ability_name;
 		$contract = $adapter->reversible_contract_for( $ability_name );
 		if ( '' === $contract ) return new WP_Error( 'mad4b_reversible_contract_missing', 'Adapter write has no certified reversible contract.' );
-		if ( ! is_callable( array( $adapter, $method ) ) ) return new WP_Error( 'mad4b_reversible_execute_missing', 'Adapter mutation implementation is unavailable.' );
+		$callable = is_callable( $method ) ? $method : array( $adapter, $method );
+		if ( ! is_callable( $callable ) ) return new WP_Error( 'mad4b_reversible_execute_missing', 'Adapter mutation implementation is unavailable.' );
 
 		$before = $adapter->capture_reversible_state( $ability_name, $input );
 		if ( is_wp_error( $before ) ) return $before;
@@ -113,7 +114,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'undo_expires_at' => gmdate( 'c', time() + $ttl ),
 		);
 		try {
-			$result = call_user_func( array( $adapter, $method ), $input );
+			$result = call_user_func( $callable, $input );
 		} catch ( Throwable $e ) {
 			array_pop( self::$execution_context_stack );
 			$error = new WP_Error( 'mad4b_reversible_provider_exception', 'Adapter mutation threw before successful verification.' );
