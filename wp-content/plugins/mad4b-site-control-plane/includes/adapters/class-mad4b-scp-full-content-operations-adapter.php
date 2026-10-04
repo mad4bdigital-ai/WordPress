@@ -32,7 +32,10 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 			'mad4b/taxonomy-delete-term',
 			'mad4b/content-import-bundle',
 		);
-		return in_array( (string) $ability_name, $high, true ) ? 'high' : $impact;
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
+			$high = array_merge( $high, MAD4B_SCP_Content_Experience_Profiles::high_impact_abilities() );
+		}
+		return in_array( (string) $ability_name, array_values( array_unique( $high ) ), true ) ? 'high' : $impact;
 	}
 
 	public function id() { return 'full-content-operations'; }
