@@ -216,6 +216,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-brand-context-builder.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-compatibility-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-commit-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy-resolution.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-error-contract-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
