@@ -568,7 +568,15 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			$status['conflict_backup_file'] = $backup['file'];
 		}
 		$temp = $destination . '.refresh-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
-		if ( ! @copy( $source, $temp ) ) {
+		$source_bytes = @file_get_contents( $source );
+		if ( ! is_string( $source_bytes ) ) {
+			$status['blocker'] = 'mu_bootstrap_refresh_source_read_failed';
+			self::$status = $status;
+			return $status;
+		}
+		$written = @file_put_contents( $temp, $source_bytes, LOCK_EX );
+		if ( false === $written || (int) $written !== strlen( $source_bytes ) ) {
+			@unlink( $temp );
 			$status['blocker'] = 'mu_bootstrap_refresh_temp_write_failed';
 			self::$status = $status;
 			return $status;
