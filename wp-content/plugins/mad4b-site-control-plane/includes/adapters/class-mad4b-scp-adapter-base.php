@@ -139,7 +139,7 @@ abstract class MAD4B_SCP_Adapter_Base {
 
 	protected function add_ability( $name, $label, $method, $permission, $input_schema = null, $surface = 'read', $readonly = true, $destructive = false, $idempotent = true ) {
 		$effective_destructive = $readonly ? (bool) $destructive : true;
-		$execute_callback = is_callable( $method ) ? $method : array( $this, $method );
+		$execute_callback = is_string( $method ) ? array( $this, $method ) : $method;
 		$reversible_contract = $readonly ? '' : $this->reversible_contract_for( $name );
 		if ( '' !== $reversible_contract ) {
 			$execute_callback = function ( $input = array() ) use ( $name, $method ) {
