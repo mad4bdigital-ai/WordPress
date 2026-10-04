@@ -141,9 +141,17 @@ foreach ( $stages as $stage ) {
 	check( str_repeat( 'a', 40 ) === $row['candidate_identity']['source_commit_sha'], $stage . ' lost candidate binding' );
 	check( 64 === strlen( $row['producer_evidence_sha256'] ), $stage . ' evidence digest missing' );
 }
+$status = MAD4B_SCP_Production_Certification::status();
+check( ! is_wp_error( $status ) && 'mad4b.production-certification-status.v1' === $status['contract'], 'certification status unavailable' );
+check( count( $stages ) === $status['local_runtime_stage_count'] && count( $stages ) === $status['local_ready_count'], 'local certification status did not execute all read-only canaries' );
+check( $status['stage_count'] > $status['local_runtime_stage_count'] && 0 < $status['external_evidence_required_count'], 'external certification requirements were not exposed' );
+check( false === $status['production_ready'] && false === $status['production_authorized'] && false === $status['mutation_performed'], 'certification status became authorizing or inferred readiness' );
+check( ! empty( $status['optional_capabilities_disabled'] ), 'core profile did not expose fail-closed optional capability set' );
 MAD4B_SCP_MCP_Peer_Governance::$blocked = true;
 $blocked = MAD4B_SCP_Production_Certification::execute( array( 'stage_id' => 'provider_side_channel_inventory' ) );
 check( empty( $blocked['ready'] ) && in_array( 'mcp_write_side_channel_detected', $blocked['blockers'], true ), 'side-channel blocker did not fail closed' );
+$blocked_status = MAD4B_SCP_Production_Certification::status();
+check( 1 === $blocked_status['local_blocked_count'] && count( $stages ) - 1 === $blocked_status['local_ready_count'], 'status matrix did not surface the blocked local canary' );
 MAD4B_SCP_Servers::$raw_query_mounted = true;
 $security_blocked = MAD4B_SCP_Production_Certification::execute( array( 'stage_id' => 'security_fault_canary' ) );
 check( empty( $security_blocked['ready'] ) && in_array( 'raw_sql_on_write_surface', $security_blocked['blockers'], true ), 'raw SQL surface blocker did not fail closed' );
