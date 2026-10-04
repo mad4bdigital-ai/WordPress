@@ -667,19 +667,37 @@ print("mad4b.control-plane-self-update.v1 multi-channel contract: PASS")
 # Ordinary plugins.php rendering must be cache-only. Remote GitHub manifest
 # fetches are allowed only on explicit refresh/update/status flows.
 action_link_body = self_update.split("private static function native_update_action_link( array $links )", 1)[1].split("private static function native_update_ui_state", 1)[0]
-assert "self::cached_manifest()" in action_link_body
 assert "self::fetch_manifest(" not in action_link_body
+for marker in (
+    "Check for updates",
+    "mad4b_control_plane_refresh_update",
+):
+    assert marker in action_link_body, f"WordPress-native update check action missing: {marker}"
+for forbidden in (
+    "Retry MAD4B update check",
+    "Update MAD4B to",
+    "MAD4B update blocked by policy",
+):
+    assert forbidden not in action_link_body, f"internal update state leaked into plugin action row: {forbidden}"
 
 render_body = self_update.split("public static function render_update_row(", 1)[1].split("public static function render_update_row_fallback", 1)[0]
 assert "self::cached_manifest()" in render_body
 assert "self::fetch_manifest(" not in render_body
 for marker in (
-    "self::installed_identity()",
+    "if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;",
     "$manifest['display_version']",
-    "'+build.'",
-    "A governed MAD4B build update is available: %1$s → %2$s.",
+    "There is a new version of %1$s available. Version %2$s.",
+    "Update now",
 ):
-    assert marker in render_body, f"exact build transition UI invariant missing: {marker}"
+    assert marker in render_body, f"WordPress-native update row invariant missing: {marker}"
+for forbidden in (
+    "mad4b_self_update_manifest_not_cached",
+    "manifest_unavailable",
+    "policy_blocked",
+    "Retry update check",
+    "A governed MAD4B build update is available",
+):
+    assert forbidden not in render_body, f"diagnostic/custom update state leaked into Plugins row: {forbidden}"
 
 refresh_body = self_update.split("public static function handle_refresh_update()", 1)[1].split("public static function handle_native_update()", 1)[0]
 assert "self::fetch_manifest( true )" in refresh_body
