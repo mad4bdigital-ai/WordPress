@@ -23,6 +23,7 @@ registration_bridge = (root / "includes/class-mad4b-scp-mcp-registration-bridge.
 self_update = (root / "includes/class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 repo_root = root.parents[2]
 external_diagnostic_workflow = (repo_root / ".github/workflows/mad4b-wpml-external-diagnostic.yml").read_text(encoding="utf-8")
+deployment_gate_workflow = (repo_root / ".github/workflows/mad4b-etg-deployment-readiness.yml").read_text(encoding="utf-8")
 read_consistency = (root / "includes/class-mad4b-scp-read-consistency.php").read_text(encoding="utf-8")
 query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
@@ -525,18 +526,34 @@ for marker in (
 ):
     assert marker in recovery_eligible, marker
 
-# PRs may report deployment drift as inconclusive, but post-merge/manual live
-# acceptance must fail closed until the exact published runtime is loaded.
+# Repository health may report deployment drift as warning-only evidence, while
+# real live defects remain blocking. Strict exact runtime identity belongs to
+# the separate ETG deployment gate, not the master health diagnostic.
 for marker in (
     "push:",
     "branches:",
     "master",
-    "MAD4B_REQUIRE_RUNTIME_IDENTITY",
     "deployment_drift",
+    "deployment drift is present together with live MCP/OAuth validation failures",
+    "::warning title=ETG deployment drift::",
+    "use MAD4B ETG Deployment Readiness for strict deployment identity",
 ):
     assert marker in external_diagnostic_workflow, marker
+assert "MAD4B_REQUIRE_RUNTIME_IDENTITY" not in external_diagnostic_workflow
 
-print("mad4b.chatgpt-refresh-hotpath.v17: PASS")
+for marker in (
+    "name: MAD4B ETG Deployment Readiness",
+    "workflow_dispatch:",
+    "workflow_call:",
+    "if: github.event_name != 'pull_request'",
+    "ETG exact runtime deployment gate",
+    "build-provenance:source_commit_sha_mismatch",
+    "wpml_contract_compatible",
+):
+    assert marker in deployment_gate_workflow, marker
+assert "\n  push:" not in deployment_gate_workflow
+
+print("mad4b.chatgpt-refresh-hotpath.v18: PASS")
 
 # Post-update MU reconciliation must never execute filesystem mutation/audit work
 # before an MCP/OAuth protocol request can be served.
