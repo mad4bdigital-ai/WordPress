@@ -12,7 +12,7 @@
   ],
   "thresholds": {
     "min_total_fixtures": 39,
-    "min_total_assertions": 890,
+    "min_total_assertions": 919,
     "min_disposable_assertions": 80,
     "disposable_cas_workers": 8,
     "disposable_cas_winners": 1,
@@ -35,7 +35,7 @@
         "minimum_assertions_per_fixture": {
           "profile_exact_plan_revision_and_boundary": 17,
           "object_surface_virtual_admission_and_indexability_conflicts": 16,
-          "target_identity_unicode_url_and_purpose_separation": 16,
+          "target_identity_unicode_url_and_purpose_separation": 27,
           "registered_operation_and_private_ability_boundaries": 27
         },
         "failed_assertions": 0
@@ -62,7 +62,7 @@
         "minimum_assertions_per_fixture": {
           "profile_exact_plan_revision_and_boundary": 17,
           "overlay_precedence_minimal_drift_and_reason_chain": 6,
-          "language_registry_conflict_partial_and_new_translation": 2,
+          "language_registry_conflict_partial_and_new_translation": 12,
           "composed_profile_language_surface_drift_preserves_history": 10,
           "compile_timestamp_stability_and_seo_generation_drift": 4
         },
@@ -90,7 +90,7 @@
         "minimum_assertions_per_fixture": {
           "object_surface_virtual_admission_and_indexability_conflicts": 16,
           "wordpress_inventory_pagination_and_public_cpt_taxonomy": 251,
-          "language_registry_conflict_partial_and_new_translation": 2,
+          "language_registry_conflict_partial_and_new_translation": 12,
           "target_4k_compilation_owned_and_discovery_independence": 5
         },
         "failed_assertions": 0
@@ -136,7 +136,7 @@
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
         "minimum_assertions_per_fixture": {
-          "target_identity_unicode_url_and_purpose_separation": 16,
+          "target_identity_unicode_url_and_purpose_separation": 27,
           "target_4k_compilation_owned_and_discovery_independence": 5,
           "compile_timestamp_stability_and_seo_generation_drift": 4
         },
@@ -190,7 +190,7 @@
         "minimum_assertions_per_fixture": {
           "fairness_aging_and_minimum_coverage_no_starvation": 4,
           "shared_account_race_across_processes_and_sites": 305,
-          "portable_storage_site_isolation_and_operator_due_controls": 5
+          "portable_storage_site_isolation_and_operator_due_controls": 7
         },
         "failed_assertions": 0
       },
@@ -286,7 +286,7 @@
           "durable_capture_replay_cache_and_no_authority": 26,
           "local_checkpoint_resume_does_not_repurchase": 6,
           "composed_profile_language_surface_drift_preserves_history": 10,
-          "evidence_tamper_trust_completeness_and_measurement_semantics": 12,
+          "evidence_tamper_trust_completeness_and_measurement_semantics": 15,
           "comparability_cannibalization_archives_and_no_incomplete_loss": 12,
           "cache_equivalence_depth_retention_and_unknown_context": 8,
           "expired_checkpoint_retention_preserves_cost_reconciliation_only": 7
@@ -315,7 +315,7 @@
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
         "minimum_assertions_per_fixture": {
-          "evidence_tamper_trust_completeness_and_measurement_semantics": 12,
+          "evidence_tamper_trust_completeness_and_measurement_semantics": 15,
           "licensing_storage_region_retention_and_recomputation": 7,
           "serpapi_translation_secrets_egress_geo_and_features": 9,
           "transport_timeout_oversize_and_upstream_secret_error": 8,
@@ -381,7 +381,7 @@
         "minimum_assertions_per_fixture": {
           "adaptive_experience_outage_cache_states_stable_sections_and_controls": 10,
           "registered_operation_and_private_ability_boundaries": 27,
-          "portable_storage_site_isolation_and_operator_due_controls": 5
+          "portable_storage_site_isolation_and_operator_due_controls": 7
         },
         "failed_assertions": 0
       },
@@ -469,8 +469,8 @@
           "overlay_precedence_minimal_drift_and_reason_chain": 6,
           "object_surface_virtual_admission_and_indexability_conflicts": 16,
           "wordpress_inventory_pagination_and_public_cpt_taxonomy": 251,
-          "language_registry_conflict_partial_and_new_translation": 2,
-          "target_identity_unicode_url_and_purpose_separation": 16,
+          "language_registry_conflict_partial_and_new_translation": 12,
+          "target_identity_unicode_url_and_purpose_separation": 27,
           "target_4k_compilation_owned_and_discovery_independence": 5,
           "decision_policy_provenance_monotonicity_and_refresh": 5,
           "fairness_aging_and_minimum_coverage_no_starvation": 4,
@@ -484,7 +484,7 @@
           "late_lease_restore_and_provider_generation_fences": 6,
           "local_checkpoint_resume_does_not_repurchase": 6,
           "composed_profile_language_surface_drift_preserves_history": 10,
-          "evidence_tamper_trust_completeness_and_measurement_semantics": 12,
+          "evidence_tamper_trust_completeness_and_measurement_semantics": 15,
           "comparability_cannibalization_archives_and_no_incomplete_loss": 12,
           "licensing_storage_region_retention_and_recomputation": 7,
           "adaptive_experience_outage_cache_states_stable_sections_and_controls": 10,
@@ -497,7 +497,7 @@
           "billing_window_pacing_and_bounded_burst_admission": 13,
           "cache_equivalence_depth_retention_and_unknown_context": 8,
           "post_change_fingerprint_binding_experiment_and_no_causality": 10,
-          "portable_storage_site_isolation_and_operator_due_controls": 5,
+          "portable_storage_site_isolation_and_operator_due_controls": 7,
           "serpapi_translation_secrets_egress_geo_and_features": 9,
           "dataforseo_translation_literal_operators_and_rank_semantics": 7,
           "provider_geo_missing_mismatched_locale_and_malformed_payload": 9,
