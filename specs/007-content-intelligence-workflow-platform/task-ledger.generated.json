@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "a19ce93e068c388a83e0a31373bf90ad38ab5067",
-  "override_git_blob_sha": "cd7a27e5593b826505dcdce3c2e27ff67fc4da21",
+  "override_git_blob_sha": "d61a606034383cb8f8bcef958d2272f28adb86ef",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -9176,11 +9176,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "ObservationContext and ComparabilityKey are implemented and deny ranking deltas across material context drift."
     },
@@ -9193,11 +9194,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Provider-resolved geo/locale/device/engine/depth evidence is bound into the observation comparability context."
     },
@@ -9210,11 +9212,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Versioned query canonicalization preserves raw query and semantic punctuation/accents while normalizing Unicode whitespace."
     },
@@ -9227,11 +9230,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Versioned URL identity handles canonical/redirect aliases and explicit registrable-domain ownership evidence without fabricating unresolved ownership."
     },
@@ -9244,11 +9248,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Normalized result semantics distinguish organic/group/absolute/provider-native positions and declare the comparison metric."
     },
@@ -9261,11 +9266,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Capture completeness distinguishes complete/partial/not-found-within-depth and blocks loss inference from incomplete evidence."
     },
@@ -9278,11 +9284,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-eligibility.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "SearchEligibilityEnvelope now separates crawlability, robots/header/meta, canonical, redirect, sitemap, hreflang, language and confidence with fail-closed owned tracking."
     },
@@ -9295,11 +9302,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-eligibility.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Surface Admission Policy enforces surface/path/query allowlists plus cardinality and pagination bounds for virtual/faceted surfaces."
     },
@@ -9312,11 +9320,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "ProviderAccountBudgetAuthority is keyed by hashed provider account/credential identity and exposes truthful enforcement scope."
     },
@@ -9329,11 +9338,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Hard-global reservations require authoritative shared backend fencing; local mode is explicitly best-effort with cycle reset, stale reservation expiry and provider usage reconciliation."
     },
@@ -9366,11 +9376,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-evidence-policy.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Provider evidence rights constrain raw/normalized retention, redistribution class, storage region and deletion semantics."
     },
@@ -9383,11 +9394,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-decision-policy.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Deterministic versioned DecisionPolicy enforces bounded factor ranges, provenance, missing-value denial, cost penalty and stable lexical tie-break."
     },
@@ -9420,11 +9432,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "All 15 Phase 38 gates plus review-hardening gates have machine-readable fixtures, assertion thresholds, evidence classes and exact-head requirement."
     },
@@ -9457,11 +9470,12 @@
       "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php",
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447"
       ],
       "reason": "Composed fault runtime covers profile/provider/language/surface drift, budget-cycle/lease failure, partial capture, cache incomparability and uncertain provider effects with derived degraded/reconciliation states."
     }
