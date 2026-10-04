@@ -306,6 +306,17 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		if ( $expected_revision !== $current_revision ) {
 			return new WP_Error( 'mad4b_content_experience_profile_revision_drift', 'Experience profile changed since planning.', array( 'current_revision' => $current_revision ) );
 		}
+
+		// post_type is part of the profile's semantic identity. Reject a widening
+		// before normalizing any post-type-dependent fields (taxonomies, caps,
+		// hierarchy, helpers), otherwise a secondary validation error can mask the
+		// immutable-identity violation and make plan semantics order-dependent.
+		if ( is_array( $current ) && isset( $current['post_type'] ) ) {
+			$requested_post_type = isset( $raw['post_type'] ) ? sanitize_key( (string) $raw['post_type'] ) : '';
+			if ( '' !== $requested_post_type && (string) $current['post_type'] !== $requested_post_type ) {
+				return new WP_Error( 'mad4b_content_experience_post_type_immutable', 'An existing experience slug cannot change post_type. Create a new profile slug to change content type.' );
+			}
+		}
 		$profile = self::normalize_profile( $raw, $current_revision + 1 );
 		if ( is_wp_error( $profile ) ) return $profile;
 		if ( is_array( $current ) && isset( $current['post_type'] ) && (string) $current['post_type'] !== (string) $profile['post_type'] ) {
