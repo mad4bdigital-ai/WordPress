@@ -104,7 +104,7 @@ for token in (
     "update-apply",
     "publish-plan",
     "publish-apply",
-    "-verify",
+    "'verify'",
     "-helpers",
     "profile_routes",
     "helper_catalog_sha256",
