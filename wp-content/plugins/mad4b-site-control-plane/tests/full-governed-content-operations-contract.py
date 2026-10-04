@@ -190,8 +190,10 @@ assert "class-mad4b-scp-content-experience-runtime.php" in plugin_src
 
 # Dynamic callbacks remain inside the same durable reversible envelope. The
 # callback itself is never persisted; only the ability name and rollback state are.
-assert "is_callable( $method ) ? $method : array( $this, $method )" in base_src
-assert "$callable = is_callable( $method ) ? $method : array( $adapter, $method )" in reversible_src
+assert "is_string( $method ) ? array( $this, $method ) : $method" in base_src
+assert "is_string( $method ) ? array( $adapter, $method ) : $method" in reversible_src
+assert "is_callable( $execute_callback )" in base_src
+assert "is_callable( $callable )" in reversible_src
 assert "call_user_func( $callable, $input )" in reversible_src
 
 for ability in (
