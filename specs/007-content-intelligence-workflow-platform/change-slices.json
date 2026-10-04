@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 267,
+  "changed_file_count": 268,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -372,10 +372,11 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php"
       ]
     }
   ],
-  "changed_paths_sha256": "6408bd1133ccc67e996d0bc8df0c40d579ff635b45a9669213c72602ff5f94a9"
+  "changed_paths_sha256": "3e01fc71eff1a37624a7f46447dea5d79c18e42154596d02019d377bfbe544f9"
 }
