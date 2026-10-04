@@ -359,7 +359,7 @@ final class MAD4B_SCP_Search_Runtime_Context {
 				'profile' => $profile,
 				'applied' => true,
 				'plan_sha256' => $plan['plan_sha256'],
-				'concurrency_guard' => 'prelock_exact_plan_plus_profile_scoped_distributed_lock',
+				'concurrency_guard' => 'profile_scoped_distributed_lock',
 				'authorizing' => false,
 				'wordpress_mutation_authority_granted' => false,
 				'production_authority_granted' => false,
