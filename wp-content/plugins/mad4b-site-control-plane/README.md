@@ -4,7 +4,11 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.88**.
+Current plugin version: **0.4.0-rc.90**.
+
+### rc.90 dynamic MCP runtime-surface certification
+
+rc.90 replaces the MCP Adapter 0.7 runtime class allowlist with a generated exact-release symbol surface. Certification discovers the bounded Core/Domain/Handlers/Infrastructure/Transport PHP surface from the exact upstream ZIP, records Git-compatible blob identities for classes, interfaces and traits, and verifies the generated profile in CI. The managed MU bootstrap consumes the generated surface and fails closed on preclaimed, foreign-source or byte-drifted symbols before server construction. Future Adapter releases therefore do not require hand-adding transitive constructor classes; profile generation and exact-archive verification surface dependency changes during certification.
 
 ### Explicit endpoint diagnostics
 

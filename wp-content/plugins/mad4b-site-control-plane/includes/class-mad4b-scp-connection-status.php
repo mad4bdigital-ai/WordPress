@@ -433,6 +433,7 @@ final class MAD4B_SCP_Connection_Status {
 		$server = $servers ? $servers[0] : array( 'server_id' => $server_id );
 		$registration = MAD4B_SCP_Servers::registration_status();
 		$row = isset( $registration[ $server_id ] ) && is_array( $registration[ $server_id ] ) ? $registration[ $server_id ] : array();
+		$registration_failure = isset( $row['registration_failure'] ) && is_array( $row['registration_failure'] ) ? $row['registration_failure'] : array();
 		$server['catalog_materialized'] = ! empty( $row['materialized'] );
 		$server['tool_count'] = $server['observed_tool_count'] ?? null;
 		$server['catalog_tool_count'] = isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : null;
@@ -460,13 +461,21 @@ final class MAD4B_SCP_Connection_Status {
 		foreach ( isset( $provenance['failures'] ) && is_array( $provenance['failures'] ) ? array_slice( $provenance['failures'], 0, 12 ) : array() as $failure ) {
 			if ( ! is_array( $failure ) ) continue;
 			$row = array();
-			foreach ( array( 'alias', 'class', 'expected_source', 'observed_source', 'reason' ) as $key ) $row[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 220 ) : '';
+			foreach ( array( 'alias', 'class', 'kind', 'expected_source', 'observed_source', 'reason' ) as $key ) $row[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 220 ) : '';
 			foreach ( array( 'expected_sha256', 'actual_sha256' ) as $key ) {
 				$value = isset( $failure[ $key ] ) ? strtolower( (string) $failure[ $key ] ) : '';
 				$row[ $key ] = preg_match( '/^[a-f0-9]{64}$/D', $value ) ? $value : '';
 			}
+			foreach ( array( 'expected_git_blob_sha1', 'actual_git_blob_sha1' ) as $key ) {
+				$value = isset( $failure[ $key ] ) ? strtolower( (string) $failure[ $key ] ) : '';
+				$row[ $key ] = preg_match( '/^[a-f0-9]{40}$/D', $value ) ? $value : '';
+			}
 			$server['runtime_class_failures'][] = $row;
 		}
+		$server['registration_failure_stage'] = isset( $registration_failure['stage'] ) ? sanitize_key( (string) $registration_failure['stage'] ) : '';
+		$server['registration_failure_reason'] = isset( $registration_failure['reason'] ) ? sanitize_key( (string) $registration_failure['reason'] ) : '';
+		$registration_failure_fingerprint = isset( $registration_failure['fingerprint'] ) ? strtolower( (string) $registration_failure['fingerprint'] ) : '';
+		$server['registration_failure_fingerprint'] = preg_match( '/^[a-f0-9]{64}$/D', $registration_failure_fingerprint ) ? $registration_failure_fingerprint : '';
 		$server['local_endpoint_ready'] = true === ( $server['registered'] ?? null ) && true === ( $server['route_registered'] ?? null ) && true === ( $server['permission_callback_match'] ?? null ) && $server['catalog_materialized'] && true === $server['catalog_count_match'] && empty( $server['registration_error'] ) && ( 'mad4b-chatgpt' !== $server_id || true === ( $server['catalog_ready'] ?? null ) );
 		return $server;
 	}

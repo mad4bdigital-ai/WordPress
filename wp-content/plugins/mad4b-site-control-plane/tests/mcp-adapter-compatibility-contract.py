@@ -95,8 +95,17 @@ profiles = json.loads((ROOT / "config/certified-provider-profiles.json").read_te
 target = profiles.get("providers", {}).get("mcp_adapter", {}).get("0.7.0")
 if not isinstance(target, dict) or target.get("version") != "0.7.0":
     fail("exact 0.7.0 provider profile is missing")
-runtime_classes = target.get("runtime_classes", {})
-classes = {spec.get("class") for spec in runtime_classes.values() if isinstance(spec, dict)}
+surface = target.get("runtime_surface") or {}
+runtime_symbols = target.get("runtime_symbols") or []
+if surface.get("contract") != "mad4b.mcp-runtime-surface.v1":
+    fail("0.7.0 generated runtime surface contract is missing")
+if surface.get("discovery") != "exact_archive_php_namespace_surface":
+    fail("0.7.0 runtime surface is not exact-archive discovered")
+if surface.get("fail_closed_on_unprofiled_symbol") is not True:
+    fail("0.7.0 runtime surface is not fail-closed")
+if surface.get("symbol_count") != len(runtime_symbols):
+    fail("0.7.0 runtime surface symbol count drift")
+classes = {spec.get("symbol") for spec in runtime_symbols if isinstance(spec, dict)}
 required = {
     "WP\\MCP\\Core\\McpAdapter",
     "WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool",
@@ -107,13 +116,21 @@ required = {
 }
 missing = sorted(required - classes)
 if missing:
-    fail(f"0.7.0 runtime class profile is incomplete: {missing}")
+    fail(f"0.7.0 generated runtime surface is incomplete: {missing}")
 for removed in (
     "WP\\MCP\\Domain\\Tools\\McpToolValidator",
     "WP\\McpSchema\\Server\\Tools\\DTO\\Tool",
 ):
     if removed in classes:
-        fail(f"0.7.0 profile inherited removed class: {removed}")
+        fail(f"0.7.0 generated surface inherited removed symbol: {removed}")
+for spec in runtime_symbols:
+    if not isinstance(spec, dict):
+        fail("runtime symbol entry must be an object")
+    if spec.get("kind") not in {"class", "interface", "trait"}:
+        fail(f"runtime symbol kind invalid: {spec!r}")
+    blob = str(spec.get("git_blob_sha1") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{40}", blob):
+        fail(f"runtime symbol blob identity invalid: {spec.get('symbol')}")
 
 mu = (ROOT / "bootstrap/mad4b-mcp-adapter-mu-bootstrap.php").read_text(encoding="utf-8")
 for marker in (

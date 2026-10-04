@@ -18,6 +18,30 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 	private static $cache = array();
 
 	public static function critical_classes( array $contract = array() ) {
+		if ( ! empty( $contract['runtime_symbols'] ) && is_array( $contract['runtime_symbols'] ) ) {
+			$symbols = array();
+			foreach ( $contract['runtime_symbols'] as $spec ) {
+				if ( ! is_array( $spec ) ) continue;
+				$symbol = isset( $spec['symbol'] ) ? trim( (string) $spec['symbol'] ) : '';
+				$kind = isset( $spec['kind'] ) ? sanitize_key( (string) $spec['kind'] ) : 'class';
+				$file = isset( $spec['file'] ) ? ltrim( self::normalize_path( (string) $spec['file'] ), '/' ) : '';
+				$blob = isset( $spec['git_blob_sha1'] ) ? strtolower( trim( (string) $spec['git_blob_sha1'] ) ) : '';
+				if ( '' === $symbol || '' === $file || false !== strpos( $file, '../' ) ) continue;
+				if ( ! in_array( $kind, array( 'class', 'interface', 'trait' ), true ) ) continue;
+				if ( 1 !== preg_match( '/^[a-f0-9]{40}$/D', $blob ) ) continue;
+				$symbols[ $symbol ] = array(
+					'class' => $symbol,
+					'kind' => $kind,
+					'file' => $file,
+					'git_blob_sha1' => $blob,
+				);
+			}
+			if ( ! empty( $symbols ) ) {
+				ksort( $symbols, SORT_STRING );
+				return $symbols;
+			}
+		}
+
 		if ( ! empty( $contract['runtime_classes'] ) && is_array( $contract['runtime_classes'] ) ) {
 			$classes = array();
 			foreach ( $contract['runtime_classes'] as $alias => $spec ) {
@@ -26,7 +50,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 				$class = isset( $spec['class'] ) ? trim( (string) $spec['class'] ) : '';
 				$file = isset( $spec['file'] ) ? ltrim( self::normalize_path( (string) $spec['file'] ), '/' ) : '';
 				if ( '' === $class || '' === $file || false !== strpos( $file, '../' ) ) continue;
-				$classes[ $alias ] = array( 'class' => $class, 'file' => $file );
+				$classes[ $alias ] = array( 'class' => $class, 'kind' => 'class', 'file' => $file, 'git_blob_sha1' => '' );
 			}
 			if ( ! empty( $classes ) ) return $classes;
 		}
@@ -46,6 +70,21 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'tool_annotations_dto' => array( 'class' => 'WP\\McpSchema\\Server\\Tools\\DTO\\ToolAnnotations', 'file' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php' ),
 			'tool_execution_dto' => array( 'class' => 'WP\\McpSchema\\Server\\Tools\\DTO\\ToolExecution', 'file' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php' ),
 		);
+	}
+
+
+	private static function runtime_symbol_exists( $symbol, $kind, $autoload ) {
+		$symbol = (string) $symbol;
+		$kind = sanitize_key( (string) $kind );
+		if ( 'interface' === $kind ) return interface_exists( $symbol, (bool) $autoload );
+		if ( 'trait' === $kind ) return trait_exists( $symbol, (bool) $autoload );
+		return class_exists( $symbol, (bool) $autoload );
+	}
+
+	private static function git_blob_sha1( $file ) {
+		$raw = is_readable( $file ) ? file_get_contents( $file ) : false;
+		if ( false === $raw ) return '';
+		return sha1( 'blob ' . strlen( $raw ) . "\0" . $raw );
 	}
 
 	public static function status( $force = false, $autoload = true ) {
@@ -118,7 +157,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'blocker' => '',
 			'provider' => self::PROVIDER,
 			'certified_version' => isset( $contract['version'] ) ? sanitize_text_field( (string) $contract['version'] ) : '',
-			'class_count' => count( self::critical_classes() ),
+			'class_count' => count( self::critical_classes( $contract ) ),
 			'verified_count' => 0,
 			'failure_count' => 0,
 			'unobserved_count' => 0,
@@ -147,25 +186,32 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 		$out['class_count'] = count( $critical_classes );
 		foreach ( $critical_classes as $alias => $spec ) {
 			$class = $spec['class'];
+			$kind = isset( $spec['kind'] ) ? sanitize_key( (string) $spec['kind'] ) : 'class';
 			$relative = ltrim( self::normalize_path( $spec['file'] ), '/' );
 			$expected_sha = isset( $manifest[ $relative ] ) ? strtolower( trim( (string) $manifest[ $relative ] ) ) : '';
+			$expected_blob = isset( $spec['git_blob_sha1'] ) ? strtolower( trim( (string) $spec['git_blob_sha1'] ) ) : '';
+			$uses_blob_identity = 1 === preg_match( '/^[a-f0-9]{40}$/D', $expected_blob );
 			$row = array(
 				'alias' => sanitize_key( (string) $alias ),
 				'class' => $class,
+				'kind' => $kind,
 				'expected_source' => ( '' !== $runtime_root_relative ? $runtime_root_relative . '/' : '' ) . $relative,
 				'observed_source' => 'not_loaded',
 				'expected_sha256' => preg_match( '/^[a-f0-9]{64}$/D', $expected_sha ) ? $expected_sha : '',
 				'actual_sha256' => '',
+				'expected_git_blob_sha1' => $uses_blob_identity ? $expected_blob : '',
+				'actual_git_blob_sha1' => '',
 				'path_match' => false,
 				'sha256_match' => false,
+				'blob_match' => false,
 				'ready' => false,
 				'reason' => '',
 			);
 
-			if ( '' === $row['expected_sha256'] ) {
+			if ( ! $uses_blob_identity && '' === $row['expected_sha256'] ) {
 				$row['reason'] = 'certified_class_hash_missing';
-			} elseif ( ! class_exists( $class, (bool) $autoload ) ) {
-				if ( ! $autoload && ! class_exists( $class, false ) ) {
+			} elseif ( ! self::runtime_symbol_exists( $class, $kind, (bool) $autoload ) ) {
+				if ( ! $autoload && ! self::runtime_symbol_exists( $class, $kind, false ) ) {
 					$row['reason'] = 'runtime_class_not_loaded';
 					$out['classes'][] = $row;
 					$out['unobserved_count']++;
@@ -190,9 +236,13 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 						$row['path_match'] = '' !== $expected_file && hash_equals( $expected_file, $normalized );
 						$actual_sha = is_readable( $resolved ) ? hash_file( 'sha256', $resolved ) : false;
 						$row['actual_sha256'] = is_string( $actual_sha ) && preg_match( '/^[a-f0-9]{64}$/D', strtolower( $actual_sha ) ) ? strtolower( $actual_sha ) : '';
-						$row['sha256_match'] = '' !== $row['actual_sha256'] && hash_equals( $row['expected_sha256'], $row['actual_sha256'] );
-						$row['ready'] = $row['path_match'] && $row['sha256_match'];
+						$row['sha256_match'] = '' !== $row['actual_sha256'] && '' !== $row['expected_sha256'] && hash_equals( $row['expected_sha256'], $row['actual_sha256'] );
+						$row['actual_git_blob_sha1'] = self::git_blob_sha1( $resolved );
+						$row['blob_match'] = '' !== $row['expected_git_blob_sha1'] && '' !== $row['actual_git_blob_sha1'] && hash_equals( $row['expected_git_blob_sha1'], $row['actual_git_blob_sha1'] );
+						$identity_match = $uses_blob_identity ? $row['blob_match'] : $row['sha256_match'];
+						$row['ready'] = $row['path_match'] && $identity_match;
 						if ( ! $row['path_match'] ) $row['reason'] = 'runtime_class_source_mismatch';
+						elseif ( $uses_blob_identity && ! $row['blob_match'] ) $row['reason'] = 'runtime_symbol_blob_mismatch';
 						elseif ( ! $row['sha256_match'] ) $row['reason'] = 'runtime_class_sha256_mismatch';
 					}
 				} catch ( Throwable $error ) {
@@ -207,10 +257,13 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 				$out['failures'][] = array(
 					'alias' => $row['alias'],
 					'class' => $row['class'],
+					'kind' => $row['kind'],
 					'expected_source' => $row['expected_source'],
 					'observed_source' => $row['observed_source'],
 					'expected_sha256' => $row['expected_sha256'],
 					'actual_sha256' => $row['actual_sha256'],
+					'expected_git_blob_sha1' => $row['expected_git_blob_sha1'],
+					'actual_git_blob_sha1' => $row['actual_git_blob_sha1'],
 					'reason' => sanitize_key( (string) $row['reason'] ),
 				);
 			}
@@ -232,7 +285,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			if ( ! is_array( $failure ) ) continue;
 			$reason = isset( $failure['reason'] ) ? (string) $failure['reason'] : '';
 			$observed = isset( $failure['observed_source'] ) ? (string) $failure['observed_source'] : '';
-			if ( 'runtime_class_sha256_mismatch' === $reason ) {
+			if ( 'runtime_class_sha256_mismatch' === $reason || 'runtime_symbol_blob_mismatch' === $reason ) {
 				// This reason is assigned only after the exact expected path matched;
 				// directory names therefore do not participate in official ownership.
 				$official_disk_mismatch = true;

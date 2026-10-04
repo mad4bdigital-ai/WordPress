@@ -950,6 +950,38 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled by the database-backed governed runtime gate policy.', $breakglass_tools, array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-breakglass', $target_server_id ) );
 	}
 
+
+	private static function bounded_registration_failure( $result ) {
+		$code = is_wp_error( $result ) && method_exists( $result, 'get_error_code' )
+			? sanitize_key( (string) $result->get_error_code() )
+			: 'adapter_rejected';
+		$message = is_wp_error( $result ) && method_exists( $result, 'get_error_message' )
+			? (string) $result->get_error_message()
+			: '';
+		$stage = 'adapter_create_server';
+		$reason = '' !== $code ? $code : 'adapter_rejected';
+
+		if ( 'server_creation_failed' === $code ) {
+			$stage = 'server_construction';
+			$reason = 'server_constructor_exception';
+			if ( preg_match( '/(?:too (?:few|many) arguments|expects (?:exactly|at least|at most) [0-9]+ arguments?|argument #[0-9]+)/i', $message ) ) {
+				$reason = 'runtime_constructor_contract_mismatch';
+			} elseif ( preg_match( '/(?:class|interface|trait) .+ not found/i', $message ) ) {
+				$reason = 'runtime_symbol_unavailable';
+			} elseif ( false !== stripos( $message, 'call to undefined method' ) || false !== stripos( $message, 'undefined method' ) ) {
+				$reason = 'runtime_method_contract_mismatch';
+			} elseif ( false !== stripos( $message, 'typeerror' ) || false !== stripos( $message, 'must be of type' ) || false !== stripos( $message, 'cannot assign' ) ) {
+				$reason = 'runtime_type_contract_mismatch';
+			}
+		}
+
+		return array(
+			'stage' => sanitize_key( $stage ),
+			'reason' => sanitize_key( $reason ),
+			'fingerprint' => '' !== $message ? hash( 'sha256', $code . "\n" . $message ) : '',
+		);
+	}
+
 	private function create( $adapter, $id, $name, $description, array $tools, $permission, $transport, $error_handler, $observability, $materialized = true ) {
 		$preflight = null;
 		$requested_tools = $tools;
@@ -970,7 +1002,7 @@ final class MAD4B_SCP_Servers {
 		}
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
 		if ( is_wp_error( $result ) ) {
-			self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0 );
+			self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0, 'registration_failure' => self::bounded_registration_failure( $result ) );
 			// Adapter rejection must not erase the earlier required-tool evidence.
 			if ( is_array( $preflight ) ) {
 				self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
