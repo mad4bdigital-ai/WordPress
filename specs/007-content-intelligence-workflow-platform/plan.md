@@ -862,3 +862,114 @@ Exit gates:
 
 Phase 37 is complete only when T3768–T3770, T3795 and T3799 pass. T3768–T3770 establish ownership/traceability/non-authorizing semantics; T3795 supplies composed cross-fault runtime proof; T3799 closes canonical identity and transactional database invariants. Documentation alone cannot satisfy runtime/security/live gates.
 
+## Phase 38 — Adaptive Search Intelligence Fabric
+
+Objective: extend the provider-neutral research layer into a long-lived adaptive Search Intelligence runtime that discovers site/search capabilities, compiles an effective market/language/surface context, schedules the highest-value observations under fair economic constraints, preserves immutable evidence and exposes a capability/state-driven operator experience.
+
+Normative design:
+- `adaptive-search-intelligence.md`
+- `contracts/adaptive-search-intelligence-runtime.md`
+- `adaptive-search-intelligence.json`
+
+This is a maturity extension. It does not widen the frozen Critical Kernel, Production authority, Breakglass or ordinary mutation authority. Search observations and recommendations remain non-authorizing; content changes continue through Dynamic Content Experience plan/apply/verify.
+
+### 38A — Meta-model, profiles and effective context
+- define Search Profile independently from governance Site Profile;
+- implement composable brand/market/language/surface/objective overlays;
+- compile exact EffectiveSearchContext with reason chain and dependency fingerprints;
+- preserve security/governance precedence outside business-policy overlays;
+- detect profile/runtime drift and invalidate only dependent work.
+
+### 38B — Language, surface and SEO observation graph
+- provider-neutral live Language Registry;
+- distinguish WordPress objects from Search Surfaces;
+- inventory Posts, Pages, public CPTs, Terms, Term Archives, Post Type Archives, Home, Blog Index and provider-approved virtual surfaces;
+- resolve effective indexability from object, SEO and rendered evidence;
+- preserve conflicts instead of silently preferring one provider;
+- record SEO metadata with field-level provenance.
+
+### 38C — Search target compilation and temporal evidence
+- define query identity over query/market/language/engine/device/purpose;
+- support owned tracking and market discovery as different target purposes;
+- compile targets from SEO metadata, keyword registries, surface changes, clusters, competitors and post-change validation;
+- maintain immutable observations/events and recomputable current projections;
+- model rank as temporal trajectory with freshness, stability and volatility.
+
+### 38D — Adaptive decision engine and dynamic refresh
+- score Expected Value of Observation using business value, information gain, urgency, actionability, confidence need, change probability and expected cost;
+- make weights profile data rather than business hardcode;
+- generate explainable DecisionRecords;
+- calculate target-specific refresh cadence from evidence and economic state;
+- reuse sufficiently fresh equivalent evidence before spending provider budget.
+
+### 38E — Fair scheduler and hierarchical budget governor
+- fairness across site/brand/market/language/purpose/cluster/surface/provider;
+- aging/minimum-coverage controls to prevent starvation;
+- hierarchical monthly/daily/monetary/rate/concurrency constraints;
+- soft reservations, safe budget reclaim and protected reserve;
+- fail closed on hard-budget overspend.
+
+### 38F — Provider execution mesh
+- generic SERP provider descriptor, health, usage and economic interfaces;
+- first adapter: SerpApi;
+- second conforming adapter: DataForSEO or a full conformance fixture before live enablement;
+- capability/economic/policy-based provider routing rather than fixed primary/fallback branching;
+- reuse Provider Certification, Circuit Breaker, egress policy, structural redaction and durable execution;
+- reconcile ambiguous quota-consuming external effects before retry;
+- keep historical/imported/HYPD/manual evidence as evidence sources, not false live-execution receipts.
+
+### 38G — Evidence trust, normalization and intelligence
+- validate and bound untrusted provider content before processing;
+- separate raw evidence, normalized facts and inference;
+- immutable versioned SERP snapshots with request/provider/runtime/cost provenance;
+- confidence-aware ranking/volatility/competitor/cannibalization/gap/archive/SERP-feature/post-change signals;
+- preserve provider/SEO contradictions as explicit evidence.
+
+### 38H — Adaptive operator experience
+- derive an ExperienceModel from runtime state/capabilities/gaps/blockers/opportunities;
+- base navigation on registered capabilities, not provider-specific UI branches;
+- support unconfigured/discovering/baselining/active/degraded/reconciliation/drift/stale states;
+- degraded provider/quota states retain historical/cache intelligence instead of presenting total system failure;
+- expose explainable queue/provider/budget decisions without secrets.
+
+### 38I — Closed-loop but non-authorizing content optimization
+- Search signal -> recommendation -> governed content-change proposal;
+- hand off only through Dynamic Content Experience plan/approval/apply/verify;
+- generate post-change observation windows;
+- measure outcomes while distinguishing correlation from causality;
+- never allow ranking evidence to silently edit or publish content.
+
+### 38J — Generalization and fault acceptance
+Prove the same runtime without PHP business/vendor branches across:
+- single-language simple site;
+- multilingual archive-heavy site;
+- 4,000+ target inventory;
+- partial translations;
+- provider quota scarcity;
+- provider outage/circuit recovery;
+- new provider/SEO adapter;
+- new CPT/taxonomy/archive;
+- new market launch;
+- post-change validation;
+- SEO/provider contradiction;
+- fairness starvation;
+- profile/provider/language/surface/budget drift.
+
+Exit gates:
+- ADAPTIVE_SEARCH_META_MODEL_PASS
+- SEARCH_CONTEXT_COMPILER_PASS
+- INDEXABLE_SURFACE_GRAPH_PASS
+- SEO_FIELD_PROVENANCE_PASS
+- SEARCH_TARGET_COMPILER_PASS
+- SEARCH_DECISION_EXPLAINABILITY_PASS
+- SEARCH_FAIR_SCHEDULER_PASS
+- SEARCH_BUDGET_GOVERNOR_PASS
+- SERP_PROVIDER_CONFORMANCE_PASS
+- SERP_EVIDENCE_INTEGRITY_PASS
+- SEARCH_EXTERNAL_EVIDENCE_TRUST_PASS
+- SEARCH_RECONCILIATION_BEFORE_RETRY_PASS
+- ADAPTIVE_SEARCH_EXPERIENCE_PASS
+- SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS
+- ADAPTIVE_SEARCH_GENERALIZATION_PASS
+
+Phase 38 cannot be closed by documentation alone.
