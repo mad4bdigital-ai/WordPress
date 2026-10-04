@@ -49,20 +49,28 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		return $value;
 	}
 
-	public static function profile_routes( $slug ) {
+	public static function profile_routes( $slug, $revision = 0 ) {
 		$slug = self::route_slug( $slug );
 		if ( is_wp_error( $slug ) ) return array();
 		$base = 'mad4b/' . $slug . '-';
+		$generation = max( 0, (int) $revision );
+		$apply_base = $base . ( $generation > 0 ? 'r' . $generation . '-' : '' );
 		return array(
 			'helpers' => $base . 'helpers',
 			'create_plan' => $base . 'create-plan',
-			'create_apply' => $base . 'create-apply',
+			'create_apply' => $apply_base . 'create-apply',
 			'update_plan' => $base . 'update-plan',
-			'update_apply' => $base . 'update-apply',
+			'update_apply' => $apply_base . 'update-apply',
 			'publish_plan' => $base . 'publish-plan',
-			'publish_apply' => $base . 'publish-apply',
+			'publish_apply' => $apply_base . 'publish-apply',
 			'verify' => $base . 'verify',
 		);
+	}
+
+	private static function routes_for_profile( array $profile ) {
+		return isset( $profile['routes'] ) && is_array( $profile['routes'] ) && ! empty( $profile['routes'] )
+			? $profile['routes']
+			: self::profile_routes( isset( $profile['slug'] ) ? $profile['slug'] : '', isset( $profile['revision'] ) ? (int) $profile['revision'] : 0 );
 	}
 
 	private static function stored_profiles() {
@@ -262,7 +270,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'hierarchy' => ! empty( $raw['hierarchy'] ) && ! empty( $object->hierarchical ),
 			'enabled_helpers' => $enabled_helpers,
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
-			'routes' => self::profile_routes( $slug ),
+			'routes' => self::profile_routes( $slug, max( 1, (int) $next_revision ) ),
 		);
 		$profile['authority_sha256'] = class_exists( 'MAD4B_SCP_Content_Experience_Governance' )
 			? MAD4B_SCP_Content_Experience_Governance::authority_sha256( $profile )
@@ -287,7 +295,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		if ( is_array( $current ) && isset( $current['post_type'] ) && (string) $current['post_type'] !== (string) $profile['post_type'] ) {
 			return new WP_Error( 'mad4b_content_experience_post_type_immutable', 'An existing experience slug cannot change post_type. Create a new profile slug to change content type.' );
 		}
-		$current_routes = is_array( $current ) && isset( $current['routes'] ) && is_array( $current['routes'] ) ? array_values( $current['routes'] ) : array();
+		$current_routes = is_array( $current ) ? array_values( self::routes_for_profile( $current ) ) : array();
 		foreach ( array_values( $profile['routes'] ) as $route ) {
 			if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $route ) && ! in_array( $route, $current_routes, true ) ) {
 				return new WP_Error(
@@ -424,7 +432,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'helper_catalog_match' => isset( $profile['helper_catalog_sha256'] ) && hash_equals( (string) $profile['helper_catalog_sha256'], self::helper_catalog_sha256() ),
 				'authority_sha256' => isset( $profile['authority_sha256'] ) ? (string) $profile['authority_sha256'] : '',
 				'authority_current' => class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) && ! is_wp_error( MAD4B_SCP_Content_Experience_Governance::current_guard( $profile ) ),
-				'routes' => self::profile_routes( $slug ),
+				'routes' => self::routes_for_profile( $profile ),
 			);
 		}
 		return array(
@@ -481,7 +489,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$content = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
-			$routes = self::profile_routes( $profile['slug'] );
+			$routes = self::routes_for_profile( $profile );
 			$read = array_merge( $read, array( $routes['helpers'], $routes['create_plan'], $routes['update_plan'], $routes['publish_plan'], $routes['verify'] ) );
 			$content = array_merge( $content, array( $routes['create_apply'], $routes['update_apply'], $routes['publish_apply'] ) );
 		}
@@ -498,7 +506,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		);
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
-			$routes = self::profile_routes( $profile['slug'] );
+			$routes = self::routes_for_profile( $profile );
 			foreach ( array( 'create_apply', 'update_apply', 'publish_apply' ) as $key ) $result[ $routes[ $key ] ] = 'mad4b.rollback.content-experience.v1';
 		}
 		return $result;
@@ -572,7 +580,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
 			$slug = (string) $profile['slug'];
-			$routes = self::profile_routes( $slug );
+			$routes = self::routes_for_profile( $profile );
 			$label = isset( $profile['label'] ) ? (string) $profile['label'] : $slug;
 			$definitions[] = self::route_definition( $routes['helpers'], $label . ' Helpers', $slug, 'helpers', 'read', self::schema( array() ) );
 			$definitions[] = self::route_definition( $routes['create_plan'], 'Plan ' . $label . ' Create', $slug, 'create', 'plan', self::common_payload_schema( false ) );
@@ -640,7 +648,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$abilities = array();
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
-			$routes = self::profile_routes( $profile['slug'] );
+			$routes = self::routes_for_profile( $profile );
 			$abilities[] = $routes['create_apply'];
 			$abilities[] = $routes['update_apply'];
 			$abilities[] = $routes['publish_apply'];
@@ -701,7 +709,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$ability_name = (string) $ability_name;
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
-			if ( in_array( $ability_name, array_values( self::profile_routes( $profile['slug'] ) ), true ) ) return $profile;
+			if ( in_array( $ability_name, array_values( self::routes_for_profile( $profile ) ), true ) ) return $profile;
 		}
 		return new WP_Error( 'mad4b_content_experience_profile_for_ability_missing', 'Ability is not owned by an enabled content experience profile.' );
 	}
@@ -713,7 +721,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	private static function dynamic_context( $ability_name ) {
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
-			$routes = self::profile_routes( $profile['slug'] );
+			$routes = self::routes_for_profile( $profile );
 			foreach ( array( 'create_apply' => 'create', 'update_apply' => 'update', 'publish_apply' => 'publish' ) as $key => $operation ) {
 				if ( $routes[ $key ] === $ability_name ) return array( 'slug' => $profile['slug'], 'operation' => $operation );
 			}
