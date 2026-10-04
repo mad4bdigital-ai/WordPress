@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "e872f13cc78de9ac82190037494a5458706fd2e4",
+  "source_tasks_git_blob_sha": "2757770ed2628651f98def8573afaab738d69767",
   "override_git_blob_sha": "47c21d4ab24651b6697507563f978f9717cc2882",
   "classification_policy": {
     "default_unchecked": "OPEN",
@@ -11,20 +11,20 @@
   "counts": {
     "DEFERRED": 2,
     "DONE": 134,
-    "OPEN": 553,
+    "OPEN": 613,
     "PARTIAL": 68
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 95,
-      "OPEN": 447,
+      "OPEN": 502,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
       "DONE": 37,
-      "OPEN": 85,
+      "OPEN": 90,
       "PARTIAL": 24
     },
     "P2": {
@@ -34,7 +34,7 @@
       "PARTIAL": 1
     }
   },
-  "task_count": 757,
+  "task_count": 817,
   "tasks": [
     {
       "task_id": "T0001",
@@ -8566,6 +8566,606 @@
         "workflow_run:36996652203"
       ],
       "reason": "Portable savepoint probing, explicit nested/reentrant denial, ownership-token commit/rollback verification and MySQL 8/MariaDB 11.8 runtime fixtures prove MAD4B does not commit or roll back unrelated caller transactions."
+    },
+    {
+      "task_id": "T3801",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define canonical Search Runtime Fact, Search Profile and Effective Search Context contracts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3802",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement Search Profile plan/apply/verify with revision and exact plan drift guards; keep it separate from governance Site Profile.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3803",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement composable brand/market/language/surface/objective overlays with deterministic precedence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3804",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove business overlays can specialize but cannot widen security, authority, egress or Production policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3805",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement dependency fingerprints and minimal invalidation for PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA drift.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3806",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Implement explainable effective-context reason chains and read-only status projection.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3807",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement provider-neutral Language Registry with WPML adapter and generic conformance contract.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3808",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Model WordPress Object and Search Surface as separate canonical identities.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3809",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Inventory Posts, Pages, public CPTs, Terms, Term Archives, Post Type Archives, Home and Blog Index.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3810",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Add provider-approved virtual/paginated surface semantics without generic arbitrary-URL admission.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3811",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement effective Indexability Resolver across object status, site policy, SEO metadata, canonical/redirect, language state and rendered evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3812",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Preserve indexability conflicts as reconciliation evidence; forbid silent provider winner.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3813",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement SEO Metadata Provider Registry with field-level provenance and Rank Math + WordPress/rendered fallback adapters.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3814",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Add Yoast/AIOSEO/SEOPress adapter conformance fixtures without core branching.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3815",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define Search Target identity over normalized query, market, language, engine, device and purpose.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3816",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement OWNED_RANK_TRACKING and MARKET_DISCOVERY as independent target purposes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3817",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement target compilation from SEO targets, canonical keyword registry, surface changes, clusters, competitors and post-change validation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3818",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement immutable search observations/events plus recomputable materialized views.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3819",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement temporal rank trajectory, freshness, stability and volatility projections.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3820",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove historical evidence survives target/profile/language/surface drift without identity corruption.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3821",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement Expected Value of Observation Decision Engine with profile-driven weights.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3822",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement DecisionRecord with positive/negative factors, alternatives, evidence freshness and provider/budget reasoning.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3823",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement target-specific dynamic refresh cadence; forbid one universal refresh interval.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3824",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Reuse fresh equivalent evidence before provider execution when policy permits.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3825",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement multidimensional fair scheduler across site/brand/market/language/purpose/cluster/surface/provider.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3826",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove aging/minimum coverage prevents permanent starvation under constrained budget.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3827",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement hierarchical budget tree with monthly/daily/monetary/rate/concurrency/depth constraints.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3828",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement soft reservations, protected reserve and safe unused-budget reclaim.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3829",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Bind provider usage/reset evidence to scheduling decisions without exposing credentials.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3830",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove hard budget overspend and negative/unknown budget states fail closed.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3831",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Implement budget pacing and controlled burst policy from remaining allowance and billing window.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3832",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define provider-neutral SERP descriptor/request/usage/economic/failure/normalization contracts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3833",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement SerpApi adapter behind registered egress/secret/certification boundaries.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3834",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement DataForSEO adapter or an executable second-provider conformance fixture before provider-neutrality is claimed.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3835",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Replace fixed search-specific primary/fallback logic with capability/economic/policy-based provider candidate selection.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3836",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Extend semantic Remote Work Operation Registry for registered `search.serp.capture` without generic URL/command execution.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3837",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Reuse Provider Circuit Breaker state for eligibility and bounded HALF_OPEN read probes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3838",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Reconcile ambiguous quota-consuming provider effects before retry; no blind duplicate request.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3839",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Keep imported/HYPD/manual/historical sources typed as evidence sources, not forged live provider receipts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3840",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement immutable versioned SERP Snapshot with request/provider/runtime/raw/normalized/cost provenance.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3841",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement external SERP content schema/size/sanitization trust boundary and prompt/tool-instruction isolation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3842",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Separate raw evidence, normalized facts and derived inference so inference can be recomputed without repurchasing evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3843",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement confidence-aware ranking, volatility, competitor, cannibalization, content/language/market gap, archive and SERP-feature signals.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3844",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove cannibalization can relate pages, CPTs, term archives and post-type archives under exact query/market/language/device identity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3845",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define Search Experience Model and generic renderer primitives.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3846",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement capability/state-driven Search Intelligence navigation and sections; forbid provider-name UI branching.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3847",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement UNCONFIGURED/DISCOVERING/PROFILE_DRAFTED/READY/BASELINING/ACTIVE and degraded/reconciliation/drift/stale states.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3848",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove provider outage/quota exhaustion yields degraded-safe experience while valid cached/historical intelligence remains usable.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3849",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Expose explainable queue, provider, budget and freshness decisions without secret/debug leakage.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3850",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement Search Signal -> Recommendation -> governed Content Experience proposal boundary.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3851",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove Search Intelligence cannot directly edit, publish or create Production authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3852",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement post-change observation windows bound to exact content/SEO fingerprints.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3853",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Implement experiment outcome projection with explicit confounders and no unsupported causality claim.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3854",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Execute conformance matrix across simple single-language, multilingual/archive-heavy, 4K+ target and partial-translation fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3855",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Execute provider low-quota/outage/HALF_OPEN/failover/recovery and stale-cache fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3856",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Execute new provider/new SEO adapter/new CPT/taxonomy/archive/new language/new market drift fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3857",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Execute cross-market/language fairness and noisy-neighbor budget fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3858",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Execute evidence tamper, provider contradiction, malformed/untrusted content and normalization-version fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3859",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Prove no vendor/business hardcode is required to add a new Search Profile/provider/site.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3860",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Emit ADAPTIVE_SEARCH_GENERALIZATION_PASS only from exact-head executable evidence; documentation-only closure is forbidden.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
     }
   ]
 }
