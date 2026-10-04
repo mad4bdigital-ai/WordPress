@@ -489,13 +489,14 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/config/abuse-budget.json",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abuse-budget.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-entropy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
+        "specs/007-content-intelligence-workflow-platform/feature007-hermetic-critical-gate-handoff.json"
       ],
       "remainder": [
-        "T3755 remains PARTIAL until preparation/context receipt families use the versioned crypto-profile/key-ID rotation lifecycle rather than legacy/local signing semantics.",
-        "T3760 remains OPEN for TLS verification, proxy trust, redirect revalidation, DNS-answer change and certificate/hostname failure semantics.",
-        "T3761 remains OPEN for legacy unprepared-dispatch migration/deprecation telemetry, versioned error contracts and explicit sunset gates.",
-        "T3762 remains OPEN for end-to-end hermetic deterministic critical CI with bounded deterministic randomness and no flaky-gate bypass."
+        "T3762 remains PARTIAL until the deterministic entropy/clock gate is wired into the baseline-owned Feature 007 Critical Kernel after PR #236 merges; Feature-owned Pre-Staging already proves the hermetic contract."
       ],
       "priority": "P0",
       "owner": "security_kernel",
@@ -524,7 +525,7 @@
     },
     {
       "id": "maintainability_config",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3763",
         "T3764",
@@ -552,7 +553,19 @@
         ".github/workflows/feature-007-critical-kernel.yml"
       ],
       "traceability_family": "CAPFAB",
-      "authorizing": false
+      "authorizing": false,
+      "remainder": [
+        "T3763 remains PARTIAL: server registration evidence has been extracted and size/dependency ratchets are enforced, but the remaining oversized legacy facades still require staged domain-service decomposition."
+      ],
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        "specs/007-content-intelligence-workflow-platform/change-slices.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/error-reason-codes.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-error-contract-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php"
+      ]
     },
     {
       "id": "ownership_closure",
@@ -592,7 +605,15 @@
         "specs/007-content-intelligence-workflow-platform/quality-model.md"
       ],
       "traceability_family": "CAPFAB",
-      "authorizing": false
+      "authorizing": false,
+      "remainder": [
+        "T3768-T3770 are intentionally post-merge gates. Ownership/priority/test/evidence metadata is machine validated now, but terminal closure must run after the Feature runtime is actually on master."
+      ],
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        ".github/workflows/feature-007-spec-ci.yml"
+      ]
     },
     {
       "id": "request_scope_db_hooks",
@@ -764,7 +785,10 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
-        "workflow_run:37088812158"
+        "workflow_run:37088812158",
+        "wp-content/plugins/mad4b-site-control-plane/tests/terminal-evidence-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-fatal-interruption-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py"
       ],
       "priority": "P0",
       "owner": "evidence_durability",
@@ -777,11 +801,14 @@
         "workflow_run:37088812158"
       ],
       "traceability_family": "CAPFAB",
-      "authorizing": false
+      "authorizing": false,
+      "remainder": [
+        "T3790 remains OPEN for end-to-end archival/tiering/export-import/retention/legal-hold trust-chain preservation. Crash ordering, mandatory truncation, evidence exhaustion and fatal interruption are implemented and tested."
+      ]
     },
     {
       "id": "cancel_transport_cross_fault",
-      "status": "OPEN",
+      "status": "DONE",
       "task_ids": [
         "T3793",
         "T3794",
@@ -812,7 +839,17 @@
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
       ],
       "traceability_family": "CAPFAB",
-      "authorizing": false
+      "authorizing": false,
+      "remainder": [],
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/client/ability-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-chunk-reassembly-adversarial.mjs",
+        "specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ]
     },
     {
       "id": "canonical_db_storage",

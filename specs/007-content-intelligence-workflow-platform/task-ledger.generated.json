@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "2797fb0d6d7294ba303338cdbbe823af3f0f9451",
-  "override_git_blob_sha": "5a1c49c43faf8133d4c6496e39de5e688f553791",
+  "source_tasks_git_blob_sha": "e872f13cc78de9ac82190037494a5458706fd2e4",
+  "override_git_blob_sha": "47c21d4ab24651b6697507563f978f9717cc2882",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,22 +10,22 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 125,
-    "OPEN": 563,
-    "PARTIAL": 67
+    "DONE": 134,
+    "OPEN": 553,
+    "PARTIAL": 68
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 91,
-      "OPEN": 451,
+      "DONE": 95,
+      "OPEN": 447,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 32,
-      "OPEN": 91,
-      "PARTIAL": 23
+      "DONE": 37,
+      "OPEN": 85,
+      "PARTIAL": 24
     },
     "P2": {
       "DEFERRED": 2,
@@ -7997,50 +7997,73 @@
       "phase": 37,
       "priority": "P1",
       "summary": "Split oversized responsibility concentrations into domain services behind stable public contracts, with dependency-cycle/size budgets and behavior-parity tests before deletion of legacy façades.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+      ],
+      "reason": "Responsibility extraction has started with non-authorizing server registration evidence moved behind a dedicated service and architecture size/dependency ratchets enforced. The remaining oversized legacy facades still require staged decomposition, so the task remains PARTIAL."
     },
     {
       "task_id": "T3764",
       "phase": 37,
       "priority": "P1",
       "summary": "Define change-slice policy for large features: reviewable semantic units, bisect/revert boundaries, exact-head certification per slice and early split gates that prevent another mega-PR review surface.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        "specs/007-content-intelligence-workflow-platform/change-slices.json",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Large changes now require reviewable semantic slices with <=35 files, explicit revert boundaries, reviewed-base binding, CI-supplied exact-head context and exhaustive one-owner path coverage. PR #236 no longer relies on a grandfather exemption."
     },
     {
       "task_id": "T3765",
       "phase": 37,
       "priority": "P1",
       "summary": "Generate an architecture dependency graph and enforce forbidden dependency directions so presentation/adapters cannot become sources of authority or contract truth.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "The maintainability gate generates a machine-readable class dependency graph and fails closed when authority/contract-truth files depend on forbidden adapter or presentation layers."
     },
     {
       "task_id": "T3766",
       "phase": 37,
       "priority": "P1",
       "summary": "Define a stable machine-readable error/reason-code registry and response-schema evolution policy so clients can upgrade without parsing human messages.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/error-reason-codes.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-error-contract-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-contract.py"
+      ],
+      "reason": "A versioned machine-readable reason-code registry now defines stable family/retry/client-action semantics while human messages remain non-contractual; runtime errors are enriched without replacing trusted execution provenance."
     },
     {
       "task_id": "T3767",
       "phase": 37,
       "priority": "P1",
       "summary": "Bind material configuration/feature-flag generations into diagnostics/plans where they affect behavior; config flags cannot widen authority or bypass certification.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-fence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php"
+      ],
+      "reason": "Material config/*.json state is deterministically hashed into runtime generation identity; behavior-changing configuration invalidates stale generation-bound plans/approvals and cannot widen authority by configuration alone."
     },
     {
       "task_id": "T3768",
@@ -8391,10 +8414,14 @@
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Inject audit/journal/receipt database failure, read-only filesystem, disk-full/quota exhaustion and evidence-store unavailability before/after provider side effects; terminal success is forbidden unless required durable evidence is committed.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/terminal-evidence-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py"
+      ],
+      "reason": "Terminal evidence failure injection covers unavailable/read-only/exhausted persistence before and after provider side effects; required durable evidence failure cannot become terminal success and post-side-effect uncertainty requires reconciliation."
     },
     {
       "task_id": "T3790",
@@ -8427,40 +8454,58 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Add fatal-error/OOM/process-kill fixtures around provider entry and evidence persistence; recovery must distinguish not-started, possible-side-effect and committed-with-missing-receipt without inferring success.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-fatal-interruption-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py"
+      ],
+      "reason": "Fatal/process-interruption fixtures prove conservative recovery around provider entry and evidence persistence, distinguishing not-started, possible-side-effect and committed-but-evidence-uncertain states without inferring success."
     },
     {
       "task_id": "T3793",
       "phase": 37,
       "priority": "P0",
       "summary": "Define cancellation propagation across queue/worker/provider boundaries; cancellation after possible side effect becomes RECONCILING/UNKNOWN until postcondition proof, never a simple cancelled terminal state.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py"
+      ],
+      "reason": "Queue/worker/provider cancellation carries an exact cancel generation and acknowledgement handshake; cancellation before provider entry can prove no-effect, while post-entry cancellation requires reconciliation and cannot collapse to a simple cancelled terminal state."
     },
     {
       "task_id": "T3794",
       "phase": 37,
       "priority": "P1",
       "summary": "Certify chunked/schema/catalog transport reassembly against missing, duplicate, reordered and mixed-generation chunks with content digests, bounded decompression and payload/ratio limits.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/client/ability-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-chunk-reassembly-adversarial.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-transport-failures.mjs"
+      ],
+      "reason": "Catalog transport reassembly validates snapshot/wire generation/compression/count/index/offset/payload-byte identity plus content digests and rejects missing, duplicate, reordered, corrupted and mixed-generation chunks."
     },
     {
       "task_id": "T3795",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-replay-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-hook-order-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "The composed cross-fault gate now covers long-lived generation leakage, hook order, clone/restore replay, subject lifecycle, database topology/deadlock/loss, evidence exhaustion, fatal interruption, post-side-effect cancellation and mixed-generation catalog transport using hermetic/static contracts plus separately certified DB runtime jobs."
     },
     {
       "task_id": "T3796",

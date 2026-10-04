@@ -32,7 +32,7 @@ Baseline:
 | Unified execution receipt | Evidence is distributed across preparation, approval, journal, durable execution and readback rather than one independently verifiable receipt. | T3750–T3751 |
 | Semantic intent routing | Capability execution is strong after selection; universal intent→traits→provider→capability selection remains a separate non-authorizing layer. | T3752–T3753 |
 | Structural redaction | Secret-like keys are redacted; nested provider/plugin payloads require adversarial structural classification/fuzz coverage. | T3754 |
-| Cryptographic agility | HMAC-backed receipts are strong but need explicit algorithm/key-id/rotation/revocation profiles beyond OAuth key lifecycle. | T3755 |
+| Cryptographic agility | Versioned receipt crypto profiles, key IDs, rotation overlap, revocation and algorithm agility are implemented; only baseline-owned deterministic critical-gate wiring remains in this workstream. | T3755, T3762 |
 | Clock skew / monotonic deadlines | TTLs, leases and observation windows exist; one platform-wide clock model is still implicit. | T3756 |
 | Replay semantics | Nonces/idempotency exist, but reusable versus single-use preparation evidence should be risk-class explicit. | T3757 |
 | Unicode canonicalization | Canonical JSON/order exists in key places; cross-surface Unicode/confusable normalization needs one policy. | T3758 |
@@ -40,7 +40,7 @@ Baseline:
 | Egress TLS/DNS/proxy trust | SSRF/private-network controls are modeled; transport trust and redirect/DNS/certificate changes need explicit semantics. | T3760 |
 | Backward compatibility | Tightening legacy dispatcher calls is intentional; migration telemetry/versioned errors/sunset should be explicit. | T3761 |
 | Deterministic CI | Mutation/fault CI is strong; critical gates should also own fake clocks, deterministic fixtures and no flaky bypass. | T3762 |
-| Maintainability and change architecture | Large responsibility concentrations and the historical mega-PR surface increase future change/review cost. | T3763–T3765 |
+| Maintainability and change architecture | Exhaustive change slices and dependency/size ratchets are enforced; server registration evidence is extracted, while staged decomposition of the remaining large legacy facades remains open. | T3763–T3767 |
 | Stable error/schema evolution | Reason codes exist across subsystems but need one client-facing registry/evolution policy. | T3766 |
 | Configuration generation/drift | Material configuration affects behavior; explicit generation binding prevents flags from becoming hidden authority. | T3767 |
 | Completeness closure | The backlog itself needs a machine-reviewable no-orphan/no-untriaged gate. | T3768–T3770 |
@@ -52,9 +52,9 @@ Baseline:
 | Subject lifecycle revocation | Live authorization is strong, but user deletion/demotion/App remapping between approval and commit deserves direct lifecycle fixtures. | T3782–T3783 |
 | Persisted contract downgrade | Exact contracts exist across subsystems; mixed N/N-1 workers and downgrade interpretation of newer persisted security fields need explicit fail-closed rules. | T3784–T3787 |
 | Evidence commit ordering | Durable journal/receipt primitives exist, but a complete provider-side-effect versus evidence-persistence crash table is not yet one normative artifact. | T3788–T3792 |
-| Cancellation after side effect | Generic cancellation race coverage exists, but provider-entered cancellation must be explicitly normalized to reconciliation rather than a false cancelled terminal outcome. | T3793 |
+| Cancellation after side effect | Exact cancel-generation/provider-entry/acknowledgement semantics are implemented; post-entry cancellation remains reconciliation-bound and cannot become a false cancelled terminal outcome. | T3793 |
 | Chunk/reassembly integrity | Catalog/schema transport is chunked and content-addressed; mixed-generation/out-of-order/missing chunk and decompression-abuse behavior needs explicit certification. | T3794 |
-| Cross-fault closure | Individual fault tests are strong; a composed infrastructure/runtime cross-fault gate is needed before claiming long-term Capability Fabric completeness. | T3795 |
+| Cross-fault closure | A composed hermetic/static cross-fault gate now covers generation leakage, hook order, restore time-travel, subject lifecycle, DB topology, evidence exhaustion, fatal interruption, cancellation and mixed-generation transport; live/post-merge closure still remains separate. | T3795 |
 | Canonical fingerprint single interpretation | Ability catalog classification fingerprinting currently has a PHP `serialize()` fallback when canonical encoding throws; security-relevant identities should have exactly one canonical encoding or fail closed. | T3796 |
 | Database collation identity | Schema creation inherits WordPress `get_charset_collate()`; UUID/hash/key identity semantics therefore need explicit canonical/binary comparison proof independent of site collation. | T3797 |
 | Transactional storage engine | Governance tables are created through dbDelta without an explicit per-table engine invariant in the schema definition; journal/approval atomicity requires certified transactional behavior. | T3798 |

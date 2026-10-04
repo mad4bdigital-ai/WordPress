@@ -826,10 +826,10 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ### 37K — Maintainability, change architecture and configuration governance
 - [ ] T3763 P1 Split oversized responsibility concentrations into domain services behind stable public contracts, with dependency-cycle/size budgets and behavior-parity tests before deletion of legacy façades.
-- [ ] T3764 P1 Define change-slice policy for large features: reviewable semantic units, bisect/revert boundaries, exact-head certification per slice and early split gates that prevent another mega-PR review surface.
-- [ ] T3765 P1 Generate an architecture dependency graph and enforce forbidden dependency directions so presentation/adapters cannot become sources of authority or contract truth.
-- [ ] T3766 P1 Define a stable machine-readable error/reason-code registry and response-schema evolution policy so clients can upgrade without parsing human messages.
-- [ ] T3767 P1 Bind material configuration/feature-flag generations into diagnostics/plans where they affect behavior; config flags cannot widen authority or bypass certification.
+- [x] T3764 P1 Define change-slice policy for large features: reviewable semantic units, bisect/revert boundaries, exact-head certification per slice and early split gates that prevent another mega-PR review surface.
+- [x] T3765 P1 Generate an architecture dependency graph and enforce forbidden dependency directions so presentation/adapters cannot become sources of authority or contract truth.
+- [x] T3766 P1 Define a stable machine-readable error/reason-code registry and response-schema evolution policy so clients can upgrade without parsing human messages.
+- [x] T3767 P1 Bind material configuration/feature-flag generations into diagnostics/plans where they affect behavior; config flags cannot widen authority or bypass certification.
 
 ### 37L — Completeness closure
 - [ ] T3768 P0 GATE Execute the post-merge Capability Fabric completeness audit: every dimension has an owner, task, contract or explicit non-goal, test strategy, evidence source and current status.
@@ -861,15 +861,15 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ### 37P — Evidence commit ordering and infrastructure exhaustion
 - [x] T3788 P0 Define a mutation crash-point table covering intent persistence, approval claim, provider entry, provider return, readback, audit/journal append, durable receipt and terminal state; every boundary maps to exactly one conservative recovery state.
-- [ ] T3789 P0 GATE Inject audit/journal/receipt database failure, read-only filesystem, disk-full/quota exhaustion and evidence-store unavailability before/after provider side effects; terminal success is forbidden unless required durable evidence is committed.
+- [x] T3789 P0 GATE Inject audit/journal/receipt database failure, read-only filesystem, disk-full/quota exhaustion and evidence-store unavailability before/after provider side effects; terminal success is forbidden unless required durable evidence is committed.
 - [ ] T3790 P1 Preserve evidence hash-chain/trust references through archival, tiering, export/import, retention and legal-hold workflows; moving evidence cannot weaken verification or recreate authority.
 - [x] T3791 P0 Define bounded evidence truncation semantics: oversized provider/error metadata may be summarized/redacted, but mandatory reason codes, digests, target identity and reconciliation pointers can never be silently dropped.
-- [ ] T3792 P0 Add fatal-error/OOM/process-kill fixtures around provider entry and evidence persistence; recovery must distinguish not-started, possible-side-effect and committed-with-missing-receipt without inferring success.
+- [x] T3792 P0 Add fatal-error/OOM/process-kill fixtures around provider entry and evidence persistence; recovery must distinguish not-started, possible-side-effect and committed-with-missing-receipt without inferring success.
 
 ### 37Q — Cancellation, transport integrity and cross-fault closure
-- [ ] T3793 P0 Define cancellation propagation across queue/worker/provider boundaries; cancellation after possible side effect becomes RECONCILING/UNKNOWN until postcondition proof, never a simple cancelled terminal state.
-- [ ] T3794 P1 Certify chunked/schema/catalog transport reassembly against missing, duplicate, reordered and mixed-generation chunks with content digests, bounded decompression and payload/ratio limits.
-- [ ] T3795 P0 GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.
+- [x] T3793 P0 Define cancellation propagation across queue/worker/provider boundaries; cancellation after possible side effect becomes RECONCILING/UNKNOWN until postcondition proof, never a simple cancelled terminal state.
+- [x] T3794 P1 Certify chunked/schema/catalog transport reassembly against missing, duplicate, reordered and mixed-generation chunks with content digests, bounded decompression and payload/ratio limits.
+- [x] T3795 P0 GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.
 
 ### 37R — Canonical identity and transactional database storage
 - [x] T3796 P0 Eliminate alternate PHP serialization fallback from security-sensitive capability/schema/classification fingerprints; unsupported canonical input must become unavailable/fail-closed rather than acquire a second hash interpretation.
