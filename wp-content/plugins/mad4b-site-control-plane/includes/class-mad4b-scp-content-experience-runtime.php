@@ -17,6 +17,15 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 	const REVISION_META = '_mad4b_content_experience_revision';
 	const CREATION_BINDING_META = '_mad4b_content_experience_creation_binding';
 
+	private static function helper_adapter( $helper_id ) {
+		$catalog = MAD4B_SCP_Content_Experience_Profiles::helper_catalog();
+		$row = isset( $catalog[ $helper_id ] ) && is_array( $catalog[ $helper_id ] ) ? $catalog[ $helper_id ] : array();
+		$adapter_id = isset( $row['adapter_id'] ) ? sanitize_key( (string) $row['adapter_id'] ) : '';
+		if ( '' === $adapter_id || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
+		$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( $adapter_id );
+		return $adapter instanceof MAD4B_SCP_Adapter_Base ? $adapter : null;
+	}
+
 	private static function validate_meta_payload( array $profile, $meta ) {
 		$meta = is_array( $meta ) ? $meta : array();
 		if ( count( $meta ) > MAD4B_SCP_Content_Experience_Profiles::MAX_META_KEYS ) {
@@ -140,14 +149,17 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 					array( 'helper_id' => $helper_id, 'operation' => $operation )
 				);
 			}
-			$planned = apply_filters(
-				'mad4b_scp_content_experience_plan_helper',
-				null,
-				$helper_id,
-				$helper_input,
-				$profile,
-				$operation
-			);
+			$adapter = self::helper_adapter( $helper_id );
+			$planned = $adapter
+				? $adapter->plan_content_experience_helper( $helper_id, $helper_input, $profile, $operation )
+				: apply_filters(
+					'mad4b_scp_content_experience_plan_helper',
+					null,
+					$helper_id,
+					$helper_input,
+					$profile,
+					$operation
+				);
 			if ( ! is_array( $planned )
 				|| empty( $planned['ready'] )
 				|| empty( $planned['state_sha256'] )
@@ -329,13 +341,11 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 	private static function apply_helpers( array $profile, $operation, $post_id, array $helper_plans ) {
 		$results = array();
 		foreach ( $helper_plans as $helper_id => $helper_plan ) {
-			$result = apply_filters(
-				'mad4b_scp_content_experience_apply_helper',
-				null,
-				$helper_id,
-				$helper_plan,
-				array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id )
-			);
+			$context = array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id );
+			$adapter = self::helper_adapter( $helper_id );
+			$result = $adapter
+				? $adapter->apply_content_experience_helper( $helper_id, $helper_plan, $context )
+				: apply_filters( 'mad4b_scp_content_experience_apply_helper', null, $helper_id, $helper_plan, $context );
 			if ( ! is_array( $result ) || empty( $result['verified'] ) ) {
 				return new WP_Error(
 					'mad4b_content_experience_helper_apply_failed',
@@ -498,13 +508,11 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 	private static function helper_state_capture( array $profile, $operation, $post_id, array $helper_plans ) {
 		$states = array();
 		foreach ( $helper_plans as $helper_id => $plan ) {
-			$state = apply_filters(
-				'mad4b_scp_content_experience_capture_helper_state',
-				null,
-				$helper_id,
-				$plan,
-				array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id )
-			);
+			$context = array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id );
+			$adapter = self::helper_adapter( $helper_id );
+			$state = $adapter
+				? $adapter->capture_content_experience_helper_state( $helper_id, $plan, $context )
+				: apply_filters( 'mad4b_scp_content_experience_capture_helper_state', null, $helper_id, $plan, $context );
 			if ( ! is_array( $state ) ) {
 				return new WP_Error(
 					'mad4b_content_experience_helper_snapshot_unavailable',
@@ -630,13 +638,11 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 
 	private static function restore_helper_states( array $profile, $operation, $post_id, array $helper_states ) {
 		foreach ( $helper_states as $helper_id => $state ) {
-			$result = apply_filters(
-				'mad4b_scp_content_experience_restore_helper_state',
-				null,
-				$helper_id,
-				$state,
-				array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id )
-			);
+			$context = array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id );
+			$adapter = self::helper_adapter( $helper_id );
+			$result = $adapter
+				? $adapter->restore_content_experience_helper_state( $helper_id, $state, $context )
+				: apply_filters( 'mad4b_scp_content_experience_restore_helper_state', null, $helper_id, $state, $context );
 			if ( true !== $result ) {
 				return new WP_Error(
 					'mad4b_content_experience_helper_restore_failed',
@@ -714,12 +720,16 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		}
 		$marker = (string) get_post_meta( $post_id, self::MARKER_META, true );
 		$revision = (int) get_post_meta( $post_id, self::REVISION_META, true );
-		$helper_verification = apply_filters(
-			'mad4b_scp_content_experience_verify_helpers',
-			array(),
-			array( 'profile' => $profile, 'post_id' => $post_id )
-		);
-		if ( ! is_array( $helper_verification ) ) $helper_verification = array();
+		$helper_context = array( 'profile' => $profile, 'post_id' => $post_id );
+		$helper_verification = array();
+		foreach ( (array) $profile['enabled_helpers'] as $helper_id ) {
+			$adapter = self::helper_adapter( $helper_id );
+			if ( $adapter ) {
+				$helper_verification[ $helper_id ] = $adapter->verify_content_experience_helper( $helper_id, $helper_context );
+			}
+		}
+		$filtered_verification = apply_filters( 'mad4b_scp_content_experience_verify_helpers', $helper_verification, $helper_context );
+		if ( is_array( $filtered_verification ) ) $helper_verification = $filtered_verification;
 		$result = array(
 			'contract' => self::VERIFY_CONTRACT,
 			'profile_slug' => $slug,
