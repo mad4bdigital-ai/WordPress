@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 275,
+  "changed_file_count": 277,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -187,6 +187,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-readiness-evaluator.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php",
@@ -370,6 +371,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/production-live-evidence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-evaluator-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/projection-hotset-recommender-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/projection-registration-lifecycle.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
@@ -393,6 +395,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "67ddfac26f795b92b2b842bef290706cd23c50279f4c750cb7952a79207231f0",
+  "changed_paths_sha256": "fc5c18a3ccc23409bba5296c91b337e089da3ff9b0c3f0226bc1043039292c10",
   "changed_paths_sha256_mode": "sorted_relative_paths_newline_sha256"
 }
