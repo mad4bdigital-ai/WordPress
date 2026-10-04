@@ -171,7 +171,7 @@
     "bootstrap": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php",
     "runtime_directory": "wp-content/plugins/mad4b-site-control-plane/includes/search",
     "acceptance_matrix": "adaptive-search-runtime-acceptance.json",
-    "workflow": ".github/workflows/mad4b-adaptive-search-intelligence.yml",
+    "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
     "evidence_binding": "clean_ci_head_and_source_manifest_digest",
     "local_evidence": {
       "fixtures": 39,
