@@ -1,5 +1,5 @@
 {
-  "contract": "mad4b.feature007-production-readiness.v1",
+  "contract": "mad4b.feature007-production-readiness.v2",
   "policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
   "implementation_closure_ref": "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
   "readiness_semantics": {
@@ -9,7 +9,9 @@
     "protected_backup_and_restore_rehearsal_required": true,
     "recovery_live_drill_required": true,
     "complete_vertical_slice_required": true,
-    "ready_is_not_authorized": true
+    "ready_is_not_authorized": true,
+    "profile_specific_blockers_required": true,
+    "optional_capability_failure_must_not_widen_core_authority": true
   },
   "promotion_semantics": {
     "production_authorized_by_this_document": false,
@@ -24,5 +26,30 @@
     ".github/workflows/mad4b-runtime-release-set.yml",
     ".github/workflows/mad4b-rollback-retention-receipt.yml"
   ],
-  "live_execution_note": "Live Staging evidence must be produced through an already-authorized governed deployment/recovery path. Feature documentation and repository CI cannot manufacture live readiness."
+  "live_execution_note": "Live Staging evidence must be produced through an already-authorized governed deployment/recovery path. Feature documentation and repository CI cannot manufacture live readiness.",
+  "default_profile": "control_plane_core",
+  "readiness_profiles": {
+    "control_plane_core": {
+      "production_scope": "governed_control_plane_runtime",
+      "full_feature007_complete": false,
+      "optional_capabilities_must_remain_disabled_until_certified": [
+        "bitflows_1_29_exact_certification",
+        "capability_traits",
+        "site_bootstrap",
+        "intent_registry",
+        "content_job_domain",
+        "artifact_registry_store",
+        "context_writer",
+        "research_competitive",
+        "blueprint_draft_qa",
+        "governed_wp_draft",
+        "semantic_publication_verification"
+      ]
+    },
+    "full_feature007": {
+      "production_scope": "complete_feature007_capability_set",
+      "full_feature007_complete": true,
+      "optional_capabilities_must_remain_disabled_until_certified": []
+    }
+  }
 }

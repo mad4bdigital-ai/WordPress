@@ -11,6 +11,7 @@ manifest=json.loads((repo/"specs/007-content-intelligence-workflow-platform/prod
 runtime_release=json.loads((root/"config/runtime-release-policy.json").read_text(encoding="utf-8"))
 
 ap=argparse.ArgumentParser()
+ap.add_argument("--profile",default="")
 ap.add_argument("--enforce-ready",action="store_true")
 ap.add_argument("--output",default="")
 args=ap.parse_args()
@@ -18,11 +19,11 @@ args=ap.parse_args()
 def fail(code):
     raise SystemExit(code)
 
-if policy.get("contract")!="mad4b.production-readiness-policy.v1" or policy.get("authorizing") is not False:
+if policy.get("contract")!="mad4b.production-readiness-policy.v2" or policy.get("authorizing") is not False:
     fail("PRODUCTION_READINESS_POLICY_INVALID")
 if policy.get("ready_is_not_authorized") is not True or policy.get("production_auto_apply") is not False:
     fail("PRODUCTION_READINESS_AUTHORITY_SEPARATION_INVALID")
-if manifest.get("contract")!="mad4b.feature007-production-readiness.v1":
+if manifest.get("contract")!="mad4b.feature007-production-readiness.v2":
     fail("PRODUCTION_READINESS_MANIFEST_INVALID")
 if manifest.get("promotion_semantics",{}).get("production_authorized_by_this_document") is not False:
     fail("PRODUCTION_READINESS_DOCUMENT_MUST_NOT_AUTHORIZE")
@@ -51,38 +52,79 @@ for marker in ("mad4b.rollback-retention-receipt.v1","github_actions_artifact_ap
 for marker in ('SUPPORTED_ENVIRONMENTS = {"staging"}',"mad4b.protected-backup-receipt.v1","mad4b.protected-backup-restore-receipt.v1"):
     if marker not in recovery:
         fail("RECOVERY_PLANE_PRODUCTION_BOUNDARY_MISSING:"+marker)
+for rel in policy.get("required_fail_closed_repository_evidence") or []:
+    if not (repo/rel).is_file():
+        fail("PRODUCTION_FAIL_CLOSED_EVIDENCE_MISSING:"+str(rel))
 
-blocking_priorities=set(policy.get("required_blocking_priorities") or [])
 workstreams=closure.get("workstreams") or []
 if not isinstance(workstreams,list):
     fail("IMPLEMENTATION_CLOSURE_WORKSTREAMS_INVALID")
-blockers=[]
-gates=set()
-for row in workstreams:
-    if not isinstance(row,dict):
-        continue
-    gate=str(row.get("gate") or "")
-    if gate:
-        gates.add(gate)
-    if str(row.get("priority") or "") in blocking_priorities and str(row.get("status") or "")!="DONE":
-        blockers.append({
-            "id":str(row.get("id") or ""),
-            "gate":gate,
-            "priority":str(row.get("priority") or ""),
-            "status":str(row.get("status") or ""),
-        })
-
+by_id={str(row.get("id") or ""):row for row in workstreams if isinstance(row,dict) and row.get("id")}
+gates={str(row.get("gate") or "") for row in workstreams if isinstance(row,dict) and row.get("gate")}
 for required in policy.get("required_live_evidence") or []:
     gate=str(required.get("gate") or "")
     if not gate or gate not in gates:
         fail("PRODUCTION_READINESS_LIVE_GATE_UNBOUND:"+gate)
 
+profiles=policy.get("profiles") or {}
+profile_name=args.profile or str(policy.get("default_profile") or "")
+profile=profiles.get(profile_name)
+if not isinstance(profile,dict) or profile.get("contract")!="mad4b.production-readiness-profile.v1":
+    fail("PRODUCTION_READINESS_PROFILE_INVALID:"+profile_name)
+
+required_ids=[]
+if isinstance(profile.get("required_workstream_ids"),list):
+    required_ids=[str(x) for x in profile["required_workstream_ids"]]
+else:
+    priorities=set(str(x) for x in (profile.get("required_blocking_priorities") or policy.get("required_blocking_priorities") or []))
+    required_ids=[str(row.get("id") or "") for row in workstreams if isinstance(row,dict) and str(row.get("priority") or "") in priorities]
+required_ids=list(dict.fromkeys(required_ids))
+missing=[x for x in required_ids if x not in by_id]
+if missing:
+    fail("PRODUCTION_READINESS_PROFILE_WORKSTREAM_MISSING:"+",".join(missing))
+
+optional_ids=[str(x) for x in (profile.get("optional_workstream_ids") or [])]
+overlap=sorted(set(required_ids).intersection(optional_ids))
+if overlap:
+    fail("PRODUCTION_READINESS_PROFILE_SCOPE_OVERLAP:"+",".join(overlap))
+if profile_name=="control_plane_core":
+    if profile.get("optional_capability_policy")!="disabled_and_fail_closed_until_live_certified":
+        fail("PRODUCTION_READINESS_OPTIONAL_CAPABILITY_POLICY_INVALID")
+    if profile.get("full_feature_complete_claim") is not False:
+        fail("CORE_PROFILE_MUST_NOT_CLAIM_FULL_FEATURE_COMPLETENESS")
+
+blockers=[]
+for wid in required_ids:
+    row=by_id[wid]
+    if str(row.get("status") or "")!="DONE":
+        blockers.append({
+            "id":wid,
+            "gate":str(row.get("gate") or ""),
+            "priority":str(row.get("priority") or ""),
+            "status":str(row.get("status") or ""),
+        })
+
+optional_pending=[]
+for wid in optional_ids:
+    row=by_id.get(wid)
+    if row and str(row.get("status") or "")!="DONE":
+        optional_pending.append({
+            "id":wid,
+            "gate":str(row.get("gate") or ""),
+            "status":str(row.get("status") or ""),
+            "production_activation":"DENIED_UNTIL_LIVE_CERTIFIED",
+        })
+
 report={
-    "contract":"mad4b.production-readiness-contract-result.v1",
+    "contract":"mad4b.production-readiness-contract-result.v2",
+    "profile":profile_name,
     "repository_contract_ready":True,
     "live_blocker_count":len(blockers),
     "live_blockers":blockers,
+    "optional_pending_count":len(optional_pending),
+    "optional_pending":optional_pending,
     "production_ready":len(blockers)==0,
+    "full_feature007_complete":bool(profile.get("full_feature_complete_claim")) and len(blockers)==0,
     "production_authorized":False,
     "promotion_required":True,
     "authorizing":False,
@@ -94,4 +136,4 @@ if args.output:
 print(json.dumps(report,sort_keys=True))
 if args.enforce_ready and blockers:
     fail("PRODUCTION_READINESS_LIVE_EVIDENCE_INCOMPLETE:"+",".join(x["id"] for x in blockers))
-print("mad4b.production-readiness-policy.v1: PASS")
+print("mad4b.production-readiness-policy.v2: PASS")

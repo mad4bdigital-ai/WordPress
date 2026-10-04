@@ -1,5 +1,5 @@
 {
-  "contract": "mad4b.production-readiness-policy.v1",
+  "contract": "mad4b.production-readiness-policy.v2",
   "authorizing": false,
   "ready_is_not_authorized": true,
   "documentation_cannot_self_authorize": true,
@@ -70,5 +70,59 @@
     "fresh_evidence_required": true,
     "production_mutation_during_readiness": false,
     "activation_requires_separate_authorization": true
-  }
+  },
+  "default_profile": "control_plane_core",
+  "profiles": {
+    "control_plane_core": {
+      "contract": "mad4b.production-readiness-profile.v1",
+      "description": "Production readiness for the governed Control Plane runtime. Optional Feature 007 capabilities remain disabled/fail-closed until separately live-certified.",
+      "required_workstream_ids": [
+        "governed_tool_execution",
+        "protected_backup_recovery",
+        "etg_exact_runtime_release_deployment",
+        "runtime_root_trust_readback",
+        "recovery_live_drill",
+        "provider_side_channel",
+        "multi_authority_live",
+        "policy_engine",
+        "authoritative_consistency_fencing",
+        "security_ai_eval_faults",
+        "operator_doctor_dlq",
+        "formal_state_proof",
+        "etg_vertical_slice"
+      ],
+      "optional_workstream_ids": [
+        "bitflows_1_29_exact_certification",
+        "capability_traits",
+        "site_bootstrap",
+        "intent_registry",
+        "content_job_domain",
+        "artifact_registry_store",
+        "context_writer",
+        "research_competitive",
+        "blueprint_draft_qa",
+        "governed_wp_draft",
+        "semantic_publication_verification"
+      ],
+      "optional_capability_policy": "disabled_and_fail_closed_until_live_certified",
+      "optional_workstream_status_does_not_authorize": true,
+      "full_feature_complete_claim": false
+    },
+    "full_feature007": {
+      "contract": "mad4b.production-readiness-profile.v1",
+      "description": "Production readiness for the complete Feature 007 capability set.",
+      "required_blocking_priorities": [
+        "KERNEL_BLOCKER",
+        "LIVE_PRECONDITION"
+      ],
+      "optional_workstream_ids": [],
+      "optional_capability_policy": "none",
+      "full_feature_complete_claim": true
+    }
+  },
+  "required_fail_closed_repository_evidence": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-production-smoke.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-runtime.php"
+  ]
 }

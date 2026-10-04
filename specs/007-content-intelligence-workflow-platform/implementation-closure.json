@@ -1169,6 +1169,23 @@
       "provider_compatibility_workflow_run_id": 37214537220,
       "mcp_client_compatibility_workflow_run_id": 37214537020
     },
-    "repository_recertification_required": true
+    "repository_recertification_required": true,
+    "target_profile": "control_plane_core",
+    "full_feature007_profile": "full_feature007",
+    "optional_capability_policy": "disabled_and_fail_closed_until_live_certified",
+    "optional_workstream_ids": [
+      "bitflows_1_29_exact_certification",
+      "capability_traits",
+      "site_bootstrap",
+      "intent_registry",
+      "content_job_domain",
+      "artifact_registry_store",
+      "context_writer",
+      "research_competitive",
+      "blueprint_draft_qa",
+      "governed_wp_draft",
+      "semantic_publication_verification"
+    ],
+    "full_feature007_complete": false
   }
 }
