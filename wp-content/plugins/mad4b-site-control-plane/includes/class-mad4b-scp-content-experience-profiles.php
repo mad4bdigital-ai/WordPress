@@ -144,6 +144,23 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'operations' => array( 'create', 'update', 'verify' ), 'reversible' => true, 'built_in' => true,
 			),
 		);
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			foreach ( $registry->all() as $adapter_id => $adapter ) {
+				if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base || ! method_exists( $adapter, 'content_experience_helpers' ) ) continue;
+				$rows = $adapter->content_experience_helpers();
+				if ( ! is_array( $rows ) ) continue;
+				foreach ( $rows as $row_id => $row ) {
+					if ( ! is_array( $row ) ) continue;
+					$id = is_string( $row_id ) ? $row_id : ( isset( $row['id'] ) ? (string) $row['id'] : '' );
+					if ( '' === $id || isset( $catalog[ $id ] ) ) continue;
+					$row['id'] = $id;
+					$row['adapter_id'] = (string) $adapter_id;
+					$row['built_in'] = false;
+					$catalog[ $id ] = $row;
+				}
+			}
+		}
 		$extended = apply_filters( 'mad4b_scp_content_experience_helper_catalog', $catalog );
 		if ( ! is_array( $extended ) ) $extended = $catalog;
 		$clean = array();
@@ -152,6 +169,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			if ( '' === $id || strlen( $id ) > 96 || ! preg_match( '/^[a-z0-9][a-z0-9._:-]*$/', $id ) || ! is_array( $row ) ) continue;
 			$row['id'] = $id;
 			$row['provider'] = isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : 'extension';
+			$row['adapter_id'] = isset( $row['adapter_id'] ) ? sanitize_key( (string) $row['adapter_id'] ) : '';
 			$row['operations'] = self::normalize_string_list( isset( $row['operations'] ) ? $row['operations'] : array(), 8, '/^[a-z][a-z0-9_-]*$/' );
 			$row['reversible'] = ! empty( $row['reversible'] );
 			$row['built_in'] = ! empty( $row['built_in'] );
