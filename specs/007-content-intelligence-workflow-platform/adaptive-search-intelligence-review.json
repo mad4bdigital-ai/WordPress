@@ -1,0 +1,175 @@
+{
+  "contract": "mad4b.adaptive-search-intelligence-review.v1",
+  "status": "APPROVED_WITH_GAPS",
+  "authorizing": false,
+  "assessed_contract": "mad4b.adaptive-search-intelligence.v1",
+  "scores": {
+    "architectural_coverage": 92,
+    "clarity": 90,
+    "provider_neutrality": 93,
+    "security_governance": 96,
+    "evidence_integrity": 92,
+    "scheduling_economics": 84,
+    "measurement_correctness": 78,
+    "indexability_surface_correctness": 85,
+    "testability_objective_gates": 82,
+    "operator_experience": 85,
+    "extensibility": 94,
+    "overall": 88
+  },
+  "summary": {
+    "p0_open": 10,
+    "p1_open": 8,
+    "p2_open": 0,
+    "recommendation": "continue_spec_and_foundation_only_close_p0_semantics_before_broad_runtime_implementation"
+  },
+  "findings": [
+    {
+      "id": "ASIR-001",
+      "severity": "P0",
+      "title": "observation-comparability-context",
+      "tasks": [
+        "T3861",
+        "T3862"
+      ]
+    },
+    {
+      "id": "ASIR-002",
+      "severity": "P0",
+      "title": "query-canonicalization-versioning",
+      "tasks": [
+        "T3863"
+      ]
+    },
+    {
+      "id": "ASIR-003",
+      "severity": "P0",
+      "title": "owned-url-identity-and-matching",
+      "tasks": [
+        "T3864"
+      ]
+    },
+    {
+      "id": "ASIR-004",
+      "severity": "P0",
+      "title": "normalized-rank-semantics",
+      "tasks": [
+        "T3865"
+      ]
+    },
+    {
+      "id": "ASIR-005",
+      "severity": "P0",
+      "title": "capture-completeness-and-not-found-semantics",
+      "tasks": [
+        "T3866"
+      ]
+    },
+    {
+      "id": "ASIR-006",
+      "severity": "P0",
+      "title": "search-eligibility-envelope",
+      "tasks": [
+        "T3867"
+      ]
+    },
+    {
+      "id": "ASIR-007",
+      "severity": "P0",
+      "title": "surface-admission-cardinality",
+      "tasks": [
+        "T3868"
+      ]
+    },
+    {
+      "id": "ASIR-008",
+      "severity": "P0",
+      "title": "shared-provider-account-budget-authority",
+      "tasks": [
+        "T3869",
+        "T3870"
+      ]
+    },
+    {
+      "id": "ASIR-009",
+      "severity": "P1",
+      "title": "first-party-search-performance-composition",
+      "tasks": [
+        "T3871"
+      ]
+    },
+    {
+      "id": "ASIR-010",
+      "severity": "P1",
+      "title": "query-language-transcreation-provenance",
+      "tasks": [
+        "T3872"
+      ]
+    },
+    {
+      "id": "ASIR-011",
+      "severity": "P0",
+      "title": "provider-evidence-licensing-retention",
+      "tasks": [
+        "T3873"
+      ]
+    },
+    {
+      "id": "ASIR-012",
+      "severity": "P0",
+      "title": "deterministic-decision-policy",
+      "tasks": [
+        "T3874"
+      ]
+    },
+    {
+      "id": "ASIR-013",
+      "severity": "P1",
+      "title": "adaptive-ux-stability-and-controls",
+      "tasks": [
+        "T3875"
+      ]
+    },
+    {
+      "id": "ASIR-014",
+      "severity": "P1",
+      "title": "storage-worker-portability",
+      "tasks": [
+        "T3876"
+      ]
+    },
+    {
+      "id": "ASIR-015",
+      "severity": "P0",
+      "title": "machine-measurable-gate-criteria",
+      "tasks": [
+        "T3877"
+      ]
+    },
+    {
+      "id": "ASIR-016",
+      "severity": "P1",
+      "title": "open-serp-feature-schema",
+      "tasks": [
+        "T3878"
+      ]
+    },
+    {
+      "id": "ASIR-017",
+      "severity": "P1",
+      "title": "decision-factor-provenance",
+      "tasks": [
+        "T3879"
+      ]
+    },
+    {
+      "id": "ASIR-018",
+      "severity": "P0",
+      "title": "composed-cross-fault-acceptance",
+      "tasks": [
+        "T3880"
+      ]
+    }
+  ],
+  "no_completion_claim": true
+}
