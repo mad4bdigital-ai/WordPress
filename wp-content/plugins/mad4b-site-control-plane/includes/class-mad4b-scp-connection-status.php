@@ -467,6 +467,11 @@ final class MAD4B_SCP_Connection_Status {
 			}
 			$server['runtime_class_failures'][] = $row;
 		}
+		$registration_failure = isset( $row['registration_failure'] ) && is_array( $row['registration_failure'] ) ? $row['registration_failure'] : array();
+		$server['registration_failure_stage'] = isset( $registration_failure['stage'] ) ? sanitize_key( (string) $registration_failure['stage'] ) : '';
+		$server['registration_failure_reason'] = isset( $registration_failure['reason'] ) ? sanitize_key( (string) $registration_failure['reason'] ) : '';
+		$registration_failure_fingerprint = isset( $registration_failure['fingerprint'] ) ? strtolower( (string) $registration_failure['fingerprint'] ) : '';
+		$server['registration_failure_fingerprint'] = preg_match( '/^[a-f0-9]{64}$/D', $registration_failure_fingerprint ) ? $registration_failure_fingerprint : '';
 		$server['local_endpoint_ready'] = true === ( $server['registered'] ?? null ) && true === ( $server['route_registered'] ?? null ) && true === ( $server['permission_callback_match'] ?? null ) && $server['catalog_materialized'] && true === $server['catalog_count_match'] && empty( $server['registration_error'] ) && ( 'mad4b-chatgpt' !== $server_id || true === ( $server['catalog_ready'] ?? null ) );
 		return $server;
 	}
