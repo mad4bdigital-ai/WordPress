@@ -9,12 +9,13 @@ translation = adapters / "class-mad4b-scp-translation-bridge-adapter.php"
 provider = adapters / "class-mad4b-scp-native-provider-bridge-adapter.php"
 jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
+semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, servers, experience, experience_runtime, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, servers, semantic, experience, experience_runtime, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -23,6 +24,7 @@ translation_src = translation.read_text(encoding="utf-8")
 provider_src = provider.read_text(encoding="utf-8")
 jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
+semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
 reversible_src = reversible.read_text(encoding="utf-8")
@@ -143,6 +145,45 @@ for src, label in (
 
 assert "MAX_PROFILES = 64" in experience_src
 assert "MAX_HELPERS = 32" in experience_src
+
+# Dynamic routes participate in Brand Context semantics without static route names.
+for token in (
+    "brand_bearing_mutation_abilities",
+    "semantic_contract_for_ability",
+    "dynamic_profile_contract",
+):
+    assert token in experience_src, f"dynamic semantic binding missing: {token}"
+for token in (
+    "MAD4B_SCP_Content_Experience_Profiles::brand_bearing_mutation_abilities()",
+    "MAD4B_SCP_Content_Experience_Profiles::semantic_contract_for_ability",
+):
+    assert token in semantic_src, f"semantic registry dynamic profile support missing: {token}"
+
+# Any provider adapter may add helper options, but external helpers must bind to
+# one exact certified provider Ability and implement the reversible helper lifecycle.
+for token in (
+    "content_experience_helpers",
+    "plan_content_experience_helper",
+    "apply_content_experience_helper",
+    "capture_content_experience_helper_state",
+    "restore_content_experience_helper_state",
+    "verify_content_experience_helper",
+):
+    assert token in base_src, f"adapter content-experience helper contract missing: {token}"
+for token in (
+    "MAD4B_SCP_Adapter_Registry::instance()",
+    "certification_ability",
+    "helper_adapter_required",
+    "helper_certification_required",
+):
+    assert token in experience_src, f"experience helper registry hardening missing: {token}"
+for token in (
+    "helper_mutation_guard",
+    "MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard",
+    "MAD4B_SCP_Provider_Contracts::mutation_guard",
+):
+    assert token in experience_runtime_src, f"experience helper provider certification missing: {token}"
+
 assert "class-mad4b-scp-content-experience-profiles.php" in plugin_src
 assert "class-mad4b-scp-content-experience-runtime.php" in plugin_src
 
