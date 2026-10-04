@@ -173,15 +173,43 @@ jobs:
             --path=/tmp/mad4b-wordpress \
             --user=mad4b-ci-admin
 
-          BARRIER="$(php -r 'printf("%.6f", microtime(true) + 3.0);')"
-          MAD4B_CI_BUDGET_WORKER=one MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+          SYNC_PREFIX="/tmp/mad4b-budget-sync-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.wordpress }}"
+          READY_ONE="${SYNC_PREFIX}-one.ready"
+          READY_TWO="${SYNC_PREFIX}-two.ready"
+          RELEASE_FILE="${SYNC_PREFIX}-release"
+          rm -f "$READY_ONE" "$READY_TWO" "$RELEASE_FILE"
+
+          MAD4B_CI_BUDGET_WORKER=one MAD4B_CI_BUDGET_READY_FILE="$READY_ONE" MAD4B_CI_BUDGET_RELEASE_FILE="$RELEASE_FILE" \
             php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
               --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-one.log 2>&1 &
           PID_ONE=$!
-          MAD4B_CI_BUDGET_WORKER=two MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+          MAD4B_CI_BUDGET_WORKER=two MAD4B_CI_BUDGET_READY_FILE="$READY_TWO" MAD4B_CI_BUDGET_RELEASE_FILE="$RELEASE_FILE" \
             php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
               --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-two.log 2>&1 &
           PID_TWO=$!
+
+          READY_DEADLINE=$((SECONDS + 20))
+          until [[ -f "$READY_ONE" && -f "$READY_TWO" ]]; do
+            if (( SECONDS >= READY_DEADLINE )); then
+              echo "Budget contention workers did not both reach the ready barrier." >&2
+              cat /tmp/mad4b-budget-worker-one.log || true
+              cat /tmp/mad4b-budget-worker-two.log || true
+              kill "$PID_ONE" "$PID_TWO" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 0.05
+          done
+
+          # The runtime budget uses fixed 60-second windows. Releasing contenders
+          # near a window edge can legitimately let the serialized loser enter the
+          # next window after the winner commits, which is not oversubscription.
+          # Keep this contention proof inside one deterministic window.
+          SECONDS_IN_WINDOW=$(( $(date +%s) % 60 ))
+          SECONDS_REMAINING=$(( 60 - SECONDS_IN_WINDOW ))
+          if (( SECONDS_REMAINING < 15 )); then
+            sleep $((SECONDS_REMAINING + 1))
+          fi
+          : > "$RELEASE_FILE"
 
           RC_ONE=0
           RC_TWO=0
