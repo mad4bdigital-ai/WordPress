@@ -529,6 +529,18 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		return array();
 	}
 
+	public static function high_impact_abilities() {
+		$abilities = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
+		foreach ( self::stored_profiles() as $profile ) {
+			if ( empty( $profile['enabled'] ) ) continue;
+			$routes = self::routes_for_profile( $profile );
+			if ( ! empty( $routes['publish_apply'] ) ) $abilities[] = $routes['publish_apply'];
+		}
+		$abilities = array_values( array_unique( array_map( 'strval', $abilities ) ) );
+		sort( $abilities, SORT_STRING );
+		return $abilities;
+	}
+
 	public static function reversible_contracts() {
 		$result = array(
 			self::PROFILE_APPLY_ABILITY => 'mad4b.rollback.content-experience-profile.v1',
