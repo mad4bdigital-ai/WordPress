@@ -95,14 +95,26 @@ if feature_path.exists():
         "adaptive_search_intelligence_review_document": "adaptive-search-intelligence-review.md",
         "adaptive_search_intelligence_review_ledger": "adaptive-search-intelligence-review.json",
         "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
-        "adaptive_search_intelligence_review_status": "APPROVED_WITH_GAPS",
+        "adaptive_search_intelligence_review_status": "APPROVED_P0_CLOSED_P1_OPEN",
         "adaptive_search_intelligence_review_score": 88,
-        "adaptive_search_intelligence_review_p0_open": 12,
+        "adaptive_search_intelligence_review_p0_open": 0,
+        "adaptive_search_intelligence_review_p0_closed": 12,
         "adaptive_search_intelligence_review_p1_open": 6,
     }
     for k, v in adaptive_search_expected.items():
         if data.get(k) != v:
             errors.append(f"feature_adaptive_search_field:{k}:expected={v!r}:got={data.get(k)!r}")
+    feature_search_closure=data.get("adaptive_search_intelligence_p0_closure")
+    if not isinstance(feature_search_closure,dict):
+        errors.append("feature_adaptive_search_p0_closure_missing")
+    else:
+        closure_sha=feature_search_closure.get("exact_head_sha")
+        if not isinstance(closure_sha,str) or not re.fullmatch(r"[0-9a-f]{40}",closure_sha):
+            errors.append("feature_adaptive_search_p0_closure_sha_invalid")
+        if int(feature_search_closure.get("workflow_run") or 0) <= 0 or feature_search_closure.get("evidence_status")!="PASS":
+            errors.append("feature_adaptive_search_p0_closure_evidence_invalid")
+        if feature_search_closure.get("authorizing") is not False:
+            errors.append("feature_adaptive_search_p0_closure_must_be_non_authorizing")
     for key in ["baseline_head_at_creation","last_reviewed_master_parent_sha"]:
         val=data.get(key)
         if not isinstance(val,str) or not re.fullmatch(r"[0-9a-f]{40}", val):
@@ -375,7 +387,7 @@ if adaptive_search_review_path.exists():
     adaptive_search_review = json.loads(adaptive_search_review_path.read_text(encoding="utf-8"))
     if adaptive_search_review.get("contract") != "mad4b.adaptive-search-intelligence-review.v1":
         errors.append("adaptive_search_review:contract_mismatch")
-    if adaptive_search_review.get("status") != "APPROVED_WITH_GAPS":
+    if adaptive_search_review.get("status") != "APPROVED_P0_CLOSED_P1_OPEN":
         errors.append("adaptive_search_review:status_mismatch")
     if adaptive_search_review.get("authorizing") is not False:
         errors.append("adaptive_search_review:must_be_non_authorizing")
@@ -383,7 +395,7 @@ if adaptive_search_review_path.exists():
     if int(scores.get("overall") or -1) != 88:
         errors.append("adaptive_search_review:overall_score_mismatch")
     summary=adaptive_search_review.get("summary", {})
-    if int(summary.get("p0_open") or -1) != 12 or int(summary.get("p1_open") or -1) != 6:
+    if int(summary.get("p0_open") if summary.get("p0_open") is not None else -1) != 0 or int(summary.get("p0_closed") or -1) != 12 or int(summary.get("p1_open") or -1) != 6:
         errors.append("adaptive_search_review:open_gap_counts_mismatch")
     findings=adaptive_search_review.get("findings", [])
     ids=[row.get("id") for row in findings if isinstance(row, dict)]
@@ -393,6 +405,24 @@ if adaptive_search_review_path.exists():
     p1=sum(1 for row in findings if isinstance(row, dict) and row.get("severity")=="P1")
     if p0 != 12 or p1 != 6:
         errors.append("adaptive_search_review:severity_counts_invalid")
+    p0_closure=adaptive_search_review.get("p0_closure")
+    if not isinstance(p0_closure,dict):
+        errors.append("adaptive_search_review:p0_closure_missing_or_invalid")
+    else:
+        closure_sha=p0_closure.get("exact_head_sha")
+        if not isinstance(closure_sha,str) or not re.fullmatch(r"[0-9a-f]{40}",closure_sha):
+            errors.append("adaptive_search_review:p0_closure_sha_invalid")
+        if int(p0_closure.get("workflow_run") or 0) <= 0:
+            errors.append("adaptive_search_review:p0_closure_run_invalid")
+        if p0_closure.get("evidence_status") != "PASS":
+            errors.append("adaptive_search_review:p0_closure_not_pass")
+    for row in findings:
+        if not isinstance(row,dict):
+            continue
+        if row.get("severity")=="P0" and row.get("status")!="CLOSED":
+            errors.append(f"adaptive_search_review:p0_not_closed:{row.get('id')}")
+        if row.get("severity")=="P1" and row.get("status") not in {"OPEN","PARTIAL"}:
+            errors.append(f"adaptive_search_review:p1_status_invalid:{row.get('id')}")
 
 quality = require_file("quality-model.md")
 if quality.exists():
