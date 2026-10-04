@@ -34,6 +34,7 @@ stages=plan.get("stages")
 if not isinstance(stages,list) or not stages:
     fail("PRODUCTION_CERTIFICATION_STAGES_MISSING")
 seen={}
+foundation_gates=set()
 allowed_classes={"read_only","reversible_staging_mutation"}
 for row in stages:
     if not isinstance(row,dict):
@@ -44,6 +45,8 @@ for row in stages:
     if not sid or not gate or cls not in allowed_classes:
         fail("PRODUCTION_CERTIFICATION_STAGE_SCOPE_INVALID:"+sid)
     seen.setdefault(gate,[]).append(sid)
+    if row.get("foundation_only") is True:
+        foundation_gates.add(gate)
     if not str(row.get("producer") or "") or not str(row.get("evidence_contract") or ""):
         fail("PRODUCTION_CERTIFICATION_STAGE_EVIDENCE_MISSING:"+sid)
     if cls=="reversible_staging_mutation" and row.get("rollback_required") is not True:
@@ -52,7 +55,7 @@ for row in stages:
         fail("PRODUCTION_CERTIFICATION_READ_ONLY_ROLLBACK_INVALID:"+sid)
 
 missing=sorted(required_gates-set(seen))
-extra=sorted(set(seen)-required_gates)
+extra=sorted(set(seen)-required_gates-foundation_gates)
 duplicates=sorted(g for g,ids in seen.items() if len(ids)!=1)
 if missing:
     fail("PRODUCTION_CERTIFICATION_GATE_MISSING:"+",".join(missing))
@@ -79,5 +82,7 @@ for key in ("all_stages_ready_required","exact_identity_equal_across_all_stages"
         fail("PRODUCTION_CERTIFICATION_TERMINAL_INVARIANT_MISSING:"+key)
 if terminal.get("production_ready_result_authorizing") is not False:
     fail("PRODUCTION_CERTIFICATION_READY_MUST_NOT_AUTHORIZE")
+if terminal.get("foundation_stages_content_addressed") is not True:
+    fail("PRODUCTION_CERTIFICATION_FOUNDATION_CONTENT_ADDRESSING_REQUIRED")
 
 print("mad4b.production-certification-plan.v1: PASS gates="+str(len(required_gates)))

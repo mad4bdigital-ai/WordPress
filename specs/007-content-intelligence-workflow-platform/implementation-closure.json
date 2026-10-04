@@ -1227,6 +1227,15 @@
       "pre_staging_workflow_run_id": 37214537248,
       "provider_compatibility_workflow_run_id": 37214537220,
       "mcp_client_compatibility_workflow_run_id": 37214537020
+    },
+    "runtime_evaluator": {
+      "contract": "mad4b.production-readiness-runtime-binding.v1",
+      "ability": "mad4b/production-readiness-evaluate",
+      "authorizing": false,
+      "persistence": false,
+      "exact_live_candidate_identity_required": true,
+      "all_plan_stages_required": true,
+      "rollback_retention_is_content_addressed_stage": true
     }
   }
 }

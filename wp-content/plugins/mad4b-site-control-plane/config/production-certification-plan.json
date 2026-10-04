@@ -24,6 +24,15 @@
       "rollback_required": false
     },
     {
+      "id": "rollback_retention",
+      "gate": "rollback_retention_verified",
+      "mutation_class": "read_only",
+      "producer": ".github/workflows/mad4b-rollback-retention-receipt.yml",
+      "evidence_contract": "mad4b.rollback-retention-receipt.v1",
+      "rollback_required": false,
+      "foundation_only": true
+    },
+    {
       "id": "host_runner_parity",
       "gate": "recovery_tooling_available",
       "mutation_class": "reversible_staging_mutation",
@@ -158,6 +167,7 @@
     "optional_capabilities_remain_fail_closed": true,
     "production_ready_result_authorizing": false,
     "production_promotion_separate": true,
-    "producer_evidence_content_addressed": true
+    "producer_evidence_content_addressed": true,
+    "foundation_stages_content_addressed": true
   }
 }

@@ -39,9 +39,6 @@ def validate(bundle):
     package=str(identity.get("package_manifest_digest") or "").lower()
     if not HEX40.fullmatch(sha) or not HEX64.fullmatch(build) or not HEX64.fullmatch(package):
         fail("PRODUCTION_LIVE_BUNDLE_IDENTITY_INVALID")
-    if bundle.get("runtime_identity_match") is not True or bundle.get("root_trust_verified") is not True or bundle.get("rollback_retention_verified") is not True:
-        fail("PRODUCTION_LIVE_BUNDLE_FOUNDATION_EVIDENCE_INCOMPLETE")
-
     stages=plan.get("stages") or []
     stage_by_gate={str(x.get("gate") or ""):x for x in stages if isinstance(x,dict)}
     rows=bundle.get("evidence")

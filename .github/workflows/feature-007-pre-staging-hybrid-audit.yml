@@ -93,6 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-evaluator-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py
 
       - name: Dynamic Skill distribution contract

@@ -31,6 +31,19 @@
       ]
     },
     {
+      "stage_id": "rollback_retention",
+      "kind": "workflow",
+      "producer": ".github/workflows/mad4b-rollback-retention-receipt.yml",
+      "source_paths": [
+        ".github/workflows/mad4b-rollback-retention-receipt.yml"
+      ],
+      "required_markers": [
+        "mad4b.rollback-retention-receipt.v1",
+        "github_actions_artifact_api",
+        "retention verified"
+      ]
+    },
+    {
       "stage_id": "host_runner_parity",
       "kind": "host_bridge_sequence",
       "producer": "mad4b/host-operation-apply#workspace.file.replace+workspace.file.rollback",
