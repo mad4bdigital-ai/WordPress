@@ -33,8 +33,6 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		add_action( 'admin_notices', array( __CLASS__, 'admin_notice' ) );
 		add_action( 'admin_init', array( __CLASS__, 'reconcile_admin_readback' ), 45 );
 
-		$plugin = plugin_basename( MAD4B_SCP_FILE );
-		add_filter( 'plugin_action_links_' . $plugin, array( __CLASS__, 'plugin_action_links' ), 25, 1 );
 	}
 
 	public static function register_abilities() {
@@ -733,18 +731,14 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		self::commit_transaction( $plan, 'admin_readback_reconciliation' );
 	}
 
+	/**
+	 * Compatibility shim for older callers.
+	 *
+	 * Runtime-set maintenance belongs to the dedicated MAD4B Runtime Components
+	 * workspace, never to the generic WordPress Plugins action row.
+	 */
 	public static function plugin_action_links( $links ) {
-		if ( ! is_array( $links ) || ! current_user_can( 'update_plugins' ) ) return $links;
-		$transaction = self::read_transaction();
-		$label = self::transaction_active( $transaction )
-			? __( 'Continue compatible runtime update', 'mad4b-site-control-plane' )
-			: __( 'Update compatible runtime set', 'mad4b-site-control-plane' );
-		$url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=mad4b_runtime_release_set_apply' ),
-			'mad4b_runtime_release_set_apply'
-		);
-		$links['mad4b_runtime_release_set'] = '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
-		return $links;
+		return is_array( $links ) ? $links : array();
 	}
 
 	public static function handle_admin_apply() {
