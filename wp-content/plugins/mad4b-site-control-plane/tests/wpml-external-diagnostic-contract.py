@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Static contract for the raw external WPML diagnostic workflow.
+"""Static contract for external WPML diagnostics and ETG deployment readiness.
 
-The diagnostic may collect external HTTP evidence, but it is not itself an
-acceptance authority. Network transport failures are inconclusive evidence,
-not proof that the WPML route/contract is absent.
+Repository health must fail for actual WPML/REST/MCP/OAuth defects, while
+deployment drift by itself remains non-blocking diagnostic evidence. Exact
+ETG runtime identity is enforced by a separate deployment-readiness gate.
 """
 
 from pathlib import Path
@@ -11,6 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[4]
 WORKFLOW = ROOT / ".github/workflows/mad4b-wpml-external-diagnostic.yml"
+DEPLOYMENT_GATE = ROOT / ".github/workflows/mad4b-etg-deployment-readiness.yml"
 
 
 def require(source: str, marker: str, message: str) -> None:
@@ -34,10 +35,12 @@ def main() -> int:
         "evidence['acceptance_authorized'] = False": "raw diagnostic cannot self-authorize acceptance",
         "evidence['authority_granted'] = False": "raw diagnostic cannot grant authority",
         "if state == 'transport_unreachable':": "unreachable branch",
-        "INCONCLUSIVE transport_unreachable; acceptance remains false": "explicit inconclusive output",
-        "raise SystemExit(0)": "transport outage must not masquerade as code-contract failure",
+        "WPML endpoint/REST index remained unreachable after bounded retries and browser fallback": "transport outage must remain blocking after bounded recovery",
         "WPML REST namespace/route is missing on a reachable endpoint": "reachable route failure remains blocking",
         "WPML external contract failed on a reachable endpoint": "reachable response-contract failure remains blocking",
+        "deployment drift is present together with live MCP/OAuth validation failures": "drift plus live failures must remain blocking",
+        "::warning title=ETG deployment drift::": "drift-only evidence must be surfaced as warning",
+        "use MAD4B ETG Deployment Readiness for strict deployment identity": "strict identity ownership must be delegated",
         "mad4b.wpml-external-http-acceptance.v5: PASS": "accepted evidence contract",
         'npm install --prefix "$out" --no-save --no-package-lock playwright@1.55.0': "Playwright package must be installed beside the /tmp ESM fallback script",
         '"$out/node_modules/.bin/playwright" install --with-deps chromium': "browser binary install must use the same local Playwright package",
@@ -68,12 +71,44 @@ def main() -> int:
     if min(validate_start, pass_pos, unreachable_pos, namespace_fail_pos, contract_fail_pos) < 0:
         raise AssertionError("validation ordering markers are incomplete")
     if not (validate_start < unreachable_pos < namespace_fail_pos < contract_fail_pos < pass_pos):
-        raise AssertionError("transport-inconclusive and reachable-contract validation ordering drifted")
+        raise AssertionError("transport/reachable-contract validation ordering drifted")
+
+    drift_start = source.find("if evidence.get('deployment_drift'):")
+    drift_failure_pos = source.find(
+        "deployment drift is present together with live MCP/OAuth validation failures",
+        drift_start,
+    )
+    drift_warning_pos = source.find("::warning title=ETG deployment drift::", drift_start)
+    drift_exit_pos = source.find("raise SystemExit(0)", drift_warning_pos)
+    if min(drift_start, drift_failure_pos, drift_warning_pos, drift_exit_pos) < 0:
+        raise AssertionError("deployment-drift classifier markers are incomplete")
+    if not (drift_start < drift_failure_pos < drift_warning_pos < drift_exit_pos):
+        raise AssertionError("deployment drift must fail on live defects before becoming neutral")
+
+    if "MAD4B_REQUIRE_RUNTIME_IDENTITY" in source:
+        raise AssertionError("repository health diagnostic must not own strict deployment identity")
 
     if "accepted_evidence" not in source or "reachable_contract_failure" not in source:
         raise AssertionError("diagnostic outcomes are not exhaustive for accepted/reachable-failure states")
 
-    print("mad4b.wpml-external-diagnostic.contract.v1: PASS")
+    gate = DEPLOYMENT_GATE.read_text(encoding="utf-8")
+    for marker in (
+        "name: MAD4B ETG Deployment Readiness",
+        "workflow_dispatch:",
+        "workflow_call:",
+        "ETG exact runtime deployment gate",
+        "build-provenance:source_commit_sha_mismatch",
+        "runtime_identity_match",
+        "wpml_contract_compatible",
+        "'mutation_performed': False",
+    ):
+        require(gate, marker, "ETG deployment readiness contract")
+    if "\n  push:" in gate:
+        raise AssertionError("ETG deployment readiness must not run on every master push")
+    if "if: github.event_name != 'pull_request'" not in gate:
+        raise AssertionError("strict ETG deployment gate must not execute on PR validation")
+
+    print("mad4b.wpml-external-diagnostic.contract.v2: PASS")
     return 0
 
 
