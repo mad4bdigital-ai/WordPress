@@ -45,6 +45,24 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	}
 	private static function encode( $value ) { return json_encode( self::canonical( $value ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ); }
 	private static function error( $code, $status = 400 ) { return new WP_Error( $code, 'Catalog request unavailable. Refresh discovery if its revision expired.', array( 'status' => $status ) ); }
+	private static function projected_wire( $ability ) {
+		if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) return self::error( 'mad4b_catalog_adapter_compatibility_unavailable', 503 );
+		$built = MAD4B_SCP_MCP_Adapter_Compatibility::build_ability_wire( $ability );
+		if ( is_wp_error( $built ) ) return $built;
+		if ( ! is_array( $built ) || ! isset( $built['wire'] ) || ! is_object( $built['wire'] ) ) {
+			return self::error( 'mad4b_catalog_builder_contract_invalid', 503 );
+		}
+		$data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $built['wire'] );
+		$name = MAD4B_SCP_MCP_Adapter_Compatibility::wire_name( $built['wire'] );
+		if ( is_wp_error( $data ) || ! is_array( $data ) || '' === $name || ! isset( $data['inputSchema'] ) ) {
+			return self::error( 'mad4b_catalog_wire_projection_invalid', 503 );
+		}
+		return array(
+			'inputSchema' => $data['inputSchema'],
+			'outputSchema' => array_key_exists( 'outputSchema', $data ) ? $data['outputSchema'] : null,
+			'tool_name' => $name,
+		);
+	}
 	private static function object_envelope( $kind, array $payload ) {
 		return array(
 			'contract' => self::OBJECT_CONTRACT,
@@ -164,9 +182,12 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 					$retain_until = min( $retain_until, $source['retain_until'] );
 					$row = array( 'ability_name' => $name, 'label' => (string) $a->get_label(), 'schema_sha256' => $source['sha256'], 'schema_bytes' => $source['bytes'], 'source' => array( 'sha256' => $source['sha256'], 'bytes' => $source['bytes'] ), 'classification_sha256' => $definitions[ $name ] );
 					try {
-						if ( class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) ) {
-							$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $a );
-							if ( ! is_wp_error( $built ) ) { $dto = $built['tool']->toArray(); $wire = self::publish_schema( array( 'inputSchema' => $dto['inputSchema'], 'outputSchema' => $dto['outputSchema'] ?? null ), $store, $force ); $row['wire'] = array( 'sha256' => $wire['sha256'], 'bytes' => $wire['bytes'], 'tool_name' => $dto['name'] ); }
+						$projected = self::projected_wire( $a );
+						if ( ! is_wp_error( $projected ) ) {
+							$wire = self::publish_schema( array( 'inputSchema' => $projected['inputSchema'], 'outputSchema' => $projected['outputSchema'] ), $store, $force );
+							$row['wire'] = array( 'sha256' => $wire['sha256'], 'bytes' => $wire['bytes'], 'tool_name' => $projected['tool_name'] );
+						} else {
+							$row['wire_unavailable'] = true;
 						}
 					} catch ( Throwable $e ) { $row['wire_unavailable'] = true; }
 					$classification = MAD4B_SCP_Capability_Descriptor_Registry::describe( $name );
@@ -196,9 +217,12 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 			$source = self::publish_schema( array( 'inputSchema' => $a->get_input_schema(), 'outputSchema' => $a->get_output_schema() ), $store, false );
 			$item = array( 'ability_name' => $name, 'schema_sha256' => $source['sha256'], 'schema_bytes' => $source['bytes'], 'source' => array( 'sha256' => $source['sha256'], 'bytes' => $source['bytes'] ) );
 			try {
-				if ( class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) ) {
-					$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $a );
-					if ( ! is_wp_error( $built ) ) { $dto = $built['tool']->toArray(); $wire = self::publish_schema( array( 'inputSchema' => $dto['inputSchema'], 'outputSchema' => $dto['outputSchema'] ?? null ), $store, false ); $item['wire'] = array( 'sha256' => $wire['sha256'], 'bytes' => $wire['bytes'], 'tool_name' => $dto['name'] ); }
+				$projected = self::projected_wire( $a );
+				if ( ! is_wp_error( $projected ) ) {
+					$wire = self::publish_schema( array( 'inputSchema' => $projected['inputSchema'], 'outputSchema' => $projected['outputSchema'] ), $store, false );
+					$item['wire'] = array( 'sha256' => $wire['sha256'], 'bytes' => $wire['bytes'], 'tool_name' => $projected['tool_name'] );
+				} else {
+					$item['wire_unavailable'] = true;
 				}
 			} catch ( Throwable $e ) { $item['wire_unavailable'] = true; }
 			$id = hash( 'sha256', self::encode( array( self::CONTRACT, $item ) ) ); $key = self::key( $scope, 'snapshot', $id );
