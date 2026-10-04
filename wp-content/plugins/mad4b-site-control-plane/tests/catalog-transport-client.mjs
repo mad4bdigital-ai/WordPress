@@ -3,6 +3,7 @@ import {webcrypto, createHash} from 'node:crypto';
 import {createAbilityCatalogClient} from '../client/ability-catalog-client.mjs';
 const digest = value => createHash('sha256').update(value).digest('hex');
 const contract = 'mad4b.ability-catalog-transport.v2';
+const wireGeneration = `${contract}:test-runtime`;
 const scope = 'a'.repeat(64), snapshot = 'b'.repeat(64);
 const raw = Buffer.from(JSON.stringify({inputSchema: {type: 'object', properties: {}, description: 'محتوى'.repeat(10000)}, outputSchema: {}}));
 const sha = digest(raw); let calls = 0, manifestCalls = 0, prepareCalls = 0, inFlight = 0, maxInFlight = 0, corrupt = false, expired = false, denied = false, origin = 'https://ci.test', captured, wireSha = sha;
@@ -24,7 +25,7 @@ const fetchImpl = async (url, options) => {
       transfer_policy: {recommended_parallel_schema_fetches: 3},
     });
   }
-  if (url.pathname.endsWith('/capabilities')) return Response.json({contract, authority_scope_sha256: scope, rest_base_url: origin + '/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64']});
+  if (url.pathname.endsWith('/capabilities')) return Response.json({contract, authority_scope_sha256: scope, rest_base_url: origin + '/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64'], wire_generation: wireGeneration});
   if (url.pathname.endsWith('/manifest')) { manifestCalls++; return Response.json({contract, authority_scope_sha256: scope, snapshot, items: [currentRow()], removed: [], delta: false, next_cursor: null}); }
   if (expired) { expired = false; return new Response('{}', {status: 410}); }
   calls++; inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
@@ -46,15 +47,16 @@ const cookieClient = createAbilityCatalogClient({
   fetchImpl: async (url, options) => {
     assert.equal(options.credentials, 'same-origin');
     explicitCookieModeObserved = true;
-    return Response.json({contract, authority_scope_sha256: scope, rest_base_url: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64']});
+    return Response.json({contract, authority_scope_sha256: scope, rest_base_url: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64'], wire_generation: wireGeneration});
   },
 });
-await cookieClient.negotiate();
+const cookieCaps = await cookieClient.negotiate();
+assert.equal(cookieCaps.wire_generation, wireGeneration);
 assert.equal(explicitCookieModeObserved, true);
 const eventBounded = createAbilityCatalogClient({
   maxManifestEvents: 1,
   callDiscover: async input => {
-    if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64']};
+    if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64'], wire_generation: wireGeneration};
     return {contract, authority_scope_sha256: scope, snapshot, items: [row, {...row, ability_name: 'vendor/read-2'}], removed: [], delta: false, next_cursor: null};
   },
 });
@@ -64,7 +66,7 @@ let syncSignalObserved = false;
 const syncAbort = new AbortController();
 const cancellableSync = createAbilityCatalogClient({
   callDiscover: async (input, {signal} = {}) => {
-    if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64']};
+    if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64'], wire_generation: wireGeneration};
     syncSignalObserved = signal instanceof AbortSignal;
     syncAbort.abort(new Error('sync cancelled'));
     return new Promise(() => {});
@@ -109,7 +111,7 @@ wireSha = scope;
 await assert.rejects(client.execute(catalog, row.ability_name, {}, {mode: 'direct', directToolNames: ['vendor-read']}), /wire contract changed/);
 wireSha = sha;
 const mcp = createAbilityCatalogClient({cryptoImpl: webcrypto, callDiscover: async input => {
-  if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64']};
+  if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64'], wire_generation: wireGeneration};
   if (input.transport_action === 'manifest') return {contract, authority_scope_sha256: scope, snapshot, items: [row], removed: [], delta: false};
   const bytes = raw.subarray(input.chunk_index * input.chunk_bytes, (input.chunk_index + 1) * input.chunk_bytes);
   return {contract, schema_sha256: sha, chunk_index: input.chunk_index, chunk_count: Math.ceil(raw.length / input.chunk_bytes), encoding: 'base64', data: bytes.toString('base64'), chunk_sha256: digest(bytes)};
