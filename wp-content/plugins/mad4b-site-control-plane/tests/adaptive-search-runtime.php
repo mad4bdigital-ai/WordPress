@@ -105,6 +105,7 @@ scenario( 'language_registry_conflict_partial_and_new_translation', static funct
 	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $target ), 'source_required', 'transcreation requires source language provenance' );
 } );
 scenario( 'target_identity_unicode_url_and_purpose_separation', static function () {
+	foreach ( array( 'api_key', 'secret_handle', 'authorization', 'credentials', 'endpoint' ) as $key ) { $bad = asi_candidate(); $bad['query_language_provenance'] = array( $key => 'fixture-private-value' ); denied( MAD4B_SCP_Search_Contracts::target( $bad ), 'metadata_denied', 'candidate cannot persist private/egress metadata: ' . $key ); }
 	$q = ok( MAD4B_SCP_Search_Contracts::query( "  Café + site:Example.com  " ), 'Unicode query' ); check( 'Café + site:Example.com' === $q['normalized_query'], 'operators/case/accents preserved' );
 	denied( MAD4B_SCP_Search_Contracts::query( "line\nquery" ), 'query_invalid', 'control character rejected' );
 	$a = ok( MAD4B_SCP_Search_Contracts::target( asi_candidate() ), 'identity' );
