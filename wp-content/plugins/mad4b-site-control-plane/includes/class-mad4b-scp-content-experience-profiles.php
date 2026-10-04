@@ -170,6 +170,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			$row['id'] = $id;
 			$row['provider'] = isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : 'extension';
 			$row['adapter_id'] = isset( $row['adapter_id'] ) ? sanitize_key( (string) $row['adapter_id'] ) : '';
+			$row['certification_ability'] = isset( $row['certification_ability'] ) ? trim( (string) $row['certification_ability'] ) : '';
 			$row['operations'] = self::normalize_string_list( isset( $row['operations'] ) ? $row['operations'] : array(), 8, '/^[a-z][a-z0-9_-]*$/' );
 			$row['reversible'] = ! empty( $row['reversible'] );
 			$row['built_in'] = ! empty( $row['built_in'] );
@@ -217,6 +218,14 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		foreach ( $enabled_helpers as $helper_id ) {
 			if ( ! isset( $catalog[ $helper_id ] ) ) return new WP_Error( 'mad4b_content_experience_helper_missing', 'Configured helper is not registered.', array( 'helper_id' => $helper_id ) );
 			if ( ! empty( $catalog[ $helper_id ]['built_in'] ) ) return new WP_Error( 'mad4b_content_experience_builtin_helper_implicit', 'Built-in helpers are always available through their typed fields and must not be enabled as extension helpers.', array( 'helper_id' => $helper_id ) );
+			if ( empty( $catalog[ $helper_id ]['adapter_id'] ) ) return new WP_Error( 'mad4b_content_experience_helper_adapter_required', 'External helpers must be owned by a registered MAD4B adapter.', array( 'helper_id' => $helper_id ) );
+			$certification_ability = isset( $catalog[ $helper_id ]['certification_ability'] ) ? (string) $catalog[ $helper_id ]['certification_ability'] : '';
+			if ( '' === $certification_ability || ! preg_match( '#^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$#', $certification_ability ) ) {
+				return new WP_Error( 'mad4b_content_experience_helper_certification_required', 'External helper must bind to one exact provider Ability used for capability certification.', array( 'helper_id' => $helper_id ) );
+			}
+			if ( function_exists( 'wp_has_ability' ) && ! wp_has_ability( $certification_ability ) ) {
+				return new WP_Error( 'mad4b_content_experience_helper_certification_ability_missing', 'External helper certification Ability is not registered in the current runtime.', array( 'helper_id' => $helper_id, 'ability' => $certification_ability ) );
+			}
 			if ( empty( $catalog[ $helper_id ]['reversible'] ) ) return new WP_Error( 'mad4b_content_experience_helper_not_reversible', 'Experience mutation helpers must declare a reversible contract.', array( 'helper_id' => $helper_id ) );
 		}
 
