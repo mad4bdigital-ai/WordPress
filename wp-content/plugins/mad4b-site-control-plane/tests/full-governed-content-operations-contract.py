@@ -11,11 +11,14 @@ jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
+experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
+descriptor = root / "includes" / "class-mad4b-scp-capability-descriptor-registry.php"
+experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, servers, semantic, experience, experience_runtime, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, servers, semantic, experience, experience_governance, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -26,7 +29,10 @@ jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
+experience_governance_src = experience_governance.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
+descriptor_src = descriptor.read_text(encoding="utf-8")
+experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
 reversible_src = reversible.read_text(encoding="utf-8")
 plugin_src = plugin.read_text(encoding="utf-8")
 
@@ -112,6 +118,15 @@ for token in (
     "mad4b_scp_content_experience_helper_catalog",
     "dynamic_routes_are_configuration_driven",
     "hardcoded_business_content_types",
+    "taxonomy_mode",
+    "authority_sha256",
+    "post_type_immutable",
+    "content-experience-profile-clone-plan",
+    "content-experience-profile-delete-plan",
+    "PROFILE_CLONE_APPLY_ABILITY",
+    "PROFILE_DELETE_APPLY_ABILITY",
+    "executor_generation",
+    "migration_required",
 ):
     assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
 
@@ -133,11 +148,21 @@ for token in (
     "live_update_requires_draft",
     "sensitive_meta_denied",
     "protected_meta_denied",
+    "profile_snapshot",
+    "profile_authority_sha256",
+    "AUTHORITY_META",
+    "compensated_error",
+    "mad4b_content_experience_compensation_failed",
+    "mad4b_content_experience_locked_plan_drift",
+    "featured_media_read_denied",
+    "parent_read_denied",
+    "authority_match",
 ):
     assert token in experience_runtime_src, f"dynamic content experience execution contract missing: {token}"
 
 for src, label in (
     (experience_src, "experience-registry"),
+    (experience_governance_src, "experience-governance"),
     (experience_runtime_src, "experience-runtime"),
 ):
     assert "tours-and-activities" not in src.lower(), f"{label} must not hardcode the ETG tour CPT"
@@ -146,6 +171,48 @@ for src, label in (
 
 assert "MAX_PROFILES = 64" in experience_src
 assert "MAX_HELPERS = 32" in experience_src
+
+# Profile semantics are immutable authority: descriptor generation + revision-bound
+# executor names prevent an existing grant from silently widening after reconfiguration.
+for token in (
+    "authority_payload",
+    "authority_sha256",
+    "validate_snapshot",
+    "current_guard",
+    "descriptor_roots",
+    "acquire_lock",
+    "mad4b_content_experience_target_busy",
+):
+    assert token in experience_governance_src, f"content-experience governance hardening missing: {token}"
+assert "mad4b_scp_capability_descriptor_generation_roots" in descriptor_src
+assert "extension_roots" in descriptor_src
+assert "'r' . $generation . '-'" in experience_src
+assert "profile_routes( $slug, $revision = 0 )" in experience_src
+assert "'safe_defaults' => array( 'meta_mode' => 'allowlist', 'taxonomy_mode' => 'allowlist'" in experience_src
+
+# Apply annotations are exact: only create replay is idempotent. Update/publish and
+# profile lifecycle mutations require new state/revision after a successful apply.
+assert "$idempotent = $readonly || ( 'apply' === $phase && 'create' === $operation )" in experience_src
+assert experience_src.count("'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false") >= 3
+
+# Real disposable WordPress/MySQL proof is chained into Runtime Integration.
+for token in (
+    "register_post_type( 'mad4b_ci_trip'",
+    "mad4b_content_experience_target_busy",
+    "mad4b_compensation",
+    "post_type_immutable",
+    "-r2-update-apply",
+    "profile_clone_plan",
+    "profile_delete_plan",
+    "authority_match",
+):
+    assert token in experience_runtime_smoke_src, f"content-experience runtime E2E proof missing: {token}"
+assert "runtime-content-experience-smoke.php" in (root / "tests" / "runtime-reversible-mutation-smoke.php").read_text(encoding="utf-8")
+
+# Publish status transition must follow helper execution, not precede it.
+helper_pos = experience_runtime_src.index("apply_helpers( $profile, $operation")
+publish_transition_pos = experience_runtime_src.index("wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] )", helper_pos)
+assert helper_pos < publish_transition_pos, "publish transition must occur after helper success"
 
 # Dynamic routes participate in Brand Context semantics without static route names.
 for token in (
@@ -327,7 +394,9 @@ for src, label in (
     (provider_src, "provider-bridge"),
     (jetengine_client_src, "jetengine-mcp-client"),
     (experience_src, "content-experience-registry"),
+    (experience_governance_src, "content-experience-governance"),
     (experience_runtime_src, "content-experience-runtime"),
+    (descriptor_src, "capability-descriptor"),
 ):
     assert "$wpdb" not in src, f"{label} must not use direct SQL"
     assert "database-raw-query" not in src, f"{label} must not expose raw SQL"
