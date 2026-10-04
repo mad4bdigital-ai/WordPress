@@ -274,6 +274,6 @@
   "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
   "adaptive_search_intelligence_review_status": "APPROVED_WITH_GAPS",
   "adaptive_search_intelligence_review_score": 88,
-  "adaptive_search_intelligence_review_p0_open": 10,
-  "adaptive_search_intelligence_review_p1_open": 8
+  "adaptive_search_intelligence_review_p0_open": 12,
+  "adaptive_search_intelligence_review_p1_open": 6
 }
