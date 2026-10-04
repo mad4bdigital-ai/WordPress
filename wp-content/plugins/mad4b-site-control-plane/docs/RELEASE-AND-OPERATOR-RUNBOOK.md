@@ -210,6 +210,14 @@ Use the `control_plane_core` profile for the first Production promotion. Optiona
 
 ### Certification sequence
 
+Before collecting any evidence, call `mad4b/production-certification-status` on the exact deployed Staging candidate. Treat its result as the canonical operator worklist: local read-only canaries are recomputed immediately, while signed external or reversible-Staging stages remain explicitly pending. The status surface is non-authorizing and always reports `production_ready=false`; only the canonical `mad4b/production-readiness-evaluate` verdict over a complete trusted bundle may report readiness.
+
+Operator flow:
+
+`production-certification-status → collect exact stage evidence → production-readiness-evaluate → separate Production promotion authorization`
+
+
+
 1. Freeze one exact candidate identity: source commit SHA, build fingerprint and package-manifest digest.
 2. Require repository CI for that exact head to pass. Repository evidence is bound by the current CI runtime; do not persist a historical run ID as current readiness truth.
 3. Deploy that exact candidate to enrolled **Staging** through the governed deployment path.
