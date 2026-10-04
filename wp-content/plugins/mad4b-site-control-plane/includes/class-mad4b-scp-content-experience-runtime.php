@@ -473,7 +473,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$meta_result = self::apply_meta( $post_id, $normalized['meta'] );
 		if ( is_wp_error( $meta_result ) ) return $meta_result;
 		$term_result = self::apply_taxonomies( $post_id, $normalized['taxonomies'] );
-		if ( is_wp_error( $term_result ) return $term_result;
+		if ( is_wp_error( $term_result ) ) return $term_result;
 		$media_result = self::apply_featured_media( $post_id, $normalized['featured_media_id'] );
 		if ( is_wp_error( $media_result ) ) return $media_result;
 		$helper_results = self::apply_helpers( $profile, $operation, $post_id, $normalized['helpers'] );
@@ -576,14 +576,26 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		if ( is_wp_error( $profile ) ) return $profile;
 		if ( 'create' === $operation ) {
 			$binding = (string) $plan['creation_binding'];
-			if ( self::find_created_by_binding( $profile, $binding ) ) {
-				return new WP_Error( 'mad4b_content_experience_creation_binding_exists', 'Creation binding already exists before mutation.' );
+			$existing = self::find_created_by_binding( $profile, $binding );
+			if ( count( $existing ) > 1 ) {
+				return new WP_Error( 'mad4b_content_experience_creation_binding_collision', 'Creation binding resolves to more than one post before mutation.' );
+			}
+			$state = array( 'exists' => false, 'post_ids' => array(), 'states' => array() );
+			if ( 1 === count( $existing ) ) {
+				$id = (int) $existing[0];
+				$verified = self::verify_plan_readback( $profile, $plan, $id );
+				if ( is_wp_error( $verified ) ) {
+					return new WP_Error( 'mad4b_content_experience_create_replay_drift', 'Existing idempotent create result no longer matches the reviewed plan.' );
+				}
+				$snapshot = self::snapshot_post_for_plan( $profile, $plan, $id );
+				if ( is_wp_error( $snapshot ) ) return $snapshot;
+				$state = array( 'exists' => true, 'post_ids' => array( $id ), 'states' => array( (string) $id => $snapshot ) );
 			}
 			return array(
 				'target_type' => 'content-experience-create',
 				'target_id' => $binding,
 				'target' => array( 'kind' => 'operation', 'operation' => 'create', 'slug' => $slug, 'binding' => $binding, 'plan' => $plan ),
-				'state' => array( 'exists' => false, 'post_ids' => array() ),
+				'state' => $state,
 			);
 		}
 		$post_id = (int) $plan['normalized_input']['post_id'];
@@ -666,6 +678,18 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$operation = isset( $target['operation'] ) ? sanitize_key( (string) $target['operation'] ) : '';
 		if ( 'create' === $operation ) {
 			$ids = self::find_created_by_binding( $profile, isset( $target['binding'] ) ? (string) $target['binding'] : '' );
+			if ( ! empty( $state['exists'] ) ) {
+				$expected_ids = isset( $state['post_ids'] ) ? array_values( array_map( 'absint', (array) $state['post_ids'] ) ) : array();
+				sort( $expected_ids, SORT_NUMERIC );
+				if ( $ids !== $expected_ids ) return new WP_Error( 'mad4b_content_experience_create_restore_drift', 'Idempotent create target changed after the recorded no-op.' );
+				foreach ( $ids as $id ) {
+					$key = (string) $id;
+					if ( ! isset( $state['states'][ $key ] ) || ! is_array( $state['states'][ $key ] ) ) return new WP_Error( 'mad4b_content_experience_create_restore_state_invalid', 'Stored idempotent create state is incomplete.' );
+					$restored = self::restore_post_snapshot( $profile, 'create', $id, $state['states'][ $key ] );
+					if ( is_wp_error( $restored ) ) return $restored;
+				}
+				return true;
+			}
 			foreach ( array_reverse( $ids ) as $id ) {
 				if ( ! current_user_can( 'delete_post', $id ) ) return new WP_Error( 'mad4b_content_experience_create_restore_denied', 'Current user cannot remove created content during rollback.' );
 				if ( ! wp_delete_post( $id, true ) ) return new WP_Error( 'mad4b_content_experience_create_restore_failed', 'Created content could not be removed during rollback.' );
