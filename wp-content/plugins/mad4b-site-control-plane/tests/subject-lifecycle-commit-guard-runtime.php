@@ -13,6 +13,18 @@ function get_userdata($id){if(empty($GLOBALS['subject_exists'])||7!==(int)$id)re
 $GLOBALS['subject_exists']=true;$GLOBALS['subject_caps']=array('manage_options'=>true,'edit_posts'=>true);$GLOBALS['subject_fp']=str_repeat('1',64);$GLOBALS['profile_revision']=4;$GLOBALS['profile_app']='plugin_asdk_app_fixture';$GLOBALS['profile_users']=array(7);$GLOBALS['authority_snapshot']=str_repeat('9',64);$GLOBALS['approval_expires_at']=gmdate('Y-m-d H:i:s',time()+600);
 
 final class MAD4B_SCP_Identity_Context{static function current(){return array('authenticated'=>true,'subject_type'=>'oauth','subject_fingerprint'=>$GLOBALS['subject_fp'],'issuer_fingerprint'=>str_repeat('2',64),'client_fingerprint'=>str_repeat('3',64),'auth_method'=>'oauth2_bearer','wp_user_id'=>7);}}
+final class MAD4B_SCP_Capability_Descriptor_Registry{
+	static function assert_binding($ability,$expected,$surface='authorization'){
+		if(!is_array($expected)||empty($expected['descriptor_sha256']))return new WP_Error('descriptor_missing','missing');
+		return $expected;
+	}
+}
+final class MAD4B_SCP_Resource_Constraint_Set{
+	static function assert_same($expected,$ability,$provider,$input=array()){
+		if(!is_array($expected)||empty($expected['resource_set_sha256']))return new WP_Error('resource_set_missing','missing');
+		return $expected;
+	}
+}
 final class MAD4B_SCP_Restore_Epoch{static function material(){return array('contract'=>'mad4b.restore-authority-epoch.v1','site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','epoch'=>7,'external_record_sha256'=>str_repeat('e',64));}}
 final class MAD4B_SCP_Runtime_Compatibility_Profile{static function assert_governed_write_ready($r=true){return array('contract'=>'mad4b.runtime-compatibility-profile.v1','ready'=>true,'profile_sha256'=>str_repeat('4',64),'execution_context'=>'rest','remote_transport_server_id'=>'mad4b-chatgpt','object_cache'=>array('external'=>false,'contract_verified'=>true),'database_topology'=>array('database_dropin_present'=>false),'security_firewall'=>array('plugins'=>array()),'maintenance'=>array('active'=>false));}}
 final class MAD4B_SCP_Persisted_Contract_Compatibility{static function assert_write_compatible(){return array('contract'=>'mad4b.persisted-contract-compatibility.v1','registry_sha256'=>str_repeat('7',64),'ready_for_write'=>true);}}
@@ -28,10 +40,30 @@ final class MAD4B_SCP_Multi_Authority_Registry{static function snapshot(){return
 require dirname(__DIR__).'/includes/class-mad4b-scp-execution-commit-guard.php';
 $check=static function($c,$m){if(!$c){fwrite(STDERR,"FAIL subject-lifecycle-commit-guard: {$m}\n");exit(1);}};
 $code=static function($v){return is_wp_error($v)?$v->get_error_code():'';};
-$claim=array('ability'=>'fixture/mutate','provider'=>'core','server_id'=>'mad4b-write','agent_public_id'=>'agent-fixture','target_fingerprint'=>str_repeat('d',64),'approval_required'=>true,'approval_ticket_id'=>'11111111-1111-4111-8111-111111111111','subject_fingerprint'=>$GLOBALS['subject_fp']);
+$claim=array(
+	'ability'=>'fixture/mutate',
+	'provider'=>'core',
+	'server_id'=>'mad4b-write',
+	'agent_public_id'=>'agent-fixture',
+	'target_fingerprint'=>str_repeat('d',64),
+	'approval_required'=>true,
+	'approval_ticket_id'=>'11111111-1111-4111-8111-111111111111',
+	'subject_fingerprint'=>$GLOBALS['subject_fp'],
+	'capability_descriptor'=>array(
+		'contract'=>'mad4b.capability-descriptor.v1',
+		'ability'=>'fixture/mutate',
+		'descriptor_sha256'=>str_repeat('a',64),
+	),
+	'resource_set'=>array(
+		'contract'=>'mad4b.resource-constraint-set.v1',
+		'ability'=>'fixture/mutate',
+		'provider'=>'core',
+		'resource_set_sha256'=>str_repeat('b',64),
+	),
+);
 $input=array('target'=>'fixture');
 $snapshot=MAD4B_SCP_Execution_Commit_Guard::capture($claim,$input);
-$check(is_array($snapshot)&&!empty($snapshot['material_sha256']),'baseline commit snapshot failed');
+$check(is_array($snapshot)&&!empty($snapshot['material_sha256']),'baseline commit snapshot failed'.(is_wp_error($snapshot)?':'.$snapshot->get_error_code():''));
 $claim['commit_guard_snapshot']=$snapshot;
 $ok=MAD4B_SCP_Execution_Commit_Guard::revalidate($claim,$input);
 $check(is_array($ok)&&'COMMIT_ALLOWED'===($ok['verdict']??''),'unchanged subject lifecycle did not commit');
