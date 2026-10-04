@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "2757770ed2628651f98def8573afaab738d69767",
+  "source_tasks_git_blob_sha": "dc936e3dbedc3d745116e279548d6f38998f1198",
   "override_git_blob_sha": "47c21d4ab24651b6697507563f978f9717cc2882",
   "classification_policy": {
     "default_unchecked": "OPEN",
@@ -11,20 +11,20 @@
   "counts": {
     "DEFERRED": 2,
     "DONE": 134,
-    "OPEN": 613,
+    "OPEN": 633,
     "PARTIAL": 68
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 95,
-      "OPEN": 502,
+      "OPEN": 516,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
       "DONE": 37,
-      "OPEN": 90,
+      "OPEN": 96,
       "PARTIAL": 24
     },
     "P2": {
@@ -34,7 +34,7 @@
       "PARTIAL": 1
     }
   },
-  "task_count": 817,
+  "task_count": 837,
   "tasks": [
     {
       "task_id": "T0001",
@@ -9162,6 +9162,206 @@
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Emit ADAPTIVE_SEARCH_GENERALIZATION_PASS only from exact-head executable evidence; documentation-only closure is forbidden.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3861",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define ObservationContext + ComparabilityKey and prohibit ranking deltas across materially incomparable location/provider/engine/device/depth/normalization contexts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3862",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define provider-resolved geo/locale fidelity including requested market, provider location ID, precision, country/gl, language/hl, engine/domain and device evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3863",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define versioned query canonicalization preserving raw query, Unicode/locale semantics, normalized query and normalization reason/version.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3864",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define versioned owned-URL identity/matching across scheme/host/trailing slash/parameters/redirects/canonical aliases/localized URLs and registrable-domain ownership.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3865",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define normalized rank semantics separating result type, organic rank, grouped rank, absolute SERP position and provider-native position.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3866",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define capture completeness semantics: requested/returned depth, partial/truncated reason, validation state and NOT_FOUND_WITHIN_DEPTH; forbid loss signals from incomplete captures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3867",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Replace scalar indexability with SearchEligibilityEnvelope covering crawlable, robots.txt, X-Robots-Tag, meta robots, canonical/redirect, sitemap/discoverability, hreflang and effective confidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3868",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement bounded Surface Admission Policy for facets/filters/query parameters/pagination/virtual surfaces with allowlists, cardinality caps, canonical policy and unknown-combination denial.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3869",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement ProviderAccountBudgetAuthority keyed by provider account/credential identity for quotas shared across sites/workers.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3870",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Implement fenced global budget reservations, billing-cycle/reset-time semantics, stale reservation expiry and provider usage reconciliation; downgrade enforcement claims when no shared authority exists.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3871",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Compose first-party SearchPerformanceProvider evidence into opportunity/decline/refresh decisions without relabeling it as live SERP evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3872",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Define QueryLanguageProvenance for translation/transcreation, market evidence, semantic cluster relation, confidence and approval independently from page translation state.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3873",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Bind provider licensing/usage/retention constraints to raw and normalized evidence storage, redistribution, region and deletion policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3874",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "Define deterministic versioned DecisionPolicy factor ranges, missing-value handling, normalization, monotonicity, calibration and stable tie-break semantics; v1 MUST NOT require opaque ML.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3875",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Define adaptive UX stability and operator controls: stable section IDs/order/deep links plus audited pause/resume profile, disable provider, freeze spend, pin/mute target and request-refresh controls.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3876",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Define portable Search Intelligence execution/storage profiles for WordPress-local, external worker and external evidence/blob store while preserving canonical identities/evidence semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3877",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Map every Phase 38 PASS gate to exact fixtures, assertions, thresholds, denial cases, evidence artifact and required CI/disposable/live evidence class.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3878",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Define open/versioned SERP feature schema preserving known normalized family plus provider-native unknown/pass-through evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3879",
+      "phase": 38,
+      "priority": "P1",
+      "summary": "Bind every DecisionPolicy factor, including commercial value/search volume, to source, market/language scope, freshness, confidence and normalization version.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3880",
+      "phase": 38,
+      "priority": "P0",
+      "summary": "GATE Execute composed cross-fault matrix covering profile/provider/language/surface drift, shared-budget races, lease loss, quota reset, partial capture, cache equivalence, uncertain provider effects and adaptive UI state; exact-head executable evidence required.",
       "status": "OPEN",
       "checked": false,
       "evidence_refs": [],
