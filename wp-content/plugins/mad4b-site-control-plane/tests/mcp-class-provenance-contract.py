@@ -67,6 +67,7 @@ required_070 = {
     "error_log_handler": ("WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler", "includes/Infrastructure/ErrorHandling/ErrorLogMcpErrorHandler.php"),
     "null_error_handler": ("WP\\MCP\\Infrastructure\\ErrorHandling\\NullMcpErrorHandler", "includes/Infrastructure/ErrorHandling/NullMcpErrorHandler.php"),
     "null_observability_handler": ("WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler", "includes/Infrastructure/Observability/NullMcpObservabilityHandler.php"),
+    "json_rpc_decoder": ("WP\\MCP\\Transport\\Infrastructure\\JsonRpcRequestDecoder", "includes/Transport/Infrastructure/JsonRpcRequestDecoder.php"),
 }
 for alias, (class_name, path) in required_070.items():
     spec = runtime_070.get(alias) or {}
