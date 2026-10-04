@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.90
+ * Version: 0.4.0-rc.91
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.90' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.91' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
@@ -310,6 +310,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-diagnost
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-grant-reconciliation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-candidate-binding.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-planning-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-rest-compatibility.php';
@@ -413,6 +414,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ), 35 );
 	MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::boot();
 	MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
+	MAD4B_SCP_Staging_Write_Authority_Convergence::boot();
 	MAD4B_SCP_Staging_Write_Candidate_Binding::boot();
 	MAD4B_SCP_Staging_Write_Planning_Guard::boot();
 	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_REST_Compatibility', 'register_ability' ), 36 );
