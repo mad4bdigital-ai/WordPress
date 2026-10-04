@@ -207,7 +207,10 @@ for marker in (
     "'observed_sha256'",
     "'mad4b_mcp_conflict_repair_stale_plan'",
     "'mad4b_mcp_conflict_repair_admin_only'",
-    "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap( $expected_unmanaged_sha256 )",
+    'conflict_expected_sha256()',
+    "self::$conflict_expected_sha256 = $conflict_mode ? $expected_unmanaged_sha256 : ''",
+    "self::$conflict_expected_sha256 = ''",
+    "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap()",
     "'explicit_conflict_recovery' => $conflict_mode",
 ):
     require(recovery, marker, 'explicit-mu-conflict-recovery')
