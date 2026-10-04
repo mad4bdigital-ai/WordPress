@@ -150,7 +150,7 @@ jobs:
           python wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php
           php wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php
-      - name: Verify adaptive search P0 runtime contracts
+      - name: Verify adaptive search P0 + Phase 38A runtime contracts
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php
