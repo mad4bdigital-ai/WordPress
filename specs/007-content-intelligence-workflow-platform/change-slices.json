@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 272,
+  "changed_file_count": 274,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -102,6 +102,7 @@
       "revert_boundary": "Revert durable/recovery runtime slice as one semantic boundary.",
       "certification": "exact_head",
       "path_globs": [
+        "tools/mad4b_host_runner.py",
         "tools/mad4b_recovery_plane.py",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-failure-semantics.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php",
@@ -332,6 +333,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/durable-postcondition-binding-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/execution-hook-order-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py"
       ]
