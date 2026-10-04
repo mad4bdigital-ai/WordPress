@@ -48,6 +48,36 @@ require(not any("\\DTO\\" in name for name in runtime_class_names), "removed gen
 require("WP\\MCP\\Transport\\Infrastructure\\McpWireOrchestrator" in runtime_class_names, "0.7.0 wire orchestrator is not certified")
 require(len(p070.get("critical_files") or {}) >= 20, "MCP Adapter 0.7.0 critical file manifest is too small")
 
+transport = p070.get("transport_compatibility") or {}
+require(
+    transport.get("legacy_session_revisions") == ["2024-11-05", "2025-06-18", "2025-11-25"],
+    "0.7.0 legacy session revision contract drift",
+)
+require(
+    transport.get("modern_per_request_revisions") == ["2026-07-28"],
+    "0.7.0 modern per-request revision contract drift",
+)
+require(
+    transport.get("permission_callback_wp_error_passthrough") is False,
+    "0.7.0 permission WP_Error collapse must remain explicit",
+)
+require(
+    transport.get("mad4b_transport_admission_bridge_required") is True,
+    "MAD4B admission bridge requirement missing from 0.7.0 profile",
+)
+require(
+    transport.get("authenticated_tools_call_revalidation_required") is True,
+    "authenticated tools/call revalidation requirement missing",
+)
+require(
+    set(transport.get("recovery_read_tools") or []) == {
+        "mad4b/site-profile-status",
+        "mad4b/session-safe-diagnostics",
+        "mad4b/site-info",
+    },
+    "recovery read tool acceptance set drift",
+)
+
 provider_contracts = (INCLUDES / "class-mad4b-scp-provider-contracts.php").read_text(encoding="utf-8")
 require("public static function get_for_version" in provider_contracts, "exact provider version resolver missing")
 require("'runtime_classes'," in provider_contracts, "version profile runtime_classes replacement missing")

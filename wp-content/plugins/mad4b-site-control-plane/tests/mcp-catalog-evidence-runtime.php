@@ -2,6 +2,8 @@
 define( 'ABSPATH', __DIR__ . '/' );
 function add_filter( ...$args ) {}
 function wp_json_encode( $data ) { return json_encode( $data ); }
+class WP_Error { private $code; function __construct( $code = 'fixture_error' ) { $this->code = $code; } function get_error_code() { return $this->code; } }
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
 final class MAD4B_SCP_OAuth_Resource_Bridge { public static $verified = true; public static function verified_bearer_active() { return self::$verified; } }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-mcp-catalog-diagnostics.php';
 function check( $ok, $message ) { if ( ! $ok ) throw new RuntimeException( $message ); }
@@ -9,6 +11,26 @@ class FixtureTool { public $name; public $ability; function __construct( $name, 
 class FixtureServer { public $tools; function __construct( $tools ) { $this->tools = $tools; } function get_tools() { return $this->tools; } function get_mcp_tool( $name ) { return $this->tools[$name]; } }
 class FixtureRequest { public $method = 'tools/list'; public $route = '/mcp/mad4b-chatgpt'; function get_route() { return $this->route; } function get_method() { return 'POST'; } function get_json_params() { return array( 'method' => $this->method, 'params' => array( 'secret' => 'DO_NOT_COPY' ) ); } function get_header( $key ) { return 'DO_NOT_COPY'; } }
 class FixtureResponse { public $data; public $headers = array(); public $status = 200; function __construct( $data ) { $this->data = $data; } function get_data() { return $this->data; } function get_status() { return $this->status; } function header( $key, $value ) { $this->headers[$key] = $value; } }
+class FixtureGeneratedRecord implements JsonSerializable {
+	private $values;
+	function __construct( array $values ) { $this->values = $values; }
+	#[\ReturnTypeWillChange]
+	function jsonSerialize() { return (object) $this->values; }
+}
+$record_wire = new FixtureGeneratedRecord( array(
+	'name' => 'mad4b-record-fixture',
+	'inputSchema' => (object) array( 'type' => 'object', 'properties' => (object) array() ),
+	'annotations' => new FixtureGeneratedRecord( array( 'readOnlyHint' => true ) ),
+	'execution' => new FixtureGeneratedRecord( array( 'taskSupport' => 'forbidden' ) ),
+	'icons' => array( new FixtureGeneratedRecord( array( 'src' => 'https://example.test/icon.svg' ) ) ),
+) );
+$record_data = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $record_wire );
+check( is_array( $record_data ), 'revision-aware Record did not normalize to top-level array' );
+check( isset( $record_data['inputSchema'] ) && $record_data['inputSchema'] instanceof stdClass, 'raw inputSchema object identity was collapsed' );
+check( isset( $record_data['inputSchema']->properties ) && $record_data['inputSchema']->properties instanceof stdClass, 'empty properties object was collapsed to an array' );
+check( isset( $record_data['annotations'] ) && is_array( $record_data['annotations'] ) && true === $record_data['annotations']['readOnlyHint'], 'nested annotations Record was not normalized' );
+check( isset( $record_data['execution'] ) && is_array( $record_data['execution'] ) && 'forbidden' === $record_data['execution']['taskSupport'], 'nested execution Record was not normalized' );
+check( isset( $record_data['icons'][0] ) && is_array( $record_data['icons'][0] ), 'nested icon Record was not normalized' );
 // Provider growth may shed reviewed optional projections, never core transport.
 $required = array_map( static function ( $i ) { return 'required/tool-' . $i; }, range( 1, 30 ) );
 $optional = array_map( static function ( $i ) { return 'optional/tool-' . $i; }, range( 1, 100 ) );
@@ -45,6 +67,25 @@ $before = serialize( $response->data );
 check( $response === MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $response, null, $request ), 'response identity preserved' );
 check( 'ready' === $response->headers['X-MAD4B-MCP-Outcome'] && $before === serialize( $response->data ), 'protocol payload remains unchanged' );
 check( false === strpos( json_encode( $response->headers ), 'DO_NOT_COPY' ), 'headers do not leak request/session material' );
+
+// MCP Adapter 0.7 serializes the outer JSON-RPC response to stdClass while the
+// nested result remains a generated JsonSerializable Record. Diagnostics must
+// classify that response without mutating or leaking its payload.
+$record_result = new FixtureGeneratedRecord( array(
+	'tools' => array( new FixtureGeneratedRecord( array(
+		'name' => 'mad4b-site-info',
+		'inputSchema' => (object) array( 'type' => 'object', 'properties' => (object) array() ),
+	) ) ),
+) );
+$record_response = new FixtureResponse( (object) array(
+	'jsonrpc' => '2.0',
+	'id' => 2,
+	'result' => $record_result,
+) );
+$record_before = serialize( $record_response->data );
+MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $record_response, null, $request );
+check( 'ready' === $record_response->headers['X-MAD4B-MCP-Outcome'], 'revision-aware nested result Record was misclassified' );
+check( $record_before === serialize( $record_response->data ), 'revision-aware diagnostic observation mutated protocol payload' );
 MAD4B_SCP_OAuth_Resource_Bridge::$verified = false;
 $response = new FixtureResponse( array() );
 MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $response, null, $request );

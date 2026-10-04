@@ -47,6 +47,7 @@ class FixtureAbility {
 }
 require __DIR__ . '/../includes/class-mad4b-scp-distributed-lock.php';
 require __DIR__ . '/../includes/class-mad4b-scp-catalog-object-store.php';
+require __DIR__ . '/../includes/class-mad4b-scp-mcp-adapter-compatibility.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
 function request( $input ) { return MAD4B_SCP_Ability_Catalog_Transport::handle( $input ); }
@@ -129,8 +130,13 @@ $shared_item = array_values( array_filter( $shared_manifest['items'], static fn(
 $descriptor_key = hash( 'sha256', ':schema:' . $shared_item['schema_sha256'] );
 $directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]; $shared_descriptor = $GLOBALS['options'][$directory[$descriptor_key]['option']];
 foreach ( $shared_descriptor['blocks'] as $block ) check( $directory[hash( 'sha256', ':block:' . $block )]['expires'] >= $shared_descriptor['retain_until'], 'Shared block expires before advertised schema retention' );
-class WireFixtureDTO { function toArray() { return array( 'name' => 'object-tool', 'inputSchema' => (object) array( 'type' => 'object', 'properties' => new stdClass() ), 'outputSchema' => (object) array( 'type' => 'object' ) ); } }
-class WireFixtureBuilder { static function build( $ability ) { return array( 'tool' => new WireFixtureDTO() ); } }
+class WireFixtureDTO {
+ function getName() { return 'object-tool'; }
+ function toArray() { return array( 'name' => 'object-tool', 'inputSchema' => (object) array( 'type' => 'object', 'properties' => new stdClass() ), 'outputSchema' => (object) array( 'type' => 'object' ) ); }
+}
+class WireFixtureBuilder {
+ static function build( $ability ) { return array( 'tool' => new WireFixtureDTO(), 'adapter_meta' => array( 'ability' => 'object' ) ); }
+}
 class_alias( 'WireFixtureBuilder', 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' );
 $lazy = MAD4B_SCP_Ability_Catalog_Transport::prepare_ability( 'object' );
 check( ! is_wp_error( $lazy ) && $lazy['item']['source']['sha256'] !== $lazy['item']['wire']['sha256'], 'Source and wire identities conflated' );

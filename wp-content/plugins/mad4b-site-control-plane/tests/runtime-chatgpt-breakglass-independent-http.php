@@ -9,6 +9,7 @@ $network_host = getenv( 'MAD4B_PROJECTION_NETWORK_HOST' );
 if ( ! is_string( $network_base ) || '' === trim( $network_base ) ) $fail( 'Authorized Breakglass proof requires independent HTTP mode.' );
 
 $network = static function ( $bearer, $method, array $params, $session = '' ) use ( $network_base, $network_host, $fail ) {
+	$wire_params = empty( $params ) ? new stdClass() : $params;
 	$headers = array(
 		'Authorization' => 'Bearer ' . $bearer,
 		'Accept' => 'application/json, text/event-stream',
@@ -24,7 +25,7 @@ $network = static function ( $bearer, $method, array $params, $session = '' ) us
 			'headers' => $headers,
 			'timeout' => 20,
 			'redirection' => 0,
-			'body' => wp_json_encode( array( 'jsonrpc' => '2.0', 'id' => wp_rand( 1000, 9999 ), 'method' => $method, 'params' => $params ) ),
+			'body' => wp_json_encode( array( 'jsonrpc' => '2.0', 'id' => wp_rand( 1000, 9999 ), 'method' => $method, 'params' => $wire_params ) ),
 		)
 	);
 	if ( is_wp_error( $raw ) ) $fail( 'Independent Breakglass HTTP request failed.', $raw->get_error_code() );
@@ -37,7 +38,7 @@ $initialize = static function ( $bearer ) use ( $network, $fail ) {
 	list( $status, $body, $headers ) = $network(
 		$bearer,
 		'initialize',
-		array( 'protocolVersion' => '2025-11-25', 'clientInfo' => array( 'name' => 'mad4b-breakglass-ci', 'version' => '1.0.0' ) )
+		array( 'protocolVersion' => '2025-11-25', 'capabilities' => new stdClass(), 'clientInfo' => array( 'name' => 'mad4b-breakglass-ci', 'version' => '1.0.0' ) )
 	);
 	if ( 200 !== $status || ! isset( $body['result'] ) ) $fail( 'Breakglass initialize failed.', $body );
 	foreach ( $headers as $name => $value ) {

@@ -174,6 +174,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-client-profile-regist
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-client-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-challenge-alignment.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-transport-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-transport-admission.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-status.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-approval.php';
@@ -222,6 +223,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ability-contract-inspecto
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-descriptor-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-preparation-receipt.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-object-store.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-adapter-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ability-catalog-transport.php';
 MAD4B_SCP_Ability_Catalog_Transport::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-tool-projection.php';

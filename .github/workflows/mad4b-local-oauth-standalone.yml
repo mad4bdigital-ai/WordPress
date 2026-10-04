@@ -6,6 +6,19 @@ on:
       - '.github/workflows/mad4b-local-oauth-standalone.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/mad4b-local-oauth-standalone.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:
@@ -37,6 +50,12 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-local-oauth-init-lock.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-loopback-guard.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-browser-canary.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-transport-admission.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-adapter-compatibility.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-catalog-diagnostics.php"
+          php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
+          php -l "$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
           php -l "$root/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
           php -l "$root/tests/local-oauth-consent-ui-contract.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
@@ -44,6 +63,7 @@ jobs:
           php -l "$root/tests/oauth-live-authority-projection-runtime.php"
           php -l "$root/tests/runtime-chatgpt-oauth-lifecycle-smoke.php"
           php -l "$root/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+          php -l "$root/tests/runtime-mcp-transport-admission-smoke.php"
           php -l "$root/tests/runtime-local-oauth-key-path-policy-smoke.php"
           php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-smoke.php"
@@ -59,6 +79,7 @@ jobs:
           python3 "$root/tests/local-oauth-standalone-contract.py"
           python3 "$root/tests/chatgpt-oauth-lifecycle-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
+          python3 "$root/tests/mcp-adapter-compatibility-contract.py"
           python3 "$root/tests/chatgpt-connection-ui-contract.py"
           for scenario in fresh foreign environment_drift exact invalid; do
             php "$root/tests/portable-readonly-cross-tenant-runtime.php" "$scenario"
@@ -66,7 +87,7 @@ jobs:
           pwsh -NoLogo -NoProfile -File "$root/tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1" -SelfTest
 
   runtime:
-    name: Local OAuth runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }})
+    name: Local OAuth runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.adapter }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -74,8 +95,13 @@ jobs:
         include:
           - wordpress: '6.9'
             php: '7.4'
+            adapter: 'bundled-0.6.1'
           - wordpress: 'latest'
             php: '8.3'
+            adapter: 'bundled-0.6.1'
+          - wordpress: 'latest'
+            php: '8.3'
+            adapter: 'target-0.7.0'
 
     services:
       mysql:
@@ -128,14 +154,62 @@ jobs:
 
       - name: Install exact MCP Adapter and control plane without implicit authority
         shell: bash
+        env:
+          ADAPTER_PROFILE: ${{ matrix.adapter }}
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
-          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          ADAPTER_ARCHIVE=wp-content/plugins/mcp-adapter.zip
+          EXPECTED_ADAPTER_VERSION=0.6.1
+
+          if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
+            python3 - <<'PY' > /tmp/mad4b-target-adapter.env
+          import json, shlex
+          from pathlib import Path
+          root=Path('wp-content/plugins/mad4b-site-control-plane/config')
+          policy=json.loads((root/'runtime-release-policy.json').read_text(encoding='utf-8'))
+          profiles=json.loads((root/'certified-provider-profiles.json').read_text(encoding='utf-8'))
+          version=str(policy['target_adapter_version'])
+          profile=profiles['providers']['mcp_adapter'][version]
+          for key,value in {
+              'TARGET_VERSION':version,
+              'TARGET_SHA':profile['archive_sha256'],
+              'TARGET_BYTES':str(profile['archive_bytes']),
+              'TARGET_URL':profile['package_url'],
+              'TARGET_AUTOLOAD_SHA':str((profile.get('critical_files') or {}).get('vendor/autoload_packages.php') or ''),
+          }.items():
+              print(f'{key}={shlex.quote(str(value))}')
+          PY
+            source /tmp/mad4b-target-adapter.env
+            test "$TARGET_VERSION" = "0.7.0"
+            curl --fail --location --silent --show-error "$TARGET_URL" -o /tmp/mcp-adapter-target.zip
+            test "$(stat -c '%s' /tmp/mcp-adapter-target.zip)" = "$TARGET_BYTES"
+            echo "$TARGET_SHA  /tmp/mcp-adapter-target.zip" | sha256sum --check --strict
+            ADAPTER_ARCHIVE=/tmp/mcp-adapter-target.zip
+            EXPECTED_ADAPTER_VERSION="$TARGET_VERSION"
+          fi
+
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "$ADAPTER_ARCHIVE" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          if [ "$ADAPTER_PROFILE" = "target-0.7.0" ]; then
+            test -r "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php"
+            OBSERVED_AUTOLOAD_SHA="$(sha256sum "$WP_PATH/wp-content/plugins/mcp-adapter/vendor/autoload_packages.php" | awk '{print $1}')"
+            echo "MAD4B_TARGET_070_AUTOLOAD_PACKAGES_SHA256=$OBSERVED_AUTOLOAD_SHA"
+            if ! [[ "$TARGET_AUTOLOAD_SHA" =~ ^[a-f0-9]{64}$ ]]; then
+              echo "::error::Exact 0.7.0 vendor/autoload_packages.php SHA is missing from certified-provider-profiles.json; observed=$OBSERVED_AUTOLOAD_SHA"
+              exit 1
+            fi
+            test "$OBSERVED_AUTOLOAD_SHA" = "$TARGET_AUTOLOAD_SHA"
+          fi
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          INSTALLED_ADAPTER_VERSION="$(php /tmp/wp-cli.phar eval '
+          require_once ABSPATH . "wp-admin/includes/plugin.php";
+          $data = get_plugin_data( WP_PLUGIN_DIR . "/mcp-adapter/mcp-adapter.php", false, false );
+          echo isset( $data["Version"] ) ? (string) $data["Version"] : "";
+          ' --path="$WP_PATH")"
+          test "$INSTALLED_ADAPTER_VERSION" = "$EXPECTED_ADAPTER_VERSION"
           php /tmp/wp-cli.phar eval '
           $s = MAD4B_SCP_Site_Profile::status();
           if ( ! empty( $s["configured"] ) || MAD4B_SCP_Staging_Write_Authority::eligible() ) {
@@ -181,8 +255,9 @@ jobs:
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-key-path-policy-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-init-lock-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-transport-admission-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
-      - name: Prove local OAuth bearer through REST initialize session and tools/list
+      - name: Prove local OAuth bearer through REST initialize session tools/list and tools/call
         shell: bash
         run: |
           set -euo pipefail
@@ -260,6 +335,7 @@ jobs:
           MAD4B_BROWSER_BASE_URL: http://127.0.0.1:8088
           MAD4B_BROWSER_USER: mad4b-ci-admin
           MAD4B_BROWSER_PASSWORD: ci-only-not-a-secret
+          MAD4B_ADAPTER_PROFILE: ${{ matrix.adapter }}
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
@@ -385,7 +461,7 @@ jobs:
             -H 'Accept: application/json, text/event-stream' \
             -H 'Content-Type: application/json' \
             -H 'MCP-Protocol-Version: 2025-11-25' \
-            --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
+            --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
           INIT_STATUS="${INIT_META%% *}"
           INIT_TIME="${INIT_META#* }"
           echo "HTTP MCP initialize status=$INIT_STATUS time=$INIT_TIME"
@@ -414,6 +490,126 @@ jobs:
           cat /tmp/mad4b-http-tools.headers
           cat /tmp/mad4b-http-tools.body
           test "$TOOLS_STATUS" = "200"
+
+          CALL_INDEX=0
+          for TOOL_NAME in mad4b-site-profile-status mad4b-session-safe-diagnostics mad4b-site-info; do
+            CALL_INDEX=$((CALL_INDEX + 1))
+            CALL_META="$(curl --silent --show-error \
+              --connect-timeout 2 --max-time 8 \
+              -D "/tmp/mad4b-http-call-${CALL_INDEX}.headers" \
+              -o "/tmp/mad4b-http-call-${CALL_INDEX}.body" \
+              -w '%{http_code} %{time_total}' \
+              -X POST "$MCP_URL" \
+              -H "Authorization: Bearer $CHATGPT_TOKEN" \
+              -H "Mcp-Session-Id: $SESSION_ID" \
+              -H 'Accept: application/json, text/event-stream' \
+              -H 'Content-Type: application/json' \
+              -H 'MCP-Protocol-Version: 2025-11-25' \
+              --data "{\"jsonrpc\":\"2.0\",\"id\":$((902 + CALL_INDEX)),\"method\":\"tools/call\",\"params\":{\"name\":\"$TOOL_NAME\",\"arguments\":{}}}")"
+            CALL_STATUS="${CALL_META%% *}"
+            CALL_TIME="${CALL_META#* }"
+            echo "HTTP MCP tools/call tool=$TOOL_NAME status=$CALL_STATUS time=$CALL_TIME"
+            cat "/tmp/mad4b-http-call-${CALL_INDEX}.headers"
+            cat "/tmp/mad4b-http-call-${CALL_INDEX}.body"
+            test "$CALL_STATUS" = "200"
+            TOOL_NAME="$TOOL_NAME" CALL_BODY="/tmp/mad4b-http-call-${CALL_INDEX}.body" python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          raw=Path(os.environ['CALL_BODY']).read_text(encoding='utf-8', errors='replace').strip()
+          if raw.startswith('data:'):
+              raw=''.join(line[5:].strip() for line in raw.splitlines() if line.startswith('data:'))
+          payload=json.loads(raw)
+          result=payload.get('result')
+          if payload.get('error') or not isinstance(result, dict) or result.get('isError') is True:
+              raise SystemExit(f"HTTP MCP tools/call failed for {os.environ['TOOL_NAME']}: {payload!r}")
+          print(json.dumps({'tool': os.environ['TOOL_NAME'], 'status': 'PASS'}))
+          PY
+          done
+
+          # MCP Adapter 0.7.0 also supports the modern 2026-07-28 stateless
+          # request envelope. Prove ChatGPT can discover and execute the same
+          # recovery reads without initialize/session state.
+          if [ "$MAD4B_ADAPTER_PROFILE" = "target-0.7.0" ]; then
+            MODERN_META='"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"mad4b-http-modern-ci","version":"1.0.0"}}'
+            MODERN_LIST_META="$(curl --silent --show-error \
+              --connect-timeout 2 --max-time 8 \
+              -D /tmp/mad4b-http-modern-list.headers \
+              -o /tmp/mad4b-http-modern-list.body \
+              -w '%{http_code} %{time_total}' \
+              -X POST "$MCP_URL" \
+              -H "Authorization: Bearer $CHATGPT_TOKEN" \
+              -H 'Accept: application/json, text/event-stream' \
+              -H 'Content-Type: application/json' \
+              -H 'MCP-Protocol-Version: 2026-07-28' \
+              -H 'Mcp-Method: tools/list' \
+              --data "{\"jsonrpc\":\"2.0\",\"id\":950,\"method\":\"tools/list\",\"params\":{${MODERN_META}}}")"
+            MODERN_LIST_STATUS="${MODERN_LIST_META%% *}"
+            echo "HTTP MCP 2026 tools/list status=$MODERN_LIST_STATUS"
+            cat /tmp/mad4b-http-modern-list.headers
+            cat /tmp/mad4b-http-modern-list.body
+            test "$MODERN_LIST_STATUS" = "200"
+            if grep -qi '^Mcp-Session-Id:' /tmp/mad4b-http-modern-list.headers; then
+              echo "::error::Modern 2026 tools/list unexpectedly created legacy session state"
+              exit 1
+            fi
+            python3 - /tmp/mad4b-http-modern-list.body <<'PYMODERN'
+          import json, sys
+          from pathlib import Path
+          raw=Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace').strip()
+          if raw.startswith('data:'):
+              raw=''.join(line[5:].strip() for line in raw.splitlines() if line.startswith('data:'))
+          payload=json.loads(raw)
+          result=payload.get('result')
+          inventory=result.get('tools') if isinstance(result, dict) else None
+          if payload.get('error') or not isinstance(inventory, list) or not inventory:
+              raise SystemExit(f"Modern MCP tools/list failed: {payload!r}")
+          if result.get('resultType') != 'complete':
+              raise SystemExit(f"Modern MCP tools/list did not return complete result: {payload!r}")
+          print(json.dumps({'contract':'mad4b.mcp-modern-http.v1','tool_count':len(inventory),'status':'PASS'}))
+          PYMODERN
+
+            MODERN_INDEX=0
+            for TOOL_NAME in mad4b-site-profile-status mad4b-session-safe-diagnostics mad4b-site-info; do
+              MODERN_INDEX=$((MODERN_INDEX + 1))
+              MODERN_CALL_META="$(curl --silent --show-error \
+                --connect-timeout 2 --max-time 8 \
+                -D "/tmp/mad4b-http-modern-call-${MODERN_INDEX}.headers" \
+                -o "/tmp/mad4b-http-modern-call-${MODERN_INDEX}.body" \
+                -w '%{http_code} %{time_total}' \
+                -X POST "$MCP_URL" \
+                -H "Authorization: Bearer $CHATGPT_TOKEN" \
+                -H 'Accept: application/json, text/event-stream' \
+                -H 'Content-Type: application/json' \
+                -H 'MCP-Protocol-Version: 2026-07-28' \
+                -H 'Mcp-Method: tools/call' \
+                -H "Mcp-Name: $TOOL_NAME" \
+                --data "{\"jsonrpc\":\"2.0\",\"id\":$((950 + MODERN_INDEX)),\"method\":\"tools/call\",\"params\":{\"name\":\"$TOOL_NAME\",\"arguments\":{},${MODERN_META}}}")"
+              MODERN_CALL_STATUS="${MODERN_CALL_META%% *}"
+              echo "HTTP MCP 2026 tools/call tool=$TOOL_NAME status=$MODERN_CALL_STATUS"
+              cat "/tmp/mad4b-http-modern-call-${MODERN_INDEX}.headers"
+              cat "/tmp/mad4b-http-modern-call-${MODERN_INDEX}.body"
+              test "$MODERN_CALL_STATUS" = "200"
+              if grep -qi '^Mcp-Session-Id:' "/tmp/mad4b-http-modern-call-${MODERN_INDEX}.headers"; then
+                echo "::error::Modern 2026 tools/call unexpectedly created legacy session state"
+                exit 1
+              fi
+              TOOL_NAME="$TOOL_NAME" CALL_BODY="/tmp/mad4b-http-modern-call-${MODERN_INDEX}.body" python3 - <<'PYMODERNCALL'
+          import json, os
+          from pathlib import Path
+          raw=Path(os.environ['CALL_BODY']).read_text(encoding='utf-8', errors='replace').strip()
+          if raw.startswith('data:'):
+              raw=''.join(line[5:].strip() for line in raw.splitlines() if line.startswith('data:'))
+          payload=json.loads(raw)
+          result=payload.get('result')
+          if payload.get('error') or not isinstance(result, dict) or result.get('isError') is True:
+              raise SystemExit(f"Modern MCP tools/call failed for {os.environ['TOOL_NAME']}: {payload!r}")
+          if result.get('resultType') != 'complete':
+              raise SystemExit(f"Modern MCP tools/call did not return complete result for {os.environ['TOOL_NAME']}: {payload!r}")
+          print(json.dumps({'tool':os.environ['TOOL_NAME'],'revision':'2026-07-28','status':'PASS'}))
+          PYMODERNCALL
+            done
+          fi
 
           export INIT_TIME TOOLS_TIME
           python3 - <<'PY'

@@ -1,6 +1,8 @@
 <?php
 // Inventory bounds must run before inspecting tools or resolving their bindings.
 define( 'ABSPATH', __DIR__ . '/' );
+class WP_Error { private $code; function __construct( $code, $message = '', $data = array() ) { $this->code = $code; } function get_error_code() { return $this->code; } }
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $s ) { return strtolower( $s ); }
 class FixtureAdapter { static $servers = array(); static function instance() { return new self(); } function get_servers() { return self::$servers; } }
 class FixtureExposure {}
