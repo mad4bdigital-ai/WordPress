@@ -63,6 +63,8 @@ final class MAD4B_SCP_Provider_Contracts {
 		$replace_fields = array(
 			'critical_files',
 			'runtime_classes',
+			'runtime_symbols',
+			'runtime_surface',
 			'native_abilities',
 			'verified_absent_abilities',
 			'verified_contracts',
@@ -183,6 +185,8 @@ final class MAD4B_SCP_Provider_Contracts {
 		$replace_fields = array(
 			'critical_files',
 			'runtime_classes',
+			'runtime_symbols',
+			'runtime_surface',
 			'native_abilities',
 			'verified_absent_abilities',
 			'verified_contracts',
