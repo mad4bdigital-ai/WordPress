@@ -147,6 +147,7 @@ abstract class MAD4B_SCP_Adapter_Base {
 				return MAD4B_SCP_Reversible_Adapter_Mutations::execute( $this, $name, $method, is_array( $input ) ? $input : array() );
 			};
 		}
+		if ( ! is_callable( $execute_callback ) ) return;
 		$args = array(
 			'label' => $label,
 			'description' => $label . ' through the governed MAD4B ' . $this->label() . ' adapter.',
