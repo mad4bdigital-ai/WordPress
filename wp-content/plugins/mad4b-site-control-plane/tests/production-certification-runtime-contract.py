@@ -29,10 +29,16 @@ for token in required:
         raise SystemExit("PRODUCTION_CERTIFICATION_RUNTIME_MARKER_MISSING:"+token)
 if "class-mad4b-scp-production-certification.php" not in main:
     raise SystemExit("PRODUCTION_CERTIFICATION_RUNTIME_NOT_LOADED")
-if servers.count("'mad4b/production-certification-readonly-evidence'") < 2:
-    raise SystemExit("PRODUCTION_CERTIFICATION_REMOTE_READ_EXPOSURE_MISSING")
-if "'mad4b-read'" not in servers or "'mad4b-chatgpt'" not in servers:
-    raise SystemExit("PRODUCTION_CERTIFICATION_REMOTE_READ_SURFACE_MISSING")
+read_start=servers.index("'mad4b-read' =>")
+chatgpt_start=servers.index("'mad4b-chatgpt' =>")
+enrollment_start=servers.index("'mad4b-enrollment' =>")
+read_block=servers[read_start:chatgpt_start]
+chatgpt_block=servers[chatgpt_start:enrollment_start]
+ability="'mad4b/production-certification-readonly-evidence'"
+if read_block.count(ability) != 1:
+    raise SystemExit("PRODUCTION_CERTIFICATION_READ_SURFACE_BINDING_INVALID")
+if chatgpt_block.count(ability) != 1:
+    raise SystemExit("PRODUCTION_CERTIFICATION_CHATGPT_SURFACE_BINDING_INVALID")
 
 expected={
     "provider_side_channel_inventory":(
