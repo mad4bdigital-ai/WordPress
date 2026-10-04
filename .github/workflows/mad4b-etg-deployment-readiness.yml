@@ -1,6 +1,9 @@
 name: MAD4B ETG Deployment Readiness
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-etg-deployment-readiness.yml'
   workflow_dispatch:
     inputs:
       expected_sha:
@@ -22,8 +25,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  contract:
+    name: ETG deployment gate contract
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Verify deployment gate remains isolated from master health
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/mad4b-etg-deployment-readiness.yml')
+          source = path.read_text(encoding='utf-8')
+
+          required = [
+              'workflow_dispatch:',
+              'workflow_call:',
+              "if: github.event_name != 'pull_request'",
+              'ETG exact runtime deployment gate',
+              'build-provenance:source_commit_sha_mismatch',
+              'runtime_identity_match',
+              'wpml_contract_compatible',
+              'mutation_performed',
+          ]
+          for marker in required:
+              if marker not in source:
+                  raise SystemExit(f'ETG deployment gate contract missing: {marker}')
+
+          if '\n  push:' in source:
+              raise SystemExit('ETG deployment readiness must not run on every master push')
+
+          print('mad4b.etg-deployment-readiness.contract.v1: PASS')
+          PY
+
   exact-runtime:
     name: ETG exact runtime deployment gate
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
