@@ -11,8 +11,8 @@
     "disposable_wordpress_mysql"
   ],
   "thresholds": {
-    "min_total_fixtures": 39,
-    "min_total_assertions": 919,
+    "min_total_fixtures": 40,
+    "min_total_assertions": 938,
     "min_disposable_assertions": 80,
     "disposable_cas_workers": 8,
     "disposable_cas_winners": 1,
@@ -55,7 +55,8 @@
         "overlay_precedence_minimal_drift_and_reason_chain",
         "language_registry_conflict_partial_and_new_translation",
         "composed_profile_language_surface_drift_preserves_history",
-        "compile_timestamp_stability_and_seo_generation_drift"
+        "compile_timestamp_stability_and_seo_generation_drift",
+        "live_archive_home_blog_and_public_registration_drift"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
@@ -64,14 +65,16 @@
           "overlay_precedence_minimal_drift_and_reason_chain": 6,
           "language_registry_conflict_partial_and_new_translation": 12,
           "composed_profile_language_surface_drift_preserves_history": 10,
-          "compile_timestamp_stability_and_seo_generation_drift": 4
+          "compile_timestamp_stability_and_seo_generation_drift": 4,
+          "live_archive_home_blog_and_public_registration_drift": 17
         },
         "failed_assertions": 0
       },
       "denial_cases": [
         "unknown language owned tracking",
         "stale profile apply",
-        "SEO generation drift"
+        "SEO generation drift",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",
@@ -83,7 +86,8 @@
         "object_surface_virtual_admission_and_indexability_conflicts",
         "wordpress_inventory_pagination_and_public_cpt_taxonomy",
         "language_registry_conflict_partial_and_new_translation",
-        "target_4k_compilation_owned_and_discovery_independence"
+        "target_4k_compilation_owned_and_discovery_independence",
+        "live_archive_home_blog_and_public_registration_drift"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
@@ -91,14 +95,16 @@
           "object_surface_virtual_admission_and_indexability_conflicts": 16,
           "wordpress_inventory_pagination_and_public_cpt_taxonomy": 251,
           "language_registry_conflict_partial_and_new_translation": 12,
-          "target_4k_compilation_owned_and_discovery_independence": 5
+          "target_4k_compilation_owned_and_discovery_independence": 5,
+          "live_archive_home_blog_and_public_registration_drift": 17
         },
         "failed_assertions": 0
       },
       "denial_cases": [
         "unknown robots evidence",
         "unapproved facet combination",
-        "URL pagination or cardinality overflow"
+        "URL pagination or cardinality overflow",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",
@@ -131,21 +137,24 @@
       "fixtures": [
         "target_identity_unicode_url_and_purpose_separation",
         "target_4k_compilation_owned_and_discovery_independence",
-        "compile_timestamp_stability_and_seo_generation_drift"
+        "compile_timestamp_stability_and_seo_generation_drift",
+        "live_archive_home_blog_and_public_registration_drift"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
         "minimum_assertions_per_fixture": {
           "target_identity_unicode_url_and_purpose_separation": 27,
           "target_4k_compilation_owned_and_discovery_independence": 5,
-          "compile_timestamp_stability_and_seo_generation_drift": 4
+          "compile_timestamp_stability_and_seo_generation_drift": 4,
+          "live_archive_home_blog_and_public_registration_drift": 17
         },
         "failed_assertions": 0
       },
       "denial_cases": [
         "owned target without eligible localized surface",
         "cross-purpose deduplication",
-        "over 5000 candidates"
+        "over 5000 candidates",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",
@@ -460,7 +469,8 @@
         "provider_geo_missing_mismatched_locale_and_malformed_payload",
         "bounded_half_open_probes_do_not_purchase_search",
         "transport_timeout_oversize_and_upstream_secret_error",
-        "certification_and_credential_fail_closed"
+        "certification_and_credential_fail_closed",
+        "live_archive_home_blog_and_public_registration_drift"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
@@ -503,7 +513,8 @@
           "provider_geo_missing_mismatched_locale_and_malformed_payload": 9,
           "bounded_half_open_probes_do_not_purchase_search": 6,
           "transport_timeout_oversize_and_upstream_secret_error": 8,
-          "certification_and_credential_fail_closed": 1
+          "certification_and_credential_fail_closed": 1,
+          "live_archive_home_blog_and_public_registration_drift": 17
         },
         "failed_assertions": 0
       },
@@ -511,7 +522,8 @@
         "single provider assumption",
         "hardcoded CPT/language/market",
         "sequential fake race evidence",
-        "dirty or non-CI PASS gate"
+        "dirty or non-CI PASS gate",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",

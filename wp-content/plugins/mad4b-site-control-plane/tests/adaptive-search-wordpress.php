@@ -28,6 +28,18 @@ $post_id = wp_insert_post( array( 'post_type' => 'asi_new_cpt', 'post_title' => 
 $term = wp_insert_term( 'Search group', 'asi_new_tax' ); $check( ! is_wp_error( $term ) && $post_id > 0, 'public CPT/taxonomy fixture' );
 $discovery = new MAD4B_SCP_Search_WordPress_Discovery(); $page = $discovery->surfaces( 0, 100 ); $types = array_column( $page['items'], 'surface_type' );
 foreach ( array( 'CONTENT_OBJECT', 'TERM', 'TERM_ARCHIVE', 'POST_TYPE_ARCHIVE', 'HOME' ) as $type ) $check( in_array( $type, $types, true ), 'real inventory ' . $type );
+$archive = null; $content = null;
+foreach ( $page['items'] as $surface ) {
+	if ( 'POST_TYPE_ARCHIVE' === $surface['surface_type'] && 'asi_new_cpt' === $surface['object_ref']['id'] ) $archive = $surface;
+	if ( 'CONTENT_OBJECT' === $surface['surface_type'] && $post_id === $surface['object_ref']['id'] ) $content = $surface;
+}
+$check( is_array( $archive ) && is_array( $content ), 'exact CPT surfaces discovered' );
+$surface_policy = MAD4B_SCP_Search_Context::policy()['defaults']['surface_policy'];
+get_post_type_object( 'asi_new_cpt' )->has_archive = false;
+$check( is_wp_error( MAD4B_SCP_Search_Surfaces::refresh( $archive, $surface_policy ) ), 'disabled live archive cannot reuse inventory eligibility' );
+get_post_type_object( 'asi_new_cpt' )->has_archive = true; get_post_type_object( 'asi_new_cpt' )->publicly_queryable = false;
+$check( is_wp_error( MAD4B_SCP_Search_Surfaces::refresh( $content, $surface_policy ) ), 'CPT visibility change is enforced before capture' );
+get_post_type_object( 'asi_new_cpt' )->publicly_queryable = true;
 wp_delete_post( $post_id, true ); wp_delete_term( $term['term_id'], 'asi_new_tax' );
 
 $check( function_exists( 'wp_get_ability' ), 'real Abilities API loaded' );

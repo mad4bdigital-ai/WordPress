@@ -124,16 +124,29 @@ final class MAD4B_SCP_Search_Surfaces {
 		if ( 'post' === $ref['kind'] && function_exists( 'get_post' ) ) {
 			$post = get_post( $ref['id'] );
 			if ( ! $post || 'publish' !== $post->post_status || ! empty( $post->post_password ) ) return MAD4B_SCP_Search_Contracts::error( 'surface_no_longer_public' );
+			$types = get_post_types( array( 'public' => true ), 'objects' );
+			if ( ! isset( $types[ $post->post_type ] ) || empty( $types[ $post->post_type ]->publicly_queryable ) ) return MAD4B_SCP_Search_Contracts::error( 'surface_no_longer_public' );
+			if ( 'BLOG_INDEX' === $surface['surface_type'] && (int) $ref['id'] !== (int) get_option( 'page_for_posts' ) ) return MAD4B_SCP_Search_Contracts::error( 'surface_route_drift' );
 			$surface['public_url'] = get_permalink( $post ); $surface['canonical_url'] = $surface['public_url']; $surface['title'] = $post->post_title;
-			$surface['content_fingerprint'] = hash( 'sha256', $post->post_content . '|' . $post->post_modified_gmt );
+			$surface['content_fingerprint'] = hash( 'sha256', 'BLOG_INDEX' === $surface['surface_type'] ? (string) $ref['id'] : $post->post_content . '|' . $post->post_modified_gmt );
 		} elseif ( 'term' === $ref['kind'] && function_exists( 'get_term' ) ) {
 			$term = get_term( $ref['id'], $ref['taxonomy'] );
 			if ( ! $term || is_wp_error( $term ) ) return MAD4B_SCP_Search_Contracts::error( 'surface_object_removed' );
+			if ( ! in_array( $ref['taxonomy'], array_values( get_taxonomies( array( 'public' => true ), 'names' ) ), true ) ) return MAD4B_SCP_Search_Contracts::error( 'surface_no_longer_public' );
 			$surface['public_url'] = get_term_link( $term ); $surface['canonical_url'] = $surface['public_url']; $surface['title'] = $term->name;
-			$surface['content_fingerprint'] = hash( 'sha256', $term->description . '|' . $term->count );
+			$surface['content_fingerprint'] = hash( 'sha256', 'TERM' === $surface['surface_type'] ? $term->description : $term->description . '|' . $term->count );
+		} elseif ( 'post_type' === $ref['kind'] ) {
+			$types = get_post_types( array( 'public' => true ), 'objects' );
+			if ( ! isset( $types[ $ref['id'] ] ) || empty( $types[ $ref['id'] ]->publicly_queryable ) || empty( $types[ $ref['id'] ]->has_archive ) ) return MAD4B_SCP_Search_Contracts::error( 'surface_no_longer_public' );
+			$type = $types[ $ref['id'] ]; $surface['public_url'] = get_post_type_archive_link( $ref['id'] ); $surface['canonical_url'] = $surface['public_url']; $surface['title'] = $type->label;
+			$surface['content_fingerprint'] = hash( 'sha256', serialize( $type->rewrite ) );
+		} elseif ( 'site' === $ref['kind'] && 'HOME' === $surface['surface_type'] ) {
+			$surface['public_url'] = home_url( '/' ); $surface['canonical_url'] = $surface['public_url']; $surface['title'] = get_bloginfo( 'name' );
+			$surface['content_fingerprint'] = hash( 'sha256', (string) get_option( 'page_on_front' ) );
 		}
 		unset( $surface['seo'], $surface['seo_fingerprint'], $surface['surface_fingerprint'], $surface['authorizing'] );
 		$surface = apply_filters( 'mad4b_scp_search_live_surface_evidence', $surface );
+		if ( '0' === (string) get_option( 'blog_public' ) ) $surface['eligibility']['indexable'] = false;
 		return self::admit( $surface, $policy, 0 );
 	}
 

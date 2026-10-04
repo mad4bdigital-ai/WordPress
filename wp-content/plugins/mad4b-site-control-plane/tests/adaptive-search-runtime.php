@@ -104,6 +104,31 @@ scenario( 'language_registry_conflict_partial_and_new_translation', static funct
 	$bad = $candidate; $bad['query_language_provenance']['method'] = 'transcreation'; $bad['query_language_provenance']['semantic_cluster_relation'] = 'transcreated_variant'; $bad['query_language_provenance']['source_language'] = '';
 	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $target ), 'source_required', 'transcreation requires source language provenance' );
 } );
+scenario( 'live_archive_home_blog_and_public_registration_drift', static function () {
+	$policy = MAD4B_SCP_Search_Context::validate( asi_profile() )['surface_policy'];
+	$GLOBALS['fixture_post_types']['new_cpt'] = (object) array( 'publicly_queryable' => true, 'has_archive' => true, 'label' => 'New CPT', 'rewrite' => array( 'slug' => 'new' ) );
+	$s = asi_surface( 'POST_TYPE_ARCHIVE' ); $s['object_ref'] = array( 'kind' => 'post_type', 'id' => 'new_cpt' );
+	$a = ok( MAD4B_SCP_Search_Surfaces::refresh( $s, $policy ), 'live archive' );
+	$b = ok( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'unchanged archive' ); check( $a['surface_fingerprint'] === $b['surface_fingerprint'], 'archive refresh is stable' );
+	$GLOBALS['fixture_post_types']['new_cpt']->rewrite['slug'] = 'replacement';
+	$b = ok( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'archive rewrite change' ); check( $a['surface_fingerprint'] !== $b['surface_fingerprint'], 'live archive rewrite invalidates context' );
+	$GLOBALS['fixture_post_types']['new_cpt']->has_archive = false;
+	denied( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'no_longer_public', 'removed archive cannot reuse old eligibility' );
+	$GLOBALS['fixture_posts'][] = (object) array( 'ID' => 5, 'post_type' => 'new_cpt', 'post_status' => 'publish', 'post_password' => '', 'post_title' => 'Blog', 'post_content' => '', 'post_modified_gmt' => '2026-10-04' );
+	$s = asi_surface( 'BLOG_INDEX', 5 ); $s['object_ref'] = array( 'kind' => 'post', 'id' => 5 ); $GLOBALS['fixture_options']['page_for_posts'] = 5;
+	$a = ok( MAD4B_SCP_Search_Surfaces::refresh( $s, $policy ), 'live blog index' );
+	$b = ok( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'stable blog index' ); check( $a['surface_fingerprint'] === $b['surface_fingerprint'], 'blog refresh agrees with inventory fingerprint' );
+	$GLOBALS['fixture_options']['page_for_posts'] = 6; denied( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'route_drift', 'reassigned blog index suspends the previous surface' );
+	$GLOBALS['fixture_post_types']['new_cpt']->publicly_queryable = false; denied( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'no_longer_public', 'private CPT cannot retain public post eligibility' );
+	$GLOBALS['fixture_terms'][] = (object) array( 'term_id' => 9, 'taxonomy' => 'private_tax', 'name' => 'Private group', 'description' => 'Body', 'count' => 2 );
+	$s = asi_surface( 'TERM_ARCHIVE', 9 ); $s['object_ref'] = array( 'kind' => 'term', 'id' => 9, 'taxonomy' => 'private_tax' );
+	denied( MAD4B_SCP_Search_Surfaces::refresh( $s, $policy ), 'no_longer_public', 'private taxonomy cannot retain public archive eligibility' );
+	$s = asi_surface( 'HOME' ); $s['object_ref'] = array( 'kind' => 'site', 'id' => 'home' );
+	$a = ok( MAD4B_SCP_Search_Surfaces::refresh( $s, $policy ), 'live home' ); $GLOBALS['fixture_options']['page_on_front'] = 7;
+	$b = ok( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'new front page' ); check( $a['surface_fingerprint'] !== $b['surface_fingerprint'], 'front page binding drift is visible' );
+	$GLOBALS['fixture_options']['blog_public'] = 0;
+	$b = ok( MAD4B_SCP_Search_Surfaces::refresh( $a, $policy ), 'site visibility re-read' ); check( 'eligible' !== $b['eligibility']['effective'], 'global noindex prevents stored eligibility from authorizing owned tracking' );
+} );
 scenario( 'target_identity_unicode_url_and_purpose_separation', static function () {
 	foreach ( array( 'api_key', 'secret_handle', 'authorization', 'credentials', 'endpoint' ) as $key ) { $bad = asi_candidate(); $bad['query_language_provenance'] = array( $key => 'fixture-private-value' ); denied( MAD4B_SCP_Search_Contracts::target( $bad ), 'metadata_denied', 'candidate cannot persist private/egress metadata: ' . $key ); }
 	$q = ok( MAD4B_SCP_Search_Contracts::query( "  Café + site:Example.com  " ), 'Unicode query' ); check( 'Café + site:Example.com' === $q['normalized_query'], 'operators/case/accents preserved' );
@@ -385,6 +410,7 @@ scenario( 'cache_equivalence_depth_retention_and_unknown_context', static functi
 	$s['valid_until'] = time() - 1; check( ! MAD4B_SCP_Search_Decisions::equivalent( $s, $r, $key, 600, time() ), 'expired licensed cache cannot be reused' );
 } );
 scenario( 'post_change_fingerprint_binding_experiment_and_no_causality', static function () {
+	$GLOBALS['fixture_post_types']['page'] = (object) array( 'publicly_queryable' => true, 'has_archive' => false );
 	$input = asi_seed(); $post = (object) array( 'ID' => 42, 'post_type' => 'page', 'post_title' => 'Governed change', 'post_content' => 'Body', 'post_modified_gmt' => '2026-10-04', 'post_status' => 'publish', 'post_password' => '' ); $GLOBALS['fixture_posts'][] = $post;
 	$s = asi_surface(); $s['object_ref'] = array( 'kind' => 'post', 'id' => 42, 'post_type' => 'page' ); $s['public_url'] = get_permalink( $post ); $s['canonical_url'] = $s['public_url']; $s['title'] = $post->post_title; $s['content_fingerprint'] = hash( 'sha256', $post->post_content . '|' . $post->post_modified_gmt ); $GLOBALS['fixture_sources'][0]->inventory = array( $s );
 	$surface = MAD4B_SCP_Search_Surfaces::admit( $s, MAD4B_SCP_Search_Context::policy()['defaults']['surface_policy'], 0 );
