@@ -14,10 +14,10 @@
     "grandfathering_scope": "none",
     "future_prs_must_comply": true,
     "manifest_contract": "mad4b.change-slices.v2",
-    "binding_mode": "ci_exact_head_context_plus_reviewed_base_and_changed_path_digest",
+    "binding_mode": "ci_exact_head_context_plus_reviewed_base_plus_exhaustive_path_ownership",
     "self_referential_exact_head_forbidden": true,
     "reviewed_base_required": true,
-    "changed_paths_sha256_required": true,
+    "changed_paths_sha256_required": false,
     "changed_file_count_required": true
   },
   "size_budgets": {

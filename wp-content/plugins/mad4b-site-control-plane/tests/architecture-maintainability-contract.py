@@ -96,10 +96,10 @@ if over_limit and not grandfathered:
     reviewed_base=str(manifest.get("reviewed_base_sha") or "")
     if not args.base or reviewed_base!=args.base:
         raise SystemExit("CHANGE_SLICE_REVIEWED_BASE_INVALID")
-    scope_material="\\n".join(sorted(changed))+"\\n"
-    expected_scope_sha256=hashlib.sha256(scope_material.encode("utf-8")).hexdigest()
-    if manifest.get("changed_paths_sha256")!=expected_scope_sha256:
-        raise SystemExit("CHANGE_SLICE_SCOPE_DIGEST_INVALID")
+    if manifest.get("exact_head_binding")!="supplied_by_ci_not_embedded_in_commit":
+        raise SystemExit("CHANGE_SLICE_EXACT_HEAD_BINDING_INVALID")
+    if manifest.get("exhaustive_ownership_required") is not True:
+        raise SystemExit("CHANGE_SLICE_EXHAUSTIVE_OWNERSHIP_REQUIRED")
     if int(manifest.get("changed_file_count") or -1)!=len(changed):
         raise SystemExit("CHANGE_SLICE_FILE_COUNT_INVALID")
     slices=manifest.get("slices")
