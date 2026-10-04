@@ -624,6 +624,16 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				$status['blocker'] = $marked->get_error_code();
 				return $status;
 			}
+			$receipt = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::persist_ownership_receipt( $source_hash, 'install' );
+			if ( is_wp_error( $receipt ) ) {
+				$rolled_back = self::remove_managed_mu_bootstrap();
+				if ( $rolled_back ) MAD4B_SCP_MCP_MU_Bootstrap_Refresh::complete_transaction( $transaction_id );
+				else MAD4B_SCP_MCP_MU_Bootstrap_Refresh::block_transaction( 'mu_bootstrap_install_ownership_rollback_failed', $transaction_id );
+				self::$mu_transaction_id = '';
+				$status['blocker'] = $rolled_back ? 'mu_bootstrap_install_ownership_persist_failed' : 'mu_bootstrap_install_ownership_rollback_failed';
+				return $status;
+			}
+			$status['mu_bootstrap_ownership_receipt_valid'] = true;
 			$status['mu_bootstrap_transaction_pending'] = true;
 		}
 		$status['blocker'] = $status['mu_bootstrap_installed'] ? '' : 'mu_bootstrap_post_install_integrity_failed';
@@ -641,10 +651,13 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$status = self::mu_bootstrap_status();
 		if ( empty( $status['mu_bootstrap_present'] ) || empty( $status['mu_bootstrap_integrity'] ) || ! defined( 'WPMU_PLUGIN_DIR' ) ) return false;
 		$destination = trailingslashit( WPMU_PLUGIN_DIR ) . self::MU_BOOTSTRAP_BASENAME;
+		$owned_hash = isset( $status['mu_bootstrap_sha256'] ) ? strtolower( trim( (string) $status['mu_bootstrap_sha256'] ) ) : '';
 		if ( ! @unlink( $destination ) ) return false;
 		clearstatcache( true, $destination );
 		MAD4B_SCP_MCP_MU_Bootstrap_Refresh::invalidate_managed_opcode_for_lifecycle( $destination );
-		return ! is_file( $destination );
+		if ( is_file( $destination ) ) return false;
+		$cleared = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::clear_ownership_receipt( $owned_hash );
+		return ! is_wp_error( $cleared );
 	}
 
 	private static function base_status() {
