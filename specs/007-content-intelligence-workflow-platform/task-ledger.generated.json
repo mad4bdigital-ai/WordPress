@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "a19ce93e068c388a83e0a31373bf90ad38ab5067",
-  "override_git_blob_sha": "84c3eb0d092ececf34fc126316080b92cbf9deac",
+  "source_tasks_git_blob_sha": "3b52a9d806c28bfbb5ea8f3375eb018f2a942502",
+  "override_git_blob_sha": "7f5ce79ed679bee08dd210ac03c000d37eb2d239",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,21 +10,21 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 148,
-    "OPEN": 619,
+    "DONE": 154,
+    "OPEN": 613,
     "PARTIAL": 68
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 109,
-      "OPEN": 502,
+      "DONE": 114,
+      "OPEN": 497,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 37,
-      "OPEN": 96,
+      "DONE": 38,
+      "OPEN": 95,
       "PARTIAL": 24
     },
     "P2": {
@@ -8572,60 +8572,90 @@
       "phase": 38,
       "priority": "P0",
       "summary": "Define canonical Search Runtime Fact, Search Profile and Effective Search Context contracts.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
+        "workflow_run:37242306513"
+      ],
+      "reason": "Canonical Search Runtime Fact, Search Profile and Effective Search Context v1 contracts are implemented with deterministic fingerprints and non-authorizing semantics."
     },
     {
       "task_id": "T3802",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement Search Profile plan/apply/verify with revision and exact plan drift guards; keep it separate from governance Site Profile.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
+        "workflow_run:37242306513"
+      ],
+      "reason": "Search Profile uses separate storage and implements revision-bound exact-plan plan/apply/verify; site identity is immutable and no Site Profile or Production authority is granted."
     },
     {
       "task_id": "T3803",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement composable brand/market/language/surface/objective overlays with deterministic precedence.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
+        "workflow_run:37242306513"
+      ],
+      "reason": "Brand, market, language, surface, experiment and request-safe overlays compose through deterministic precedence with stable output fingerprints."
     },
     {
       "task_id": "T3804",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove business overlays can specialize but cannot widen security, authority, egress or Production policy.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
+        "workflow_run:37242306513"
+      ],
+      "reason": "Runtime and tests deny protected authority, Production, Breakglass, egress, secret and WordPress-mutation fields in business overlays while governance constraints remain external and constraining."
     },
     {
       "task_id": "T3805",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement dependency fingerprints and minimal invalidation for PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA drift.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
+        "workflow_run:37242306513"
+      ],
+      "reason": "Dependency fingerprints cover PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA and emit minimal projection invalidation while preserving historical evidence."
     },
     {
       "task_id": "T3806",
       "phase": 38,
       "priority": "P1",
       "summary": "Implement explainable effective-context reason chains and read-only status projection.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:52c2ddaf2188d71392f24769f99de7bceebfbf60",
+        "workflow_run:37242306513"
+      ],
+      "reason": "Effective context emits deterministic reason chains and a read-only non-authorizing status projection."
     },
     {
       "task_id": "T3807",
