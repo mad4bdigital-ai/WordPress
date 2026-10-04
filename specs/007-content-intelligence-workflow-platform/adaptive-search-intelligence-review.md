@@ -11,19 +11,22 @@ Status: **APPROVED_P0_CLOSED_P1_OPEN**. The original review score remains the ba
 The 12 P0 review findings are now **CLOSED** at repository/runtime-contract level.
 
 Evidence:
-- exact implementation head: `178ec73281a19fd7c78a8e83ff110dd11027b684`;
-- Feature 007 Spec Quality CI run: `37236946924`;
+- exact implementation head: `17b4f8fca0bd8c6759865d377269bfe2a15704e9`;
+- Feature 007 Spec Quality CI run: `37238278583`;
 - adaptive-search P0 runtime-contract step: **PASS**;
-- Spec Kit consistency on the same implementation lineage: PASS.
+- adaptive-search composed cross-fault runtime: **PASS**;
+- adaptive-search P0 acceptance contract: **PASS** (`phase_gates=15`, `declared_gates=22`, `p0_findings=12`);
+- MAD4B Runtime Integration run: `37238278447` — **PASS** on WordPress 6.9 and latest;
+- Spec Kit consistency run: `37238278493` — **PASS**.
 
 Implemented closure surfaces:
-- ObservationContext / ComparabilityKey and provider-resolved geo/locale fidelity;
+- ObservationContext / ComparabilityKey and provider-resolved geo/locale fidelity; cross-provider comparability requires certified evidence digest rather than caller assertion;
 - versioned query and owned-URL identity;
 - separated organic/group/absolute/provider-native rank semantics;
 - complete/partial/not-found-within-depth capture semantics;
 - fail-closed SearchEligibilityEnvelope;
-- bounded facet/virtual-surface admission;
-- ProviderAccountBudgetAuthority with truthful `hard_global` versus `local_best_effort` claims;
+- bounded facet/virtual-surface admission with required virtual cardinality evidence and URL-derived pagination bounds;
+- ProviderAccountBudgetAuthority with truthful `hard_global` versus `local_best_effort` claims; hard-global mode requires stable `provider_account_ref` plus authoritative shared reservation/fencing;
 - provider usage reconciliation, billing-cycle reset and stale reservation expiry;
 - provider evidence-rights/retention constraints;
 - deterministic provenance-bound DecisionPolicy;
@@ -36,7 +39,7 @@ Remaining review backlog: **6 P1 findings**. Phase 38 remains a non-authorizing 
 
 The Phase 38 design is structurally strong and materially better than a vendor-specific SERP integration. It has clear separation between governance identity, search configuration, runtime discovery, target compilation, provider execution, immutable evidence, inference and governed content change.
 
-The largest remaining risk is no longer basic architecture. It is **measurement semantics and distributed economics**: two SERP observations are not necessarily comparable merely because they share a query, and a WordPress-local budget governor cannot truthfully guarantee account-level quota safety when the same provider credential is shared across multiple sites/workers.
+The original review identified measurement semantics and distributed economics as the largest P0 risks. Those risks are now closed at the foundation-contract level: comparability is context- and certification-bound, and hard-global provider budgets fail closed without stable account identity plus a shared authoritative coordinator. The remaining review risk is concentrated in the six P1 maturity lanes and live provider/Staging integration.
 
 ### Scorecard
 
@@ -492,13 +495,15 @@ The strongest parts are:
 4. dynamic context/surface modeling;
 5. non-authorizing closed loop.
 
-The highest-risk remaining areas are:
-1. observation comparability;
-2. global/shared-account economics;
-3. indexability/surface cardinality correctness;
-4. rank/capture semantics;
-5. provider evidence licensing;
-6. objective gate criteria.
+The remaining review areas are:
+1. first-party SearchPerformance evidence composition;
+2. query-language transcreation provenance;
+3. adaptive UX stability and operator controls;
+4. worker/storage portability beyond WordPress-local execution;
+5. open/versioned SERP feature normalization;
+6. full decision-factor provenance maturity.
+
+The former P0 areas—comparability, global/shared-account budget truthfulness, eligibility/cardinality, rank/capture semantics, provider retention constraints and measurable acceptance—are closed by the exact-head evidence above.
 
 ## Recommended implementation order
 
