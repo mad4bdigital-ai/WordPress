@@ -150,7 +150,34 @@ final class MAD4B_SCP_Provider_Contracts {
 		if ( empty( $profile['version'] ) || ! hash_equals( (string) $version, (string) $profile['version'] ) ) return false;
 		// Extra versions must carry their own complete runtime integrity authority.
 		// Never let a version-only profile inherit old critical-file hashes and pass.
-		return ! empty( $profile['critical_files'] ) && is_array( $profile['critical_files'] );
+		if ( empty( $profile['critical_files'] ) || ! is_array( $profile['critical_files'] ) ) return false;
+
+		$has_dynamic_surface = array_key_exists( 'runtime_surface', $profile ) || array_key_exists( 'runtime_symbols', $profile );
+		if ( $has_dynamic_surface ) {
+			$surface = isset( $profile['runtime_surface'] ) && is_array( $profile['runtime_surface'] ) ? $profile['runtime_surface'] : array();
+			$symbols = isset( $profile['runtime_symbols'] ) && is_array( $profile['runtime_symbols'] ) ? $profile['runtime_symbols'] : array();
+			if ( 'mad4b.mcp-runtime-surface.v1' !== ( $surface['contract'] ?? '' ) ) return false;
+			if ( empty( $surface['fail_closed_on_unprofiled_symbol'] ) || empty( $symbols ) ) return false;
+			if ( (int) ( $surface['symbol_count'] ?? 0 ) !== count( $symbols ) ) return false;
+			$tree = isset( $surface['tree_sha256'] ) ? strtolower( (string) $surface['tree_sha256'] ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $tree ) ) return false;
+			$seen = array();
+			$files = array();
+			foreach ( $symbols as $spec ) {
+				if ( ! is_array( $spec ) ) return false;
+				$symbol = isset( $spec['symbol'] ) ? trim( (string) $spec['symbol'] ) : '';
+				$kind = isset( $spec['kind'] ) ? sanitize_key( (string) $spec['kind'] ) : '';
+				$file = isset( $spec['file'] ) ? ltrim( str_replace( '\\', '/', (string) $spec['file'] ), '/' ) : '';
+				$blob = isset( $spec['git_blob_sha1'] ) ? strtolower( trim( (string) $spec['git_blob_sha1'] ) ) : '';
+				if ( '' === $symbol || isset( $seen[ $symbol ] ) ) return false;
+				if ( ! in_array( $kind, array( 'class', 'interface', 'trait' ), true ) ) return false;
+				if ( '' === $file || false !== strpos( $file, '../' ) || 1 !== preg_match( '/^[a-f0-9]{40}$/D', $blob ) ) return false;
+				$seen[ $symbol ] = true;
+				$files[ $file ] = true;
+			}
+			if ( (int) ( $surface['file_count'] ?? 0 ) !== count( $files ) ) return false;
+		}
+		return true;
 	}
 
 	public static function certified_versions( $provider ) {
