@@ -10,9 +10,11 @@ provider = adapters / "class-mad4b-scp-native-provider-bridge-adapter.php"
 jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
+experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
+plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, servers, experience, reversible):
+for path in (base, full, translation, provider, jetengine_client, servers, experience, experience_runtime, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -22,7 +24,9 @@ provider_src = provider.read_text(encoding="utf-8")
 jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
+experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
 reversible_src = reversible.read_text(encoding="utf-8")
+plugin_src = plugin.read_text(encoding="utf-8")
 
 for filename, class_name in (
     ("class-mad4b-scp-full-content-operations-adapter.php", "MAD4B_SCP_Full_Content_Operations_Adapter"),
@@ -98,33 +102,49 @@ for token in (
     "update-apply",
     "publish-plan",
     "publish-apply",
-    "$base = 'mad4b/' . $slug . '-'",
-    "'verify' => $base . 'verify'",
-    "'helpers' => $base . 'helpers'",
+    "-verify",
+    "-helpers",
     "profile_routes",
     "helper_catalog_sha256",
     "mad4b_scp_content_experience_helper_catalog",
+    "dynamic_routes_are_configuration_driven",
+    "hardcoded_business_content_types",
+):
+    assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
+
+for token in (
+    "mad4b.content-experience-operation-plan.v1",
+    "mad4b.content-experience-verify.v1",
     "mad4b_scp_content_experience_plan_helper",
     "mad4b_scp_content_experience_apply_helper",
     "mad4b_scp_content_experience_capture_helper_state",
     "mad4b_scp_content_experience_restore_helper_state",
+    "mad4b_scp_content_experience_verify_helpers",
     "wp_insert_post(",
     "wp_update_post(",
     "wp_set_object_terms(",
     "set_post_thumbnail(",
     "plan_sha256",
     "creation_binding",
+    "idempotent_replay",
+    "live_update_requires_draft",
+    "sensitive_meta_denied",
+    "protected_meta_denied",
 ):
-    assert token in experience_src, f"dynamic content experience contract missing: {token}"
+    assert token in experience_runtime_src, f"dynamic content experience execution contract missing: {token}"
 
-assert "tours-and-activities" not in experience_src.lower(), "dynamic experience runtime must not hardcode the ETG tour CPT"
-assert "mad4b/tour-" not in experience_src.lower(), "dynamic experience runtime must not hardcode tour routes"
+for src, label in (
+    (experience_src, "experience-registry"),
+    (experience_runtime_src, "experience-runtime"),
+):
+    assert "tours-and-activities" not in src.lower(), f"{label} must not hardcode the ETG tour CPT"
+    assert "mad4b/tour-" not in src.lower(), f"{label} must not hardcode tour routes"
+    assert len(src.splitlines()) <= 900, f"{label} exceeds the new domain-service 900-line budget"
+
 assert "MAX_PROFILES = 64" in experience_src
 assert "MAX_HELPERS = 32" in experience_src
-assert "sensitive_meta_denied" in experience_src
-assert "protected_meta_denied" in experience_src
-assert "live_update_requires_draft" in experience_src
-assert "idempotent_replay" in experience_src
+assert "class-mad4b-scp-content-experience-profiles.php" in plugin_src
+assert "class-mad4b-scp-content-experience-runtime.php" in plugin_src
 
 # Dynamic callbacks remain inside the same durable reversible envelope. The
 # callback itself is never persisted; only the ability name and rollback state are.
@@ -262,7 +282,8 @@ for src, label in (
     (translation_src, "translation"),
     (provider_src, "provider-bridge"),
     (jetengine_client_src, "jetengine-mcp-client"),
-    (experience_src, "content-experience"),
+    (experience_src, "content-experience-registry"),
+    (experience_runtime_src, "content-experience-runtime"),
 ):
     assert "$wpdb" not in src, f"{label} must not use direct SQL"
     assert "database-raw-query" not in src, f"{label} must not expose raw SQL"
