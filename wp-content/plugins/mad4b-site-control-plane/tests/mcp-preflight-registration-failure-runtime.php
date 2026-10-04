@@ -12,7 +12,7 @@ class FixtureAbility { function get_input_schema() { return array( 'type' => 'ob
 eval( 'namespace WP\\MCP\\Domain\\Tools; class RegisterAbilityAsMcpTool { public static $result = null; static function build( $a ) { return self::$result ?? new \\WP_Error(); } } class McpToolValidator { public static $result = true; static function validate_tool_dto( $dto ) { return self::$result; } }' );
 class FixtureTool { function getName() { return 'mad4b-broken'; } function toArray() { return array( 'inputSchema' => array( 'type' => 'object', 'properties' => (object) array() ) ); } function get_adapter_meta() { return array( 'ability' => 'mad4b/broken' ); } }
 class FixtureServer { function get_tools() { return array(); } function get_mcp_tool( $name ) { throw new RuntimeException( 'Failed tool was mounted' ); } }
-class FixtureAdapter { public $reject = true; public $tools = null; function create_server( ...$args ) { $this->tools = $args[9]; return $this->reject ? new WP_Error() : true; } function get_server( $id ) { return new FixtureServer(); } }
+class FixtureAdapter { public $reject = true; public $tools = null; public $error = null; function create_server( ...$args ) { $this->tools = $args[9]; return $this->reject ? ( $this->error ?: new WP_Error() ) : true; } function get_server( $id ) { return new FixtureServer(); } }
 class MAD4B_SCP_Capability_Descriptor_Registry {
 	const CONTRACT = 'mad4b.capability-descriptor.v2';
 	const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
@@ -47,6 +47,19 @@ $row = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'];
 check( ! $row['registered'] && 'adapter_rejected' === $row['error'], 'adapter failure retained' );
 check( 1 === $row['requested_tool_count'] && 'mad4b/broken' === $row['preflight']['failures'][0]['failing_ability'], 'earlier preflight survives adapter rejection' );
 check( array() === $adapter->tools, 'invalid required tools never enter Adapter rebuild' );
+$adapter->error = new WP_Error(
+	'server_creation_failed',
+	'Failed to create server "mad4b-chatgpt": Too few arguments to function WP\\MCP\\Core\\McpComponentRegistry::__construct(), 3 passed in /PRIVATE/PATH and exactly 4 expected'
+);
+$invoke();
+$row = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'];
+check( 'server_creation_failed' === $row['error'], 'server construction error code was not retained' );
+check( 'server_construction' === $row['registration_failure']['stage'], 'server construction failure stage was not bounded' );
+check( 'runtime_constructor_contract_mismatch' === $row['registration_failure']['reason'], 'constructor ABI mismatch was not classified' );
+check( 1 === preg_match( '/^[a-f0-9]{64}$/D', $row['registration_failure']['fingerprint'] ), 'registration failure fingerprint missing' );
+check( false === strpos( json_encode( $row ), '/PRIVATE/PATH' ), 'raw server construction detail leaked into registration status' );
+
+$adapter->error = null;
 $adapter->reject = false; $invoke();
 $row = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'];
 check( 'mcp_required_tool_preflight_failed' === $row['error'] && ! $row['catalog_evidence']['ready'], 'adapter success cannot overrule required preflight failure' );
