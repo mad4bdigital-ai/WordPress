@@ -325,13 +325,20 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			$bound = self::property_value( $tool, 'ability' );
 			if ( ! $current || ! $bound ) return false;
 			foreach ( array( 'execute_callback', 'permission_callback' ) as $property ) if ( self::property_value( $current, $property ) !== self::property_value( $bound, $property ) ) return false;
-			$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $current );
-			if ( is_wp_error( $built ) ) return false;
-			$actual = $tool->get_protocol_dto()->toArray();
-			if ( wp_json_encode( $actual ) !== wp_json_encode( $built['tool']->toArray() ) || $bound->get_meta() !== $current->get_meta() ) return false;
+			if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) return false;
+			$built = MAD4B_SCP_MCP_Adapter_Compatibility::build_ability_wire( $current );
+			if ( is_wp_error( $built ) || ! is_array( $built ) || ! isset( $built['wire'] ) ) return false;
+			$actual_wire = MAD4B_SCP_MCP_Adapter_Compatibility::runtime_tool_wire( $tool, $server );
+			if ( is_wp_error( $actual_wire ) ) return false;
+			$actual = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $actual_wire );
+			$expected = MAD4B_SCP_MCP_Adapter_Compatibility::wire_data( $built['wire'] );
+			if ( is_wp_error( $actual ) || is_wp_error( $expected ) || ! is_array( $actual ) || ! is_array( $expected ) ) return false;
+			if ( wp_json_encode( $actual ) !== wp_json_encode( $expected ) || $bound->get_meta() !== $current->get_meta() ) return false;
 			if ( is_object( $server ) && method_exists( $server, 'get_mcp_tool' ) ) {
 				if ( ! MAD4B_SCP_MCP_Catalog_Diagnostics::materialized_callbacks_match( $tool, $server ) ) return false;
-				$receipt = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot()[ $actual['name'] ] ?? array();
+				$wire_name = isset( $actual['name'] ) && is_string( $actual['name'] ) ? $actual['name'] : '';
+				if ( '' === $wire_name ) return false;
+				$receipt = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot()[ $wire_name ] ?? array();
 				$row = self::ability_row( $name );
 				if ( is_wp_error( $row ) || ( $receipt['input_schema_sha256'] ?? '' ) !== $row['input_schema_sha256'] || ( $receipt['classification_sha256'] ?? '' ) !== $row['classification_sha256'] || ( $receipt['wire_sha256'] ?? '' ) !== hash( 'sha256', wp_json_encode( $actual ) ) ) return false;
 			}
