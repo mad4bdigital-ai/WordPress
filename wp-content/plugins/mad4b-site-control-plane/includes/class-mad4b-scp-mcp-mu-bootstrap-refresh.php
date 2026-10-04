@@ -166,6 +166,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$status['state'] = 'unmanaged_path_conflict';
 		$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 		$status['manual_conflict_recovery_available'] = true;
+		$status['automatic_conflict_recovery_available'] = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
 		return $status;
 	}
 
@@ -422,6 +425,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$expected_unmanaged_sha256 = class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && method_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', 'conflict_expected_sha256' )
 			? strtolower( trim( (string) MAD4B_SCP_MCP_Runtime_Recovery::conflict_expected_sha256() ) )
 			: '';
+		$conflict_recovery_source = class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && method_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', 'conflict_recovery_source' )
+			? sanitize_key( (string) MAD4B_SCP_MCP_Runtime_Recovery::conflict_recovery_source() )
+			: '';
 		$status = self::base_status();
 		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
 
@@ -512,8 +518,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 				return $status;
 			}
 			$explicit_conflict = true;
-			$status['explicit_conflict_recovery'] = true;
-			$status['ownership_source'] = 'explicit_admin_conflict_recovery';
+			$source = in_array( $conflict_recovery_source, array( 'explicit_admin_conflict_recovery', 'automatic_staging_recovery' ), true )
+				? $conflict_recovery_source
+				: 'conflict_recovery';
+			$status['explicit_conflict_recovery'] = 'explicit_admin_conflict_recovery' === $source;
+			$status['automatic_conflict_recovery'] = 'automatic_staging_recovery' === $source;
+			$status['conflict_recovery_source'] = $source;
+			$status['ownership_source'] = $source;
 		}
 		if ( ! $status['managed'] && ! $explicit_conflict ) {
 			$status['manual_conflict_recovery_available'] = true;
@@ -617,7 +628,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		}
 
 		$ownership_before = self::read_ownership_receipt();
-		$receipt = self::persist_ownership_receipt( $status['source_sha256'], $explicit_conflict ? 'explicit_conflict_recovery' : 'refresh' );
+		$receipt_source = $explicit_conflict ? ( $status['conflict_recovery_source'] ?: 'conflict_recovery' ) : 'refresh';
+		$receipt = self::persist_ownership_receipt( $status['source_sha256'], $receipt_source );
 		if ( is_wp_error( $receipt ) ) {
 			$rollback_owner = self::transaction_record_for_owner( $transaction_id );
 			$bytes_restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
@@ -641,7 +653,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 				'current_sha256' => $status['source_sha256'],
 				'ownership_source' => $status['ownership_source'],
 				'ownership_receipt_valid' => true,
-				'explicit_conflict_recovery' => $explicit_conflict,
+				'explicit_conflict_recovery' => ! empty( $status['explicit_conflict_recovery'] ),
+				'automatic_conflict_recovery' => ! empty( $status['automatic_conflict_recovery'] ),
+				'conflict_recovery_source' => isset( $status['conflict_recovery_source'] ) ? $status['conflict_recovery_source'] : '',
 				'conflict_backup_sha256' => isset( $status['conflict_backup_sha256'] ) ? $status['conflict_backup_sha256'] : '',
 				'conflict_backup_file' => isset( $status['conflict_backup_file'] ) ? $status['conflict_backup_file'] : '',
 				'next_request_required' => true,
@@ -776,7 +790,10 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'ownership_receipt_valid' => false,
 			'ownership_source' => '',
 			'explicit_conflict_recovery' => false,
+			'automatic_conflict_recovery' => false,
+			'conflict_recovery_source' => '',
 			'manual_conflict_recovery_available' => false,
+			'automatic_conflict_recovery_available' => false,
 			'conflict_backup_sha256' => '',
 			'conflict_backup_file' => '',
 		);
