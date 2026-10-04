@@ -84,6 +84,29 @@ abstract class MAD4B_SCP_Adapter_Base {
 	 */
 	public function canary_result_summary( $ability_name, $result ) { return array(); }
 
+	/**
+	 * Optional provider-neutral content-experience helpers.
+	 *
+	 * Adapters opt in explicitly. The base never infers helper write support from
+	 * plugin presence or from an arbitrary Ability name.
+	 */
+	public function content_experience_helpers() { return array(); }
+	public function plan_content_experience_helper( $helper_id, $input, array $profile, $operation ) {
+		return new WP_Error( 'mad4b_content_experience_helper_planning_unsupported', 'Adapter does not implement this content-experience helper.' );
+	}
+	public function apply_content_experience_helper( $helper_id, array $plan, array $context ) {
+		return new WP_Error( 'mad4b_content_experience_helper_apply_unsupported', 'Adapter does not implement this content-experience helper.' );
+	}
+	public function capture_content_experience_helper_state( $helper_id, array $plan, array $context ) {
+		return new WP_Error( 'mad4b_content_experience_helper_capture_unsupported', 'Adapter does not implement reversible helper state capture.' );
+	}
+	public function restore_content_experience_helper_state( $helper_id, array $state, array $context ) {
+		return new WP_Error( 'mad4b_content_experience_helper_restore_unsupported', 'Adapter does not implement reversible helper restore.' );
+	}
+	public function verify_content_experience_helper( $helper_id, array $context ) {
+		return array( 'supported' => false, 'verified' => false, 'reason_code' => 'helper_verification_unsupported' );
+	}
+
 	public function declared_server_for_ability( $ability_name ) {
 		$map = $this->ability_names();
 		foreach ( array( 'content', 'write', 'admin', 'read' ) as $surface ) {
