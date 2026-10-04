@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 233,
+  "changed_file_count": 237,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -170,11 +170,15 @@
     },
     {
       "id": "runtime-other",
-      "semantic_unit": "Remaining Control Plane runtime and package files",
-      "revert_boundary": "Revert remaining runtime support slice independently.",
+      "semantic_unit": "Remaining Control Plane runtime, package, documentation and governed self-update files",
+      "revert_boundary": "Revert governed self-update/package-support slice independently from authority and durable execution kernels.",
       "certification": "exact_head",
       "path_globs": [
-        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py"
       ]
     },
     {
@@ -335,5 +339,5 @@
       ]
     }
   ],
-  "changed_paths_sha256": "13fae0867fdd956a8f4a5f2177e326a7c0e5359f9218ec24a80bbce0d12a63f0"
+  "changed_paths_sha256": "22d500874884a3ee1acd458cabbc32a0be609445b015ed055fa2ebc4131ff7a5"
 }

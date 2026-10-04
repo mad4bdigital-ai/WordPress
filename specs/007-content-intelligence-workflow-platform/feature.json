@@ -182,7 +182,7 @@
     "general_distribution_artifact_id": 10838403565,
     "runtime_affecting_changes_since_release": true,
     "repository_changes_since_release_are_non_runtime": false,
-    "recapture_reason": "rc.91 decouples governed Staging Write authority convergence from Developer and Developer Breakglass; recapture the exact post-merge runtime package before Staging deployment."
+    "recapture_reason": "rc.92 changes the WordPress-native governed self-update UX while retaining the signed release channel, exact archive/provenance verification, rollback and authority quarantine semantics; recapture the exact post-merge runtime package before Staging deployment."
   },
   "runtime_identity_paths": [
     "wp-content/plugins/mad4b-site-control-plane/",
