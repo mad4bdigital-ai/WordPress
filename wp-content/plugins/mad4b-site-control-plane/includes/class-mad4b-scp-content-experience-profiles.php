@@ -488,6 +488,95 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		);
 	}
 
+	public static function brand_bearing_mutation_abilities() {
+		$abilities = array();
+		foreach ( self::stored_profiles() as $profile ) {
+			if ( empty( $profile['enabled'] ) ) continue;
+			$routes = self::profile_routes( $profile['slug'] );
+			$abilities[] = $routes['create_apply'];
+			$abilities[] = $routes['update_apply'];
+			$abilities[] = $routes['publish_apply'];
+		}
+		$abilities = array_values( array_unique( $abilities ) );
+		sort( $abilities, SORT_STRING );
+		return $abilities;
+	}
+
+	public static function semantic_contract_for_ability( $ability_name ) {
+		if ( ! in_array( (string) $ability_name, self::brand_bearing_mutation_abilities(), true ) ) return array();
+		return array(
+			'provider' => 'core',
+			'mode' => 'object_fields',
+			'container_path' => '',
+			'brand_fields' => array( 'post_title', 'post_content', 'post_excerpt' ),
+			'brand_key_regex' => '(^|[_-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords|editor|html|wysiwyg)([_-]|$)',
+			'operational_fields' => array(
+				'post_id', 'expected_modified_gmt', 'post_name', 'post_parent', 'menu_order',
+				'featured_media_id', 'taxonomies', 'post_status', 'plan_sha256',
+			),
+			'operational_key_regex' => '^(?:term_ids?|taxonomy|taxonomies|post_status|post_id|featured_media_id|menu_order|post_parent|expected_modified_gmt|plan_sha256)
+	private static function dynamic_context( $ability_name ) {
+		foreach ( self::stored_profiles() as $profile ) {
+			if ( empty( $profile['enabled'] ) ) continue;
+			$routes = self::profile_routes( $profile['slug'] );
+			foreach ( array( 'create_apply' => 'create', 'update_apply' => 'update', 'publish_apply' => 'publish' ) as $key => $operation ) {
+				if ( $routes[ $key ] === $ability_name ) return array( 'slug' => $profile['slug'], 'operation' => $operation );
+			}
+		}
+		return new WP_Error( 'mad4b_content_experience_ability_unresolved', 'Experience mutation ability does not resolve to a configured route.' );
+	}
+
+	public static function capture_reversible_state( $ability_name, array $input ) {
+		if ( self::PROFILE_APPLY_ABILITY === $ability_name ) {
+			$slug = self::route_slug( isset( $input['profile']['slug'] ) ? $input['profile']['slug'] : '' );
+			if ( is_wp_error( $slug ) ) return $slug;
+			$profiles = self::stored_profiles();
+			return array(
+				'target_type' => 'content-experience-profile',
+				'target_id' => $slug,
+				'target' => array( 'kind' => 'profile', 'slug' => $slug ),
+				'state' => array( 'exists' => isset( $profiles[ $slug ] ), 'profile' => isset( $profiles[ $slug ] ) ? $profiles[ $slug ] : null ),
+			);
+		}
+		$context = self::dynamic_context( $ability_name );
+		return is_wp_error( $context ) ? $context : MAD4B_SCP_Content_Experience_Runtime::capture_reversible_state( $context['slug'], $context['operation'], $input );
+	}
+
+	public static function read_reversible_state( $ability_name, array $target ) {
+		if ( isset( $target['kind'] ) && 'profile' === $target['kind'] ) {
+			$slug = self::route_slug( isset( $target['slug'] ) ? $target['slug'] : '' );
+			if ( is_wp_error( $slug ) ) return $slug;
+			$profiles = self::stored_profiles();
+			return array( 'exists' => isset( $profiles[ $slug ] ), 'profile' => isset( $profiles[ $slug ] ) ? $profiles[ $slug ] : null );
+		}
+		return MAD4B_SCP_Content_Experience_Runtime::read_reversible_state( $target );
+	}
+
+	public static function restore_reversible_state( $ability_name, array $target, array $state, array $record ) {
+		if ( isset( $target['kind'] ) && 'profile' === $target['kind'] ) {
+			$slug = self::route_slug( isset( $target['slug'] ) ? $target['slug'] : '' );
+			if ( is_wp_error( $slug ) ) return $slug;
+			$profiles = self::stored_profiles();
+			if ( ! empty( $state['exists'] ) && is_array( $state['profile'] ) ) $profiles[ $slug ] = $state['profile']; else unset( $profiles[ $slug ] );
+			ksort( $profiles, SORT_STRING );
+			update_option( self::OPTION, $profiles, false );
+			self::$profiles = $profiles;
+			return true;
+		}
+		return MAD4B_SCP_Content_Experience_Runtime::restore_reversible_state( $target, $state );
+	}
+}
+,
+			'root_operational_paths' => array(
+				'_mad4b_approval_ticket_id',
+				'_mad4b_context_receipt',
+				'expected_modified_gmt',
+				'plan_sha256',
+			),
+			'dynamic_profile_contract' => true,
+		);
+	}
+
 	public static function owns_ability( $ability_name ) {
 		return in_array( (string) $ability_name, array_merge( self::ability_names( 'read' ), self::ability_names( 'content' ) ), true );
 	}
