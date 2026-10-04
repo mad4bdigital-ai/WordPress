@@ -396,7 +396,28 @@ scenario( 'post_change_fingerprint_binding_experiment_and_no_causality', static 
 scenario( 'portable_storage_site_isolation_and_operator_due_controls', static function () {
 	$input = asi_seed(); $profile = MAD4B_SCP_Search_Runtime::execution_profiles(); check( 'registered_external_store' === $profile['storage_profile'] && ! $profile['generic_worker_command_allowed'], 'portable registered CAS profile' );
 	ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'fixture.search', 'target_id' => $input['target_id'], 'control' => 'pin' ) ), 'pin' );
+	add_filter( 'mad4b_scp_search_performance_evidence', static function ( $value, $target ) {
+		$now = time();
+		return array(
+			'source_class' => 'first_party_search_performance',
+			'factors' => array(
+				'business_value' => array(
+					'value' => 0.9,
+					'source' => 'first_party_search_performance',
+					'observed_at' => $now - 5,
+					'expires_at' => $now + 3600,
+					'confidence' => 0.9,
+					'normalization_version' => 'first-party-performance.v1',
+					'market' => $target['market'],
+					'language' => $target['language'],
+				),
+			),
+		);
+	}, 10, 2 );
+	$before_calls = $GLOBALS['fixture_providers'][0]->calls + $GLOBALS['fixture_providers'][1]->calls;
 	$batch = ok( MAD4B_SCP_Search_Runtime::cohort( array( 'profile_id' => 'fixture.search' ) ), 'cohort' ); check( 1 === count( $batch['selected'] ) && isset( $batch['selected'][0]['decision']['routing'] ), 'explainable never-observed cohort' );
+	check( 'first_party_search_performance' === $batch['selected'][0]['decision']['factor_provenance']['business_value']['source'], 'first-party SearchPerformance evidence composes into decision provenance' );
+	check( $before_calls === $GLOBALS['fixture_providers'][0]->calls + $GLOBALS['fixture_providers'][1]->calls, 'first-party performance evidence does not masquerade as paid live SERP execution' );
 	$GLOBALS['fixture_site'] = '22222222-2222-4222-8222-222222222222'; denied( MAD4B_SCP_Search_Context::profile( 'fixture.search' ), 'missing', 'same profile ID isolated across sites' );
 } );
 
