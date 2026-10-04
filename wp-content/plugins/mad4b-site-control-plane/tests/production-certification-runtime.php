@@ -1,8 +1,9 @@
 <?php
 define( 'ABSPATH', __DIR__ . '/' );
 function add_action( ...$args ) {}
-function wp_register_ability( ...$args ) {}
-function wp_has_ability( $name ) { return false; }
+$GLOBALS['mad4b_registered_abilities']=array();
+function wp_register_ability( $name, $args ) { $GLOBALS['mad4b_registered_abilities'][$name]=$args; }
+function wp_has_ability( $name ) { return isset( $GLOBALS['mad4b_registered_abilities'][$name] ); }
 function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $v ) ); }
 function sanitize_text_field( $v ) { return (string) $v; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
@@ -124,8 +125,13 @@ class MAD4B_SCP_Operator_Doctor {
 	}
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-production-certification.php';
+MAD4B_SCP_Production_Certification::register_ability();
 
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
+check( isset( $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::ABILITY ] ), 'evidence_ability_not_registered' );
+check( isset( $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::STATUS_ABILITY ] ), 'status_ability_not_registered' );
+$status_ability = $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::STATUS_ABILITY ];
+check( ! empty( $status_ability['meta']['annotations']['readonly'] ) && empty( $status_ability['meta']['annotations']['destructive'] ), 'status_ability_not_read_only' );
 $stages = array(
 	'provider_side_channel_inventory',
 	'multi_authority_canary',
