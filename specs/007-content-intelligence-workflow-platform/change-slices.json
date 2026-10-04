@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 258,
+  "changed_file_count": 266,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -149,6 +149,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-full-content-operations-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php",
@@ -167,10 +168,15 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-decision-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php",
@@ -364,9 +370,11 @@
       "revert_boundary": "Revert content-domain/experience verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php"
       ]
     }
   ],
-  "changed_paths_sha256": "c6e79eefd224ac452ed76138b656becdb1212baa17d22a29ddff266c5c62d03f"
+  "changed_paths_sha256": "7e255b7117c47428d48cfcbcbac0526c9c43407e0e79dcb0dc077b616056bbbb"
 }
