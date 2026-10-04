@@ -105,7 +105,7 @@ for token in (
     "publish-plan",
     "publish-apply",
     "'verify'",
-    "-helpers",
+    "'helpers'",
     "profile_routes",
     "helper_catalog_sha256",
     "mad4b_scp_content_experience_helper_catalog",
