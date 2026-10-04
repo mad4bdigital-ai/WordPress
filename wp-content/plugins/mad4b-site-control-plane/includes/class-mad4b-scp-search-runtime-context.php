@@ -310,6 +310,19 @@ final class MAD4B_SCP_Search_Runtime_Context {
 		$raw = isset( $input['profile'] ) && is_array( $input['profile'] ) ? $input['profile'] : array();
 		$profile_id = self::clean_id( isset( $raw['profile_id'] ) ? $raw['profile_id'] : '', 'profile_id' );
 		if ( is_wp_error( $profile_id ) ) return $profile_id;
+
+		// Reject an absent or stale reviewed plan before taking the distributed
+		// mutex. This preserves the exact Plan→Apply contract and avoids consuming
+		// the target lock for a request that was never eligible to mutate.
+		$expected = strtolower( trim( (string) ( isset( $input['plan_sha256'] ) ? $input['plan_sha256'] : '' ) ) );
+		$plan_input = $input;
+		unset( $plan_input['plan_sha256'], $plan_input['_mad4b_approval_ticket_id'], $plan_input['_mad4b_context_receipt'] );
+		$prelock_plan = self::profile_plan( $plan_input );
+		if ( is_wp_error( $prelock_plan ) ) return $prelock_plan;
+		if ( '' === $expected || ! hash_equals( $prelock_plan['plan_sha256'], $expected ) ) {
+			return new WP_Error( 'mad4b_search_profile_plan_drift', 'Search Profile apply does not match the exact reviewed plan.' );
+		}
+
 		if ( ! class_exists( 'MAD4B_SCP_Distributed_Lock' ) ) {
 			return new WP_Error( 'mad4b_search_profile_lock_unavailable', 'Search Profile apply requires the distributed lock service.' );
 		}
@@ -323,17 +336,14 @@ final class MAD4B_SCP_Search_Runtime_Context {
 			);
 		}
 		try {
-			// Re-read after acquiring the profile-scoped mutex. This closes the
-			// read-plan-write race between concurrent requests using the same
-			// expected revision and prevents a last-writer-wins lost update.
+			// Re-read and re-plan after acquiring the profile-scoped mutex. The
+			// second comparison catches a concurrent commit that landed after the
+			// pre-lock review but before this request acquired exclusive ownership.
 			self::reset_request_cache();
-			$expected = strtolower( trim( (string) ( isset( $input['plan_sha256'] ) ? $input['plan_sha256'] : '' ) ) );
-			$plan_input = $input;
-			unset( $plan_input['plan_sha256'], $plan_input['_mad4b_approval_ticket_id'], $plan_input['_mad4b_context_receipt'] );
 			$plan = self::profile_plan( $plan_input );
 			if ( is_wp_error( $plan ) ) return $plan;
-			if ( '' === $expected || ! hash_equals( $plan['plan_sha256'], $expected ) ) {
-				return new WP_Error( 'mad4b_search_profile_plan_drift', 'Search Profile apply does not match the exact reviewed plan.' );
+			if ( ! hash_equals( $plan['plan_sha256'], $expected ) ) {
+				return new WP_Error( 'mad4b_search_profile_plan_drift', 'Search Profile changed while waiting for the apply lock.' );
 			}
 			$rows = self::stored_profiles();
 			$profile = $plan['profile'];
@@ -349,7 +359,7 @@ final class MAD4B_SCP_Search_Runtime_Context {
 				'profile' => $profile,
 				'applied' => true,
 				'plan_sha256' => $plan['plan_sha256'],
-				'concurrency_guard' => 'profile_scoped_distributed_lock',
+				'concurrency_guard' => 'prelock_exact_plan_plus_profile_scoped_distributed_lock',
 				'authorizing' => false,
 				'wordpress_mutation_authority_granted' => false,
 				'production_authority_granted' => false,
