@@ -424,6 +424,33 @@ with tempfile.TemporaryDirectory() as td:
     (live / "mad4b-site-control-plane.php").write_text("<?php // current runtime\n", encoding="utf-8")
     (live / "includes").mkdir()
     (live / "includes" / "runtime.php").write_text("<?php return 'current';\n", encoding="utf-8")
+    package_rows = []
+    for relative in ("mad4b-site-control-plane.php", "includes/runtime.php"):
+        raw = (live / relative).read_bytes()
+        package_rows.append({
+            "path": relative,
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    package_material = [
+        f"{row['path']}\0{row['bytes']}\0{row['sha256']}\n".encode()
+        for row in package_rows
+    ]
+    protected_identity = {
+        "source_commit_sha": "7" * 40,
+        "build_fingerprint": hashlib.sha256(b"protected-backup-runtime-build").hexdigest(),
+        "package_manifest_digest": hashlib.sha256(b"".join(sorted(package_material))).hexdigest(),
+    }
+    provenance = {
+        "contract": recovery.root_trust.PROVENANCE_CONTRACT,
+        **protected_identity,
+        "control_plane_version": "0.4.0-test",
+        "package_files": package_rows,
+    }
+    (live / "MAD4B-BUILD-PROVENANCE.json").write_text(
+        json.dumps(provenance, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     before = recovery.protected_backup_status(wp)
     if before["ready"] is not False or before["requires_preparation"] is not True:
@@ -437,6 +464,8 @@ with tempfile.TemporaryDirectory() as td:
     )
     if plan["scope"]["copies_wp_config_bytes"] is not False or plan["scope"]["copies_database"] is not False:
         raise SystemExit("protected backup plan widened scope")
+    if plan["target"].get("runtime_identity") != protected_identity:
+        raise SystemExit("protected backup plan lost exact runtime identity")
     try:
         recovery.apply_backup(plan, "0" * 64)
         raise SystemExit("protected backup accepted wrong owner plan attestation")
@@ -465,12 +494,18 @@ with tempfile.TemporaryDirectory() as td:
     backup = Path(receipt["backup_path"])
     if receipt["readback_verified"] is not True or receipt["production_authorized"] is not False:
         raise SystemExit("protected backup receipt is not verified or widened Production")
+    if receipt.get("runtime_identity") != protected_identity:
+        raise SystemExit("protected backup receipt lost exact runtime identity")
     if recovery.tree_digest(backup / recovery.PLUGIN_SLUG) != plan["target"]["plugin_tree_sha256"]:
         raise SystemExit("protected backup bytes do not match planned runtime")
     manifest = json.loads((backup / "BACKUP-MANIFEST.json").read_text(encoding="utf-8"))
     persisted = json.loads((backup / "BACKUP-RECEIPT.json").read_text(encoding="utf-8"))
     if manifest["source_plugin_tree_sha256"] != plan["target"]["plugin_tree_sha256"]:
         raise SystemExit("protected backup manifest lost exact runtime identity")
+    if manifest.get("source_runtime_identity") != protected_identity:
+        raise SystemExit("protected backup manifest lost runtime provenance identity")
+    if persisted.get("runtime_identity") != protected_identity:
+        raise SystemExit("persisted protected backup receipt lost runtime provenance identity")
     if persisted["wp_config_bytes_copied"] is not False or persisted["database_copied"] is not False:
         raise SystemExit("protected backup receipt widened backup scope")
     for path in backup.rglob("*"):
@@ -484,6 +519,8 @@ with tempfile.TemporaryDirectory() as td:
     verified_backup = recovery.verify_protected_backup(wp, receipt["backup_id"])
     if verified_backup["verified"] is not True:
         raise SystemExit("protected backup verification did not pass exact snapshot")
+    if verified_backup.get("runtime_identity") != protected_identity:
+        raise SystemExit("protected backup verification lost runtime identity")
 
     # Simulate a later candidate deployment, then restore the protected pre-deployment snapshot.
     candidate = live / "mad4b-site-control-plane.php"
@@ -507,6 +544,8 @@ with tempfile.TemporaryDirectory() as td:
     )
     if restored["readback_verified"] is not True or restored["production_authorized"] is not False:
         raise SystemExit("protected backup restore receipt is not verified or widened Production")
+    if restored.get("restored_runtime_identity") != protected_identity:
+        raise SystemExit("protected backup restore lost exact runtime identity")
     if recovery.tree_digest(live) != plan["target"]["plugin_tree_sha256"]:
         raise SystemExit("protected backup restore did not recover exact snapshot tree")
 
