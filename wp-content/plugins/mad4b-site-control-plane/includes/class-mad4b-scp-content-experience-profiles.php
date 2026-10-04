@@ -242,6 +242,21 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			}
 			if ( empty( $catalog[ $helper_id ]['reversible'] ) ) return new WP_Error( 'mad4b_content_experience_helper_not_reversible', 'Experience mutation helpers must declare a reversible contract.', array( 'helper_id' => $helper_id ) );
 		}
+		$helper_bindings = array();
+		foreach ( $enabled_helpers as $helper_id ) {
+			$row = $catalog[ $helper_id ];
+			$binding = array(
+				'helper_id' => $helper_id,
+				'adapter_id' => (string) $row['adapter_id'],
+				'provider' => (string) $row['provider'],
+				'certification_ability' => (string) $row['certification_ability'],
+				'operations' => array_values( (array) $row['operations'] ),
+				'reversible' => ! empty( $row['reversible'] ),
+			);
+			$binding['binding_sha256'] = hash( 'sha256', wp_json_encode( $binding, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+			$helper_bindings[ $helper_id ] = $binding;
+		}
+		ksort( $helper_bindings, SORT_STRING );
 
 		$creation_status = isset( $raw['creation_status'] ) ? sanitize_key( (string) $raw['creation_status'] ) : 'draft';
 		if ( ! in_array( $creation_status, array( 'draft', 'pending', 'private' ), true ) ) {
@@ -269,6 +284,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'featured_media' => ! array_key_exists( 'featured_media', $raw ) || ! empty( $raw['featured_media'] ),
 			'hierarchy' => ! empty( $raw['hierarchy'] ) && ! empty( $object->hierarchical ),
 			'enabled_helpers' => $enabled_helpers,
+			'helper_bindings' => $helper_bindings,
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'routes' => self::profile_routes( $slug, max( 1, (int) $next_revision ) ),
 		);
