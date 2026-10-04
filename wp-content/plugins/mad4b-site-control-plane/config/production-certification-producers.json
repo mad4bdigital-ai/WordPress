@@ -1,0 +1,186 @@
+{
+  "contract": "mad4b.production-certification-producers.v1",
+  "authorizing": false,
+  "production_mutation": false,
+  "environment": "staging",
+  "target_environment": "production",
+  "stages": [
+    {
+      "stage_id": "exact_deployment_identity",
+      "kind": "workflow",
+      "producer": ".github/workflows/mad4b-etg-deployment-readiness.yml",
+      "source_paths": [
+        ".github/workflows/mad4b-etg-deployment-readiness.yml"
+      ],
+      "required_markers": [
+        "runtime_identity_match",
+        "mutation_performed"
+      ]
+    },
+    {
+      "stage_id": "runtime_root_trust",
+      "kind": "release_root_trust",
+      "producer": "tools/verify_release_root_trust.py#trusted-master-release-root",
+      "source_paths": [
+        "tools/verify_release_root_trust.py",
+        ".github/workflows/mad4b-control-plane-package.yml"
+      ],
+      "required_markers": [
+        "RELEASE-ROOT-TRUST-VERIFICATION.json",
+        "verify_release_root_trust.py"
+      ]
+    },
+    {
+      "stage_id": "host_runner_parity",
+      "kind": "host_bridge_sequence",
+      "producer": "mad4b/host-operation-apply#workspace.file.replace+workspace.file.rollback",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "tools/mad4b_host_runner.py"
+      ],
+      "required_markers": [
+        "mad4b/host-operation-plan",
+        "mad4b/host-operation-apply",
+        "mad4b/host-operation-receipt",
+        "workspace.file.replace",
+        "workspace.file.rollback"
+      ]
+    },
+    {
+      "stage_id": "protected_backup_restore",
+      "kind": "recovery_plane_sequence",
+      "producer": "tools/mad4b_recovery_plane.py#plan-backup+apply-backup+verify-backup+plan-backup-restore+apply-backup-restore",
+      "source_paths": [
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "required_markers": [
+        "plan-backup",
+        "apply-backup",
+        "verify-backup",
+        "plan-backup-restore",
+        "apply-backup-restore"
+      ]
+    },
+    {
+      "stage_id": "out_of_band_recovery",
+      "kind": "recovery_plane_sequence",
+      "producer": "tools/mad4b_recovery_plane.py#plan-restore+apply-restore",
+      "source_paths": [
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "required_markers": [
+        "plan-restore",
+        "apply-restore",
+        "SUPPORTED_ENVIRONMENTS = {\"staging\"}"
+      ]
+    },
+    {
+      "stage_id": "provider_side_channel_inventory",
+      "kind": "wp_ability_readonly",
+      "producer": "mad4b/production-certification-readonly-evidence#mcp-peer-governance",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-certification.php"
+      ],
+      "required_markers": [
+        "provider_side_channel_inventory",
+        "mad4b/production-certification-readonly-evidence"
+      ]
+    },
+    {
+      "stage_id": "multi_authority_canary",
+      "kind": "wp_ability_readonly",
+      "producer": "mad4b/production-certification-readonly-evidence#multi-authority",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-certification.php"
+      ],
+      "required_markers": [
+        "multi_authority_canary",
+        "mad4b.multi-authority-live-canary.v1"
+      ]
+    },
+    {
+      "stage_id": "policy_resolution_canary",
+      "kind": "wp_ability_readonly",
+      "producer": "mad4b/production-certification-readonly-evidence#policy-probe",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-certification.php"
+      ],
+      "required_markers": [
+        "policy_resolution_canary",
+        "mad4b.production-policy-probe.v1"
+      ]
+    },
+    {
+      "stage_id": "consistency_fault_canary",
+      "kind": "governed_mcp_reversible_sequence",
+      "producer": "mad4b-write#media/set-featured+mad4b/mutation-undo",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php"
+      ],
+      "required_markers": [
+        "media/set-featured",
+        "mad4b/mutation-undo",
+        "approval_ticket_id",
+        "verified"
+      ]
+    },
+    {
+      "stage_id": "security_fault_canary",
+      "kind": "wp_ability_readonly",
+      "producer": "mad4b/production-certification-readonly-evidence#security-fault-canary",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "required_markers": [
+        "security_fault_canary",
+        "mad4b.production-security-live-canary.v1",
+        "generic_shell_available",
+        "raw_sql_available"
+      ]
+    },
+    {
+      "stage_id": "operator_doctor",
+      "kind": "wp_ability_readonly",
+      "producer": "mad4b/production-certification-readonly-evidence#operator-doctor",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php"
+      ],
+      "required_markers": [
+        "operator_doctor",
+        "mad4b.operator-doctor.v1"
+      ]
+    },
+    {
+      "stage_id": "formal_state_repository_proof",
+      "kind": "repository_workflow",
+      "producer": ".github/workflows/feature-007-critical-kernel.yml",
+      "source_paths": [
+        ".github/workflows/feature-007-critical-kernel.yml"
+      ],
+      "required_markers": [
+        "Feature 007 Critical Kernel"
+      ]
+    },
+    {
+      "stage_id": "request_receipt_rollback_vertical_slice",
+      "kind": "host_bridge_vertical_slice",
+      "producer": "mad4b/host-operation-apply#request-receipt-rollback-vertical-slice",
+      "source_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py",
+        "tools/mad4b_host_runner.py"
+      ],
+      "required_markers": [
+        "mad4b/host-operation-apply",
+        "workspace.file.replace",
+        "workspace.file.rollback",
+        "approval_ref",
+        "readback_verdict",
+        "SUPERSEDED_BY_VERIFIED_ROLLBACK"
+      ]
+    }
+  ]
+}
