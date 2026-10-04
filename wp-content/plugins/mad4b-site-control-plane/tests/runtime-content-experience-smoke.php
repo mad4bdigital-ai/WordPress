@@ -1,11 +1,76 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
+
+$ci_phase = getenv( 'MAD4B_CI_CONTENT_EXPERIENCE_PHASE' );
+if ( is_string( $ci_phase ) && '' !== $ci_phase ) {
+	$check = static function ( $condition, $message ) {
+		if ( ! $condition ) throw new RuntimeException( $message );
+	};
+	register_post_type( 'mad4b_ci_trip', array(
+		'label' => 'MAD4B CI Trips', 'public' => true, 'show_ui' => true, 'show_in_rest' => true,
+		'supports' => array( 'title', 'editor', 'excerpt', 'thumbnail' ), 'capability_type' => 'post', 'map_meta_cap' => true,
+	) );
+	register_taxonomy( 'mad4b_ci_region', array( 'mad4b_ci_trip' ), array( 'label' => 'MAD4B CI Regions', 'public' => true, 'show_ui' => true ) );
+
+	$profile = MAD4B_SCP_Content_Experience_Profiles::profile( 'ci-trip' );
+	$check( ! is_wp_error( $profile ), 'Next-request Content Experience profile is unavailable.' );
+	$expected_revision = 'r2' === $ci_phase ? 2 : 1;
+	$check( $expected_revision === (int) $profile['revision'], 'Next-request Content Experience profile revision mismatch.' );
+	$routes = $profile['routes'];
+	foreach ( array( 'create_apply', 'update_apply', 'publish_apply' ) as $route_key ) {
+		$check( ! empty( $routes[ $route_key ] ) && wp_has_ability( $routes[ $route_key ] ), 'Generated next-request executor Ability is not registered: ' . $route_key );
+	}
+
+	$create_ability = wp_get_ability( $routes['create_apply'] );
+	$update_ability = wp_get_ability( $routes['update_apply'] );
+	$publish_ability = wp_get_ability( $routes['publish_apply'] );
+	$profile_apply_ability = wp_get_ability( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY );
+	$check( true === $create_ability->get_meta()['annotations']['idempotent'], 'Create replay must remain explicitly idempotent.' );
+	$check( false === $update_ability->get_meta()['annotations']['idempotent'], 'Update must not claim retry idempotency after modified-state drift.' );
+	$check( false === $publish_ability->get_meta()['annotations']['idempotent'], 'Publish must not claim retry idempotency after status drift.' );
+	$check( false === $profile_apply_ability->get_meta()['annotations']['idempotent'], 'Profile apply must be exact one-shot revision mutation.' );
+
+	$descriptor_route = 'r2' === $ci_phase ? $routes['update_apply'] : $routes['create_apply'];
+	$descriptor = MAD4B_SCP_Capability_Descriptor_Registry::binding( $descriptor_route, 'content_experience_runtime_smoke_' . $ci_phase );
+	$check( ! is_wp_error( $descriptor ), 'Generated executor Capability Descriptor binding failed in next request.' );
+	$check(
+		isset( $descriptor['generation_roots']['extension_roots']['content_experience_profile'] )
+		&& hash_equals( (string) $profile['authority_sha256'], (string) $descriptor['generation_roots']['extension_roots']['content_experience_profile'] ),
+		'Generated next-request executor descriptor is not bound to exact profile authority.'
+	);
+	echo 'mad4b.site-control-plane.runtime-content-experience.' . $ci_phase . ": PASS\n";
+	return;
+}
+
 if ( ! isset( $check ) || ! is_callable( $check ) ) throw new RuntimeException( 'Parent runtime check helper is unavailable.' );
 
 $option = MAD4B_SCP_Content_Experience_Profiles::OPTION;
 $original_profiles = get_option( $option, array() );
 $post_ids = array();
 $term_ids = array();
+
+$launch_next_request = static function ( $phase ) use ( $check ) {
+	$reflection = new ReflectionClass( 'WP_CLI' );
+	$bootstrap_file = (string) $reflection->getFileName();
+	$wp_cli_phar = '';
+	if ( preg_match( '#^phar://(.+?\\.phar)/#', $bootstrap_file, $matches ) ) $wp_cli_phar = $matches[1];
+	if ( '' === $wp_cli_phar && isset( $_SERVER['argv'][0] ) ) $wp_cli_phar = realpath( (string) $_SERVER['argv'][0] );
+	$check( is_string( $wp_cli_phar ) && '' !== $wp_cli_phar && is_file( $wp_cli_phar ), 'Unable to resolve the active WP-CLI PHAR for next-request Content Experience proof.' );
+	$check( function_exists( 'exec' ), 'PHP exec() is required by the disposable next-request Content Experience runtime proof.' );
+
+	$command = 'MAD4B_CI_CONTENT_EXPERIENCE_PHASE=' . escapeshellarg( (string) $phase )
+		. ' ' . escapeshellarg( PHP_BINARY )
+		. ' ' . escapeshellarg( $wp_cli_phar )
+		. ' eval-file ' . escapeshellarg( __FILE__ )
+		. ' --path=' . escapeshellarg( ABSPATH )
+		. ' --user=' . escapeshellarg( (string) get_current_user_id() );
+	$output = array();
+	$exit_code = 0;
+	exec( $command . ' 2>&1', $output, $exit_code );
+	if ( 0 !== $exit_code ) throw new RuntimeException( "Next-request Content Experience proof failed for {$phase}:\n" . implode( "\n", $output ) );
+	$marker = 'mad4b.site-control-plane.runtime-content-experience.' . $phase . ': PASS';
+	$check( in_array( $marker, $output, true ), 'Next-request Content Experience proof did not emit its PASS marker.' );
+};
 
 register_post_type( 'mad4b_ci_trip', array(
 	'label' => 'MAD4B CI Trips', 'public' => true, 'show_ui' => true, 'show_in_rest' => true,
@@ -55,27 +120,7 @@ try {
 
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
 	$check( $adapter instanceof MAD4B_SCP_Full_Content_Operations_Adapter, 'Full Content Operations adapter is unavailable.' );
-	$adapter->register_abilities();
-	$check( wp_has_ability( $routes_v1['create_apply'] ), 'Generated create executor Ability was not registered.' );
-	$check( wp_has_ability( $routes_v1['update_apply'] ), 'Generated update executor Ability was not registered.' );
-	$check( wp_has_ability( $routes_v1['publish_apply'] ), 'Generated publish executor Ability was not registered.' );
-
-	$create_ability = wp_get_ability( $routes_v1['create_apply'] );
-	$update_ability = wp_get_ability( $routes_v1['update_apply'] );
-	$publish_ability = wp_get_ability( $routes_v1['publish_apply'] );
-	$profile_apply_ability = wp_get_ability( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY );
-	$check( true === $create_ability->get_meta()['annotations']['idempotent'], 'Create replay must remain explicitly idempotent.' );
-	$check( false === $update_ability->get_meta()['annotations']['idempotent'], 'Update must not claim retry idempotency after modified-state drift.' );
-	$check( false === $publish_ability->get_meta()['annotations']['idempotent'], 'Publish must not claim retry idempotency after status drift.' );
-	$check( false === $profile_apply_ability->get_meta()['annotations']['idempotent'], 'Profile apply must be exact one-shot revision mutation.' );
-
-	$descriptor_v1 = MAD4B_SCP_Capability_Descriptor_Registry::binding( $routes_v1['create_apply'], 'content_experience_runtime_smoke' );
-	$check( ! is_wp_error( $descriptor_v1 ), 'Generated executor Capability Descriptor binding failed.' );
-	$check(
-		isset( $descriptor_v1['generation_roots']['extension_roots']['content_experience_profile'] )
-		&& hash_equals( $profile_v1['authority_sha256'], (string) $descriptor_v1['generation_roots']['extension_roots']['content_experience_profile'] ),
-		'Generated executor descriptor is not bound to exact profile authority.'
-	);
+	$launch_next_request( 'r1' );
 
 	$create_input = array(
 		'post_title' => 'CI governed trip',
@@ -149,15 +194,7 @@ try {
 	$routes_v2 = $profile_v2['routes'];
 	$check( $routes_v1['update_apply'] !== $routes_v2['update_apply'] && false !== strpos( $routes_v2['update_apply'], '-r2-update-apply' ), 'Profile authority change did not rotate mutation executor generation.' );
 	$check( ! hash_equals( $profile_v1['authority_sha256'], $profile_v2['authority_sha256'] ), 'Profile revision did not rotate authority fingerprint.' );
-	$adapter->register_abilities();
-	$check( wp_has_ability( $routes_v2['update_apply'] ), 'Revision-two executor Ability was not registered after profile rotation.' );
-	$descriptor_v2 = MAD4B_SCP_Capability_Descriptor_Registry::binding( $routes_v2['update_apply'], 'content_experience_runtime_smoke' );
-	$check( ! is_wp_error( $descriptor_v2 ), 'Revision-two Capability Descriptor binding failed.' );
-	$check(
-		isset( $descriptor_v2['generation_roots']['extension_roots']['content_experience_profile'] )
-		&& hash_equals( $profile_v2['authority_sha256'], (string) $descriptor_v2['generation_roots']['extension_roots']['content_experience_profile'] ),
-		'Revision-two executor descriptor is not bound to rotated profile authority.'
-	);
+	$launch_next_request( 'r2' );
 	$restored_old = MAD4B_SCP_Content_Experience_Runtime::restore_reversible_state( $before_update['target'], $before_update['state'] );
 	$check( true === $restored_old, 'Historical rollback could not restore after current profile advanced.' );
 	$check( '' === get_post( $post_id )->post_excerpt, 'Historical rollback used mutable current profile state.' );
