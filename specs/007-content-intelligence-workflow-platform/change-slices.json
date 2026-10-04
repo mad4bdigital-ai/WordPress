@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 304,
+  "changed_file_count": 306,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -132,7 +132,9 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-compatibility.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-profile-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-registration-bridge.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-projection-hotset-recommender.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
@@ -438,6 +440,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "e9992c69dd6f138b0ae95c57461e0fa57c00593f7186298c398a82a0013290f4",
+  "changed_paths_sha256": "80c2b9e5833e39f5c9ba639242d2650e18863fcc21881f7647cad1c9840e69e0",
   "changed_paths_sha256_mode": "sorted_relative_paths_newline_sha256"
 }
