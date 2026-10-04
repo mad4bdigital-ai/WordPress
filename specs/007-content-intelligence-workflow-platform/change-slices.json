@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 237,
+  "changed_file_count": 238,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -281,6 +281,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-reversible-mutation-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-convergence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/terminal-evidence-fault-runtime.php",
@@ -339,5 +340,5 @@
       ]
     }
   ],
-  "changed_paths_sha256": "22d500874884a3ee1acd458cabbc32a0be609445b015ed055fa2ebc4131ff7a5"
+  "changed_paths_sha256": "360f873a33159c2eb1b6b25b48a08701fcd90e2ba59e3aea9a25d5d380f75f71"
 }
