@@ -90,10 +90,10 @@ $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/schema-e
 check( ! $result['ready'] && 'source_schema_read' === $result['failures'][0]['stage'] && false === strpos( json_encode( $result ), 'PRIVATE_SCHEMA_DETAILS' ), 'Source exception stage lost or private details exposed' );
 wp_register_ability( 'fixture/invalid-utf8', array( 'description' => "\xB1\x31" ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'fixture/invalid-utf8' ), array() );
-check( ! $result['ready'] && 'dto_serialization' === $result['failures'][0]['stage'], 'Invalid UTF-8 was admitted to wire catalog' );
+check( ! $result['ready'] && 'wire_serialization' === $result['failures'][0]['stage'], 'Invalid UTF-8 was admitted to wire catalog' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'invalid tool name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0] ), array() );
-check( ! $result['ready'] && 'official_dto_build' === $result['failures'][0]['stage'] && 'mcp_tool_name_filter_invalid' === $result['failures'][0]['error_code'], 'Invalid third-party name filter lost precise builder evidence' );
+check( ! $result['ready'] && 'official_wire_build' === $result['failures'][0]['stage'] && 'mcp_tool_name_filter_invalid' === $result['failures'][0]['error_code'], 'Invalid third-party name filter lost precise builder evidence' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'colliding-name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array_slice( $required, 0, 2 ), array( $required[1] ) );
 check( ! $result['ready'] && 'identity' === $result['failures'][0]['stage'], 'Optional tool identity collision must fail closed' );

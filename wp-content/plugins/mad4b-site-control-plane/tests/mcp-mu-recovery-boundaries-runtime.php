@@ -105,15 +105,22 @@ foreach ( $map as $symbol => $file ) {
 	file_put_contents( $path, '<?php ' . $body );
 	$manifest[ $file ] = hash_file( 'sha256', $path );
 }
+$adapter_main = WP_PLUGIN_DIR . '/' . $adapter_slug . '/mcp-adapter.php';
+file_put_contents(
+	$adapter_main,
+	"<?php\n/**\n * Plugin Name: MCP Adapter Fixture\n * Version: 0.6.1\n */\n"
+);
+$manifest['mcp-adapter.php'] = hash_file( 'sha256', $adapter_main );
+
 $autoload = WP_PLUGIN_DIR . '/' . $adapter_slug . '/vendor/autoload_packages.php';
 if ( ! is_dir( dirname( $autoload ) ) ) mkdir( dirname( $autoload ), 0777, true );
 file_put_contents( $autoload, '<?php spl_autoload_register( function( $c ) { if ( isset( $GLOBALS["map"][ $c ] ) ) require_once WP_PLUGIN_DIR . "/' . $adapter_slug . '/" . $GLOBALS["map"][ $c ]; } ); return true;' );
 $manifest['vendor/autoload_packages.php'] = hash_file( 'sha256', $autoload );
 mkdir( WP_PLUGIN_DIR . '/' . $control_slug . '/config', 0777, true );
 $baseline_path = WP_PLUGIN_DIR . '/' . $control_slug . '/config/certified-providers.json';
-file_put_contents( $baseline_path, json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'critical_files' => $manifest ) ) ) ) );
+file_put_contents( $baseline_path, json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'version' => '0.6.1', 'critical_files' => $manifest ) ) ) ) );
 if ( 'missing_manifest' === $case ) unlink( $baseline_path );
-if ( 'missing_baseline' === $case ) { unset( $manifest['vendor/autoload_packages.php'] ); file_put_contents( $baseline_path, json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'critical_files' => $manifest ) ) ) ) ); }
+if ( 'missing_baseline' === $case ) { unset( $manifest['vendor/autoload_packages.php'] ); file_put_contents( $baseline_path, json_encode( array( 'providers' => array( 'mcp_adapter' => array( 'version' => '0.6.1', 'critical_files' => $manifest ) ) ) ) ); }
 if ( 'tampered_autoloader' === $case ) file_put_contents( $autoload, '<?php $GLOBALS["tampered_executed"] = true; return true;' );
 if ( 'tampered_validator' === $case ) file_put_contents( WP_PLUGIN_DIR . '/' . $adapter_slug . '/includes/Domain/Tools/McpToolValidator.php', '<?php $GLOBALS["tampered_executed"] = true;' );
 if ( 'preclaimed' === $case ) eval( 'namespace WP\\MCP\\Domain\\Tools; class McpToolValidator {}' );

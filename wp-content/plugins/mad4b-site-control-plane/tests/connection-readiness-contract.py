@@ -60,6 +60,9 @@ for marker in (
     require(status, marker, 'connection-status-truth')
 forbid(status, "'connection_certified' => false", 'connection-no-permanent-false')
 forbid(status, 'rest_get_server()', 'connection-status-no-rest-materialization')
+require(status, "const MAX_DIAGNOSTIC_TOOLS = 500;", 'connection-status-tool-bound')
+require(status, "MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools( $server, self::MAX_DIAGNOSTIC_TOOLS )", 'connection-status-bounded-projection')
+forbid(status, "MAD4B_SCP_MCP_Adapter_Compatibility::server_tools( $server )", 'connection-status-unbounded-projection')
 
 
 require(ability, "'output_schema' => array( 'type' => 'object', 'additionalProperties' => true )", 'connection-output-schema-open')
