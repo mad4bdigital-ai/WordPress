@@ -1,5 +1,6 @@
 <?php
 // Exercise real classification, versioned receipt signatures and fixed mutation dispatch.
+if ( ! defined( 'MAD4B_SCP_TEST_RUNTIME' ) ) define( 'MAD4B_SCP_TEST_RUNTIME', true );
 require __DIR__ . '/gateway-regression-runtime.php';
 $a = new GatewayFixture( 'fixture/receipt-write', 'content', false );
 $GLOBALS['abilities'] = array( $a->get_name() => $a );
@@ -66,6 +67,20 @@ foreach ( array( -1000, 1000 ) as $offset ) {
 	$dated = $payload; $dated['issued_at'] += $offset; $dated['expires_at'] += $offset;
 	check_gateway( is_wp_error( $verify( $sign( $dated ) ) ), 'Expired/future receipt accepted' );
 }
+
+// Isolate the direct expires_at guard from the overlapping issued_at age policy.
+// At the exact TTL boundary assert_timestamp() is still valid because age == max_age,
+// while expires_at == now must be rejected by the receipt's own expiry condition.
+$boundary_now = 2000000000;
+$boundary_ttl = MAD4B_SCP_Time_Policy::bounded_ttl( 'preparation_receipt', MAD4B_SCP_Preparation_Receipt::TTL );
+check_gateway( ! is_wp_error( $boundary_ttl ) && 0 < $boundary_ttl, 'Preparation receipt boundary TTL unavailable' );
+$clock = MAD4B_SCP_Time_Policy::set_test_clock( $boundary_now, 1000 );
+check_gateway( ! is_wp_error( $clock ), 'Preparation receipt deterministic boundary clock unavailable' );
+$expired_boundary = $payload;
+$expired_boundary['issued_at'] = $boundary_now - (int) $boundary_ttl;
+$expired_boundary['expires_at'] = $boundary_now;
+check_gateway( is_wp_error( $verify( $sign( $expired_boundary ) ) ), 'Receipt expiring exactly at now was accepted' );
+MAD4B_SCP_Time_Policy::reset_test_clock();
 $malformed = $payload; $malformed['descriptor_sha256'] = array();
 check_gateway( is_wp_error( $verify( $sign( $malformed ) ) ), 'Malformed signed payload accepted' );
 $nonce_missing = $payload; unset( $nonce_missing['nonce'] );
