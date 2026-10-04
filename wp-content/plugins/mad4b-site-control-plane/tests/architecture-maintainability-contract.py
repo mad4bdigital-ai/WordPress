@@ -88,8 +88,20 @@ if over_limit and not grandfathered:
     if not manifest_path.is_file():
         raise SystemExit("CHANGE_SLICE_MANIFEST_REQUIRED")
     manifest=json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("contract")!="mad4b.change-slices.v1" or manifest.get("exact_head_sha")!=args.head:
-        raise SystemExit("CHANGE_SLICE_MANIFEST_EXACT_HEAD_INVALID")
+    expected_contract=str(slice_policy.get("manifest_contract") or "mad4b.change-slices.v2")
+    if manifest.get("contract")!=expected_contract:
+        raise SystemExit("CHANGE_SLICE_MANIFEST_CONTRACT_INVALID")
+    if "exact_head_sha" in manifest:
+        raise SystemExit("CHANGE_SLICE_SELF_REFERENTIAL_HEAD_FORBIDDEN")
+    reviewed_base=str(manifest.get("reviewed_base_sha") or "")
+    if not args.base or reviewed_base!=args.base:
+        raise SystemExit("CHANGE_SLICE_REVIEWED_BASE_INVALID")
+    scope_material="\\n".join(sorted(changed))+"\\n"
+    expected_scope_sha256=hashlib.sha256(scope_material.encode("utf-8")).hexdigest()
+    if manifest.get("changed_paths_sha256")!=expected_scope_sha256:
+        raise SystemExit("CHANGE_SLICE_SCOPE_DIGEST_INVALID")
+    if int(manifest.get("changed_file_count") or -1)!=len(changed):
+        raise SystemExit("CHANGE_SLICE_FILE_COUNT_INVALID")
     slices=manifest.get("slices")
     if not isinstance(slices,list) or not slices:
         raise SystemExit("CHANGE_SLICE_MANIFEST_EMPTY")

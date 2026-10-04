@@ -10,11 +10,15 @@
     "semantic_unit_required": true,
     "explicit_revert_boundary_required": true,
     "manifest_path": "specs/007-content-intelligence-workflow-platform/change-slices.json",
-    "grandfathered_pull_requests": [
-      236
-    ],
-    "grandfathering_scope": "current_inflight_pr_only",
-    "future_prs_must_comply": true
+    "grandfathered_pull_requests": [],
+    "grandfathering_scope": "none",
+    "future_prs_must_comply": true,
+    "manifest_contract": "mad4b.change-slices.v2",
+    "binding_mode": "ci_exact_head_context_plus_reviewed_base_and_changed_path_digest",
+    "self_referential_exact_head_forbidden": true,
+    "reviewed_base_required": true,
+    "changed_paths_sha256_required": true,
+    "changed_file_count_required": true
   },
   "size_budgets": {
     "new_php_domain_service_max_lines": 900,
