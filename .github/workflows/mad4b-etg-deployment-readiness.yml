@@ -1,0 +1,278 @@
+name: MAD4B ETG Deployment Readiness
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-etg-deployment-readiness.yml'
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact repository commit expected to be deployed on ETG Staging
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      expected_sha:
+        description: Exact repository commit expected to be deployed on ETG Staging
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+concurrency:
+  group: mad4b-etg-deployment-readiness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: ETG deployment gate contract
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify deployment gate remains isolated from master health
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/mad4b-etg-deployment-readiness.yml')
+          source = path.read_text(encoding='utf-8')
+
+          required = [
+              'workflow_dispatch:',
+              'workflow_call:',
+              "if: github.event_name != 'pull_request'",
+              'ETG exact runtime deployment gate',
+              'build-provenance:source_commit_sha_mismatch',
+              'runtime_identity_match',
+              'wpml_contract_compatible',
+              'mutation_performed',
+          ]
+          for marker in required:
+              if marker not in source:
+                  raise SystemExit(f'ETG deployment gate contract missing: {marker}')
+
+          if '\n  push:' in source:
+              raise SystemExit('ETG deployment readiness must not run on every master push')
+
+          print('mad4b.etg-deployment-readiness.contract.v1: PASS')
+          PY
+
+  exact-runtime:
+    name: ETG exact runtime deployment gate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
+      ETG_ORIGIN: https://staging.egypttourgates.com
+
+    steps:
+      - name: Resolve exact expected repository evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "expected_sha must be an exact lowercase 40-character commit SHA" >&2
+            exit 1
+          fi
+          out=/tmp/mad4b-etg-deployment-readiness
+          mkdir -p "$out"
+          find "$out" -maxdepth 1 -type f ! -name 'expected-runtime-build.txt' -delete
+          resolved_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$EXPECTED_SHA" --jq '.sha')"
+          test "$resolved_sha" = "$EXPECTED_SHA"
+          gh api             -H "Accept: application/vnd.github.raw+json"             "repos/$GITHUB_REPOSITORY/contents/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt?ref=$EXPECTED_SHA"             > "$out/expected-runtime-build.txt"
+          test -s "$out/expected-runtime-build.txt"
+
+      - name: Capture ETG deployment evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-etg-deployment-readiness
+          rm -rf "$out"
+          mkdir -p "$out"
+
+          capture() {
+            name="$1"
+            url="$2"
+            success=0
+            for attempt in 1 2 3; do
+              set +e
+              metrics="$(
+                curl --silent --show-error --compressed                   --connect-timeout 8                   --max-time 25                   --header 'Accept: application/json,text/plain,*/*'                   --header 'Cache-Control: no-cache, no-store, max-age=0'                   --header 'Pragma: no-cache'                   --user-agent 'MAD4B-ETG-Deployment-Readiness/1.0'                   --dump-header "$out/$name.headers"                   --output "$out/$name.body"                   --write-out '%{http_code}\t%{time_starttransfer}\t%{time_total}'                   "$url?mad4b_deployment_gate=$EXPECTED_SHA&attempt=$attempt"                   2>"$out/$name.stderr"
+              )"
+              curl_exit=$?
+              set -e
+              printf '%s\n' "$curl_exit" > "$out/$name.curl-exit"
+              printf '%s\n' "$metrics" > "$out/$name.metrics"
+              http_code="$(cut -f1 "$out/$name.metrics")"
+              if [ "$curl_exit" -eq 0 ] && [ "$http_code" = "200" ]; then
+                success=1
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then sleep 5; fi
+            done
+            printf '%s\n' "$success" > "$out/$name.success"
+          }
+
+          capture runtime-build "$ETG_ORIGIN/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt"
+          capture build-provenance "$ETG_ORIGIN/wp-content/plugins/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json"
+          capture rest-index "$ETG_ORIGIN/wp-json/"
+          capture wpml "$ETG_ORIGIN/wp-json/wpml/v1/rest/status"
+
+      - name: Enforce exact ETG deployment readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          root = Path('/tmp/mad4b-etg-deployment-readiness')
+          expected_sha = os.environ['EXPECTED_SHA'].strip().lower()
+          expected_build = {}
+          for line in (root / 'expected-runtime-build.txt').read_text(encoding='utf-8').splitlines():
+              if '=' in line:
+                  key, value = line.split('=', 1)
+                  expected_build[key.strip()] = value.strip()
+
+          def read_success(name):
+              try:
+                  return (root / f'{name}.success').read_text(encoding='utf-8').strip() == '1'
+              except Exception:
+                  return False
+
+          def read_body(name):
+              return (root / f'{name}.body').read_text(encoding='utf-8', errors='replace')
+
+          failures = []
+          for name in ('runtime-build', 'build-provenance', 'rest-index', 'wpml'):
+              if not read_success(name):
+                  failures.append(f'{name}:unreachable_or_non_200_after_retries')
+
+          live_build = {}
+          if read_success('runtime-build'):
+              for line in read_body('runtime-build').splitlines():
+                  if '=' in line:
+                      key, value = line.split('=', 1)
+                      live_build[key.strip()] = value.strip()
+
+          provenance = {}
+          if read_success('build-provenance'):
+              try:
+                  parsed = json.loads(read_body('build-provenance'))
+                  if isinstance(parsed, dict):
+                      provenance = parsed
+                  else:
+                      failures.append('build-provenance:not_object')
+              except Exception as exc:
+                  failures.append(f'build-provenance:json_invalid:{type(exc).__name__}')
+
+          if live_build.get('contract') != expected_build.get('contract'):
+              failures.append('runtime-build:contract_mismatch')
+          if live_build.get('release') != expected_build.get('release'):
+              failures.append('runtime-build:release_mismatch')
+
+          if provenance.get('contract') != 'mad4b.build-provenance.v1':
+              failures.append('build-provenance:contract_mismatch')
+          live_sha = str(provenance.get('source_commit_sha') or '').strip().lower()
+          if live_sha != expected_sha:
+              failures.append(f'build-provenance:source_commit_sha_mismatch:{live_sha or "missing"}')
+          for field in ('build_fingerprint', 'package_manifest_digest'):
+              value = str(provenance.get(field) or '').strip().lower()
+              if re.fullmatch(r'[a-f0-9]{64}', value) is None:
+                  failures.append(f'build-provenance:{field}_invalid')
+
+          namespace_present = False
+          route_present = False
+          if read_success('rest-index'):
+              try:
+                  rest = json.loads(read_body('rest-index'))
+                  namespaces = rest.get('namespaces', []) if isinstance(rest, dict) else []
+                  routes = rest.get('routes', {}) if isinstance(rest, dict) else {}
+                  namespace_present = 'wpml/v1' in namespaces
+                  route_present = '/wpml/v1/rest/status' in routes
+              except Exception as exc:
+                  failures.append(f'rest-index:json_invalid:{type(exc).__name__}')
+          if not namespace_present:
+              failures.append('rest-index:wpml_namespace_missing')
+          if not route_present:
+              failures.append('rest-index:wpml_route_missing')
+
+          wpml_status = ''
+          wpml_get_parameters = ''
+          if read_success('wpml'):
+              try:
+                  payload = json.loads(read_body('wpml'))
+                  if isinstance(payload, dict) and payload.get('success') is True and isinstance(payload.get('data'), dict):
+                      payload = payload['data']
+                  if isinstance(payload, dict):
+                      wpml_status = str(payload.get('status', ''))
+                      wpml_get_parameters = str(payload.get('get_parameters', ''))
+              except Exception as exc:
+                  failures.append(f'wpml:json_invalid:{type(exc).__name__}')
+          if wpml_status != 'valid' or wpml_get_parameters != 'valid':
+              failures.append('wpml:contract_invalid')
+
+          evidence = {
+              'contract': 'mad4b.etg-deployment-readiness.v1',
+              'origin': os.environ['ETG_ORIGIN'],
+              'expected_sha': expected_sha,
+              'live_source_sha': live_sha,
+              'expected_runtime_build': expected_build,
+              'live_runtime_build': live_build,
+              'runtime_identity_match': live_sha == expected_sha and not any(
+                  item.startswith('runtime-build:') or item.startswith('build-provenance:')
+                  for item in failures
+              ),
+              'wpml_namespace_present': namespace_present,
+              'wpml_route_present': route_present,
+              'wpml_contract_compatible': wpml_status == 'valid' and wpml_get_parameters == 'valid',
+              'failures': failures,
+              'ready': not failures,
+              'mutation_performed': False,
+          }
+          (root / 'readiness.json').write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as fh:
+              fh.write('## ETG deployment readiness\n\n')
+              fh.write(f'- expected SHA: `{expected_sha}`\n')
+              fh.write(f'- live SHA: `{live_sha or "missing"}`\n')
+              fh.write(f'- runtime identity match: `{str(evidence["runtime_identity_match"]).lower()}`\n')
+              fh.write(f'- WPML contract compatible: `{str(evidence["wpml_contract_compatible"]).lower()}`\n')
+              fh.write(f'- ready: `{str(evidence["ready"]).lower()}`\n')
+              if failures:
+                  fh.write('- blockers:\n')
+                  for item in failures:
+                      fh.write(f'  - `{item}`\n')
+
+          print(json.dumps(evidence, indent=2, sort_keys=True))
+          if failures:
+              raise SystemExit('ETG deployment readiness blocked: ' + '; '.join(failures))
+          PY
+
+      - name: Upload ETG deployment readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-etg-deployment-readiness-${{ env.EXPECTED_SHA }}
+          path: /tmp/mad4b-etg-deployment-readiness/
+          if-no-files-found: error
+          retention-days: 30
