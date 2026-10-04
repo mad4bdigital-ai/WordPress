@@ -267,7 +267,8 @@ if ( in_array( $case, array( 'cron_conflict_auto_recovery', 'cron_conflict_auto_
 		check_recovery( $observed === hash_file( 'sha256', $destination ), 'Production automatic conflict recovery mutated MU bytes' );
 		echo $case . ': PASS' . PHP_EOL; exit;
 	}
-	check_recovery( ! is_wp_error( $result ) && ! empty( $result['automatic_conflict_recovery'] ) && empty( $result['explicit_conflict_recovery'] ), 'automatic conflict recovery did not complete as background recovery' );
+	if ( is_wp_error( $result ) ) throw new RuntimeException( $case . ': automatic conflict recovery blocker=' . $result->get_error_code() );
+	check_recovery( ! empty( $result['automatic_conflict_recovery'] ) && empty( $result['explicit_conflict_recovery'] ), 'automatic conflict recovery did not complete as background recovery' );
 	check_recovery( 'automatic_staging_recovery' === ( $result['conflict_recovery_source'] ?? '' ), 'automatic conflict recovery source was not preserved' );
 	check_recovery( hash_file( 'sha256', $destination ) === hash_file( 'sha256', $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php' ), 'automatic conflict recovery did not install certified bytes' );
 	$backups = glob( $root . '-protected-backups/mcp-mu-bootstrap-conflict-*.bak' );
