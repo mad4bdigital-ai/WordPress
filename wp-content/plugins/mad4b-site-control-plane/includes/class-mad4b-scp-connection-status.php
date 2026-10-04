@@ -433,6 +433,7 @@ final class MAD4B_SCP_Connection_Status {
 		$server = $servers ? $servers[0] : array( 'server_id' => $server_id );
 		$registration = MAD4B_SCP_Servers::registration_status();
 		$row = isset( $registration[ $server_id ] ) && is_array( $registration[ $server_id ] ) ? $registration[ $server_id ] : array();
+		$registration_failure = isset( $row['registration_failure'] ) && is_array( $row['registration_failure'] ) ? $row['registration_failure'] : array();
 		$server['catalog_materialized'] = ! empty( $row['materialized'] );
 		$server['tool_count'] = $server['observed_tool_count'] ?? null;
 		$server['catalog_tool_count'] = isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : null;
@@ -467,7 +468,6 @@ final class MAD4B_SCP_Connection_Status {
 			}
 			$server['runtime_class_failures'][] = $row;
 		}
-		$registration_failure = isset( $row['registration_failure'] ) && is_array( $row['registration_failure'] ) ? $row['registration_failure'] : array();
 		$server['registration_failure_stage'] = isset( $registration_failure['stage'] ) ? sanitize_key( (string) $registration_failure['stage'] ) : '';
 		$server['registration_failure_reason'] = isset( $registration_failure['reason'] ) ? sanitize_key( (string) $registration_failure['reason'] ) : '';
 		$registration_failure_fingerprint = isset( $registration_failure['fingerprint'] ) ? strtolower( (string) $registration_failure['fingerprint'] ) : '';
