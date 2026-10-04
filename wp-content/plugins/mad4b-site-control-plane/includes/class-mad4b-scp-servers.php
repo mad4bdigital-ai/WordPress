@@ -492,9 +492,6 @@ final class MAD4B_SCP_Servers {
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ) {
 			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() );
 		}
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) {
-			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools() );
-		}
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
 			$tools[] = MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY;
 		}
@@ -547,8 +544,8 @@ final class MAD4B_SCP_Servers {
 				|| ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) continue;
 			$tools[] = $ability_name;
 		}
-		// Preserve candidate priority: Full Staging, bootstrap self-update and
-		// governed runtime gates are retained before optional semantic projections
+		// Preserve candidate priority: narrow governed Write, Full Staging,
+		// bootstrap self-update and governed runtime gates are retained before optional semantic projections
 		// if the bounded MCP catalog budget requires degradation.
 		$tools = array_values( array_unique( $tools ) );
 		return $tools;
@@ -586,9 +583,6 @@ final class MAD4B_SCP_Servers {
 		$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
 			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()
 			: array();
-		$write_convergence_read = class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' )
-			? MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()
-			: array();
 		$full_read = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			&& class_exists( 'MAD4B_SCP_Site_Profile' )
 			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
@@ -605,7 +599,6 @@ final class MAD4B_SCP_Servers {
 				'mad4b/staging-write-candidate-binding-audit',
 			),
 			$narrow_read,
-			$write_convergence_read,
 			$full_read,
 			$runtime_gate_read,
 			$step_up
