@@ -196,3 +196,13 @@ Repository CI proves contracts and denial behavior only. Live ETG gates still re
 Repository implementation now includes the bounded `wordpress_plugin_deploy` Host Bridge → Host Runner semantic operation. It accepts exact package identity only, consumes a pre-staged General Distribution bundle from the fixed runner zone, verifies manifest/receipt/provenance/archive inventory, backs up the current Control Plane, performs an atomic plugin-directory swap, verifies the installed exact package in the same cycle, and rolls back on failed readback.
 
 This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **PARTIAL** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.\n\n## Phase 38 maturity extension — Adaptive Search Intelligence\n\nPhase 38 is now an explicit MATURITY_REQUIRED extension documented by `adaptive-search-intelligence.md`, `contracts/adaptive-search-intelligence-runtime.md` and `adaptive-search-intelligence.json`. It generalizes the Phase 6 SERPProvider and Phase 14 Growth concepts into an adaptive, provider-neutral Search Intelligence runtime with live surface/language/SEO discovery, target compilation, fair economic scheduling, immutable SERP evidence, confidence-aware signals and a capability/state-driven operator experience.\n\nThis extension is deliberately outside the current Critical Kernel terminal proof unless a concrete runtime dependency is later admitted through the normal Architecture Freeze process. It creates no Production authority, no Breakglass widening, no generic HTTP surface and no direct search-signal-to-content mutation path.\n
+
+## Adaptive Search review status: APPROVED_WITH_GAPS
+
+The independent Phase 38 review is recorded in `adaptive-search-intelligence-review.md` and `adaptive-search-intelligence-review.json`.
+
+Current review score: **88/100 overall specification maturity**.
+
+The review identified 10 P0 and 8 P1 gaps. P0 issues concentrate on observation comparability, canonical query/URL/rank/capture semantics, multi-dimensional search eligibility, bounded facet/virtual-surface admission, shared provider-account budget authority, provider evidence rights/retention, deterministic decision policy, objective gate criteria and composed cross-fault proof.
+
+These gaps do not widen the Critical Kernel and do not grant authority. Phase 38 remains MATURITY_REQUIRED and OPEN. Broad Search Intelligence runtime implementation must not claim production-grade completeness until the review P0 set is closed by exact-head executable evidence.
