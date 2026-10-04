@@ -74,7 +74,7 @@ final class MAD4B_SCP_Search_Measurement {
 		return implode( '&', $out );
 	}
 
-	public static function normalize_url_identity( $observed_url, $effective_canonical = '', $redirect_target = '' ) {
+	public static function normalize_url_identity( $observed_url, $effective_canonical = '', $redirect_target = '', array $ownership = array() ) {
 		$observed = trim( (string) $observed_url );
 		if ( '' === $observed ) return new WP_Error( 'mad4b_search_url_empty', 'Observed URL is required.' );
 		$parts = wp_parse_url( $observed );
@@ -114,6 +114,8 @@ final class MAD4B_SCP_Search_Measurement {
 			'redirect_target_url' => $redirect,
 			'identity_url' => $identity_url,
 			'host' => $host,
+			'registrable_domain' => strtolower( trim( (string) ( $ownership['registrable_domain'] ?? '' ) ) ),
+			'ownership_evidence_state' => '' !== trim( (string) ( $ownership['registrable_domain'] ?? '' ) ) ? 'supplied' : 'unresolved',
 			'normalization_version' => self::URL_NORMALIZATION_VERSION,
 		);
 		$result['url_identity_sha256'] = self::digest( $result );
@@ -192,6 +194,7 @@ final class MAD4B_SCP_Search_Measurement {
 			'absolute_position' => $absolute,
 			'provider_native_position' => $native,
 			'container_type' => sanitize_key( (string) ( $result['container_type'] ?? $type ) ),
+			'comparison_metric' => 'organic' === $type ? 'organic_rank' : 'provider_feature_position',
 			'normalization_version' => self::RANK_NORMALIZATION_VERSION,
 		);
 	}
@@ -202,13 +205,15 @@ final class MAD4B_SCP_Search_Measurement {
 		$partial_reason = sanitize_key( (string) ( $capture['partial_reason'] ?? '' ) );
 		$validated = ! empty( $capture['validated'] );
 		$target_found = ! empty( $capture['target_found'] );
-		$complete = $validated && '' === $partial_reason && $returned >= $requested;
+		$provider_complete = ! empty( $capture['provider_complete'] );
+		$complete = $validated && '' === $partial_reason && ( $returned >= $requested || $provider_complete );
 		$state = $complete ? 'complete' : ( '' !== $partial_reason ? 'partial' : 'incomplete' );
 		return array(
 			'contract' => self::CAPTURE_COMPLETENESS_VERSION,
 			'requested_depth' => $requested,
 			'returned_depth' => $returned,
 			'validated' => $validated,
+			'provider_complete' => $provider_complete,
 			'state' => $state,
 			'partial_reason' => $partial_reason,
 			'target_found' => $target_found,
