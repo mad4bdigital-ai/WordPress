@@ -13,6 +13,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	const PROFILE_PLAN_CONTRACT = 'mad4b.content-experience-profile-plan.v1';
 	const OPTION = 'mad4b_content_experience_profiles_v1';
 	const PROFILE_APPLY_ABILITY = 'mad4b/content-experience-profile-apply';
+	const PROFILE_CLONE_APPLY_ABILITY = 'mad4b/content-experience-profile-clone-apply';
+	const PROFILE_DELETE_APPLY_ABILITY = 'mad4b/content-experience-profile-delete-apply';
 	const MAX_PROFILES = 64;
 	const MAX_META_KEYS = 128;
 	const MAX_TAXONOMIES = 32;
@@ -339,6 +341,76 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		);
 	}
 
+	public static function profile_clone_plan( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$source = self::profile( isset( $input['source_slug'] ) ? $input['source_slug'] : '' );
+		if ( is_wp_error( $source ) ) return $source;
+		$new_slug = self::route_slug( isset( $input['new_slug'] ) ? $input['new_slug'] : '' );
+		if ( is_wp_error( $new_slug ) ) return $new_slug;
+		if ( ! is_wp_error( self::profile( $new_slug ) ) ) return new WP_Error( 'mad4b_content_experience_clone_target_exists', 'Clone target profile already exists.' );
+		$copy = $source;
+		unset( $copy['revision'], $copy['routes'], $copy['authority_sha256'], $copy['helper_catalog_sha256'] );
+		$copy['slug'] = $new_slug;
+		if ( isset( $input['label'] ) ) $copy['label'] = sanitize_text_field( (string) $input['label'] );
+		if ( isset( $input['post_type'] ) ) $copy['post_type'] = sanitize_key( (string) $input['post_type'] );
+		$profile_plan = self::profile_plan( array( 'profile' => $copy, 'expected_revision' => 0 ) );
+		if ( is_wp_error( $profile_plan ) ) return $profile_plan;
+		return array(
+			'contract' => self::PROFILE_PLAN_CONTRACT,
+			'operation' => 'clone',
+			'source_slug' => (string) $source['slug'],
+			'source_authority_sha256' => isset( $source['authority_sha256'] ) ? (string) $source['authority_sha256'] : '',
+			'profile_plan' => $profile_plan,
+			'plan_sha256' => $profile_plan['plan_sha256'],
+			'content_copied' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	public static function profile_clone_apply( $input ) {
+		$plan = self::profile_clone_plan( $input );
+		if ( is_wp_error( $plan ) ) return $plan;
+		$expected = isset( $input['plan_sha256'] ) ? strtolower( trim( (string) $input['plan_sha256'] ) ) : '';
+		if ( '' === $expected || ! hash_equals( $plan['plan_sha256'], $expected ) ) return new WP_Error( 'mad4b_content_experience_clone_plan_drift', 'Profile clone apply does not match the exact reviewed plan.' );
+		$p = $plan['profile_plan'];
+		return self::profile_apply( array( 'profile' => $p['profile'], 'expected_revision' => 0, 'plan_sha256' => $p['plan_sha256'] ) );
+	}
+
+	public static function profile_delete_plan( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$profile = self::profile( isset( $input['slug'] ) ? $input['slug'] : '' );
+		if ( is_wp_error( $profile ) ) return $profile;
+		$expected_revision = isset( $input['expected_revision'] ) ? (int) $input['expected_revision'] : (int) $profile['revision'];
+		if ( $expected_revision !== (int) $profile['revision'] ) return new WP_Error( 'mad4b_content_experience_profile_revision_drift', 'Experience profile changed since delete planning.' );
+		$plan = array(
+			'contract' => self::PROFILE_PLAN_CONTRACT,
+			'operation' => 'delete',
+			'slug' => (string) $profile['slug'],
+			'expected_revision' => $expected_revision,
+			'profile_authority_sha256' => isset( $profile['authority_sha256'] ) ? (string) $profile['authority_sha256'] : '',
+			'content_preserved' => true,
+			'routes_removed_next_request' => true,
+			'mutation_performed' => false,
+		);
+		$plan['plan_sha256'] = hash( 'sha256', wp_json_encode( $plan, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		return $plan;
+	}
+
+	public static function profile_delete_apply( $input ) {
+		$plan = self::profile_delete_plan( $input );
+		if ( is_wp_error( $plan ) ) return $plan;
+		$expected = isset( $input['plan_sha256'] ) ? strtolower( trim( (string) $input['plan_sha256'] ) ) : '';
+		if ( '' === $expected || ! hash_equals( $plan['plan_sha256'], $expected ) ) return new WP_Error( 'mad4b_content_experience_delete_plan_drift', 'Profile delete apply does not match the exact reviewed plan.' );
+		$profiles = self::stored_profiles();
+		unset( $profiles[ $plan['slug'] ] );
+		ksort( $profiles, SORT_STRING );
+		if ( ! update_option( self::OPTION, $profiles, false ) && get_option( self::OPTION, array() ) !== $profiles ) return new WP_Error( 'mad4b_content_experience_profile_delete_failed', 'Unable to persist profile decommission.' );
+		self::$profiles = $profiles;
+		if ( class_exists( 'MAD4B_SCP_Servers' ) ) MAD4B_SCP_Servers::reset_request_cache();
+		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && method_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', 'reset_request_cache' ) ) MAD4B_SCP_ChatGPT_Tool_Projection::reset_request_cache();
+		return array( 'contract' => self::CONTRACT, 'slug' => $plan['slug'], 'deleted' => true, 'content_preserved' => true, 'plan_sha256' => $plan['plan_sha256'] );
+	}
+
 	public static function profile_status( $input = array() ) {
 		$profiles = array();
 		foreach ( self::stored_profiles() as $slug => $profile ) {
@@ -405,8 +477,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 
 	public static function ability_names( $surface ) {
 		$surface = sanitize_key( (string) $surface );
-		$read = array( 'mad4b/content-experience-discover', 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan' );
-		$content = array( self::PROFILE_APPLY_ABILITY );
+		$read = array( 'mad4b/content-experience-discover', 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
+		$content = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
 			$routes = self::profile_routes( $profile['slug'] );
@@ -419,7 +491,11 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	}
 
 	public static function reversible_contracts() {
-		$result = array( self::PROFILE_APPLY_ABILITY => 'mad4b.rollback.content-experience-profile.v1' );
+		$result = array(
+			self::PROFILE_APPLY_ABILITY => 'mad4b.rollback.content-experience-profile.v1',
+			self::PROFILE_CLONE_APPLY_ABILITY => 'mad4b.rollback.content-experience-profile.v1',
+			self::PROFILE_DELETE_APPLY_ABILITY => 'mad4b.rollback.content-experience-profile.v1',
+		);
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
 			$routes = self::profile_routes( $profile['slug'] );
@@ -466,6 +542,26 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'name' => 'mad4b/content-experience-profile-plan', 'label' => 'Plan Content Experience Profile', 'callback' => array( __CLASS__, 'profile_plan' ), 'permission' => $read,
 				'schema' => self::schema( array( 'profile' => array( 'type' => 'object', 'additionalProperties' => true ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ) ), array( 'profile' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+			),
+			array(
+				'name' => 'mad4b/content-experience-profile-clone-plan', 'label' => 'Plan Content Experience Profile Clone', 'callback' => array( __CLASS__, 'profile_clone_plan' ), 'permission' => $read,
+				'schema' => self::schema( array( 'source_slug' => array( 'type' => 'string' ), 'new_slug' => array( 'type' => 'string' ), 'label' => array( 'type' => 'string' ), 'post_type' => array( 'type' => 'string' ) ), array( 'source_slug', 'new_slug' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+			),
+			array(
+				'name' => self::PROFILE_CLONE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile Clone', 'callback' => array( __CLASS__, 'profile_clone_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array( 'source_slug' => array( 'type' => 'string' ), 'new_slug' => array( 'type' => 'string' ), 'label' => array( 'type' => 'string' ), 'post_type' => array( 'type' => 'string' ), 'plan_sha256' => self::sha_schema() ), array( 'source_slug', 'new_slug', 'plan_sha256' ) ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => true,
+			),
+			array(
+				'name' => 'mad4b/content-experience-profile-delete-plan', 'label' => 'Plan Content Experience Profile Decommission', 'callback' => array( __CLASS__, 'profile_delete_plan' ), 'permission' => $read,
+				'schema' => self::schema( array( 'slug' => array( 'type' => 'string' ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'slug' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+			),
+			array(
+				'name' => self::PROFILE_DELETE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile Decommission', 'callback' => array( __CLASS__, 'profile_delete_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array( 'slug' => array( 'type' => 'string' ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ), 'plan_sha256' => self::sha_schema() ), array( 'slug', 'plan_sha256' ) ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => true,
 			),
 			array(
 				'name' => self::PROFILE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile', 'callback' => array( __CLASS__, 'profile_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
@@ -556,7 +652,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 
 	public static function semantic_contract_for_ability( $ability_name ) {
 		$ability_name = (string) $ability_name;
-		if ( self::PROFILE_APPLY_ABILITY === $ability_name ) {
+		if ( in_array( $ability_name, array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY ), true ) ) {
 			return array(
 				'provider' => 'core',
 				'mode' => 'object_fields',
@@ -626,8 +722,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	}
 
 	public static function capture_reversible_state( $ability_name, array $input ) {
-		if ( self::PROFILE_APPLY_ABILITY === $ability_name ) {
-			$slug = self::route_slug( isset( $input['profile']['slug'] ) ? $input['profile']['slug'] : '' );
+		if ( in_array( $ability_name, array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY ), true ) ) {
+			$raw_slug = self::PROFILE_CLONE_APPLY_ABILITY === $ability_name ? ( isset( $input['new_slug'] ) ? $input['new_slug'] : '' ) : ( self::PROFILE_DELETE_APPLY_ABILITY === $ability_name ? ( isset( $input['slug'] ) ? $input['slug'] : '' ) : ( isset( $input['profile']['slug'] ) ? $input['profile']['slug'] : '' ) );
+			$slug = self::route_slug( $raw_slug );
 			if ( is_wp_error( $slug ) ) return $slug;
 			$profiles = self::stored_profiles();
 			return array(
