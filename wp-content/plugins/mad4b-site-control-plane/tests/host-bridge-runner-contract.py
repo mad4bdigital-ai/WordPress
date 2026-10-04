@@ -186,6 +186,11 @@ with tempfile.TemporaryDirectory() as td:
     current_build = "b" * 64
     current_manifest = "c" * 64
     seed_plugin(plugin, current_source, current_build, current_manifest, "0.4.0-rc.58", "bridge-current")
+    current_runtime_identity = {
+        "source_commit_sha": current_source,
+        "build_fingerprint": current_build,
+        "package_manifest_digest": current_manifest,
+    }
 
     key = tmp / "runner.key"
     key.write_bytes(b"k" * 64)
@@ -267,6 +272,9 @@ with tempfile.TemporaryDirectory() as td:
     assert bridge_receipt["commit_location"] == "host_runner"
     assert bridge_receipt["mutation_performed"] is False
     assert bridge_receipt["result"]["plugin_present"] is True
+    assert bridge_receipt["runtime_identity_stable"] is True, "read receipt lost runtime candidate identity"
+    assert bridge_receipt["runtime_identity_before"]["identity"] == current_runtime_identity
+    assert bridge_receipt["runtime_identity_after"]["identity"] == current_runtime_identity
 
     local_receipt = json.loads(
         (Path(profile["receipt_root"]) / f"{job_id}.json").read_text(encoding="utf-8")
@@ -350,6 +358,9 @@ with tempfile.TemporaryDirectory() as td:
     assert write_receipt["submission_location"] == "wordpress_request"
     assert write_receipt["execution_location"] == "host_runner"
     assert write_receipt["commit_location"] == "host_runner"
+    assert write_receipt["runtime_identity_stable"] is True, "write receipt lost stable runtime candidate identity"
+    assert write_receipt["runtime_identity_before"]["identity"] == current_runtime_identity
+    assert write_receipt["runtime_identity_after"]["identity"] == current_runtime_identity
     assert (Path(profile["runner_workspace"]) / "bridge-write.txt").read_bytes() == workspace_payload
 
     # Exact Control Plane package deployment traverses the same WordPress
@@ -363,6 +374,11 @@ with tempfile.TemporaryDirectory() as td:
         "0.4.0-rc.59",
         "bridge-candidate",
     )
+    candidate_runtime_identity = {
+        "source_commit_sha": candidate["source_commit_sha"],
+        "build_fingerprint": candidate["build_fingerprint"],
+        "package_manifest_digest": candidate["package_manifest_digest"],
+    }
     execution_plan = deploy_plan(
         profile,
         {
@@ -432,6 +448,9 @@ with tempfile.TemporaryDirectory() as td:
     assert deploy_receipt["mutation_performed"] is True
     assert deploy_receipt["readback_verdict"] == "PASS"
     assert deploy_receipt["result"]["source_commit_sha"] == candidate["source_commit_sha"]
+    assert deploy_receipt["runtime_identity_stable"] is False, "deploy receipt candidate transition was not bound"
+    assert deploy_receipt["runtime_identity_before"]["identity"] == current_runtime_identity
+    assert deploy_receipt["runtime_identity_after"]["identity"] == candidate_runtime_identity
     live_identity = runner._installed_control_plane_identity(plugin)
     assert live_identity["source_commit_sha"] == candidate["source_commit_sha"]
     deploy_replay = runner.run_job(
@@ -507,6 +526,9 @@ with tempfile.TemporaryDirectory() as td:
     assert rollback_receipt["result"]["source_job_id"] == deploy_id
     assert rollback_receipt["mutation_performed"] is True
     assert rollback_receipt["readback_verdict"] == "PASS"
+    assert rollback_receipt["runtime_identity_stable"] is False, "rollback receipt candidate transition was not bound"
+    assert rollback_receipt["runtime_identity_before"]["identity"] == candidate_runtime_identity
+    assert rollback_receipt["runtime_identity_after"]["identity"] == current_runtime_identity
     restored_identity = runner._installed_control_plane_identity(plugin)
     assert restored_identity["source_commit_sha"] == current_source
     assert restored_identity["build_fingerprint"] == current_build
