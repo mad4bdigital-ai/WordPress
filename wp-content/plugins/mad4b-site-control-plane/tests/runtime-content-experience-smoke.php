@@ -58,6 +58,24 @@ try {
 	$adapter->register_abilities();
 	$check( wp_has_ability( $routes_v1['create_apply'] ), 'Generated create executor Ability was not registered.' );
 	$check( wp_has_ability( $routes_v1['update_apply'] ), 'Generated update executor Ability was not registered.' );
+	$check( wp_has_ability( $routes_v1['publish_apply'] ), 'Generated publish executor Ability was not registered.' );
+
+	$create_ability = wp_get_ability( $routes_v1['create_apply'] );
+	$update_ability = wp_get_ability( $routes_v1['update_apply'] );
+	$publish_ability = wp_get_ability( $routes_v1['publish_apply'] );
+	$profile_apply_ability = wp_get_ability( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY );
+	$check( true === $create_ability->get_meta()['annotations']['idempotent'], 'Create replay must remain explicitly idempotent.' );
+	$check( false === $update_ability->get_meta()['annotations']['idempotent'], 'Update must not claim retry idempotency after modified-state drift.' );
+	$check( false === $publish_ability->get_meta()['annotations']['idempotent'], 'Publish must not claim retry idempotency after status drift.' );
+	$check( false === $profile_apply_ability->get_meta()['annotations']['idempotent'], 'Profile apply must be exact one-shot revision mutation.' );
+
+	$descriptor_v1 = MAD4B_SCP_Capability_Descriptor_Registry::binding( $routes_v1['create_apply'], 'content_experience_runtime_smoke' );
+	$check( ! is_wp_error( $descriptor_v1 ), 'Generated executor Capability Descriptor binding failed.' );
+	$check(
+		isset( $descriptor_v1['generation_roots']['extension_roots']['content_experience_profile'] )
+		&& hash_equals( $profile_v1['authority_sha256'], (string) $descriptor_v1['generation_roots']['extension_roots']['content_experience_profile'] ),
+		'Generated executor descriptor is not bound to exact profile authority.'
+	);
 
 	$create_input = array(
 		'post_title' => 'CI governed trip',
@@ -127,8 +145,19 @@ try {
 	$check( ! is_wp_error( $profile_plan2 ), 'Profile revision-two plan failed.' );
 	$applied_profile2 = MAD4B_SCP_Content_Experience_Profiles::profile_apply( array( 'profile' => $profile_input, 'expected_revision' => 1, 'plan_sha256' => $profile_plan2['plan_sha256'] ) );
 	$check( ! is_wp_error( $applied_profile2 ), 'Profile revision-two apply failed.' );
-	$routes_v2 = $applied_profile2['profile']['routes'];
+	$profile_v2 = $applied_profile2['profile'];
+	$routes_v2 = $profile_v2['routes'];
 	$check( $routes_v1['update_apply'] !== $routes_v2['update_apply'] && false !== strpos( $routes_v2['update_apply'], '-r2-update-apply' ), 'Profile authority change did not rotate mutation executor generation.' );
+	$check( ! hash_equals( $profile_v1['authority_sha256'], $profile_v2['authority_sha256'] ), 'Profile revision did not rotate authority fingerprint.' );
+	$adapter->register_abilities();
+	$check( wp_has_ability( $routes_v2['update_apply'] ), 'Revision-two executor Ability was not registered after profile rotation.' );
+	$descriptor_v2 = MAD4B_SCP_Capability_Descriptor_Registry::binding( $routes_v2['update_apply'], 'content_experience_runtime_smoke' );
+	$check( ! is_wp_error( $descriptor_v2 ), 'Revision-two Capability Descriptor binding failed.' );
+	$check(
+		isset( $descriptor_v2['generation_roots']['extension_roots']['content_experience_profile'] )
+		&& hash_equals( $profile_v2['authority_sha256'], (string) $descriptor_v2['generation_roots']['extension_roots']['content_experience_profile'] ),
+		'Revision-two executor descriptor is not bound to rotated profile authority.'
+	);
 	$restored_old = MAD4B_SCP_Content_Experience_Runtime::restore_reversible_state( $before_update['target'], $before_update['state'] );
 	$check( true === $restored_old, 'Historical rollback could not restore after current profile advanced.' );
 	$check( '' === get_post( $post_id )->post_excerpt, 'Historical rollback used mutable current profile state.' );
