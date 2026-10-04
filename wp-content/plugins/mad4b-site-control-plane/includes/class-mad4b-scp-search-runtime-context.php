@@ -307,32 +307,56 @@ final class MAD4B_SCP_Search_Runtime_Context {
 
 	public static function profile_apply( $input ) {
 		$input = is_array( $input ) ? $input : array();
-		$expected = strtolower( trim( (string) ( isset( $input['plan_sha256'] ) ? $input['plan_sha256'] : '' ) ) );
-		$plan_input = $input;
-		unset( $plan_input['plan_sha256'], $plan_input['_mad4b_approval_ticket_id'], $plan_input['_mad4b_context_receipt'] );
-		$plan = self::profile_plan( $plan_input );
-		if ( is_wp_error( $plan ) ) return $plan;
-		if ( '' === $expected || ! hash_equals( $plan['plan_sha256'], $expected ) ) {
-			return new WP_Error( 'mad4b_search_profile_plan_drift', 'Search Profile apply does not match the exact reviewed plan.' );
+		$raw = isset( $input['profile'] ) && is_array( $input['profile'] ) ? $input['profile'] : array();
+		$profile_id = self::clean_id( isset( $raw['profile_id'] ) ? $raw['profile_id'] : '', 'profile_id' );
+		if ( is_wp_error( $profile_id ) ) return $profile_id;
+		if ( ! class_exists( 'MAD4B_SCP_Distributed_Lock' ) ) {
+			return new WP_Error( 'mad4b_search_profile_lock_unavailable', 'Search Profile apply requires the distributed lock service.' );
 		}
-		$rows = self::stored_profiles();
-		$profile = $plan['profile'];
-		$rows[ $profile['profile_id'] ] = $profile;
-		if ( count( $rows ) > self::MAX_PROFILES ) return new WP_Error( 'mad4b_search_profile_limit', 'Search Profile limit reached.' );
-		ksort( $rows, SORT_STRING );
-		if ( ! update_option( self::OPTION, $rows, false ) && get_option( self::OPTION, array() ) !== $rows ) {
-			return new WP_Error( 'mad4b_search_profile_write_failed', 'Unable to persist Search Profile.' );
+		$lock = MAD4B_SCP_Distributed_Lock::catalog_name( 'search-profile:' . $profile_id );
+		$acquired = MAD4B_SCP_Distributed_Lock::acquire( $lock );
+		if ( is_wp_error( $acquired ) ) {
+			return new WP_Error(
+				'mad4b_search_profile_apply_in_progress',
+				'Another Search Profile apply is already active for this profile.',
+				array( 'profile_id' => $profile_id, 'lock_error' => $acquired->get_error_code() )
+			);
 		}
-		self::$profiles = $rows;
-		return array(
-			'contract' => self::PROFILE_CONTRACT,
-			'profile' => $profile,
-			'applied' => true,
-			'plan_sha256' => $plan['plan_sha256'],
-			'authorizing' => false,
-			'wordpress_mutation_authority_granted' => false,
-			'production_authority_granted' => false,
-		);
+		try {
+			// Re-read after acquiring the profile-scoped mutex. This closes the
+			// read-plan-write race between concurrent requests using the same
+			// expected revision and prevents a last-writer-wins lost update.
+			self::reset_request_cache();
+			$expected = strtolower( trim( (string) ( isset( $input['plan_sha256'] ) ? $input['plan_sha256'] : '' ) ) );
+			$plan_input = $input;
+			unset( $plan_input['plan_sha256'], $plan_input['_mad4b_approval_ticket_id'], $plan_input['_mad4b_context_receipt'] );
+			$plan = self::profile_plan( $plan_input );
+			if ( is_wp_error( $plan ) ) return $plan;
+			if ( '' === $expected || ! hash_equals( $plan['plan_sha256'], $expected ) ) {
+				return new WP_Error( 'mad4b_search_profile_plan_drift', 'Search Profile apply does not match the exact reviewed plan.' );
+			}
+			$rows = self::stored_profiles();
+			$profile = $plan['profile'];
+			$rows[ $profile['profile_id'] ] = $profile;
+			if ( count( $rows ) > self::MAX_PROFILES ) return new WP_Error( 'mad4b_search_profile_limit', 'Search Profile limit reached.' );
+			ksort( $rows, SORT_STRING );
+			if ( ! update_option( self::OPTION, $rows, false ) && get_option( self::OPTION, array() ) !== $rows ) {
+				return new WP_Error( 'mad4b_search_profile_write_failed', 'Unable to persist Search Profile.' );
+			}
+			self::$profiles = $rows;
+			return array(
+				'contract' => self::PROFILE_CONTRACT,
+				'profile' => $profile,
+				'applied' => true,
+				'plan_sha256' => $plan['plan_sha256'],
+				'concurrency_guard' => 'profile_scoped_distributed_lock',
+				'authorizing' => false,
+				'wordpress_mutation_authority_granted' => false,
+				'production_authority_granted' => false,
+			);
+		} finally {
+			MAD4B_SCP_Distributed_Lock::release( $lock );
+		}
 	}
 
 	public static function profile_verify( $input ) {
