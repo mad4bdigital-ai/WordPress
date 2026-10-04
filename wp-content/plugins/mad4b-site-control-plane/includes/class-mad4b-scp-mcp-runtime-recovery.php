@@ -165,7 +165,10 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	public static function schedule() {
 		if ( ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) return;
 		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
-		if ( ! wp_next_scheduled( self::HOOK ) ) wp_schedule_single_event( time() + 5, self::HOOK );
+		// Make the event due now. Detection runs during init, before WordPress' wp_loaded
+		// cron spawning phase, so the browser request only schedules while the isolated
+		// cron request performs the filesystem transaction.
+		if ( ! wp_next_scheduled( self::HOOK ) ) wp_schedule_single_event( time(), self::HOOK );
 	}
 
 	public static function authorize() {
