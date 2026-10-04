@@ -92,7 +92,8 @@ direct_step_up = servers.split("public static function chatgpt_reviewed_direct_s
 assert "MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY" in direct_step_up
 
 direct_read = servers.split("public static function chatgpt_direct_read_transport_tools()", 1)[1].split("public static function chatgpt_dispatch_transport_tools()", 1)[0]
-assert "MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()" not in direct_read, "write convergence read surfaces must remain behind governed dispatch to preserve the 36-tool direct budget"
+assert "MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()" not in direct_read, "write convergence read surfaces must remain behind governed dispatch to preserve the direct tool budget"
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in direct_read, "legacy low-level reconciliation read must not consume the dynamic projection reserve"
 base_tools = servers.split("public static function chatgpt_base_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
 assert "$write_convergence_read" not in base_tools, "write convergence handshake must not consume a second direct MCP tool slot"
 
