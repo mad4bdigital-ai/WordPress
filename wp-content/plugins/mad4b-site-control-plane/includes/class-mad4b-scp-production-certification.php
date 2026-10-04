@@ -14,11 +14,13 @@ final class MAD4B_SCP_Production_Certification {
 	const ABILITY = 'mad4b/production-certification-readonly-evidence';
 	const MULTI_AUTH_CONTRACT = 'mad4b.multi-authority-live-canary.v1';
 	const POLICY_PROBE_CONTRACT = 'mad4b.production-policy-probe.v1';
+	const SECURITY_CANARY_CONTRACT = 'mad4b.production-security-live-canary.v1';
 
 	private static $stages = array(
 		'provider_side_channel_inventory' => 'provider_side_channel_safe',
 		'multi_authority_canary' => 'multi_authority_live',
 		'policy_resolution_canary' => 'policy_engine_ready',
+		'security_fault_canary' => 'kernel_quality_verified',
 		'operator_doctor' => 'operator_recovery_review_ready',
 	);
 
@@ -70,6 +72,7 @@ final class MAD4B_SCP_Production_Certification {
 		if ( 'provider_side_channel_inventory' === $stage ) return self::provider_side_channel( $identity );
 		if ( 'multi_authority_canary' === $stage ) return self::multi_authority_canary( $identity );
 		if ( 'policy_resolution_canary' === $stage ) return self::policy_probe( $identity );
+		if ( 'security_fault_canary' === $stage ) return self::security_fault_canary( $identity );
 		if ( 'operator_doctor' === $stage ) return self::operator_doctor( $identity );
 		return new WP_Error( 'mad4b_production_certification_stage_unimplemented', 'Requested Production certification stage is not implemented.' );
 	}
@@ -283,6 +286,81 @@ final class MAD4B_SCP_Production_Certification {
 		return self::envelope(
 			'policy_resolution_canary',
 			'mad4b/production-certification-readonly-evidence#policy-probe',
+			$source,
+			empty( $blockers ),
+			$blockers,
+			$identity
+		);
+	}
+
+	private static function security_fault_canary( array $identity ) {
+		$blockers = array();
+		$write_tools = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'write_tools' )
+			? array_values( (array) MAD4B_SCP_Servers::write_tools() )
+			: array();
+		$chatgpt_tools = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_base_tools' )
+			? array_values( (array) MAD4B_SCP_Servers::chatgpt_base_tools() )
+			: array();
+		$raw_query = 'mad4b/database-raw-query';
+		$raw_on_write = in_array( $raw_query, $write_tools, true );
+		$raw_on_chatgpt = in_array( $raw_query, $chatgpt_tools, true );
+		if ( $raw_on_write ) $blockers[] = 'raw_sql_on_write_surface';
+		if ( $raw_on_chatgpt ) $blockers[] = 'raw_sql_on_chatgpt_surface';
+
+		$host = class_exists( 'MAD4B_SCP_Host_Bridge' ) && method_exists( 'MAD4B_SCP_Host_Bridge', 'capabilities' )
+			? MAD4B_SCP_Host_Bridge::capabilities()
+			: array();
+		if ( is_wp_error( $host ) || ! is_array( $host ) || empty( $host['contract'] ) ) {
+			$blockers[] = 'host_bridge_capabilities_unavailable';
+			$host = array();
+		}
+		foreach ( array(
+			'generic_shell_available' => 'generic_shell_available',
+			'raw_sql_available' => 'host_raw_sql_available',
+			'caller_executable_paths_allowed' => 'caller_executable_paths_allowed',
+			'caller_command_strings_allowed' => 'caller_command_strings_allowed',
+		) as $key => $reason ) {
+			if ( ! array_key_exists( $key, $host ) || false !== $host[ $key ] ) $blockers[] = $reason;
+		}
+		if ( isset( $host['production_authorized'] ) && false !== $host['production_authorized'] ) $blockers[] = 'host_bridge_production_authorized';
+
+		$raw_write = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && method_exists( 'MAD4B_SCP_Governed_Runtime_Gates', 'raw_sql_write_enabled' )
+			? (bool) MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled()
+			: false;
+		$raw_ddl = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && method_exists( 'MAD4B_SCP_Governed_Runtime_Gates', 'raw_sql_ddl_enabled' )
+			? (bool) MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled()
+			: false;
+		$raw_breakglass = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && method_exists( 'MAD4B_SCP_Governed_Runtime_Gates', 'raw_sql_breakglass_enabled' )
+			? (bool) MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()
+			: false;
+		if ( $raw_write ) $blockers[] = 'raw_sql_write_gate_enabled';
+		if ( $raw_ddl ) $blockers[] = 'raw_sql_ddl_gate_enabled';
+		if ( $raw_breakglass ) $blockers[] = 'raw_sql_breakglass_gate_enabled';
+
+		$source = array(
+			'contract' => self::SECURITY_CANARY_CONTRACT,
+			'candidate_identity' => $identity,
+			'write_tool_count' => count( $write_tools ),
+			'chatgpt_tool_count' => count( $chatgpt_tools ),
+			'raw_sql_on_write_surface' => $raw_on_write,
+			'raw_sql_on_chatgpt_surface' => $raw_on_chatgpt,
+			'host_bridge_contract' => isset( $host['contract'] ) ? (string) $host['contract'] : '',
+			'generic_shell_available' => isset( $host['generic_shell_available'] ) ? (bool) $host['generic_shell_available'] : null,
+			'host_raw_sql_available' => isset( $host['raw_sql_available'] ) ? (bool) $host['raw_sql_available'] : null,
+			'caller_executable_paths_allowed' => isset( $host['caller_executable_paths_allowed'] ) ? (bool) $host['caller_executable_paths_allowed'] : null,
+			'caller_command_strings_allowed' => isset( $host['caller_command_strings_allowed'] ) ? (bool) $host['caller_command_strings_allowed'] : null,
+			'raw_sql_write_enabled' => $raw_write,
+			'raw_sql_ddl_enabled' => $raw_ddl,
+			'raw_sql_breakglass_enabled' => $raw_breakglass,
+			'ready' => empty( $blockers ),
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'mutation_performed' => false,
+			'production_mutation' => false,
+			'authorizing' => false,
+		);
+		return self::envelope(
+			'security_fault_canary',
+			'mad4b/production-certification-readonly-evidence#security-fault-canary',
 			$source,
 			empty( $blockers ),
 			$blockers,
