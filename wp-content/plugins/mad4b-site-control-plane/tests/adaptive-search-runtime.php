@@ -120,8 +120,12 @@ scenario( 'budget_hierarchy_protected_reserve_depth_rate_and_expiry', static fun
 	$state = ok( MAD4B_SCP_Search_Budgets::configure( 'local.account', asi_policy_nodes(), receipt( 100 ), $now ), 'local budget' ); check( ! $state['hard_global_enforcement'] && 'local_allocation' === $state['authority_scope'], 'honest downgrade without shared authority' );
 } );
 scenario( 'shared_account_race_across_processes_and_sites', static function () {
-	check( function_exists( 'pcntl_fork' ), 'process race support required' ); $now = time();
+	check( function_exists( 'pcntl_fork' ), 'process race support required' );
 	for ( $round = 0; $round < 8; ++$round ) {
+		// Bind the usage receipt and admission clock to the same round. A fixed
+		// scenario-start clock makes later fresh receipts appear to come from the
+		// future and correctly trips the runtime's fail-closed freshness check.
+		$now = time();
 		$account = 'race.' . $round; ok( MAD4B_SCP_Search_Budgets::configure( $account, asi_policy_nodes( 1 ), receipt( 1 ), $now ), 'last-unit configure' ); $children = array();
 		for ( $worker = 0; $worker < 12; ++$worker ) { $pid = pcntl_fork(); if ( 0 === $pid ) { $GLOBALS['fixture_store']->reconnect(); $GLOBALS['fixture_site'] = sprintf( '%08d-1111-4111-8111-111111111111', $worker + 1 ); $value = MAD4B_SCP_Search_Budgets::reserve( $account, hash( 'sha256', $round . ':' . $worker ), array(), 1, 5, $now ); exit( is_wp_error( $value ) ? 0 : 3 ); } check( $pid > 0, 'fork launched' ); $children[] = $pid; }
 		$admitted = 0; foreach ( $children as $pid ) { pcntl_waitpid( $pid, $status ); check( pcntl_wifexited( $status ), 'worker exited normally' ); if ( 3 === pcntl_wexitstatus( $status ) ) ++$admitted; else check( 0 === pcntl_wexitstatus( $status ), 'worker returned known denial' ); }
