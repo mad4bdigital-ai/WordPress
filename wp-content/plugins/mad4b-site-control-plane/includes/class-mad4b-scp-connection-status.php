@@ -461,10 +461,14 @@ final class MAD4B_SCP_Connection_Status {
 		foreach ( isset( $provenance['failures'] ) && is_array( $provenance['failures'] ) ? array_slice( $provenance['failures'], 0, 12 ) : array() as $failure ) {
 			if ( ! is_array( $failure ) ) continue;
 			$row = array();
-			foreach ( array( 'alias', 'class', 'expected_source', 'observed_source', 'reason' ) as $key ) $row[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 220 ) : '';
+			foreach ( array( 'alias', 'class', 'kind', 'expected_source', 'observed_source', 'reason' ) as $key ) $row[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 220 ) : '';
 			foreach ( array( 'expected_sha256', 'actual_sha256' ) as $key ) {
 				$value = isset( $failure[ $key ] ) ? strtolower( (string) $failure[ $key ] ) : '';
 				$row[ $key ] = preg_match( '/^[a-f0-9]{64}$/D', $value ) ? $value : '';
+			}
+			foreach ( array( 'expected_git_blob_sha1', 'actual_git_blob_sha1' ) as $key ) {
+				$value = isset( $failure[ $key ] ) ? strtolower( (string) $failure[ $key ] ) : '';
+				$row[ $key ] = preg_match( '/^[a-f0-9]{40}$/D', $value ) ? $value : '';
 			}
 			$server['runtime_class_failures'][] = $row;
 		}
