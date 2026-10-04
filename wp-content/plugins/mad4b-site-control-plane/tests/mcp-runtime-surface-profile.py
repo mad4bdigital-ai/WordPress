@@ -79,7 +79,7 @@ def declared_symbols(raw: bytes, rel: str, namespace_prefixes: list[str]) -> lis
     return rows
 
 
-def generated_surface(zf: zipfile.ZipFile, profile: dict) -> tuple[dict, list[dict[str, str]]]:
+def generated_surface(zf: zipfile.ZipFile, profile: dict, version: str) -> tuple[dict, list[dict[str, str]]]:
     surface = profile.get("runtime_surface") or {}
     if surface.get("contract") != CONTRACT:
         raise SystemExit("runtime_surface contract missing or unsupported")
@@ -113,6 +113,7 @@ def generated_surface(zf: zipfile.ZipFile, profile: dict) -> tuple[dict, list[di
         seen[row["symbol"]] = row["file"]
 
     generated = dict(surface)
+    generated["source_identity"] = f"WordPress/mcp-adapter@v{version}"
     generated["file_count"] = len(files)
     generated["symbol_count"] = len(symbols)
     generated["tree_sha256"] = tree_sha256
@@ -157,7 +158,7 @@ def main() -> int:
         raise SystemExit("profile/version identity mismatch")
 
     with zipfile.ZipFile(args.archive) as zf:
-        surface, symbols = generated_surface(zf, profile)
+        surface, symbols = generated_surface(zf, profile, args.version)
 
     if args.write:
         profile["runtime_surface"] = surface
@@ -171,7 +172,7 @@ def main() -> int:
         return 0
 
     actual_surface = profile.get("runtime_surface") or {}
-    for key in ("file_count", "symbol_count", "tree_sha256", "generator", "fail_closed_on_unprofiled_symbol"):
+    for key in ("source_identity", "file_count", "symbol_count", "tree_sha256", "generator", "fail_closed_on_unprofiled_symbol"):
         if actual_surface.get(key) != surface.get(key):
             raise SystemExit(
                 f"runtime_surface drift {key}: profile={actual_surface.get(key)!r} generated={surface.get(key)!r}"
