@@ -11,13 +11,14 @@ Status: **APPROVED_P0_CLOSED_P1_OPEN**. The original review score remains the ba
 The 12 P0 review findings are now **CLOSED** at repository/runtime-contract level.
 
 Evidence:
-- exact implementation head: `17b4f8fca0bd8c6759865d377269bfe2a15704e9`;
-- Feature 007 Spec Quality CI run: `37238278583`;
+- exact implementation head: `042e49926d909dd11d0925b5b19b19143561b556`;
+- Feature 007 Spec Quality CI run: `37239748455`;
 - adaptive-search P0 runtime-contract step: **PASS**;
 - adaptive-search composed cross-fault runtime: **PASS**;
 - adaptive-search P0 acceptance contract: **PASS** (`phase_gates=15`, `declared_gates=22`, `p0_findings=12`);
-- MAD4B Runtime Integration run: `37238278447` — **PASS** on WordPress 6.9 and latest;
-- Spec Kit consistency run: `37238278493` — **PASS**.
+- Pre-Staging Hybrid Audit run: `37239748433` — **PASS**;
+- MAD4B Runtime Integration run: `37239748528` — **PASS** on WordPress 6.9 and latest;
+- Spec Kit consistency run: `37239748494` — **PASS**.
 
 Implemented closure surfaces:
 - ObservationContext / ComparabilityKey and provider-resolved geo/locale fidelity; cross-provider comparability requires certified evidence digest rather than caller assertion;
