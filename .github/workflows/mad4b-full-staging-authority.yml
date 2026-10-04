@@ -9,6 +9,7 @@ on:
       - 'plugins/mad4b-wordpress/**'
       - 'tools/capture-functional-gap-contract-evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority-convergence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-candidate-binding.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php'
@@ -17,6 +18,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-convergence-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-audit-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-consent-ui-contract.php'
@@ -60,6 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority-convergence.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-candidate-binding.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php
@@ -68,6 +71,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-convergence-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-audit-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-consent-ui-contract.php
