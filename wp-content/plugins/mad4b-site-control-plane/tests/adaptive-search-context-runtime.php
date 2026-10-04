@@ -23,6 +23,17 @@ function update_option( $key, $value, $autoload = null ) {
 	return true;
 }
 
+final class MAD4B_SCP_Distributed_Lock {
+	public static $busy = false;
+	public static function catalog_name( $scope ) { return 'fixture-lock:' . (string) $scope; }
+	public static function acquire( $name ) {
+		if ( self::$busy ) return new WP_Error( 'fixture_lock_busy', 'Fixture lock is busy.' );
+		self::$busy = true;
+		return true;
+	}
+	public static function release( $name ) { self::$busy = false; }
+}
+
 $root = dirname( __DIR__ );
 require $root . '/includes/class-mad4b-scp-search-runtime-context.php';
 
@@ -89,9 +100,20 @@ $check(
 
 $apply = $profile_input;
 $apply['plan_sha256'] = $plan['plan_sha256'];
+
+MAD4B_SCP_Distributed_Lock::$busy = true;
+$contended = MAD4B_SCP_Search_Runtime_Context::profile_apply( $apply );
+$check(
+	'mad4b_search_profile_apply_in_progress' === $error_code( $contended ),
+	'concurrent profile apply did not fail closed'
+);
+MAD4B_SCP_Distributed_Lock::$busy = false;
+
 $applied = MAD4B_SCP_Search_Runtime_Context::profile_apply( $apply );
 $check( ! is_wp_error( $applied ) && true === $applied['applied'], 'profile apply failed' );
+$check( 'profile_scoped_distributed_lock' === $applied['concurrency_guard'], 'profile apply concurrency guard missing' );
 $check( false === $applied['authorizing'], 'profile apply became authorizing' );
+$check( false === MAD4B_SCP_Distributed_Lock::$busy, 'profile-scoped lock leaked after apply' );
 
 $verify = MAD4B_SCP_Search_Runtime_Context::profile_verify( array(
 	'profile_id' => 'brand-us',
