@@ -96,6 +96,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 	private static function render_maintenance() {
 		echo '<h2>' . esc_html__( 'Certified runtime update', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Update MAD4B Site Control Plane and the official MCP Adapter only as one certified compatible runtime set. The operation re-plans the exact release pair before mutation and preserves the existing governed verification, rollback and readback boundaries.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'The WordPress Plugins update channel is the stable Release-Verdict channel published from master only. Pull-request candidate builds are intentionally not offered there before merge.', 'mad4b-site-control-plane' ) . '</p></div>';
 
 		if ( ! current_user_can( 'update_plugins' ) ) {
 			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Plugin update capability is required to change the certified runtime set.', 'mad4b-site-control-plane' ) . '</p></div>';
