@@ -84,6 +84,8 @@ def generated_surface(zf: zipfile.ZipFile, profile: dict) -> tuple[dict, list[di
     if surface.get("contract") != CONTRACT:
         raise SystemExit("runtime_surface contract missing or unsupported")
 
+    if surface.get("discovery") != "exact_archive_php_namespace_surface":
+        raise SystemExit("runtime_surface discovery mode must be exact_archive_php_namespace_surface")
     include_prefixes = [str(item) for item in surface.get("include_prefixes") or [] if str(item)]
     namespace_prefixes = [str(item) for item in surface.get("namespace_prefixes") or [] if str(item)]
     if not include_prefixes or not namespace_prefixes:
