@@ -7,7 +7,7 @@ const bytes = Buffer.from('{"inputSchema":{"type":"object"},"outputSchema":{}}')
 const sha = createHash('sha256').update(bytes).digest('hex');
 const item = {preparation_receipt: 'receipt-failure-fixture', ability_name: abilityName, snapshot, authority_scope_sha256: scope, classification: 'read', input_schema_sha256: sha, classification_sha256: scope, source: {sha256: sha, bytes: bytes.length}, execution_eligible: true};
 const catalog = {snapshot, authority_scope_sha256: scope, entries: new Map([[abilityName, {...item, execution: {classification_sha256: scope}}]])};
-const capabilities = {contract, authority_scope_sha256: scope, rest_base_url: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64']};
+const capabilities = {contract, authority_scope_sha256: scope, rest_base_url: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64'], wire_generation: wireGeneration};
 const headers = {'X-MAD4B-Schema-SHA256': sha, 'X-MAD4B-Content-SHA256': sha, 'X-MAD4B-Chunk-Count': '1'};
 const errorResult = status => ({isError: true, content: [{type: 'text', text: JSON.stringify({contract: 'mad4b.catalog-error.v1', code: status === 410 ? 'mad4b_catalog_snapshot_expired' : 'mad4b_catalog_forbidden', status, message: 'Catalog request unavailable.'})}]});
 let renewals = 0, chunks = 0;
