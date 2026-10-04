@@ -20,8 +20,8 @@ final class MAD4B_SCP_Search_Eligibility {
 		$robots_allowed = array_key_exists( 'robots_txt_allowed', $evidence ) ? (bool) $evidence['robots_txt_allowed'] : null;
 		$x_robots = self::token_list( $evidence['x_robots_tag'] ?? '' );
 		$meta_robots = self::token_list( $evidence['meta_robots'] ?? '' );
-		$noindex = in_array( 'noindex', $x_robots, true ) || in_array( 'noindex', $meta_robots, true );
-		$nofollow = in_array( 'nofollow', $x_robots, true ) || in_array( 'nofollow', $meta_robots, true );
+		$noindex = in_array( 'noindex', $x_robots, true ) || in_array( 'noindex', $meta_robots, true ) || in_array( 'none', $x_robots, true ) || in_array( 'none', $meta_robots, true );
+		$nofollow = in_array( 'nofollow', $x_robots, true ) || in_array( 'nofollow', $meta_robots, true ) || in_array( 'none', $x_robots, true ) || in_array( 'none', $meta_robots, true );
 		$canonical_state = sanitize_key( (string) ( $evidence['canonical_state'] ?? 'unknown' ) );
 		$redirect_state = sanitize_key( (string) ( $evidence['redirect_state'] ?? 'none' ) );
 		$language_live = array_key_exists( 'language_live', $evidence ) ? (bool) $evidence['language_live'] : true;
@@ -29,9 +29,9 @@ final class MAD4B_SCP_Search_Eligibility {
 		$sitemap = sanitize_key( (string) ( $evidence['sitemap_state'] ?? 'unknown' ) );
 		$public = array_key_exists( 'object_public', $evidence ) ? (bool) $evidence['object_public'] : true;
 
-		$crawlable = $public && $status >= 200 && $status < 400 && false !== $robots_allowed;
-		$indexable = $crawlable && ! $noindex && ! in_array( $redirect_state, array( 'redirected', 'loop', 'error' ), true );
-		$canonical_eligible = in_array( $canonical_state, array( 'self', 'equivalent', 'unknown' ), true );
+		$crawlable = $public && $status >= 200 && $status < 400 && true === $robots_allowed;
+		$indexable = $crawlable && $status < 300 && ! $noindex && ! in_array( $redirect_state, array( 'redirected', 'loop', 'error' ), true );
+		$canonical_eligible = in_array( $canonical_state, array( 'self', 'equivalent' ), true );
 		$owned_tracking = $indexable && $canonical_eligible && $language_live;
 		$reasons = array();
 		if ( ! $public ) $reasons[] = 'object_not_public';
@@ -58,6 +58,7 @@ final class MAD4B_SCP_Search_Eligibility {
 			'hreflang_state' => $hreflang,
 			'language_live' => $language_live,
 			'owned_tracking_eligible' => $owned_tracking,
+			'eligibility_state' => $owned_tracking ? 'eligible' : ( null === $robots_allowed || 'unknown' === $canonical_state ? 'unknown' : 'ineligible' ),
 			'discovery_eligible' => true,
 			'confidence' => round( $known / $total, 4 ),
 			'reason_codes' => array_values( array_unique( $reasons ) ),
