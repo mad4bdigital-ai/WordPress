@@ -272,8 +272,16 @@
   "adaptive_search_intelligence_review_document": "adaptive-search-intelligence-review.md",
   "adaptive_search_intelligence_review_ledger": "adaptive-search-intelligence-review.json",
   "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
-  "adaptive_search_intelligence_review_status": "APPROVED_WITH_GAPS",
+  "adaptive_search_intelligence_review_status": "APPROVED_P0_CLOSED_P1_OPEN",
   "adaptive_search_intelligence_review_score": 88,
-  "adaptive_search_intelligence_review_p0_open": 12,
-  "adaptive_search_intelligence_review_p1_open": 6
+  "adaptive_search_intelligence_review_p0_open": 0,
+  "adaptive_search_intelligence_review_p1_open": 6,
+  "adaptive_search_intelligence_review_p0_closed": 12,
+  "adaptive_search_intelligence_p0_closure": {
+    "contract": "mad4b.adaptive-search-p0-closure.v1",
+    "exact_head_sha": "178ec73281a19fd7c78a8e83ff110dd11027b684",
+    "workflow_run": 37236946924,
+    "evidence_status": "PASS",
+    "authorizing": false
+  }
 }
