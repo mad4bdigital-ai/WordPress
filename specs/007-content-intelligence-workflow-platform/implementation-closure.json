@@ -1091,5 +1091,27 @@
     "production_authorized": false,
     "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
     "docs_only_cannot_close_runtime_gate": true
+  },
+  "production_readiness": {
+    "contract": "mad4b.production-readiness-state.v1",
+    "policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
+    "state": "LIVE_EVIDENCE_REQUIRED",
+    "repository_contract_ready": true,
+    "exact_head_repository_evidence_ready": false,
+    "live_staging_evidence_ready": false,
+    "production_ready": false,
+    "production_authorized": false,
+    "ready_is_not_authorized": true,
+    "promotion_required": true,
+    "blocking_priorities": [
+      "KERNEL_BLOCKER",
+      "LIVE_PRECONDITION"
+    ],
+    "baseline_owned_handoff": [
+      ".github/workflows/mad4b-release-verdict.yml",
+      ".github/workflows/mad4b-etg-deployment-readiness.yml",
+      ".github/workflows/mad4b-runtime-release-set.yml",
+      ".github/workflows/mad4b-rollback-retention-receipt.yml"
+    ]
   }
 }

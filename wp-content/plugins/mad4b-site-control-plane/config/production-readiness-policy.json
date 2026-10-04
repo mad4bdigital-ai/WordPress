@@ -1,0 +1,74 @@
+{
+  "contract": "mad4b.production-readiness-policy.v1",
+  "authorizing": false,
+  "ready_is_not_authorized": true,
+  "documentation_cannot_self_authorize": true,
+  "production_auto_apply": false,
+  "certification_environment": "staging",
+  "target_environment": "production",
+  "required_blocking_priorities": [
+    "KERNEL_BLOCKER",
+    "LIVE_PRECONDITION"
+  ],
+  "non_blocking_maturity_priorities": [
+    "MATURITY_REQUIRED",
+    "DEFERRED_MATURITY"
+  ],
+  "required_repository_workflows": [
+    "Feature 007 Spec Quality CI",
+    "Feature 007 Critical Kernel",
+    "Feature 007 Pre-Staging Hybrid Audit",
+    "MAD4B Provider Compatibility Engine",
+    "MAD4B MCP Client Compatibility",
+    "MAD4B Dynamic Skills",
+    "MAD4B Local OAuth Standalone",
+    "MAD4B Runtime Release Set",
+    "MAD4B Rollback Retention Receipt",
+    "MAD4B Release Verdict"
+  ],
+  "required_live_evidence": [
+    {
+      "gate": "etg_exact_runtime_release_deployed",
+      "source": ".github/workflows/mad4b-etg-deployment-readiness.yml",
+      "contract": "mad4b.etg-deployment-readiness.v1",
+      "mutation_performed": false
+    },
+    {
+      "gate": "protected_backup_recovery_ready",
+      "source": "tools/mad4b_recovery_plane.py",
+      "contracts": [
+        "mad4b.protected-backup-receipt.v1",
+        "mad4b.protected-backup-restore-receipt.v1"
+      ],
+      "environment": "staging"
+    },
+    {
+      "gate": "recovery_live_verified",
+      "source": "tools/mad4b_recovery_plane.py",
+      "environment": "staging"
+    },
+    {
+      "gate": "critical_kernel_vertical_slice_verified",
+      "source": "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+      "environment": "staging"
+    }
+  ],
+  "safety_invariants": {
+    "production_authorized_before_promotion": false,
+    "breakglass_widened": false,
+    "generic_shell_authorized": false,
+    "generic_raw_sql_authorized": false,
+    "exact_runtime_identity_required": true,
+    "rollback_retention_required": true,
+    "owner_attestation_required": true,
+    "one_time_production_approval_required": true,
+    "stale_on_descendant": true
+  },
+  "promotion": {
+    "mode": "explicit_governed_promotion_only",
+    "source_of_readiness": "exact_head_repository_and_live_evidence",
+    "fresh_evidence_required": true,
+    "production_mutation_during_readiness": false,
+    "activation_requires_separate_authorization": true
+  }
+}

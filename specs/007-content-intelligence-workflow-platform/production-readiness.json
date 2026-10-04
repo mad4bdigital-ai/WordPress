@@ -1,0 +1,28 @@
+{
+  "contract": "mad4b.feature007-production-readiness.v1",
+  "policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
+  "implementation_closure_ref": "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+  "readiness_semantics": {
+    "repository_candidate_requires_all_required_workflows_success": true,
+    "live_candidate_requires_all_blocking_workstreams_done": true,
+    "exact_etg_runtime_identity_required": true,
+    "protected_backup_and_restore_rehearsal_required": true,
+    "recovery_live_drill_required": true,
+    "complete_vertical_slice_required": true,
+    "ready_is_not_authorized": true
+  },
+  "promotion_semantics": {
+    "production_authorized_by_this_document": false,
+    "owner_attestation_required": true,
+    "one_time_production_approval_required": true,
+    "automatic_production_apply": false,
+    "breakglass_or_raw_sql_not_required": true
+  },
+  "baseline_owned_handoff": [
+    ".github/workflows/mad4b-release-verdict.yml",
+    ".github/workflows/mad4b-etg-deployment-readiness.yml",
+    ".github/workflows/mad4b-runtime-release-set.yml",
+    ".github/workflows/mad4b-rollback-retention-receipt.yml"
+  ],
+  "live_execution_note": "Live Staging evidence must be produced through an already-authorized governed deployment/recovery path. Feature documentation and repository CI cannot manufacture live readiness."
+}

@@ -63,6 +63,13 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-contract.py
 
 
+      - name: Production readiness contract (non-authorizing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-contract.py \
+            --output dist/mad4b-production-readiness-contract.json
+
       - name: Dynamic Skill distribution contract
         shell: bash
         run: |
