@@ -195,6 +195,67 @@ Repository performance contracts prove architectural bounds and request-local ca
 
 Rollback retention proves the previous certified artifact still exists; it is not the same as a live rollback drill. Before Production promotion, perform one governed Staging drill: deploy the exact candidate, verify it, roll back to the retained certified package, verify provenance/read continuity with write authority fail-closed as required, then redeploy the candidate and re-run live acceptance. Record all three package identities and readbacks.
 
+## Production readiness certification
+
+Production readiness is a **non-authorizing** certification state. It does not grant Production write authority and it never implies automatic promotion.
+
+The machine-readable source of truth is:
+
+- `config/production-certification-plan.json` — ordered certification stages and expected evidence contracts.
+- `config/production-readiness-policy.json` — profile scope, required gates and fail-closed optional capabilities.
+- `tests/production-live-evidence-contract.py` — exact-candidate evidence reducer/verifier.
+- `mad4b/production-certification-readonly-evidence` — read-only Staging evidence producer exposed on `mad4b-read` and `mad4b-chatgpt`.
+
+Use the `control_plane_core` profile for the first Production promotion. Optional Feature 007 capabilities listed by that profile stay disabled and fail-closed until separately live-certified.
+
+### Certification sequence
+
+1. Freeze one exact candidate identity: source commit SHA, build fingerprint and package-manifest digest.
+2. Require repository CI for that exact head to pass. Repository evidence is bound by the current CI runtime; do not persist a historical run ID as current readiness truth.
+3. Deploy that exact candidate to enrolled **Staging** through the governed deployment path.
+4. Run the baseline-owned ETG Deployment Readiness check and prove the deployed runtime identity matches the candidate exactly.
+5. Capture runtime root-trust readback for the exact deployed package.
+6. Run the read-only Production certification stages through `mad4b/production-certification-readonly-evidence`:
+   - `provider_side_channel_inventory`
+   - `multi_authority_canary`
+   - `policy_resolution_canary`
+   - `operator_doctor`
+7. Execute the Host Runner parity canary on Staging using only registered semantic operations. No generic shell or caller-supplied executable path is permitted.
+8. Create a protected Staging backup with `tools/mad4b_recovery_plane.py`, verify it, and execute a governed restore rehearsal bound to the exact backup receipt.
+9. Execute the out-of-band recovery drill with the normal WordPress/Control Plane route intentionally unavailable and bind the recovery receipt to the same candidate identity.
+10. Execute the governed consistency/fencing canary and require rollback/postcondition evidence.
+11. Execute the request → approval/receipt → reversible mutation → rollback vertical slice on Staging and bind all receipts to the exact candidate.
+12. Collect one `mad4b.production-live-gate-evidence.v1` envelope for every stage in the certification plan. Every envelope must use the same candidate identity.
+13. Build one `mad4b.production-live-evidence-bundle.v1` and verify it:
+
+```bash
+python3 wp-content/plugins/mad4b-site-control-plane/tests/production-live-evidence-contract.py \
+  --bundle /path/to/production-live-evidence-bundle.json \
+  --output /path/to/production-live-evidence-verdict.json \
+  --enforce-ready
+```
+
+A passing verdict may report `production_ready=true`, but it must still report:
+
+```text
+production_authorized=false
+promotion_required=true
+authorizing=false
+```
+
+### Promotion boundary
+
+After the exact-candidate Production-readiness verdict is green:
+
+- obtain the exact-head owner attestation required by the repository release verdict;
+- obtain the separate one-time Production promotion authorization;
+- re-check that the candidate identity has not changed;
+- keep Breakglass, generic shell and generic raw SQL excluded;
+- apply only the reviewed Production promotion plan;
+- perform immediate Production readback and retain the pre-promotion rollback package.
+
+Any candidate change, evidence identity mismatch, failed live gate, missing rollback proof, or optional-capability drift invalidates readiness and requires re-certification. Production readiness never self-authorizes mutation.
+
 ## Production safety
 
 Production remains fail-closed unless a separately reviewed Production authority flow exists.
