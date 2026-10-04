@@ -101,6 +101,9 @@ final class MAD4B_SCP_Search_Contracts {
 	}
 
 	public static function target( array $candidate ) {
+		if ( ! self::bounded( $candidate ) || ! self::candidate_metadata_safe( $candidate ) ) return self::error( 'target_metadata_denied' );
+		$candidate = array_intersect_key( $candidate, array_flip( array( 'query', 'market', 'language', 'engine', 'device', 'purpose', 'surface_refs', 'cluster_id', 'surface_type', 'engine_domain', 'safe_search', 'requested_features', 'query_language_provenance', 'source', 'evidence_refs', 'experiment_id' ) ) );
+		foreach ( array( 'surface_refs', 'requested_features', 'evidence_refs' ) as $field ) if ( isset( $candidate[ $field ] ) && ( ! is_array( $candidate[ $field ] ) || count( $candidate[ $field ] ) > 100 ) ) return self::error( 'target_metadata_invalid' );
 		$q = self::query( isset( $candidate['query'] ) ? $candidate['query'] : '' );
 		if ( is_wp_error( $q ) ) return $q;
 		$identity = array( 'query' => $q['normalized_query'], 'query_normalization' => $q['normalization_version'] );
@@ -109,6 +112,13 @@ final class MAD4B_SCP_Search_Contracts {
 			$identity[ $key ] = $candidate[ $key ];
 		}
 		return array_merge( $candidate, $q, array( 'contract' => 'mad4b.search-target.v1', 'target_id' => self::digest( $identity ), 'identity' => $identity, 'authorizing' => false ) );
+	}
+	private static function candidate_metadata_safe( array $value ) {
+		foreach ( $value as $key => $item ) {
+			if ( is_string( $key ) && preg_match( '/api.?key|secret|authorization|authority|token|password|credential|endpoint/i', $key ) ) return false;
+			if ( is_array( $item ) && ! self::candidate_metadata_safe( $item ) ) return false;
+		}
+		return true;
 	}
 
 	public static function observation_context( array $request, array $descriptor, array $resolved ) {
