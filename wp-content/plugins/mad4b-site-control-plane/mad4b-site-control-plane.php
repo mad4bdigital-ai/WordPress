@@ -135,6 +135,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-evidence-policy.ph
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-account-budget-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-decision-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-search-acceptance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-search-fault-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-bootstrap.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-doctor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cli.php';
