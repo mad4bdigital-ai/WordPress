@@ -270,6 +270,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-diagnost
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-grant-reconciliation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-candidate-binding.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-planning-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-rest-compatibility.php';
@@ -373,6 +374,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ), 35 );
 	MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::boot();
 	MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
+	MAD4B_SCP_Staging_Write_Authority_Convergence::boot();
 	MAD4B_SCP_Staging_Write_Candidate_Binding::boot();
 	MAD4B_SCP_Staging_Write_Planning_Guard::boot();
 	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_REST_Compatibility', 'register_ability' ), 36 );
