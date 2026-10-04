@@ -518,13 +518,13 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 				return $status;
 			}
 			$explicit_conflict = true;
-			$source = in_array( $conflict_recovery_source, array( 'explicit_admin_conflict_recovery', 'automatic_staging_recovery' ), true )
+			$recovery_source = in_array( $conflict_recovery_source, array( 'explicit_admin_conflict_recovery', 'automatic_staging_recovery' ), true )
 				? $conflict_recovery_source
 				: 'conflict_recovery';
-			$status['explicit_conflict_recovery'] = 'explicit_admin_conflict_recovery' === $source;
-			$status['automatic_conflict_recovery'] = 'automatic_staging_recovery' === $source;
-			$status['conflict_recovery_source'] = $source;
-			$status['ownership_source'] = $source;
+			$status['explicit_conflict_recovery'] = 'explicit_admin_conflict_recovery' === $recovery_source;
+			$status['automatic_conflict_recovery'] = 'automatic_staging_recovery' === $recovery_source;
+			$status['conflict_recovery_source'] = $recovery_source;
+			$status['ownership_source'] = $recovery_source;
 		}
 		if ( ! $status['managed'] && ! $explicit_conflict ) {
 			$status['manual_conflict_recovery_available'] = true;
