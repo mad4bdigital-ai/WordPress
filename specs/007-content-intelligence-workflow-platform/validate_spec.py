@@ -55,6 +55,7 @@ required = [
     "contracts/offline-authorization-window.md","contracts/audit-telemetry-retention.md",
     "contracts/data-flow-policy.md","contracts/formal-model-critical-state.md",
     "contracts/architecture-freeze.md","contracts/capability-fabric-post-merge-completeness.md",
+    "adaptive-search-intelligence.md","adaptive-search-intelligence.json","contracts/adaptive-search-intelligence-runtime.md",
     "references/host-provider-validation-profile.md",
     "contracts/bulk-runtime-closure-hardening.md","bulk-closure-hardening.json",
 ]
@@ -70,7 +71,7 @@ if feature_path.exists():
         "merge_authorized": False,
         "production_activation_authorized": False,
         "architecture_freeze": True,
-        "required_phase_count": 38,
+        "required_phase_count": 39,
     }
     for k, v in expected.items():
         if data.get(k) != v:
@@ -84,6 +85,17 @@ if feature_path.exists():
     for k, v in capfab_expected.items():
         if data.get(k) != v:
             errors.append(f"feature_capability_fabric_field:{k}:expected={v!r}:got={data.get(k)!r}")
+    adaptive_search_expected = {
+        "adaptive_search_intelligence_phase": 38,
+        "adaptive_search_intelligence_contract": "mad4b.adaptive-search-intelligence.v1",
+        "adaptive_search_intelligence_document": "adaptive-search-intelligence.md",
+        "adaptive_search_intelligence_runtime_contract_document": "contracts/adaptive-search-intelligence-runtime.md",
+        "adaptive_search_intelligence_ledger": "adaptive-search-intelligence.json",
+        "adaptive_search_intelligence_status": "OPEN_MATURITY_EXTENSION_NON_AUTHORIZING",
+    }
+    for k, v in adaptive_search_expected.items():
+        if data.get(k) != v:
+            errors.append(f"feature_adaptive_search_field:{k}:expected={v!r}:got={data.get(k)!r}")
     for key in ["baseline_head_at_creation","last_reviewed_master_parent_sha"]:
         val=data.get(key)
         if not isinstance(val,str) or not re.fullmatch(r"[0-9a-f]{40}", val):
@@ -271,7 +283,7 @@ if tasks_path.exists():
     dupes = sorted({x for x in ids if ids.count(x) > 1})
     if dupes:
         errors.append("duplicate_task_ids:" + ",".join(dupes))
-    for phase in range(0, 38):
+    for phase in range(0, 39):
         if f"Phase {phase} " not in txt and f"Phase {phase} —" not in txt:
             errors.append(f"missing_task_phase:{phase}")
 
@@ -299,11 +311,55 @@ if trace.exists():
         "POLICY","ATTEST","BOOT","INTENT","STORE","RECOMP","PVERIFY","RIGHTS","AIDATA","OPS","CONF",
         "FAIR","LOC","EVALREG","EXP","USAGE","PORT","BASESYNC","ROOT","STATE","FENCE","COMMIT",
         "LIVENESS","TRAIT","PRIVHASH","PUBFP","AIINT","PROFILE","OFFLINE","AUDITSEP","DATAFLOW",
-        "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE","CAPFAB"
+        "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE","CAPFAB",
+        "ASI","ASICTX","ASISURF","ASISEO","ASITGT","ASIDEC","ASIBUD","ASIPROV","ASIEVID","ASIEXP","ASICL"
     ]
     for family in families:
         if f"| {family} |" not in t:
             errors.append(f"traceability_missing:{family}")
+
+
+adaptive_search_path = require_file("adaptive-search-intelligence.json")
+if adaptive_search_path.exists():
+    adaptive_search = json.loads(adaptive_search_path.read_text(encoding="utf-8"))
+    if adaptive_search.get("contract") != "mad4b.adaptive-search-intelligence-spec.v1":
+        errors.append("adaptive_search:contract_mismatch")
+    if adaptive_search.get("phase") != 38:
+        errors.append("adaptive_search:phase_mismatch")
+    if adaptive_search.get("status") != "OPEN":
+        errors.append("adaptive_search:status_mismatch")
+    if adaptive_search.get("authorizing") is not False:
+        errors.append("adaptive_search:must_be_non_authorizing")
+    required_search_gates = {
+        "ADAPTIVE_SEARCH_META_MODEL_PASS",
+        "SEARCH_CONTEXT_COMPILER_PASS",
+        "INDEXABLE_SURFACE_GRAPH_PASS",
+        "SEO_FIELD_PROVENANCE_PASS",
+        "SEARCH_TARGET_COMPILER_PASS",
+        "SEARCH_DECISION_EXPLAINABILITY_PASS",
+        "SEARCH_FAIR_SCHEDULER_PASS",
+        "SEARCH_BUDGET_GOVERNOR_PASS",
+        "SERP_PROVIDER_CONFORMANCE_PASS",
+        "SERP_EVIDENCE_INTEGRITY_PASS",
+        "SEARCH_EXTERNAL_EVIDENCE_TRUST_PASS",
+        "SEARCH_RECONCILIATION_BEFORE_RETRY_PASS",
+        "ADAPTIVE_SEARCH_EXPERIENCE_PASS",
+        "SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS",
+        "ADAPTIVE_SEARCH_GENERALIZATION_PASS",
+    }
+    if not required_search_gates.issubset(set(adaptive_search.get("required_gates", []))):
+        errors.append("adaptive_search:required_gate_set_incomplete")
+    boundaries=set(adaptive_search.get("hard_boundaries", []))
+    for boundary in [
+        "no_production_authority",
+        "no_breakglass_widening",
+        "no_generic_outbound_http",
+        "no_direct_content_mutation_from_signal",
+        "no_vendor_or_business_hardcode",
+        "no_documentation_only_completion",
+    ]:
+        if boundary not in boundaries:
+            errors.append(f"adaptive_search:missing_boundary:{boundary}")
 
 quality = require_file("quality-model.md")
 if quality.exists():
