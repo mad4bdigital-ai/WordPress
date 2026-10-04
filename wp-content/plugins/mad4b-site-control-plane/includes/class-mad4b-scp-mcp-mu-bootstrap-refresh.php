@@ -19,6 +19,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	const DESTINATION = '000-mad4b-mcp-adapter-bootstrap.php';
 	const TRANSACTION_OPTION = 'mad4b_scp_mcp_mu_refresh_transaction_v1';
 	const TRANSACTION_CONTRACT = 'mad4b.mcp-mu-filesystem-transaction.v1';
+	const OWNERSHIP_OPTION = 'mad4b_scp_mcp_mu_ownership_v1';
+	const OWNERSHIP_CONTRACT = 'mad4b.mcp-mu-ownership.v1';
 	// Never reclaim a journal generation before the shared maintenance hard fence can expire.
 	const TRANSACTION_STALE_AFTER = 1200;
 
@@ -41,6 +43,130 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'a4870dbf8851320047fe69a6a9f583d0c54c8861fcb164d9afd2a971e4b19874',
 			'48e331291a5375ec73b41bd9a95e460c4609cb67f84ce59ec9a8798f784ecdee',
 		), true );
+	}
+
+	private static function site_binding_identity() {
+		$status = class_exists( 'MAD4B_SCP_Site_Profile', false ) && method_exists( 'MAD4B_SCP_Site_Profile', 'status' )
+			? MAD4B_SCP_Site_Profile::status()
+			: array();
+		$origin = isset( $status['canonical_origin'] ) ? trim( (string) $status['canonical_origin'] ) : '';
+		return array(
+			'site_uuid' => isset( $status['site_uuid'] ) ? strtolower( trim( (string) $status['site_uuid'] ) ) : '',
+			'site_profile_revision' => isset( $status['revision'] ) ? max( 0, (int) $status['revision'] ) : 0,
+			'environment' => isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : '',
+			'origin_sha256' => '' !== $origin ? hash( 'sha256', $origin ) : '',
+		);
+	}
+
+	private static function read_ownership_receipt() {
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::OWNERSHIP_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		return get_option( self::OWNERSHIP_OPTION, null );
+	}
+
+	public static function ownership_receipt_status( $observed_hash = '' ) {
+		$observed_hash = strtolower( trim( (string) $observed_hash ) );
+		$receipt = self::read_ownership_receipt();
+		$identity = self::site_binding_identity();
+		$valid = is_array( $receipt )
+			&& self::OWNERSHIP_CONTRACT === ( $receipt['contract'] ?? '' )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', strtolower( (string) ( $receipt['sha256'] ?? '' ) ) )
+			&& 1 === preg_match( '/^[a-f0-9-]{36}$/D', strtolower( (string) ( $receipt['site_uuid'] ?? '' ) ) )
+			&& '' !== sanitize_key( (string) ( $receipt['environment'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', strtolower( (string) ( $receipt['origin_sha256'] ?? '' ) ) );
+		$site_match = $valid
+			&& '' !== $identity['site_uuid']
+			&& hash_equals( $identity['site_uuid'], strtolower( (string) $receipt['site_uuid'] ) )
+			&& '' !== $identity['environment']
+			&& hash_equals( $identity['environment'], sanitize_key( (string) $receipt['environment'] ) )
+			&& '' !== $identity['origin_sha256']
+			&& hash_equals( $identity['origin_sha256'], strtolower( (string) $receipt['origin_sha256'] ) );
+		$receipt_hash = $valid ? strtolower( (string) $receipt['sha256'] ) : '';
+		$hash_match = '' === $observed_hash || ( '' !== $receipt_hash && 1 === preg_match( '/^[a-f0-9]{64}$/D', $observed_hash ) && hash_equals( $receipt_hash, $observed_hash ) );
+		return array(
+			'present' => null !== $receipt,
+			'valid' => $valid,
+			'site_match' => $site_match,
+			'hash_match' => $hash_match,
+			'ready' => $valid && $site_match && $hash_match,
+			'sha256' => $receipt_hash,
+			'source' => $valid ? sanitize_key( (string) ( $receipt['source'] ?? '' ) ) : '',
+			'site_profile_revision' => $valid ? max( 0, (int) ( $receipt['site_profile_revision'] ?? 0 ) ) : 0,
+		);
+	}
+
+	public static function persist_ownership_receipt( $hash, $source ) {
+		if ( ! self::repair_lifecycle_allowed() ) return new WP_Error( 'mu_bootstrap_ownership_lifecycle_required', 'MU ownership changes require the governed recovery lifecycle.' );
+		$hash = strtolower( trim( (string) $hash ) );
+		$source = sanitize_key( (string) $source );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $hash ) || '' === $source ) return new WP_Error( 'mu_bootstrap_ownership_input_invalid', 'MU ownership receipt input is invalid.' );
+		$identity = self::site_binding_identity();
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/D', $identity['site_uuid'] ) || '' === $identity['environment'] || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $identity['origin_sha256'] ) ) {
+			return new WP_Error( 'mu_bootstrap_ownership_site_identity_invalid', 'Exact Site Profile identity is required for MU ownership.' );
+		}
+		$receipt = array(
+			'contract' => self::OWNERSHIP_CONTRACT,
+			'sha256' => $hash,
+			'source' => $source,
+			'site_uuid' => $identity['site_uuid'],
+			'site_profile_revision' => $identity['site_profile_revision'],
+			'environment' => $identity['environment'],
+			'origin_sha256' => $identity['origin_sha256'],
+			'updated_at' => time(),
+		);
+		update_option( self::OWNERSHIP_OPTION, $receipt, false );
+		$readback = self::read_ownership_receipt();
+		if ( ! is_array( $readback ) || serialize( $readback ) !== serialize( $receipt ) ) return new WP_Error( 'mu_bootstrap_ownership_persist_failed', 'MU ownership receipt could not be persisted and verified.' );
+		return $receipt;
+	}
+
+	public static function clear_ownership_receipt( $expected_hash = '' ) {
+		if ( ! self::repair_lifecycle_allowed() ) return new WP_Error( 'mu_bootstrap_ownership_lifecycle_required', 'MU ownership changes require the governed recovery lifecycle.' );
+		$expected_hash = strtolower( trim( (string) $expected_hash ) );
+		$receipt = self::read_ownership_receipt();
+		if ( null === $receipt ) return true;
+		if ( '' !== $expected_hash ) {
+			$current_hash = is_array( $receipt ) ? strtolower( trim( (string) ( $receipt['sha256'] ?? '' ) ) ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_hash ) || '' === $current_hash || ! hash_equals( $expected_hash, $current_hash ) ) return new WP_Error( 'mu_bootstrap_ownership_clear_hash_mismatch', 'MU ownership receipt changed before clear.' );
+		}
+		delete_option( self::OWNERSHIP_OPTION );
+		return null === self::read_ownership_receipt() ? true : new WP_Error( 'mu_bootstrap_ownership_clear_failed', 'MU ownership receipt could not be cleared.' );
+	}
+
+	public static function conflict_status() {
+		$status = self::base_status();
+		if ( ! $status['eligible'] ) return $status;
+		if ( ! defined( 'MAD4B_SCP_DIR' ) || ! defined( 'WPMU_PLUGIN_DIR' ) ) { $status['blocker'] = 'mu_bootstrap_path_unavailable'; return $status; }
+		$source = trailingslashit( MAD4B_SCP_DIR ) . self::SOURCE;
+		$destination = trailingslashit( WPMU_PLUGIN_DIR ) . self::DESTINATION;
+		if ( ! is_readable( $source ) ) { $status['blocker'] = 'mu_bootstrap_source_unreadable'; return $status; }
+		$status['source_sha256'] = (string) hash_file( 'sha256', $source );
+		$status['source_bytes'] = (int) @filesize( $source );
+		if ( ! is_file( $destination ) ) { $status['state'] = 'managed_mu_absent'; return $status; }
+		$status['present'] = true;
+		if ( ! is_readable( $destination ) ) { $status['blocker'] = 'mu_bootstrap_destination_unreadable'; return $status; }
+		$status['destination_sha256_before'] = (string) hash_file( 'sha256', $destination );
+		$status['destination_bytes'] = (int) @filesize( $destination );
+		if ( '' !== $status['source_sha256'] && hash_equals( $status['source_sha256'], $status['destination_sha256_before'] ) ) {
+			$status['managed'] = true;
+			$status['integrity_before'] = true;
+			$status['ownership_source'] = 'current_source';
+			$status['state'] = 'managed_mu_current';
+			return $status;
+		}
+		$receipt = self::ownership_receipt_status( $status['destination_sha256_before'] );
+		$status['ownership_receipt_present'] = ! empty( $receipt['present'] );
+		$status['ownership_receipt_valid'] = ! empty( $receipt['ready'] );
+		$historical = self::historical_managed_sha256( $status['destination_sha256_before'] );
+		$status['managed'] = $historical || ! empty( $receipt['ready'] );
+		$status['ownership_source'] = $historical ? 'historical_hash' : ( ! empty( $receipt['ready'] ) ? 'site_ownership_receipt' : '' );
+		if ( $status['managed'] ) { $status['state'] = 'managed_mu_stale'; return $status; }
+		$status['state'] = 'unmanaged_path_conflict';
+		$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
+		$status['manual_conflict_recovery_available'] = true;
+		return $status;
 	}
 
 	private static function valid_transaction_hash( $value, $allow_empty = false ) {
@@ -292,7 +418,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		}
 	}
 
-	public static function bootstrap() {
+	public static function bootstrap( $expected_unmanaged_sha256 = '' ) {
+		$expected_unmanaged_sha256 = strtolower( trim( (string) $expected_unmanaged_sha256 ) );
 		$status = self::base_status();
 		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
 
@@ -353,6 +480,11 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( '' !== $status['source_sha256'] && '' !== $status['destination_sha256_before'] && hash_equals( $status['source_sha256'], $status['destination_sha256_before'] ) ) {
 			$status['managed'] = true;
 			$status['integrity_before'] = true;
+			$status['ownership_source'] = 'current_source';
+			$receipt = self::persist_ownership_receipt( $status['source_sha256'], 'current_source' );
+			if ( is_wp_error( $receipt ) ) { $status['blocker'] = $receipt->get_error_code(); self::$status = $status; return $status; }
+			$status['ownership_receipt_present'] = true;
+			$status['ownership_receipt_valid'] = true;
 			$status['state'] = 'managed_mu_current';
 			self::$status = $status;
 			return $status;
@@ -364,8 +496,25 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
-		$status['managed'] = self::historical_managed_sha256( $status['destination_sha256_before'] );
-		if ( ! $status['managed'] ) {
+		$receipt = self::ownership_receipt_status( $status['destination_sha256_before'] );
+		$status['ownership_receipt_present'] = ! empty( $receipt['present'] );
+		$status['ownership_receipt_valid'] = ! empty( $receipt['ready'] );
+		$historical = self::historical_managed_sha256( $status['destination_sha256_before'] );
+		$status['managed'] = $historical || ! empty( $receipt['ready'] );
+		$status['ownership_source'] = $historical ? 'historical_hash' : ( ! empty( $receipt['ready'] ) ? 'site_ownership_receipt' : '' );
+		$explicit_conflict = false;
+		if ( ! $status['managed'] && '' !== $expected_unmanaged_sha256 ) {
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_unmanaged_sha256 ) || ! hash_equals( $status['destination_sha256_before'], $expected_unmanaged_sha256 ) ) {
+				$status['blocker'] = 'mu_bootstrap_conflict_expected_hash_mismatch';
+				self::$status = $status;
+				return $status;
+			}
+			$explicit_conflict = true;
+			$status['explicit_conflict_recovery'] = true;
+			$status['ownership_source'] = 'explicit_admin_conflict_recovery';
+		}
+		if ( ! $status['managed'] && ! $explicit_conflict ) {
+			$status['manual_conflict_recovery_available'] = true;
 			$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 			self::$status = $status;
 			return $status;
@@ -381,6 +530,12 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			$status['blocker'] = 'mu_bootstrap_directory_not_writable';
 			self::$status = $status;
 			return $status;
+		}
+		if ( $explicit_conflict ) {
+			$backup = self::backup_conflicting_bytes( $before, $status['destination_sha256_before'] );
+			if ( is_wp_error( $backup ) ) { $status['blocker'] = $backup->get_error_code(); self::$status = $status; return $status; }
+			$status['conflict_backup_sha256'] = $backup['sha256'];
+			$status['conflict_backup_file'] = $backup['file'];
 		}
 
 		$filesystem_lock = self::acquire_managed_filesystem_lock( $destination );
@@ -451,13 +606,17 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		}
 
 		$event = MAD4B_SCP_Audit::record(
-			'mad4b/mcp-mu-bootstrap-refreshed',
+			$explicit_conflict ? 'mad4b/mcp-mu-bootstrap-conflict-replaced' : 'mad4b/mcp-mu-bootstrap-refreshed',
 			array(
 				'contract' => self::CONTRACT,
 				'environment' => isset( $status['environment'] ) ? $status['environment'] : 'unknown',
 				'host' => isset( $status['host'] ) ? $status['host'] : '',
 				'previous_sha256' => $status['destination_sha256_before'],
 				'current_sha256' => $status['source_sha256'],
+				'ownership_source' => $status['ownership_source'],
+				'explicit_conflict_recovery' => $explicit_conflict,
+				'conflict_backup_sha256' => isset( $status['conflict_backup_sha256'] ) ? $status['conflict_backup_sha256'] : '',
+				'conflict_backup_file' => isset( $status['conflict_backup_file'] ) ? $status['conflict_backup_file'] : '',
 				'next_request_required' => true,
 				'production_mutation' => false,
 			),
@@ -471,6 +630,18 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
+
+		$receipt = self::persist_ownership_receipt( $status['source_sha256'], $explicit_conflict ? 'explicit_conflict_recovery' : 'refresh' );
+		if ( is_wp_error( $receipt ) ) {
+			$rollback_owner = self::transaction_record_for_owner( $transaction_id );
+			$restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
+			if ( $restored ) self::complete_transaction( $transaction_id ); else self::block_transaction( 'mu_bootstrap_ownership_persist_rollback_failed', $transaction_id );
+			$status['blocker'] = $restored ? 'mu_bootstrap_ownership_persist_failed' : 'mu_bootstrap_ownership_persist_rollback_failed';
+			self::$status = $status;
+			return $status;
+		}
+		$status['ownership_receipt_present'] = true;
+		$status['ownership_receipt_valid'] = true;
 
 		if ( ! self::complete_transaction( $transaction_id ) ) {
 			self::block_transaction( 'mu_bootstrap_refresh_transaction_finalize_failed', $transaction_id );
@@ -517,6 +688,22 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		return is_string( $actual ) && hash_equals( $expected, $actual );
 	}
 
+	private static function backup_conflicting_bytes( $bytes, $hash ) {
+		if ( ! class_exists( 'MAD4B_SCP_Policy', false ) || ! method_exists( 'MAD4B_SCP_Policy', 'prepare_backup_root' ) ) return new WP_Error( 'mu_bootstrap_conflict_backup_policy_unavailable', 'Protected backup policy is unavailable.' );
+		$root = MAD4B_SCP_Policy::prepare_backup_root();
+		if ( is_wp_error( $root ) ) return new WP_Error( 'mu_bootstrap_conflict_backup_root_unavailable', 'Protected backup root is unavailable.' );
+		$hash = strtolower( trim( (string) $hash ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $hash ) || ! is_string( $bytes ) ) return new WP_Error( 'mu_bootstrap_conflict_backup_input_invalid', 'Conflict backup input is invalid.' );
+		$file = 'mcp-mu-bootstrap-conflict-' . $hash . '-' . gmdate( 'YmdHis' ) . '-' . (int) getmypid() . '.bak';
+		$path = trailingslashit( $root ) . $file;
+		$written = @file_put_contents( $path, $bytes, LOCK_EX );
+		if ( false === $written || (int) $written !== strlen( $bytes ) ) return new WP_Error( 'mu_bootstrap_conflict_backup_write_failed', 'Conflict backup could not be written.' );
+		@chmod( $path, 0600 );
+		$actual = is_readable( $path ) ? hash_file( 'sha256', $path ) : '';
+		if ( ! is_string( $actual ) || ! hash_equals( $hash, $actual ) ) return new WP_Error( 'mu_bootstrap_conflict_backup_integrity_failed', 'Conflict backup integrity verification failed.' );
+		return array( 'file' => $file, 'sha256' => $actual, 'bytes' => strlen( $bytes ) );
+	}
+
 	private static function repair_lifecycle_allowed() {
 		// Every filesystem writer must be inside the Recovery coordinator, which
 		// owns or borrows the shared maintenance lease. CLI/admin/cron context by
@@ -558,6 +745,15 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'source_sha256' => '',
 			'destination_sha256_before' => '',
 			'destination_sha256_after' => '',
+			'source_bytes' => 0,
+			'destination_bytes' => 0,
+			'ownership_receipt_present' => false,
+			'ownership_receipt_valid' => false,
+			'ownership_source' => '',
+			'explicit_conflict_recovery' => false,
+			'manual_conflict_recovery_available' => false,
+			'conflict_backup_sha256' => '',
+			'conflict_backup_file' => '',
 		);
 	}
 }
