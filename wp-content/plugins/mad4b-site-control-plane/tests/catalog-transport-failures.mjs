@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {webcrypto, createHash} from 'node:crypto';
 import {createAbilityCatalogClient} from '../client/ability-catalog-client.mjs';
 const contract = 'mad4b.ability-catalog-transport.v2', gatewayContract = 'mad4b.unified-capability-gateway.v1';
+const wireGeneration = `${contract}:test-runtime`;
 const scope = 'a'.repeat(64), snapshot = 'b'.repeat(64), abilityName = 'vendor/read';
 const bytes = Buffer.from('{"inputSchema":{"type":"object"},"outputSchema":{}}');
 const sha = createHash('sha256').update(bytes).digest('hex');
