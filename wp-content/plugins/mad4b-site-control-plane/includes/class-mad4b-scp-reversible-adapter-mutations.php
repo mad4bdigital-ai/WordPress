@@ -29,7 +29,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		$ability_name = (string) $ability_name;
 		$contract = $adapter->reversible_contract_for( $ability_name );
 		if ( '' === $contract ) return new WP_Error( 'mad4b_reversible_contract_missing', 'Adapter write has no certified reversible contract.' );
-		$callable = is_callable( $method ) ? $method : array( $adapter, $method );
+		$callable = is_string( $method ) ? array( $adapter, $method ) : $method;
 		if ( ! is_callable( $callable ) ) return new WP_Error( 'mad4b_reversible_execute_missing', 'Adapter mutation implementation is unavailable.' );
 
 		$before = $adapter->capture_reversible_state( $ability_name, $input );
