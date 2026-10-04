@@ -157,10 +157,11 @@
       "T3806"
     ],
     "task_count": 6,
-    "certification_head_sha": "52c2ddaf2188d71392f24769f99de7bceebfbf60",
-    "feature_007_spec_quality_run": 37242306513,
+    "certification_head_sha": "cb1428eebce68a1613af74c37fd1d3cda93c114e",
+    "feature_007_spec_quality_run": 37242885199,
     "runtime_file": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
     "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
-    "authorizing": false
+    "authorizing": false,
+    "concurrency_guard": "profile_scoped_distributed_lock"
   }
 }
