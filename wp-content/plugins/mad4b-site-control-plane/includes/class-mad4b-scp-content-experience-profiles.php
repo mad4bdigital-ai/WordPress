@@ -586,6 +586,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'dynamic_profile_contract' => true,
 		);
 	}
+	public static function owns_ability( $ability_name ) {
+		return in_array( (string) $ability_name, array_merge( self::ability_names( 'read' ), self::ability_names( 'content' ) ), true );
+	}
+
 	private static function dynamic_context( $ability_name ) {
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;

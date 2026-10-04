@@ -89,6 +89,7 @@ for token in (
     "MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' )",
     "MAD4B_SCP_Content_Experience_Profiles::ability_names( 'content' )",
     "MAD4B_SCP_Content_Experience_Profiles::ability_definitions()",
+    "MAD4B_SCP_Content_Experience_Profiles::owns_ability",
     "MAD4B_SCP_Content_Experience_Profiles::capture_reversible_state",
     "MAD4B_SCP_Content_Experience_Profiles::restore_reversible_state",
 ):
