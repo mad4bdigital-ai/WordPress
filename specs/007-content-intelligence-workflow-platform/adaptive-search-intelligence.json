@@ -122,5 +122,14 @@
     "no_direct_content_mutation_from_signal",
     "no_vendor_or_business_hardcode",
     "no_documentation_only_completion"
-  ]
+  ],
+  "review": {
+    "contract": "mad4b.adaptive-search-intelligence-review.v1",
+    "document": "adaptive-search-intelligence-review.md",
+    "ledger": "adaptive-search-intelligence-review.json",
+    "status": "APPROVED_WITH_GAPS",
+    "score": 88,
+    "p0_open": 10,
+    "p1_open": 8
+  }
 }
