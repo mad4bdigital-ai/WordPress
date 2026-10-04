@@ -59,6 +59,7 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 			$status = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 500;
 			$payload = array( 'code' => sanitize_key( $result->get_error_code() ) );
 			if ( is_array( $data ) && isset( $data['runtime_bootstrap'] ) && is_array( $data['runtime_bootstrap'] ) ) $payload['runtime_bootstrap'] = $data['runtime_bootstrap'];
+			if ( is_array( $data ) && isset( $data['runtime_recovery'] ) && is_array( $data['runtime_recovery'] ) ) $payload['runtime_recovery'] = $data['runtime_recovery'];
 			wp_send_json_error( $payload, $status );
 		}
 		wp_send_json_success( $result );
@@ -99,10 +100,22 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 				&& ! empty( $runtime_bootstrap['critical_class_set_pinned'] )
 				&& ! empty( $runtime_bootstrap['runtime_from_official_plugin'] );
 			if ( ! $bootstrap_ready ) {
+				$recovery = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false ) ? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status() : array();
+				$runtime_recovery = array(
+					'contract' => isset( $recovery['contract'] ) ? sanitize_text_field( (string) $recovery['contract'] ) : '',
+					'state' => isset( $recovery['state'] ) ? sanitize_key( (string) $recovery['state'] ) : '',
+					'blocker' => isset( $recovery['blocker'] ) ? sanitize_key( (string) $recovery['blocker'] ) : '',
+					'source_sha256' => isset( $recovery['source_sha256'] ) ? strtolower( trim( (string) $recovery['source_sha256'] ) ) : '',
+					'destination_sha256_before' => isset( $recovery['destination_sha256_before'] ) ? strtolower( trim( (string) $recovery['destination_sha256_before'] ) ) : '',
+					'ownership_receipt_present' => ! empty( $recovery['ownership_receipt_present'] ),
+					'ownership_receipt_valid' => ! empty( $recovery['ownership_receipt_valid'] ),
+					'ownership_source' => isset( $recovery['ownership_source'] ) ? sanitize_key( (string) $recovery['ownership_source'] ) : '',
+					'manual_conflict_recovery_available' => ! empty( $recovery['manual_conflict_recovery_available'] ),
+				);
 				return new WP_Error(
 					'mad4b_endpoint_diagnostic_mu_bootstrap_not_ready',
 					'Managed MCP early bootstrap did not pin the certified runtime for this diagnostic request.',
-					array( 'status' => 409, 'runtime_bootstrap' => $runtime_bootstrap )
+					array( 'status' => 409, 'runtime_bootstrap' => $runtime_bootstrap, 'runtime_recovery' => $runtime_recovery )
 				);
 			}
 		}
