@@ -285,20 +285,47 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 
 	if ( $mad4b_mcp_mu_status['eligible'] && ! $mad4b_mcp_mu_status['request_scope_bypassed'] ) {
 		$mad4b_mcp_mu_critical_classes = array();
-		$mad4b_mcp_mu_profile_runtime_classes = isset( $mad4b_mcp_mu_selected_profile['runtime_classes'] ) && is_array( $mad4b_mcp_mu_selected_profile['runtime_classes'] )
-			? $mad4b_mcp_mu_selected_profile['runtime_classes']
+		$mad4b_mcp_mu_critical_kinds = array();
+		$mad4b_mcp_mu_critical_blobs = array();
+		$mad4b_mcp_mu_profile_runtime_symbols = isset( $mad4b_mcp_mu_selected_profile['runtime_symbols'] ) && is_array( $mad4b_mcp_mu_selected_profile['runtime_symbols'] )
+			? $mad4b_mcp_mu_selected_profile['runtime_symbols']
 			: array();
-		foreach ( $mad4b_mcp_mu_profile_runtime_classes as $mad4b_mcp_mu_runtime_spec ) {
+		foreach ( $mad4b_mcp_mu_profile_runtime_symbols as $mad4b_mcp_mu_runtime_spec ) {
 			if ( ! is_array( $mad4b_mcp_mu_runtime_spec ) ) continue;
-			$mad4b_mcp_mu_runtime_symbol = isset( $mad4b_mcp_mu_runtime_spec['class'] ) ? trim( (string) $mad4b_mcp_mu_runtime_spec['class'] ) : '';
+			$mad4b_mcp_mu_runtime_symbol = isset( $mad4b_mcp_mu_runtime_spec['symbol'] ) ? trim( (string) $mad4b_mcp_mu_runtime_spec['symbol'] ) : '';
+			$mad4b_mcp_mu_runtime_kind = isset( $mad4b_mcp_mu_runtime_spec['kind'] ) ? sanitize_key( (string) $mad4b_mcp_mu_runtime_spec['kind'] ) : 'class';
 			$mad4b_mcp_mu_runtime_relative = isset( $mad4b_mcp_mu_runtime_spec['file'] )
 				? ltrim( str_replace( '\\', '/', (string) $mad4b_mcp_mu_runtime_spec['file'] ), '/' )
 				: '';
+			$mad4b_mcp_mu_runtime_blob = isset( $mad4b_mcp_mu_runtime_spec['git_blob_sha1'] ) ? strtolower( trim( (string) $mad4b_mcp_mu_runtime_spec['git_blob_sha1'] ) ) : '';
 			if ( '' === $mad4b_mcp_mu_runtime_symbol
 				|| '' === $mad4b_mcp_mu_runtime_relative
 				|| false !== strpos( $mad4b_mcp_mu_runtime_relative, '../' )
-				|| '/' === substr( $mad4b_mcp_mu_runtime_relative, 0, 1 ) ) continue;
+				|| '/' === substr( $mad4b_mcp_mu_runtime_relative, 0, 1 )
+				|| ! in_array( $mad4b_mcp_mu_runtime_kind, array( 'class', 'interface', 'trait' ), true )
+				|| 1 !== preg_match( '/^[a-f0-9]{40}$/D', $mad4b_mcp_mu_runtime_blob ) ) continue;
 			$mad4b_mcp_mu_critical_classes[ $mad4b_mcp_mu_runtime_symbol ] = $mad4b_mcp_mu_runtime_relative;
+			$mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_runtime_symbol ] = $mad4b_mcp_mu_runtime_kind;
+			$mad4b_mcp_mu_critical_blobs[ $mad4b_mcp_mu_runtime_relative ] = $mad4b_mcp_mu_runtime_blob;
+		}
+
+		$mad4b_mcp_mu_profile_runtime_classes = isset( $mad4b_mcp_mu_selected_profile['runtime_classes'] ) && is_array( $mad4b_mcp_mu_selected_profile['runtime_classes'] )
+			? $mad4b_mcp_mu_selected_profile['runtime_classes']
+			: array();
+		if ( empty( $mad4b_mcp_mu_critical_classes ) ) {
+			foreach ( $mad4b_mcp_mu_profile_runtime_classes as $mad4b_mcp_mu_runtime_spec ) {
+				if ( ! is_array( $mad4b_mcp_mu_runtime_spec ) ) continue;
+				$mad4b_mcp_mu_runtime_symbol = isset( $mad4b_mcp_mu_runtime_spec['class'] ) ? trim( (string) $mad4b_mcp_mu_runtime_spec['class'] ) : '';
+				$mad4b_mcp_mu_runtime_relative = isset( $mad4b_mcp_mu_runtime_spec['file'] )
+					? ltrim( str_replace( '\\', '/', (string) $mad4b_mcp_mu_runtime_spec['file'] ), '/' )
+					: '';
+				if ( '' === $mad4b_mcp_mu_runtime_symbol
+					|| '' === $mad4b_mcp_mu_runtime_relative
+					|| false !== strpos( $mad4b_mcp_mu_runtime_relative, '../' )
+					|| '/' === substr( $mad4b_mcp_mu_runtime_relative, 0, 1 ) ) continue;
+				$mad4b_mcp_mu_critical_classes[ $mad4b_mcp_mu_runtime_symbol ] = $mad4b_mcp_mu_runtime_relative;
+				$mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_runtime_symbol ] = 'class';
+			}
 		}
 
 		// The baseline 0.6.1 contract predates explicit runtime_classes. Preserve
@@ -321,6 +348,9 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 				'WP\\McpSchema\\Server\\Tools\\DTO\\ToolAnnotations' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php',
 				'WP\\McpSchema\\Server\\Tools\\DTO\\ToolExecution' => 'vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php',
 			);
+			foreach ( $mad4b_mcp_mu_critical_classes as $mad4b_mcp_mu_runtime_symbol => $mad4b_mcp_mu_runtime_relative ) {
+				$mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_runtime_symbol ] = 'class';
+			}
 		}
 		$mad4b_mcp_mu_status['adapter_profile_ready'] = ! empty( $mad4b_mcp_mu_selected_profile )
 			&& ! empty( $mad4b_mcp_mu_critical_hashes )
@@ -329,12 +359,25 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			$mad4b_mcp_mu_status['state'] = 'exact_adapter_profile_unavailable';
 		}
 
+		$mad4b_mcp_mu_symbol_exists = static function ( $symbol, $kind, $autoload = true ) {
+			$kind = sanitize_key( (string) $kind );
+			if ( 'interface' === $kind ) return interface_exists( $symbol, (bool) $autoload );
+			if ( 'trait' === $kind ) return trait_exists( $symbol, (bool) $autoload );
+			return class_exists( $symbol, (bool) $autoload );
+		};
+		$mad4b_mcp_mu_git_blob_sha1 = static function ( $file ) {
+			$raw = is_readable( $file ) ? file_get_contents( $file ) : false;
+			if ( false === $raw ) return '';
+			return sha1( 'blob ' . strlen( $raw ) . "\0" . $raw );
+		};
+
 		$mad4b_mcp_mu_symbols = array_merge(
 			array( 'WP\\MCP\\Autoloader', 'WP\\MCP\\Plugin' ),
 			array_keys( $mad4b_mcp_mu_critical_classes )
 		);
 		foreach ( $mad4b_mcp_mu_symbols as $mad4b_mcp_mu_symbol ) {
-			if ( class_exists( $mad4b_mcp_mu_symbol, false ) ) {
+			$mad4b_mcp_mu_symbol_kind = isset( $mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_symbol ] ) ? $mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_symbol ] : 'class';
+			if ( $mad4b_mcp_mu_symbol_exists( $mad4b_mcp_mu_symbol, $mad4b_mcp_mu_symbol_kind, false ) ) {
 				$mad4b_mcp_mu_status['runtime_preclaimed'] = true;
 				$mad4b_mcp_mu_status['preclaimed_symbol'] = $mad4b_mcp_mu_symbol;
 				$mad4b_mcp_mu_status['state'] = 'runtime_preclaimed_before_mu_bootstrap';
@@ -366,10 +409,22 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			array( 'includes/Autoloader.php', 'includes/Plugin.php', 'vendor/autoload_packages.php' )
 		) ) );
 		foreach ( $mad4b_mcp_mu_integrity_files as $mad4b_mcp_mu_critical_relative ) {
-			$mad4b_mcp_mu_expected_sha = $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ?? '';
-			$mad4b_mcp_mu_actual_sha = is_readable( $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative ) ? hash_file( 'sha256', $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative ) : '';
-			if ( ! is_string( $mad4b_mcp_mu_expected_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_expected_sha )
-				|| ! is_string( $mad4b_mcp_mu_actual_sha ) || ! hash_equals( $mad4b_mcp_mu_expected_sha, $mad4b_mcp_mu_actual_sha ) ) {
+			$mad4b_mcp_mu_expected_blob = isset( $mad4b_mcp_mu_critical_blobs[ $mad4b_mcp_mu_critical_relative ] ) ? $mad4b_mcp_mu_critical_blobs[ $mad4b_mcp_mu_critical_relative ] : '';
+			$mad4b_mcp_mu_critical_file = $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative;
+			if ( '' !== $mad4b_mcp_mu_expected_blob ) {
+				$mad4b_mcp_mu_actual_blob = $mad4b_mcp_mu_git_blob_sha1( $mad4b_mcp_mu_critical_file );
+				$mad4b_mcp_mu_integrity_match = 1 === preg_match( '/^[a-f0-9]{40}$/D', $mad4b_mcp_mu_expected_blob )
+					&& 1 === preg_match( '/^[a-f0-9]{40}$/D', $mad4b_mcp_mu_actual_blob )
+					&& hash_equals( $mad4b_mcp_mu_expected_blob, $mad4b_mcp_mu_actual_blob );
+			} else {
+				$mad4b_mcp_mu_expected_sha = $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ?? '';
+				$mad4b_mcp_mu_actual_sha = is_readable( $mad4b_mcp_mu_critical_file ) ? hash_file( 'sha256', $mad4b_mcp_mu_critical_file ) : '';
+				$mad4b_mcp_mu_integrity_match = is_string( $mad4b_mcp_mu_expected_sha )
+					&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_expected_sha )
+					&& is_string( $mad4b_mcp_mu_actual_sha )
+					&& hash_equals( $mad4b_mcp_mu_expected_sha, $mad4b_mcp_mu_actual_sha );
+			}
+			if ( ! $mad4b_mcp_mu_integrity_match ) {
 				$mad4b_mcp_mu_status['critical_class_baseline_ready'] = false;
 				if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] ) $mad4b_mcp_mu_status['state'] = 'critical_class_baseline_mismatch';
 				break;
@@ -391,12 +446,21 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 				} else {
 					$mad4b_mcp_mu_status['critical_class_baseline_ready'] = ! empty( $mad4b_mcp_mu_status['adapter_profile_ready'] ) && ! empty( $mad4b_mcp_mu_critical_hashes );
 					foreach ( $mad4b_mcp_mu_critical_classes as $mad4b_mcp_mu_critical_symbol => $mad4b_mcp_mu_critical_relative ) {
-						$mad4b_mcp_mu_expected_sha = isset( $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ) ? strtolower( (string) $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ) : '';
 						$mad4b_mcp_mu_critical_file = $mad4b_mcp_mu_root . $mad4b_mcp_mu_critical_relative;
-						$mad4b_mcp_mu_actual_sha = is_readable( $mad4b_mcp_mu_critical_file ) ? hash_file( 'sha256', $mad4b_mcp_mu_critical_file ) : '';
-						if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_expected_sha )
-							|| ! is_string( $mad4b_mcp_mu_actual_sha )
-							|| ! hash_equals( $mad4b_mcp_mu_expected_sha, strtolower( $mad4b_mcp_mu_actual_sha ) ) ) {
+						$mad4b_mcp_mu_expected_blob = isset( $mad4b_mcp_mu_critical_blobs[ $mad4b_mcp_mu_critical_relative ] ) ? $mad4b_mcp_mu_critical_blobs[ $mad4b_mcp_mu_critical_relative ] : '';
+						if ( '' !== $mad4b_mcp_mu_expected_blob ) {
+							$mad4b_mcp_mu_actual_blob = $mad4b_mcp_mu_git_blob_sha1( $mad4b_mcp_mu_critical_file );
+							$mad4b_mcp_mu_integrity_match = 1 === preg_match( '/^[a-f0-9]{40}$/D', $mad4b_mcp_mu_expected_blob )
+								&& 1 === preg_match( '/^[a-f0-9]{40}$/D', $mad4b_mcp_mu_actual_blob )
+								&& hash_equals( $mad4b_mcp_mu_expected_blob, $mad4b_mcp_mu_actual_blob );
+						} else {
+							$mad4b_mcp_mu_expected_sha = isset( $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ) ? strtolower( (string) $mad4b_mcp_mu_critical_hashes[ $mad4b_mcp_mu_critical_relative ] ) : '';
+							$mad4b_mcp_mu_actual_sha = is_readable( $mad4b_mcp_mu_critical_file ) ? hash_file( 'sha256', $mad4b_mcp_mu_critical_file ) : '';
+							$mad4b_mcp_mu_integrity_match = 1 === preg_match( '/^[a-f0-9]{64}$/D', $mad4b_mcp_mu_expected_sha )
+								&& is_string( $mad4b_mcp_mu_actual_sha )
+								&& hash_equals( $mad4b_mcp_mu_expected_sha, strtolower( $mad4b_mcp_mu_actual_sha ) );
+						}
+						if ( ! $mad4b_mcp_mu_integrity_match ) {
 							$mad4b_mcp_mu_status['critical_class_baseline_ready'] = false;
 							$mad4b_mcp_mu_status['critical_class_pin_failed_symbol'] = $mad4b_mcp_mu_critical_symbol;
 							$mad4b_mcp_mu_status['state'] = 'critical_class_baseline_mismatch';
@@ -406,7 +470,8 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 					if ( $mad4b_mcp_mu_status['critical_class_baseline_ready'] ) {
 						$mad4b_mcp_mu_official_root = realpath( $mad4b_mcp_mu_root );
 						foreach ( $mad4b_mcp_mu_critical_classes as $mad4b_mcp_mu_critical_symbol => $mad4b_mcp_mu_critical_relative ) {
-							if ( ! class_exists( $mad4b_mcp_mu_critical_symbol ) ) {
+							$mad4b_mcp_mu_symbol_kind = isset( $mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_critical_symbol ] ) ? $mad4b_mcp_mu_critical_kinds[ $mad4b_mcp_mu_critical_symbol ] : 'class';
+							if ( ! $mad4b_mcp_mu_symbol_exists( $mad4b_mcp_mu_critical_symbol, $mad4b_mcp_mu_symbol_kind, true ) ) {
 								$mad4b_mcp_mu_status['critical_class_pin_failed_symbol'] = $mad4b_mcp_mu_critical_symbol;
 								$mad4b_mcp_mu_status['state'] = 'critical_class_pin_failed';
 								break;
@@ -509,6 +574,17 @@ unset(
 	$mad4b_mcp_mu_symbols,
 	$mad4b_mcp_mu_symbol,
 	$mad4b_mcp_mu_critical_classes,
+	$mad4b_mcp_mu_critical_kinds,
+	$mad4b_mcp_mu_critical_blobs,
+	$mad4b_mcp_mu_profile_runtime_symbols,
+	$mad4b_mcp_mu_runtime_kind,
+	$mad4b_mcp_mu_runtime_blob,
+	$mad4b_mcp_mu_symbol_kind,
+	$mad4b_mcp_mu_symbol_exists,
+	$mad4b_mcp_mu_git_blob_sha1,
+	$mad4b_mcp_mu_expected_blob,
+	$mad4b_mcp_mu_actual_blob,
+	$mad4b_mcp_mu_integrity_match,
 	$mad4b_mcp_mu_integrity_files,
 	$mad4b_mcp_mu_critical_symbol,
 	$mad4b_mcp_mu_critical_relative,
