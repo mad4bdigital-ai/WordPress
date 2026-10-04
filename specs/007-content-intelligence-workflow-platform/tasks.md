@@ -958,3 +958,33 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3858 P0 Execute evidence tamper, provider contradiction, malformed/untrusted content and normalization-version fixtures.
 - [ ] T3859 P0 GATE Prove no vendor/business hardcode is required to add a new Search Profile/provider/site.
 - [ ] T3860 P0 GATE Emit ADAPTIVE_SEARCH_GENERALIZATION_PASS only from exact-head executable evidence; documentation-only closure is forbidden.
+
+### 38K — Measurement semantics and identity hardening
+- [ ] T3861 P0 Define ObservationContext + ComparabilityKey and prohibit ranking deltas across materially incomparable location/provider/engine/device/depth/normalization contexts.
+- [ ] T3862 P0 Define provider-resolved geo/locale fidelity including requested market, provider location ID, precision, country/gl, language/hl, engine/domain and device evidence.
+- [ ] T3863 P0 Define versioned query canonicalization preserving raw query, Unicode/locale semantics, normalized query and normalization reason/version.
+- [ ] T3864 P0 Define versioned owned-URL identity/matching across scheme/host/trailing slash/parameters/redirects/canonical aliases/localized URLs and registrable-domain ownership.
+- [ ] T3865 P0 Define normalized rank semantics separating result type, organic rank, grouped rank, absolute SERP position and provider-native position.
+- [ ] T3866 P0 Define capture completeness semantics: requested/returned depth, partial/truncated reason, validation state and NOT_FOUND_WITHIN_DEPTH; forbid loss signals from incomplete captures.
+
+### 38L — Search eligibility and bounded surface admission
+- [ ] T3867 P0 Replace scalar indexability with SearchEligibilityEnvelope covering crawlable, robots.txt, X-Robots-Tag, meta robots, canonical/redirect, sitemap/discoverability, hreflang and effective confidence.
+- [ ] T3868 P0 Implement bounded Surface Admission Policy for facets/filters/query parameters/pagination/virtual surfaces with allowlists, cardinality caps, canonical policy and unknown-combination denial.
+
+### 38M — Distributed provider economics and evidence rights
+- [ ] T3869 P0 Implement ProviderAccountBudgetAuthority keyed by provider account/credential identity for quotas shared across sites/workers.
+- [ ] T3870 P0 Implement fenced global budget reservations, billing-cycle/reset-time semantics, stale reservation expiry and provider usage reconciliation; downgrade enforcement claims when no shared authority exists.
+- [ ] T3871 P1 Compose first-party SearchPerformanceProvider evidence into opportunity/decline/refresh decisions without relabeling it as live SERP evidence.
+- [ ] T3872 P1 Define QueryLanguageProvenance for translation/transcreation, market evidence, semantic cluster relation, confidence and approval independently from page translation state.
+- [ ] T3873 P0 Bind provider licensing/usage/retention constraints to raw and normalized evidence storage, redistribution, region and deletion policy.
+
+### 38N — Deterministic decisions, portability and adaptive UX stability
+- [ ] T3874 P0 Define deterministic versioned DecisionPolicy factor ranges, missing-value handling, normalization, monotonicity, calibration and stable tie-break semantics; v1 MUST NOT require opaque ML.
+- [ ] T3875 P1 Define adaptive UX stability and operator controls: stable section IDs/order/deep links plus audited pause/resume profile, disable provider, freeze spend, pin/mute target and request-refresh controls.
+- [ ] T3876 P1 Define portable Search Intelligence execution/storage profiles for WordPress-local, external worker and external evidence/blob store while preserving canonical identities/evidence semantics.
+- [ ] T3877 P0 GATE Map every Phase 38 PASS gate to exact fixtures, assertions, thresholds, denial cases, evidence artifact and required CI/disposable/live evidence class.
+- [ ] T3878 P1 Define open/versioned SERP feature schema preserving known normalized family plus provider-native unknown/pass-through evidence.
+- [ ] T3879 P1 Bind every DecisionPolicy factor, including commercial value/search volume, to source, market/language scope, freshness, confidence and normalization version.
+
+### 38O — Composed adversarial acceptance
+- [ ] T3880 P0 GATE Execute composed cross-fault matrix covering profile/provider/language/surface drift, shared-budget races, lease loss, quota reset, partial capture, cache equivalence, uncertain provider effects and adaptive UI state; exact-head executable evidence required.
