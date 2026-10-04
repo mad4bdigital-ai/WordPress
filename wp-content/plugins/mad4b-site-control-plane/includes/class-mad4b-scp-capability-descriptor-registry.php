@@ -80,6 +80,21 @@ final class MAD4B_SCP_Capability_Descriptor_Registry {
 			'contract_root' => $contract_root,
 			'site_root' => $site_root,
 		);
+		$extension_roots = apply_filters( 'mad4b_scp_capability_descriptor_generation_roots', array(), $name, $row );
+		if ( ! is_array( $extension_roots ) ) return new WP_Error( 'mad4b_capability_descriptor_extension_roots_invalid', 'Capability Descriptor extension roots must be an object.' );
+		$clean_extension_roots = array();
+		foreach ( $extension_roots as $key => $digest ) {
+			$key = sanitize_key( (string) $key );
+			$digest = strtolower( trim( (string) $digest ) );
+			if ( '' === $key || 1 !== preg_match( '/^[a-f0-9]{64}$/', $digest ) ) {
+				return new WP_Error( 'mad4b_capability_descriptor_extension_root_invalid', 'Capability Descriptor extension root is malformed.' );
+			}
+			$clean_extension_roots[ $key ] = $digest;
+		}
+		if ( $clean_extension_roots ) {
+			ksort( $clean_extension_roots, SORT_STRING );
+			$roots['extension_roots'] = $clean_extension_roots;
+		}
 		$descriptor_sha256 = MAD4B_SCP_Ability_Contract_Inspector::digest( self::GENERATION_CONTRACT, $roots );
 		if ( is_wp_error( $descriptor_sha256 ) ) return $descriptor_sha256;
 
