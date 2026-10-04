@@ -4,7 +4,33 @@ Review contract: `mad4b.adaptive-search-intelligence-review.v1`
 
 Scope: Feature 007 Phase 38, `mad4b.adaptive-search-intelligence.v1`.
 
-Status: **APPROVED_WITH_GAPS** for specification continuation. This review does not approve implementation completion, Production activation, provider spend, or content mutation.
+Status: **APPROVED_P0_CLOSED_P1_OPEN**. The original review score remains the baseline pre-closure assessment; Phase 38 is still OPEN and this does not approve Production activation, provider spend, or content mutation.
+
+## P0 closure update
+
+The 12 P0 review findings are now **CLOSED** at repository/runtime-contract level.
+
+Evidence:
+- exact implementation head: `178ec73281a19fd7c78a8e83ff110dd11027b684`;
+- Feature 007 Spec Quality CI run: `37236946924`;
+- adaptive-search P0 runtime-contract step: **PASS**;
+- Spec Kit consistency on the same implementation lineage: PASS.
+
+Implemented closure surfaces:
+- ObservationContext / ComparabilityKey and provider-resolved geo/locale fidelity;
+- versioned query and owned-URL identity;
+- separated organic/group/absolute/provider-native rank semantics;
+- complete/partial/not-found-within-depth capture semantics;
+- fail-closed SearchEligibilityEnvelope;
+- bounded facet/virtual-surface admission;
+- ProviderAccountBudgetAuthority with truthful `hard_global` versus `local_best_effort` claims;
+- provider usage reconciliation, billing-cycle reset and stale reservation expiry;
+- provider evidence-rights/retention constraints;
+- deterministic provenance-bound DecisionPolicy;
+- measurable acceptance descriptors for all Phase 38 gates;
+- composed drift/budget/lease/partial-capture/cache/uncertain-effect fault guard.
+
+Remaining review backlog: **6 P1 findings**. Phase 38 remains a non-authorizing MATURITY_REQUIRED extension and is not globally complete.
 
 ## Executive assessment
 
@@ -457,7 +483,7 @@ Task: T3880.
 
 # Quality conclusion
 
-The architecture is suitable for continued development, but **broad runtime implementation should be sequenced behind ASIR-001 through ASIR-008, ASIR-011, ASIR-012 and ASIR-015/018**.
+The P0 semantic blockers ASIR-001 through ASIR-008, ASIR-011, ASIR-012 and ASIR-015/018 are now closed by exact-head executable evidence. Broad Phase 38 work may continue, while the six P1 findings and provider/live-execution maturity remain open.
 
 The strongest parts are:
 1. governance separation;
@@ -496,4 +522,4 @@ Adaptive UX stability / operator controls
 Cross-fault generalization proof
 ```
 
-After those P0 items are closed, the design can credibly move from **strong architecture specification** to **implementation-ready Search Intelligence runtime**.
+With the P0 set closed, the design has moved from **strong architecture specification** to an **implementation-ready Search Intelligence foundation**. This is not a claim that the full Phase 38 runtime, providers, live Staging acceptance, or Production activation is complete.
