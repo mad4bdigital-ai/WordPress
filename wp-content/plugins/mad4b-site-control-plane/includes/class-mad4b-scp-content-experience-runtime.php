@@ -89,7 +89,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 	private static function allowed_taxonomies( array $profile ) {
 		$attached = array_keys( get_object_taxonomies( $profile['post_type'], 'objects' ) );
 		$configured = isset( $profile['taxonomies'] ) ? (array) $profile['taxonomies'] : array();
-		return $configured ? array_values( array_intersect( $attached, $configured ) ) : $attached;
+		$mode = isset( $profile['taxonomy_mode'] ) ? (string) $profile['taxonomy_mode'] : 'allowlist';
+		return 'all_attached' === $mode ? $attached : array_values( array_intersect( $attached, $configured ) );
 	}
 
 	private static function normalize_taxonomy_payload( array $profile, $payload ) {
@@ -222,6 +223,9 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
 		if ( is_wp_error( $profile ) ) return $profile;
 		if ( empty( $profile['enabled'] ) ) return new WP_Error( 'mad4b_content_experience_profile_disabled', 'Experience profile is disabled.' );
+		if ( ! class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) ) return new WP_Error( 'mad4b_content_experience_governance_unavailable', 'Content experience governance service is unavailable.' );
+		$profile_guard = MAD4B_SCP_Content_Experience_Governance::current_guard( $profile );
+		if ( is_wp_error( $profile_guard ) ) return $profile_guard;
 		$object = MAD4B_SCP_Content_Experience_Profiles::post_type_object( $profile['post_type'] );
 		if ( is_wp_error( $object ) ) return $object;
 		if ( ! in_array( $operation, array( 'create', 'update', 'publish' ), true ) ) {
@@ -287,6 +291,9 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( $featured_media_id > 0 && 'attachment' !== get_post_type( $featured_media_id ) ) {
 				return new WP_Error( 'mad4b_content_experience_featured_media_invalid', 'featured_media_id must reference an attachment.' );
 			}
+			if ( $featured_media_id > 0 && ! current_user_can( 'read_post', $featured_media_id ) ) {
+				return new WP_Error( 'mad4b_content_experience_featured_media_read_denied', 'Current user cannot read the requested featured media attachment.' );
+			}
 		}
 
 		$post_parent = array_key_exists( 'post_parent', $input ) ? absint( $input['post_parent'] ) : null;
@@ -294,6 +301,9 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( empty( $profile['hierarchy'] ) ) return new WP_Error( 'mad4b_content_experience_hierarchy_disabled', 'Hierarchy is disabled for this experience profile.' );
 			if ( $post_parent > 0 && $profile['post_type'] !== get_post_type( $post_parent ) ) {
 				return new WP_Error( 'mad4b_content_experience_parent_mismatch', 'Parent must use the same post type.' );
+			}
+			if ( $post_parent > 0 && ! current_user_can( 'read_post', $post_parent ) ) {
+				return new WP_Error( 'mad4b_content_experience_parent_read_denied', 'Current user cannot read the requested parent post.' );
 			}
 		}
 
@@ -321,6 +331,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'profile_slug' => (string) $profile['slug'],
 			'profile_revision' => (int) $profile['revision'],
 			'profile_sha256' => $profile_digest,
+			'profile_authority_sha256' => (string) $profile['authority_sha256'],
+			'profile_snapshot' => MAD4B_SCP_Content_Experience_Governance::snapshot( $profile ),
 			'helper_catalog_sha256' => MAD4B_SCP_Content_Experience_Profiles::helper_catalog_sha256(),
 			'operation' => $operation,
 			'post_type' => (string) $profile['post_type'],
@@ -442,6 +454,34 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		return $ids;
 	}
 
+	private static function profile_from_target( array $target ) {
+		$snapshot = isset( $target['profile_snapshot'] ) ? $target['profile_snapshot'] : ( isset( $target['plan']['profile_snapshot'] ) ? $target['plan']['profile_snapshot'] : null );
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) ) {
+			$validated = MAD4B_SCP_Content_Experience_Governance::validate_snapshot( $snapshot );
+			if ( ! is_wp_error( $validated ) ) return $validated;
+			return $validated;
+		}
+		return new WP_Error( 'mad4b_content_experience_profile_snapshot_unavailable', 'Historical profile snapshot governance is unavailable.' );
+	}
+
+	private static function compensated_error( $error, array $before ) {
+		$restored = self::restore_reversible_state( $before['target'], $before['state'] );
+		if ( is_wp_error( $restored ) ) {
+			return new WP_Error( 'mad4b_content_experience_compensation_failed', 'Content experience mutation failed and automatic compensation also failed.', array(
+				'primary_error' => is_wp_error( $error ) ? $error->get_error_code() : 'unknown',
+				'compensation_error' => $restored->get_error_code(),
+				'manual_recovery_required' => true,
+				'blind_retry_allowed' => false,
+			) );
+		}
+		if ( ! is_wp_error( $error ) ) $error = new WP_Error( 'mad4b_content_experience_apply_failed', 'Content experience mutation failed.' );
+		$data = $error->get_error_data( $error->get_error_code() );
+		if ( ! is_array( $data ) ) $data = array();
+		$data['mad4b_compensation'] = array( 'attempted' => true, 'verified' => true, 'blind_retry_allowed' => false );
+		$error->add_data( $data, $error->get_error_code() );
+		return $error;
+	}
+
 	public static function operation_apply( $slug, $operation, $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$expected_plan = isset( $input['plan_sha256'] ) ? strtolower( trim( (string) $input['plan_sha256'] ) ) : '';
@@ -452,82 +492,95 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		if ( '' === $expected_plan || ! hash_equals( $plan['plan_sha256'], $expected_plan ) ) {
 			return new WP_Error( 'mad4b_content_experience_operation_plan_drift', 'Operation apply does not match the exact reviewed plan.' );
 		}
-		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
-		if ( is_wp_error( $profile ) ) return $profile;
 		$normalized = $plan['normalized_input'];
 		$post_id = isset( $normalized['post_id'] ) ? (int) $normalized['post_id'] : 0;
+		$binding = 'create' === $operation ? (string) $plan['creation_binding'] : '';
+		$lock = MAD4B_SCP_Content_Experience_Governance::acquire_lock( $slug, $post_id, $binding );
+		if ( is_wp_error( $lock ) ) return $lock;
 
-		if ( 'create' === $operation ) {
-			$binding = (string) $plan['creation_binding'];
-			$existing = self::find_created_by_binding( $profile, $binding );
-			if ( count( $existing ) > 1 ) {
-				return new WP_Error( 'mad4b_content_experience_creation_binding_collision', 'Creation binding resolves to more than one post.' );
+		try {
+			$locked_plan = self::operation_plan( $slug, $operation, $plan_input );
+			if ( is_wp_error( $locked_plan ) ) return $locked_plan;
+			if ( ! hash_equals( $expected_plan, $locked_plan['plan_sha256'] ) ) {
+				return new WP_Error( 'mad4b_content_experience_locked_plan_drift', 'Target changed before the execution lock was acquired.' );
 			}
-			if ( 1 === count( $existing ) ) {
-				$post_id = absint( $existing[0] );
-				$verify = self::verify_plan_readback( $profile, $plan, $post_id );
-				if ( is_wp_error( $verify ) ) return new WP_Error( 'mad4b_content_experience_create_replay_drift', 'Existing idempotent create result no longer matches the reviewed plan.' );
-				return array(
-					'post_id' => $post_id,
-					'created' => false,
-					'idempotent_replay' => true,
-					'verified' => true,
-					'plan_sha256' => $plan['plan_sha256'],
+			$plan = $locked_plan;
+			$profile = $plan['profile_snapshot'];
+			$normalized = $plan['normalized_input'];
+			$post_id = isset( $normalized['post_id'] ) ? (int) $normalized['post_id'] : 0;
+
+			if ( 'create' === $operation ) {
+				$existing = self::find_created_by_binding( $profile, $binding );
+				if ( count( $existing ) > 1 ) return new WP_Error( 'mad4b_content_experience_creation_binding_collision', 'Creation binding resolves to more than one post.' );
+				if ( 1 === count( $existing ) ) {
+					$post_id = absint( $existing[0] );
+					$verify = self::verify_plan_readback( $profile, $plan, $post_id );
+					if ( is_wp_error( $verify ) ) return new WP_Error( 'mad4b_content_experience_create_replay_drift', 'Existing idempotent create result no longer matches the reviewed plan.' );
+					return array( 'post_id' => $post_id, 'created' => false, 'idempotent_replay' => true, 'verified' => true, 'plan_sha256' => $plan['plan_sha256'] );
+				}
+			}
+
+			$before = self::capture_reversible_state( $slug, $operation, $input );
+			if ( is_wp_error( $before ) ) return $before;
+			$mutated = false;
+
+			if ( 'create' === $operation ) {
+				$postarr = array(
+					'post_type' => $profile['post_type'], 'post_title' => (string) $normalized['post_title'],
+					'post_content' => null === $normalized['post_content'] ? '' : (string) $normalized['post_content'],
+					'post_excerpt' => null === $normalized['post_excerpt'] ? '' : (string) $normalized['post_excerpt'],
+					'post_status' => (string) $normalized['post_status'], 'post_name' => null === $normalized['post_name'] ? '' : (string) $normalized['post_name'],
+					'post_parent' => null === $normalized['post_parent'] ? 0 : (int) $normalized['post_parent'], 'menu_order' => null === $normalized['menu_order'] ? 0 : (int) $normalized['menu_order'],
 				);
+				$post_id = wp_insert_post( wp_slash( $postarr ), true );
+				if ( is_wp_error( $post_id ) ) return $post_id;
+				$post_id = (int) $post_id;
+				$mutated = true;
+				update_post_meta( $post_id, self::CREATION_BINDING_META, $binding );
+			} elseif ( 'update' === $operation ) {
+				$update = array( 'ID' => $post_id );
+				foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_parent', 'menu_order' ) as $field ) if ( null !== $normalized[ $field ] ) $update[ $field ] = $normalized[ $field ];
+				if ( count( $update ) > 1 ) {
+					$result = wp_update_post( wp_slash( $update ), true );
+					if ( is_wp_error( $result ) ) return self::compensated_error( $result, $before );
+					$mutated = true;
+				}
 			}
-			$postarr = array(
-				'post_type' => $profile['post_type'],
-				'post_title' => (string) $normalized['post_title'],
-				'post_content' => null === $normalized['post_content'] ? '' : (string) $normalized['post_content'],
-				'post_excerpt' => null === $normalized['post_excerpt'] ? '' : (string) $normalized['post_excerpt'],
-				'post_status' => (string) $normalized['post_status'],
-				'post_name' => null === $normalized['post_name'] ? '' : (string) $normalized['post_name'],
-				'post_parent' => null === $normalized['post_parent'] ? 0 : (int) $normalized['post_parent'],
-				'menu_order' => null === $normalized['menu_order'] ? 0 : (int) $normalized['menu_order'],
+
+			if ( 'publish' !== $operation ) {
+				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
+				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
+				$mutated = true;
+			}
+			$meta_result = self::apply_meta( $post_id, $normalized['meta'] );
+			if ( is_wp_error( $meta_result ) ) return $mutated ? self::compensated_error( $meta_result, $before ) : $meta_result;
+			$term_result = self::apply_taxonomies( $post_id, $normalized['taxonomies'] );
+			if ( is_wp_error( $term_result ) ) return self::compensated_error( $term_result, $before );
+			$media_result = self::apply_featured_media( $post_id, $normalized['featured_media_id'] );
+			if ( is_wp_error( $media_result ) ) return self::compensated_error( $media_result, $before );
+			$helper_results = self::apply_helpers( $profile, $operation, $post_id, $normalized['helpers'] );
+			if ( is_wp_error( $helper_results ) ) return self::compensated_error( $helper_results, $before );
+
+			// Publish is the final externally visible state transition.
+			if ( 'publish' === $operation ) {
+				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
+				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
+				$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] ), true );
+				if ( is_wp_error( $result ) ) return self::compensated_error( $result, $before );
+			}
+			$verified = self::verify_plan_readback( $profile, $plan, $post_id );
+			if ( is_wp_error( $verified ) ) return self::compensated_error( $verified, $before );
+
+			$post = get_post( $post_id );
+			return array(
+				'contract' => MAD4B_SCP_Content_Experience_Profiles::CONTRACT, 'profile_slug' => $profile['slug'],
+				'profile_authority_sha256' => $profile['authority_sha256'], 'operation' => $operation, 'post_id' => $post_id,
+				'post_status' => $post ? $post->post_status : '', 'modified_gmt' => $post ? $post->post_modified_gmt : '',
+				'verified' => true, 'helper_results' => $helper_results, 'plan_sha256' => $plan['plan_sha256'],
 			);
-			$post_id = wp_insert_post( wp_slash( $postarr ), true );
-			if ( is_wp_error( $post_id ) ) return $post_id;
-			$post_id = (int) $post_id;
-			update_post_meta( $post_id, self::CREATION_BINDING_META, $binding );
-		} elseif ( 'update' === $operation ) {
-			$update = array( 'ID' => $post_id );
-			foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_parent', 'menu_order' ) as $field ) {
-				if ( null !== $normalized[ $field ] ) $update[ $field ] = $normalized[ $field ];
-			}
-			if ( count( $update ) > 1 ) {
-				$result = wp_update_post( wp_slash( $update ), true );
-				if ( is_wp_error( $result ) ) return $result;
-			}
-		} elseif ( 'publish' === $operation ) {
-			$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] ), true );
-			if ( is_wp_error( $result ) ) return $result;
+		} finally {
+			MAD4B_SCP_Content_Experience_Governance::release_lock( $lock );
 		}
-
-		update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
-		update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
-		$meta_result = self::apply_meta( $post_id, $normalized['meta'] );
-		if ( is_wp_error( $meta_result ) ) return $meta_result;
-		$term_result = self::apply_taxonomies( $post_id, $normalized['taxonomies'] );
-		if ( is_wp_error( $term_result ) ) return $term_result;
-		$media_result = self::apply_featured_media( $post_id, $normalized['featured_media_id'] );
-		if ( is_wp_error( $media_result ) ) return $media_result;
-		$helper_results = self::apply_helpers( $profile, $operation, $post_id, $normalized['helpers'] );
-		if ( is_wp_error( $helper_results ) ) return $helper_results;
-		$verified = self::verify_plan_readback( $profile, $plan, $post_id );
-		if ( is_wp_error( $verified ) ) return $verified;
-
-		$post = get_post( $post_id );
-		return array(
-			'contract' => MAD4B_SCP_Content_Experience_Profiles::CONTRACT,
-			'profile_slug' => $profile['slug'],
-			'operation' => $operation,
-			'post_id' => $post_id,
-			'post_status' => $post ? $post->post_status : '',
-			'modified_gmt' => $post ? $post->post_modified_gmt : '',
-			'verified' => true,
-			'helper_results' => $helper_results,
-			'plan_sha256' => $plan['plan_sha256'],
-		);
 	}
 
 	private static function helper_state_capture( array $profile, $operation, $post_id, array $helper_plans ) {
@@ -627,7 +680,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			return array(
 				'target_type' => 'content-experience-create',
 				'target_id' => $binding,
-				'target' => array( 'kind' => 'operation', 'operation' => 'create', 'slug' => $slug, 'binding' => $binding, 'plan' => $plan ),
+				'target' => array( 'kind' => 'operation', 'operation' => 'create', 'slug' => $slug, 'binding' => $binding, 'profile_snapshot' => $plan['profile_snapshot'], 'plan' => $plan ),
 				'state' => $state,
 			);
 		}
@@ -637,14 +690,13 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		return array(
 			'target_type' => 'content-experience-post',
 			'target_id' => (string) $post_id,
-			'target' => array( 'kind' => 'operation', 'operation' => $operation, 'slug' => $slug, 'post_id' => $post_id, 'plan' => $plan ),
+			'target' => array( 'kind' => 'operation', 'operation' => $operation, 'slug' => $slug, 'post_id' => $post_id, 'profile_snapshot' => $plan['profile_snapshot'], 'plan' => $plan ),
 			'state' => $snapshot,
 		);
 	}
 
 	public static function read_reversible_state( array $target ) {
-		$slug = isset( $target['slug'] ) ? (string) $target['slug'] : '';
-		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+		$profile = self::profile_from_target( $target );
 		if ( is_wp_error( $profile ) ) return $profile;
 		$operation = isset( $target['operation'] ) ? sanitize_key( (string) $target['operation'] ) : '';
 		if ( 'create' === $operation ) {
