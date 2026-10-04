@@ -8,6 +8,8 @@ final class MAD4B_SCP_Search_Evidence {
 		$native = isset( $feature['provider_native_type'] ) ? trim( (string) $feature['provider_native_type'] ) : '';
 		if ( '' === $native || strlen( $native ) > 191 || preg_match( '/[\\x00-\\x1F\\x7F]/', $native ) ) return MAD4B_SCP_Search_Contracts::error( 'serp_feature_invalid' );
 		$family = isset( $feature['family'] ) ? strtolower( trim( (string) $feature['family'] ) ) : 'unknown';
+		$aliases = array( 'people_also_ask' => 'related_questions', 'people_also_search' => 'related_questions' );
+		if ( isset( $aliases[ $family ] ) ) $family = $aliases[ $family ];
 		$known = array(
 			'answer_box',
 			'ai_overview',
