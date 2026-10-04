@@ -78,6 +78,7 @@ final class MAD4B_SCP_Plugin {
 
 		add_action( 'init', array( __CLASS__, 'boot_oauth_transport_if_effective' ), 3 );
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
+		MAD4B_SCP_MCP_Transport_Admission::boot();
 
 		$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();
 		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
