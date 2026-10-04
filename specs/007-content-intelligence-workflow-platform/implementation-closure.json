@@ -308,7 +308,15 @@
         "pre_staging_workflow_run_id": 37214537248,
         "repository_exact_head_proven": true,
         "prior_exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
-        "repository_recertification_required": true
+        "repository_recertification_required": true,
+        "production_certification_readonly_ability": "mad4b/production-certification-readonly-evidence",
+        "production_certification_stage_id": "provider_side_channel_inventory",
+        "remote_read_surface": "mad4b-read,mad4b-chatgpt",
+        "remote_read_producer_exposed": true,
+        "production_mutation_during_readonly_certification": false,
+        "production_authorized_by_readonly_certification": false,
+        "repository_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py",
+        "repository_ci_binding_mode": "ci_runtime_exact_head"
       },
       "remainder": [
         "run live ETG provider-side-channel inventory after exact deployment and bind it to runtime identity",
@@ -358,7 +366,15 @@
           "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
         ],
         "evidence_class": "repository_implementation_and_contract",
-        "live_certification_proven": false
+        "live_certification_proven": false,
+        "production_certification_readonly_ability": "mad4b/production-certification-readonly-evidence",
+        "production_certification_stage_id": "multi_authority_canary",
+        "remote_read_surface": "mad4b-read,mad4b-chatgpt",
+        "remote_read_producer_exposed": true,
+        "production_mutation_during_readonly_certification": false,
+        "production_authorized_by_readonly_certification": false,
+        "repository_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py",
+        "repository_ci_binding_mode": "ci_runtime_exact_head"
       },
       "remainder": [
         "prove exact issuer/subject/resource mapping on the current deployed candidate",
@@ -381,7 +397,15 @@
         "tightening_cannot_widen": true,
         "decision_sha256": true,
         "single_owner_hardened_mode": true,
-        "repository_only": true
+        "repository_only": true,
+        "production_certification_readonly_ability": "mad4b/production-certification-readonly-evidence",
+        "production_certification_stage_id": "policy_resolution_canary",
+        "remote_read_surface": "mad4b-read,mad4b-chatgpt",
+        "remote_read_producer_exposed": true,
+        "production_mutation_during_readonly_certification": false,
+        "production_authorized_by_readonly_certification": false,
+        "repository_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py",
+        "repository_ci_binding_mode": "ci_runtime_exact_head"
       },
       "remainder": [
         "bind exact live ETG policy-resolution evidence to the deployed candidate",
@@ -847,7 +871,15 @@
         "cross_site_rows_exposed": false,
         "mutation_performed": false,
         "authorizing": false,
-        "task_T3652_done": true
+        "task_T3652_done": true,
+        "production_certification_readonly_ability": "mad4b/production-certification-readonly-evidence",
+        "production_certification_stage_id": "operator_doctor",
+        "remote_read_surface": "mad4b-read,mad4b-chatgpt",
+        "remote_read_producer_exposed": true,
+        "production_mutation_during_readonly_certification": false,
+        "production_authorized_by_readonly_certification": false,
+        "repository_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py",
+        "repository_ci_binding_mode": "ci_runtime_exact_head"
       },
       "remainder": [
         "bind Operator Doctor/DLQ readback to the exact deployed ETG runtime release before closing the live operator gate"
