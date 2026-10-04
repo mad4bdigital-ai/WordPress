@@ -26,6 +26,27 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		return $adapter instanceof MAD4B_SCP_Adapter_Base ? $adapter : null;
 	}
 
+	private static function helper_mutation_guard( $helper_id ) {
+		$catalog = MAD4B_SCP_Content_Experience_Profiles::helper_catalog();
+		$row = isset( $catalog[ $helper_id ] ) && is_array( $catalog[ $helper_id ] ) ? $catalog[ $helper_id ] : array();
+		if ( empty( $row ) || ! empty( $row['built_in'] ) ) return true;
+		$adapter = self::helper_adapter( $helper_id );
+		if ( ! $adapter ) return new WP_Error( 'mad4b_content_experience_helper_adapter_unavailable', 'External helper adapter is unavailable.' );
+		$ability = isset( $row['certification_ability'] ) ? (string) $row['certification_ability'] : '';
+		if ( '' === $ability || ( function_exists( 'wp_has_ability' ) && ! wp_has_ability( $ability ) ) ) {
+			return new WP_Error( 'mad4b_content_experience_helper_certification_ability_missing', 'External helper certification Ability is unavailable.' );
+		}
+		$provider = $adapter->provider_key();
+		if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
+			&& MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $provider ) ) {
+			return MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( $provider, $ability, (bool) $adapter->is_available(), $adapter );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+			return new WP_Error( 'mad4b_content_experience_helper_certification_unavailable', 'Provider certification authority is unavailable.' );
+		}
+		return MAD4B_SCP_Provider_Contracts::mutation_guard( $provider, (bool) $adapter->is_available() );
+	}
+
 	private static function validate_meta_payload( array $profile, $meta ) {
 		$meta = is_array( $meta ) ? $meta : array();
 		if ( count( $meta ) > MAD4B_SCP_Content_Experience_Profiles::MAX_META_KEYS ) {
@@ -149,6 +170,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 					array( 'helper_id' => $helper_id, 'operation' => $operation )
 				);
 			}
+			$guard = self::helper_mutation_guard( $helper_id );
+			if ( is_wp_error( $guard ) || true !== $guard ) return is_wp_error( $guard ) ? $guard : new WP_Error( 'mad4b_content_experience_helper_not_certified', 'External helper is not certified for mutation.' );
 			$adapter = self::helper_adapter( $helper_id );
 			$planned = $adapter
 				? $adapter->plan_content_experience_helper( $helper_id, $helper_input, $profile, $operation )
@@ -341,6 +364,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 	private static function apply_helpers( array $profile, $operation, $post_id, array $helper_plans ) {
 		$results = array();
 		foreach ( $helper_plans as $helper_id => $helper_plan ) {
+			$guard = self::helper_mutation_guard( $helper_id );
+			if ( is_wp_error( $guard ) || true !== $guard ) return is_wp_error( $guard ) ? $guard : new WP_Error( 'mad4b_content_experience_helper_not_certified', 'External helper is not certified for mutation.' );
 			$context = array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id );
 			$adapter = self::helper_adapter( $helper_id );
 			$result = $adapter
