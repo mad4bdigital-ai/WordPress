@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 241,
+  "changed_file_count": 242,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -266,6 +266,7 @@
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-budget-concurrency-setup.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-execution-fence-recursion.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-fence-runtime.php",
