@@ -127,6 +127,8 @@ for token in (
     "PROFILE_DELETE_APPLY_ABILITY",
     "executor_generation",
     "migration_required",
+    "helper_bindings",
+    "binding_sha256",
 ):
     assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
 
@@ -157,6 +159,7 @@ for token in (
     "featured_media_read_denied",
     "parent_read_denied",
     "authority_match",
+    "mad4b_content_experience_helper_restore_contract_drift",
 ):
     assert token in experience_runtime_src, f"dynamic content experience execution contract missing: {token}"
 
@@ -182,6 +185,8 @@ for token in (
     "descriptor_roots",
     "acquire_lock",
     "mad4b_content_experience_target_busy",
+    "helper_binding_guard",
+    "mad4b_content_experience_helper_binding_drift",
 ):
     assert token in experience_governance_src, f"content-experience governance hardening missing: {token}"
 assert "mad4b_scp_capability_descriptor_generation_roots" in descriptor_src
@@ -205,6 +210,9 @@ for token in (
     "profile_clone_plan",
     "profile_delete_plan",
     "authority_match",
+    "MAD4B_SCP_Capability_Descriptor_Registry::binding",
+    "content_experience_profile",
+    "annotations']['idempotent",
 ):
     assert token in experience_runtime_smoke_src, f"content-experience runtime E2E proof missing: {token}"
 assert "runtime-content-experience-smoke.php" in (root / "tests" / "runtime-reversible-mutation-smoke.php").read_text(encoding="utf-8")
