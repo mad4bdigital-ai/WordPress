@@ -27,8 +27,10 @@ An already declared foreign class cannot be replaced in the current request.
 - Normal managed-loader refresh remains available through the governed recovery
   lifecycle. An unknown occupied MAD4B MU path on an exact Staging enrollment no
   longer requires a browser POST: ordinary Staging lifecycle traffic detects the
-  conflict, schedules one background recovery job and returns without changing
-  loader bytes in that browser request. The worker performs the mutation later.
+  conflict, schedules one immediately-due background recovery job and returns
+  without changing loader bytes in that browser request. Because detection runs
+  before WordPress' normal `wp_loaded` cron spawn phase, the isolated worker can be
+  launched from the same page request without a second click or delayed revisit.
 - Recovery validates the installed certified disk set and owns the shared maintenance
   lease. Automatic refresh accepts the current source, exact historical MAD4B MU
   fingerprints, or a site-bound ownership receipt previously written by a successful
