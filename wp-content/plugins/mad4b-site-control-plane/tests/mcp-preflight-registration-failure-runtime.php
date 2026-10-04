@@ -55,7 +55,7 @@ check( array() === $adapter->tools && 0 === $row['catalog_evidence']['tool_count
 foreach ( array( true, array(), array( 'tool' => 'invalid' ), array( 'tool' => new stdClass() ) ) as $malformed ) {
 	\WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::$result = $malformed;
 	$result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'mad4b/broken' ), array() );
-	check( ! $result['ready'] && 'mcp_catalog_builder_contract_invalid' === $result['failures'][0]['error_code'] && 'official_dto_build' === $result['failures'][0]['stage'], 'malformed builder contract lost precise evidence' );
+	check( ! $result['ready'] && 'mad4b_mcp_legacy_builder_contract_invalid' === $result['failures'][0]['error_code'] && 'official_wire_build' === $result['failures'][0]['stage'], 'malformed builder contract lost precise compatibility evidence' );
 }
 $dto = new class {
 	public $calls = 0;
