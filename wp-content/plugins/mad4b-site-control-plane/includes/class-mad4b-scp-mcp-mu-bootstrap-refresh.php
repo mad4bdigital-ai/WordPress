@@ -531,13 +531,6 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
-		if ( $explicit_conflict ) {
-			$backup = self::backup_conflicting_bytes( $before, $status['destination_sha256_before'] );
-			if ( is_wp_error( $backup ) ) { $status['blocker'] = $backup->get_error_code(); self::$status = $status; return $status; }
-			$status['conflict_backup_sha256'] = $backup['sha256'];
-			$status['conflict_backup_file'] = $backup['file'];
-		}
-
 		$filesystem_lock = self::acquire_managed_filesystem_lock( $destination );
 		if ( is_wp_error( $filesystem_lock ) ) {
 			$status['blocker'] = $filesystem_lock->get_error_code();
@@ -545,6 +538,22 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			return $status;
 		}
 		try {
+		// Re-read the owned path only after taking the filesystem mutex. The plan
+		// hash is a compare-and-swap fence, not merely diagnostic evidence.
+		$locked_before = is_readable( $destination ) ? @file_get_contents( $destination ) : false;
+		$locked_hash = is_string( $locked_before ) ? hash( 'sha256', $locked_before ) : '';
+		if ( ! is_string( $locked_before ) || '' === $locked_hash || ! hash_equals( $status['destination_sha256_before'], $locked_hash ) ) {
+			$status['blocker'] = $explicit_conflict ? 'mu_bootstrap_conflict_bytes_changed_before_replace' : 'mu_bootstrap_refresh_bytes_changed_before_replace';
+			self::$status = $status;
+			return $status;
+		}
+		$before = $locked_before;
+		if ( $explicit_conflict ) {
+			$backup = self::backup_conflicting_bytes( $before, $locked_hash );
+			if ( is_wp_error( $backup ) ) { $status['blocker'] = $backup->get_error_code(); self::$status = $status; return $status; }
+			$status['conflict_backup_sha256'] = $backup['sha256'];
+			$status['conflict_backup_file'] = $backup['file'];
+		}
 		$temp = $destination . '.refresh-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 		if ( ! @copy( $source, $temp ) ) {
 			$status['blocker'] = 'mu_bootstrap_refresh_temp_write_failed';
