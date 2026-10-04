@@ -78,7 +78,7 @@
 | CLOSURE | unified implementation closure | closure ledger + Phase 36 evidence + terminal vertical-slice chain |
 | CAPFAB | post-merge Capability Fabric completeness overlay | Phase 37 closure ledger + contract + task ledger + cross-fault evidence |
 
-## Dependency graph
+| ASI | adaptive-search-intelligence | Phase 38 design + runtime contract + machine-readable ledger |\n| ASICTX | adaptive search context compiler | profile/overlay precedence + dependency fingerprint tests |\n| ASISURF | indexable search surface graph | object/surface/indexability/archive fixtures |\n| ASISEO | field-level SEO provenance | provider conflict + rendered evidence tests |\n| ASITGT | search target compiler | owned/discovery identity + temporal target fixtures |\n| ASIDEC | adaptive search decision engine | DecisionRecord + dynamic refresh explainability evidence |\n| ASIBUD | fair scheduler and hierarchical budget | starvation + reserve + overspend denial tests |\n| ASIPROV | SERP provider mesh | SerpApi + second-provider conformance/circuit/egress evidence |\n| ASIEVID | immutable SERP evidence | raw/normalized/inference integrity + trust-boundary tests |\n| ASIEXP | adaptive search experience | capability/state-driven ExperienceModel/UI acceptance |\n| ASICL | non-authorizing closed loop | signal -> recommendation -> Content Experience proposal boundary |\n\n## Dependency graph
 release-lineage
 → canonical rc.59
 → provider-certification
@@ -241,4 +241,4 @@ evidence commit ordering + degraded infrastructure semantics
 cancellation + chunk transport integrity + composed cross-fault fixtures
 → CAPABILITY_FABRIC_COMPLETENESS
 
-CAPFAB is non-authorizing and maps to existing hard quality families; it does not replace the Critical Kernel terminal gate.
+CAPFAB is non-authorizing and maps to existing hard quality families; it does not replace the Critical Kernel terminal gate.\n\n## Adaptive Search Intelligence dependency overlay\n\nruntime discovery\n→ effective search context\n→ market-language matrix + indexable surface graph + SEO provenance\n→ search target compiler\n→ temporal evidence/freshness\n→ expected-value decision engine\n→ fair scheduler + hierarchical budget governor\n→ provider capability/economic router\n→ durable SERP execution/reconciliation\n→ immutable normalized evidence\n→ confidence-aware signals\n→ adaptive ExperienceModel\n→ governed Content Experience proposal\n→ separately authorized content plan/apply/verify\n→ post-change search observation\n\nASI is non-authorizing. Provider availability, ranking loss, opportunity score or search signal can never create WordPress mutation, Production or Breakglass authority.\n
