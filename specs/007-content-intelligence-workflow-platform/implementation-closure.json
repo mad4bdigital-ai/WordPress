@@ -303,10 +303,13 @@
         "provider_plugins_disabled": false,
         "authority_created": false,
         "production_auto_configured": false,
-        "repository_only": true
+        "repository_only": true,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head CI/runtime proof for clean peer baseline and rogue public-write blocker on the final candidate",
         "run live ETG provider-side-channel inventory after exact deployment and bind it to runtime identity",
         "prove all enabled third-party MCP/provider transports are either isolated, reviewed non-transport, or fail-closed before write authority"
       ]
@@ -425,10 +428,13 @@
         "bootstrap_to_intent_plan": "mad4b.intent-bootstrap-reconciliation-plan.v1",
         "bootstrap_intent_classification_source": "explicit_operator",
         "bootstrap_intent_plan_mutation_performed": false,
-        "bootstrap_intent_plan_artifacts_created": false
+        "bootstrap_intent_plan_artifacts_created": false,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head Critical Kernel PASS for the read-only existing-site bootstrap and Bootstrap→Intent contract",
         "run the bounded inventory snapshot against exact ETG Staging candidate",
         "apply explicitly reviewed Intent reconciliation scopes on ETG Staging through the governed write path"
       ]
@@ -459,10 +465,13 @@
         "content_fingerprint_lineage_bound": true,
         "unresolved_inventory_preserved": true,
         "current_scope_sha_hydrated_before_reconcile": true,
-        "bootstrap_intent_handoff_authorizing": false
+        "bootstrap_intent_handoff_authorizing": false,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head schema v11 MariaDB PASS for Intent Registry runtime reconciliation",
         "run bootstrap inventory + explicit classifications against exact ETG Staging and apply through governed reconcile authority",
         "prove live CREATE_NEW/SUPPORT_EXISTING/UPDATE_EXISTING/CONSOLIDATE/HUMAN_REVIEW job-resolution policy against the exact deployed candidate"
       ]
@@ -534,10 +543,13 @@
         "repository_only": true,
         "content_pipeline_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
         "content_pipeline_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
-        "context_research_blueprint_draft_qa_producers_integrated": true
+        "context_research_blueprint_draft_qa_producers_integrated": true,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head schema v11 MariaDB PASS including Artifact Registry runtime lineage",
         "bind artifact lineage evidence to the exact deployed ETG candidate"
       ]
     },
@@ -566,10 +578,13 @@
         "writer_profile_bound_contextpack": true,
         "writer_profile_bound_draft": true,
         "writer_profile_bound_final_qa": true,
-        "writer_profile_stale_denial": true
+        "writer_profile_stale_denial": true,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head MariaDB PASS for ContextPack persisted through schema v11 Artifact Registry",
         "prove the same requirements/dispatcher behavior against the exact deployed ETG Context Authority registry",
         "prove exact live WriterProfile asset/version evidence resolves to the ContentJob-bound immutable fingerprint"
       ]
@@ -605,10 +620,13 @@
         "immutable_lineage": true,
         "repository_only": true,
         "governance_bound_research_provider_plan": true,
-        "provider_plan_external_call_performed": false
+        "provider_plan_external_call_performed": false,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head MariaDB PASS for normalized research/competitive artifact flow",
         "connect certified Keyword/SERP/Search/Scrape providers to the normalized recording contracts",
         "prove live provider timeout/rate-limit/budget/retry behavior on ETG Staging",
         "bind live research evidence to the exact deployed candidate before research_intelligence_ready"
@@ -631,10 +649,13 @@
         "publication_authorized_false": true,
         "repository_only": true,
         "immutable_writer_profile_lineage": true,
-        "writer_profile_drift_fails_closed": true
+        "writer_profile_drift_fails_closed": true,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head Critical Kernel PASS for the Blueprint/Draft/QA contract",
         "prove the same artifact lineage and stale-evidence gates against the exact deployed ETG candidate",
         "bind live model/provider outputs through governed Skills/providers to the immutable ContentJob WriterProfile fingerprint"
       ]
@@ -666,10 +687,13 @@
         "public_publish_capability_present": false,
         "contract_executed_by_critical_kernel": true,
         "writer_profile_bound_into_plan_digest": true,
-        "writer_profile_revalidated_at_apply": true
+        "writer_profile_revalidated_at_apply": true,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head Critical Kernel PASS for governed draft orchestration",
         "exercise create/update draft on exact ETG Staging candidate through normal authorization/approval path",
         "record resulting draft mutation/audit evidence without public publication"
       ]
@@ -698,10 +722,13 @@
         "indexing_not_inferred": true,
         "cache_purge_performed": false,
         "publication_mutation_performed": false,
-        "authorizing": false
+        "authorizing": false,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head Critical Kernel PASS for publication verification reducer",
         "connect certified origin/public-edge observation adapters on exact ETG Staging",
         "prove canonical/robots/schema/language/media/link/sitemap dimensions on exact deployed candidate",
         "prove live bounded PENDING_PROPAGATION and timeout behavior before marking publication verification ready"
@@ -732,12 +759,16 @@
         "stale_idempotency_claim_cannot_complete": true,
         "receipt_failure_verified_rollback": true,
         "receipt_and_rollback_failure_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
-        "uncertain_mutation_blind_retry_allowed": false
+        "uncertain_mutation_blind_retry_allowed": false,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_fault_suite_exact_head_proven": true
       },
       "remainder": [
         "prove aggregate/event/artifact consistency on the exact deployed candidate",
         "add explicit out-of-order callback revision-reconciliation fixture when an ordered callback provider contract is admitted",
-        "prove the repository fault suite against final exact-head CI and repeat the critical stale/zombie/uncertain cases on ETG Staging"
+        "repeat the critical stale/zombie/uncertain repository-proven fault cases on ETG Staging"
       ]
     },
     {
@@ -755,10 +786,13 @@
         "uncertainty_blind_retry_denied": true,
         "repository_live_evidence_separation_enforced": true,
         "fault_fixture_accounting_complete": true,
-        "repository_only": true
+        "repository_only": true,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true
       },
       "remainder": [
-        "obtain exact-head Critical Kernel PASS for the cross-surface safety/eval contract",
         "execute live ETG fault canaries for the repository-proven fault classes",
         "add AI data-processing/rights/provider-model eval fixtures when those live provider adapters are enabled"
       ]
@@ -811,7 +845,7 @@
     {
       "id": "formal_state_proof",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "DONE",
       "gate": "formal_critical_state_verified",
       "evidence": {
         "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py",
@@ -824,12 +858,15 @@
         "artifact_evidence_monotonicity_model": true,
         "publication_verdict_reducer_model": true,
         "ordinary_artifact_provenance_deletion_forbidden": true,
-        "publication_pass_requires_origin_and_edge_convergence": true
+        "publication_pass_requires_origin_and_edge_convergence": true,
+        "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+        "critical_kernel_workflow_run_id": 37214537184,
+        "pre_staging_workflow_run_id": 37214537248,
+        "repository_exact_head_proven": true,
+        "current_formal_state_gate_closed": true,
+        "future_defect_modeling_policy": "add_permanent_fixture_when_a_future_production_defect_is_discovered"
       },
-      "remainder": [
-        "obtain exact-head Critical Kernel PASS for the extended formal-state contract",
-        "add permanent model fixtures for any future production state-machine defect discovered in these families"
-      ]
+      "remainder": []
     },
     {
       "id": "etg_vertical_slice",
@@ -1097,7 +1134,7 @@
     "policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
     "state": "LIVE_EVIDENCE_REQUIRED",
     "repository_contract_ready": true,
-    "exact_head_repository_evidence_ready": false,
+    "exact_head_repository_evidence_ready": true,
     "live_staging_evidence_ready": false,
     "production_ready": false,
     "production_authorized": false,
@@ -1112,6 +1149,13 @@
       ".github/workflows/mad4b-etg-deployment-readiness.yml",
       ".github/workflows/mad4b-runtime-release-set.yml",
       ".github/workflows/mad4b-rollback-retention-receipt.yml"
-    ]
+    ],
+    "repository_exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+    "repository_evidence_runs": {
+      "critical_kernel": 37214537184,
+      "pre_staging": 37214537248,
+      "provider_compatibility": 37214537220,
+      "mcp_client_compatibility": 37214537020
+    }
   }
 }
