@@ -97,8 +97,8 @@ if feature_path.exists():
         "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
         "adaptive_search_intelligence_review_status": "APPROVED_WITH_GAPS",
         "adaptive_search_intelligence_review_score": 88,
-        "adaptive_search_intelligence_review_p0_open": 10,
-        "adaptive_search_intelligence_review_p1_open": 8,
+        "adaptive_search_intelligence_review_p0_open": 12,
+        "adaptive_search_intelligence_review_p1_open": 6,
     }
     for k, v in adaptive_search_expected.items():
         if data.get(k) != v:
@@ -383,7 +383,7 @@ if adaptive_search_review_path.exists():
     if int(scores.get("overall") or -1) != 88:
         errors.append("adaptive_search_review:overall_score_mismatch")
     summary=adaptive_search_review.get("summary", {})
-    if int(summary.get("p0_open") or -1) != 10 or int(summary.get("p1_open") or -1) != 8:
+    if int(summary.get("p0_open") or -1) != 12 or int(summary.get("p1_open") or -1) != 6:
         errors.append("adaptive_search_review:open_gap_counts_mismatch")
     findings=adaptive_search_review.get("findings", [])
     ids=[row.get("id") for row in findings if isinstance(row, dict)]
@@ -391,7 +391,7 @@ if adaptive_search_review_path.exists():
         errors.append("adaptive_search_review:finding_set_invalid")
     p0=sum(1 for row in findings if isinstance(row, dict) and row.get("severity")=="P0")
     p1=sum(1 for row in findings if isinstance(row, dict) and row.get("severity")=="P1")
-    if p0 != 10 or p1 != 8:
+    if p0 != 12 or p1 != 6:
         errors.append("adaptive_search_review:severity_counts_invalid")
 
 quality = require_file("quality-model.md")
