@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import runpy
 import re
 
 root = Path(__file__).resolve().parents[1]
@@ -311,3 +312,5 @@ assert constant.group(1).strip() == version
 assert marker.group(1).strip() == version
 
 print("mad4b.full-staging-authority-contract.v7: PASS")
+
+# The baseline-owned Full Staging workflow already executes this contract.\n# Chain the write-only convergence contract here instead of self-modifying CI.\nrunpy.run_path(str(root / "tests" / "staging-write-authority-convergence-contract.py"), run_name="__main__")\n
