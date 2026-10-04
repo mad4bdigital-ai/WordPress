@@ -35,11 +35,12 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
         "task:T3861",
-        "task:T3862"
+        "task:T3862",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -51,10 +52,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3863"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3863",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -66,10 +68,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3864"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3864",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -81,10 +84,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3865"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3865",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -96,10 +100,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3866"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3866",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -111,10 +116,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3867"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3867",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -126,10 +132,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3868"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3868",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -142,11 +149,12 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
         "task:T3869",
-        "task:T3870"
+        "task:T3870",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -176,10 +184,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3873"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3873",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -191,10 +200,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3874"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3874",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -224,10 +234,11 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3877"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3877",
+        "pre_staging_run:37239748433"
       ]
     },
     {
@@ -257,23 +268,25 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-        "workflow_run:37238278583",
-        "runtime_integration_run:37238278447",
-        "task:T3880"
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3880",
+        "pre_staging_run:37239748433"
       ]
     }
   ],
   "no_completion_claim": true,
   "p0_closure": {
     "contract": "mad4b.adaptive-search-p0-closure.v1",
-    "exact_head_sha": "17b4f8fca0bd8c6759865d377269bfe2a15704e9",
-    "workflow_run": 37238278583,
-    "runtime_integration_run": 37238278447,
-    "spec_consistency_run": 37238278493,
+    "exact_head_sha": "042e49926d909dd11d0925b5b19b19143561b556",
+    "workflow_run": 37239748455,
+    "runtime_integration_run": 37239748528,
+    "spec_consistency_run": 37239748494,
     "evidence_status": "PASS",
     "closed_at": "2026-10-05",
     "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
-    "authorizing": false
+    "authorizing": false,
+    "pre_staging_run": 37239748433
   }
 }
