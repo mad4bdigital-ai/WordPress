@@ -52,13 +52,17 @@ def selected_files(zf: zipfile.ZipFile, prefix: str, include_prefixes: list[str]
 
 def declared_symbols(raw: bytes, rel: str, namespace_prefixes: list[str]) -> list[dict[str, str]]:
     text = raw.decode("utf-8", errors="replace")
-    ns_match = re.search(r"\bnamespace\s+([^;{]+)\s*;", text)
+    ns_match = re.search(r"^\s*namespace\s+([^;{]+)\s*;", text, re.MULTILINE)
     namespace = ns_match.group(1).strip().lstrip("\\") if ns_match else ""
     rows: list[dict[str, str]] = []
 
     # The Adapter uses one named declaration per file today, but the generator
     # intentionally supports multiple named declarations for future releases.
-    for match in re.finditer(r"\b(class|interface|trait)\s+([A-Za-z_][A-Za-z0-9_]*)\b", text):
+    declaration = re.compile(
+        r"^\s*(?:(?:final|abstract|readonly)\s+)*(class|interface|trait)\s+([A-Za-z_][A-Za-z0-9_]*)\b",
+        re.MULTILINE,
+    )
+    for match in declaration.finditer(text):
         kind, short = match.groups()
         # Anonymous classes have no T_STRING/name and therefore do not match.
         symbol = f"{namespace}\\{short}" if namespace else short
