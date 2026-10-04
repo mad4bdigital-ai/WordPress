@@ -133,7 +133,8 @@ No class grants authority. Production, Breakglass, host execution and public pub
 | Governed Tool Execution / CLI / Recovery Runner | LIVE_PRECONDITION | semantic operations, exact executor, no generic shell, terminal-independent Runner bootstrap/enrollment, recovery independence |
 | Cron semantic provider | MATURITY_REQUIRED | read/health/run then governed schedule/unschedule |
 | Provider backlog | MATURITY_REQUIRED | WP Import/Export, JetSmartFilters, SEO providers via same certification contracts |
-| Adaptive Search Intelligence Fabric | MATURITY_REQUIRED | Phase 38 meta-model/context/surface/target/decision/budget/provider/evidence/experience conformance; explicitly non-authorizing |\n| Growth loop | DEFERRED_MATURITY | performance/index/decay/cannibalization/refresh observations |
+| Adaptive Search Intelligence Fabric | MATURITY_REQUIRED | Phase 38 meta-model/context/surface/target/decision/budget/provider/evidence/experience conformance; explicitly non-authorizing |
+| Growth loop | DEFERRED_MATURITY | performance/index/decay/cannibalization/refresh observations |
 | Fair scheduling/local autonomy/localization/a11y/link graph | DEFERRED_MATURITY | quality and isolation evidence |
 | Eval ops/alerts/experiments/usage ledger | DEFERRED_MATURITY | governed operational/economic evidence |
 | Decommission/portability | MATURITY_REQUIRED | quiesce/export/import/remap/revoke/final authority proof |
@@ -195,14 +196,21 @@ Repository CI proves contracts and denial behavior only. Live ETG gates still re
 
 Repository implementation now includes the bounded `wordpress_plugin_deploy` Host Bridge → Host Runner semantic operation. It accepts exact package identity only, consumes a pre-staged General Distribution bundle from the fixed runner zone, verifies manifest/receipt/provenance/archive inventory, backs up the current Control Plane, performs an atomic plugin-directory swap, verifies the installed exact package in the same cycle, and rolls back on failed readback.
 
-This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **PARTIAL** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.\n\n## Phase 38 maturity extension — Adaptive Search Intelligence\n\nPhase 38 is now an explicit MATURITY_REQUIRED extension documented by `adaptive-search-intelligence.md`, `contracts/adaptive-search-intelligence-runtime.md` and `adaptive-search-intelligence.json`. It generalizes the Phase 6 SERPProvider and Phase 14 Growth concepts into an adaptive, provider-neutral Search Intelligence runtime with live surface/language/SEO discovery, target compilation, fair economic scheduling, immutable SERP evidence, confidence-aware signals and a capability/state-driven operator experience.\n\nThis extension is deliberately outside the current Critical Kernel terminal proof unless a concrete runtime dependency is later admitted through the normal Architecture Freeze process. It creates no Production authority, no Breakglass widening, no generic HTTP surface and no direct search-signal-to-content mutation path.\n
+This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **PARTIAL** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.
 
-## Adaptive Search review status: APPROVED_WITH_GAPS
+## Phase 38 maturity extension — Adaptive Search Intelligence
+
+Phase 38 is now an explicit MATURITY_REQUIRED extension documented by `adaptive-search-intelligence.md`, `contracts/adaptive-search-intelligence-runtime.md` and `adaptive-search-intelligence.json`. It generalizes the Phase 6 SERPProvider and Phase 14 Growth concepts into an adaptive, provider-neutral Search Intelligence runtime with live surface/language/SEO discovery, target compilation, fair economic scheduling, immutable SERP evidence, confidence-aware signals and a capability/state-driven operator experience.
+
+This extension is deliberately outside the current Critical Kernel terminal proof unless a concrete runtime dependency is later admitted through the normal Architecture Freeze process. It creates no Production authority, no Breakglass widening, no generic HTTP surface and no direct search-signal-to-content mutation path.
+
+
+## Adaptive Search review status: APPROVED_P0_CLOSED_P1_OPEN
 
 The independent Phase 38 review is recorded in `adaptive-search-intelligence-review.md` and `adaptive-search-intelligence-review.json`.
 
 Current review score: **88/100 overall specification maturity**.
 
-The review identified 12 P0 and 6 P1 gaps. P0 issues concentrate on observation comparability, canonical query/URL/rank/capture semantics, multi-dimensional search eligibility, bounded facet/virtual-surface admission, shared provider-account budget authority, provider evidence rights/retention, deterministic decision policy, objective gate criteria and composed cross-fault proof.
+The review identified 12 P0 and 6 P1 gaps. The **12 P0 gaps are now CLOSED** at repository/runtime-contract level by exact implementation head `178ec73281a19fd7c78a8e83ff110dd11027b684` and Feature 007 Spec Quality CI run `37236946924`, including measurement comparability, canonical query/URL/rank/capture semantics, SearchEligibilityEnvelope, bounded surface admission, truthful shared-account budget authority semantics, evidence-rights retention, deterministic decision policy, measurable gates and composed cross-fault behavior.
 
-These gaps do not widen the Critical Kernel and do not grant authority. Phase 38 remains MATURITY_REQUIRED and OPEN. Broad Search Intelligence runtime implementation must not claim production-grade completeness until the review P0 set is closed by exact-head executable evidence.
+The **6 P1 findings remain OPEN**. Phase 38 remains MATURITY_REQUIRED and OPEN; P0 closure does not imply provider-live completeness, Staging certification, Production authorization or direct content mutation authority.
