@@ -422,6 +422,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	public static function profile_status( $input = array() ) {
 		$profiles = array();
 		foreach ( self::stored_profiles() as $slug => $profile ) {
+			$authority_guard = class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) ? MAD4B_SCP_Content_Experience_Governance::current_guard( $profile ) : new WP_Error( 'mad4b_content_experience_governance_unavailable', 'Content experience governance unavailable.' );
 			$profiles[] = array(
 				'slug' => $slug,
 				'label' => isset( $profile['label'] ) ? (string) $profile['label'] : $slug,
@@ -431,7 +432,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'runtime_post_type_ready' => ! is_wp_error( self::post_type_object( $profile['post_type'] ) ),
 				'helper_catalog_match' => isset( $profile['helper_catalog_sha256'] ) && hash_equals( (string) $profile['helper_catalog_sha256'], self::helper_catalog_sha256() ),
 				'authority_sha256' => isset( $profile['authority_sha256'] ) ? (string) $profile['authority_sha256'] : '',
-				'authority_current' => class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) && ! is_wp_error( MAD4B_SCP_Content_Experience_Governance::current_guard( $profile ) ),
+				'authority_current' => ! is_wp_error( $authority_guard ),
+				'migration_required' => empty( $profile['authority_sha256'] ),
+				'authority_blocker' => is_wp_error( $authority_guard ) ? $authority_guard->get_error_code() : '',
+				'executor_generation' => isset( $profile['revision'] ) ? (int) $profile['revision'] : 0,
 				'routes' => self::routes_for_profile( $profile ),
 			);
 		}
@@ -559,7 +563,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			array(
 				'name' => self::PROFILE_CLONE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile Clone', 'callback' => array( __CLASS__, 'profile_clone_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
 				'schema' => self::schema( array( 'source_slug' => array( 'type' => 'string' ), 'new_slug' => array( 'type' => 'string' ), 'label' => array( 'type' => 'string' ), 'post_type' => array( 'type' => 'string' ), 'plan_sha256' => self::sha_schema() ), array( 'source_slug', 'new_slug', 'plan_sha256' ) ),
-				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => true,
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false,
 			),
 			array(
 				'name' => 'mad4b/content-experience-profile-delete-plan', 'label' => 'Plan Content Experience Profile Decommission', 'callback' => array( __CLASS__, 'profile_delete_plan' ), 'permission' => $read,
@@ -569,12 +573,12 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			array(
 				'name' => self::PROFILE_DELETE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile Decommission', 'callback' => array( __CLASS__, 'profile_delete_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
 				'schema' => self::schema( array( 'slug' => array( 'type' => 'string' ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ), 'plan_sha256' => self::sha_schema() ), array( 'slug', 'plan_sha256' ) ),
-				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => true,
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false,
 			),
 			array(
 				'name' => self::PROFILE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile', 'callback' => array( __CLASS__, 'profile_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
 				'schema' => self::schema( array( 'profile' => array( 'type' => 'object', 'additionalProperties' => true ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ), 'plan_sha256' => self::sha_schema() ), array( 'profile', 'plan_sha256' ) ),
-				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => true,
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false,
 			),
 		);
 		foreach ( self::stored_profiles() as $profile ) {
@@ -602,11 +606,12 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			if ( 'plan' === $phase ) return MAD4B_SCP_Content_Experience_Runtime::operation_plan( $slug, $operation, is_array( $input ) ? $input : array() );
 			return MAD4B_SCP_Content_Experience_Runtime::operation_apply( $slug, $operation, is_array( $input ) ? $input : array() );
 		};
+		$idempotent = $readonly || ( 'apply' === $phase && 'create' === $operation );
 		return array(
 			'name' => $name, 'label' => $label, 'callback' => $callback,
 			'permission' => $readonly ? array( 'MAD4B_SCP_Policy', 'can_read' ) : self::operation_permission( $slug, $operation ),
 			'schema' => $schema, 'surface' => $readonly ? 'read' : 'content',
-			'readonly' => $readonly, 'destructive' => ! $readonly, 'idempotent' => true,
+			'readonly' => $readonly, 'destructive' => ! $readonly, 'idempotent' => $idempotent,
 		);
 	}
 
@@ -666,10 +671,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'mode' => 'object_fields',
 				'container_path' => '',
 				'brand_fields' => array(),
-				'operational_fields' => array( 'profile', 'expected_revision', 'plan_sha256' ),
+				'operational_fields' => array( 'profile', 'expected_revision', 'plan_sha256', 'source_slug', 'new_slug', 'slug', 'label', 'post_type' ),
 				'brand_key_regex' => '',
 				'operational_key_regex' => '.*',
-				'root_operational_paths' => array( 'profile', 'profile.*', 'expected_revision', 'plan_sha256', '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ),
+				'root_operational_paths' => array( 'profile', 'profile.*', 'expected_revision', 'plan_sha256', 'source_slug', 'new_slug', 'slug', 'label', 'post_type', '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ),
 				'dynamic_profile_contract' => true,
 				'profile_configuration_only' => true,
 			);
