@@ -68,6 +68,41 @@ scenario( 'language_registry_conflict_partial_and_new_translation', static funct
 	$l = MAD4B_SCP_Search_Surfaces::languages(); check( $l['en']['conflicting'] && ! $l['en']['active'], 'language conflicts preserved' );
 	$GLOBALS['fixture_sources'][0]->language_rows['fr']['owned_count'] = 1;
 	check( 1 === MAD4B_SCP_Search_Surfaces::languages()['fr']['owned_count'], 'new live translation discovered without kernel branch' );
+
+	// Query-language provenance is independent from page translation state. It
+	// must bind the exact target language/market and retain an explicit semantic
+	// relationship before a translated/transcreated query can enter targeting.
+	$target = ok( MAD4B_SCP_Search_Contracts::target( asi_candidate() ), 'query provenance target' );
+	$candidate = asi_candidate();
+	$candidate['query_language_provenance'] = array(
+		'source' => 'keyword-registry',
+		'source_language' => 'fr',
+		'target_language' => $target['language'],
+		'market' => $target['market'],
+		'method' => 'translation',
+		'market_evidence_refs' => array( 'market-evidence-b', 'market-evidence-a', 'market-evidence-b' ),
+		'semantic_cluster_relation' => 'localized_variant',
+		'semantic_cluster_id' => 'cluster.localized',
+		'confidence' => 0.91,
+		'approval' => 'policy_approved',
+		'page_translation_implies_query_translation' => false,
+		'source_query_id' => hash( 'sha256', 'fr-source-query' ),
+	);
+	$provenance = ok( MAD4B_SCP_Search_Targets::query_language_provenance( $candidate, $target ), 'translated query provenance' );
+	check( 'mad4b.query-language-provenance.v1' === $provenance['contract'] && 64 === strlen( $provenance['provenance_sha256'] ), 'query provenance is content-addressed' );
+	check( array( 'market-evidence-a', 'market-evidence-b' ) === $provenance['market_evidence_refs'], 'market evidence refs are canonicalized' );
+	check( $candidate['query_language_provenance']['source_query_id'] === $provenance['source_query_id'], 'source query binding retained' );
+
+	$bad = $candidate; $bad['query_language_provenance']['target_language'] = 'zz';
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $target ), 'provenance_invalid', 'target language mismatch denied' );
+	$bad = $candidate; $bad['query_language_provenance']['page_translation_implies_query_translation'] = true;
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $target ), 'provenance_invalid', 'page translation cannot imply query translation' );
+	$bad = $candidate; $bad['query_language_provenance']['semantic_cluster_relation'] = 'related_intent';
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $target ), 'relation_invalid', 'translation cannot claim an unrelated semantic relation' );
+	$bad = $candidate; $bad['query_language_provenance']['source_query_id'] = 'not-a-sha';
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $target ), 'source_query_invalid', 'source query requires exact SHA binding' );
+	$bad = $candidate; $bad['query_language_provenance']['method'] = 'transcreation'; $bad['query_language_provenance']['semantic_cluster_relation'] = 'transcreated_variant'; $bad['query_language_provenance']['source_language'] = '';
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $target ), 'source_required', 'transcreation requires source language provenance' );
 } );
 scenario( 'target_identity_unicode_url_and_purpose_separation', static function () {
 	$q = ok( MAD4B_SCP_Search_Contracts::query( "  Café + site:Example.com  " ), 'Unicode query' ); check( 'Café + site:Example.com' === $q['normalized_query'], 'operators/case/accents preserved' );
