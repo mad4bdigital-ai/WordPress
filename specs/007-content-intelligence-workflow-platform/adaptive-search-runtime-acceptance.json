@@ -4,7 +4,7 @@
   "scope": "repository_runtime_conformance",
   "authorizing": false,
   "live_provider_certification": "separate_exact_runtime_account_descriptor_usage_and_rights_evidence_required",
-  "workflow": ".github/workflows/mad4b-adaptive-search-intelligence.yml",
+  "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
   "evidence_artifact": "adaptive-search-<exact-head>-php-<version>/asi-evidence-<version>.json",
   "required_evidence_classes": [
     "exact_head_ci_hermetic_runtime",
