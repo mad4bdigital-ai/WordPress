@@ -116,9 +116,9 @@ $check( empty( $planner_a['authorizing'] ), 'Operation Registry descriptor becam
 $auth_a = MAD4B_SCP_Authorization::capability_descriptor_binding( (string) $operation['planner'] );
 $check( is_array( $auth_a ) && empty( $auth_a['authorizing'] ), 'Authorization descriptor binding unavailable or authorizing.', $auth_a );
 
-$server_method = new ReflectionMethod( 'MAD4B_SCP_Servers', 'capability_descriptor_evidence' );
-$server_method->setAccessible( true );
-$server_a = $server_method->invoke( null, 'mad4b-ci', array( (string) $operation['planner'] ) );
+$servers_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+$check( is_string( $servers_source ) && false !== strpos( $servers_source, 'MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence' ), 'Servers no longer delegates descriptor evidence to the canonical service.' );
+$server_a = MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence( 'mad4b-ci', array( (string) $operation['planner'] ) );
 $check( ! empty( $server_a['ready'] ) && empty( $server_a['authorizing'] ), 'Server descriptor evidence unavailable or authorizing.', $server_a );
 
 $provider_catalog = json_decode( file_get_contents( dirname( __DIR__ ) . '/config/provider-capability-contracts.json' ), true );
@@ -130,7 +130,7 @@ $check( ! empty( $traits_a['descriptor_binding_ready'] ) && 'none' === $traits_a
 MAD4B_SCP_Ability_Contract_Inspector::$generation = 'generation-b';
 $op_b = MAD4B_SCP_Operation_Registry::operation( $operation_id );
 $auth_b = MAD4B_SCP_Authorization::capability_descriptor_binding( (string) $operation['planner'] );
-$server_b = $server_method->invoke( null, 'mad4b-ci', array( (string) $operation['planner'] ) );
+$server_b = MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence( 'mad4b-ci', array( (string) $operation['planner'] ) );
 $traits_b = MAD4B_SCP_Capability_Traits::profile( $provider_id, $capability_id );
 
 $check( ! hash_equals( (string) $planner_a['descriptor_sha256'], (string) $op_b['capability_descriptor_bindings']['planner']['descriptor_sha256'] ), 'Operation Registry ignored descriptor generation drift.' );

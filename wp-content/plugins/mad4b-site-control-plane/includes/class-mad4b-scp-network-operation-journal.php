@@ -19,6 +19,7 @@ final class MAD4B_SCP_Network_Operation_Journal {
 	const TARGET_SET_DOMAIN = 'mad4b.network-operation-target-set.v1';
 	const CLAIM_TTL_SECONDS = 120;
 	const MAX_TARGETS = 100;
+	const RECONSTRUCT_MAX_ATTEMPTS = 4;
 
 	public static function create( $network_operation_id, array $input, array $targets ) {
 		global $wpdb;
@@ -271,32 +272,52 @@ final class MAD4B_SCP_Network_Operation_Journal {
 		global $wpdb;
 		$network_operation_id=self::canonical_operation_id($network_operation_id);if(''===$network_operation_id)return self::error('mad4b_network_operation_id_invalid','NetworkOperation id is invalid.');
 		$t=MAD4B_SCP_Schema::tables();
-		$op=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operations']} WHERE BINARY network_operation_id=BINARY %s LIMIT 1",$network_operation_id),ARRAY_A);
-		if(!is_array($op))return self::error('mad4b_network_operation_unknown','NetworkOperation is unknown.');
-		$targets=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE BINARY network_operation_id=BINARY %s ORDER BY target_blog_id ASC",$network_operation_id),ARRAY_A);
-		$events=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$t['network_operation_events']} WHERE BINARY network_operation_id=BINARY %s ORDER BY sequence ASC",$network_operation_id),ARRAY_A);
-		$chain=self::verify_event_chain($op,is_array($events)?$events:array());if(is_wp_error($chain))return $chain;
-		$targets=is_array($targets)?$targets:array();$derived=self::derive_state_from_rows($targets,!empty($op['paused']));
-		if(!hash_equals((string)$op['state'],$derived))return self::error('mad4b_network_operation_state_drift','Stored NetworkOperation state disagrees with durable target evidence.',array('stored'=>(string)$op['state'],'derived'=>$derived));
-		$sets=array('completed'=>array(),'pending'=>array(),'reconciling'=>array(),'claimed'=>array(),'failed'=>array());
-		$target_rows=array();
-		foreach($targets as $row){
-			$blog=(int)$row['target_blog_id'];$state=(string)$row['state'];
-			if(in_array($state,array('committed','no_effect'),true))$sets['completed'][]=$blog;
-			elseif('pending'===$state)$sets['pending'][]=$blog;
-			elseif('reconciling'===$state)$sets['reconciling'][]=$blog;
-			elseif('claimed'===$state)$sets['claimed'][]=$blog;
-			elseif('failed'===$state)$sets['failed'][]=$blog;
-			$target_rows[(string)$blog]=self::public_target($row);
+		for($attempt=1;$attempt<=self::RECONSTRUCT_MAX_ATTEMPTS;$attempt++){
+			// Stable-read fence: writers atomically update target/event rows plus the
+			// durable operation head. Read the head before and after the snapshot;
+			// if it moved, discard the mixed read and try again without inferring
+			// corruption or serializing otherwise-independent workers.
+			$op_before=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operations']} WHERE BINARY network_operation_id=BINARY %s LIMIT 1",$network_operation_id),ARRAY_A);
+			if(!is_array($op_before))return self::error('mad4b_network_operation_unknown','NetworkOperation is unknown.');
+			$targets=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$t['network_operation_targets']} WHERE BINARY network_operation_id=BINARY %s ORDER BY target_blog_id ASC",$network_operation_id),ARRAY_A);
+			$events=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$t['network_operation_events']} WHERE BINARY network_operation_id=BINARY %s ORDER BY sequence ASC",$network_operation_id),ARRAY_A);
+			$op_after=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['network_operations']} WHERE BINARY network_operation_id=BINARY %s LIMIT 1",$network_operation_id),ARRAY_A);
+			if(!is_array($op_after))return self::error('mad4b_network_operation_unknown','NetworkOperation is unknown.');
+			$head_stable=(int)$op_before['revision']===(int)$op_after['revision']
+				&& hash_equals((string)$op_before['latest_event_sha256'],(string)$op_after['latest_event_sha256'])
+				&& (string)$op_before['state']===(string)$op_after['state']
+				&& (int)!empty($op_before['paused'])===(int)!empty($op_after['paused']);
+			if(!$head_stable)continue;
+			$op=$op_after;
+			$events=is_array($events)?$events:array();
+			$chain=self::verify_event_chain($op,$events);if(is_wp_error($chain))return $chain;
+			$targets=is_array($targets)?$targets:array();$derived=self::derive_state_from_rows($targets,!empty($op['paused']));
+			if(!hash_equals((string)$op['state'],$derived))return self::error('mad4b_network_operation_state_drift','Stored NetworkOperation state disagrees with durable target evidence.',array('stored'=>(string)$op['state'],'derived'=>$derived));
+			$sets=array('completed'=>array(),'pending'=>array(),'reconciling'=>array(),'claimed'=>array(),'failed'=>array());
+			$target_rows=array();
+			foreach($targets as $row){
+				$blog=(int)$row['target_blog_id'];$state=(string)$row['state'];
+				if(in_array($state,array('committed','no_effect'),true))$sets['completed'][]=$blog;
+				elseif('pending'===$state)$sets['pending'][]=$blog;
+				elseif('reconciling'===$state)$sets['reconciling'][]=$blog;
+				elseif('claimed'===$state)$sets['claimed'][]=$blog;
+				elseif('failed'===$state)$sets['failed'][]=$blog;
+				$target_rows[(string)$blog]=self::public_target($row);
+			}
+			foreach($sets as &$values){sort($values,SORT_NUMERIC);}unset($values);
+			return array(
+				'contract'=>self::CONTRACT,'network_operation_id'=>$network_operation_id,'state'=>(string)$op['state'],'paused'=>!empty($op['paused']),
+				'revision'=>(int)$op['revision'],'latest_event_sha256'=>(string)$op['latest_event_sha256'],
+				'origin_site_uuid'=>(string)$op['origin_site_uuid'],'origin_blog_id'=>(int)$op['origin_blog_id'],'authority_scope_sha256'=>(string)$op['authority_scope_sha256'],
+				'plan_sha256'=>(string)$op['plan_sha256'],'preparation_sha256'=>(string)$op['preparation_sha256'],'idempotency_key'=>(string)$op['idempotency_key'],'target_set_sha256'=>(string)$op['target_set_sha256'],
+				'sets'=>$sets,'resume_candidates'=>$sets['pending'],'targets'=>$target_rows,'event_count'=>count($events),'event_chain_valid'=>true,
+				'replay_committed_allowed'=>false,'read_only'=>true,'mutation_performed'=>false,'authorizing'=>false
+			);
 		}
-		foreach($sets as &$values){sort($values,SORT_NUMERIC);}unset($values);
-		return array(
-			'contract'=>self::CONTRACT,'network_operation_id'=>$network_operation_id,'state'=>(string)$op['state'],'paused'=>!empty($op['paused']),
-			'revision'=>(int)$op['revision'],'latest_event_sha256'=>(string)$op['latest_event_sha256'],
-			'origin_site_uuid'=>(string)$op['origin_site_uuid'],'origin_blog_id'=>(int)$op['origin_blog_id'],'authority_scope_sha256'=>(string)$op['authority_scope_sha256'],
-			'plan_sha256'=>(string)$op['plan_sha256'],'preparation_sha256'=>(string)$op['preparation_sha256'],'idempotency_key'=>(string)$op['idempotency_key'],'target_set_sha256'=>(string)$op['target_set_sha256'],
-			'sets'=>$sets,'resume_candidates'=>$sets['pending'],'targets'=>$target_rows,'event_count'=>count($events),'event_chain_valid'=>true,
-			'replay_committed_allowed'=>false,'read_only'=>true,'mutation_performed'=>false,'authorizing'=>false
+		return self::error(
+			'mad4b_network_reconstruct_concurrent_drift',
+			'NetworkOperation changed during every bounded reconstruction attempt; obtain a fresh snapshot.',
+			array('attempts'=>self::RECONSTRUCT_MAX_ATTEMPTS,'fresh_read_required'=>true,'mutation_performed'=>false,'authorizing'=>false)
 		);
 	}
 

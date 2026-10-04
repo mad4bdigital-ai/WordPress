@@ -9,7 +9,8 @@ for marker in [
     "class MAD4B_SCP_Network_Operation_Journal","function create(","function claim_target(","function record_target_outcome(","function recover_expired_claims(","function record_reconciliation_outcome(",
     "function pause(","function resume(","function reconstruct(","function verify_target_context(",
     "target_binding_sha256","credential_binding_sha256","receipt_binding_sha256","catalog_sha256","approval_ticket_id","context_sha256",
-    "network_target_terminal_immutable","network_target_claim_epoch_stale","network_target_worker_mismatch","network_target_claim_expired_reconciliation_required","target_set_sha256","claim_expires_at","replay_committed_allowed","FOR UPDATE","event_sha256"
+    "network_target_terminal_immutable","network_target_claim_epoch_stale","network_target_worker_mismatch","network_target_claim_expired_reconciliation_required","target_set_sha256","claim_expires_at","replay_committed_allowed","FOR UPDATE","event_sha256",
+    "RECONSTRUCT_MAX_ATTEMPTS","op_before","op_after","mad4b_network_reconstruct_concurrent_drift"
 ]:
     if marker not in impl: raise SystemExit("FAIL network-operation invariant missing "+marker)
 if "class-mad4b-scp-network-operation-journal.php" not in main:
