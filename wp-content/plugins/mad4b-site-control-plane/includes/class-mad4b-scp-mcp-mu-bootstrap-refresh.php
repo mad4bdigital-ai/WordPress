@@ -418,8 +418,10 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		}
 	}
 
-	public static function bootstrap( $expected_unmanaged_sha256 = '' ) {
-		$expected_unmanaged_sha256 = strtolower( trim( (string) $expected_unmanaged_sha256 ) );
+	public static function bootstrap() {
+		$expected_unmanaged_sha256 = class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && method_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', 'conflict_expected_sha256' )
+			? strtolower( trim( (string) MAD4B_SCP_MCP_Runtime_Recovery::conflict_expected_sha256() ) )
+			: '';
 		$status = self::base_status();
 		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
 
