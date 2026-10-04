@@ -614,6 +614,21 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			return $status;
 		}
 
+		$ownership_before = self::read_ownership_receipt();
+		$receipt = self::persist_ownership_receipt( $status['source_sha256'], $explicit_conflict ? 'explicit_conflict_recovery' : 'refresh' );
+		if ( is_wp_error( $receipt ) ) {
+			$rollback_owner = self::transaction_record_for_owner( $transaction_id );
+			$bytes_restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
+			$ownership_restored = self::restore_ownership_receipt_snapshot( $ownership_before );
+			$restored = $bytes_restored && $ownership_restored;
+			if ( $restored ) self::complete_transaction( $transaction_id ); else self::block_transaction( 'mu_bootstrap_ownership_persist_rollback_failed', $transaction_id );
+			$status['blocker'] = $restored ? 'mu_bootstrap_ownership_persist_failed' : 'mu_bootstrap_ownership_persist_rollback_failed';
+			self::$status = $status;
+			return $status;
+		}
+		$status['ownership_receipt_present'] = true;
+		$status['ownership_receipt_valid'] = true;
+
 		$event = MAD4B_SCP_Audit::record(
 			$explicit_conflict ? 'mad4b/mcp-mu-bootstrap-conflict-replaced' : 'mad4b/mcp-mu-bootstrap-refreshed',
 			array(
@@ -623,6 +638,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 				'previous_sha256' => $status['destination_sha256_before'],
 				'current_sha256' => $status['source_sha256'],
 				'ownership_source' => $status['ownership_source'],
+				'ownership_receipt_valid' => true,
 				'explicit_conflict_recovery' => $explicit_conflict,
 				'conflict_backup_sha256' => isset( $status['conflict_backup_sha256'] ) ? $status['conflict_backup_sha256'] : '',
 				'conflict_backup_file' => isset( $status['conflict_backup_file'] ) ? $status['conflict_backup_file'] : '',
@@ -633,24 +649,14 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		);
 		if ( is_wp_error( $event ) ) {
 			$rollback_owner = self::transaction_record_for_owner( $transaction_id );
-			$restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
+			$bytes_restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
+			$ownership_restored = self::restore_ownership_receipt_snapshot( $ownership_before );
+			$restored = $bytes_restored && $ownership_restored;
 			if ( $restored ) self::complete_transaction( $transaction_id ); else self::block_transaction( 'audit_failed_mu_refresh_rollback_failed', $transaction_id );
 			$status['blocker'] = $restored ? 'audit_failed_mu_refresh_rolled_back' : 'audit_failed_mu_refresh_rollback_failed';
 			self::$status = $status;
 			return $status;
 		}
-
-		$receipt = self::persist_ownership_receipt( $status['source_sha256'], $explicit_conflict ? 'explicit_conflict_recovery' : 'refresh' );
-		if ( is_wp_error( $receipt ) ) {
-			$rollback_owner = self::transaction_record_for_owner( $transaction_id );
-			$restored = ! is_wp_error( $rollback_owner ) && self::restore_bytes( $destination, $before );
-			if ( $restored ) self::complete_transaction( $transaction_id ); else self::block_transaction( 'mu_bootstrap_ownership_persist_rollback_failed', $transaction_id );
-			$status['blocker'] = $restored ? 'mu_bootstrap_ownership_persist_failed' : 'mu_bootstrap_ownership_persist_rollback_failed';
-			self::$status = $status;
-			return $status;
-		}
-		$status['ownership_receipt_present'] = true;
-		$status['ownership_receipt_valid'] = true;
 
 		if ( ! self::complete_transaction( $transaction_id ) ) {
 			self::block_transaction( 'mu_bootstrap_refresh_transaction_finalize_failed', $transaction_id );
@@ -695,6 +701,14 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$expected = hash( 'sha256', $bytes );
 		$actual = is_readable( $destination ) ? hash_file( 'sha256', $destination ) : '';
 		return is_string( $actual ) && hash_equals( $expected, $actual );
+	}
+
+	private static function restore_ownership_receipt_snapshot( $snapshot ) {
+		if ( ! self::repair_lifecycle_allowed() ) return false;
+		if ( null === $snapshot ) delete_option( self::OWNERSHIP_OPTION );
+		else update_option( self::OWNERSHIP_OPTION, $snapshot, false );
+		$readback = self::read_ownership_receipt();
+		return serialize( $readback ) === serialize( $snapshot );
 	}
 
 	private static function backup_conflicting_bytes( $bytes, $hash ) {
