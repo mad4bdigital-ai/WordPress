@@ -44,7 +44,9 @@ $explosion=MAD4B_SCP_Search_Eligibility::admit_surface(array('surface_type'=>'vi
 $check(is_wp_error($explosion)&&'mad4b_search_surface_cardinality_exceeded'===$explosion->get_error_code(),'surface explosion admitted');
 
 // A hard-global budget claim without a shared coordinator is denied, not silently downgraded.
-$hard=MAD4B_SCP_Provider_Account_Budget_Authority::reserve(array('provider_id'=>'serp','credential_ref'=>'ref','enforcement_mode'=>'hard_global','units'=>1,'hard_allowance'=>10,'protected_reserve'=>1,'billing_cycle_id'=>'2026-10','idempotency_key'=>'cross-fault'));
+$hard_unstable=MAD4B_SCP_Provider_Account_Budget_Authority::reserve(array('provider_id'=>'serp','credential_ref'=>'ref','enforcement_mode'=>'hard_global','units'=>1,'hard_allowance'=>10,'protected_reserve'=>1,'billing_cycle_id'=>'2026-10','idempotency_key'=>'cross-fault-unstable'));
+$check(is_wp_error($hard_unstable)&&'mad4b_provider_budget_global_account_identity_required'===$hard_unstable->get_error_code(),'hard-global budget accepted unstable site-local account identity');
+$hard=MAD4B_SCP_Provider_Account_Budget_Authority::reserve(array('provider_id'=>'serp','provider_account_ref'=>'provider-account-1','credential_ref'=>'ref','enforcement_mode'=>'hard_global','units'=>1,'hard_allowance'=>10,'protected_reserve'=>1,'billing_cycle_id'=>'2026-10','idempotency_key'=>'cross-fault'));
 $check(is_wp_error($hard)&&'mad4b_provider_budget_shared_authority_required'===$hard->get_error_code(),'hard-global budget silently downgraded');
 
 // Composed fault guard exercises material dependencies and derives operator state.
