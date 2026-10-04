@@ -143,6 +143,11 @@ $rights = MAD4B_SCP_Search_Evidence_Policy::resolve_retention( array(
 	'max_normalized_retention_seconds' => 86400, 'allowed_storage_regions' => array( 'US' ),
 ), array( 'raw_retention_seconds' => 3600, 'normalized_retention_seconds' => 604800, 'storage_region' => 'US' ) );
 $check( ! is_wp_error( $rights ) && 0 === $rights['raw_retention_seconds'] && 86400 === $rights['normalized_retention_seconds'], 'provider retention constraints not applied' );
+$rights_cap = MAD4B_SCP_Search_Evidence_Policy::resolve_retention( array(
+	'provider_id' => 'serp_fixture', 'policy_version' => '2026-10', 'raw_retention_permitted' => true,
+	'max_raw_retention_seconds' => 120, 'normalized_retention_permitted' => true, 'max_normalized_retention_seconds' => 600,
+), array( 'raw_retention_seconds' => 3600, 'normalized_retention_seconds' => 3600 ) );
+$check( ! is_wp_error( $rights_cap ) && 120 === $rights_cap['raw_retention_seconds'] && 600 === $rights_cap['normalized_retention_seconds'], 'raw retention cap not enforced' );
 $region_denied = MAD4B_SCP_Search_Evidence_Policy::resolve_retention( array(
 	'provider_id' => 'serp_fixture', 'allowed_storage_regions' => array( 'US' ),
 ), array( 'storage_region' => 'EU', 'normalized_retention_seconds' => 60 ) );
@@ -167,6 +172,22 @@ $reconcile = MAD4B_SCP_Provider_Account_Budget_Authority::reconcile( array(
 	'hard_allowance' => 10, 'provider_observed_used' => 9,
 ) );
 $check( ! is_wp_error( $reconcile ) && 9 === $reconcile['effective_used'], 'provider usage reconciliation not applied' );
+
+// Billing-cycle reset and stale local reservation expiry are explicit.
+$fresh_account = array(
+	'provider_id' => 'serp_fixture', 'credential_ref' => 'fresh-budget-ref', 'enforcement_mode' => 'local_best_effort',
+	'units' => 4, 'hard_allowance' => 5, 'protected_reserve' => 0, 'billing_cycle_id' => '2026-10', 'idempotency_key' => 'stale-1',
+);
+$stale = MAD4B_SCP_Provider_Account_Budget_Authority::reserve( $fresh_account );
+$check( ! is_wp_error( $stale ), 'stale reservation fixture failed' );
+$state_key = MAD4B_SCP_Provider_Account_Budget_Authority::OPTION_PREFIX . substr( $stale['account_key'], 0, 40 );
+$GLOBALS['mad4b_test_options'][ $state_key ]['reservations'][ $stale['reservation_id'] ]['expires_at'] = time() - 1;
+$next = $fresh_account; $next['idempotency_key'] = 'stale-2'; $next['units'] = 5;
+$next_reservation = MAD4B_SCP_Provider_Account_Budget_Authority::reserve( $next );
+$check( ! is_wp_error( $next_reservation ), 'stale reservation did not expire' );
+$new_cycle = $fresh_account; $new_cycle['billing_cycle_id'] = '2026-11'; $new_cycle['idempotency_key'] = 'cycle-reset'; $new_cycle['units'] = 5;
+$cycle_reservation = MAD4B_SCP_Provider_Account_Budget_Authority::reserve( $new_cycle );
+$check( ! is_wp_error( $cycle_reservation ), 'billing-cycle reset did not reset local state' );
 
 $hard = $budget_input; $hard['enforcement_mode'] = 'hard_global'; $hard['idempotency_key'] = 'hard-1'; $hard['units'] = 1;
 $denied_hard = MAD4B_SCP_Provider_Account_Budget_Authority::reserve( $hard );
@@ -194,10 +215,16 @@ $d2 = MAD4B_SCP_Search_Decision_Policy::evaluate( $candidate );
 $check( ! is_wp_error( $d1 ) && hash_equals( $d1['decision_sha256'], $d2['decision_sha256'] ), 'deterministic decision digest drifted' );
 $missing = $candidate; unset( $missing['factors']['information_gain'] );
 $check( 'mad4b_search_decision_factor_missing' === $error_code( MAD4B_SCP_Search_Decision_Policy::evaluate( $missing ) ), 'missing required factor was not denied' );
+$bad_provenance = $candidate; $bad_provenance['target_id'] = 'target-bad-provenance'; $bad_provenance['factors']['urgency']['source'] = '';
+$check( 'mad4b_search_decision_factor_provenance_required' === $error_code( MAD4B_SCP_Search_Decision_Policy::evaluate( $bad_provenance ) ), 'missing factor provenance was not denied' );
 $expensive = $candidate; $expensive['target_id'] = 'target-expensive'; $expensive['factors']['expected_cost'] = $factor( 100 );
 $cheap = $candidate; $cheap['target_id'] = 'target-cheap'; $cheap['factors']['expected_cost'] = $factor( 0 );
 $ranked = MAD4B_SCP_Search_Decision_Policy::rank( array( $expensive, $cheap ) );
 $check( ! is_wp_error( $ranked ) && 'target-cheap' === $ranked['items'][0]['target_id'], 'cost penalty did not affect deterministic ranking' );
+$tie_a = $candidate; $tie_a['target_id'] = 'a-target';
+$tie_b = $candidate; $tie_b['target_id'] = 'b-target';
+$tied = MAD4B_SCP_Search_Decision_Policy::rank( array( $tie_b, $tie_a ) );
+$check( ! is_wp_error( $tied ) && 'a-target' === $tied['items'][0]['target_id'], 'stable lexical tie-break failed' );
 
 // Machine-measurable acceptance reducer requires exact-head evidence and all fixtures.
 $gate_evidence = array();
