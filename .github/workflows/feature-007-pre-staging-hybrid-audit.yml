@@ -70,6 +70,12 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-contract.py \
             --output dist/mad4b-production-readiness-contract.json
 
+      - name: Production certification plan contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-certification-plan-contract.py
+
       - name: Dynamic Skill distribution contract
         shell: bash
         run: |

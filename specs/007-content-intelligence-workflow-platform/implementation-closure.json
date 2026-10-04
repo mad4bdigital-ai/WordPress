@@ -1186,6 +1186,10 @@
       "governed_wp_draft",
       "semantic_publication_verification"
     ],
-    "full_feature007_complete": false
+    "full_feature007_complete": false,
+    "certification_plan_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json",
+    "live_gate_evidence_contract": "mad4b.production-live-gate-evidence.v1",
+    "live_certification_is_staging_only": true,
+    "production_mutation_during_certification": false
   }
 }

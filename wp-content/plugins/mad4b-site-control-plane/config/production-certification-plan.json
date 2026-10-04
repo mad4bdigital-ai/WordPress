@@ -1,0 +1,150 @@
+{
+  "contract": "mad4b.production-certification-plan.v1",
+  "profile": "control_plane_core",
+  "environment": "staging",
+  "target_environment": "production",
+  "authorizing": false,
+  "production_mutation_performed": false,
+  "exact_candidate_identity_required": true,
+  "stages": [
+    {
+      "id": "exact_deployment_identity",
+      "gate": "etg_exact_runtime_release_deployed",
+      "mutation_class": "read_only",
+      "producer": ".github/workflows/mad4b-etg-deployment-readiness.yml",
+      "evidence_contract": "mad4b.etg-deployment-readiness.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "runtime_root_trust",
+      "gate": "runtime_root_trust_readback",
+      "mutation_class": "read_only",
+      "producer": "release_root_trust_readback",
+      "evidence_contract": "mad4b.release-root-trust-verification.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "host_runner_parity",
+      "gate": "recovery_tooling_available",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "tools/mad4b_host_runner.py",
+      "evidence_contract": "mad4b.tool-execution-receipt.v1",
+      "rollback_required": true
+    },
+    {
+      "id": "protected_backup_restore",
+      "gate": "protected_backup_recovery_ready",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "tools/mad4b_recovery_plane.py",
+      "evidence_contract": "mad4b.protected-backup-restore-receipt.v1",
+      "rollback_required": true
+    },
+    {
+      "id": "out_of_band_recovery",
+      "gate": "recovery_live_verified",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "tools/mad4b_recovery_plane.py",
+      "evidence_contract": "mad4b.recovery-receipt.v1",
+      "rollback_required": true
+    },
+    {
+      "id": "provider_side_channel_inventory",
+      "gate": "provider_side_channel_safe",
+      "mutation_class": "read_only",
+      "producer": "governed_runtime_diagnostics",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "multi_authority_canary",
+      "gate": "multi_authority_live",
+      "mutation_class": "read_only",
+      "producer": "governed_runtime_diagnostics",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "policy_resolution_canary",
+      "gate": "policy_engine_ready",
+      "mutation_class": "read_only",
+      "producer": "governed_runtime_diagnostics",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "consistency_fault_canary",
+      "gate": "authoritative_execution_verified",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "governed_runtime_fault_canary",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": true
+    },
+    {
+      "id": "security_fault_canary",
+      "gate": "kernel_quality_verified",
+      "mutation_class": "read_only",
+      "producer": "governed_runtime_fault_canary",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "operator_doctor",
+      "gate": "operator_recovery_review_ready",
+      "mutation_class": "read_only",
+      "producer": "tools/mad4b_host_runner.py",
+      "evidence_contract": "mad4b.host-runner-doctor.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "formal_state_repository_proof",
+      "gate": "formal_critical_state_verified",
+      "mutation_class": "read_only",
+      "producer": ".github/workflows/feature-007-critical-kernel.yml",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": false
+    },
+    {
+      "id": "request_receipt_rollback_vertical_slice",
+      "gate": "critical_kernel_vertical_slice_verified",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "governed_runtime_vertical_slice",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": true
+    }
+  ],
+  "evidence_envelope": {
+    "contract": "mad4b.production-live-gate-evidence.v1",
+    "required_fields": [
+      "gate",
+      "environment",
+      "candidate_identity",
+      "producer_contract",
+      "producer_evidence_sha256",
+      "ready",
+      "mutation_performed",
+      "production_mutation",
+      "authorizing"
+    ],
+    "candidate_identity_fields": [
+      "source_commit_sha",
+      "build_fingerprint",
+      "package_manifest_digest"
+    ],
+    "mutation_requirements": {
+      "reversible_staging_mutation": [
+        "rollback_verified",
+        "postcondition_verified"
+      ],
+      "read_only": [
+        "mutation_performed=false"
+      ]
+    }
+  },
+  "terminal": {
+    "all_stages_ready_required": true,
+    "exact_identity_equal_across_all_stages": true,
+    "optional_capabilities_remain_fail_closed": true,
+    "production_ready_result_authorizing": false,
+    "production_promotion_separate": true
+  }
+}
