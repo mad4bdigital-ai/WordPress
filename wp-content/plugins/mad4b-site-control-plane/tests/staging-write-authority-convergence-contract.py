@@ -79,7 +79,6 @@ assert "update_option( 'mad4b_scp_developer_kill_switch'" not in fail_closed
 for marker in [
     "class-mad4b-scp-staging-write-authority-convergence.php",
     "MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools()",
-    "MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY",
     "MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_catalog_read_tools()",
     "MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_step_up_tools()",
@@ -91,6 +90,11 @@ assert "MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools()" in en
 
 direct_step_up = servers.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
 assert "MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY" in direct_step_up
+
+direct_read = servers.split("public static function chatgpt_direct_read_transport_tools()", 1)[1].split("public static function chatgpt_dispatch_transport_tools()", 1)[0]
+assert "MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()" not in direct_read, "write convergence read surfaces must remain behind governed dispatch to preserve the 36-tool direct budget"
+base_tools = servers.split("public static function chatgpt_base_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
+assert "$write_convergence_read" not in base_tools, "write convergence handshake must not consume a second direct MCP tool slot"
 
 for marker in [
     "'staging_write_authority_convergence' => array(",
