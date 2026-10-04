@@ -545,7 +545,9 @@ assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in m
 assert "'deferred_protocol_hotpath'" in mu_bootstrap
 assert "$status['refresh_deferred'] = true;" in mu_bootstrap
 assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("hash_file(")
-assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("@copy(")
+mu_refresh_write = "@file_put_contents( $temp, $source_bytes, LOCK_EX )"
+assert mu_refresh_write in mu_bootstrap, "MU refresh must use the bounded same-directory temp writer"
+assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index(mu_refresh_write)
 assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("MAD4B_SCP_Audit::record(")
 
 scope_boot_pos = entry.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();")
