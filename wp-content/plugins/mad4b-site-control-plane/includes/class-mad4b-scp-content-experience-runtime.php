@@ -816,6 +816,11 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		}
 		$filtered_verification = apply_filters( 'mad4b_scp_content_experience_verify_helpers', $helper_verification, $helper_context );
 		if ( is_array( $filtered_verification ) ) $helper_verification = $filtered_verification;
+		$current_authority = isset( $profile['authority_sha256'] ) ? strtolower( trim( (string) $profile['authority_sha256'] ) ) : '';
+		$stored_authority = strtolower( trim( $stored_authority ) );
+		$authority_match = 1 === preg_match( '/^[a-f0-9]{64}$/', $current_authority )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_authority )
+			&& hash_equals( $current_authority, $stored_authority );
 		$result = array(
 			'contract' => self::VERIFY_CONTRACT,
 			'profile_slug' => $slug,
@@ -827,6 +832,9 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'marker_match' => hash_equals( $slug, $marker ),
 			'stored_profile_revision' => $revision,
 			'profile_revision_match' => $revision === (int) $profile['revision'],
+			'stored_profile_authority_sha256' => $stored_authority,
+			'current_profile_authority_sha256' => $current_authority,
+			'authority_match' => $authority_match,
 			'core_state_sha256' => self::post_state_hash( $post ),
 			'featured_media_id' => (int) get_post_thumbnail_id( $post_id ),
 			'helper_verification' => $helper_verification,
