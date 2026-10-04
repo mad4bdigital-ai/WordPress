@@ -4,6 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 guard = (ROOT / 'includes/class-mad4b-scp-mcp-runtime-conflict-guard.php').read_text('utf-8')
 refresh = (ROOT / 'includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php').read_text('utf-8')
+recovery = (ROOT / 'includes/class-mad4b-scp-mcp-runtime-recovery.php').read_text('utf-8')
+connection_ui = (ROOT / 'includes/class-mad4b-scp-connection-admin-ui.php').read_text('utf-8')
+endpoint_diagnostic = (ROOT / 'includes/class-mad4b-scp-endpoint-diagnostic.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php').read_text('utf-8')
 mu_bootstrap = (ROOT / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text('utf-8')
@@ -174,6 +177,19 @@ for marker in (
     "'non_atomic_replace_fallback' => false",
     "'shared_filesystem_certified' => false",
     "'next_request_required' => true",
+    "const OWNERSHIP_OPTION = 'mad4b_scp_mcp_mu_ownership_v1'",
+    "const OWNERSHIP_CONTRACT = 'mad4b.mcp-mu-ownership.v1'",
+    'ownership_receipt_status',
+    'persist_ownership_receipt',
+    'clear_ownership_receipt',
+    'conflict_status',
+    "'site_ownership_receipt'",
+    "'explicit_admin_conflict_recovery'",
+    "'mu_bootstrap_conflict_expected_hash_mismatch'",
+    "'mu_bootstrap_conflict_bytes_changed_before_replace'",
+    'backup_conflicting_bytes',
+    'MAD4B_SCP_Policy::prepare_backup_root()',
+    "'mad4b/mcp-mu-bootstrap-conflict-replaced'",
 ):
     require(refresh, marker, 'mu-refresh')
 
@@ -183,6 +199,41 @@ for forbidden in (
     '@unlink( $destination )',
 ):
     forbid(refresh, forbidden, 'mu-refresh-bounded')
+
+for marker in (
+    "const CONFLICT_ACTION = 'mad4b_repair_mcp_runtime_conflict'",
+    "const CONFLICT_CONFIRMATION = 'REPLACE UNKNOWN MCP BOOTSTRAP'",
+    'authorize_conflict()',
+    "'observed_sha256'",
+    "'mad4b_mcp_conflict_repair_stale_plan'",
+    "'mad4b_mcp_conflict_repair_admin_only'",
+    "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap( $expected_unmanaged_sha256 )",
+    "'explicit_conflict_recovery' => $conflict_mode",
+):
+    require(recovery, marker, 'explicit-mu-conflict-recovery')
+
+for marker in (
+    'Back up and replace unknown MCP bootstrap',
+    'manual_conflict_recovery_available',
+    'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION',
+    'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_CONFIRMATION',
+):
+    require(connection_ui, marker, 'explicit-mu-conflict-ui')
+
+for marker in (
+    "'runtime_recovery'",
+    'MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status()',
+    "'manual_conflict_recovery_available'",
+):
+    require(endpoint_diagnostic, marker, 'mu-conflict-diagnostic')
+
+# Unknown bytes must remain an explicit administrator recovery path. Generic
+# lifecycle callers may not silently opt into adopting an unmanaged MU file.
+for forbidden in (
+    "bootstrap( $status['destination_sha256_before'] )",
+    "bootstrap( hash_file( 'sha256', $destination ) )",
+):
+    forbid(recovery, forbidden, 'no-implicit-mu-conflict-adoption')
 
 transaction_reader = refresh.split('private static function read_transaction_option()', 1)[1].split('private static function transaction_record_for_owner', 1)[0]
 if 'return self::read_transaction_option();' in transaction_reader:
