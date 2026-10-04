@@ -1,0 +1,167 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
+if ( ! isset( $check ) || ! is_callable( $check ) ) throw new RuntimeException( 'Parent runtime check helper is unavailable.' );
+
+$option = MAD4B_SCP_Content_Experience_Profiles::OPTION;
+$original_profiles = get_option( $option, array() );
+$post_ids = array();
+$term_ids = array();
+
+register_post_type( 'mad4b_ci_trip', array(
+	'label' => 'MAD4B CI Trips', 'public' => true, 'show_ui' => true, 'show_in_rest' => true,
+	'supports' => array( 'title', 'editor', 'excerpt', 'thumbnail' ), 'capability_type' => 'post', 'map_meta_cap' => true,
+) );
+register_taxonomy( 'mad4b_ci_region', array( 'mad4b_ci_trip' ), array( 'label' => 'MAD4B CI Regions', 'public' => true, 'show_ui' => true ) );
+
+try {
+	$term = wp_insert_term( 'Cairo', 'mad4b_ci_region', array( 'slug' => 'cairo' ) );
+	$check( ! is_wp_error( $term ), 'Unable to create Content Experience taxonomy fixture.' );
+	$term_ids[] = (int) $term['term_id'];
+
+	// Least-privilege defaults are explicit and empty means empty, never "everything".
+	$default_plan = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array(
+		'profile' => array( 'slug' => 'ci-default', 'post_type' => 'mad4b_ci_trip', 'label' => 'CI Default' ),
+		'expected_revision' => 0,
+	) );
+	$check( ! is_wp_error( $default_plan ), 'Safe-default profile planning failed.' );
+	$check( 'allowlist' === $default_plan['profile']['meta_mode'], 'Profile meta default is not fail-closed allowlist.' );
+	$check( 'allowlist' === $default_plan['profile']['taxonomy_mode'], 'Profile taxonomy default is not fail-closed allowlist.' );
+	$check( empty( $default_plan['profile']['taxonomies'] ), 'Empty taxonomy allowlist unexpectedly widened to all attached taxonomies.' );
+
+	$profile_input = array(
+		'slug' => 'ci-trip',
+		'label' => 'CI Trip',
+		'post_type' => 'mad4b_ci_trip',
+		'meta_mode' => 'allowlist',
+		'meta_keys' => array( 'ci_price' ),
+		'taxonomy_mode' => 'allowlist',
+		'taxonomies' => array( 'mad4b_ci_region' ),
+		'featured_media' => true,
+		'hierarchy' => false,
+		'enabled_helpers' => array(),
+		'creation_status' => 'draft',
+		'live_update_mode' => 'draft_first',
+	);
+	$profile_plan = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array( 'profile' => $profile_input, 'expected_revision' => 0 ) );
+	$check( ! is_wp_error( $profile_plan ), 'Content Experience profile plan failed.' );
+	$applied_profile = MAD4B_SCP_Content_Experience_Profiles::profile_apply( array(
+		'profile' => $profile_input, 'expected_revision' => 0, 'plan_sha256' => $profile_plan['plan_sha256'],
+	) );
+	$check( ! is_wp_error( $applied_profile ) && ! empty( $applied_profile['profile']['authority_sha256'] ), 'Content Experience profile apply did not persist authority identity.' );
+	$profile_v1 = $applied_profile['profile'];
+	$routes_v1 = $profile_v1['routes'];
+	$check( false !== strpos( $routes_v1['create_apply'], '-r1-create-apply' ), 'Mutation executor route is not generation-bound.' );
+	$check( 'mad4b/ci-trip-create-plan' === $routes_v1['create_plan'], 'Planner route should remain stable across profile generations.' );
+
+	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
+	$check( $adapter instanceof MAD4B_SCP_Full_Content_Operations_Adapter, 'Full Content Operations adapter is unavailable.' );
+	$adapter->register_abilities();
+	$check( wp_has_ability( $routes_v1['create_apply'] ), 'Generated create executor Ability was not registered.' );
+	$check( wp_has_ability( $routes_v1['update_apply'] ), 'Generated update executor Ability was not registered.' );
+
+	$create_input = array(
+		'post_title' => 'CI governed trip',
+		'post_content' => 'Initial content',
+		'meta' => array( 'ci_price' => '100' ),
+		'taxonomies' => array( 'mad4b_ci_region' => array( 'cairo' ) ),
+	);
+	$create_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'create', $create_input );
+	$check( ! is_wp_error( $create_plan ) && ! empty( $create_plan['profile_snapshot']['authority_sha256'] ), 'Create plan lacks historical profile snapshot.' );
+	$create = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $create_input, array( 'plan_sha256' => $create_plan['plan_sha256'] ) ) );
+	$check( ! is_wp_error( $create ) && ! empty( $create['verified'] ) && ! empty( $create['post_id'] ), 'Dynamic create apply failed.' );
+	$post_id = (int) $create['post_id'];
+	$post_ids[] = $post_id;
+	$check( 'draft' === get_post_status( $post_id ), 'Create did not preserve draft-first status.' );
+	$check( '100' === get_post_meta( $post_id, 'ci_price', true ), 'Create meta readback mismatch.' );
+
+	$replay = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $create_input, array( 'plan_sha256' => $create_plan['plan_sha256'] ) ) );
+	$check( ! is_wp_error( $replay ) && ! empty( $replay['idempotent_replay'] ) && $post_id === (int) $replay['post_id'], 'Create idempotent replay did not resolve exact prior result.' );
+
+	// Target-level lock denies concurrent mutation before the second writer can revalidate.
+	$current = get_post( $post_id );
+	$locked_input = array( 'post_id' => $post_id, 'expected_modified_gmt' => $current->post_modified_gmt, 'post_excerpt' => 'locked-change' );
+	$locked_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', $locked_input );
+	$check( ! is_wp_error( $locked_plan ), 'Lock fixture update plan failed.' );
+	$lock_name = MAD4B_SCP_Content_Experience_Governance::acquire_lock( 'ci-trip', $post_id, '' );
+	$check( ! is_wp_error( $lock_name ), 'Unable to acquire explicit Content Experience fixture lock.' );
+	$blocked = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'update', array_merge( $locked_input, array( 'plan_sha256' => $locked_plan['plan_sha256'] ) ) );
+	MAD4B_SCP_Content_Experience_Governance::release_lock( $lock_name );
+	$check( is_wp_error( $blocked ) && 'mad4b_content_experience_target_busy' === $blocked->get_error_code(), 'Concurrent Content Experience target was not fenced.' );
+
+	// Force a post-core failure and prove automatic compensation restores the title.
+	$attachment_id = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI image', 'post_mime_type' => 'image/png' ), true );
+	$check( ! is_wp_error( $attachment_id ), 'Unable to create attachment fixture.' );
+	$post_ids[] = (int) $attachment_id;
+	$image_filter = static function ( $html, $attachment, $size, $icon, $attr ) use ( $attachment_id ) {
+		return (int) $attachment === (int) $attachment_id ? '<img src="ci.png" alt="" />' : $html;
+	};
+	add_filter( 'wp_get_attachment_image', $image_filter, 10, 5 );
+	$meta_fail = static function ( $check_value, $object_id, $meta_key ) use ( $post_id ) {
+		return ( (int) $object_id === (int) $post_id && '_thumbnail_id' === (string) $meta_key ) ? false : $check_value;
+	};
+	add_filter( 'update_post_metadata', $meta_fail, 10, 3 );
+	$current = get_post( $post_id );
+	$before_title = $current->post_title;
+	$failure_input = array( 'post_id' => $post_id, 'expected_modified_gmt' => $current->post_modified_gmt, 'post_title' => 'Must roll back', 'featured_media_id' => (int) $attachment_id );
+	$failure_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', $failure_input );
+	$check( ! is_wp_error( $failure_plan ), 'Compensation fixture plan failed.' );
+	$failure = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'update', array_merge( $failure_input, array( 'plan_sha256' => $failure_plan['plan_sha256'] ) ) );
+	remove_filter( 'update_post_metadata', $meta_fail, 10 );
+	remove_filter( 'wp_get_attachment_image', $image_filter, 10 );
+	$check( is_wp_error( $failure ), 'Injected featured-media failure did not fail the mutation.' );
+	$failure_data = $failure->get_error_data( $failure->get_error_code() );
+	$check( is_array( $failure_data ) && ! empty( $failure_data['mad4b_compensation']['verified'] ), 'Partial failure did not report verified automatic compensation.' );
+	$check( $before_title === get_post( $post_id )->post_title, 'Automatic compensation did not restore the pre-mutation title.' );
+
+	// Capture revision-1 rollback state, mutate, then advance the profile to r2.
+	$current = get_post( $post_id );
+	$update_input = array( 'post_id' => $post_id, 'expected_modified_gmt' => $current->post_modified_gmt, 'post_excerpt' => 'revision-one-change' );
+	$update_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', $update_input );
+	$before_update = MAD4B_SCP_Content_Experience_Runtime::capture_reversible_state( 'ci-trip', 'update', array_merge( $update_input, array( 'plan_sha256' => $update_plan['plan_sha256'] ) ) );
+	$check( ! is_wp_error( $before_update ), 'Historical rollback capture failed.' );
+	$update = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'update', array_merge( $update_input, array( 'plan_sha256' => $update_plan['plan_sha256'] ) ) );
+	$check( ! is_wp_error( $update ), 'Revision-one update failed.' );
+
+	$profile_input['label'] = 'CI Trip r2';
+	$profile_plan2 = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array( 'profile' => $profile_input, 'expected_revision' => 1 ) );
+	$check( ! is_wp_error( $profile_plan2 ), 'Profile revision-two plan failed.' );
+	$applied_profile2 = MAD4B_SCP_Content_Experience_Profiles::profile_apply( array( 'profile' => $profile_input, 'expected_revision' => 1, 'plan_sha256' => $profile_plan2['plan_sha256'] ) );
+	$check( ! is_wp_error( $applied_profile2 ), 'Profile revision-two apply failed.' );
+	$routes_v2 = $applied_profile2['profile']['routes'];
+	$check( $routes_v1['update_apply'] !== $routes_v2['update_apply'] && false !== strpos( $routes_v2['update_apply'], '-r2-update-apply' ), 'Profile authority change did not rotate mutation executor generation.' );
+	$restored_old = MAD4B_SCP_Content_Experience_Runtime::restore_reversible_state( $before_update['target'], $before_update['state'] );
+	$check( true === $restored_old, 'Historical rollback could not restore after current profile advanced.' );
+	$check( '' === get_post( $post_id )->post_excerpt, 'Historical rollback used mutable current profile state.' );
+
+	$invalid_type = $profile_input;
+	$invalid_type['post_type'] = 'page';
+	$type_plan = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array( 'profile' => $invalid_type, 'expected_revision' => 2 ) );
+	$check( is_wp_error( $type_plan ) && 'mad4b_content_experience_post_type_immutable' === $type_plan->get_error_code(), 'Existing profile allowed post_type semantic widening.' );
+
+	// Publish is the last visible transition after all preconditions/helper stages.
+	$current = get_post( $post_id );
+	$publish_input = array( 'post_id' => $post_id, 'expected_modified_gmt' => $current->post_modified_gmt, 'post_status' => 'publish' );
+	$publish_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
+	$publish = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'publish', array_merge( $publish_input, array( 'plan_sha256' => $publish_plan['plan_sha256'] ) ) );
+	$check( ! is_wp_error( $publish ) && 'publish' === get_post_status( $post_id ), 'Governed publish did not complete as final visible transition.' );
+	$verify = MAD4B_SCP_Content_Experience_Runtime::verify( 'ci-trip', array( 'post_id' => $post_id ) );
+	$check( ! is_wp_error( $verify ) && ! empty( $verify['authority_match'] ) && ! empty( $verify['marker_match'] ), 'Content Experience verification did not prove current profile authority.' );
+
+	// Clone provides the safe migration path when post_type/route identity must change.
+	$clone_plan = MAD4B_SCP_Content_Experience_Profiles::profile_clone_plan( array( 'source_slug' => 'ci-trip', 'new_slug' => 'ci-trip-clone', 'label' => 'CI Clone' ) );
+	$check( ! is_wp_error( $clone_plan ), 'Profile clone plan failed.' );
+	$clone = MAD4B_SCP_Content_Experience_Profiles::profile_clone_apply( array( 'source_slug' => 'ci-trip', 'new_slug' => 'ci-trip-clone', 'label' => 'CI Clone', 'plan_sha256' => $clone_plan['plan_sha256'] ) );
+	$check( ! is_wp_error( $clone ), 'Profile clone apply failed.' );
+	$delete_plan = MAD4B_SCP_Content_Experience_Profiles::profile_delete_plan( array( 'slug' => 'ci-trip-clone', 'expected_revision' => 1 ) );
+	$delete = MAD4B_SCP_Content_Experience_Profiles::profile_delete_apply( array( 'slug' => 'ci-trip-clone', 'expected_revision' => 1, 'plan_sha256' => $delete_plan['plan_sha256'] ) );
+	$check( ! is_wp_error( $delete ) && ! empty( $delete['content_preserved'] ), 'Profile decommission failed or claimed content deletion.' );
+
+	echo "mad4b.site-control-plane.runtime-content-experience.v1: PASS\n";
+} finally {
+	foreach ( array_reverse( array_unique( array_map( 'absint', $post_ids ) ) ) as $id ) if ( $id > 0 ) wp_delete_post( $id, true );
+	foreach ( array_reverse( array_unique( array_map( 'absint', $term_ids ) ) ) as $id ) if ( $id > 0 ) wp_delete_term( $id, 'mad4b_ci_region' );
+	update_option( $option, is_array( $original_profiles ) ? $original_profiles : array(), false );
+	MAD4B_SCP_Content_Experience_Profiles::reset_request_cache();
+	unregister_taxonomy( 'mad4b_ci_region' );
+	unregister_post_type( 'mad4b_ci_trip' );
+}
