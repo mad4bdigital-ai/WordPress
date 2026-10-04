@@ -51,35 +51,92 @@ if "trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter'" in runtime:
 
 
 profile_070 = profiles["providers"]["mcp_adapter"]["0.7.0"]
-runtime_070 = profile_070.get("runtime_classes") or {}
-critical_070 = profile_070.get("critical_files") or {}
-required_070 = {
-    "server": ("WP\\MCP\\Core\\McpServer", "includes/Core/McpServer.php"),
-    "component_registry": ("WP\\MCP\\Core\\McpComponentRegistry", "includes/Core/McpComponentRegistry.php"),
-    "transport_factory": ("WP\\MCP\\Core\\McpTransportFactory", "includes/Core/McpTransportFactory.php"),
-    "http_transport": ("WP\\MCP\\Transport\\HttpTransport", "includes/Transport/HttpTransport.php"),
-    "transport_context": ("WP\\MCP\\Transport\\Infrastructure\\McpTransportContext", "includes/Transport/Infrastructure/McpTransportContext.php"),
-    "initialize_handler": ("WP\\MCP\\Handlers\\Initialize\\InitializeHandler", "includes/Handlers/Initialize/InitializeHandler.php"),
-    "tools_handler": ("WP\\MCP\\Handlers\\Tools\\ToolsHandler", "includes/Handlers/Tools/ToolsHandler.php"),
-    "resources_handler": ("WP\\MCP\\Handlers\\Resources\\ResourcesHandler", "includes/Handlers/Resources/ResourcesHandler.php"),
-    "prompts_handler": ("WP\\MCP\\Handlers\\Prompts\\PromptsHandler", "includes/Handlers/Prompts/PromptsHandler.php"),
-    "system_handler": ("WP\\MCP\\Handlers\\System\\SystemHandler", "includes/Handlers/System/SystemHandler.php"),
-    "error_log_handler": ("WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler", "includes/Infrastructure/ErrorHandling/ErrorLogMcpErrorHandler.php"),
-    "null_error_handler": ("WP\\MCP\\Infrastructure\\ErrorHandling\\NullMcpErrorHandler", "includes/Infrastructure/ErrorHandling/NullMcpErrorHandler.php"),
-    "null_observability_handler": ("WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler", "includes/Infrastructure/Observability/NullMcpObservabilityHandler.php"),
-    "json_rpc_decoder": ("WP\\MCP\\Transport\\Infrastructure\\JsonRpcRequestDecoder", "includes/Transport/Infrastructure/JsonRpcRequestDecoder.php"),
-}
-for alias, (class_name, path) in required_070.items():
-    spec = runtime_070.get(alias) or {}
-    if spec.get("class") != class_name or spec.get("file") != path:
-        raise SystemExit(f"MCP 0.7 construction provenance mapping missing or wrong for {alias}: {spec}")
-    value = critical_070.get(path)
-    if not isinstance(value, str) or len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value.lower()):
-        raise SystemExit(f"MCP 0.7 construction class lacks certified SHA-256: {path}")
+surface = profile_070.get("runtime_surface") or {}
+symbols = profile_070.get("runtime_symbols") or []
+surface_tool = (ROOT / "tests/mcp-runtime-surface-profile.py").read_text("utf-8")
 
-for marker in ("runtime_classes", "critical_class_set_pinned", "critical_class_pin_count"):
+if surface.get("contract") != "mad4b.mcp-runtime-surface.v1":
+    raise SystemExit("MCP 0.7 runtime surface contract missing")
+if surface.get("discovery") != "exact_archive_php_namespace_surface":
+    raise SystemExit("MCP 0.7 runtime surface is not archive-discovered")
+if surface.get("generator") != "tests/mcp-runtime-surface-profile.py":
+    raise SystemExit("MCP 0.7 runtime surface generator identity missing")
+if surface.get("fail_closed_on_unprofiled_symbol") is not True:
+    raise SystemExit("MCP runtime surface must fail closed on unprofiled symbols")
+prefixes = surface.get("include_prefixes") or []
+if not prefixes or "includes/Core/" not in prefixes or "includes/Transport/" not in prefixes:
+    raise SystemExit("MCP runtime surface prefixes do not cover Core + Transport")
+if (surface.get("namespace_prefixes") or []) != ["WP\\MCP\\"]:
+    raise SystemExit("MCP runtime surface namespace authority drift")
+if not isinstance(symbols, list) or len(symbols) < 20:
+    raise SystemExit("MCP runtime surface symbol inventory is unexpectedly small")
+if surface.get("symbol_count") != len(symbols):
+    raise SystemExit("MCP runtime surface symbol_count drift")
+files = set()
+names = set()
+for spec in symbols:
+    if not isinstance(spec, dict):
+        raise SystemExit("MCP runtime symbol entry is not an object")
+    symbol = str(spec.get("symbol") or "")
+    kind = str(spec.get("kind") or "")
+    file = str(spec.get("file") or "")
+    blob = str(spec.get("git_blob_sha1") or "").lower()
+    if not symbol.startswith("WP\\MCP\\"):
+        raise SystemExit(f"runtime symbol escaped namespace authority: {symbol}")
+    if kind not in {"class", "interface", "trait"}:
+        raise SystemExit(f"runtime symbol kind unsupported: {symbol}:{kind}")
+    if not any(file.startswith(prefix) for prefix in prefixes):
+        raise SystemExit(f"runtime symbol escaped file surface: {symbol}:{file}")
+    if len(blob) != 40 or any(ch not in "0123456789abcdef" for ch in blob):
+        raise SystemExit(f"runtime symbol Git blob identity invalid: {symbol}")
+    if symbol in names:
+        raise SystemExit(f"duplicate runtime symbol: {symbol}")
+    names.add(symbol)
+    files.add(file)
+
+if surface.get("file_count") != len(files):
+    raise SystemExit("MCP runtime surface file_count drift")
+tree = str(surface.get("tree_sha256") or "").lower()
+if len(tree) != 64 or any(ch not in "0123456789abcdef" for ch in tree):
+    raise SystemExit("MCP runtime surface tree digest invalid")
+
+# Only the integration boundary remains explicit. Transitive symbols are generated.
+for required_symbol in {
+    "WP\\MCP\\Core\\McpAdapter",
+    "WP\\MCP\\Core\\McpServer",
+    "WP\\MCP\\Transport\\HttpTransport",
+    "WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler",
+    "WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler",
+}:
+    if required_symbol not in names:
+        raise SystemExit(f"MCP runtime surface missing integration root: {required_symbol}")
+
+for marker in (
+    "runtime_symbols",
+    "runtime_symbol_exists",
+    "git_blob_sha1",
+    "runtime_symbol_blob_mismatch",
+):
+    if marker not in runtime:
+        raise SystemExit(f"Runtime provenance does not consume generated symbol surface: {marker}")
+
+for marker in (
+    "runtime_symbols",
+    "git_blob_sha1",
+    "critical_class_set_pinned",
+    "critical_class_pin_count",
+):
     if marker not in mu_bootstrap:
-        raise SystemExit(f"MU bootstrap does not consume expanded MCP runtime provenance: {marker}")
+        raise SystemExit(f"MU bootstrap does not consume generated MCP runtime surface: {marker}")
+
+for marker in (
+    "git_blob_sha1",
+    "runtime_symbols",
+    "--write",
+    "exact_archive_php_namespace_surface",
+):
+    if marker not in surface_tool:
+        raise SystemExit(f"MCP runtime surface generator contract missing: {marker}")
 
 for marker in (
     "MAD4B_SCP_MCP_Class_Provenance::BLOCKER",
@@ -90,4 +147,4 @@ for marker in (
     if marker not in catalog:
         raise SystemExit(f"Catalog diagnostics missing class/validator invariant: {marker}")
 
-print(f"mad4b.mcp-class-provenance.v1: PASS ({len(required)} legacy + {len(required_070)} MCP 0.7 construction classes)")
+print(f"mad4b.mcp-class-provenance.v1: PASS ({len(required)} legacy + {len(symbols)} generated MCP 0.7 runtime symbols)")
