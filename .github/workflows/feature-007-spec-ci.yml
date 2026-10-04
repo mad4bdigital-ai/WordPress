@@ -14,6 +14,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-*.php'
 
 permissions:
@@ -157,6 +158,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-decision-policy.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php
 
