@@ -127,9 +127,18 @@
     "contract": "mad4b.adaptive-search-intelligence-review.v1",
     "document": "adaptive-search-intelligence-review.md",
     "ledger": "adaptive-search-intelligence-review.json",
-    "status": "APPROVED_WITH_GAPS",
+    "status": "APPROVED_P0_CLOSED_P1_OPEN",
     "score": 88,
-    "p0_open": 12,
-    "p1_open": 6
+    "p0_open": 0,
+    "p1_open": 6,
+    "score_semantics": "baseline_pre_p0_closure_review_score",
+    "p0_closed": 12,
+    "p0_closure": {
+      "contract": "mad4b.adaptive-search-p0-closure.v1",
+      "exact_head_sha": "178ec73281a19fd7c78a8e83ff110dd11027b684",
+      "workflow_run": 37236946924,
+      "evidence_status": "PASS",
+      "authorizing": false
+    }
   }
 }
