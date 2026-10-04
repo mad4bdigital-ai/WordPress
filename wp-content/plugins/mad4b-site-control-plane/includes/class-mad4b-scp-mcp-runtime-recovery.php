@@ -10,6 +10,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	const HOOK = 'mad4b_scp_mcp_runtime_recovery';
 	const OPTION = 'mad4b_scp_mcp_runtime_recovery_v1';
 	private static $active = false;
+	private static $conflict_expected_sha256 = '';
 
 	public static function boot() {
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle' ) );
@@ -21,6 +22,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	}
 
 	public static function active() { return self::$active; }
+	public static function conflict_expected_sha256() { return self::$active ? self::$conflict_expected_sha256 : ''; }
 
 	private static function configured_topology_id( $constant_name ) {
 		if ( ! defined( $constant_name ) ) return '';
@@ -216,7 +218,8 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 				: array( 'contract' => 'mad4b.local-oauth-store-convergence.v1', 'required' => false, 'ready' => true, 'changed' => false );
 			if ( is_wp_error( $oauth_store ) ) return $oauth_store;
 			self::$active = true;
-			$refresh = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap( $expected_unmanaged_sha256 );
+			self::$conflict_expected_sha256 = $conflict_mode ? $expected_unmanaged_sha256 : '';
+			$refresh = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 			if ( ! empty( $refresh['blocker'] ) ) return new WP_Error( $refresh['blocker'], 'Managed bootstrap refresh is blocked.' );
 			$guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap( true );
 			if ( empty( $guard['mu_bootstrap_present'] ) || empty( $guard['mu_bootstrap_integrity'] )
@@ -265,6 +268,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			if ( $result !== get_option( self::OPTION, array() ) ) return new WP_Error( 'mad4b_mcp_repair_status_readback_failed', 'Recovery result could not be persisted and verified.' );
 			return $result;
 		} finally {
+			self::$conflict_expected_sha256 = '';
 			self::$active = false;
 			if ( $own_lease ) MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease, 'mcp_runtime_recovery' );
 		}
