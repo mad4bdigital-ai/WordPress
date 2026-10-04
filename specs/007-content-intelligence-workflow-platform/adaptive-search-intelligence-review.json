@@ -35,8 +35,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3861",
         "task:T3862"
       ]
@@ -50,8 +51,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3863"
       ]
     },
@@ -64,8 +66,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3864"
       ]
     },
@@ -78,8 +81,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3865"
       ]
     },
@@ -92,8 +96,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3866"
       ]
     },
@@ -106,8 +111,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3867"
       ]
     },
@@ -120,8 +126,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3868"
       ]
     },
@@ -135,8 +142,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3869",
         "task:T3870"
       ]
@@ -168,8 +176,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3873"
       ]
     },
@@ -182,8 +191,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3874"
       ]
     },
@@ -214,8 +224,9 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3877"
       ]
     },
@@ -246,18 +257,23 @@
       ],
       "status": "CLOSED",
       "evidence_refs": [
-        "head:178ec73281a19fd7c78a8e83ff110dd11027b684",
-        "workflow_run:37236946924",
+        "head:17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+        "workflow_run:37238278583",
+        "runtime_integration_run:37238278447",
         "task:T3880"
       ]
     }
   ],
   "no_completion_claim": true,
   "p0_closure": {
-    "exact_head_sha": "178ec73281a19fd7c78a8e83ff110dd11027b684",
-    "workflow_run": 37236946924,
+    "contract": "mad4b.adaptive-search-p0-closure.v1",
+    "exact_head_sha": "17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+    "workflow_run": 37238278583,
+    "runtime_integration_run": 37238278447,
+    "spec_consistency_run": 37238278493,
     "evidence_status": "PASS",
     "closed_at": "2026-10-05",
-    "contract": "mad4b.adaptive-search-p0-closure.v1"
+    "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
+    "authorizing": false
   }
 }
