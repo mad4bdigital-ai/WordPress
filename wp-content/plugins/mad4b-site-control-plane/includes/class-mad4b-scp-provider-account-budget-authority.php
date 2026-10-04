@@ -19,7 +19,11 @@ final class MAD4B_SCP_Provider_Account_Budget_Authority {
 		$account = trim( (string) ( $input['provider_account_ref'] ?? '' ) );
 		$credential = trim( (string) ( $input['credential_ref'] ?? '' ) );
 		if ( '' === $provider || ( '' === $account && '' === $credential ) ) return new WP_Error( 'mad4b_provider_budget_account_identity_required', 'Provider and account/credential reference are required.' );
-		return hash( 'sha256', $provider . "\n" . $account . "\n" . $credential );
+		// A stable provider-account identity takes precedence over local credential
+		// aliases so multiple sites cannot accidentally create separate "global"
+		// budget namespaces for the same upstream billing account.
+		$identity = '' !== $account ? 'account:' . $account : 'credential:' . $credential;
+		return hash( 'sha256', $provider . "\n" . $identity );
 	}
 
 	private static function option_key( $account_key ) {
@@ -32,9 +36,12 @@ final class MAD4B_SCP_Provider_Account_Budget_Authority {
 	}
 
 	private static function validate_request( array $input ) {
+		$mode = sanitize_key( (string) ( $input['enforcement_mode'] ?? 'local_best_effort' ) );
+		if ( 'hard_global' === $mode && '' === trim( (string) ( $input['provider_account_ref'] ?? '' ) ) ) {
+			return new WP_Error( 'mad4b_provider_budget_global_account_identity_required', 'Hard-global provider budget enforcement requires a stable provider_account_ref shared across sites/workers.' );
+		}
 		$key = self::account_key( $input );
 		if ( is_wp_error( $key ) ) return $key;
-		$mode = sanitize_key( (string) ( $input['enforcement_mode'] ?? 'local_best_effort' ) );
 		if ( ! in_array( $mode, array( 'hard_global', 'local_best_effort' ), true ) ) return new WP_Error( 'mad4b_provider_budget_mode_invalid', 'Unknown provider-account budget enforcement mode.' );
 		$units = (int) ( $input['units'] ?? 0 );
 		$allowance = (int) ( $input['hard_allowance'] ?? 0 );
@@ -219,9 +226,12 @@ final class MAD4B_SCP_Provider_Account_Budget_Authority {
 	}
 
 	public static function reconcile( array $input ) {
+		$mode = sanitize_key( (string) ( $input['enforcement_mode'] ?? 'local_best_effort' ) );
+		if ( 'hard_global' === $mode && '' === trim( (string) ( $input['provider_account_ref'] ?? '' ) ) ) {
+			return new WP_Error( 'mad4b_provider_budget_global_account_identity_required', 'Hard-global reconciliation requires a stable provider_account_ref shared across sites/workers.' );
+		}
 		$key = self::account_key( $input );
 		if ( is_wp_error( $key ) ) return $key;
-		$mode = sanitize_key( (string) ( $input['enforcement_mode'] ?? 'local_best_effort' ) );
 		if ( 'hard_global' === $mode ) {
 			$response = apply_filters( 'mad4b_scp_provider_account_budget_authoritative_reconcile', null, $input + array( 'account_key' => $key ) );
 			return is_array( $response ) && ! empty( $response['authoritative'] ) ? $response : new WP_Error( 'mad4b_provider_budget_shared_reconciliation_required', 'Hard-global reconciliation requires authoritative shared account evidence.' );
