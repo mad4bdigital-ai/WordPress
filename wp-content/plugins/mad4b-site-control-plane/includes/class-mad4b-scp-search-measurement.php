@@ -136,6 +136,14 @@ final class MAD4B_SCP_Search_Measurement {
 		$depth = max( 1, min( 1000, (int) ( $input['requested_depth'] ?? 10 ) ) );
 		$provider = sanitize_key( (string) ( $input['provider_id'] ?? '' ) );
 		$cross_class = sanitize_key( (string) ( $input['cross_provider_comparability_class'] ?? '' ) );
+		$cross_certified = ! empty( $input['cross_provider_comparability_certified'] );
+		$cross_evidence = strtolower( trim( (string) ( $input['cross_provider_comparability_evidence_sha256'] ?? '' ) ) );
+		if ( '' !== $cross_class && ( ! $cross_certified || 1 !== preg_match( '/^[a-f0-9]{64}$/', $cross_evidence ) ) ) {
+			return new WP_Error(
+				'mad4b_search_cross_provider_comparability_uncertified',
+				'Cross-provider comparability requires certified evidence bound to the semantic class.'
+			);
+		}
 		$context = array(
 			'contract' => self::OBSERVATION_CONTEXT_VERSION,
 			'query_sha256' => $query['query_sha256'],
@@ -155,13 +163,15 @@ final class MAD4B_SCP_Search_Measurement {
 			'provider_id' => $provider,
 			'provider_semantic_profile' => sanitize_key( (string) ( $input['provider_semantic_profile'] ?? '' ) ),
 			'cross_provider_comparability_class' => $cross_class,
+			'cross_provider_comparability_certified' => $cross_certified,
+			'cross_provider_comparability_evidence_sha256' => $cross_evidence,
 			'normalization_version' => self::OBSERVATION_CONTEXT_VERSION,
 		);
 		sort( $context['requested_features'], SORT_STRING );
 		$provider_scope = '' !== $cross_class ? 'class:' . $cross_class : 'provider:' . $provider;
 		$material = $context;
 		$material['provider_scope'] = $provider_scope;
-		unset( $material['provider_id'], $material['cross_provider_comparability_class'] );
+		unset( $material['provider_id'], $material['cross_provider_comparability_class'], $material['cross_provider_comparability_certified'] );
 		$context['comparability_key'] = self::digest( $material );
 		$context['context_sha256'] = self::digest( $context );
 		return $context;
