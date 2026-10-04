@@ -241,7 +241,8 @@ for marker in (
 
 for forbidden in (
     'Back up and replace unknown MCP bootstrap',
-    'name="confirmation"',
+    'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION',
+    'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_CONFIRMATION',
 ):
     forbid(connection_ui, forbidden, 'no-manual-browser-conflict-post')
 
