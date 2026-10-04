@@ -1,0 +1,126 @@
+{
+  "contract": "mad4b.adaptive-search-intelligence-spec.v1",
+  "phase": 38,
+  "status": "OPEN",
+  "authorizing": false,
+  "architecture_freeze_effect": "maturity_extension_only_no_kernel_authority_widening",
+  "documents": {
+    "design": "adaptive-search-intelligence.md",
+    "runtime_contract": "contracts/adaptive-search-intelligence-runtime.md"
+  },
+  "principles": [
+    "provider_neutral",
+    "profile_driven",
+    "capability_discovered",
+    "state_adaptive_experience",
+    "field_level_provenance",
+    "immutable_evidence",
+    "recomputable_projections",
+    "fair_budgeted_scheduling",
+    "reconciliation_before_retry",
+    "closed_loop_but_non_authorizing"
+  ],
+  "workstreams": [
+    {
+      "id": "ASI-01",
+      "name": "meta-model-and-context-compiler",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-02",
+      "name": "search-profile-and-overlays",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-03",
+      "name": "language-resolution",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-04",
+      "name": "indexable-surface-graph",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-05",
+      "name": "seo-provider-observation-registry",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-06",
+      "name": "search-target-compiler",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-07",
+      "name": "temporal-evidence-and-projections",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-08",
+      "name": "decision-engine-and-dynamic-refresh",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-09",
+      "name": "fair-scheduler-and-budget-tree",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-10",
+      "name": "serp-provider-mesh",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-11",
+      "name": "serp-normalization-and-trust-boundary",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-12",
+      "name": "signals-and-confidence",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-13",
+      "name": "adaptive-experience-resolver",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-14",
+      "name": "content-experience-feedback-loop",
+      "status": "OPEN"
+    },
+    {
+      "id": "ASI-15",
+      "name": "fault-conformance-and-generalization",
+      "status": "OPEN"
+    }
+  ],
+  "required_gates": [
+    "ADAPTIVE_SEARCH_META_MODEL_PASS",
+    "SEARCH_CONTEXT_COMPILER_PASS",
+    "INDEXABLE_SURFACE_GRAPH_PASS",
+    "SEO_FIELD_PROVENANCE_PASS",
+    "SEARCH_TARGET_COMPILER_PASS",
+    "SEARCH_DECISION_EXPLAINABILITY_PASS",
+    "SEARCH_FAIR_SCHEDULER_PASS",
+    "SEARCH_BUDGET_GOVERNOR_PASS",
+    "SERP_PROVIDER_CONFORMANCE_PASS",
+    "SERP_EVIDENCE_INTEGRITY_PASS",
+    "SEARCH_EXTERNAL_EVIDENCE_TRUST_PASS",
+    "SEARCH_RECONCILIATION_BEFORE_RETRY_PASS",
+    "ADAPTIVE_SEARCH_EXPERIENCE_PASS",
+    "SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS",
+    "ADAPTIVE_SEARCH_GENERALIZATION_PASS"
+  ],
+  "hard_boundaries": [
+    "no_production_authority",
+    "no_breakglass_widening",
+    "no_generic_outbound_http",
+    "no_secret_projection",
+    "no_direct_content_mutation_from_signal",
+    "no_vendor_or_business_hardcode",
+    "no_documentation_only_completion"
+  ]
+}
