@@ -6,6 +6,7 @@ require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';
 require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation.php';
+require_once __DIR__ . '/class-mad4b-scp-staging-write-authority-convergence.php';
 require_once __DIR__ . '/class-mad4b-scp-developer-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-full-staging-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-governed-runtime-gates.php';
@@ -77,6 +78,7 @@ final class MAD4B_SCP_Servers {
 				class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
 					? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
 					: array(),
+				class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ? MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() : array()
@@ -490,6 +492,9 @@ final class MAD4B_SCP_Servers {
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ) {
 			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() );
 		}
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) {
+			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools() );
+		}
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
 			$tools[] = MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY;
 		}
@@ -518,6 +523,7 @@ final class MAD4B_SCP_Servers {
 	 */
 	public static function chatgpt_reviewed_direct_step_up_tools() {
 		$candidates = array();
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $candidates[] = MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Self_Update' ) ) $candidates[] = MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ) $candidates[] = MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY;
@@ -580,6 +586,9 @@ final class MAD4B_SCP_Servers {
 		$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
 			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()
 			: array();
+		$write_convergence_read = class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' )
+			? MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()
+			: array();
 		$full_read = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			&& class_exists( 'MAD4B_SCP_Site_Profile' )
 			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
@@ -596,6 +605,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/staging-write-candidate-binding-audit',
 			),
 			$narrow_read,
+			$write_convergence_read,
 			$full_read,
 			$runtime_gate_read,
 			$step_up
@@ -654,6 +664,7 @@ final class MAD4B_SCP_Servers {
 	private static function chatgpt_enrollment_candidates() {
 		$tools = self::core_tools( 'mad4b-enrollment' );
 		$tools = array_values( array_diff( $tools, self::chatgpt_internal_enrollment_mutations() ) );
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools() ) );
 		if ( class_exists( 'MAD4B_SCP_Developer_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() ) );
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() ) );
 		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() ) );
@@ -661,6 +672,14 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_full_catalog_candidates() {
+		$write_convergence_catalog = class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' )
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			? array_merge(
+				MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_catalog_read_tools(),
+				MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_step_up_tools()
+			)
+			: array();
 		$full_staging_catalog = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			&& class_exists( 'MAD4B_SCP_Site_Profile' )
 			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
@@ -677,6 +696,7 @@ final class MAD4B_SCP_Servers {
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools() : array(),
+			$write_convergence_catalog,
 			$full_staging_catalog,
 			class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Self_Update::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) && method_exists( 'MAD4B_SCP_Runtime_Release_Set', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools() : array(),
