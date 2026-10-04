@@ -129,7 +129,7 @@
     "ledger": "adaptive-search-intelligence-review.json",
     "status": "APPROVED_WITH_GAPS",
     "score": 88,
-    "p0_open": 10,
-    "p1_open": 8
+    "p0_open": 12,
+    "p1_open": 6
   }
 }
