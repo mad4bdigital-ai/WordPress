@@ -175,7 +175,7 @@
     "evidence_binding": "clean_ci_head_and_source_manifest_digest",
     "local_evidence": {
       "fixtures": 39,
-      "assertions": 893,
+      "assertions": 919,
       "gates_emitted": 0,
       "evidence_class": "hermetic_runtime_with_process_shared_cas"
     },
