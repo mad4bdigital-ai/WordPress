@@ -1144,9 +1144,8 @@
   "production_readiness": {
     "contract": "mad4b.production-readiness-state.v1",
     "policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
-    "state": "REPOSITORY_RECERTIFICATION_REQUIRED",
+    "state": "LIVE_EVIDENCE_REQUIRED",
     "repository_contract_ready": true,
-    "exact_head_repository_evidence_ready": false,
     "live_staging_evidence_ready": false,
     "production_ready": false,
     "production_authorized": false,
@@ -1162,14 +1161,6 @@
       ".github/workflows/mad4b-runtime-release-set.yml",
       ".github/workflows/mad4b-rollback-retention-receipt.yml"
     ],
-    "prior_repository_evidence": {
-      "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
-      "critical_kernel_workflow_run_id": 37214537184,
-      "pre_staging_workflow_run_id": 37214537248,
-      "provider_compatibility_workflow_run_id": 37214537220,
-      "mcp_client_compatibility_workflow_run_id": 37214537020
-    },
-    "repository_recertification_required": true,
     "target_profile": "control_plane_core",
     "full_feature007_profile": "full_feature007",
     "optional_capability_policy": "disabled_and_fail_closed_until_live_certified",
@@ -1190,6 +1181,20 @@
     "certification_plan_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json",
     "live_gate_evidence_contract": "mad4b.production-live-gate-evidence.v1",
     "live_certification_is_staging_only": true,
-    "production_mutation_during_certification": false
+    "production_mutation_during_certification": false,
+    "repository_evidence_binding": {
+      "contract": "mad4b.repository-readiness-evidence-binding.v1",
+      "mode": "ci_runtime_exact_head",
+      "current_head_ci_required": true,
+      "persisted_run_ids_authoritative": false,
+      "documentation_can_self_certify": false
+    },
+    "historical_repository_evidence": {
+      "exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
+      "critical_kernel_workflow_run_id": 37214537184,
+      "pre_staging_workflow_run_id": 37214537248,
+      "provider_compatibility_workflow_run_id": 37214537220,
+      "mcp_client_compatibility_workflow_run_id": 37214537020
+    }
   }
 }

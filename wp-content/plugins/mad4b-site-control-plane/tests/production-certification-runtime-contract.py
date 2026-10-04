@@ -6,6 +6,7 @@ root=Path(__file__).resolve().parents[1]
 repo=root.parents[2]
 src=(root/"includes/class-mad4b-scp-production-certification.php").read_text(encoding="utf-8")
 main=(root/"mad4b-site-control-plane.php").read_text(encoding="utf-8")
+servers=(root/"includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 plan=json.loads((root/"config/production-certification-plan.json").read_text(encoding="utf-8"))
 
 required=[
@@ -28,6 +29,10 @@ for token in required:
         raise SystemExit("PRODUCTION_CERTIFICATION_RUNTIME_MARKER_MISSING:"+token)
 if "class-mad4b-scp-production-certification.php" not in main:
     raise SystemExit("PRODUCTION_CERTIFICATION_RUNTIME_NOT_LOADED")
+if servers.count("'mad4b/production-certification-readonly-evidence'") < 2:
+    raise SystemExit("PRODUCTION_CERTIFICATION_REMOTE_READ_EXPOSURE_MISSING")
+if "'mad4b-read'" not in servers or "'mad4b-chatgpt'" not in servers:
+    raise SystemExit("PRODUCTION_CERTIFICATION_REMOTE_READ_SURFACE_MISSING")
 
 expected={
     "provider_side_channel_inventory":(

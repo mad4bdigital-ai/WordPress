@@ -56,9 +56,9 @@ final class MAD4B_SCP_Servers {
 				'mad4b/export-bundle-build', 'mad4b/import-bundle-validate',
 				'mad4b/scheduler-admission-evaluate',
 				'mad4b/scheduler-fair-rank',
-				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
+				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status', 'mad4b/production-certification-readonly-evidence',
 				'mad4b/site-bootstrap-snapshot',
-				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',

@@ -11,7 +11,11 @@
     "complete_vertical_slice_required": true,
     "ready_is_not_authorized": true,
     "profile_specific_blockers_required": true,
-    "optional_capability_failure_must_not_widen_core_authority": true
+    "optional_capability_failure_must_not_widen_core_authority": true,
+    "repository_evidence_binding_mode": "ci_runtime_exact_head",
+    "persisted_repository_run_ids_are_historical_only": true,
+    "current_ci_success_is_repository_evidence": true,
+    "documentation_cannot_mark_current_ci_success": true
   },
   "promotion_semantics": {
     "production_authorized_by_this_document": false,
