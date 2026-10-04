@@ -20,9 +20,12 @@ on:
 permissions:
   contents: read
 
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 concurrency:
-  group: mad4b-etg-deployment-readiness-${{ inputs.expected_sha || github.sha }}
-  cancel-in-progress: false
+  group: mad4b-etg-deployment-readiness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   contract:
@@ -33,7 +36,7 @@ jobs:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ env.SOURCE_SHA }}
 
       - name: Verify deployment gate remains isolated from master health
         shell: bash
@@ -75,13 +78,9 @@ jobs:
       ETG_ORIGIN: https://staging.egypttourgates.com
 
     steps:
-      - name: Checkout exact expected commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.EXPECTED_SHA }}
-          fetch-depth: 1
-
-      - name: Validate exact expected identity
+      - name: Resolve exact expected repository evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -89,7 +88,13 @@ jobs:
             echo "expected_sha must be an exact lowercase 40-character commit SHA" >&2
             exit 1
           fi
-          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          out=/tmp/mad4b-etg-deployment-readiness
+          mkdir -p "$out"
+          find "$out" -maxdepth 1 -type f ! -name 'expected-runtime-build.txt' -delete
+          resolved_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$EXPECTED_SHA" --jq '.sha')"
+          test "$resolved_sha" = "$EXPECTED_SHA"
+          gh api             -H "Accept: application/vnd.github.raw+json"             "repos/$GITHUB_REPOSITORY/contents/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt?ref=$EXPECTED_SHA"             > "$out/expected-runtime-build.txt"
+          test -s "$out/expected-runtime-build.txt"
 
       - name: Capture ETG deployment evidence
         shell: bash
@@ -139,10 +144,8 @@ jobs:
 
           root = Path('/tmp/mad4b-etg-deployment-readiness')
           expected_sha = os.environ['EXPECTED_SHA'].strip().lower()
-          repo_root = Path('wp-content/plugins/mad4b-site-control-plane')
-
           expected_build = {}
-          for line in (repo_root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8').splitlines():
+          for line in (root / 'expected-runtime-build.txt').read_text(encoding='utf-8').splitlines():
               if '=' in line:
                   key, value = line.split('=', 1)
                   expected_build[key.strip()] = value.strip()
