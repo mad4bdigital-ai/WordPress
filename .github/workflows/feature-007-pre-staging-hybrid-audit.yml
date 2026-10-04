@@ -5,7 +5,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
-      - 'specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json'
+      - 'specs/007-content-intelligence-workflow-platform/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
   push:
@@ -505,3 +505,79 @@ jobs:
           php /tmp/wp-cli.phar plugin uninstall mad4b-site-control-plane --path=/tmp/mad4b-wordpress
           MAD4B_LIFECYCLE_PHASE=verify MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+  adaptive-search-conformance:
+    name: Adaptive Search runtime / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up PHP and WP-CLI
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite, intl, pcntl, ctype, mysqli, mbstring
+          tools: wp-cli
+          coverage: none
+
+      - name: Lint and execute Adaptive Search runtime/provider contracts
+        env:
+          ASI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py --output "$RUNNER_TEMP/asi-evidence-${{ matrix.php }}.json"
+
+      - name: Provision disposable WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH="$RUNNER_TEMP/asi-wordpress"
+          wp core download --path="$WP_PATH" --version=6.9
+          wp config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          wp core install --path="$WP_PATH" --url=http://asi-disposable.test --title='Search CI' --admin_user=asi-ci --admin_password=ci-only-not-a-secret --admin_email=ci@example.invalid --skip-email
+          wp config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          wp plugin activate mcp-adapter mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Verify real WordPress CAS discovery catalog UI and breaker
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH="$RUNNER_TEMP/asi-wordpress"
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci
+
+      - name: Bind Adaptive Search gates to exact head and disposable evidence
+        env:
+          ASI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py --finalize "$RUNNER_TEMP/asi-evidence-${{ matrix.php }}.json" --wordpress "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
+
+      - name: Upload exact-head Adaptive Search acceptance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-search-${{ github.event.pull_request.head.sha || github.sha }}-php-${{ matrix.php }}
+          path: |
+            ${{ runner.temp }}/asi-evidence-${{ matrix.php }}.json
+            ${{ runner.temp }}/asi-wordpress-${{ matrix.php }}.json
+          if-no-files-found: error
+          retention-days: 14
