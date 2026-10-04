@@ -89,52 +89,6 @@
             "mad4b_policy": "Preserve bounded MAD4B admission code/stage/blocker at rest_request_before_callbacks before the Adapter permission callback; keep Adapter fail-closed behavior unchanged."
           }
         ],
-        "runtime_classes": {
-          "adapter": {
-            "class": "WP\\MCP\\Core\\McpAdapter",
-            "file": "includes/Core/McpAdapter.php"
-          },
-          "ability_builder": {
-            "class": "WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool",
-            "file": "includes/Domain/Tools/RegisterAbilityAsMcpTool.php"
-          },
-          "tool_runtime": {
-            "class": "WP\\MCP\\Domain\\Tools\\McpTool",
-            "file": "includes/Domain/Tools/McpTool.php"
-          },
-          "schema_transformer": {
-            "class": "WP\\MCP\\Domain\\Utils\\SchemaTransformer",
-            "file": "includes/Domain/Utils/SchemaTransformer.php"
-          },
-          "annotation_mapper": {
-            "class": "WP\\MCP\\Domain\\Utils\\McpAnnotationMapper",
-            "file": "includes/Domain/Utils/McpAnnotationMapper.php"
-          },
-          "validator_utils": {
-            "class": "WP\\MCP\\Domain\\Utils\\McpValidator",
-            "file": "includes/Domain/Utils/McpValidator.php"
-          },
-          "request_context": {
-            "class": "WP\\MCP\\Core\\McpRequestContext",
-            "file": "includes/Core/McpRequestContext.php"
-          },
-          "version_negotiator": {
-            "class": "WP\\MCP\\Core\\McpVersionNegotiator",
-            "file": "includes/Core/McpVersionNegotiator.php"
-          },
-          "http_request_handler": {
-            "class": "WP\\MCP\\Transport\\Infrastructure\\HttpRequestHandler",
-            "file": "includes/Transport/Infrastructure/HttpRequestHandler.php"
-          },
-          "wire_orchestrator": {
-            "class": "WP\\MCP\\Transport\\Infrastructure\\McpWireOrchestrator",
-            "file": "includes/Transport/Infrastructure/McpWireOrchestrator.php"
-          },
-          "request_router": {
-            "class": "WP\\MCP\\Transport\\Infrastructure\\RequestRouter",
-            "file": "includes/Transport/Infrastructure/RequestRouter.php"
-          }
-        },
         "critical_files": {
           "mcp-adapter.php": "715ed306fdb355e645f238129abe8a840e0223704c9613cea6a3c7e4d0a4e558",
           "includes/Autoloader.php": "238bbaf41ebc50cc25daf893fa57490d05615ad033d0f03110bf8e4dc6062868",
@@ -164,7 +118,17 @@
           "includes/Transport/Infrastructure/HttpSessionValidator.php": "1c950ebfc377b26e1d4f3ac32794b4912b2ed0c66c7bf10b87f7e69cacf0717e",
           "includes/Transport/Infrastructure/McpWireOrchestrator.php": "828e9d2c3bddb41716447a113ad4530aa9720cdaf20334d96617c526f23a6fe1",
           "includes/Transport/Infrastructure/RequestRouter.php": "a4f1b49ac452c1843a4fe1eb8b86c9f7dde3a73b91a558e63fef43cce5a072c2",
-          "includes/Transport/Infrastructure/SessionManager.php": "70cc27038911811810a0a7186e2b24a968266b7cd63f94ef0ccfc13a71147b7c"
+          "includes/Transport/Infrastructure/SessionManager.php": "70cc27038911811810a0a7186e2b24a968266b7cd63f94ef0ccfc13a71147b7c",
+          "includes/Transport/Infrastructure/McpTransportContext.php": "92c30179c5b4156a6004c175538c6a42ae9fcd9a2268f52b4695754bd91b2982",
+          "includes/Handlers/Initialize/InitializeHandler.php": "5e99b811fd7546f56e67647504fa643d10099d106ba34fb95d3ee9e167d7cbfe",
+          "includes/Handlers/Tools/ToolsHandler.php": "bea3f568f01adb4ca0df5eb892c0abacfc77f6fe796fd77554064b3b9c7de697",
+          "includes/Handlers/Resources/ResourcesHandler.php": "dafde9eb1dfbf4973d0e9bd7f5381d97f5eee97973985139e4e369beeba3ee21",
+          "includes/Handlers/Prompts/PromptsHandler.php": "08eeeae23438bc43955735730abec9b45c2d91231c341d55c7b07336a95310a9",
+          "includes/Handlers/System/SystemHandler.php": "87a26b73c6da9c505a5843a1cf0e87e29c597ee8097a2c355b6b38b2f0e7a201",
+          "includes/Infrastructure/ErrorHandling/ErrorLogMcpErrorHandler.php": "790ddc781ef0bb122913fbfaf54de504a862e5d17789bd5482bc1c1efc31b277",
+          "includes/Infrastructure/ErrorHandling/NullMcpErrorHandler.php": "68a0ade031644d532f38385d88c61bd3ef931e89e541104a8f3dde798e485964",
+          "includes/Infrastructure/Observability/NullMcpObservabilityHandler.php": "cde7fa44796f06293cb488235d868ed1891a6c5e2c931323e9c0d7447e4ecbde",
+          "includes/Transport/Infrastructure/JsonRpcRequestDecoder.php": "7a9af11564f3bf1e84224b68ed3365c6fe96a182c3864c77cf6a50d8cd96b7c5"
         },
         "evidence": {
           "upstream_release": "WordPress/mcp-adapter v0.7.0",
@@ -192,7 +156,353 @@
             "mad4b/session-safe-diagnostics",
             "mad4b/site-info"
           ]
-        }
+        },
+        "runtime_surface": {
+          "contract": "mad4b.mcp-runtime-surface.v1",
+          "discovery": "exact_archive_php_namespace_surface",
+          "include_prefixes": [
+            "includes/Core/",
+            "includes/Domain/",
+            "includes/Handlers/",
+            "includes/Infrastructure/",
+            "includes/Transport/"
+          ],
+          "namespace_prefixes": [
+            "WP\\MCP\\"
+          ],
+          "source_identity": "WordPress/mcp-adapter@v0.7.0",
+          "file_count": 54,
+          "symbol_count": 54,
+          "tree_sha256": "ff9064e40214461bcfdb7ab4637493922402f127ab34cd6029d15b24a6623619",
+          "generator": "tests/mcp-runtime-surface-profile.py",
+          "fail_closed_on_unprofiled_symbol": true
+        },
+        "runtime_symbols": [
+          {
+            "symbol": "WP\\MCP\\Core\\McpAdapter",
+            "kind": "class",
+            "file": "includes/Core/McpAdapter.php",
+            "git_blob_sha1": "6d2df5591ea3be170bbafbe418603e8b7422eb3e"
+          },
+          {
+            "symbol": "WP\\MCP\\Core\\McpComponentRegistry",
+            "kind": "class",
+            "file": "includes/Core/McpComponentRegistry.php",
+            "git_blob_sha1": "b4ce809b14ae05a8aeec7bcb0f6b2f8fce19deb1"
+          },
+          {
+            "symbol": "WP\\MCP\\Core\\McpRequestContext",
+            "kind": "class",
+            "file": "includes/Core/McpRequestContext.php",
+            "git_blob_sha1": "f892af63df94f685a8bad8f524660a789b5b45ca"
+          },
+          {
+            "symbol": "WP\\MCP\\Core\\McpServer",
+            "kind": "class",
+            "file": "includes/Core/McpServer.php",
+            "git_blob_sha1": "fa42bf404b2a3820c1f24fc82ed5e7e5655a3ca0"
+          },
+          {
+            "symbol": "WP\\MCP\\Core\\McpTransportFactory",
+            "kind": "class",
+            "file": "includes/Core/McpTransportFactory.php",
+            "git_blob_sha1": "3dd8b0681caf668e6b3ca4b9ef3287260e5a1cbd"
+          },
+          {
+            "symbol": "WP\\MCP\\Core\\McpVersionNegotiator",
+            "kind": "class",
+            "file": "includes/Core/McpVersionNegotiator.php",
+            "git_blob_sha1": "d667c924789239ff516a7777c253e121567d4a08"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Contracts\\McpComponentInterface",
+            "kind": "interface",
+            "file": "includes/Domain/Contracts/McpComponentInterface.php",
+            "git_blob_sha1": "47e3c7f67fa4303813f6490e1e8067d19bf5ee64"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Prompts\\Contracts\\McpPromptBuilderInterface",
+            "kind": "interface",
+            "file": "includes/Domain/Prompts/Contracts/McpPromptBuilderInterface.php",
+            "git_blob_sha1": "06d174b92084f57c2b5d2a18a6af2270fa6b42ec"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Prompts\\McpPrompt",
+            "kind": "class",
+            "file": "includes/Domain/Prompts/McpPrompt.php",
+            "git_blob_sha1": "5e76c9e0a30a7260b44e11f528b45cd108c13f3c"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Prompts\\McpPromptBuilder",
+            "kind": "class",
+            "file": "includes/Domain/Prompts/McpPromptBuilder.php",
+            "git_blob_sha1": "747749e9dfdbbe406bec4a6f544875bceffb670d"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Prompts\\RegisterAbilityAsMcpPrompt",
+            "kind": "class",
+            "file": "includes/Domain/Prompts/RegisterAbilityAsMcpPrompt.php",
+            "git_blob_sha1": "c45f6a8aa8fa994792623ac3d32753137441c5a6"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Resources\\McpResource",
+            "kind": "class",
+            "file": "includes/Domain/Resources/McpResource.php",
+            "git_blob_sha1": "f0a446af5558286538186d42b23978b8c796cb91"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Resources\\RegisterAbilityAsMcpResource",
+            "kind": "class",
+            "file": "includes/Domain/Resources/RegisterAbilityAsMcpResource.php",
+            "git_blob_sha1": "982f44c70faac33ccb00932be7f28f751f61dd2d"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Tools\\McpInputRequired",
+            "kind": "class",
+            "file": "includes/Domain/Tools/McpInputRequired.php",
+            "git_blob_sha1": "41c92c90e89e3f0e86f734734ae19de691cf623a"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Tools\\McpTool",
+            "kind": "class",
+            "file": "includes/Domain/Tools/McpTool.php",
+            "git_blob_sha1": "cef16ac84ed13ea4edb684701b42cc1ae5edbc68"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Tools\\McpToolCallContext",
+            "kind": "class",
+            "file": "includes/Domain/Tools/McpToolCallContext.php",
+            "git_blob_sha1": "36659fb899eea9500e076cbcf3aea3f406e7772e"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool",
+            "kind": "class",
+            "file": "includes/Domain/Tools/RegisterAbilityAsMcpTool.php",
+            "git_blob_sha1": "a01d74f909e49e9e13e35b7cfec1e2b9a25df4df"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\AbilityArgumentNormalizer",
+            "kind": "class",
+            "file": "includes/Domain/Utils/AbilityArgumentNormalizer.php",
+            "git_blob_sha1": "1430af19d8d30de63e36d80bcdba71386cdf4c2f"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\ContentBlockHelper",
+            "kind": "class",
+            "file": "includes/Domain/Utils/ContentBlockHelper.php",
+            "git_blob_sha1": "22b48c2ed76e500677c66a2053ec5339d1310ae8"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\McpAbilityMeta",
+            "kind": "class",
+            "file": "includes/Domain/Utils/McpAbilityMeta.php",
+            "git_blob_sha1": "251f7dea137f4321f4f5a470e7b2456a4b869e84"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\McpAnnotationMapper",
+            "kind": "class",
+            "file": "includes/Domain/Utils/McpAnnotationMapper.php",
+            "git_blob_sha1": "69a10cea414f650085f17647066721555fa49eb6"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\McpNameSanitizer",
+            "kind": "class",
+            "file": "includes/Domain/Utils/McpNameSanitizer.php",
+            "git_blob_sha1": "366c12db96956e45f2de0de4751a146d7678a390"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\McpValidator",
+            "kind": "class",
+            "file": "includes/Domain/Utils/McpValidator.php",
+            "git_blob_sha1": "ce4d8fef099e0a187bef8ead17650ee6d513de3d"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\RevisionProjectionTrait",
+            "kind": "trait",
+            "file": "includes/Domain/Utils/RevisionProjectionTrait.php",
+            "git_blob_sha1": "84465c1c2e3baa53b7f07f2b14aee8ff39ac5b65"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\SchemaTransformer",
+            "kind": "class",
+            "file": "includes/Domain/Utils/SchemaTransformer.php",
+            "git_blob_sha1": "638410b5dd0ae1737d39a858490480042c5c30d5"
+          },
+          {
+            "symbol": "WP\\MCP\\Domain\\Utils\\ThrowableGuardTrait",
+            "kind": "trait",
+            "file": "includes/Domain/Utils/ThrowableGuardTrait.php",
+            "git_blob_sha1": "5ef5c9a6bd76d5213046796320df28784d96b762"
+          },
+          {
+            "symbol": "WP\\MCP\\Handlers\\HandlerHelperTrait",
+            "kind": "trait",
+            "file": "includes/Handlers/HandlerHelperTrait.php",
+            "git_blob_sha1": "89f1d22e4556e1fe2ce212b8c87bd4b61d28d2c8"
+          },
+          {
+            "symbol": "WP\\MCP\\Handlers\\Initialize\\InitializeHandler",
+            "kind": "class",
+            "file": "includes/Handlers/Initialize/InitializeHandler.php",
+            "git_blob_sha1": "65f274a9357c467463cbba8844440e45b974f360"
+          },
+          {
+            "symbol": "WP\\MCP\\Handlers\\Prompts\\PromptsHandler",
+            "kind": "class",
+            "file": "includes/Handlers/Prompts/PromptsHandler.php",
+            "git_blob_sha1": "94124dfc7af0b6d5f269d3988931f0f8d2803d39"
+          },
+          {
+            "symbol": "WP\\MCP\\Handlers\\Resources\\ResourcesHandler",
+            "kind": "class",
+            "file": "includes/Handlers/Resources/ResourcesHandler.php",
+            "git_blob_sha1": "e7e0b9f0e4407b582777c5af68ddb7a93a911557"
+          },
+          {
+            "symbol": "WP\\MCP\\Handlers\\System\\SystemHandler",
+            "kind": "class",
+            "file": "includes/Handlers/System/SystemHandler.php",
+            "git_blob_sha1": "fd13d0b9186ef1f54ef360032de113eef466aaef"
+          },
+          {
+            "symbol": "WP\\MCP\\Handlers\\Tools\\ToolsHandler",
+            "kind": "class",
+            "file": "includes/Handlers/Tools/ToolsHandler.php",
+            "git_blob_sha1": "8812820f4569f2d8b58f8cfb8db7b0ddb7fee0c0"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\ErrorHandling\\Contracts\\McpErrorHandlerInterface",
+            "kind": "interface",
+            "file": "includes/Infrastructure/ErrorHandling/Contracts/McpErrorHandlerInterface.php",
+            "git_blob_sha1": "9f4de092132420cc2cc4ae57307f8afe439d0cb4"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler",
+            "kind": "class",
+            "file": "includes/Infrastructure/ErrorHandling/ErrorLogMcpErrorHandler.php",
+            "git_blob_sha1": "5a6d23b6468f190870443153480249902a72878b"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\ErrorHandling\\McpErrorFactory",
+            "kind": "class",
+            "file": "includes/Infrastructure/ErrorHandling/McpErrorFactory.php",
+            "git_blob_sha1": "b343bc0b9ba4afa2b7e6a77f03ab1de664ee832a"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\ErrorHandling\\NullMcpErrorHandler",
+            "kind": "class",
+            "file": "includes/Infrastructure/ErrorHandling/NullMcpErrorHandler.php",
+            "git_blob_sha1": "18f0ba640fc4c83b70b992e47459ba4715e17add"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\Observability\\ConsoleObservabilityHandler",
+            "kind": "class",
+            "file": "includes/Infrastructure/Observability/ConsoleObservabilityHandler.php",
+            "git_blob_sha1": "6a8e3b717203b21622919bb7ace2702133c26841"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\Observability\\Contracts\\McpObservabilityHandlerInterface",
+            "kind": "interface",
+            "file": "includes/Infrastructure/Observability/Contracts/McpObservabilityHandlerInterface.php",
+            "git_blob_sha1": "b091184b3479ae22b4f128d82dc04209a3bea31f"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\Observability\\ErrorLogMcpObservabilityHandler",
+            "kind": "class",
+            "file": "includes/Infrastructure/Observability/ErrorLogMcpObservabilityHandler.php",
+            "git_blob_sha1": "c3d9578453ac3e7685d601d1e334cddf208d861b"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\Observability\\FailureReason",
+            "kind": "class",
+            "file": "includes/Infrastructure/Observability/FailureReason.php",
+            "git_blob_sha1": "0dd27d1c406c49136659bc8f4d0a1f16e1acef4d"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\Observability\\McpObservabilityHelperTrait",
+            "kind": "trait",
+            "file": "includes/Infrastructure/Observability/McpObservabilityHelperTrait.php",
+            "git_blob_sha1": "f04952017571f2c6cda4cd2221da61c6b2b41e9e"
+          },
+          {
+            "symbol": "WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler",
+            "kind": "class",
+            "file": "includes/Infrastructure/Observability/NullMcpObservabilityHandler.php",
+            "git_blob_sha1": "4ff523da513167ca949513c8a1070e5fd7e7c13d"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Contracts\\McpRestTransportInterface",
+            "kind": "interface",
+            "file": "includes/Transport/Contracts/McpRestTransportInterface.php",
+            "git_blob_sha1": "baef93452da0ea65678634c19f3b8394ceb79888"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Contracts\\McpTransportInterface",
+            "kind": "interface",
+            "file": "includes/Transport/Contracts/McpTransportInterface.php",
+            "git_blob_sha1": "b07abb4e59f45dd178502ee2bfc363b90a323212"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\HttpTransport",
+            "kind": "class",
+            "file": "includes/Transport/HttpTransport.php",
+            "git_blob_sha1": "4899f61cf9a4a9d10b9241c876828357980ca0af"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\HttpRequestContext",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/HttpRequestContext.php",
+            "git_blob_sha1": "05fbedb11ac5f8898cb5607ce8d2425aca0102ef"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\HttpRequestHandler",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/HttpRequestHandler.php",
+            "git_blob_sha1": "2b96d0a3415f107ee15bb37e7d580ddcb8f7742f"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\HttpSessionValidator",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/HttpSessionValidator.php",
+            "git_blob_sha1": "0204cd59f3e36350bdbe325215e9ae13e541c37e"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\JsonRpcRequestDecoder",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/JsonRpcRequestDecoder.php",
+            "git_blob_sha1": "fa9e815f90a3d9df12a3e0815b0c2e2f12c617ef"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\McpTransportContext",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/McpTransportContext.php",
+            "git_blob_sha1": "a30bd669b91dbc9f1baf5c058000c86e564a7680"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\McpTransportHelperTrait",
+            "kind": "trait",
+            "file": "includes/Transport/Infrastructure/McpTransportHelperTrait.php",
+            "git_blob_sha1": "857bb2acda67980968dd03a5aba044f86d072b01"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\McpWireOrchestrator",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/McpWireOrchestrator.php",
+            "git_blob_sha1": "0e96e4771687c54636656fc56283f7ea603899fe"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\RequestRouter",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/RequestRouter.php",
+            "git_blob_sha1": "888854b88a4ba57e5efa41635073fd17a380cf30"
+          },
+          {
+            "symbol": "WP\\MCP\\Transport\\Infrastructure\\SessionManager",
+            "kind": "class",
+            "file": "includes/Transport/Infrastructure/SessionManager.php",
+            "git_blob_sha1": "071c00b6f1e242800aeb7d2966e2df8aa95cd7a7"
+          }
+        ]
       }
     }
   },

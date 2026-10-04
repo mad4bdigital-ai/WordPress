@@ -91,5 +91,36 @@ $missing = MAD4B_SCP_MCP_Class_Provenance::inspect_contract( $missing_contract, 
 $reasons = array_column( $missing['failures'], 'reason', 'alias' );
 check( isset( $reasons['schema_transformer'] ) && 'certified_class_hash_missing' === $reasons['schema_transformer'], 'missing certified hash must fail closed' );
 
+
+$dynamic_root = $plugins . '/dynamic-mcp-runtime';
+if ( ! mkdir( $dynamic_root, 0777, true ) && ! is_dir( $dynamic_root ) ) throw new RuntimeException( 'Unable to create dynamic fixture root' );
+$dynamic_specs = array(
+	array( 'symbol' => 'Fixture\\Dynamic\\RuntimeClass', 'kind' => 'class', 'file' => 'includes/Core/RuntimeClass.php', 'declaration' => 'class RuntimeClass {}' ),
+	array( 'symbol' => 'Fixture\\Dynamic\\RuntimeInterface', 'kind' => 'interface', 'file' => 'includes/Core/RuntimeInterface.php', 'declaration' => 'interface RuntimeInterface {}' ),
+	array( 'symbol' => 'Fixture\\Dynamic\\RuntimeTrait', 'kind' => 'trait', 'file' => 'includes/Core/RuntimeTrait.php', 'declaration' => 'trait RuntimeTrait {}' ),
+);
+$dynamic_contract = array( 'version' => 'fixture-dynamic', 'critical_files' => array(), 'runtime_symbols' => array() );
+foreach ( $dynamic_specs as $spec ) {
+	$file = $dynamic_root . '/' . $spec['file'];
+	if ( ! is_dir( dirname( $file ) ) ) mkdir( dirname( $file ), 0777, true );
+	$raw = "<?php\nnamespace Fixture\\Dynamic;\n" . $spec['declaration'] . "\n";
+	file_put_contents( $file, $raw );
+	require $file;
+	$dynamic_contract['runtime_symbols'][] = array(
+		'symbol' => $spec['symbol'],
+		'kind' => $spec['kind'],
+		'file' => $spec['file'],
+		'git_blob_sha1' => sha1( 'blob ' . strlen( $raw ) . "\0" . $raw ),
+	);
+}
+$dynamic_ready = MAD4B_SCP_MCP_Class_Provenance::inspect_contract( $dynamic_contract, $dynamic_root );
+check( ! empty( $dynamic_ready['ready'] ) && 3 === $dynamic_ready['verified_count'], 'generated class/interface/trait surface did not verify' );
+$trait_file = $dynamic_root . '/includes/Core/RuntimeTrait.php';
+file_put_contents( $trait_file, "\n// dynamic drift\n", FILE_APPEND );
+clearstatcache( true, $trait_file );
+$dynamic_drift = MAD4B_SCP_MCP_Class_Provenance::inspect_contract( $dynamic_contract, $dynamic_root );
+$dynamic_reasons = array_column( $dynamic_drift['failures'], 'reason', 'class' );
+check( isset( $dynamic_reasons['Fixture\\Dynamic\\RuntimeTrait'] ) && 'runtime_symbol_blob_mismatch' === $dynamic_reasons['Fixture\\Dynamic\\RuntimeTrait'], 'generated symbol blob drift did not fail closed' );
+
 cleanup_tree( $base );
 echo "mad4b.mcp-class-provenance.v1: PASS\n";

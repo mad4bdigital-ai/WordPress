@@ -40,12 +40,19 @@ require(
     p070.get("package_url") == "https://github.com/WordPress/mcp-adapter/releases/download/v0.7.0/mcp-adapter.zip",
     "MCP Adapter 0.7.0 release URL drift",
 )
-runtime_classes = p070.get("runtime_classes") or {}
-require(len(runtime_classes) >= 10, "MCP Adapter 0.7.0 version-scoped runtime class set is incomplete")
-runtime_class_names = {str(row.get("class") or "") for row in runtime_classes.values() if isinstance(row, dict)}
-require("WP\\MCP\\Domain\\Tools\\McpToolValidator" not in runtime_class_names, "removed 0.6.1 validator leaked into 0.7.0 class set")
-require(not any("\\DTO\\" in name for name in runtime_class_names), "removed generated DTO class leaked into 0.7.0 class set")
-require("WP\\MCP\\Transport\\Infrastructure\\McpWireOrchestrator" in runtime_class_names, "0.7.0 wire orchestrator is not certified")
+runtime_surface = p070.get("runtime_surface") or {}
+runtime_symbols = p070.get("runtime_symbols") or []
+require(runtime_surface.get("contract") == "mad4b.mcp-runtime-surface.v1", "MCP Adapter 0.7.0 runtime surface contract missing")
+require(runtime_surface.get("discovery") == "exact_archive_php_namespace_surface", "MCP Adapter runtime surface is not generated from the exact archive")
+require(runtime_surface.get("fail_closed_on_unprofiled_symbol") is True, "MCP runtime surface must fail closed on unprofiled symbols")
+require(runtime_surface.get("symbol_count") == len(runtime_symbols), "MCP runtime surface symbol count drift")
+require(runtime_surface.get("file_count") == len({str(row.get("file") or "") for row in runtime_symbols if isinstance(row, dict)}), "MCP runtime surface file count drift")
+runtime_symbol_names = {str(row.get("symbol") or "") for row in runtime_symbols if isinstance(row, dict)}
+require(len(runtime_symbol_names) >= 20, "MCP Adapter 0.7.0 generated runtime symbol set is incomplete")
+require("WP\\MCP\\Domain\\Tools\\McpToolValidator" not in runtime_symbol_names, "removed 0.6.1 validator leaked into 0.7.0 symbol surface")
+require(not any("\\DTO\\" in name for name in runtime_symbol_names), "removed generated DTO class leaked into 0.7.0 symbol surface")
+require("WP\\MCP\\Transport\\Infrastructure\\McpWireOrchestrator" in runtime_symbol_names, "0.7.0 wire orchestrator is not certified")
+require("WP\\MCP\\Transport\\Infrastructure\\JsonRpcRequestDecoder" in runtime_symbol_names, "0.7.0 wire decoder is not dynamically certified")
 require(len(p070.get("critical_files") or {}) >= 20, "MCP Adapter 0.7.0 critical file manifest is too small")
 
 transport = p070.get("transport_compatibility") or {}
@@ -80,14 +87,14 @@ require(
 
 provider_contracts = (INCLUDES / "class-mad4b-scp-provider-contracts.php").read_text(encoding="utf-8")
 require("public static function get_for_version" in provider_contracts, "exact provider version resolver missing")
-require("'runtime_classes'," in provider_contracts, "version profile runtime_classes replacement missing")
+require("'runtime_symbols'," in provider_contracts and "'runtime_surface'," in provider_contracts, "generated runtime surface replacement missing")
 require("return array();" in provider_contracts, "unknown exact provider version must fail closed")
 
 provenance = (INCLUDES / "class-mad4b-scp-mcp-class-provenance.php").read_text(encoding="utf-8")
 require("critical_classes( array $contract = array() )" in provenance, "class provenance is not version-scoped")
 require("get_for_version( self::PROVIDER, $installed_version )" in provenance, "installed Adapter version is not resolved exactly")
 require("version_profile_unavailable" in provenance, "unknown Adapter version does not fail closed")
-require("$contract['runtime_classes']" in provenance, "version-scoped class set is not consumed")
+require("$contract['runtime_symbols']" in provenance, "version-scoped generated symbol surface is not consumed")
 
 dependency = (INCLUDES / "class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
 require("private static function bootstrap_mcp_adapter()" in dependency, "bootstrap MCP Adapter resolver missing")

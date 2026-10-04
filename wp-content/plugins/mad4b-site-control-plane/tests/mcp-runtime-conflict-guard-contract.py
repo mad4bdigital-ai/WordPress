@@ -4,6 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 guard = (ROOT / 'includes/class-mad4b-scp-mcp-runtime-conflict-guard.php').read_text('utf-8')
 refresh = (ROOT / 'includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php').read_text('utf-8')
+recovery = (ROOT / 'includes/class-mad4b-scp-mcp-runtime-recovery.php').read_text('utf-8')
+connection_ui = (ROOT / 'includes/class-mad4b-scp-connection-admin-ui.php').read_text('utf-8')
+endpoint_diagnostic = (ROOT / 'includes/class-mad4b-scp-endpoint-diagnostic.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php').read_text('utf-8')
 mu_bootstrap = (ROOT / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text('utf-8')
@@ -100,7 +103,9 @@ for marker in (
     "'WP\\\\MCP\\\\Autoloader'",
     "'WP\\\\MCP\\\\Core\\\\McpAdapter'",
     "'WP\\\\MCP\\\\Plugin'",
-    "class_exists( $mad4b_mcp_mu_symbol, false )",
+    "$mad4b_mcp_mu_symbol_exists( $mad4b_mcp_mu_symbol, $mad4b_mcp_mu_symbol_kind, false )",
+    "$mad4b_mcp_mu_profile_runtime_symbols",
+    "$mad4b_mcp_mu_critical_blobs",
     "'runtime_preclaimed_before_mu_bootstrap'",
     "'preclaimed_symbol'",
     "includes/Autoloader.php",
@@ -174,6 +179,22 @@ for marker in (
     "'non_atomic_replace_fallback' => false",
     "'shared_filesystem_certified' => false",
     "'next_request_required' => true",
+    "const OWNERSHIP_OPTION = 'mad4b_scp_mcp_mu_ownership_v1'",
+    "const OWNERSHIP_CONTRACT = 'mad4b.mcp-mu-ownership.v1'",
+    'ownership_receipt_status',
+    'persist_ownership_receipt',
+    'clear_ownership_receipt',
+    'conflict_status',
+    "'site_ownership_receipt'",
+    "'explicit_admin_conflict_recovery'",
+    "'automatic_staging_recovery'",
+    "'automatic_conflict_recovery'",
+    "'automatic_conflict_recovery_available'",
+    "'mu_bootstrap_conflict_expected_hash_mismatch'",
+    "'mu_bootstrap_conflict_bytes_changed_before_replace'",
+    'backup_conflicting_bytes',
+    'MAD4B_SCP_Policy::prepare_backup_root()',
+    "'mad4b/mcp-mu-bootstrap-conflict-replaced'",
 ):
     require(refresh, marker, 'mu-refresh')
 
@@ -183,6 +204,67 @@ for forbidden in (
     '@unlink( $destination )',
 ):
     forbid(refresh, forbidden, 'mu-refresh-bounded')
+
+for marker in (
+    "const CONFLICT_ACTION = 'mad4b_repair_mcp_runtime_conflict'",
+    "const CONFLICT_CONFIRMATION = 'REPLACE UNKNOWN MCP BOOTSTRAP'",
+    'authorize_conflict()',
+    "'observed_sha256'",
+    "'mad4b_mcp_conflict_repair_stale_plan'",
+    "'mad4b_mcp_conflict_repair_admin_only'",
+    'conflict_expected_sha256()',
+    'conflict_recovery_source()',
+    'automatic_staging_conflict_sha256()',
+    'maybe_schedule_conflict_recovery()',
+    "add_action( 'init', array( __CLASS__, 'maybe_schedule_conflict_recovery' ), 50 )",
+    "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )",
+    "$automatic_context = $cron || '' !== $convergence_lease",
+    "'automatic_staging_recovery'",
+    "'mad4b_mcp_conflict_auto_lifecycle_required'",
+    "self::$conflict_expected_sha256 = $conflict_mode ? $expected_unmanaged_sha256 : ''",
+    "self::$conflict_recovery_source = $automatic_conflict ? 'automatic_staging_recovery'",
+    "self::$conflict_expected_sha256 = ''",
+    "self::$conflict_recovery_source = ''",
+    "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap()",
+    "'automatic_conflict_recovery' => $automatic_conflict",
+    "'explicit_conflict_recovery' => $explicit_conflict",
+):
+    require(recovery, marker, 'automatic-mu-conflict-recovery')
+
+for marker in (
+    'Automatic MCP MU bootstrap recovery pending',
+    'Staging recovery is automatic.',
+    'No browser POST is required.',
+    'Background recovery scheduled.',
+    'Production remains fail-closed.',
+    'wp_next_scheduled( MAD4B_SCP_MCP_Runtime_Recovery::HOOK )',
+):
+    require(connection_ui, marker, 'automatic-mu-conflict-ui')
+
+for forbidden in (
+    'Back up and replace unknown MCP bootstrap',
+    'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION',
+    'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_CONFIRMATION',
+):
+    forbid(connection_ui, forbidden, 'no-manual-browser-conflict-post')
+
+for marker in (
+    "'runtime_recovery'",
+    'MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status()',
+    "'manual_conflict_recovery_available'",
+    "'automatic_conflict_recovery_available'",
+    "'background_recovery_scheduled'",
+):
+    require(endpoint_diagnostic, marker, 'mu-conflict-diagnostic')
+
+# Unknown bytes may be adopted only by the coordinator after it captured the
+# exact observed SHA in an eligible Staging scheduled/convergence lifecycle.
+# Never pass a live destination hash directly into the filesystem refresher.
+for forbidden in (
+    "bootstrap( $status['destination_sha256_before'] )",
+    "bootstrap( hash_file( 'sha256', $destination ) )",
+):
+    forbid(recovery, forbidden, 'no-unfenced-mu-conflict-adoption')
 
 transaction_reader = refresh.split('private static function read_transaction_option()', 1)[1].split('private static function transaction_record_for_owner', 1)[0]
 if 'return self::read_transaction_option();' in transaction_reader:

@@ -88,6 +88,10 @@ jobs:
           curl --fail --location --silent --show-error "$URL" -o /tmp/mcp-adapter.zip
           test "$(stat -c '%s' /tmp/mcp-adapter.zip)" = "$BYTES"
           echo "$SHA  /tmp/mcp-adapter.zip" | sha256sum --check --strict
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-surface-profile.py \
+            --archive /tmp/mcp-adapter.zip \
+            --profile wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json \
+            --version "$VERSION"
           python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-protocol-matrix.py /tmp/mcp-adapter.zip
           python3 - <<'PY'
           import hashlib, json, zipfile

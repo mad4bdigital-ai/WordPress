@@ -24,17 +24,40 @@ An already declared foreign class cannot be replaced in the current request.
 
 ## Lifecycle
 
-- Connection > MCP Endpoints offers a separate `Repair MCP runtime for next request`
-  POST protected by update_plugins, manage_options, nonce and build fingerprint.
-- Recovery validates the installed certified disk set, owns the shared maintenance
-  lease, and replaces only exact historical MAD4B MU fingerprints. Filesystem
-  install/refresh uses a durable option-row transaction with atomic `add_option`
-  ownership, owner tokens, stale-worker fencing, persistent-cache eviction,
-  byte readback and audit-before-finalization. A pending/ambiguous transaction
-  makes the MU loader fail closed on the next request.
-- Plugin update/activation schedules a new-code cron request. Profile saves schedule
-  recovery only for exact non-production managed-runtime enrollment. Production or
-  disabled enrollment cancels that scheduled recovery.
+- Normal managed-loader refresh remains available through the governed recovery
+  lifecycle. An unknown occupied MAD4B MU path on an exact Staging enrollment no
+  longer requires a browser POST: ordinary Staging lifecycle traffic detects the
+  conflict, schedules one immediately-due background recovery job and returns
+  without changing loader bytes in that browser request. Because detection runs
+  before WordPress' normal `wp_loaded` cron spawn phase, the isolated worker can be
+  launched from the same page request without a second click or delayed revisit.
+- Recovery validates the installed certified disk set and owns the shared maintenance
+  lease. Automatic refresh accepts the current source, exact historical MAD4B MU
+  fingerprints, or a site-bound ownership receipt previously written by a successful
+  governed recovery. The receipt is bound to Site Profile UUID, environment and
+  hashed canonical origin, so normal future loader revisions no longer depend on a
+  growing hard-coded hash list.
+- An occupied managed path with neither historical lineage nor a valid site-bound
+  ownership receipt is still reported as `unmanaged_mu_bootstrap_path_conflict`.
+  On exact Staging only, the Recovery coordinator may automatically adopt that
+  dedicated MAD4B path from a scheduled recovery worker or an already-owned
+  convergence lease. It first captures the observed SHA-256, then rechecks those
+  exact bytes under the filesystem mutex, writes a protected backup outside
+  WordPress web roots, atomically installs the certified loader, records bounded
+  audit evidence and establishes the site-bound ownership receipt. Any SHA drift,
+  backup failure, audit failure, lost lease or transaction ambiguity aborts or rolls
+  back. Generic WP-CLI, MCP/OAuth hotpaths, endpoint diagnostics and Production can
+  never enter this automatic adoption path. The legacy explicit administrator path
+  remains a compatibility fallback but is no longer presented in the connection UI.
+- Filesystem install/refresh uses a durable option-row transaction with atomic
+  `add_option` ownership, owner tokens, stale-worker fencing, persistent-cache
+  eviction, same-directory atomic rename, byte readback and audit-before-finalization.
+  A pending/ambiguous transaction makes the MU loader fail closed on the next request.
+- Plugin update/activation schedules a new-code cron request. A normal Staging
+  request that observes the unknown-path blocker also schedules the same worker if
+  one is not already pending; it does not perform filesystem mutation inline.
+  Profile saves schedule recovery only for exact non-production managed-runtime
+  enrollment. Production or disabled enrollment cancels that scheduled recovery.
 - Existing post-update convergence runs this phase under its existing lease after
   schema convergence. It cannot carry forward or repair write authority through
   this phase.
@@ -128,6 +151,7 @@ plugin database tables on WordPress 6.9 and the workflow's `latest` version.
 | Copy database to another origin, even a related origin | All authority and early runtime binding quarantined | Matrix and WordPress journeys |
 | Independent database clone with the same public origin | Configure a distinct host-side deployment binding; mismatch quarantines authority without storing the raw secret | Site Profile general-distribution regression |
 | Concurrent MU repair workers / stale persistent option cache | Exactly one transaction owner; other workers fail closed until stale/blocked reconciliation; cache cannot hide the database marker | Recovery contention/cache regressions |
+| Existing unknown file occupies the dedicated managed MU path | Ordinary Staging traffic schedules background recovery without inline mutation; the scheduled/convergence lifecycle requires exact observed SHA, protected backup, mutex recheck, audit and ownership receipt. Generic CLI/hotpaths and Production remain fail-closed | Runtime recovery automatic-conflict regressions |
 | Generic WP-CLI | Does not load/arm MCP; only commands/tests defining the explicit MCP CLI request marker enter the early runtime | MU boundary and connection lifecycle fixtures |
 | Stale form / anonymous enrollment / nonexistent OAuth user | Rejected; no successful-save hook | Matrix and WordPress journeys |
 | Audit append fails after profile persistence | Exact previous profile restored; no recovery scheduled for the failed change | Matrix |
@@ -183,6 +207,12 @@ outbound HTTP during profile/recovery work.
   in batches of 500 events rather than on every append. Reaching 100,000 audit
   events marks deployment-specific load qualification as required; the runtime
   deliberately does not self-claim a high-volume load-test certification.
+- A site-bound ownership receipt is migration evidence for the exact managed MU path,
+  not proof that arbitrary PHP is trusted. It is created only after a governed install
+  or replacement and becomes invalid across Site Profile UUID, origin or environment
+  rebinding. Automatic adoption of previously unknown bytes is limited to the reserved
+  MAD4B MU filename on exact Staging, requires protected backup plus exact-SHA CAS, and
+  never widens Production or remote authority.
 - Runtime recovery reports pending next-request verification. Deployment requires
   a fresh authorized endpoint job, canonical ownership of all critical classes,
   the expected tool catalog, then independent real OAuth/acceptance evidence.
