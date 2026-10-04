@@ -203,6 +203,6 @@ The independent Phase 38 review is recorded in `adaptive-search-intelligence-rev
 
 Current review score: **88/100 overall specification maturity**.
 
-The review identified 10 P0 and 8 P1 gaps. P0 issues concentrate on observation comparability, canonical query/URL/rank/capture semantics, multi-dimensional search eligibility, bounded facet/virtual-surface admission, shared provider-account budget authority, provider evidence rights/retention, deterministic decision policy, objective gate criteria and composed cross-fault proof.
+The review identified 12 P0 and 6 P1 gaps. P0 issues concentrate on observation comparability, canonical query/URL/rank/capture semantics, multi-dimensional search eligibility, bounded facet/virtual-surface admission, shared provider-account budget authority, provider evidence rights/retention, deterministic decision policy, objective gate criteria and composed cross-fault proof.
 
 These gaps do not widen the Critical Kernel and do not grant authority. Phase 38 remains MATURITY_REQUIRED and OPEN. Broad Search Intelligence runtime implementation must not claim production-grade completeness until the review P0 set is closed by exact-head executable evidence.
