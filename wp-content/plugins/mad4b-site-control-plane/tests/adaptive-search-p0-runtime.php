@@ -70,8 +70,20 @@ $check( MAD4B_SCP_Search_Measurement::compare_contexts( $c1, $c2 )['comparable']
 $other_provider = $base; $other_provider['provider_id'] = 'serp_b';
 $c3 = MAD4B_SCP_Search_Measurement::observation_context( $other_provider );
 $check( ! MAD4B_SCP_Search_Measurement::compare_contexts( $c1, $c3 )['comparable'], 'provider drift silently comparable' );
-$cross_a = $base; $cross_a['cross_provider_comparability_class'] = 'google-us-en-desktop-v1';
-$cross_b = $other_provider; $cross_b['cross_provider_comparability_class'] = 'google-us-en-desktop-v1';
+$uncertified_cross = $base; $uncertified_cross['cross_provider_comparability_class'] = 'google-us-en-desktop-v1';
+$check(
+	'mad4b_search_cross_provider_comparability_uncertified' === $error_code( MAD4B_SCP_Search_Measurement::observation_context( $uncertified_cross ) ),
+	'uncertified cross-provider comparability class was accepted'
+);
+$cross_evidence = str_repeat( 'a', 64 );
+$cross_a = $base;
+$cross_a['cross_provider_comparability_class'] = 'google-us-en-desktop-v1';
+$cross_a['cross_provider_comparability_certified'] = true;
+$cross_a['cross_provider_comparability_evidence_sha256'] = $cross_evidence;
+$cross_b = $other_provider;
+$cross_b['cross_provider_comparability_class'] = 'google-us-en-desktop-v1';
+$cross_b['cross_provider_comparability_certified'] = true;
+$cross_b['cross_provider_comparability_evidence_sha256'] = $cross_evidence;
 $cx1 = MAD4B_SCP_Search_Measurement::observation_context( $cross_a );
 $cx2 = MAD4B_SCP_Search_Measurement::observation_context( $cross_b );
 $check( MAD4B_SCP_Search_Measurement::compare_contexts( $cx1, $cx2 )['comparable'], 'certified cross-provider class not comparable' );
@@ -111,6 +123,8 @@ $noindex = MAD4B_SCP_Search_Eligibility::resolve( array(
 	'canonical_state' => 'self', 'redirect_state' => 'none', 'language_live' => true, 'object_public' => true,
 ) );
 $check( ! $noindex['indexable'] && ! $noindex['owned_tracking_eligible'], 'X-Robots noindex was ignored' );
+$unknown_eligibility = MAD4B_SCP_Search_Eligibility::resolve( array( 'object_public' => true ) );
+$check( 'unknown' === $unknown_eligibility['eligibility_state'] && $unknown_eligibility['confidence'] < 0.5, 'unknown eligibility evidence was over-confident' );
 
 $surface_policy = array(
 	'allowed_surface_types' => array( 'term_archive', 'virtual_landing_surface', 'paginated_archive' ),
@@ -135,6 +149,18 @@ $too_many = MAD4B_SCP_Search_Eligibility::admit_surface( array(
 	'estimated_cardinality' => 1000, 'indexable' => true,
 ), $surface_policy );
 $check( 'mad4b_search_surface_cardinality_exceeded' === $error_code( $too_many ), 'surface cardinality cap was not enforced' );
+$missing_cardinality = MAD4B_SCP_Search_Eligibility::admit_surface( array(
+	'surface_type' => 'virtual_landing_surface', 'url' => 'https://example.com/tours/', 'indexable' => true,
+), $surface_policy );
+$check( 'mad4b_search_surface_cardinality_required' === $error_code( $missing_cardinality ), 'virtual surface without cardinality estimate was admitted' );
+$url_page_bypass = MAD4B_SCP_Search_Eligibility::admit_surface( array(
+	'surface_type' => 'virtual_landing_surface', 'url' => 'https://example.com/tours/?page=999',
+	'estimated_cardinality' => 20, 'page_number' => 1, 'indexable' => true,
+), $surface_policy );
+$check(
+	in_array( $error_code( $url_page_bypass ), array( 'mad4b_search_surface_pagination_mismatch', 'mad4b_search_surface_pagination_exceeded' ), true ),
+	'URL pagination bypassed max_page_number'
+);
 
 // Provider evidence rights constrain storage.
 $rights = MAD4B_SCP_Search_Evidence_Policy::resolve_retention( array(
@@ -190,6 +216,9 @@ $cycle_reservation = MAD4B_SCP_Provider_Account_Budget_Authority::reserve( $new_
 $check( ! is_wp_error( $cycle_reservation ), 'billing-cycle reset did not reset local state' );
 
 $hard = $budget_input; $hard['enforcement_mode'] = 'hard_global'; $hard['idempotency_key'] = 'hard-1'; $hard['units'] = 1;
+$unstable_hard = MAD4B_SCP_Provider_Account_Budget_Authority::reserve( $hard );
+$check( 'mad4b_provider_budget_global_account_identity_required' === $error_code( $unstable_hard ), 'hard-global budget accepted a site-local credential alias as global account identity' );
+$hard['provider_account_ref'] = 'serp-fixture-account-123';
 $denied_hard = MAD4B_SCP_Provider_Account_Budget_Authority::reserve( $hard );
 $check( 'mad4b_provider_budget_shared_authority_required' === $error_code( $denied_hard ), 'hard-global budget succeeded without shared authority' );
 $GLOBALS['mad4b_test_filters']['mad4b_scp_provider_account_budget_authoritative_reserve'] = static function ( $value, $request ) {
