@@ -1,5 +1,5 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'transaction_owner_replaced', 'filesystem_lock_busy', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'receipt_managed', 'receipt_foreign_site', 'conflict_authorized', 'conflict_wrong_hash', 'conflict_wrong_confirmation', 'conflict_backup_failed', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'transaction_owner_replaced', 'filesystem_lock_busy', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'receipt_managed', 'receipt_foreign_site', 'receipt_audit_failed', 'conflict_authorized', 'conflict_wrong_hash', 'conflict_wrong_confirmation', 'conflict_backup_failed', 'conflict_audit_failed', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: ' . count( $cases ) . '/' . count( $cases ) . ' PASS' . PHP_EOL; exit;
@@ -70,7 +70,7 @@ class MAD4B_SCP_Runtime_Maintenance_Lease {
 }
 class MAD4B_SCP_Audit {
 	static function storage_status() { return array( 'ready' => 'audit_unavailable' !== $GLOBALS['case'] ); }
-	static function record( $event, $data, $state ) { $GLOBALS['audit_events'][]=$event; $GLOBALS['audit_payloads'][]=$data; return 'audit_failed' === $GLOBALS['case'] ? new WP_Error( 'audit_failed' ) : true; }
+	static function record( $event, $data, $state ) { $GLOBALS['audit_events'][]=$event; $GLOBALS['audit_payloads'][]=$data; return in_array( $GLOBALS['case'], array( 'audit_failed', 'receipt_audit_failed', 'conflict_audit_failed' ), true ) ? new WP_Error( 'audit_failed' ) : true; }
 }
 class MAD4B_SCP_Policy {
 	static function prepare_backup_root() {
@@ -180,7 +180,7 @@ if ( 'transaction_contention' === $case ) {
 }
 if ( 'stale_managed' === $case ) file_put_contents( $destination, '<?php // mad4b.mcp-adapter-mu-bootstrap.v4' );
 if ( 'unmanaged' === $case ) file_put_contents( $destination, '<?php // foreign owner' );
-if ( in_array( $case, array( 'receipt_managed', 'receipt_foreign_site' ), true ) ) {
+if ( in_array( $case, array( 'receipt_managed', 'receipt_foreign_site', 'receipt_audit_failed' ), true ) ) {
 	file_put_contents( $destination, '<?php // site-owned prior loader' );
 	$owned_hash = hash_file( 'sha256', $destination );
 	$GLOBALS['options'][ MAD4B_SCP_MCP_MU_Bootstrap_Refresh::OWNERSHIP_OPTION ] = array(
@@ -194,7 +194,7 @@ if ( in_array( $case, array( 'receipt_managed', 'receipt_foreign_site' ), true )
 		'updated_at' => time() - 3600,
 	);
 }
-if ( in_array( $case, array( 'conflict_authorized', 'conflict_wrong_hash', 'conflict_wrong_confirmation', 'conflict_backup_failed' ), true ) ) {
+if ( in_array( $case, array( 'conflict_authorized', 'conflict_wrong_hash', 'conflict_wrong_confirmation', 'conflict_backup_failed', 'conflict_audit_failed' ), true ) ) {
 	file_put_contents( $destination, '<?php // unknown pre-existing MU owner' );
 	$observed = hash_file( 'sha256', $destination );
 	$_POST = array(
@@ -220,6 +220,15 @@ if ( in_array( $case, array( 'conflict_authorized', 'conflict_wrong_hash', 'conf
 	if ( 'conflict_backup_failed' === $case ) {
 		check_recovery( is_wp_error( $result ) && 'mu_bootstrap_conflict_backup_root_unavailable' === $result->get_error_code(), 'backup failure did not block explicit conflict recovery' );
 		check_recovery( '<?php // unknown pre-existing MU owner' === file_get_contents( $destination ), 'backup failure mutated unknown MU bytes' );
+		echo $case . ': PASS' . PHP_EOL; exit;
+	}
+	if ( 'conflict_audit_failed' === $case ) {
+		check_recovery( is_wp_error( $result ) && 'audit_failed_mu_refresh_rolled_back' === $result->get_error_code(), 'audit failure did not report rolled-back explicit conflict recovery' );
+		check_recovery( '<?php // unknown pre-existing MU owner' === file_get_contents( $destination ), 'audit failure did not restore unknown MU bytes' );
+		$receipt = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::ownership_receipt_status( $observed );
+		check_recovery( empty( $receipt['ready'] ), 'audit failure left a trusted ownership receipt for unknown bytes' );
+		$backups = glob( $root . '-protected-backups/mcp-mu-bootstrap-conflict-*.bak' );
+		check_recovery( is_array( $backups ) && 1 === count( $backups ) && hash_file( 'sha256', $backups[0] ) === $observed, 'audit failure lost protected conflict backup' );
 		echo $case . ': PASS' . PHP_EOL; exit;
 	}
 	check_recovery( ! is_wp_error( $result ) && ! empty( $result['explicit_conflict_recovery'] ), 'explicit conflict recovery failed' );
@@ -258,6 +267,12 @@ if ( in_array( $case, array( 'update_schedule', 'renamed_update_schedule' ), tru
 		if ( 'stale_managed' === $case ) check_recovery( '<?php // mad4b.mcp-adapter-mu-bootstrap.v4'===file_get_contents( $destination ), 'marker-only bootstrap was treated as historical MAD4B ownership' );
 		elseif ( 'unmanaged' === $case ) check_recovery( '<?php // foreign owner'===file_get_contents( $destination ), 'unmanaged bootstrap overwritten' );
 		elseif ( 'receipt_foreign_site' === $case ) check_recovery( '<?php // site-owned prior loader'===file_get_contents( $destination ), 'foreign-site ownership receipt authorized MU replacement' );
+		elseif ( 'receipt_audit_failed' === $case ) {
+			check_recovery( '<?php // site-owned prior loader'===file_get_contents( $destination ), 'audit failure did not restore receipt-owned MU bytes' );
+			$old_hash = hash_file( 'sha256', $destination );
+			$receipt = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::ownership_receipt_status( $old_hash );
+			check_recovery( ! empty( $receipt['ready'] ) && 'prior_refresh' === ( $receipt['source'] ?? '' ), 'audit failure did not restore prior ownership receipt' );
+		}
 		else check_recovery( ! file_exists( $destination ), 'denied/rolled-back recovery left bootstrap bytes' );
 	}
 	check_recovery( ! MAD4B_SCP_MCP_Runtime_Recovery::active(), 'recovery privilege leaked beyond lifecycle' );
