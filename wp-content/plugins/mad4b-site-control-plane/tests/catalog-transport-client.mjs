@@ -33,7 +33,17 @@ const fetchImpl = async (url, options) => {
   const index = Number(url.pathname.split('/').at(-1)), size = Number(url.searchParams.get('chunk_bytes'));
   const bytes = raw.subarray(index * size, (index + 1) * size);
   inFlight--;
-  return new Response(bytes, {headers: {'X-MAD4B-Schema-SHA256': sha, 'X-MAD4B-Content-SHA256': corrupt ? scope : digest(bytes), 'X-MAD4B-Chunk-Count': String(Math.ceil(raw.length / size))}});
+  return new Response(bytes, {headers: {
+    'X-MAD4B-Schema-SHA256': sha,
+    'X-MAD4B-Snapshot': snapshot,
+    'X-MAD4B-Wire-Generation': wireGeneration,
+    'X-MAD4B-Compression': 'none',
+    'X-MAD4B-Content-SHA256': corrupt ? scope : digest(bytes),
+    'X-MAD4B-Chunk-Count': String(Math.ceil(raw.length / size)),
+    'X-MAD4B-Chunk-Index': String(index),
+    'X-MAD4B-Chunk-Offset': String(index * size),
+    'X-MAD4B-Chunk-Payload-Bytes': String(bytes.length),
+  }});
 };
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxPages: 0}), /page budget/);
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxManifestEvents: 0}), /event budget/);
@@ -114,7 +124,21 @@ const mcp = createAbilityCatalogClient({cryptoImpl: webcrypto, callDiscover: asy
   if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64'], wire_generation: wireGeneration};
   if (input.transport_action === 'manifest') return {contract, authority_scope_sha256: scope, snapshot, items: [row], removed: [], delta: false};
   const bytes = raw.subarray(input.chunk_index * input.chunk_bytes, (input.chunk_index + 1) * input.chunk_bytes);
-  return {contract, schema_sha256: sha, chunk_index: input.chunk_index, chunk_count: Math.ceil(raw.length / input.chunk_bytes), encoding: 'base64', data: bytes.toString('base64'), chunk_sha256: digest(bytes)};
+  return {
+    contract,
+    schema_sha256: sha,
+    snapshot,
+    wire_generation: wireGeneration,
+    compression: 'none',
+    chunk_index: input.chunk_index,
+    chunk_count: Math.ceil(raw.length / input.chunk_bytes),
+    chunk_bytes: input.chunk_bytes,
+    chunk_offset: input.chunk_index * input.chunk_bytes,
+    chunk_payload_bytes: bytes.length,
+    encoding: 'base64',
+    data: bytes.toString('base64'),
+    chunk_sha256: digest(bytes),
+  };
 }});
 assert.equal((await mcp.readSchema(await mcp.sync(null), row.ability_name)).sha256, sha);
 console.log('PASS client: bounded adaptive REST/MCP, resume, integrity, authority/origin, governed dispatch and wire-pinned direct execution');
