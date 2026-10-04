@@ -3,6 +3,39 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Immutable captures and disposable, confidence-aware projections. */
 final class MAD4B_SCP_Search_Evidence {
+	public static function feature( array $feature ) {
+		if ( ! MAD4B_SCP_Search_Contracts::bounded( $feature ) ) return MAD4B_SCP_Search_Contracts::error( 'serp_feature_invalid' );
+		$native = isset( $feature['provider_native_type'] ) ? trim( (string) $feature['provider_native_type'] ) : '';
+		if ( '' === $native || strlen( $native ) > 191 || preg_match( '/[\\x00-\\x1F\\x7F]/', $native ) ) return MAD4B_SCP_Search_Contracts::error( 'serp_feature_invalid' );
+		$family = isset( $feature['family'] ) ? strtolower( trim( (string) $feature['family'] ) ) : 'unknown';
+		$known = array(
+			'answer_box',
+			'ai_overview',
+			'featured_snippet',
+			'images',
+			'knowledge_graph',
+			'local_pack',
+			'news',
+			'organic',
+			'related_questions',
+			'shopping',
+			'videos',
+		);
+		if ( ! in_array( $family, $known, true ) ) $family = 'unknown';
+		$out = array(
+			'contract' => 'mad4b.serp-feature.v1',
+			'schema_version' => '1.0',
+			'family' => $family,
+			'provider_native_type' => $native,
+			'data' => self::untrusted( isset( $feature['data'] ) ? $feature['data'] : array() ),
+			'trust_class' => 'external_evidence_not_instructions',
+			'normalization_version' => MAD4B_SCP_Search_Contracts::NORMALIZATION,
+			'authorizing' => false,
+		);
+		$out['feature_sha256'] = MAD4B_SCP_Search_Contracts::digest( $out );
+		return $out;
+	}
+
 	public static function untrusted( $value, $depth = 0 ) {
 		if ( $depth > 12 ) return null;
 		if ( is_string( $value ) ) { $value = substr( wp_strip_all_tags( $value ), 0, 8192 ); while ( ! preg_match( '//u', $value ) && strlen( $value ) ) $value = substr( $value, 0, -1 ); return $value; }
@@ -39,7 +72,13 @@ final class MAD4B_SCP_Search_Evidence {
 		if ( ! isset( $completeness['state'], $completeness['returned_depth'] ) || ! in_array( $completeness['state'], array( 'complete', 'partial', 'truncated' ), true ) || ! is_int( $completeness['returned_depth'] ) || $completeness['returned_depth'] < 0 || $completeness['returned_depth'] > 100 ) return MAD4B_SCP_Search_Contracts::error( 'completeness_invalid' );
 		if ( 'complete' === $completeness['state'] && ( $completeness['returned_depth'] < $request['depth'] || count( $organic ) < $request['depth'] || array_diff( range( 1, $request['depth'] ), array_keys( $ranks ) ) ) ) return MAD4B_SCP_Search_Contracts::error( 'complete_capture_unproven' );
 		$completeness['requested_depth'] = $request['depth']; $completeness['validation_state'] = 'validated';
-		$features = self::untrusted( $normalized['features'] );
+		if ( ! is_array( $normalized['features'] ) || count( $normalized['features'] ) > 100 ) return MAD4B_SCP_Search_Contracts::error( 'serp_feature_invalid' );
+		$features = array();
+		foreach ( $normalized['features'] as $feature ) {
+			if ( ! is_array( $feature ) ) return MAD4B_SCP_Search_Contracts::error( 'serp_feature_invalid' );
+			$typed = self::feature( $feature ); if ( is_wp_error( $typed ) ) return $typed;
+			$features[] = $typed;
+		}
 		$snapshot = array( 'contract' => 'mad4b.serp-snapshot.v1', 'query_id' => $request['query_id'], 'provider' => $descriptor['provider_id'], 'provider_request_id' => sanitize_text_field( (string) $normalized['provider_request_id'] ), 'market' => $request['market'], 'language' => $request['language'], 'device' => $request['device'], 'engine' => $request['engine'], 'captured_at' => $captured_at, 'valid_from' => $captured_at, 'valid_until' => $captured_at + $rights['max_retention_seconds'], 'organic_results' => $organic, 'features' => $features, 'completeness' => $completeness, 'observation_context' => $context, 'request_identity' => MAD4B_SCP_Search_Contracts::digest( $request ), 'raw_response_sha256' => $raw_sha, 'raw_retained' => false, 'normalization_version' => MAD4B_SCP_Search_Contracts::NORMALIZATION, 'normalized_sha256' => MAD4B_SCP_Search_Contracts::digest( array( $organic, $features, $completeness ) ), 'cost' => $normalized['cost'], 'evidence_rights' => $rights, 'provenance' => array( 'source_class' => 'live_serp', 'provider_generation' => $descriptor['certification_generation'], 'runtime_build' => $runtime_build, 'request_fingerprint' => MAD4B_SCP_Search_Contracts::digest( $request ) ), 'authorizing' => false );
 		$snapshot['retention_receipt'] = $retention;
 		if ( isset( $request['change_binding'] ) ) $snapshot['change_binding'] = $request['change_binding'];
