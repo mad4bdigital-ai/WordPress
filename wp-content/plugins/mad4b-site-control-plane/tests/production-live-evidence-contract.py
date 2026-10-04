@@ -20,6 +20,10 @@ HEX64=re.compile(r"^[a-f0-9]{64}$")
 def fail(code):
     raise SystemExit(code)
 
+def canonical_digest(value):
+    raw=json.dumps(value,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
 def validate(bundle):
     if not isinstance(bundle,dict) or bundle.get("contract")!="mad4b.production-live-evidence-bundle.v1":
         fail("PRODUCTION_LIVE_BUNDLE_CONTRACT_INVALID")
@@ -59,10 +63,29 @@ def validate(bundle):
             fail("PRODUCTION_LIVE_GATE_NOT_READY:"+gate)
         if row.get("candidate_identity")!=identity:
             fail("PRODUCTION_LIVE_GATE_IDENTITY_MISMATCH:"+gate)
+        expected_producer=str(stage_by_gate[gate].get("producer") or "")
+        producer=str(row.get("producer") or "")
+        if not producer or producer!=expected_producer:
+            fail("PRODUCTION_LIVE_GATE_PRODUCER_IDENTITY_MISMATCH:"+gate)
+        producer_evidence=row.get("producer_evidence")
+        if not isinstance(producer_evidence,dict):
+            fail("PRODUCTION_LIVE_GATE_PRODUCER_EVIDENCE_MISSING:"+gate)
+        producer_contract=str(row.get("producer_contract") or "")
+        evidence_contract=str(producer_evidence.get("contract") or "")
+        if not producer_contract or evidence_contract!=producer_contract:
+            fail("PRODUCTION_LIVE_GATE_PRODUCER_EVIDENCE_CONTRACT_MISMATCH:"+gate)
+        if producer_contract=="mad4b.production-live-gate-evidence.v1":
+            fail("PRODUCTION_LIVE_GATE_PRODUCER_EVIDENCE_RECURSIVE:"+gate)
         digest=str(row.get("producer_evidence_sha256") or "").lower()
         if not HEX64.fullmatch(digest):
             fail("PRODUCTION_LIVE_GATE_EVIDENCE_DIGEST_INVALID:"+gate)
-        producer_contract=str(row.get("producer_contract") or "")
+        if digest!=canonical_digest(producer_evidence):
+            fail("PRODUCTION_LIVE_GATE_EVIDENCE_DIGEST_MISMATCH:"+gate)
+        if producer_evidence.get("production_mutation") is True or producer_evidence.get("production_authorized") is True or producer_evidence.get("authorizing") is True:
+            fail("PRODUCTION_LIVE_GATE_PRODUCER_EVIDENCE_AUTHORITY_WIDENED:"+gate)
+        embedded_identity=producer_evidence.get("candidate_identity")
+        if embedded_identity is not None and embedded_identity!=identity:
+            fail("PRODUCTION_LIVE_GATE_PRODUCER_EVIDENCE_IDENTITY_MISMATCH:"+gate)
         expected=str(stage_by_gate[gate].get("evidence_contract") or "")
         if expected!="mad4b.production-live-gate-evidence.v1" and producer_contract!=expected:
             fail("PRODUCTION_LIVE_GATE_PRODUCER_CONTRACT_MISMATCH:"+gate)
@@ -108,13 +131,28 @@ def synthetic_bundle():
     rows=[]
     for stage in plan.get("stages") or []:
         cls=str(stage.get("mutation_class") or "")
+        producer_contract=stage["evidence_contract"] if stage["evidence_contract"]!="mad4b.production-live-gate-evidence.v1" else "mad4b.synthetic-self-test.v1"
+        producer_evidence={
+            "contract":producer_contract,
+            "stage_id":stage["id"],
+            "candidate_identity":copy.deepcopy(identity),
+            "ready":True,
+            "mutation_performed":cls=="reversible_staging_mutation",
+            "production_mutation":False,
+            "authorizing":False,
+        }
+        if cls=="reversible_staging_mutation":
+            producer_evidence["rollback_verified"]=True
+            producer_evidence["postcondition_verified"]=True
         row={
             "contract":"mad4b.production-live-gate-evidence.v1",
             "gate":stage["gate"],
             "environment":"staging",
             "candidate_identity":copy.deepcopy(identity),
-            "producer_contract":stage["evidence_contract"] if stage["evidence_contract"]!="mad4b.production-live-gate-evidence.v1" else "mad4b.synthetic-self-test.v1",
-            "producer_evidence_sha256":hashlib.sha256(stage["gate"].encode()).hexdigest(),
+            "producer":stage["producer"],
+            "producer_contract":producer_contract,
+            "producer_evidence":producer_evidence,
+            "producer_evidence_sha256":canonical_digest(producer_evidence),
             "ready":True,
             "mutation_performed":cls=="reversible_staging_mutation",
             "production_mutation":False,
@@ -162,6 +200,15 @@ if args.self_test:
             raise
     else:
         fail("PRODUCTION_LIVE_SELF_TEST_IDENTITY_DRIFT_SURVIVED")
+    bad=copy.deepcopy(good)
+    bad["evidence"][0]["producer_evidence"]["ready"]=False
+    try:
+        validate(bad)
+    except SystemExit as exc:
+        if "PRODUCTION_LIVE_GATE_EVIDENCE_DIGEST_MISMATCH" not in str(exc):
+            raise
+    else:
+        fail("PRODUCTION_LIVE_SELF_TEST_EVIDENCE_TAMPER_SURVIVED")
     print("mad4b.production-live-evidence-bundle.v1: SELF_TEST_PASS")
     raise SystemExit(0)
 

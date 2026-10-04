@@ -123,7 +123,9 @@
       "ready",
       "mutation_performed",
       "production_mutation",
-      "authorizing"
+      "authorizing",
+      "producer",
+      "producer_evidence"
     ],
     "candidate_identity_fields": [
       "source_commit_sha",
@@ -138,13 +140,16 @@
       "read_only": [
         "mutation_performed=false"
       ]
-    }
+    },
+    "producer_evidence_sha256_mode": "canonical_json_sha256",
+    "embedded_producer_evidence_required": true
   },
   "terminal": {
     "all_stages_ready_required": true,
     "exact_identity_equal_across_all_stages": true,
     "optional_capabilities_remain_fail_closed": true,
     "production_ready_result_authorizing": false,
-    "production_promotion_separate": true
+    "production_promotion_separate": true,
+    "producer_evidence_content_addressed": true
   }
 }

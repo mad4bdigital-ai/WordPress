@@ -67,9 +67,14 @@ if env.get("contract")!="mad4b.production-live-gate-evidence.v1":
 for field in ("source_commit_sha","build_fingerprint","package_manifest_digest"):
     if field not in (env.get("candidate_identity_fields") or []):
         fail("PRODUCTION_CERTIFICATION_IDENTITY_FIELD_MISSING:"+field)
+for field in ("producer","producer_evidence","producer_evidence_sha256"):
+    if field not in (env.get("required_fields") or []):
+        fail("PRODUCTION_CERTIFICATION_EVIDENCE_FIELD_MISSING:"+field)
+if env.get("producer_evidence_sha256_mode")!="canonical_json_sha256" or env.get("embedded_producer_evidence_required") is not True:
+    fail("PRODUCTION_CERTIFICATION_EVIDENCE_CONTENT_ADDRESSING_INVALID")
 
 terminal=plan.get("terminal") or {}
-for key in ("all_stages_ready_required","exact_identity_equal_across_all_stages","optional_capabilities_remain_fail_closed","production_promotion_separate"):
+for key in ("all_stages_ready_required","exact_identity_equal_across_all_stages","optional_capabilities_remain_fail_closed","producer_evidence_content_addressed","production_promotion_separate"):
     if terminal.get(key) is not True:
         fail("PRODUCTION_CERTIFICATION_TERMINAL_INVARIANT_MISSING:"+key)
 if terminal.get("production_ready_result_authorizing") is not False:
