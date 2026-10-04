@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 279,
+  "changed_file_count": 305,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -218,7 +218,7 @@
     },
     {
       "id": "tests-authority-security-01",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 1",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 1",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -257,7 +257,7 @@
     },
     {
       "id": "tests-authority-security-02",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 2",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 2",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -295,7 +295,7 @@
     },
     {
       "id": "tests-authority-security-03",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 3",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 3",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -395,8 +395,50 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php"
       ]
+    },
+    {
+      "id": "adaptive-search-domain-runtime",
+      "semantic_unit": "Adaptive Search domain services, profiles, adapter contracts and capture state machine",
+      "revert_boundary": "Revert this Search implementation slice while retaining the certified Phase 38 foundations and existing authority boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/search-runtime-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/adapters/class-mad4b-scp-search-serp-adapters.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/adapters/class-mad4b-scp-search-wordpress-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php"
+      ]
+    },
+    {
+      "id": "adaptive-search-runtime-acceptance",
+      "semantic_unit": "Executable Search conformance, disposable WordPress proof and exact-head acceptance matrix",
+      "revert_boundary": "Revert this Search implementation slice while retaining the certified Phase 38 foundations and existing authority boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-adaptive-search-intelligence.yml",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/search-runtime-fixtures.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "de65293d1651f9bc8b56bfa25a9427b183a9872c61d42ee39dff4f6f12258aed",
+  "changed_paths_sha256": "2c1c7137719f356272b878fc366a46cd2ed4fcf122330250ea0406f4bc5a4c1c",
   "changed_paths_sha256_mode": "sorted_relative_paths_newline_sha256"
 }

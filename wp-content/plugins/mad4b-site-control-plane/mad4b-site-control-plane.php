@@ -292,6 +292,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-profiles.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-search-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-runtime.php';
 MAD4B_SCP_Content_Experience_Governance::boot();

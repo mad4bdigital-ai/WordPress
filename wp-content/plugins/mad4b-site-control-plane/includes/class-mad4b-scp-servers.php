@@ -112,6 +112,7 @@ final class MAD4B_SCP_Servers {
 		);
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
+		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $tools = array_merge( $tools, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'read' ) );
 		if ( 'mad4b-admin' === $server_id
 			&& class_exists( 'MAD4B_SCP_Context_Authority' )
 			&& function_exists( 'wp_has_ability' )
@@ -133,6 +134,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
 		);
+		if ( class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $candidates = array_merge( $candidates, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'write' ) );
 		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
 			&& function_exists( 'wp_has_ability' )
 			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) ) {

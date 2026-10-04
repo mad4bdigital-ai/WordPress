@@ -13,6 +13,8 @@ final class MAD4B_SCP_Provider_Account_Budget_Authority {
 	const OPTION_PREFIX = 'mad4b_scp_provider_budget_';
 	const MAX_UNITS = 100000000;
 	const MAX_TTL_SECONDS = 86400;
+	/** Shared identity for execution adapters and economic coordinators; no admission. */
+	public static function account_identity( array $input ) { return self::account_key( $input ); }
 
 	private static function account_key( array $input ) {
 		$provider = sanitize_key( (string) ( $input['provider_id'] ?? '' ) );

@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "3b52a9d806c28bfbb5ea8f3375eb018f2a942502",
-  "override_git_blob_sha": "0e5c860987855eab77a39d0b71eeeb7d490c0e70",
+  "override_git_blob_sha": "4d7ec582b9b64b187beae5af0b931014be70bf41",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -11,21 +11,21 @@
   "counts": {
     "DEFERRED": 2,
     "DONE": 154,
-    "OPEN": 613,
-    "PARTIAL": 68
+    "OPEN": 553,
+    "PARTIAL": 128
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 114,
-      "OPEN": 497,
-      "PARTIAL": 43
+      "OPEN": 447,
+      "PARTIAL": 93
     },
     "P1": {
       "DEFERRED": 0,
       "DONE": 38,
-      "OPEN": 95,
-      "PARTIAL": 24
+      "OPEN": 85,
+      "PARTIAL": 34
     },
     "P2": {
       "DEFERRED": 2,
@@ -1708,7 +1708,7 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py"
       ],
-      "reason": "WP-CLI↔Host Runner normalized parity is proven; MCP↔WP-CLI parity is still open."
+      "reason": "WP-CLI\u2194Host Runner normalized parity is proven; MCP\u2194WP-CLI parity is still open."
     },
     {
       "task_id": "T1110",
@@ -1912,7 +1912,7 @@
       "task_id": "T1126",
       "phase": 11,
       "priority": "P1",
-      "summary": "Certify account-local WP-CLI/Host Runner mappings. Evidence: WP-CLI ↔ Host Runner account-local runtime.status mapping contract.",
+      "summary": "Certify account-local WP-CLI/Host Runner mappings. Evidence: WP-CLI \u2194 Host Runner account-local runtime.status mapping contract.",
       "status": "DONE",
       "checked": true,
       "evidence_refs": [
@@ -2261,7 +2261,7 @@
       "task_id": "T1154",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Prove submission_location and authoritative execution_location are truthful and exact-plan bound across direct and queued host execution. Evidence: Host Bridge→Runner contract binds `submission_location=wordpress_request`, `execution_location=host_runner`, plan and authority.",
+      "summary": "GATE Prove submission_location and authoritative execution_location are truthful and exact-plan bound across direct and queued host execution. Evidence: Host Bridge\u2192Runner contract binds `submission_location=wordpress_request`, `execution_location=host_runner`, plan and authority.",
       "status": "DONE",
       "checked": true,
       "evidence_refs": [
@@ -2893,7 +2893,7 @@
       "task_id": "T1533",
       "phase": 15,
       "priority": "P0",
-      "summary": "Real ChatGPT OAuth→MCP acceptance.",
+      "summary": "Real ChatGPT OAuth\u2192MCP acceptance.",
       "status": "OPEN",
       "checked": false,
       "evidence_refs": [],
@@ -4297,7 +4297,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
       ],
-      "reason": "Authoritative v11 Intent Registry plus explicit read-only Bootstrap→Intent reconciliation planning are implemented; exact live reconciliation remains open."
+      "reason": "Authoritative v11 Intent Registry plus explicit read-only Bootstrap\u2192Intent reconciliation planning are implemented; exact live reconciliation remains open."
     },
     {
       "task_id": "T2408",
@@ -4361,7 +4361,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
       ],
-      "reason": "Bootstrap snapshot and Bootstrap→Intent planning explicitly report no mutation, no IntentClaim creation and no Artifact creation; exact-head/live proof remains open."
+      "reason": "Bootstrap snapshot and Bootstrap\u2192Intent planning explicitly report no mutation, no IntentClaim creation and no Artifact creation; exact-head/live proof remains open."
     },
     {
       "task_id": "T2414",
@@ -4720,7 +4720,7 @@
       "task_id": "T2617",
       "phase": 26,
       "priority": "P0",
-      "summary": "Classification→provider processing decision.",
+      "summary": "Classification\u2192provider processing decision.",
       "status": "PARTIAL",
       "checked": false,
       "evidence_refs": [
@@ -6965,7 +6965,7 @@
       "task_id": "T3654",
       "phase": 36,
       "priority": "P0",
-      "summary": "Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.",
+      "summary": "Run the complete request\u2192plan\u2192approval\u2192execution\u2192readback\u2192durable receipt\u2192rollback vertical slice and link all evidence to the terminal gate.",
       "status": "OPEN",
       "checked": false,
       "evidence_refs": [],
@@ -7799,7 +7799,7 @@
       "task_id": "T3752",
       "phase": 37,
       "priority": "P1",
-      "summary": "Implement provider-neutral semantic intent routing: user intent → required traits → provider candidates → exact capability, with confidence/evidence/ambiguity/human-review semantics.",
+      "summary": "Implement provider-neutral semantic intent routing: user intent \u2192 required traits \u2192 provider candidates \u2192 exact capability, with confidence/evidence/ambiguity/human-review semantics.",
       "status": "DONE",
       "checked": true,
       "evidence_refs": [
@@ -7996,7 +7996,7 @@
       "task_id": "T3763",
       "phase": 37,
       "priority": "P1",
-      "summary": "Split oversized responsibility concentrations into domain services behind stable public contracts, with dependency-cycle/size budgets and behavior-parity tests before deletion of legacy façades.",
+      "summary": "Split oversized responsibility concentrations into domain services behind stable public contracts, with dependency-cycle/size budgets and behavior-parity tests before deletion of legacy fa\u00e7ades.",
       "status": "PARTIAL",
       "checked": false,
       "evidence_refs": [
@@ -8663,540 +8663,989 @@
       "phase": 38,
       "priority": "P0",
       "summary": "Implement provider-neutral Language Registry with WPML adapter and generic conformance contract.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Revisioned profiles, policy composition and provenance-bound live language resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3808",
       "phase": 38,
       "priority": "P0",
       "summary": "Model WordPress Object and Search Surface as separate canonical identities.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Revisioned profiles, policy composition and provenance-bound live language resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3809",
       "phase": 38,
       "priority": "P0",
       "summary": "Inventory Posts, Pages, public CPTs, Terms, Term Archives, Post Type Archives, Home and Blog Index.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3810",
       "phase": 38,
       "priority": "P0",
       "summary": "Add provider-approved virtual/paginated surface semantics without generic arbitrary-URL admission.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3811",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement effective Indexability Resolver across object status, site policy, SEO metadata, canonical/redirect, language state and rendered evidence.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3812",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Preserve indexability conflicts as reconciliation evidence; forbid silent provider winner.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3813",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement SEO Metadata Provider Registry with field-level provenance and Rank Math + WordPress/rendered fallback adapters.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3814",
       "phase": 38,
       "priority": "P1",
       "summary": "Add Yoast/AIOSEO/SEOPress adapter conformance fixtures without core branching.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3815",
       "phase": 38,
       "priority": "P0",
       "summary": "Define Search Target identity over normalized query, market, language, engine, device and purpose.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Purpose-specific normalized query/market/language/device compilation with 4201-target fixture. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3816",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement OWNED_RANK_TRACKING and MARKET_DISCOVERY as independent target purposes.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Purpose-specific normalized query/market/language/device compilation with 4201-target fixture. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3817",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement target compilation from SEO targets, canonical keyword registry, surface changes, clusters, competitors and post-change validation.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Purpose-specific normalized query/market/language/device compilation with 4201-target fixture. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3818",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement immutable search observations/events plus recomputable materialized views.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable licensed observations, temporal projections and frozen target/surface recomputation across drift. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3819",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement temporal rank trajectory, freshness, stability and volatility projections.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable licensed observations, temporal projections and frozen target/surface recomputation across drift. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3820",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove historical evidence survives target/profile/language/surface drift without identity corruption.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable licensed observations, temporal projections and frozen target/surface recomputation across drift. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3821",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement Expected Value of Observation Decision Engine with profile-driven weights.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3822",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement DecisionRecord with positive/negative factors, alternatives, evidence freshness and provider/budget reasoning.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3823",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement target-specific dynamic refresh cadence; forbid one universal refresh interval.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3824",
       "phase": 38,
       "priority": "P0",
       "summary": "Reuse fresh equivalent evidence before provider execution when policy permits.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3825",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement multidimensional fair scheduler across site/brand/market/language/purpose/cluster/surface/provider.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3826",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove aging/minimum coverage prevents permanent starvation under constrained budget.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3827",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement hierarchical budget tree with monthly/daily/monetary/rate/concurrency/depth constraints.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3828",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement soft reservations, protected reserve and safe unused-budget reclaim.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3829",
       "phase": 38,
       "priority": "P0",
       "summary": "Bind provider usage/reset evidence to scheduling decisions without exposing credentials.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3830",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove hard budget overspend and negative/unknown budget states fail closed.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3831",
       "phase": 38,
       "priority": "P1",
       "summary": "Implement budget pacing and controlled burst policy from remaining allowance and billing window.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3832",
       "phase": 38,
       "priority": "P0",
       "summary": "Define provider-neutral SERP descriptor/request/usage/economic/failure/normalization contracts.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3833",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement SerpApi adapter behind registered egress/secret/certification boundaries.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3834",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement DataForSEO adapter or an executable second-provider conformance fixture before provider-neutrality is claimed.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3835",
       "phase": 38,
       "priority": "P0",
       "summary": "Replace fixed search-specific primary/fallback logic with capability/economic/policy-based provider candidate selection.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3836",
       "phase": 38,
       "priority": "P0",
       "summary": "Extend semantic Remote Work Operation Registry for registered `search.serp.capture` without generic URL/command execution.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3837",
       "phase": 38,
       "priority": "P0",
       "summary": "Reuse Provider Circuit Breaker state for eligibility and bounded HALF_OPEN read probes.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3838",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Reconcile ambiguous quota-consuming provider effects before retry; no blind duplicate request.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3839",
       "phase": 38,
       "priority": "P0",
       "summary": "Keep imported/HYPD/manual/historical sources typed as evidence sources, not forged live provider receipts.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3840",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement immutable versioned SERP Snapshot with request/provider/runtime/raw/normalized/cost provenance.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3841",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement external SERP content schema/size/sanitization trust boundary and prompt/tool-instruction isolation.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3842",
       "phase": 38,
       "priority": "P0",
       "summary": "Separate raw evidence, normalized facts and derived inference so inference can be recomputed without repurchasing evidence.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3843",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement confidence-aware ranking, volatility, competitor, cannibalization, content/language/market gap, archive and SERP-feature signals.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3844",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove cannibalization can relate pages, CPTs, term archives and post-type archives under exact query/market/language/device identity.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3845",
       "phase": 38,
       "priority": "P0",
       "summary": "Define Search Experience Model and generic renderer primitives.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3846",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement capability/state-driven Search Intelligence navigation and sections; forbid provider-name UI branching.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3847",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement UNCONFIGURED/DISCOVERING/PROFILE_DRAFTED/READY/BASELINING/ACTIVE and degraded/reconciliation/drift/stale states.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3848",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove provider outage/quota exhaustion yields degraded-safe experience while valid cached/historical intelligence remains usable.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3849",
       "phase": 38,
       "priority": "P1",
       "summary": "Expose explainable queue, provider, budget and freshness decisions without secret/debug leakage.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3850",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement Search Signal -> Recommendation -> governed Content Experience proposal boundary.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3851",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove Search Intelligence cannot directly edit, publish or create Production authority.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3852",
       "phase": 38,
       "priority": "P0",
       "summary": "Implement post-change observation windows bound to exact content/SEO fingerprints.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3853",
       "phase": 38,
       "priority": "P1",
       "summary": "Implement experiment outcome projection with explicit confounders and no unsupported causality claim.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3854",
       "phase": 38,
       "priority": "P0",
       "summary": "Execute conformance matrix across simple single-language, multilingual/archive-heavy, 4K+ target and partial-translation fixtures.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3855",
       "phase": 38,
       "priority": "P0",
       "summary": "Execute provider low-quota/outage/HALF_OPEN/failover/recovery and stale-cache fixtures.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3856",
       "phase": 38,
       "priority": "P0",
       "summary": "Execute new provider/new SEO adapter/new CPT/taxonomy/archive/new language/new market drift fixtures.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3857",
       "phase": 38,
       "priority": "P0",
       "summary": "Execute cross-market/language fairness and noisy-neighbor budget fixtures.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3858",
       "phase": 38,
       "priority": "P0",
       "summary": "Execute evidence tamper, provider contradiction, malformed/untrusted content and normalization-version fixtures.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3859",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Prove no vendor/business hardcode is required to add a new Search Profile/provider/site.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3860",
       "phase": 38,
       "priority": "P0",
       "summary": "GATE Emit ADAPTIVE_SEARCH_GENERALIZATION_PASS only from exact-head executable evidence; documentation-only closure is forbidden.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3861",
@@ -9393,20 +9842,38 @@
       "phase": 38,
       "priority": "P1",
       "summary": "Compose first-party SearchPerformanceProvider evidence into opportunity/decline/refresh decisions without relabeling it as live SERP evidence.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed first-party performance and query-language provenance remain separate from live SERP and page translation. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3872",
       "phase": 38,
       "priority": "P1",
       "summary": "Define QueryLanguageProvenance for translation/transcreation, market evidence, semantic cluster relation, confidence and approval independently from page translation state.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Typed first-party performance and query-language provenance remain separate from live SERP and page translation. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3873",
@@ -9451,20 +9918,38 @@
       "phase": 38,
       "priority": "P1",
       "summary": "Define adaptive UX stability and operator controls: stable section IDs/order/deep links plus audited pause/resume profile, disable provider, freeze spend, pin/mute target and request-refresh controls.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Stable operator controls and registered portable storage/worker contracts preserve canonical identities. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3876",
       "phase": 38,
       "priority": "P1",
       "summary": "Define portable Search Intelligence execution/storage profiles for WordPress-local, external worker and external evidence/blob store while preserving canonical identities/evidence semantics.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Stable operator controls and registered portable storage/worker contracts preserve canonical identities. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3877",
@@ -9490,20 +9975,36 @@
       "phase": 38,
       "priority": "P1",
       "summary": "Define open/versioned SERP feature schema preserving known normalized family plus provider-native unknown/pass-through evidence.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Versioned known/unknown feature evidence and bounded source/scope/freshness/confidence decision factors. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3879",
       "phase": 38,
       "priority": "P1",
       "summary": "Bind every DecisionPolicy factor, including commercial value/search volume, to source, market/language scope, freshness, confidence and normalization version.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+      ],
+      "reason": "Versioned known/unknown feature evidence and bounded source/scope/freshness/confidence decision factors. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
     },
     {
       "task_id": "T3880",

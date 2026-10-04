@@ -265,3 +265,7 @@ observation comparability + canonical identities
 → ADAPTIVE_SEARCH_GENERALIZATION_PASS
 
 A ranking delta is invalid unless its observations satisfy the declared ComparabilityKey. A hard account-budget claim is invalid unless shared credentials are protected by account-level reservation/reconciliation or the claim is explicitly downgraded.
+
+### Adaptive Search runtime evidence binding
+
+The ASI families bind to `wp-content/plugins/mad4b-site-control-plane/includes/search/` and `class-mad4b-scp-adaptive-search-intelligence.php`. `adaptive-search-runtime-acceptance.json` is the exhaustive mapping of each of the 15 repository conformance gates to named runtime/provider fixtures, quantitative assertion thresholds and denial cases. The dedicated `mad4b-adaptive-search-intelligence.yml` workflow requires PHP 7.4/8.3 and disposable WordPress/MySQL evidence before emitting exact-head gates. This extends and preserves the previously certified Phase 38 P0 and Phase 38A foundation evidence; it does not substitute local fixtures for live provider certification.

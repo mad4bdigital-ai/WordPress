@@ -168,6 +168,23 @@
       "dependency_impact": true,
       "required_runtime": false,
       "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "search.serp.capture",
+      "target_kind": "search_target",
+      "risk": "medium",
+      "planner": "mad4b/search-capture-plan",
+      "executor": "mad4b/search-capture-apply",
+      "supports": [
+        "capture"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "generic_mutation_dispatch": false,
+      "required_runtime": false,
+      "side_effect_class": "external_cost",
+      "retry_semantics": "reconciliation_first",
+      "production_policy": "deny"
     }
   ],
   "aliases": {

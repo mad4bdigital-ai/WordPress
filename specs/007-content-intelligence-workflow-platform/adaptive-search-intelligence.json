@@ -6,7 +6,8 @@
   "architecture_freeze_effect": "maturity_extension_only_no_kernel_authority_widening",
   "documents": {
     "design": "adaptive-search-intelligence.md",
-    "runtime_contract": "contracts/adaptive-search-intelligence-runtime.md"
+    "runtime_contract": "contracts/adaptive-search-intelligence-runtime.md",
+    "runtime_acceptance": "adaptive-search-runtime-acceptance.json"
   },
   "principles": [
     "provider_neutral",
@@ -163,5 +164,27 @@
     "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
     "authorizing": false,
     "concurrency_guard": "profile_scoped_distributed_lock"
+  },
+  "implementation": {
+    "contract": "mad4b.adaptive-search-implementation.v1",
+    "state": "IMPLEMENTED_EXACT_HEAD_CI_PENDING",
+    "bootstrap": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php",
+    "runtime_directory": "wp-content/plugins/mad4b-site-control-plane/includes/search",
+    "acceptance_matrix": "adaptive-search-runtime-acceptance.json",
+    "workflow": ".github/workflows/mad4b-adaptive-search-intelligence.yml",
+    "evidence_binding": "clean_ci_head_and_source_manifest_digest",
+    "local_evidence": {
+      "fixtures": 39,
+      "assertions": 893,
+      "gates_emitted": 0,
+      "evidence_class": "hermetic_runtime_with_process_shared_cas"
+    },
+    "remaining_evidence": [
+      "exact_head_ci_on_php_7_4_and_8_3",
+      "disposable_wordpress_mysql_cas_catalog_admin_discovery",
+      "separate_live_provider_account_certification_and_site_rendered_evidence"
+    ],
+    "production_authority": false,
+    "authorizing": false
   }
 }

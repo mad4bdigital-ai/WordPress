@@ -382,6 +382,33 @@ if adaptive_search_path.exists():
             errors.append(f"adaptive_search:missing_boundary:{boundary}")
 
 
+search_acceptance_path = require_file("adaptive-search-runtime-acceptance.json")
+if search_acceptance_path.exists():
+    search_acceptance = json.loads(search_acceptance_path.read_text(encoding="utf-8"))
+    if search_acceptance.get("contract") != "mad4b.adaptive-search-runtime-acceptance.v1" or search_acceptance.get("authorizing") is not False:
+        errors.append("adaptive_search:runtime_acceptance_contract_invalid")
+    if set(search_acceptance.get("gates", {})) != required_search_gates:
+        errors.append("adaptive_search:runtime_gate_parity_failed")
+    search_fixture_names = set()
+    for fixture_file, pattern in [
+        ("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php", r"scenario\( '([^']+)'"),
+        ("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php", r"provider_case\( '([^']+)'"),
+    ]:
+        fixture_path = pathlib.Path(fixture_file)
+        if not fixture_path.is_file():
+            errors.append("adaptive_search:runtime_fixture_missing:" + fixture_file)
+        else:
+            search_fixture_names.update(re.findall(pattern, fixture_path.read_text(encoding="utf-8")))
+    for gate, rule in search_acceptance.get("gates", {}).items():
+        names = rule.get("fixtures", [])
+        thresholds = rule.get("thresholds", {}).get("minimum_assertions_per_fixture", {})
+        if not names or not set(names).issubset(search_fixture_names) or set(thresholds) != set(names) or any(not isinstance(n, int) or n <= 0 for n in thresholds.values()) or not rule.get("denial_cases"):
+            errors.append("adaptive_search:runtime_gate_without_executable_assertions:" + gate)
+    if set(search_acceptance.get("required_evidence_classes", [])) != {"exact_head_ci_hermetic_runtime", "disposable_wordpress_mysql"}:
+        errors.append("adaptive_search:runtime_evidence_classes_invalid")
+    if not pathlib.Path(search_acceptance.get("workflow", "missing-search-workflow")).is_file():
+        errors.append("adaptive_search:runtime_workflow_missing")
+
 adaptive_search_review_path = require_file("adaptive-search-intelligence-review.json")
 if adaptive_search_review_path.exists():
     adaptive_search_review = json.loads(adaptive_search_review_path.read_text(encoding="utf-8"))

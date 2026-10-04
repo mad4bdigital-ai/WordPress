@@ -18,7 +18,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 	const MAX_LEASE_SECONDS = 900;
 
 	private static function allowed_operations() {
-		return array(
+		$base = array(
 			'frontend_performance_sampling' => array(
 				'executor' => 'external_browser_agent',
 				'authority_surface' => 'mad4b-enrollment',
@@ -30,6 +30,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				'production_policy' => 'deny',
 			),
 		);
+		return class_exists( 'MAD4B_SCP_Search_Work_Operations' ) ? MAD4B_SCP_Search_Work_Operations::definitions( $base ) : $base;
 	}
 
 	private static function now() { return time(); }
@@ -175,8 +176,11 @@ final class MAD4B_SCP_Remote_Work_Queue {
 	}
 
 	public static function enqueue( $operation_id, array $payload, array $expected_identity, $ttl_seconds = 3600 ) {
-		$operation_id = sanitize_key( (string) $operation_id );
+		$operation_id = (string) $operation_id;
+		if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,95}$/D', $operation_id ) ) return new WP_Error( 'mad4b_remote_work_operation_not_allowed', 'Remote work operation is not canonical.' );
 		if ( ! isset( self::allowed_operations()[ $operation_id ] ) ) return new WP_Error( 'mad4b_remote_work_operation_not_allowed', 'Remote work operation is not registered.' );
+		$definition = self::allowed_operations()[ $operation_id ];
+		if ( isset( $definition['validate_payload'] ) && ! call_user_func( $definition['validate_payload'], $payload ) ) return new WP_Error( 'mad4b_remote_work_payload_invalid', 'Semantic work payload is outside its registered contract.' );
 		foreach ( $expected_identity as $key => $value ) $expected_identity[ $key ] = strtolower( trim( (string) $value ) );
 		if ( ! self::identity_valid( $expected_identity ) ) return new WP_Error( 'mad4b_remote_work_identity_invalid', 'Remote work requires complete exact-build identity.' );
 		$ttl_seconds = max( 300, min( DAY_IN_SECONDS, (int) $ttl_seconds ) );
@@ -242,7 +246,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 	}
 
 	public static function list_jobs( $operation_id = '' ) {
-		$operation_id = sanitize_key( (string) $operation_id );
+		$operation_id = (string) $operation_id;
 		$items = array();
 		foreach ( self::jobs() as $job ) {
 			if ( ! is_array( $job ) ) continue;
