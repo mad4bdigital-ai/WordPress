@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 251,
+  "changed_file_count": 254,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -13,8 +13,11 @@
       "path_globs": [
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         ".github/workflows/feature-007-spec-ci.yml",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence.json",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence.md",
         "specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
+        "specs/007-content-intelligence-workflow-platform/contracts/adaptive-search-intelligence-runtime.md",
         "specs/007-content-intelligence-workflow-platform/contracts/capability-fabric-post-merge-completeness.md",
         "specs/007-content-intelligence-workflow-platform/feature.json",
         "specs/007-content-intelligence-workflow-platform/feature007-hermetic-critical-gate-handoff.json",
@@ -353,5 +356,5 @@
       ]
     }
   ],
-  "changed_paths_sha256": "a04a143a28d2ac426946991858122284d3556b12576ea824ec2991840d3c2635"
+  "changed_paths_sha256": "a7f85c13dfa0bb5205af4d1cdaa58703d29cdc06979d3f0aa9d5ad577c95ee00"
 }
