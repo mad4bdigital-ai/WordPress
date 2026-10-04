@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 255,
+  "changed_file_count": 258,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -13,6 +13,8 @@
       "path_globs": [
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         ".github/workflows/feature-007-spec-ci.yml",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence-review.json",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence-review.md",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence.json",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence.md",
         "specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json",
@@ -355,7 +357,16 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py"
       ]
+    },
+    {
+      "id": "tests-domain-operability",
+      "semantic_unit": "Content-domain, adaptive experience and scheduling behavioral verification",
+      "revert_boundary": "Revert content-domain/experience verification slice without runtime changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "066e7d09ee680018ef74cd836f613b8ea6e0f47467566cc83489be3cd0ec9919"
+  "changed_paths_sha256": "c6e79eefd224ac452ed76138b656becdb1212baa17d22a29ddff266c5c62d03f"
 }
