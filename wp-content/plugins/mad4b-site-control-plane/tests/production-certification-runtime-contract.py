@@ -69,6 +69,14 @@ expected={
     ),
 }
 by_id={str(x.get("id") or ""):x for x in plan.get("stages") or []}
+rollback=by_id.get("rollback_retention")
+if not rollback:
+    raise SystemExit("PRODUCTION_CERTIFICATION_ROLLBACK_RETENTION_STAGE_MISSING")
+if rollback.get("producer")!=".github/workflows/mad4b-rollback-retention-receipt.yml" or rollback.get("evidence_contract")!="mad4b.rollback-retention-receipt.v1":
+    raise SystemExit("PRODUCTION_CERTIFICATION_ROLLBACK_RETENTION_BINDING_INVALID")
+if rollback.get("mutation_class")!="read_only" or rollback.get("rollback_required") is not False or rollback.get("foundation_only") is not True:
+    raise SystemExit("PRODUCTION_CERTIFICATION_ROLLBACK_RETENTION_SCOPE_INVALID")
+
 for sid,(producer,contract_name) in expected.items():
     row=by_id.get(sid)
     if not row:
