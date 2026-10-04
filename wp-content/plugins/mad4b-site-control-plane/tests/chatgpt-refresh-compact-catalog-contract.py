@@ -189,6 +189,7 @@ require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in 
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in SERVERS, "bounded Write Authority apply must be conditionally projectable as a single-app step-up tool")
 require("MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY" in SERVERS, "write-only authority convergence apply must be conditionally projectable as one reviewed direct step-up tool")
 require("MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()" not in direct_read_helper, "write-only authority handshake must remain behind governed read dispatch to preserve the direct tool budget")
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in direct_read_helper, "low-level grant reconciliation plan must remain behind governed read dispatch so one dynamic projection slot survives exact MCP preflight")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be projectable on enrolled Staging")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in SERVERS, "full staging apply must be conditionally projectable as a single-app step-up tool")
 require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in SERVERS, "bootstrap Control Plane self-update must be conditionally projectable as a bounded single-app step-up tool")
