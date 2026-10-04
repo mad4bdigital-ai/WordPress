@@ -880,12 +880,12 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 ## Phase 38 — Adaptive Search Intelligence Fabric
 
 ### 38A — Meta-model and context compiler
-- [ ] T3801 P0 Define canonical Search Runtime Fact, Search Profile and Effective Search Context contracts.
-- [ ] T3802 P0 Implement Search Profile plan/apply/verify with revision and exact plan drift guards; keep it separate from governance Site Profile.
-- [ ] T3803 P0 Implement composable brand/market/language/surface/objective overlays with deterministic precedence.
-- [ ] T3804 P0 GATE Prove business overlays can specialize but cannot widen security, authority, egress or Production policy.
-- [ ] T3805 P0 Implement dependency fingerprints and minimal invalidation for PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA drift.
-- [ ] T3806 P1 Implement explainable effective-context reason chains and read-only status projection.
+- [x] T3801 P0 Define canonical Search Runtime Fact, Search Profile and Effective Search Context contracts.
+- [x] T3802 P0 Implement Search Profile plan/apply/verify with revision and exact plan drift guards; keep it separate from governance Site Profile.
+- [x] T3803 P0 Implement composable brand/market/language/surface/objective overlays with deterministic precedence.
+- [x] T3804 P0 GATE Prove business overlays can specialize but cannot widen security, authority, egress or Production policy.
+- [x] T3805 P0 Implement dependency fingerprints and minimal invalidation for PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA drift.
+- [x] T3806 P1 Implement explainable effective-context reason chains and read-only status projection.
 
 ### 38B — Language, surfaces and SEO provenance
 - [ ] T3807 P0 Implement provider-neutral Language Registry with WPML adapter and generic conformance contract.
