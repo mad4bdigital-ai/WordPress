@@ -11,11 +11,13 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	const OPTION = 'mad4b_scp_mcp_runtime_recovery_v1';
 	private static $active = false;
 	private static $conflict_expected_sha256 = '';
+	private static $conflict_recovery_source = '';
 
 	public static function boot() {
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle' ) );
 		add_action( 'admin_post_' . self::CONFLICT_ACTION, array( __CLASS__, 'handle_conflict' ) );
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 20, 2 );
+		add_action( 'init', array( __CLASS__, 'maybe_schedule_conflict_recovery' ), 50 );
 		add_action( self::HOOK, array( __CLASS__, 'run_cron' ) );
 		add_action( 'mad4b_scp_site_profile_saved', array( __CLASS__, 'profile_saved' ) );
 		register_activation_hook( MAD4B_SCP_FILE, array( __CLASS__, 'schedule' ) );
@@ -23,6 +25,24 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 
 	public static function active() { return self::$active; }
 	public static function conflict_expected_sha256() { return self::$active ? self::$conflict_expected_sha256 : ''; }
+	public static function conflict_recovery_source() { return self::$active ? self::$conflict_recovery_source : ''; }
+
+	private static function automatic_staging_conflict_sha256() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+			|| ! method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )
+			|| 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			|| ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )
+			|| ! class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false )
+			|| ! method_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'conflict_status' ) ) return '';
+		$conflict = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status();
+		if ( 'unmanaged_mu_bootstrap_path_conflict' !== ( $conflict['blocker'] ?? '' ) ) return '';
+		$observed = strtolower( trim( (string) ( $conflict['destination_sha256_before'] ?? '' ) ) );
+		$source = strtolower( trim( (string) ( $conflict['source_sha256'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $observed )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source )
+			|| hash_equals( $observed, $source ) ) return '';
+		return $observed;
+	}
 
 	private static function configured_topology_id( $constant_name ) {
 		if ( ! defined( $constant_name ) ) return '';
@@ -106,6 +126,14 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		return $evidence;
 	}
 
+	public static function maybe_schedule_conflict_recovery() {
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return;
+		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()
+			|| MAD4B_SCP_MCP_Request_Scope::current_request_is_endpoint_diagnostic_job() ) return;
+		if ( '' === self::automatic_staging_conflict_sha256() ) return;
+		self::schedule();
+	}
+
 	public static function run_cron() {
 		$result = self::run();
 		if ( is_wp_error( $result ) ) update_option( self::OPTION, array( 'state' => 'blocked', 'blocker' => sanitize_key( $result->get_error_code() ), 'connection_certified' => false ), false );
@@ -137,7 +165,10 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	public static function schedule() {
 		if ( ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) return;
 		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
-		if ( ! wp_next_scheduled( self::HOOK ) ) wp_schedule_single_event( time() + 30, self::HOOK );
+		// Make the event due now. Detection runs during init, before WordPress' wp_loaded
+		// cron spawning phase, so the browser request only schedules while the isolated
+		// cron request performs the filesystem transaction.
+		if ( ! wp_next_scheduled( self::HOOK ) ) wp_schedule_single_event( time(), self::HOOK );
 	}
 
 	public static function authorize() {
@@ -194,16 +225,24 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	public static function run( $convergence_lease = '', $authorized_admin = false, $expected_unmanaged_sha256 = '' ) {
 		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()
 			|| MAD4B_SCP_MCP_Request_Scope::current_request_is_endpoint_diagnostic_job() ) return new WP_Error( 'mad4b_mcp_repair_hotpath_denied', 'Repair requires a separate lifecycle request.' );
-		$expected_unmanaged_sha256 = strtolower( trim( (string) $expected_unmanaged_sha256 ) );
-		$conflict_mode = '' !== $expected_unmanaged_sha256;
+		$manual_expected_sha256 = strtolower( trim( (string) $expected_unmanaged_sha256 ) );
 		$cli = defined( 'WP_CLI' ) && WP_CLI
 			&& defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && true === constant( 'MAD4B_SCP_MCP_CLI_REQUEST' );
 		$cron = function_exists( 'wp_doing_cron' ) && wp_doing_cron()
 			&& function_exists( 'current_filter' ) && self::HOOK === current_filter();
-		if ( $conflict_mode && ( $cli || $cron || '' !== $convergence_lease ) ) return new WP_Error( 'mad4b_mcp_conflict_repair_admin_only', 'Unknown MU bootstrap replacement requires an explicit administrator request.' );
-		$authorization = $authorized_admin ? ( $conflict_mode ? self::authorize_conflict() : self::authorize() ) : new WP_Error( 'mad4b_mcp_repair_not_authorized', 'Repair is not authorized.' );
+		$automatic_context = $cron || '' !== $convergence_lease;
+		$automatic_expected_sha256 = '' === $manual_expected_sha256 && $automatic_context
+			? self::automatic_staging_conflict_sha256()
+			: '';
+		$expected_unmanaged_sha256 = '' !== $manual_expected_sha256 ? $manual_expected_sha256 : $automatic_expected_sha256;
+		$conflict_mode = '' !== $expected_unmanaged_sha256;
+		$automatic_conflict = '' !== $automatic_expected_sha256;
+		$explicit_conflict = '' !== $manual_expected_sha256;
+		if ( $explicit_conflict && ( $cli || $cron || '' !== $convergence_lease ) ) return new WP_Error( 'mad4b_mcp_conflict_repair_admin_only', 'Explicit unknown MU bootstrap replacement requires an administrator request.' );
+		$authorization = $authorized_admin ? ( $explicit_conflict ? self::authorize_conflict() : self::authorize() ) : new WP_Error( 'mad4b_mcp_repair_not_authorized', 'Repair is not authorized.' );
 		if ( ! $cli && ! $cron && '' === $convergence_lease && ( ! $authorized_admin || is_wp_error( $authorization ) ) ) return new WP_Error( 'mad4b_mcp_repair_lifecycle_required', 'An authorized repair lifecycle is required.' );
-		if ( $conflict_mode && ( is_wp_error( $authorization ) || ! is_string( $authorization ) || ! hash_equals( $expected_unmanaged_sha256, strtolower( $authorization ) ) ) ) return new WP_Error( 'mad4b_mcp_conflict_repair_stale_plan', 'Conflict recovery authorization no longer matches the observed MU bootstrap.' );
+		if ( $explicit_conflict && ( is_wp_error( $authorization ) || ! is_string( $authorization ) || ! hash_equals( $expected_unmanaged_sha256, strtolower( $authorization ) ) ) ) return new WP_Error( 'mad4b_mcp_conflict_repair_stale_plan', 'Conflict recovery authorization no longer matches the observed MU bootstrap.' );
+		if ( $automatic_conflict && ! $automatic_context ) return new WP_Error( 'mad4b_mcp_conflict_auto_lifecycle_required', 'Automatic conflict recovery requires the scheduled or convergence lifecycle.' );
 		if ( ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) return new WP_Error( 'mad4b_mcp_repair_profile_ineligible', 'Exact non-production managed-runtime enrollment is required.' );
 		$integrity = MAD4B_SCP_Dependency_Manager::mcp_adapter_disk_integrity();
 		if ( empty( $integrity['ready'] ) ) return new WP_Error( 'mcp_adapter_integrity_mismatch', 'Restore the certified MCP Adapter before recovery.' );
@@ -219,6 +258,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			if ( is_wp_error( $oauth_store ) ) return $oauth_store;
 			self::$active = true;
 			self::$conflict_expected_sha256 = $conflict_mode ? $expected_unmanaged_sha256 : '';
+			self::$conflict_recovery_source = $automatic_conflict ? 'automatic_staging_recovery' : ( $explicit_conflict ? 'explicit_admin_conflict_recovery' : '' );
 			$refresh = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 			if ( ! empty( $refresh['blocker'] ) ) return new WP_Error( $refresh['blocker'], 'Managed bootstrap refresh is blocked.' );
 			$guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap( true );
@@ -255,7 +295,9 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 				'eligible_for_cluster_aggregation' => $node_evidence['eligible_for_cluster_aggregation'],
 				'local_oauth_store' => is_array( $oauth_store ) ? $oauth_store : array(),
 				'production_mutation' => false,
-				'explicit_conflict_recovery' => $conflict_mode,
+				'explicit_conflict_recovery' => $explicit_conflict,
+				'automatic_conflict_recovery' => $automatic_conflict,
+				'conflict_recovery_source' => self::$conflict_recovery_source,
 				'conflict_observed_sha256' => $conflict_mode ? $expected_unmanaged_sha256 : '',
 				'conflict_backup_sha256' => isset( $refresh['conflict_backup_sha256'] ) ? $refresh['conflict_backup_sha256'] : '',
 				'ownership_receipt_valid' => ! empty( $refresh['ownership_receipt_valid'] ),
@@ -269,6 +311,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			return $result;
 		} finally {
 			self::$conflict_expected_sha256 = '';
+			self::$conflict_recovery_source = '';
 			self::$active = false;
 			if ( $own_lease ) MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease, 'mcp_runtime_recovery' );
 		}

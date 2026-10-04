@@ -185,6 +185,9 @@ for marker in (
     'conflict_status',
     "'site_ownership_receipt'",
     "'explicit_admin_conflict_recovery'",
+    "'automatic_staging_recovery'",
+    "'automatic_conflict_recovery'",
+    "'automatic_conflict_recovery_available'",
     "'mu_bootstrap_conflict_expected_hash_mismatch'",
     "'mu_bootstrap_conflict_bytes_changed_before_replace'",
     'backup_conflicting_bytes',
@@ -208,35 +211,58 @@ for marker in (
     "'mad4b_mcp_conflict_repair_stale_plan'",
     "'mad4b_mcp_conflict_repair_admin_only'",
     'conflict_expected_sha256()',
+    'conflict_recovery_source()',
+    'automatic_staging_conflict_sha256()',
+    'maybe_schedule_conflict_recovery()',
+    "add_action( 'init', array( __CLASS__, 'maybe_schedule_conflict_recovery' ), 50 )",
+    "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )",
+    "$automatic_context = $cron || '' !== $convergence_lease",
+    "'automatic_staging_recovery'",
+    "'mad4b_mcp_conflict_auto_lifecycle_required'",
     "self::$conflict_expected_sha256 = $conflict_mode ? $expected_unmanaged_sha256 : ''",
+    "self::$conflict_recovery_source = $automatic_conflict ? 'automatic_staging_recovery'",
     "self::$conflict_expected_sha256 = ''",
+    "self::$conflict_recovery_source = ''",
     "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap()",
-    "'explicit_conflict_recovery' => $conflict_mode",
+    "'automatic_conflict_recovery' => $automatic_conflict",
+    "'explicit_conflict_recovery' => $explicit_conflict",
 ):
-    require(recovery, marker, 'explicit-mu-conflict-recovery')
+    require(recovery, marker, 'automatic-mu-conflict-recovery')
 
 for marker in (
+    'Automatic MCP MU bootstrap recovery pending',
+    'Staging recovery is automatic.',
+    'No browser POST is required.',
+    'Background recovery scheduled.',
+    'Production remains fail-closed.',
+    'wp_next_scheduled( MAD4B_SCP_MCP_Runtime_Recovery::HOOK )',
+):
+    require(connection_ui, marker, 'automatic-mu-conflict-ui')
+
+for forbidden in (
     'Back up and replace unknown MCP bootstrap',
-    'manual_conflict_recovery_available',
     'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION',
     'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_CONFIRMATION',
 ):
-    require(connection_ui, marker, 'explicit-mu-conflict-ui')
+    forbid(connection_ui, forbidden, 'no-manual-browser-conflict-post')
 
 for marker in (
     "'runtime_recovery'",
     'MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status()',
     "'manual_conflict_recovery_available'",
+    "'automatic_conflict_recovery_available'",
+    "'background_recovery_scheduled'",
 ):
     require(endpoint_diagnostic, marker, 'mu-conflict-diagnostic')
 
-# Unknown bytes must remain an explicit administrator recovery path. Generic
-# lifecycle callers may not silently opt into adopting an unmanaged MU file.
+# Unknown bytes may be adopted only by the coordinator after it captured the
+# exact observed SHA in an eligible Staging scheduled/convergence lifecycle.
+# Never pass a live destination hash directly into the filesystem refresher.
 for forbidden in (
     "bootstrap( $status['destination_sha256_before'] )",
     "bootstrap( hash_file( 'sha256', $destination ) )",
 ):
-    forbid(recovery, forbidden, 'no-implicit-mu-conflict-adoption')
+    forbid(recovery, forbidden, 'no-unfenced-mu-conflict-adoption')
 
 transaction_reader = refresh.split('private static function read_transaction_option()', 1)[1].split('private static function transaction_record_for_owner', 1)[0]
 if 'return self::read_transaction_option();' in transaction_reader:

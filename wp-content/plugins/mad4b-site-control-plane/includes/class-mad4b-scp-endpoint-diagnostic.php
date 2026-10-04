@@ -111,6 +111,8 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 					'ownership_receipt_valid' => ! empty( $recovery['ownership_receipt_valid'] ),
 					'ownership_source' => isset( $recovery['ownership_source'] ) ? sanitize_key( (string) $recovery['ownership_source'] ) : '',
 					'manual_conflict_recovery_available' => ! empty( $recovery['manual_conflict_recovery_available'] ),
+					'automatic_conflict_recovery_available' => ! empty( $recovery['automatic_conflict_recovery_available'] ),
+					'background_recovery_scheduled' => class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && false !== wp_next_scheduled( MAD4B_SCP_MCP_Runtime_Recovery::HOOK ),
 				);
 				return new WP_Error(
 					'mad4b_endpoint_diagnostic_mu_bootstrap_not_ready',

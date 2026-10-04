@@ -258,25 +258,21 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Unmeasured values are shown as Not checked. Select an endpoint to inspect it without leaving this page. All endpoints runs one request at a time and stops on a timeout.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( current_user_can( 'update_plugins' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) {
 			$mu_conflict = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false ) ? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status() : array();
-			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_MCP_Runtime_Recovery::ACTION ) . '">';
-			wp_nonce_field( MAD4B_SCP_MCP_Runtime_Recovery::ACTION, 'nonce' );
-			echo '<input type="hidden" name="build" value="' . esc_attr( MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() ) . '">';
-			submit_button( __( 'Repair MCP runtime for next request', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-			echo '<p class="description">' . esc_html__( 'Installs or refreshes the managed early loader. After the redirect, run the endpoint diagnostic to verify recovery.', 'mad4b-site-control-plane' ) . '</p></form>';
-			if ( 'unmanaged_mu_bootstrap_path_conflict' === ( $mu_conflict['blocker'] ?? '' ) && ! empty( $mu_conflict['manual_conflict_recovery_available'] ) ) {
+			if ( 'unmanaged_mu_bootstrap_path_conflict' === ( $mu_conflict['blocker'] ?? '' ) ) {
 				$observed = strtolower( trim( (string) ( $mu_conflict['destination_sha256_before'] ?? '' ) ) );
-				echo '<div class="notice notice-error inline"><p><strong>' . esc_html__( 'Unmanaged MCP MU bootstrap conflict', 'mad4b-site-control-plane' ) . '</strong></p>';
-				echo '<p>' . esc_html__( 'The managed path is occupied by bytes that are neither the current loader, an approved historical loader, nor a loader previously owned by this exact site. Automatic overwrite remains blocked.', 'mad4b-site-control-plane' ) . '</p>';
-				echo '<p><code>' . esc_html( $observed ) . '</code></p></div>';
-				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin:12px 0 18px;max-width:900px">';
-				echo '<input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION ) . '">';
-				wp_nonce_field( MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION, 'nonce' );
+				$scheduled = wp_next_scheduled( MAD4B_SCP_MCP_Runtime_Recovery::HOOK );
+				echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Automatic MCP MU bootstrap recovery pending', 'mad4b-site-control-plane' ) . '</strong></p>';
+				echo '<p>' . esc_html__( 'Staging recovery is automatic. MAD4B will re-check the exact observed SHA-256 inside the recovery lifecycle, write a protected backup, atomically install the certified loader, record audit evidence, create a site-bound ownership receipt, and require a fresh request for verification. No browser POST is required.', 'mad4b-site-control-plane' ) . '</p>';
+				echo '<p><code>' . esc_html( $observed ) . '</code></p>';
+				if ( $scheduled ) echo '<p>' . esc_html__( 'Background recovery scheduled.', 'mad4b-site-control-plane' ) . '</p>';
+				else echo '<p>' . esc_html__( 'Background recovery will be scheduled automatically on the next ordinary Staging lifecycle request.', 'mad4b-site-control-plane' ) . '</p>';
+				echo '<p class="description">' . esc_html__( 'Production remains fail-closed. This process does not grant OAuth, Write, Developer, Breakglass, Production mutation, or raw-SQL authority.', 'mad4b-site-control-plane' ) . '</p></div>';
+			} else {
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_MCP_Runtime_Recovery::ACTION ) . '">';
+				wp_nonce_field( MAD4B_SCP_MCP_Runtime_Recovery::ACTION, 'nonce' );
 				echo '<input type="hidden" name="build" value="' . esc_attr( MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() ) . '">';
-				echo '<input type="hidden" name="observed_sha256" value="' . esc_attr( $observed ) . '">';
-				echo '<p><label><strong>' . esc_html__( 'Explicit recovery confirmation', 'mad4b-site-control-plane' ) . '</strong><br><input class="regular-text" type="text" name="confirmation" autocomplete="off" spellcheck="false" placeholder="' . esc_attr( MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_CONFIRMATION ) . '"></label></p>';
-				echo '<p class="description">' . esc_html__( 'This Staging-only action compares the exact observed SHA-256 again, writes a protected backup outside WordPress web roots, atomically installs the certified loader, records audit evidence, and creates a site-bound ownership receipt. It grants no OAuth, Write, Developer, Breakglass, or Production authority.', 'mad4b-site-control-plane' ) . '</p>';
-				submit_button( __( 'Back up and replace unknown MCP bootstrap', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-				echo '</form>';
+				submit_button( __( 'Repair MCP runtime for next request', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+				echo '<p class="description">' . esc_html__( 'Installs or refreshes the managed early loader. After the redirect, run the endpoint diagnostic to verify recovery.', 'mad4b-site-control-plane' ) . '</p></form>';
 			}
 		}
 		echo '<form id="mad4b-endpoint-diagnostic-form" method="post" style="margin:12px 0 18px">';
