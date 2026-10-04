@@ -42,8 +42,8 @@ final class MAD4B_SCP_Adaptive_Search_Acceptance {
 				'assertion_count_min' => 5, 'evidence_class' => 'scheduler_runtime',
 			),
 			'SEARCH_BUDGET_GOVERNOR_PASS' => array(
-				'fixtures' => array( 'protected_reserve', 'local_scope_truthful', 'hard_global_requires_shared_authority', 'billing_cycle_reset', 'provider_usage_reconciliation' ),
-				'assertion_count_min' => 5, 'evidence_class' => 'runtime_plus_authoritative_backend_fixture',
+				'fixtures' => array( 'protected_reserve', 'local_scope_truthful', 'stable_global_account_identity', 'hard_global_requires_shared_authority', 'billing_cycle_reset', 'provider_usage_reconciliation' ),
+				'assertion_count_min' => 6, 'evidence_class' => 'runtime_plus_authoritative_backend_fixture',
 			),
 			'SERP_PROVIDER_CONFORMANCE_PASS' => array(
 				'fixtures' => array( 'provider_descriptor', 'request_translation', 'bounded_execution', 'failure_taxonomy', 'normalization', 'usage_economics' ),
@@ -79,20 +79,20 @@ final class MAD4B_SCP_Adaptive_Search_Acceptance {
 	public static function review_hardening_gates() {
 		return array(
 			'SEARCH_OBSERVATION_COMPARABILITY_PASS' => array(
-				'fixtures' => array( 'same_context', 'provider_change_unclassified', 'cross_provider_classified', 'location_change', 'depth_change' ),
-				'assertion_count_min' => 5, 'evidence_class' => 'pure_runtime',
+				'fixtures' => array( 'same_context', 'provider_change_unclassified', 'cross_provider_certification_required', 'cross_provider_classified', 'location_change', 'depth_change' ),
+				'assertion_count_min' => 6, 'evidence_class' => 'pure_runtime',
 			),
 			'SEARCH_QUERY_URL_RANK_CAPTURE_SEMANTICS_PASS' => array(
 				'fixtures' => array( 'unicode_query', 'url_alias', 'rank_fields', 'complete_capture', 'partial_capture' ),
 				'assertion_count_min' => 5, 'evidence_class' => 'pure_runtime',
 			),
 			'SEARCH_ELIGIBILITY_AND_SURFACE_ADMISSION_PASS' => array(
-				'fixtures' => array( 'indexable_owned', 'noindex', 'x_robots', 'unknown_param', 'cardinality_cap', 'pagination_cap' ),
-				'assertion_count_min' => 6, 'evidence_class' => 'pure_runtime',
+				'fixtures' => array( 'indexable_owned', 'noindex', 'unknown_confidence', 'x_robots', 'unknown_param', 'cardinality_required', 'cardinality_cap', 'url_pagination_bound', 'pagination_cap' ),
+				'assertion_count_min' => 9, 'evidence_class' => 'pure_runtime',
 			),
 			'PROVIDER_ACCOUNT_DISTRIBUTED_BUDGET_AUTHORITY_PASS' => array(
-				'fixtures' => array( 'hard_global_without_authority_denied', 'authoritative_reservation', 'local_scope_truthful', 'reserve_protected', 'cycle_reset', 'stale_reservation_expiry', 'reconcile_provider_usage' ),
-				'assertion_count_min' => 7, 'evidence_class' => 'runtime_plus_authoritative_backend_fixture',
+				'fixtures' => array( 'stable_global_account_identity', 'hard_global_without_authority_denied', 'authoritative_reservation', 'local_scope_truthful', 'reserve_protected', 'cycle_reset', 'stale_reservation_expiry', 'reconcile_provider_usage' ),
+				'assertion_count_min' => 8, 'evidence_class' => 'runtime_plus_authoritative_backend_fixture',
 			),
 			'PROVIDER_EVIDENCE_RIGHTS_RETENTION_PASS' => array(
 				'fixtures' => array( 'raw_denied', 'raw_capped', 'normalized_capped', 'region_denied' ),
