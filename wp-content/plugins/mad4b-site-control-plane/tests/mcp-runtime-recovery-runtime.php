@@ -52,7 +52,7 @@ class MAD4B_SCP_Site_Profile {
 	static function origin_enrolled() { return true; }
 	static function managed_runtime_enabled() { return true; }
 	static function status() { return array(
-		'site_uuid' => 'receipt_foreign_site' === $case ? 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' : '123e4567-e89b-42d3-a456-426614174000',
+		'site_uuid' => '123e4567-e89b-42d3-a456-426614174000',
 		'revision' => 7,
 		'profile_digest' => str_repeat( 'a', 64 ),
 		'environment' => self::current_environment(),
@@ -187,7 +187,7 @@ if ( in_array( $case, array( 'receipt_managed', 'receipt_foreign_site' ), true )
 		'contract' => MAD4B_SCP_MCP_MU_Bootstrap_Refresh::OWNERSHIP_CONTRACT,
 		'sha256' => $owned_hash,
 		'source' => 'prior_refresh',
-		'site_uuid' => '123e4567-e89b-42d3-a456-426614174000',
+		'site_uuid' => 'receipt_foreign_site' === $case ? 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' : '123e4567-e89b-42d3-a456-426614174000',
 		'site_profile_revision' => 6,
 		'environment' => 'staging',
 		'origin_sha256' => hash( 'sha256', 'https://staging.fixture.test' ),
