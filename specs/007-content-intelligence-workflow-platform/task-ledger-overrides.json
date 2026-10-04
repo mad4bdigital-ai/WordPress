@@ -1899,9 +1899,10 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
         "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
-        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
       ],
-      "reason": "Responsibility extraction has started with non-authorizing server registration evidence moved behind a dedicated service and architecture size/dependency ratchets enforced. The remaining oversized legacy facades still require staged decomposition, so the task remains PARTIAL."
+      "reason": "Actual decomposition has begun: server registration failure/provenance evidence was extracted from the Servers facade into MAD4B_SCP_Server_Registration_Evidence and the facade ceiling was ratcheted from 1100 to 1050 lines. Remaining oversized legacy facades still require staged domain-service decomposition; size/dependency gates prevent regression meanwhile."
     },
     "T3764": {
       "status": "DONE",
