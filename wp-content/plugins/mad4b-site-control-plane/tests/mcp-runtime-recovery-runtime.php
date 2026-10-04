@@ -249,6 +249,7 @@ if ( 'auto_conflict_schedule' === $case ) {
 	MAD4B_SCP_MCP_Runtime_Recovery::maybe_schedule_conflict_recovery();
 	check_recovery( 1 === count( $GLOBALS['scheduled'] ), 'automatic conflict detector did not schedule background recovery' );
 	check_recovery( isset( $GLOBALS['scheduled'][ MAD4B_SCP_MCP_Runtime_Recovery::HOOK ] ), 'automatic conflict schedule used the wrong hook' );
+	check_recovery( (int) $GLOBALS['scheduled'][ MAD4B_SCP_MCP_Runtime_Recovery::HOOK ] <= time(), 'automatic conflict recovery was not immediately due for background spawning' );
 	check_recovery( '<?php // unknown pre-existing MU owner for automatic recovery' === file_get_contents( $destination ), 'scheduling mutated MU bytes synchronously' );
 	echo $case . ': PASS' . PHP_EOL; exit;
 }
