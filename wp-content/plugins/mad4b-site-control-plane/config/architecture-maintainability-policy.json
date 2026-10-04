@@ -26,11 +26,19 @@
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php": 2300,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": 1700,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php": 1250,
-      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php": 1100,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php": 1050,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php": 1025
     },
     "legacy_facade_growth_policy": "absolute_line_budget_no_growth_beyond_declared_ceiling",
-    "touched_legacy_facade_requires_parity_test_reference": true
+    "touched_legacy_facade_requires_parity_test_reference": true,
+    "legacy_facade_ratchets": {
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php": {
+        "previous_ceiling": 1100,
+        "current_ceiling": 1050,
+        "extracted_service": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+        "rationale": "Server registration failure/provenance evidence is now owned by a dedicated domain service; the facade may not absorb that responsibility again."
+      }
+    }
   },
   "dependency_policy": {
     "contract": "mad4b.architecture-dependency-policy.v1",
