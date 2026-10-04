@@ -16,6 +16,10 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 	const BUNDLE_CONTRACT = 'mad4b.production-live-evidence-bundle.v1';
 	const GATE_CONTRACT = 'mad4b.production-live-gate-evidence.v1';
 	const VERDICT_CONTRACT = 'mad4b.production-live-evidence-verdict.v1';
+	const EVIDENCE_TRUST_CONTRACT = 'mad4b.production-evidence-trust.v1';
+	const EVIDENCE_ATTESTATION_CONTRACT = 'mad4b.production-evidence-attestation.v1';
+	const EVIDENCE_CRYPTO_PURPOSE = 'production_evidence';
+	const EVIDENCE_TTL = 1800;
 	const MAX_BUNDLE_BYTES = 524288;
 	const MAX_EVIDENCE_ROWS = 64;
 
@@ -102,6 +106,7 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 		$rows = isset( $bundle['evidence'] ) && is_array( $bundle['evidence'] ) ? $bundle['evidence'] : array();
 		if ( count( $rows ) > self::MAX_EVIDENCE_ROWS ) return self::error( 'mad4b_production_readiness_evidence_budget_exceeded' );
 		$by_gate = array();
+		$trusted_gates = array();
 		foreach ( $rows as $row ) {
 			if ( ! is_array( $row ) || self::GATE_CONTRACT !== ( isset( $row['contract'] ) ? (string) $row['contract'] : '' ) ) {
 				return self::error( 'mad4b_production_readiness_gate_contract_invalid' );
@@ -167,6 +172,10 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 			} else {
 				return self::error( 'mad4b_production_readiness_mutation_class_invalid', array( 'gate' => $gate ) );
 			}
+
+			$trust = self::evidence_trust_verify( $row, $stage, $identity );
+			if ( is_wp_error( $trust ) ) return $trust;
+			$trusted_gates[ $gate ] = $trust;
 		}
 
 		$missing = array_values( array_diff( array_keys( $stage_by_gate ), array_keys( $by_gate ) ) );
@@ -180,12 +189,15 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 		sort( $optional, SORT_STRING );
 		sort( $disabled, SORT_STRING );
 		if ( $optional !== $disabled ) return self::error( 'mad4b_production_readiness_optional_fail_closed_set_invalid' );
+		if ( count( $trusted_gates ) !== count( $stage_by_gate ) ) return self::error( 'mad4b_production_readiness_trusted_gate_count_mismatch' );
 
 		return array(
 			'contract' => self::VERDICT_CONTRACT,
 			'profile' => 'control_plane_core',
 			'candidate_identity' => $identity,
 			'evidence_gate_count' => count( $stage_by_gate ),
+			'trusted_evidence_gate_count' => count( $trusted_gates ),
+			'evidence_trust_contract' => self::EVIDENCE_TRUST_CONTRACT,
 			'production_ready' => true,
 			'full_feature007_complete' => false,
 			'production_authorized' => false,
@@ -194,6 +206,253 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 			'mutation_performed' => false,
 			'production_mutation' => false,
 		);
+	}
+
+
+	private static function evidence_trust_verify( array $row, array $stage, array $identity ) {
+		$valid = self::evidence_trust_validate_bindings( $row, $stage, $identity );
+		if ( is_wp_error( $valid ) ) return $valid;
+		$mode = isset( $stage['trust_mode'] ) ? sanitize_key( (string) $stage['trust_mode'] ) : '';
+		if ( 'runtime_recompute' === $mode ) return self::evidence_trust_runtime_recompute( $row, $stage, $identity );
+		if ( 'signed_attestation' === $mode ) return self::evidence_trust_signed_attestation( $row, $stage, $identity );
+		return self::error( 'mad4b_production_readiness_trust_mode_invalid', array( 'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '' ) );
+	}
+
+	/**
+	 * Internal verifier-adapter helper. It is deliberately not registered as an
+	 * Ability/MCP tool and never grants Production authority.
+	 */
+	public static function seal_verified_evidence( array $row, array $stage, array $identity ) {
+		$valid = self::evidence_trust_validate_bindings( $row, $stage, $identity );
+		if ( is_wp_error( $valid ) ) return $valid;
+		if ( 'signed_attestation' !== sanitize_key( isset( $stage['trust_mode'] ) ? (string) $stage['trust_mode'] : '' ) ) {
+			return self::error( 'mad4b_production_readiness_attestation_not_required' );
+		}
+		$method_check = self::evidence_trust_verify_method_evidence( $row, $stage, $identity );
+		if ( is_wp_error( $method_check ) ) return $method_check;
+		if ( ! class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) return self::error( 'mad4b_production_readiness_evidence_crypto_unavailable' );
+		$issued_at = self::evidence_trust_now();
+		$ttl = self::evidence_trust_ttl();
+		$claim = self::evidence_trust_claim( $row, $stage, $identity, $issued_at, $issued_at + $ttl );
+		$digest = self::canonical_digest( $claim );
+		if ( is_wp_error( $digest ) ) return $digest;
+		$signature = MAD4B_SCP_Crypto_Profile::sign_digest_for_purpose( self::EVIDENCE_CRYPTO_PURPOSE, $digest );
+		if ( is_wp_error( $signature ) ) return $signature;
+		return array(
+			'contract' => self::EVIDENCE_ATTESTATION_CONTRACT,
+			'claim' => $claim,
+			'claim_sha256' => $digest,
+			'signature' => $signature,
+			'authorizing' => false,
+		);
+	}
+
+	private static function evidence_trust_validate_bindings( array $row, array $stage, array $identity ) {
+		$stage_id = isset( $stage['id'] ) ? sanitize_key( (string) $stage['id'] ) : '';
+		$gate = isset( $stage['gate'] ) ? sanitize_key( (string) $stage['gate'] ) : '';
+		$producer = isset( $stage['producer'] ) ? (string) $stage['producer'] : '';
+		$producer_contract = isset( $stage['producer_contract'] ) ? (string) $stage['producer_contract'] : '';
+		$mode = isset( $stage['trust_mode'] ) ? sanitize_key( (string) $stage['trust_mode'] ) : '';
+		$method = isset( $stage['attestation_method'] ) ? sanitize_key( (string) $stage['attestation_method'] ) : '';
+		if ( '' === $stage_id || '' === $gate || '' === $producer || '' === $producer_contract || '' === $mode || '' === $method ) {
+			return self::error( 'mad4b_production_readiness_stage_trust_binding_missing', array( 'stage_id' => $stage_id ) );
+		}
+		if ( self::GATE_CONTRACT !== ( isset( $row['contract'] ) ? (string) $row['contract'] : '' )
+			|| 'staging' !== ( isset( $row['environment'] ) ? (string) $row['environment'] : '' )
+			|| $gate !== sanitize_key( isset( $row['gate'] ) ? (string) $row['gate'] : '' )
+			|| $producer !== ( isset( $row['producer'] ) ? (string) $row['producer'] : '' )
+			|| $producer_contract !== ( isset( $row['producer_contract'] ) ? (string) $row['producer_contract'] : '' ) ) {
+			return self::error( 'mad4b_production_readiness_stage_trust_binding_mismatch', array( 'stage_id' => $stage_id ) );
+		}
+		$row_identity = self::normalize_identity( isset( $row['candidate_identity'] ) && is_array( $row['candidate_identity'] ) ? $row['candidate_identity'] : array() );
+		if ( is_wp_error( $row_identity ) || ! self::identity_equal( $identity, $row_identity ) ) {
+			return self::error( 'mad4b_production_readiness_stage_trust_identity_mismatch', array( 'stage_id' => $stage_id ) );
+		}
+		$evidence = isset( $row['producer_evidence'] ) && is_array( $row['producer_evidence'] ) ? $row['producer_evidence'] : array();
+		if ( $producer_contract !== ( isset( $evidence['contract'] ) ? (string) $evidence['contract'] : '' ) ) {
+			return self::error( 'mad4b_production_readiness_exact_producer_contract_mismatch', array( 'stage_id' => $stage_id ) );
+		}
+		$digest = isset( $row['producer_evidence_sha256'] ) ? strtolower( trim( (string) $row['producer_evidence_sha256'] ) ) : '';
+		$actual = self::canonical_digest( $evidence );
+		if ( is_wp_error( $actual ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $digest ) || ! hash_equals( $digest, $actual ) ) {
+			return self::error( 'mad4b_production_readiness_producer_evidence_digest_mismatch', array( 'stage_id' => $stage_id ) );
+		}
+		foreach ( array( 'production_mutation', 'production_authorized', 'authorizing' ) as $key ) {
+			if ( true === ( isset( $evidence[ $key ] ) ? $evidence[ $key ] : false ) ) {
+				return self::error( 'mad4b_production_readiness_producer_authority_widened', array( 'stage_id' => $stage_id ) );
+			}
+		}
+		foreach ( array( 'ready', 'mutation_performed', 'production_mutation', 'authorizing', 'rollback_verified', 'postcondition_verified' ) as $key ) {
+			if ( array_key_exists( $key, $evidence ) && array_key_exists( $key, $row ) && $evidence[ $key ] !== $row[ $key ] ) {
+				return self::error( 'mad4b_production_readiness_outer_evidence_flag_mismatch', array( 'stage_id' => $stage_id, 'field' => $key ) );
+			}
+		}
+		return true;
+	}
+
+	private static function evidence_trust_runtime_recompute( array $row, array $stage, array $identity ) {
+		if ( 'runtime_recompute' !== sanitize_key( (string) ( isset( $stage['attestation_method'] ) ? $stage['attestation_method'] : '' ) )
+			|| 'mad4b/production-certification-readonly-evidence' !== ( isset( $stage['producer_ability'] ) ? (string) $stage['producer_ability'] : '' )
+			|| ! class_exists( 'MAD4B_SCP_Production_Certification' ) ) {
+			return self::error( 'mad4b_production_readiness_runtime_recompute_unavailable', array( 'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '' ) );
+		}
+		$producer_stage_id = isset( $stage['producer_stage_id'] ) ? sanitize_key( (string) $stage['producer_stage_id'] ) : '';
+		if ( '' === $producer_stage_id || $producer_stage_id !== sanitize_key( (string) $stage['id'] ) ) {
+			return self::error( 'mad4b_production_readiness_runtime_recompute_stage_mismatch', array( 'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '' ) );
+		}
+		$live = MAD4B_SCP_Production_Certification::execute( array( 'stage_id' => $producer_stage_id ) );
+		if ( is_wp_error( $live ) || ! is_array( $live ) ) return self::error( 'mad4b_production_readiness_runtime_recompute_failed', array( 'stage_id' => $producer_stage_id ) );
+		$valid = self::evidence_trust_validate_bindings( $live, $stage, $identity );
+		if ( is_wp_error( $valid ) ) return $valid;
+		$expected = self::canonical_digest( self::evidence_trust_row_material( $live, $stage, $identity ) );
+		$provided = self::canonical_digest( self::evidence_trust_row_material( $row, $stage, $identity ) );
+		if ( is_wp_error( $expected ) || is_wp_error( $provided ) || ! hash_equals( (string) $expected, (string) $provided ) ) {
+			return self::error( 'mad4b_production_readiness_runtime_recompute_mismatch', array( 'stage_id' => $producer_stage_id ) );
+		}
+		return array(
+			'contract' => self::EVIDENCE_TRUST_CONTRACT,
+			'stage_id' => $producer_stage_id,
+			'mode' => 'runtime_recompute',
+			'verified' => true,
+			'fresh' => true,
+			'authorizing' => false,
+		);
+	}
+
+	private static function evidence_trust_signed_attestation( array $row, array $stage, array $identity ) {
+		$method_check = self::evidence_trust_verify_method_evidence( $row, $stage, $identity );
+		if ( is_wp_error( $method_check ) ) return $method_check;
+		$att = isset( $row['evidence_attestation'] ) && is_array( $row['evidence_attestation'] ) ? $row['evidence_attestation'] : array();
+		if ( self::EVIDENCE_ATTESTATION_CONTRACT !== ( isset( $att['contract'] ) ? (string) $att['contract'] : '' )
+			|| empty( $att['claim'] ) || ! is_array( $att['claim'] )
+			|| empty( $att['signature'] ) || ! is_array( $att['signature'] ) ) {
+			return self::error( 'mad4b_production_readiness_evidence_attestation_missing', array( 'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '' ) );
+		}
+		$claim = $att['claim'];
+		$issued_at = isset( $claim['issued_at'] ) ? (int) $claim['issued_at'] : 0;
+		$expires_at = isset( $claim['expires_at'] ) ? (int) $claim['expires_at'] : 0;
+		$ttl = self::evidence_trust_ttl();
+		$now = self::evidence_trust_now();
+		if ( $issued_at < 1 || $expires_at < 1 || $issued_at > $now || $expires_at <= $now || $expires_at - $issued_at !== $ttl ) {
+			return self::error( 'mad4b_production_readiness_evidence_attestation_stale', array( 'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '' ) );
+		}
+		if ( class_exists( 'MAD4B_SCP_Time_Policy' ) ) {
+			$time_check = MAD4B_SCP_Time_Policy::assert_timestamp( self::EVIDENCE_CRYPTO_PURPOSE, $issued_at, $ttl );
+			if ( is_wp_error( $time_check ) ) return self::error( 'mad4b_production_readiness_evidence_attestation_time_invalid' );
+		}
+		$expected_claim = self::evidence_trust_claim( $row, $stage, $identity, $issued_at, $expires_at );
+		$actual_digest = self::canonical_digest( $claim );
+		$expected_digest = self::canonical_digest( $expected_claim );
+		$declared_digest = isset( $att['claim_sha256'] ) ? strtolower( trim( (string) $att['claim_sha256'] ) ) : '';
+		if ( is_wp_error( $actual_digest ) || is_wp_error( $expected_digest )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $declared_digest )
+			|| ! hash_equals( $declared_digest, (string) $actual_digest )
+			|| ! hash_equals( (string) $actual_digest, (string) $expected_digest ) ) {
+			return self::error( 'mad4b_production_readiness_evidence_attestation_claim_mismatch', array( 'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '' ) );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) return self::error( 'mad4b_production_readiness_evidence_crypto_unavailable' );
+		$verified = MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose( $att['signature'], $declared_digest, self::EVIDENCE_CRYPTO_PURPOSE );
+		if ( is_wp_error( $verified ) ) return self::error( 'mad4b_production_readiness_evidence_signature_invalid', array( 'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '' ) );
+		return array(
+			'contract' => self::EVIDENCE_TRUST_CONTRACT,
+			'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '',
+			'mode' => 'signed_attestation',
+			'attestation_method' => isset( $stage['attestation_method'] ) ? (string) $stage['attestation_method'] : '',
+			'claim_sha256' => $declared_digest,
+			'signature_profile' => isset( $att['signature']['profile_id'] ) ? (string) $att['signature']['profile_id'] : '',
+			'signature_kid' => isset( $att['signature']['kid'] ) ? (string) $att['signature']['kid'] : '',
+			'verified' => true,
+			'fresh' => true,
+			'authorizing' => false,
+		);
+	}
+
+	private static function evidence_trust_verify_method_evidence( array $row, array $stage, array $identity ) {
+		$method = sanitize_key( isset( $stage['attestation_method'] ) ? (string) $stage['attestation_method'] : '' );
+		$evidence = isset( $row['producer_evidence'] ) && is_array( $row['producer_evidence'] ) ? $row['producer_evidence'] : array();
+		$stage_id = isset( $stage['id'] ) ? (string) $stage['id'] : '';
+		if ( 'exact_deployment_verifier' === $method ) {
+			if ( empty( $evidence['ready'] ) || empty( $evidence['runtime_identity_match'] ) || ! empty( $evidence['mutation_performed'] ) ) return self::error( 'mad4b_production_readiness_deployment_evidence_invalid', array( 'stage_id' => $stage_id ) );
+			$live = strtolower( trim( (string) ( isset( $evidence['live_source_sha'] ) ? $evidence['live_source_sha'] : '' ) ) );
+			$expected = strtolower( trim( (string) ( isset( $evidence['expected_sha'] ) ? $evidence['expected_sha'] : '' ) ) );
+			if ( ! hash_equals( (string) $identity['source_commit_sha'], $live ) || ! hash_equals( (string) $identity['source_commit_sha'], $expected ) ) return self::error( 'mad4b_production_readiness_deployment_identity_untrusted', array( 'stage_id' => $stage_id ) );
+			return true;
+		}
+		if ( 'external_release_root_verifier' === $method ) {
+			if ( empty( $evidence['verified'] ) || empty( $evidence['attestation_verified'] ) || false !== ( isset( $evidence['runtime_self_attestation_authoritative'] ) ? $evidence['runtime_self_attestation_authoritative'] : null ) || 'external_release_verifier' !== ( isset( $evidence['verification_boundary'] ) ? (string) $evidence['verification_boundary'] : '' ) ) return self::error( 'mad4b_production_readiness_release_root_evidence_invalid', array( 'stage_id' => $stage_id ) );
+			foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) if ( empty( $evidence[ $key ] ) || ! hash_equals( (string) $identity[ $key ], strtolower( (string) $evidence[ $key ] ) ) ) return self::error( 'mad4b_production_readiness_release_root_identity_mismatch', array( 'stage_id' => $stage_id, 'field' => $key ) );
+			return true;
+		}
+		if ( 'rollback_retention_verifier' === $method ) {
+			$expires = isset( $evidence['artifact_expires_at'] ) ? strtotime( (string) $evidence['artifact_expires_at'] ) : false;
+			if ( 'github_actions_artifact_api' !== ( isset( $evidence['verification_source'] ) ? (string) $evidence['verification_source'] : '' ) || true === ( isset( $evidence['expired'] ) ? $evidence['expired'] : true ) || false === $expires || $expires <= self::evidence_trust_now() ) return self::error( 'mad4b_production_readiness_rollback_retention_evidence_invalid', array( 'stage_id' => $stage_id ) );
+			return true;
+		}
+		if ( 'repository_workflow_verifier' === $method ) {
+			$workflow_head = strtolower( trim( (string) ( isset( $evidence['head_sha'] ) ? $evidence['head_sha'] : '' ) ) );
+			if ( 'success' !== strtolower( (string) ( isset( $evidence['conclusion'] ) ? $evidence['conclusion'] : '' ) ) || ! hash_equals( (string) $identity['source_commit_sha'], $workflow_head ) ) return self::error( 'mad4b_production_readiness_repository_workflow_evidence_invalid', array( 'stage_id' => $stage_id ) );
+			return true;
+		}
+		if ( 'durable_host_runner_receipt' === $method ) {
+			if ( 'mad4b.tool-execution-receipt.v1' !== ( isset( $evidence['contract'] ) ? (string) $evidence['contract'] : '' ) || empty( $evidence['mutation_performed'] ) || 'PASS' !== ( isset( $evidence['readback_verdict'] ) ? (string) $evidence['readback_verdict'] : '' ) || empty( $evidence['approval_ref'] ) || empty( $evidence['authority_ref'] ) ) return self::error( 'mad4b_production_readiness_host_runner_receipt_invalid', array( 'stage_id' => $stage_id ) );
+			return true;
+		}
+		if ( 'recovery_plane_receipt' === $method ) {
+			if ( 'DURABLE_VERIFIED_RECEIPT' !== ( isset( $evidence['evidence_state'] ) ? (string) $evidence['evidence_state'] : '' ) || true !== ( isset( $evidence['readback_verified'] ) ? $evidence['readback_verified'] : false ) ) return self::error( 'mad4b_production_readiness_recovery_receipt_invalid', array( 'stage_id' => $stage_id ) );
+			return true;
+		}
+		if ( 'governed_execution_receipt' === $method ) {
+			if ( ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) ) return self::error( 'mad4b_production_readiness_execution_receipt_verifier_unavailable', array( 'stage_id' => $stage_id ) );
+			$verified = MAD4B_SCP_Execution_Receipt::verify( $evidence );
+			if ( is_wp_error( $verified ) || empty( $verified['valid'] ) ) return self::error( 'mad4b_production_readiness_execution_receipt_invalid', array( 'stage_id' => $stage_id ) );
+			return true;
+		}
+		return self::error( 'mad4b_production_readiness_attestation_method_invalid', array( 'stage_id' => $stage_id, 'method' => $method ) );
+	}
+
+	private static function evidence_trust_row_material( array $row, array $stage, array $identity ) {
+		return array(
+			'contract' => self::GATE_CONTRACT,
+			'stage_id' => isset( $stage['id'] ) ? (string) $stage['id'] : '',
+			'gate' => isset( $stage['gate'] ) ? (string) $stage['gate'] : '',
+			'environment' => 'staging',
+			'candidate_identity' => $identity,
+			'producer' => isset( $stage['producer'] ) ? (string) $stage['producer'] : '',
+			'producer_contract' => isset( $stage['producer_contract'] ) ? (string) $stage['producer_contract'] : '',
+			'producer_evidence_sha256' => isset( $row['producer_evidence_sha256'] ) ? strtolower( trim( (string) $row['producer_evidence_sha256'] ) ) : '',
+			'ready' => true === ( isset( $row['ready'] ) ? $row['ready'] : false ),
+			'mutation_performed' => true === ( isset( $row['mutation_performed'] ) ? $row['mutation_performed'] : false ),
+			'production_mutation' => true === ( isset( $row['production_mutation'] ) ? $row['production_mutation'] : false ),
+			'authorizing' => true === ( isset( $row['authorizing'] ) ? $row['authorizing'] : false ),
+			'rollback_verified' => true === ( isset( $row['rollback_verified'] ) ? $row['rollback_verified'] : false ),
+			'postcondition_verified' => true === ( isset( $row['postcondition_verified'] ) ? $row['postcondition_verified'] : false ),
+			'trust_mode' => isset( $stage['trust_mode'] ) ? (string) $stage['trust_mode'] : '',
+			'attestation_method' => isset( $stage['attestation_method'] ) ? (string) $stage['attestation_method'] : '',
+		);
+	}
+
+	private static function evidence_trust_claim( array $row, array $stage, array $identity, $issued_at, $expires_at ) {
+		return array(
+			'contract' => self::EVIDENCE_ATTESTATION_CONTRACT,
+			'material' => self::evidence_trust_row_material( $row, $stage, $identity ),
+			'issued_at' => (int) $issued_at,
+			'expires_at' => (int) $expires_at,
+			'authorizing' => false,
+		);
+	}
+
+	private static function evidence_trust_now() {
+		return class_exists( 'MAD4B_SCP_Time_Policy' ) && method_exists( 'MAD4B_SCP_Time_Policy', 'now_epoch' )
+			? (int) MAD4B_SCP_Time_Policy::now_epoch()
+			: time();
+	}
+
+	private static function evidence_trust_ttl() {
+		if ( class_exists( 'MAD4B_SCP_Time_Policy' ) && method_exists( 'MAD4B_SCP_Time_Policy', 'bounded_ttl' ) ) {
+			$ttl = MAD4B_SCP_Time_Policy::bounded_ttl( self::EVIDENCE_CRYPTO_PURPOSE, self::EVIDENCE_TTL );
+			if ( ! is_wp_error( $ttl ) ) return (int) $ttl;
+		}
+		return self::EVIDENCE_TTL;
 	}
 
 	public static function canonical_digest( $value ) {

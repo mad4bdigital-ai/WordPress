@@ -15,7 +15,10 @@
       "required_markers": [
         "runtime_identity_match",
         "mutation_performed"
-      ]
+      ],
+      "producer_contract": "mad4b.etg-deployment-readiness.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "exact_deployment_verifier"
     },
     {
       "stage_id": "runtime_root_trust",
@@ -28,7 +31,10 @@
       "required_markers": [
         "RELEASE-ROOT-TRUST-VERIFICATION.json",
         "verify_release_root_trust.py"
-      ]
+      ],
+      "producer_contract": "mad4b.release-root-trust-verification.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "external_release_root_verifier"
     },
     {
       "stage_id": "rollback_retention",
@@ -41,7 +47,10 @@
         "mad4b.rollback-retention-receipt.v1",
         "github_actions_artifact_api",
         "retention verified"
-      ]
+      ],
+      "producer_contract": "mad4b.rollback-retention-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "rollback_retention_verifier"
     },
     {
       "stage_id": "host_runner_parity",
@@ -57,7 +66,10 @@
         "mad4b/host-operation-receipt",
         "workspace.file.replace",
         "workspace.file.rollback"
-      ]
+      ],
+      "producer_contract": "mad4b.tool-execution-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "durable_host_runner_receipt"
     },
     {
       "stage_id": "protected_backup_restore",
@@ -72,7 +84,10 @@
         "verify-backup",
         "plan-backup-restore",
         "apply-backup-restore"
-      ]
+      ],
+      "producer_contract": "mad4b.protected-backup-restore-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "recovery_plane_receipt"
     },
     {
       "stage_id": "out_of_band_recovery",
@@ -85,7 +100,10 @@
         "plan-restore",
         "apply-restore",
         "SUPPORTED_ENVIRONMENTS = {\"staging\"}"
-      ]
+      ],
+      "producer_contract": "mad4b.recovery-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "recovery_plane_receipt"
     },
     {
       "stage_id": "provider_side_channel_inventory",
@@ -97,7 +115,10 @@
       "required_markers": [
         "provider_side_channel_inventory",
         "mad4b/production-certification-readonly-evidence"
-      ]
+      ],
+      "producer_contract": "mad4b.mcp-peer-governance.v2",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
     },
     {
       "stage_id": "multi_authority_canary",
@@ -109,7 +130,10 @@
       "required_markers": [
         "multi_authority_canary",
         "mad4b.multi-authority-live-canary.v1"
-      ]
+      ],
+      "producer_contract": "mad4b.multi-authority-live-canary.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
     },
     {
       "stage_id": "policy_resolution_canary",
@@ -121,7 +145,10 @@
       "required_markers": [
         "policy_resolution_canary",
         "mad4b.production-policy-probe.v1"
-      ]
+      ],
+      "producer_contract": "mad4b.production-policy-probe.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
     },
     {
       "stage_id": "consistency_fault_canary",
@@ -136,7 +163,10 @@
         "mad4b/mutation-undo",
         "approval_ticket_id",
         "verified"
-      ]
+      ],
+      "producer_contract": "mad4b.execution-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "governed_execution_receipt"
     },
     {
       "stage_id": "security_fault_canary",
@@ -151,7 +181,10 @@
         "mad4b.production-security-live-canary.v1",
         "generic_shell_available",
         "raw_sql_available"
-      ]
+      ],
+      "producer_contract": "mad4b.production-security-live-canary.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
     },
     {
       "stage_id": "operator_doctor",
@@ -164,7 +197,10 @@
       "required_markers": [
         "operator_doctor",
         "mad4b.operator-doctor.v1"
-      ]
+      ],
+      "producer_contract": "mad4b.operator-doctor.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
     },
     {
       "stage_id": "formal_state_repository_proof",
@@ -175,7 +211,10 @@
       ],
       "required_markers": [
         "Feature 007 Critical Kernel"
-      ]
+      ],
+      "producer_contract": "mad4b.github-workflow-run-evidence.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "repository_workflow_verifier"
     },
     {
       "stage_id": "request_receipt_rollback_vertical_slice",
@@ -193,7 +232,10 @@
         "approval_ref",
         "readback_verdict",
         "SUPERSEDED_BY_VERIFIED_ROLLBACK"
-      ]
+      ],
+      "producer_contract": "mad4b.tool-execution-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "durable_host_runner_receipt"
     }
   ]
 }

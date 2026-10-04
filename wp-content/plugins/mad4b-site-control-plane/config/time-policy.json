@@ -56,6 +56,13 @@
       "max_ttl_seconds": 1800,
       "max_future_skew_seconds": 60,
       "max_age_seconds": 1800
+    },
+    "production_evidence": {
+      "default_ttl_seconds": 1800,
+      "min_ttl_seconds": 300,
+      "max_ttl_seconds": 3600,
+      "max_future_skew_seconds": 60,
+      "max_age_seconds": 1800
     }
   },
   "offline_authorization": {
