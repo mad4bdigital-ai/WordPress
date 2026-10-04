@@ -76,6 +76,32 @@ class MAD4B_SCP_Transport_Context { public static function current_server_id() {
 class MAD4B_SCP_Authorization {
 	public static function authority_status() { return array( 'status' => 'ready_read_only', 'blockers' => array() ); }
 }
+class MAD4B_SCP_Servers {
+	public static $raw_query_mounted = false;
+	public static function write_tools() { return self::$raw_query_mounted ? array( 'media/set-featured', 'mad4b/database-raw-query' ) : array( 'media/set-featured' ); }
+	public static function chatgpt_base_tools() { return array( 'mad4b/read-discover', 'mad4b/write-discover' ); }
+}
+class MAD4B_SCP_Host_Bridge {
+	public static $generic_shell = false;
+	public static function capabilities() {
+		return array(
+			'contract' => 'mad4b.host-bridge.v1',
+			'operations' => array(),
+			'generic_shell_available' => self::$generic_shell,
+			'raw_sql_available' => false,
+			'caller_executable_paths_allowed' => false,
+			'caller_command_strings_allowed' => false,
+			'production_authorized' => false,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+}
+class MAD4B_SCP_Governed_Runtime_Gates {
+	public static function raw_sql_write_enabled() { return false; }
+	public static function raw_sql_ddl_enabled() { return false; }
+	public static function raw_sql_breakglass_enabled() { return false; }
+}
 class MAD4B_SCP_Policy_Resolution {
 	public static function current_operating_mode() { return 'SINGLE_OWNER_HARDENED'; }
 	public static function config_digest() { return str_repeat( 'f', 64 ); }
@@ -104,6 +130,7 @@ $stages = array(
 	'provider_side_channel_inventory',
 	'multi_authority_canary',
 	'policy_resolution_canary',
+	'security_fault_canary',
 	'operator_doctor',
 );
 foreach ( $stages as $stage ) {
@@ -117,4 +144,8 @@ foreach ( $stages as $stage ) {
 MAD4B_SCP_MCP_Peer_Governance::$blocked = true;
 $blocked = MAD4B_SCP_Production_Certification::execute( array( 'stage_id' => 'provider_side_channel_inventory' ) );
 check( empty( $blocked['ready'] ) && in_array( 'mcp_write_side_channel_detected', $blocked['blockers'], true ), 'side-channel blocker did not fail closed' );
+MAD4B_SCP_Servers::$raw_query_mounted = true;
+$security_blocked = MAD4B_SCP_Production_Certification::execute( array( 'stage_id' => 'security_fault_canary' ) );
+check( empty( $security_blocked['ready'] ) && in_array( 'raw_sql_on_write_surface', $security_blocked['blockers'], true ), 'raw SQL surface blocker did not fail closed' );
+MAD4B_SCP_Servers::$raw_query_mounted = false;
 echo "mad4b.production-certification-runtime.v1: PASS\n";
