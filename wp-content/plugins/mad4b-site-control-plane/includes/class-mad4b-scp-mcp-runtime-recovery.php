@@ -17,6 +17,7 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle' ) );
 		add_action( 'admin_post_' . self::CONFLICT_ACTION, array( __CLASS__, 'handle_conflict' ) );
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 20, 2 );
+		add_action( 'init', array( __CLASS__, 'maybe_schedule_conflict_recovery' ), 50 );
 		add_action( self::HOOK, array( __CLASS__, 'run_cron' ) );
 		add_action( 'mad4b_scp_site_profile_saved', array( __CLASS__, 'profile_saved' ) );
 		register_activation_hook( MAD4B_SCP_FILE, array( __CLASS__, 'schedule' ) );
@@ -123,6 +124,14 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 			: json_encode( $fingerprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$evidence['evidence_sha256'] = hash( 'sha256', is_string( $encoded ) ? $encoded : '' );
 		return $evidence;
+	}
+
+	public static function maybe_schedule_conflict_recovery() {
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return;
+		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()
+			|| MAD4B_SCP_MCP_Request_Scope::current_request_is_endpoint_diagnostic_job() ) return;
+		if ( '' === self::automatic_staging_conflict_sha256() ) return;
+		self::schedule();
 	}
 
 	public static function run_cron() {
