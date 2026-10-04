@@ -582,6 +582,7 @@ jobs:
               '.github/workflows/mad4b-approval-decision-contract.yml',
               '.github/workflows/mad4b-oauth-resource-bridge.yml',
               '.github/workflows/mad4b-runtime-release-set.yml',
+              '.github/workflows/mad4b-local-oauth-standalone.yml',
           ]
           critical_workflow_guard_jobs = {
               '.github/workflows/mad4b-site-control-plane.yml': [
@@ -615,6 +616,12 @@ jobs:
               ],
               '.github/workflows/mad4b-runtime-release-set.yml': [
                   'Runtime release-set contract',
+              ],
+              '.github/workflows/mad4b-local-oauth-standalone.yml': [
+                  'Local OAuth standalone contract',
+                  'Local OAuth runtime (latest / PHP 8.3 / bundled-0.6.1)',
+                  'Local OAuth runtime (latest / PHP 8.3 / target-0.7.0)',
+                  'Local OAuth runtime (6.9 / PHP 7.4 / bundled-0.6.1)',
               ],
           }
           if set(critical_workflow_guard_jobs) != set(critical_trigger_workflows):
@@ -775,6 +782,10 @@ jobs:
               'Governed execution fence (latest)',
               'Human approval decision (8.3)',
               'OAuth bridge runtime (latest)',
+              'Local OAuth standalone contract',
+              'Local OAuth runtime (latest / PHP 8.3 / bundled-0.6.1)',
+              'Local OAuth runtime (latest / PHP 8.3 / target-0.7.0)',
+              'Local OAuth runtime (6.9 / PHP 7.4 / bundled-0.6.1)',
               schema_check,
               'Repository governance policy',
               'Repository feature boundary',
