@@ -198,6 +198,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$enabled_helpers = self::normalize_string_list( isset( $raw['enabled_helpers'] ) ? $raw['enabled_helpers'] : array(), self::MAX_HELPERS );
 		foreach ( $enabled_helpers as $helper_id ) {
 			if ( ! isset( $catalog[ $helper_id ] ) ) return new WP_Error( 'mad4b_content_experience_helper_missing', 'Configured helper is not registered.', array( 'helper_id' => $helper_id ) );
+			if ( ! empty( $catalog[ $helper_id ]['built_in'] ) ) return new WP_Error( 'mad4b_content_experience_builtin_helper_implicit', 'Built-in helpers are always available through their typed fields and must not be enabled as extension helpers.', array( 'helper_id' => $helper_id ) );
 			if ( empty( $catalog[ $helper_id ]['reversible'] ) ) return new WP_Error( 'mad4b_content_experience_helper_not_reversible', 'Experience mutation helpers must declare a reversible contract.', array( 'helper_id' => $helper_id ) );
 		}
 
@@ -453,7 +454,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		);
 	}
 
-	public static function can_manage_profiles() { return current_user_can( 'manage_options' ); }
+	public static function can_manage_profiles( $input = null ) { return current_user_can( 'manage_options' ); }
 
 	private static function operation_permission( $slug, $operation ) {
 		return static function ( $input = array() ) use ( $slug, $operation ) {
