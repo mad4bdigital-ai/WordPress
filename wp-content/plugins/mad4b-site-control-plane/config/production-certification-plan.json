@@ -51,25 +51,31 @@
       "id": "provider_side_channel_inventory",
       "gate": "provider_side_channel_safe",
       "mutation_class": "read_only",
-      "producer": "governed_runtime_diagnostics",
-      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
-      "rollback_required": false
+      "producer": "mad4b/production-certification-readonly-evidence#mcp-peer-governance",
+      "evidence_contract": "mad4b.mcp-peer-governance.v2",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "provider_side_channel_inventory"
     },
     {
       "id": "multi_authority_canary",
       "gate": "multi_authority_live",
       "mutation_class": "read_only",
-      "producer": "governed_runtime_diagnostics",
-      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
-      "rollback_required": false
+      "producer": "mad4b/production-certification-readonly-evidence#multi-authority",
+      "evidence_contract": "mad4b.multi-authority-live-canary.v1",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "multi_authority_canary"
     },
     {
       "id": "policy_resolution_canary",
       "gate": "policy_engine_ready",
       "mutation_class": "read_only",
-      "producer": "governed_runtime_diagnostics",
-      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
-      "rollback_required": false
+      "producer": "mad4b/production-certification-readonly-evidence#policy-probe",
+      "evidence_contract": "mad4b.production-policy-probe.v1",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "policy_resolution_canary"
     },
     {
       "id": "consistency_fault_canary",
@@ -91,9 +97,11 @@
       "id": "operator_doctor",
       "gate": "operator_recovery_review_ready",
       "mutation_class": "read_only",
-      "producer": "tools/mad4b_host_runner.py",
-      "evidence_contract": "mad4b.host-runner-doctor.v1",
-      "rollback_required": false
+      "producer": "mad4b/production-certification-readonly-evidence#operator-doctor",
+      "evidence_contract": "mad4b.operator-doctor.v1",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "operator_doctor"
     },
     {
       "id": "formal_state_repository_proof",
