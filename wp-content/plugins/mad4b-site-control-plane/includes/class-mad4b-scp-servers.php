@@ -489,9 +489,9 @@ final class MAD4B_SCP_Servers {
 			'mad4b/provider-closure-matrix',
 			'mad4b/staging-write-candidate-binding-audit',
 		);
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ) {
-			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() );
-		}
+		// Keep the low-level grant-reconciliation plan behind governed discovery/read-execute.
+		// The direct catalog reserves one slot for dynamic schema-pinned projection; adding
+		// the write-only convergence apply must not consume that extensibility budget.
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
 			$tools[] = MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY;
 		}
