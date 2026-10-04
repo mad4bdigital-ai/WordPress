@@ -18,6 +18,9 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 	public static function declared_abilities() {
 		$catalog = self::catalog();
 		$abilities = isset( $catalog['abilities'] ) && is_array( $catalog['abilities'] ) ? array_keys( $catalog['abilities'] ) : array();
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
+			$abilities = array_merge( $abilities, MAD4B_SCP_Content_Experience_Profiles::brand_bearing_mutation_abilities() );
+		}
 		$abilities = array_values( array_unique( array_map( 'strval', $abilities ) ) );
 		sort( $abilities, SORT_STRING );
 		return $abilities;
@@ -29,6 +32,10 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 		$catalog = self::catalog();
 		$contracts = isset( $catalog['abilities'] ) && is_array( $catalog['abilities'] ) ? $catalog['abilities'] : array();
 		$row = isset( $contracts[ $ability_name ] ) && is_array( $contracts[ $ability_name ] ) ? $contracts[ $ability_name ] : array();
+		if ( empty( $row ) && class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
+			$dynamic_row = MAD4B_SCP_Content_Experience_Profiles::semantic_contract_for_ability( $ability_name );
+			if ( is_array( $dynamic_row ) && ! empty( $dynamic_row ) ) $row = $dynamic_row;
+		}
 		$matched = array();
 		$fallback = array();
 
