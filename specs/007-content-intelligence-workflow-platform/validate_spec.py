@@ -55,7 +55,7 @@ required = [
     "contracts/offline-authorization-window.md","contracts/audit-telemetry-retention.md",
     "contracts/data-flow-policy.md","contracts/formal-model-critical-state.md",
     "contracts/architecture-freeze.md","contracts/capability-fabric-post-merge-completeness.md",
-    "adaptive-search-intelligence.md","adaptive-search-intelligence.json","contracts/adaptive-search-intelligence-runtime.md",
+    "adaptive-search-intelligence.md","adaptive-search-intelligence.json","adaptive-search-intelligence-review.md","adaptive-search-intelligence-review.json","contracts/adaptive-search-intelligence-runtime.md",
     "references/host-provider-validation-profile.md",
     "contracts/bulk-runtime-closure-hardening.md","bulk-closure-hardening.json",
 ]
@@ -92,6 +92,13 @@ if feature_path.exists():
         "adaptive_search_intelligence_runtime_contract_document": "contracts/adaptive-search-intelligence-runtime.md",
         "adaptive_search_intelligence_ledger": "adaptive-search-intelligence.json",
         "adaptive_search_intelligence_status": "OPEN_MATURITY_EXTENSION_NON_AUTHORIZING",
+        "adaptive_search_intelligence_review_document": "adaptive-search-intelligence-review.md",
+        "adaptive_search_intelligence_review_ledger": "adaptive-search-intelligence-review.json",
+        "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
+        "adaptive_search_intelligence_review_status": "APPROVED_WITH_GAPS",
+        "adaptive_search_intelligence_review_score": 88,
+        "adaptive_search_intelligence_review_p0_open": 10,
+        "adaptive_search_intelligence_review_p1_open": 8,
     }
     for k, v in adaptive_search_expected.items():
         if data.get(k) != v:
@@ -312,7 +319,8 @@ if trace.exists():
         "FAIR","LOC","EVALREG","EXP","USAGE","PORT","BASESYNC","ROOT","STATE","FENCE","COMMIT",
         "LIVENESS","TRAIT","PRIVHASH","PUBFP","AIINT","PROFILE","OFFLINE","AUDITSEP","DATAFLOW",
         "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE","CAPFAB",
-        "ASI","ASICTX","ASISURF","ASISEO","ASITGT","ASIDEC","ASIBUD","ASIPROV","ASIEVID","ASIEXP","ASICL"
+        "ASI","ASICTX","ASISURF","ASISEO","ASITGT","ASIDEC","ASIBUD","ASIPROV","ASIEVID","ASIEXP","ASICL",
+        "ASICOMP","ASIELIG","ASIACCT","ASIRIGHTS","ASIDET","ASISTABLE","ASIACC"
     ]
     for family in families:
         if f"| {family} |" not in t:
@@ -360,6 +368,31 @@ if adaptive_search_path.exists():
     ]:
         if boundary not in boundaries:
             errors.append(f"adaptive_search:missing_boundary:{boundary}")
+
+
+adaptive_search_review_path = require_file("adaptive-search-intelligence-review.json")
+if adaptive_search_review_path.exists():
+    adaptive_search_review = json.loads(adaptive_search_review_path.read_text(encoding="utf-8"))
+    if adaptive_search_review.get("contract") != "mad4b.adaptive-search-intelligence-review.v1":
+        errors.append("adaptive_search_review:contract_mismatch")
+    if adaptive_search_review.get("status") != "APPROVED_WITH_GAPS":
+        errors.append("adaptive_search_review:status_mismatch")
+    if adaptive_search_review.get("authorizing") is not False:
+        errors.append("adaptive_search_review:must_be_non_authorizing")
+    scores=adaptive_search_review.get("scores", {})
+    if int(scores.get("overall") or -1) != 88:
+        errors.append("adaptive_search_review:overall_score_mismatch")
+    summary=adaptive_search_review.get("summary", {})
+    if int(summary.get("p0_open") or -1) != 10 or int(summary.get("p1_open") or -1) != 8:
+        errors.append("adaptive_search_review:open_gap_counts_mismatch")
+    findings=adaptive_search_review.get("findings", [])
+    ids=[row.get("id") for row in findings if isinstance(row, dict)]
+    if len(ids) != 18 or len(ids) != len(set(ids)):
+        errors.append("adaptive_search_review:finding_set_invalid")
+    p0=sum(1 for row in findings if isinstance(row, dict) and row.get("severity")=="P0")
+    p1=sum(1 for row in findings if isinstance(row, dict) and row.get("severity")=="P1")
+    if p0 != 10 or p1 != 8:
+        errors.append("adaptive_search_review:severity_counts_invalid")
 
 quality = require_file("quality-model.md")
 if quality.exists():
