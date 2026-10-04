@@ -718,6 +718,12 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 
 	private static function restore_helper_states( array $profile, $operation, $post_id, array $helper_states ) {
 		foreach ( $helper_states as $helper_id => $state ) {
+			if ( class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) ) {
+				$binding_guard = MAD4B_SCP_Content_Experience_Governance::helper_binding_guard( $profile, $helper_id );
+				if ( is_wp_error( $binding_guard ) ) {
+					return new WP_Error( 'mad4b_content_experience_helper_restore_contract_drift', 'Historical helper state cannot be restored through a changed helper contract.', array( 'helper_id' => $helper_id, 'cause' => $binding_guard->get_error_code() ) );
+				}
+			}
 			$context = array( 'profile' => $profile, 'operation' => $operation, 'post_id' => (int) $post_id );
 			$adapter = self::helper_adapter( $helper_id );
 			$result = $adapter
