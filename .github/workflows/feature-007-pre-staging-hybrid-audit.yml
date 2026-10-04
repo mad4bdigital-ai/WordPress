@@ -82,6 +82,12 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/production-live-evidence-contract.py --self-test
 
+      - name: Production certification producer registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-certification-producer-contract.py
+
       - name: Production read-only live producer contract
         shell: bash
         run: |
