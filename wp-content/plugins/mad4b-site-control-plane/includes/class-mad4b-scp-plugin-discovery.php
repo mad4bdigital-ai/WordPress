@@ -17,6 +17,32 @@ final class MAD4B_SCP_Plugin_Discovery {
 	private static $catalog = null;
 	private static $coverage = null;
 
+	/**
+	 * Register the canonical read-only provider candidate matrix before MCP
+	 * server materialization. Registration is definition-only and idempotent:
+	 * it performs no discovery, provider I/O, persistence, authority creation
+	 * or mutation until the ability is explicitly executed.
+	 */
+	public static function register_abilities() {
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/provider-candidate-matrix' ) ) return;
+		wp_register_ability( 'mad4b/provider-candidate-matrix', array(
+			'label' => 'Provider Candidate Matrix',
+			'description' => 'Inspect installed plugin/provider candidates and their bounded, non-authorizing adapter readiness.',
+			'category' => 'mad4b-read',
+			'execute_callback' => array( __CLASS__, 'provider_candidate_matrix' ),
+			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false,
+				'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+	}
+
+
 	public static function catalog() {
 		if ( null !== self::$catalog ) return self::$catalog;
 		$path = MAD4B_SCP_DIR . 'config/adapter-support-catalog.json';
