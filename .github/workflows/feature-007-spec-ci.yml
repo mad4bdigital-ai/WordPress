@@ -161,4 +161,5 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py
 
