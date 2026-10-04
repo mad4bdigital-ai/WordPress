@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "acaaf43823b50b7840c8c265bd392871374d57e2",
-  "changed_file_count": 230,
+  "changed_file_count": 233,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -48,6 +48,7 @@
         "wp-content/plugins/mad4b-site-control-plane/config/legacy-dispatch-migration.json",
         "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
         "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json",
         "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
         "wp-content/plugins/mad4b-site-control-plane/config/provider-postcondition-profiles.json",
         "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json",
@@ -320,6 +321,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-plan-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/production-live-evidence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/projection-hotset-recommender-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/projection-registration-lifecycle.php",
@@ -331,5 +334,6 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py"
       ]
     }
-  ]
+  ],
+  "changed_paths_sha256": "13fae0867fdd956a8f4a5f2177e326a7c0e5359f9218ec24a80bbce0d12a63f0"
 }
