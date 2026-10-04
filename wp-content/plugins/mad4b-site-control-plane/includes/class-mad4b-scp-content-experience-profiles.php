@@ -193,7 +193,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 
 		$label = isset( $raw['label'] ) ? sanitize_text_field( (string) $raw['label'] ) : (string) $object->label;
 		if ( '' === $label ) $label = $post_type;
-		$meta_mode = isset( $raw['meta_mode'] ) ? sanitize_key( (string) $raw['meta_mode'] ) : 'safe_any';
+		$meta_mode = isset( $raw['meta_mode'] ) ? sanitize_key( (string) $raw['meta_mode'] ) : 'allowlist';
 		if ( ! in_array( $meta_mode, array( 'safe_any', 'allowlist' ), true ) ) {
 			return new WP_Error( 'mad4b_content_experience_meta_mode_invalid', 'meta_mode must be safe_any or allowlist.' );
 		}
@@ -206,6 +206,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		}
 
 		$available_taxonomies = array_keys( get_object_taxonomies( $post_type, 'objects' ) );
+		$taxonomy_mode = isset( $raw['taxonomy_mode'] ) ? sanitize_key( (string) $raw['taxonomy_mode'] ) : 'allowlist';
+		if ( ! in_array( $taxonomy_mode, array( 'allowlist', 'all_attached' ), true ) ) {
+			return new WP_Error( 'mad4b_content_experience_taxonomy_mode_invalid', 'taxonomy_mode must be allowlist or all_attached.' );
+		}
 		$taxonomies = self::normalize_string_list( isset( $raw['taxonomies'] ) ? $raw['taxonomies'] : array(), self::MAX_TAXONOMIES, '/^[a-zA-Z0-9_-]+$/' );
 		foreach ( $taxonomies as $taxonomy ) {
 			if ( ! in_array( $taxonomy, $available_taxonomies, true ) ) {
@@ -238,7 +242,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			return new WP_Error( 'mad4b_content_experience_live_update_mode_invalid', 'live_update_mode must be draft_first or direct.' );
 		}
 
-		return array(
+		$profile = array(
 			'contract' => self::CONTRACT,
 			'slug' => $slug,
 			'label' => $label,
@@ -250,6 +254,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'meta_mode' => $meta_mode,
 			'meta_keys' => $meta_keys,
 			'protected_meta_keys' => $protected_meta_keys,
+			'taxonomy_mode' => $taxonomy_mode,
 			'taxonomies' => $taxonomies,
 			'featured_media' => ! array_key_exists( 'featured_media', $raw ) || ! empty( $raw['featured_media'] ),
 			'hierarchy' => ! empty( $raw['hierarchy'] ) && ! empty( $object->hierarchical ),
@@ -257,6 +262,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'routes' => self::profile_routes( $slug ),
 		);
+		$profile['authority_sha256'] = class_exists( 'MAD4B_SCP_Content_Experience_Governance' )
+			? MAD4B_SCP_Content_Experience_Governance::authority_sha256( $profile )
+			: hash( 'sha256', wp_json_encode( $profile, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		return $profile;
 	}
 
 	public static function profile_plan( $input ) {
@@ -273,6 +282,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		}
 		$profile = self::normalize_profile( $raw, $current_revision + 1 );
 		if ( is_wp_error( $profile ) ) return $profile;
+		if ( is_array( $current ) && isset( $current['post_type'] ) && (string) $current['post_type'] !== (string) $profile['post_type'] ) {
+			return new WP_Error( 'mad4b_content_experience_post_type_immutable', 'An existing experience slug cannot change post_type. Create a new profile slug to change content type.' );
+		}
 		$current_routes = is_array( $current ) && isset( $current['routes'] ) && is_array( $current['routes'] ) ? array_values( $current['routes'] ) : array();
 		foreach ( array_values( $profile['routes'] ) as $route ) {
 			if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $route ) && ! in_array( $route, $current_routes, true ) ) {
@@ -338,6 +350,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'revision' => isset( $profile['revision'] ) ? (int) $profile['revision'] : 0,
 				'runtime_post_type_ready' => ! is_wp_error( self::post_type_object( $profile['post_type'] ) ),
 				'helper_catalog_match' => isset( $profile['helper_catalog_sha256'] ) && hash_equals( (string) $profile['helper_catalog_sha256'], self::helper_catalog_sha256() ),
+				'authority_sha256' => isset( $profile['authority_sha256'] ) ? (string) $profile['authority_sha256'] : '',
+				'authority_current' => class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) && ! is_wp_error( MAD4B_SCP_Content_Experience_Governance::current_guard( $profile ) ),
 				'routes' => self::profile_routes( $slug ),
 			);
 		}
@@ -384,6 +398,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_catalog' => array_values( self::helper_catalog() ),
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'profile_configuration_required_before_routes_exist' => true,
+			'safe_defaults' => array( 'meta_mode' => 'allowlist', 'taxonomy_mode' => 'allowlist', 'live_update_mode' => 'draft_first' ),
 			'mutation_performed' => false,
 		);
 	}
@@ -586,6 +601,15 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'dynamic_profile_contract' => true,
 		);
 	}
+	public static function profile_for_ability( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		foreach ( self::stored_profiles() as $profile ) {
+			if ( empty( $profile['enabled'] ) ) continue;
+			if ( in_array( $ability_name, array_values( self::profile_routes( $profile['slug'] ) ), true ) ) return $profile;
+		}
+		return new WP_Error( 'mad4b_content_experience_profile_for_ability_missing', 'Ability is not owned by an enabled content experience profile.' );
+	}
+
 	public static function owns_ability( $ability_name ) {
 		return in_array( (string) $ability_name, array_merge( self::ability_names( 'read' ), self::ability_names( 'content' ) ), true );
 	}
