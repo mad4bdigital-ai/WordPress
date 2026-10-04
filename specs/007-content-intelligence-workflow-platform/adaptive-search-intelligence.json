@@ -135,9 +135,12 @@
     "p0_closed": 12,
     "p0_closure": {
       "contract": "mad4b.adaptive-search-p0-closure.v1",
-      "exact_head_sha": "178ec73281a19fd7c78a8e83ff110dd11027b684",
-      "workflow_run": 37236946924,
+      "exact_head_sha": "17b4f8fca0bd8c6759865d377269bfe2a15704e9",
+      "workflow_run": 37238278583,
+      "runtime_integration_run": 37238278447,
+      "spec_consistency_run": 37238278493,
       "evidence_status": "PASS",
+      "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
       "authorizing": false
     }
   }
