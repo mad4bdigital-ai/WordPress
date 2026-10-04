@@ -111,7 +111,7 @@ scenario( 'target_identity_unicode_url_and_purpose_separation', static function 
 	foreach ( array( 'purpose' => 'OWNED_RANK_TRACKING', 'language' => 'fr', 'device' => 'mobile', 'market' => 'second', 'engine' => 'bing', 'query' => 'first Query' ) as $key => $value ) { $b = asi_candidate(); $b[ $key ] = $value; check( $a['target_id'] !== MAD4B_SCP_Search_Contracts::target( $b )['target_id'], 'identity dimension ' . $key ); }
 	$translated = asi_candidate( 'Séjour Égypte' ); $translated['language'] = 'fr';
 	$translated_target = ok( MAD4B_SCP_Search_Contracts::target( $translated ), 'translated target' );
-	$prov = ok( MAD4B_SCP_Search_Targets::query_language_provenance( array(
+	$translated['query_language_provenance'] = array(
 		'source' => 'market_research',
 		'source_language' => 'en',
 		'target_language' => 'fr',
@@ -124,14 +124,15 @@ scenario( 'target_identity_unicode_url_and_purpose_separation', static function 
 		'approval' => 'operator_approved',
 		'page_translation_implies_query_translation' => false,
 		'source_query_id' => hash( 'sha256', 'Egypt package' ),
-	), $translated_target ), 'query language provenance' );
+	);
+	$prov = ok( MAD4B_SCP_Search_Targets::query_language_provenance( $translated, $translated_target ), 'query language provenance' );
 	check( 'mad4b.query-language-provenance.v1' === $prov['contract'] && 'transcreation' === $prov['method'] && 64 === strlen( $prov['provenance_sha256'] ) && ! $prov['authorizing'], 'transcreation provenance is versioned and non-authorizing' );
-	$bad_prov = $prov; unset( $bad_prov['contract'], $bad_prov['provenance_sha256'], $bad_prov['authorizing'] ); $bad_prov['page_translation_implies_query_translation'] = true;
-	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad_prov, $translated_target ), 'provenance_invalid', 'page translation cannot imply query translation' );
-	$bad_prov = $prov; unset( $bad_prov['contract'], $bad_prov['provenance_sha256'], $bad_prov['authorizing'], $bad_prov['source_language'] );
-	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad_prov, $translated_target ), 'source_required', 'transcreation requires source language' );
-	$bad_prov = $prov; unset( $bad_prov['contract'], $bad_prov['provenance_sha256'], $bad_prov['authorizing'] ); $bad_prov['market'] = 'second';
-	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad_prov, $translated_target ), 'provenance_invalid', 'query provenance market must match target market' );
+	$bad = $translated; $bad['query_language_provenance']['page_translation_implies_query_translation'] = true;
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $translated_target ), 'provenance_invalid', 'page translation cannot imply query translation' );
+	$bad = $translated; unset( $bad['query_language_provenance']['source_language'] );
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $translated_target ), 'source_required', 'transcreation requires source language' );
+	$bad = $translated; $bad['query_language_provenance']['market'] = 'second';
+	denied( MAD4B_SCP_Search_Targets::query_language_provenance( $bad, $translated_target ), 'provenance_invalid', 'query provenance market must match target market' );
 	$s = asi_surface(); check( MAD4B_SCP_Search_Contracts::owned_match( $s['public_url'] . '#fragment', $s ), 'fragment ignored' );
 	foreach ( array( str_replace( 'https:', 'http:', $s['public_url'] ), rtrim( $s['public_url'], '/' ), $s['public_url'] . '?filter=1', 'https://fixture.example.evil.example/content_object/1/' ) as $url ) check( ! MAD4B_SCP_Search_Contracts::owned_match( $url, $s ), 'unverified alias never matches' );
 	$s['verified_aliases'] = array( rtrim( $s['public_url'], '/' ) ); check( MAD4B_SCP_Search_Contracts::owned_match( $s['verified_aliases'][0], $s ), 'explicit verified canonical alias' );
