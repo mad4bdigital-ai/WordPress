@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 254,
+  "changed_file_count": 255,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -152,6 +152,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-governance.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-profiles.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
@@ -356,5 +357,5 @@
       ]
     }
   ],
-  "changed_paths_sha256": "a7f85c13dfa0bb5205af4d1cdaa58703d29cdc06979d3f0aa9d5ad577c95ee00"
+  "changed_paths_sha256": "066e7d09ee680018ef74cd836f613b8ea6e0f47467566cc83489be3cd0ec9919"
 }
