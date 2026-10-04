@@ -66,7 +66,8 @@
     "caller_supplied_readiness_not_authoritative": true,
     "exact_producer_contract_required": true,
     "fresh_evidence_attestation_required": true,
-    "runtime_recompute_for_local_evidence": true
+    "runtime_recompute_for_local_evidence": true,
+    "structural_prevalidation_never_authoritative": true
   },
   "promotion": {
     "mode": "explicit_governed_promotion_only",
@@ -76,7 +77,9 @@
     "activation_requires_separate_authorization": true,
     "evidence_trust_contract": "mad4b.production-evidence-trust.v1",
     "evidence_attestation_contract": "mad4b.production-evidence-attestation.v1",
-    "evidence_crypto_purpose": "production_evidence"
+    "evidence_crypto_purpose": "production_evidence",
+    "evidence_signer_role": "production_evidence_attestor",
+    "canonical_runtime_verdict_required": true
   },
   "default_profile": "control_plane_core",
   "profiles": {
