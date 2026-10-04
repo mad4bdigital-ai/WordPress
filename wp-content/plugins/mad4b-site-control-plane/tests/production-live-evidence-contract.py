@@ -112,7 +112,7 @@ def synthetic_bundle():
             "contract":"mad4b.production-live-gate-evidence.v1",
             "gate":stage["gate"],
             "environment":"staging",
-            "candidate_identity":identity,
+            "candidate_identity":copy.deepcopy(identity),
             "producer_contract":stage["evidence_contract"] if stage["evidence_contract"]!="mad4b.production-live-gate-evidence.v1" else "mad4b.synthetic-self-test.v1",
             "producer_evidence_sha256":hashlib.sha256(stage["gate"].encode()).hexdigest(),
             "ready":True,
