@@ -43,7 +43,16 @@ final class MAD4B_SCP_Search_Eligibility {
 
 		$known = 0;
 		$total = 7;
-		foreach ( array( $status > 0, null !== $robots_allowed, '' !== $canonical_state, '' !== $redirect_state, '' !== $hreflang, '' !== $sitemap, array_key_exists( 'meta_robots', $evidence ) || array_key_exists( 'x_robots_tag', $evidence ) ) as $item ) if ( $item ) $known++;
+		$explicit = array(
+			$status > 0,
+			null !== $robots_allowed,
+			array_key_exists( 'canonical_state', $evidence ) && ! in_array( $canonical_state, array( '', 'unknown' ), true ),
+			array_key_exists( 'redirect_state', $evidence ) && ! in_array( $redirect_state, array( '', 'unknown' ), true ),
+			array_key_exists( 'hreflang_state', $evidence ) && ! in_array( $hreflang, array( '', 'unknown' ), true ),
+			array_key_exists( 'sitemap_state', $evidence ) && ! in_array( $sitemap, array( '', 'unknown' ), true ),
+			array_key_exists( 'meta_robots', $evidence ) || array_key_exists( 'x_robots_tag', $evidence ),
+		);
+		foreach ( $explicit as $item ) if ( $item ) $known++;
 		return array(
 			'contract' => self::CONTRACT,
 			'crawlable' => $crawlable,
@@ -90,15 +99,33 @@ final class MAD4B_SCP_Search_Eligibility {
 		foreach ( array_keys( $query ) as $key ) if ( ! in_array( sanitize_key( (string) $key ), $allowed_params, true ) ) $unknown[] = (string) $key;
 		if ( ! empty( $unknown ) ) return new WP_Error( 'mad4b_search_surface_query_param_denied', 'Surface contains query parameters that are not explicitly admitted.', array( 'unknown_params' => $unknown ) );
 
+		$virtual = in_array( $type, array( 'virtual_landing_surface', 'faceted_archive', 'paginated_archive' ), true );
+		$require_cardinality = ! array_key_exists( 'require_cardinality_estimate_for_virtual', $policy ) || ! empty( $policy['require_cardinality_estimate_for_virtual'] );
+		if ( $virtual && $require_cardinality && ! array_key_exists( 'estimated_cardinality', $surface ) ) {
+			return new WP_Error( 'mad4b_search_surface_cardinality_required', 'Virtual/faceted surface admission requires an explicit cardinality estimate.' );
+		}
 		$cardinality = max( 1, (int) ( $surface['estimated_cardinality'] ?? 1 ) );
 		$max_cardinality = max( 1, (int) ( $policy['max_cardinality'] ?? 1000 ) );
 		if ( $cardinality > $max_cardinality ) return new WP_Error( 'mad4b_search_surface_cardinality_exceeded', 'Estimated surface cardinality exceeds policy bound.', array( 'estimated_cardinality' => $cardinality, 'max_cardinality' => $max_cardinality ) );
 
 		$page = max( 1, (int) ( $surface['page_number'] ?? 1 ) );
+		$pagination_params = is_array( $policy['pagination_query_params'] ?? null ) ? $policy['pagination_query_params'] : array( 'page', 'paged' );
+		$pagination_params = array_values( array_unique( array_map( 'sanitize_key', $pagination_params ) ) );
+		$url_page = 1;
+		foreach ( $pagination_params as $param ) {
+			if ( ! array_key_exists( $param, $query ) ) continue;
+			$value = is_array( $query[ $param ] ) ? reset( $query[ $param ] ) : $query[ $param ];
+			if ( ! is_scalar( $value ) || ! ctype_digit( (string) $value ) || (int) $value < 1 ) {
+				return new WP_Error( 'mad4b_search_surface_pagination_invalid', 'Pagination query parameter must be a positive integer.', array( 'parameter' => $param ) );
+			}
+			$url_page = max( $url_page, (int) $value );
+		}
+		if ( $url_page > 1 && array_key_exists( 'page_number', $surface ) && $page !== $url_page ) {
+			return new WP_Error( 'mad4b_search_surface_pagination_mismatch', 'Surface page_number disagrees with the URL pagination parameter.', array( 'page_number' => $page, 'url_page_number' => $url_page ) );
+		}
+		$page = max( $page, $url_page );
 		$max_page = max( 1, (int) ( $policy['max_page_number'] ?? 50 ) );
 		if ( $page > $max_page ) return new WP_Error( 'mad4b_search_surface_pagination_exceeded', 'Pagination exceeds admitted bound.', array( 'page_number' => $page, 'max_page_number' => $max_page ) );
-
-		$virtual = in_array( $type, array( 'virtual_landing_surface', 'faceted_archive', 'paginated_archive' ), true );
 		if ( $virtual && ! empty( $policy['require_indexable_virtual'] ) && empty( $surface['indexable'] ) ) {
 			return new WP_Error( 'mad4b_search_virtual_surface_not_indexable', 'Virtual surface admission requires effective indexability.' );
 		}
