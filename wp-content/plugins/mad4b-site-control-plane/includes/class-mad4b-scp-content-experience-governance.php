@@ -73,13 +73,9 @@ final class MAD4B_SCP_Content_Experience_Governance {
 		if ( '' === $stored || ! hash_equals( $stored, $current ) ) {
 			return new WP_Error( 'mad4b_content_experience_profile_authority_drift', 'Content experience profile authority fingerprint changed; reconcile the profile before execution.', array( 'current_authority_sha256' => $current ) );
 		}
-		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
-			$catalog = MAD4B_SCP_Content_Experience_Profiles::helper_catalog_sha256();
-			$stored_catalog = isset( $profile['helper_catalog_sha256'] ) ? (string) $profile['helper_catalog_sha256'] : '';
-			if ( '' === $stored_catalog || ! hash_equals( $stored_catalog, $catalog ) ) {
-				return new WP_Error( 'mad4b_content_experience_helper_catalog_drift', 'Content experience helper catalog changed; review and re-apply the profile before execution.' );
-			}
-		}
+		// Global helper-catalog drift is diagnostic only. authority_sha256 already
+		// binds the exact enabled helper adapter/provider/certification contracts,
+		// so unrelated helper additions cannot disable otherwise unchanged profiles.
 		return true;
 	}
 
