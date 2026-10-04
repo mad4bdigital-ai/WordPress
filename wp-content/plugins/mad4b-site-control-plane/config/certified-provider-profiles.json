@@ -185,6 +185,10 @@
           "null_observability_handler": {
             "class": "WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler",
             "file": "includes/Infrastructure/Observability/NullMcpObservabilityHandler.php"
+          },
+          "json_rpc_decoder": {
+            "class": "WP\\MCP\\Transport\\Infrastructure\\JsonRpcRequestDecoder",
+            "file": "includes/Transport/Infrastructure/JsonRpcRequestDecoder.php"
           }
         },
         "critical_files": {
@@ -225,7 +229,8 @@
           "includes/Handlers/System/SystemHandler.php": "87a26b73c6da9c505a5843a1cf0e87e29c597ee8097a2c355b6b38b2f0e7a201",
           "includes/Infrastructure/ErrorHandling/ErrorLogMcpErrorHandler.php": "790ddc781ef0bb122913fbfaf54de504a862e5d17789bd5482bc1c1efc31b277",
           "includes/Infrastructure/ErrorHandling/NullMcpErrorHandler.php": "68a0ade031644d532f38385d88c61bd3ef931e89e541104a8f3dde798e485964",
-          "includes/Infrastructure/Observability/NullMcpObservabilityHandler.php": "cde7fa44796f06293cb488235d868ed1891a6c5e2c931323e9c0d7447e4ecbde"
+          "includes/Infrastructure/Observability/NullMcpObservabilityHandler.php": "cde7fa44796f06293cb488235d868ed1891a6c5e2c931323e9c0d7447e4ecbde",
+          "includes/Transport/Infrastructure/JsonRpcRequestDecoder.php": "7a9af11564f3bf1e84224b68ed3365c6fe96a182c3864c77cf6a50d8cd96b7c5"
         },
         "evidence": {
           "upstream_release": "WordPress/mcp-adapter v0.7.0",
