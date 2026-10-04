@@ -27,7 +27,6 @@ jobs:
     timeout-minutes: 12
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      MAD4B_REQUIRE_RUNTIME_IDENTITY: ${{ github.event_name != 'pull_request' }}
       WPML_URL_BASE: https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1
       REST_INDEX_URL: https://staging.egypttourgates.com/wp-json/
     steps:
@@ -797,8 +796,9 @@ jobs:
           if state == 'transport_unreachable':
               if evidence.get('accepted') or not evidence.get('inconclusive'):
                   raise SystemExit('Transport-unreachable WPML evidence was misclassified')
-              print('mad4b.wpml-external-http-diagnostic.v4: INCONCLUSIVE transport_unreachable; acceptance remains false')
-              raise SystemExit(0)
+              raise SystemExit(
+                  'WPML endpoint/REST index remained unreachable after bounded retries and browser fallback'
+              )
           if state != 'reachable':
               raise SystemExit('WPML external diagnostic transport state is invalid: ' + repr(state))
           if not evidence.get('namespace_present') or not evidence.get('route_present'):
@@ -835,19 +835,22 @@ jobs:
               live = (evidence.get('live_runtime_build') or {}).get('release', '')
               expected = (evidence.get('expected_runtime_build') or {}).get('release', '')
               failures = evidence.get('validation_failures') or []
-              require_identity = os.environ.get('MAD4B_REQUIRE_RUNTIME_IDENTITY', 'false').strip().lower() == 'true'
-              if require_identity:
+              if failures:
                   raise SystemExit(
-                      'post-merge/live acceptance requires exact deployed runtime identity: '
-                      f'live={live!r} expected={expected!r}; observed_failures={failures!r}'
+                      'deployment drift is present together with live MCP/OAuth validation failures: '
+                      + '; '.join(str(item) for item in failures)
                   )
+              print(
+                  '::warning title=ETG deployment drift::'
+                  f'live runtime identity differs from repository head; live={live!r} expected={expected!r}. '
+                  'Repository health remains green because no live validation failure was observed.'
+              )
               print(
                   'mad4b.external-mcp-hotpath-diagnostic.v1: '
                   f'INCONCLUSIVE deployment_drift live={live!r} expected={expected!r}; '
-                  f'observed_failures={failures!r}'
+                  'use MAD4B ETG Deployment Readiness for strict deployment identity'
               )
               raise SystemExit(0)
-
           if evidence.get('inconclusive'):
               raise SystemExit('matching-runtime MCP/OAuth evidence cannot remain inconclusive')
 
