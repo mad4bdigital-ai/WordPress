@@ -972,4 +972,35 @@ Exit gates:
 - SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS
 - ADAPTIVE_SEARCH_GENERALIZATION_PASS
 
+### 38K — Measurement semantics, canonical identity and comparability
+- define ObservationContext and ComparabilityKey so ranking deltas are only derived across materially comparable captures;
+- version query normalization without erasing locale-significant semantics;
+- version owned URL identity/canonical matching;
+- normalize organic/group/absolute/provider-native rank semantics;
+- distinguish complete, partial, truncated and not-found-within-depth captures.
+
+### 38L — Search eligibility and surface admission hardening
+- replace scalar indexability assumptions with crawlability/robots/canonical/discoverability/hreflang eligibility envelope;
+- include robots.txt and X-Robots-Tag/header evidence;
+- bound facets, parameters, pagination and virtual-surface cardinality through explicit Surface Admission Policy.
+
+### 38M — Distributed economics, evidence rights and deterministic decisions
+- introduce provider-account budget authority for credentials shared across sites/workers;
+- use lease/fencing/reservation/reconciliation around account-level quota;
+- constrain raw/normalized evidence retention by provider licensing/usage policy;
+- make EVO scoring deterministic, bounded, versioned and calibratable;
+- bind each decision factor to source/freshness/confidence provenance.
+
+### 38N — Evidence composition, portability and operator stability
+- compose first-party SearchPerformance evidence without pretending it is live SERP evidence;
+- distinguish page language from query translation/transcreation provenance;
+- keep storage/worker execution profile portable beyond WordPress-local runtime;
+- make dynamic UI stable through persistent section IDs/order/deep links and audited pause/provider/spend/target controls;
+- use open/versioned SERP feature normalization with safe unknown pass-through.
+
+### 38O — Objective acceptance and composed fault proof
+- map every Phase 38 gate to exact fixtures, thresholds, denial cases and evidence class;
+- execute composed drift/budget/provider/lease/cache/partial-capture faults;
+- forbid generalization/completion claims until exact-head executable evidence satisfies all mandatory gates.
+
 Phase 38 cannot be closed by documentation alone.
