@@ -406,8 +406,19 @@ if search_acceptance_path.exists():
             errors.append("adaptive_search:runtime_gate_without_executable_assertions:" + gate)
     if set(search_acceptance.get("required_evidence_classes", [])) != {"exact_head_ci_hermetic_runtime", "disposable_wordpress_mysql"}:
         errors.append("adaptive_search:runtime_evidence_classes_invalid")
-    if not pathlib.Path(search_acceptance.get("workflow", "missing-search-workflow")).is_file():
+    workflow_ref = str(search_acceptance.get("workflow", ""))
+    workflow_path_text, workflow_sep, workflow_job = workflow_ref.partition("#")
+    workflow_path = pathlib.Path(workflow_path_text) if workflow_path_text else pathlib.Path("missing-search-workflow")
+    if not workflow_path.is_file():
         errors.append("adaptive_search:runtime_workflow_missing")
+    else:
+        workflow_text = workflow_path.read_text(encoding="utf-8")
+        if workflow_path_text != ".github/workflows/feature-007-pre-staging-hybrid-audit.yml":
+            errors.append("adaptive_search:runtime_workflow_not_feature_owned")
+        if not workflow_sep or workflow_job != "adaptive-search-conformance":
+            errors.append("adaptive_search:runtime_workflow_job_binding_invalid")
+        elif not re.search(r"(?m)^\s{2}adaptive-search-conformance:\s*$", workflow_text):
+            errors.append("adaptive_search:runtime_workflow_job_missing")
 
 adaptive_search_review_path = require_file("adaptive-search-intelligence-review.json")
 if adaptive_search_review_path.exists():
