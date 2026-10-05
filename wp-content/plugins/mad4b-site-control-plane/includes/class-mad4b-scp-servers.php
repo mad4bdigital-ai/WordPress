@@ -52,7 +52,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/provider-execution-binding', 'mad4b/provider-execution-binding-revalidate', 'mad4b/addon-registry-status',
 				'mad4b/data-processing-evaluate', 'mad4b/rights-record-plan', 'mad4b/data-processing-profile-plan', 'mad4b/rights-takedown-plan',
 				'mad4b/research-provider-plan',
-				'mad4b/decommission-preflight',
+				'mad4b/decommission-preflight', 'mad4b/decommission-live-inventory', 'mad4b/decommission-governance-status', 'mad4b/decommission-quiesce-plan', 'mad4b/decommission-resume-plan', 'mad4b/decommission-finalize-plan',
 				'mad4b/export-bundle-build', 'mad4b/import-bundle-validate',
 				'mad4b/scheduler-admission-evaluate',
 				'mad4b/scheduler-fair-rank', 'mad4b/scheduler-backlog-status',
@@ -127,7 +127,7 @@ final class MAD4B_SCP_Servers {
 			array(
 				'mad4b/content-get-post', 'mad4b/content-update-post',
 				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
-				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile',
+				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile', 'mad4b/decommission-quiesce-apply', 'mad4b/decommission-resume-apply', 'mad4b/decommission-finalize-apply',
 			),
 			array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
