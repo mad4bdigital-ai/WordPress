@@ -234,6 +234,30 @@ read allowlist centered on `mad4b/session-safe-diagnostics`, discovery/info and
 single-target dispatch. Deep follow-up uses `mad4b-read` or exactly one
 generation-bound `read-execute` target at a time.
 
+### Rate-limit storage recovery
+
+Rate-limit exhaustion and rate-limit storage failure are different conditions.
+
+A genuine request quota exhaustion uses the `rate_limit` category and requires
+backoff. A failure of the atomic rate-limit storage topology uses the
+`rate_storage` category and requires repair before retry. The latter MUST NOT
+be retried blindly or treated as ordinary 429 backoff.
+
+For `mad4b_abuse_rate_storage_unavailable`, the resilience layer may preserve
+only a bounded whitelist of recovery metadata:
+
+- sanitized cause code;
+- bounded topology blockers;
+- the read-only recovery Ability;
+- the bounded repair Ability;
+- recheck action and storage phase;
+- explicit `blind_retry_allowed` and `authorizing` booleans.
+
+All other source error data is discarded. The same category/action must be
+recognized when an outer transport converts the source condition into a textual
+exception such as "Rate-limit writer topology is unavailable"; structured
+recovery metadata is preserved only when it actually exists.
+
 ### Deterministic recovery routing
 
 A session-safe report that is coherent but not operationally ready MUST expose
