@@ -117,6 +117,7 @@ foreach ( array(
 	'data-governance-registry-contract.php',
 	'scheduler-backlog-contract.php',
 	'decommission-governance-contract.php',
+	'portability-import-contract.php',
 	'workstream-certification-contract.php',
 ) as $required_ci_marker ) {
 	mad4b_release_assert( false !== strpos( $critical_kernel, $required_ci_marker ), 'critical kernel closure suite marker missing: ' . $required_ci_marker );
