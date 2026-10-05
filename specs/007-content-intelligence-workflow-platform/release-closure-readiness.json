@@ -31,7 +31,8 @@
       "counts": {
         "total": 13,
         "DONE": 1,
-        "PARTIAL": 9,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 9,
         "OPEN": 3,
         "DEFERRED": 0
       },
@@ -53,11 +54,11 @@
       "open_or_partial": [
         {
           "id": "governed_tool_execution",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "protected_backup_recovery",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "etg_exact_runtime_release_deployment",
@@ -69,31 +70,81 @@
         },
         {
           "id": "recovery_live_drill",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "provider_side_channel",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "multi_authority_live",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "policy_engine",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "authoritative_consistency_fencing",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "security_ai_eval_faults",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "operator_doctor_dlq",
-          "status": "PARTIAL"
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "etg_vertical_slice",
+          "status": "OPEN"
+        }
+      ],
+      "unresolved": [
+        {
+          "id": "governed_tool_execution",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "protected_backup_recovery",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "etg_exact_runtime_release_deployment",
+          "status": "OPEN"
+        },
+        {
+          "id": "runtime_root_trust_readback",
+          "status": "OPEN"
+        },
+        {
+          "id": "recovery_live_drill",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "provider_side_channel",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "multi_authority_live",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "policy_engine",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "authoritative_consistency_fencing",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "security_ai_eval_faults",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "operator_doctor_dlq",
+          "status": "EXTERNAL_PENDING"
         },
         {
           "id": "etg_vertical_slice",
@@ -105,7 +156,8 @@
       "counts": {
         "total": 11,
         "DONE": 0,
-        "PARTIAL": 10,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 10,
         "OPEN": 1,
         "DEFERRED": 0
       },
@@ -122,13 +174,26 @@
         "governed_wp_draft",
         "semantic_publication_verification"
       ],
-      "policy": "disabled_and_fail_closed_until_live_certified"
+      "policy": "disabled_and_fail_closed_until_live_certified",
+      "external_pending": [
+        "capability_traits",
+        "site_bootstrap",
+        "intent_registry",
+        "content_job_domain",
+        "artifact_registry_store",
+        "context_writer",
+        "research_competitive",
+        "blueprint_draft_qa",
+        "governed_wp_draft",
+        "semantic_publication_verification"
+      ]
     },
     "full_feature007_blocking": {
       "counts": {
         "total": 29,
         "DONE": 6,
-        "PARTIAL": 19,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 19,
         "OPEN": 4,
         "DEFERRED": 0
       },
@@ -141,7 +206,8 @@
       "counts": {
         "total": 5,
         "DONE": 0,
-        "PARTIAL": 4,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 4,
         "OPEN": 0,
         "DEFERRED": 1
       },
