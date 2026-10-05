@@ -48,6 +48,7 @@ $option = MAD4B_SCP_Content_Experience_Profiles::OPTION;
 $original_profiles = get_option( $option, array() );
 $post_ids = array();
 $term_ids = array();
+$gallery_image_filter = null;
 
 $launch_next_request = static function ( $phase ) use ( $check ) {
 	$reflection = new ReflectionClass( 'WP_CLI' );
@@ -83,6 +84,54 @@ try {
 	$check( ! is_wp_error( $term ), 'Unable to create Content Experience taxonomy fixture.' );
 	$term_ids[] = (int) $term['term_id'];
 
+	$image_one = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Trip Main Image',
+		'post_mime_type' => 'image/jpeg', 'post_excerpt' => 'Initial caption', 'post_content' => 'Initial description',
+	), true );
+	$image_two = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Trip Gallery Image',
+		'post_mime_type' => 'image/jpeg',
+	), true );
+	$brochure = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Trip Brochure',
+		'post_mime_type' => 'application/pdf',
+	), true );
+	$check( ! is_wp_error( $image_one ) && ! is_wp_error( $image_two ) && ! is_wp_error( $brochure ), 'Unable to create media fixtures.' );
+	$image_one = (int) $image_one; $image_two = (int) $image_two; $brochure = (int) $brochure;
+	$post_ids[] = $image_one; $post_ids[] = $image_two; $post_ids[] = $brochure;
+	update_post_meta( $image_one, '_wp_attachment_image_alt', 'Initial alt' );
+	wp_update_attachment_metadata( $image_one, array(
+		'width' => 1600, 'height' => 900, 'file' => 'ci-trip-main.jpg', 'filesize' => 12345,
+		'sizes' => array( 'thumbnail' => array( 'file' => 'ci-trip-main-150x150.jpg', 'width' => 150, 'height' => 150, 'mime-type' => 'image/jpeg', 'filesize' => 1234 ) ),
+		'image_meta' => array( 'credit' => 'MAD4B CI', 'camera' => 'Synthetic Fixture', 'copyright' => 'CI only' ),
+	) );
+	wp_update_attachment_metadata( $image_two, array( 'width' => 1200, 'height' => 800, 'file' => 'ci-trip-gallery.jpg', 'filesize' => 10000 ) );
+
+	$gallery_image_ids = array( $image_one, $image_two );
+	$gallery_image_filter = static function ( $html, $attachment ) use ( $gallery_image_ids ) {
+		return in_array( (int) $attachment, $gallery_image_ids, true ) ? '<img src="ci-gallery.jpg" alt="" />' : $html;
+	};
+	add_filter( 'wp_get_attachment_image', $gallery_image_filter, 10, 2 );
+
+	$media_adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'media' );
+	$check( $media_adapter instanceof MAD4B_SCP_Media_Adapter, 'Media adapter is unavailable.' );
+	$media_before = $media_adapter->get_media( array( 'attachment_id' => $image_one ) );
+	$check( ! is_wp_error( $media_before ) && 1600 === (int) $media_before['media']['width'] && 900 === (int) $media_before['media']['height'], 'Image technical metadata readback is incomplete.' );
+	$technical_sha = (string) $media_before['media']['metadata_sha256'];
+	$media_after = $media_adapter->update_metadata( array(
+		'attachment_id' => $image_one,
+		'expected_sha256' => $media_before['sha256'],
+		'title' => 'Cairo Nile Experience',
+		'caption' => 'Cairo and Nile journey gallery image',
+		'description' => '<p>Editorial description for the trip image.</p>',
+		'alt' => 'Cairo Nile journey in Egypt',
+	) );
+	$check( ! is_wp_error( $media_after ), 'Governed media metadata update failed.' );
+	$check( 'Cairo Nile Experience' === $media_after['media']['title'], 'Media title readback mismatch.' );
+	$check( 'Cairo and Nile journey gallery image' === $media_after['media']['caption'], 'Media caption readback mismatch.' );
+	$check( 'Cairo Nile journey in Egypt' === $media_after['media']['alt'], 'Media alt readback mismatch.' );
+	$check( hash_equals( $technical_sha, (string) $media_after['media']['metadata_sha256'] ), 'Editorial metadata update unexpectedly changed generated attachment metadata.' );
+
 	// Least-privilege defaults are explicit and empty means empty, never "everything".
 	$default_plan = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array(
 		'profile' => array( 'slug' => 'ci-default', 'post_type' => 'mad4b_ci_trip', 'label' => 'CI Default' ),
@@ -98,7 +147,12 @@ try {
 		'label' => 'CI Trip',
 		'post_type' => 'mad4b_ci_trip',
 		'meta_mode' => 'allowlist',
-		'meta_keys' => array( 'ci_price' ),
+		'meta_keys' => array( 'ci_price', 'ci_gallery', 'ci_gallery_csv', 'ci_attachments' ),
+		'media_meta_fields' => array(
+			'ci_gallery' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => 12 ),
+			'ci_gallery_csv' => array( 'kind' => 'image_gallery', 'storage' => 'csv_ids', 'max_items' => 12 ),
+			'ci_attachments' => array( 'kind' => 'attachment_gallery', 'storage' => 'ids', 'max_items' => 8 ),
+		),
 		'taxonomy_mode' => 'allowlist',
 		'taxonomies' => array( 'mad4b_ci_region' ),
 		'featured_media' => true,
@@ -125,8 +179,14 @@ try {
 	$create_input = array(
 		'post_title' => 'CI governed trip',
 		'post_content' => 'Initial content',
-		'meta' => array( 'ci_price' => '100' ),
+		'meta' => array(
+			'ci_price' => '100',
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_csv' => array( $image_two, $image_one ),
+			'ci_attachments' => array( $brochure ),
+		),
 		'taxonomies' => array( 'mad4b_ci_region' => array( 'cairo' ) ),
+		'featured_media_id' => $image_one,
 	);
 	$create_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'create', $create_input );
 	$check( ! is_wp_error( $create_plan ) && ! empty( $create_plan['profile_snapshot']['authority_sha256'] ), 'Create plan lacks historical profile snapshot.' );
@@ -136,6 +196,28 @@ try {
 	$post_ids[] = $post_id;
 	$check( 'draft' === get_post_status( $post_id ), 'Create did not preserve draft-first status.' );
 	$check( '100' === get_post_meta( $post_id, 'ci_price', true ), 'Create meta readback mismatch.' );
+
+	$check( array( $image_two, $image_one ) === get_post_meta( $post_id, 'ci_gallery', true ), 'Image gallery order/readback mismatch.' );
+	$check( $image_two . ',' . $image_one === get_post_meta( $post_id, 'ci_gallery_csv', true ), 'CSV image gallery storage/readback mismatch.' );
+	$check( array( $brochure ) === get_post_meta( $post_id, 'ci_attachments', true ), 'Attachment gallery readback mismatch.' );
+	$check( $image_one === (int) get_post_thumbnail_id( $post_id ), 'Featured image readback mismatch.' );
+
+	$parent_result = $media_adapter->set_parent( array( 'attachment_id' => $image_one, 'parent_post_id' => $post_id, 'expected_parent_id' => 0 ) );
+	$check( ! is_wp_error( $parent_result ) && $post_id === (int) get_post( $image_one )->post_parent, 'Attachment-to-trip parent binding failed.' );
+
+	$current_for_media_guard = get_post( $post_id );
+	$bad_gallery_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array( 'ci_gallery' => array( $brochure ) ),
+	) );
+	$check( is_wp_error( $bad_gallery_plan ) && 'mad4b_content_experience_media_image_required' === $bad_gallery_plan->get_error_code(), 'Image gallery accepted a non-image attachment.' );
+	$duplicate_gallery_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array( 'ci_gallery' => array( $image_one, $image_one ) ),
+	) );
+	$check( is_wp_error( $duplicate_gallery_plan ) && 'mad4b_content_experience_media_gallery_duplicate' === $duplicate_gallery_plan->get_error_code(), 'Image gallery accepted duplicate attachment IDs.' );
 
 	$replay = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $create_input, array( 'plan_sha256' => $create_plan['plan_sha256'] ) ) );
 	$check( ! is_wp_error( $replay ) && ! empty( $replay['idempotent_replay'] ) && $post_id === (int) $replay['post_id'], 'Create idempotent replay did not resolve exact prior result.' );
@@ -224,6 +306,7 @@ try {
 
 	echo "mad4b.site-control-plane.runtime-content-experience.v1: PASS\n";
 } finally {
+	if ( $gallery_image_filter ) remove_filter( 'wp_get_attachment_image', $gallery_image_filter, 10 );
 	foreach ( array_reverse( array_unique( array_map( 'absint', $post_ids ) ) ) as $id ) if ( $id > 0 ) wp_delete_post( $id, true );
 	foreach ( array_reverse( array_unique( array_map( 'absint', $term_ids ) ) ) as $id ) if ( $id > 0 ) wp_delete_term( $id, 'mad4b_ci_region' );
 	update_option( $option, is_array( $original_profiles ) ? $original_profiles : array(), false );
