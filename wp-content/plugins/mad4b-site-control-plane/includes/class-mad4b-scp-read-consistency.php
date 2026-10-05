@@ -1528,6 +1528,18 @@ final class MAD4B_SCP_Read_Consistency {
 			: array();
 		foreach ( $operator_actions as $action ) {
 			$action = sanitize_key( (string) $action );
+			if ( 'repair_adapter_ability_lifecycle_registration' === $action ) {
+				return array(
+					'action' => 'materialize_governed_read_adapter_lifecycle_then_retry',
+					'ability' => 'mad4b/read-execute',
+					'target_ability' => 'mad4b/adapters-inventory',
+					'why' => 'adapter_ability_lifecycle_is_incomplete_on_the_current_request_generation',
+					'read_only' => true,
+					'explicit_authority_required' => false,
+					'automatic_apply_allowed' => false,
+					'persistent_mutation_allowed' => false,
+				);
+			}
 			if ( 'deploy_exact_certified_runtime_release' === $action ) {
 				return array(
 					'action' => $action,
