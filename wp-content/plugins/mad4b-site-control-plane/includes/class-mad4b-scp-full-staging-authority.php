@@ -407,12 +407,57 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			if ( ! isset( $execution[ $key ] ) || ! is_array( $execution[ $key ] ) ) continue;
 			$blockers = array_merge( $blockers, $execution[ $key ] );
 		}
+		$blockers = self::compact_string_list( $blockers, 16 );
 		return array(
 			'host_capabilities_observed' => ! empty( $runtime ),
 			'process_backend_ready' => $process_ready,
 			'normal_no_network_execution_ready' => $normal_no_network_ready,
 			'execution_ready' => $process_ready && $normal_no_network_ready,
-			'blockers' => self::compact_string_list( $blockers, 16 ),
+			'blockers' => $blockers,
+			'host_recovery' => self::developer_host_recovery( $blockers ),
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	private static function developer_host_recovery( array $blockers ) {
+		$actions = array();
+		foreach ( $blockers as $blocker ) {
+			switch ( sanitize_key( (string) $blocker ) ) {
+				case 'resource_limiter_unavailable':
+					$actions[] = 'install_or_configure_prlimit';
+					break;
+				case 'network_isolation_unavailable':
+					$actions[] = 'install_or_configure_bwrap_or_unshare';
+					break;
+				case 'network_isolation_backend_uncertified':
+					$actions[] = 'replace_uncertified_network_sandbox';
+					break;
+				case 'proc_open_unavailable':
+					$actions[] = 'enable_proc_open_in_host_php_policy';
+					break;
+				case 'root_execution_denied':
+					$actions[] = 'run_php_worker_as_non_root';
+					break;
+				case 'php_linter_unavailable':
+					$actions[] = 'ensure_executable_php_binary';
+					break;
+			}
+		}
+		$actions = self::compact_string_list( $actions, 12 );
+		return array(
+			'required' => ! empty( $actions ),
+			'owner' => ! empty( $actions ) ? 'host_platform_operator' : '',
+			'actions' => $actions,
+			'accepted_resource_limiter' => 'prlimit',
+			'resource_limiter_config_constant' => 'MAD4B_MCP_DEVELOPER_PRLIMIT_BIN',
+			'accepted_network_isolation_backends' => array( 'bubblewrap', 'unshare-net' ),
+			'network_sandbox_config_constant' => 'MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN',
+			'external_host_change_required' => ! empty( $actions ),
+			'wordpress_self_repair_allowed' => false,
+			'automatic_install_allowed' => false,
+			'weaker_unsandboxed_fallback_allowed' => false,
+			'production_mutation_allowed' => false,
 			'authorizing' => false,
 			'mutation_performed' => false,
 		);
