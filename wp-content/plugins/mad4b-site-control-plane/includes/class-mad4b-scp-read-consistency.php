@@ -613,10 +613,6 @@ final class MAD4B_SCP_Read_Consistency {
 		$blocking = false;
 		if ( false === $adapter_lifecycle_ready ) {
 			$reasons[] = 'adapter_ability_lifecycle_incomplete';
-			foreach ( isset( $adapter_lifecycle['missing_abilities'] ) && is_array( $adapter_lifecycle['missing_abilities'] ) ? $adapter_lifecycle['missing_abilities'] : array() as $missing_ability ) {
-				$missing_ability = sanitize_text_field( (string) $missing_ability );
-				if ( '' !== $missing_ability ) $reasons[] = 'missing_adapter_ability:' . $missing_ability;
-			}
 			$actions[] = 'repair_adapter_ability_lifecycle_registration';
 			$blocking = true;
 		}
@@ -673,6 +669,10 @@ final class MAD4B_SCP_Read_Consistency {
 			'next_actions' => $actions,
 			'signals' => array(
 				'adapter_lifecycle_ready' => $adapter_lifecycle_ready,
+				'adapter_lifecycle_missing_abilities' => self::bounded_scalar_list(
+					isset( $adapter_lifecycle['missing_abilities'] ) && is_array( $adapter_lifecycle['missing_abilities'] ) ? $adapter_lifecycle['missing_abilities'] : array(),
+					8
+				),
 				'write_authority_ready' => $write_ready,
 				'candidate_binding_match' => $candidate_match,
 				'current_grant_snapshot_ready' => $grant_snapshot_ready,
