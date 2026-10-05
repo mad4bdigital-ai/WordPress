@@ -111,6 +111,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			$allowed[ MAD4B_SCP_Dynamic_Content_Adapter::APPLY ] = 'core';
 			$allowed[ MAD4B_SCP_Dynamic_Content_Adapter::PIPELINE_UPDATE ] = 'core';
 		}
+		if ( class_exists( 'MAD4B_SCP_Media_Adapter' ) ) {
+			$contracts = ( new MAD4B_SCP_Media_Adapter() )->reversible_contracts();
+			foreach ( array( 'media/update-metadata', 'media/set-featured', 'media/set-parent' ) as $ability ) {
+				if ( ! empty( $contracts[ $ability ] ) ) $allowed[ $ability ] = 'media';
+			}
+		}
 
 		ksort( $allowed, SORT_STRING );
 		return $allowed;
