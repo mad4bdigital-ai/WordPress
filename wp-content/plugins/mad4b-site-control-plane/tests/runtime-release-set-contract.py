@@ -20,6 +20,7 @@ def require(condition: bool, message: str) -> None:
 policy = json.loads((CONFIG / "runtime-release-policy.json").read_text(encoding="utf-8"))
 profiles = json.loads((CONFIG / "certified-provider-profiles.json").read_text(encoding="utf-8"))
 handoff = json.loads((CONFIG / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
+protocol = json.loads((CONFIG / "mcp-protocol-profiles.json").read_text(encoding="utf-8"))
 
 require(policy.get("contract") == "mad4b.runtime-release-policy.v1", "runtime release policy contract mismatch")
 require(policy.get("target_adapter_version") == "0.7.0", "runtime release policy target must be MCP Adapter 0.7.0")
@@ -44,6 +45,24 @@ require(
 adapter_profiles = (profiles.get("providers") or {}).get("mcp_adapter") or {}
 p070 = adapter_profiles.get("0.7.0") or {}
 require(p070.get("version") == "0.7.0", "MCP Adapter 0.7.0 exact profile missing")
+protocol_adapter = protocol.get("certified_adapter") or {}
+require(
+    protocol_adapter.get("version") == policy.get("target_adapter_version"),
+    "MCP protocol catalog Adapter drifted from runtime release policy",
+)
+require(
+    protocol_adapter.get("version_source") == "runtime_release_policy.target_adapter_version",
+    "MCP protocol catalog lacks canonical Adapter version source",
+)
+transport_compat = p070.get("transport_compatibility") or {}
+expected_protocols = list(transport_compat.get("modern_per_request_revisions") or []) + list(
+    reversed(transport_compat.get("legacy_session_revisions") or [])
+)
+require(
+    protocol.get("supported_protocol_versions") == expected_protocols,
+    "MCP protocol catalog revisions drifted from certified Adapter profile",
+)
+require("2026-07-28" in expected_protocols, "MCP Adapter 0.7.0 modern protocol revision is not release-certified")
 require(
     p070.get("archive_sha256") == "9168c18dbd018428ff14ee28e7018aa0399d4b8819b7c98b406f6610731c3a79",
     "MCP Adapter 0.7.0 official release SHA drift",
