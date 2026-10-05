@@ -256,6 +256,31 @@
           "refresh_tools_list_after_projection_change": true,
           "reconnect_only_if_client_cache_remains_stale": true,
           "visibility_change_never_changes_execution_authority": true
+        },
+        "deterministic_router": {
+          "source": "mad4b/session-safe-diagnostics.recommended_next_step",
+          "one_next_step_only": true,
+          "parallel_diagnostic_fanout_allowed": false,
+          "write_authority_not_effective": {
+            "action": "request_full_staging_authority_handshake",
+            "ability": "mad4b/full-staging-authority-handshake",
+            "read_only": true,
+            "automatic_apply_allowed": false
+          },
+          "skills_runtime_not_effective": {
+            "action": "inspect_then_explicitly_reconcile_managed_skills",
+            "ability": "mad4b/reconcile-managed-skills",
+            "explicit_authority_required": true,
+            "automatic_apply_allowed": false
+          },
+          "partial_report": {
+            "action": "inspect_partial_report_then_retry_missing_scope",
+            "mutation_target": "",
+            "automatic_apply_allowed": false
+          },
+          "ready_subject": {
+            "action": "continue_with_single_target_operation"
+          }
         }
       },
       "acceptance": {
