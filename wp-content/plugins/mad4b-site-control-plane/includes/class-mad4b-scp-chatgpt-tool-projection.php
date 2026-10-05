@@ -383,6 +383,19 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return $names;
 	}
 
+	private static function discovery_query_matches( $haystack, $query ) {
+		$haystack = strtolower( trim( (string) $haystack ) );
+		$query = strtolower( trim( (string) $query ) );
+		if ( '' === $query ) return true;
+		if ( false !== strpos( $haystack, $query ) ) return true;
+		$tokens = preg_split( '/[^\\p{L}\\p{N}]+/u', $query, -1, PREG_SPLIT_NO_EMPTY );
+		if ( ! is_array( $tokens ) || empty( $tokens ) ) return false;
+		foreach ( array_values( array_unique( $tokens ) ) as $token ) {
+			if ( false === strpos( $haystack, (string) $token ) ) return false;
+		}
+		return true;
+	}
+
 	public static function discover( $input = array() ) {
 		if ( is_array( $input ) && isset( $input['gateway_action'] ) ) { $input['action'] = $input['gateway_action']; return MAD4B_SCP_Ability_Catalog_Transport::mcp_result( MAD4B_SCP_Unified_Capability_Gateway::dispatch( $input, 'mcp' ) ); }
 		if ( is_array( $input ) && isset( $input['transport_action'] ) ) return MAD4B_SCP_Ability_Catalog_Transport::mcp_result( MAD4B_SCP_Ability_Catalog_Transport::handle( $input ) );
@@ -402,7 +415,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				$description = self::bounded_metadata( $ability->get_description(), 2048 );
 				$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $ability->get_category() );
 			} catch ( Throwable $error ) { $haystack = strtolower( $ability_name ); }
-			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			if ( ! self::discovery_query_matches( $haystack, $query ) ) continue;
 			if ( $matched++ < $offset ) continue;
 			if ( count( $items ) >= $limit ) { $has_more = true; break; }
 			$row = self::ability_row( $ability_name );
@@ -416,6 +429,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'currently_projected' => isset( $projected[ $ability_name ] ),
 				'classification_available' => ! $blocked,
 				'execution_governed' => ! $blocked && ! empty( $row['execution_eligible'] ),
+				'execution_eligibility_scope' => 'structural_classification_only',
+				'current_runtime_authority_evaluated' => false,
+				'current_runtime_authority_required_for_execution' => ! $blocked && isset( $row['classification'] ) && 'read' !== (string) $row['classification'],
 			) );
 		}
 		return array(

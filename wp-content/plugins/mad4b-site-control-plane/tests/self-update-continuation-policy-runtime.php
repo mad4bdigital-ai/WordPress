@@ -37,9 +37,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	public static $presence = array();
 	public static $binding = array();
 	public static $effective = false;
+	public static $current_readiness = array( 'ready'=>false, 'blockers'=>array( 'fixture_not_ready' ) );
 	public static function persistence_checkpoint() { return self::$checkpoint; }
 	public static function authority_presence_status() { return self::$presence; }
 	public static function candidate_binding_status() { return self::$binding; }
+	public static function current_execution_readiness( $ability_name = '', $input = null ) { return self::$current_readiness; }
 	public static function effective() { return self::$effective; }
 }
 
@@ -158,10 +160,37 @@ MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
 );
 MAD4B_SCP_Staging_Write_Authority::$binding = array( 'required' => true, 'match' => true );
 MAD4B_SCP_Staging_Write_Authority::$effective = true;
+MAD4B_SCP_Staging_Write_Authority::$current_readiness = array( 'ready'=>true, 'blockers'=>array() );
 $carry = classify();
 check( ! is_wp_error( $carry ), 'effective prior authority must be classifiable' );
 check( ! empty( $carry['required'] ), 'effective prior authority must require continuation' );
 check( 'carry_forward_effective_authority' === $carry['mode'], 'carry-forward mode mismatch' );
+MAD4B_SCP_Staging_Write_Authority::$current_readiness = array(
+	'ready'=>false,
+	'blockers'=>array( 'exact_write_grants_missing' ),
+);
+$live_drift = classify();
+check( is_wp_error( $live_drift ) && 'mad4b_self_update_continuation_prior_authority_drift' === $live_drift->get_error_code(), 'live grant drift must block before continuation prepare' );
+check( false === $live_drift->get_error_data()['current_authority_ready'], 'live drift evidence must expose current authority state' );
+check( in_array( 'exact_write_grants_missing', $live_drift->get_error_data()['current_authority_blockers'], true ), 'live drift blockers missing from update gate' );
+$live_drift_projection = continuation_projection();
+check( true === $live_drift_projection['blocked'], 'live authority drift projection must remain blocked' );
+check( false === $live_drift_projection['current_authority_ready'], 'continuation projection dropped current authority readiness' );
+check( in_array( 'exact_write_grants_missing', $live_drift_projection['current_authority_blockers'], true ), 'continuation projection dropped current authority blockers' );
+check( isset( $live_drift_projection['authority_handoff'] ) && is_array( $live_drift_projection['authority_handoff'] ), 'post-release authority handoff projection missing' );
+$handoff = $live_drift_projection['authority_handoff'];
+check( 'mad4b.staging-write-post-deploy-handoff.v1' === $handoff['contract'], 'authority handoff contract mismatch' );
+check( true === $handoff['required'] && 'reconciliation_required' === $handoff['state'], 'authority handoff must require reconciliation on live drift' );
+check( 'mad4b/staging-write-authority-convergence-handshake' === $handoff['plan_ability'], 'authority handoff must use narrow convergence handshake' );
+check( 'mad4b/staging-write-grant-reconciliation-plan' === $handoff['compatibility_plan_ability'], 'authority handoff compatibility plan missing' );
+check( 'mad4b/staging-write-authority-convergence-apply' === $handoff['apply_ability'], 'authority handoff must use narrow convergence apply' );
+check( 'ENABLE GOVERNED STAGING WRITE AUTHORITY' === $handoff['required_confirmation'], 'authority handoff confirmation drift' );
+check( false === $handoff['automatic_apply_allowed'], 'authority handoff must never auto-apply' );
+check( false === $handoff['production_allowed'], 'authority handoff must remain Staging-only' );
+check( false === $handoff['developer_authority_included'] && false === $handoff['developer_breakglass_included'], 'authority handoff must exclude Developer and Developer Breakglass' );
+check( false === $handoff['generic_raw_sql_breakglass_included'], 'authority handoff must exclude generic raw SQL Breakglass' );
+check( false === $handoff['authorizing'] && true === $handoff['read_only'] && false === $handoff['mutation_performed'], 'authority handoff projection widened authority or mutation' );
+MAD4B_SCP_Staging_Write_Authority::$current_readiness = array( 'ready'=>true, 'blockers'=>array() );
 foreach ( array( null, array(), array( 'required' => true ), array( 'required' => 'false', 'match' => true ), array( 'required' => true, 'match' => 1 ) ) as $bad_binding ) {
 	MAD4B_SCP_Staging_Write_Authority::$binding = $bad_binding;
 	$invalid = classify();

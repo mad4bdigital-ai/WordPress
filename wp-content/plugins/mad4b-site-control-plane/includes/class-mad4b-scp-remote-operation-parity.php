@@ -610,10 +610,41 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$row['executor_state'] = isset( $executor['state'] ) ? (string) $executor['state'] : 'unknown';
 			$row['execution_eligible'] = 'informational' !== (string) $row['trust_class'];
 			$row['remote_parity_ready'] = ! $row['manual_only'] && $row['remote_registered'] && $row['executor_available'] && $row['execution_eligible'];
+			$row['operational_state'] = 'ready';
+			$row['blockers'] = array();
+			$row['next_action'] = 'none';
+			if ( $row['manual_only'] ) {
+				$row['operational_state'] = 'manual_only';
+				$row['blockers'][] = 'remote_ability_unavailable';
+				$row['next_action'] = 'use_local_surface_or_register_remote_ability';
+			} elseif ( ! $row['remote_registered'] ) {
+				$row['operational_state'] = 'remote_ability_unregistered';
+				$row['blockers'][] = 'remote_ability_not_registered';
+				$row['next_action'] = 'mount_required_provider_or_ability_then_refresh_catalog';
+			} elseif ( ! $row['executor_available'] ) {
+				$row['operational_state'] = 'executor_unavailable';
+				$row['blockers'][] = sanitize_key( (string) $row['executor_state'] );
+				$row['next_action'] = self::executor_recovery_action( $row['executor_state'] );
+			} elseif ( ! $row['execution_eligible'] ) {
+				$row['operational_state'] = 'registration_ineligible';
+				$row['blockers'][] = 'operation_not_execution_eligible';
+				$row['next_action'] = 'review_registration_trust_and_certification';
+			}
 			$normalized[ $key ] = $row;
 		}
 		ksort( $normalized, SORT_STRING );
 		return $normalized;
+	}
+
+	private static function executor_recovery_action( $state ) {
+		$state = sanitize_key( (string) $state );
+		$map = array(
+			'browser_provider_waiting' => 'connect_certified_external_browser_executor',
+			'browser_acceptance_core_unavailable' => 'enable_browser_acceptance_core',
+			'wp_cron_disabled' => 'enable_wordpress_cron_or_external_cron_runner',
+			'wp_cron_api_unavailable' => 'restore_wordpress_cron_api',
+		);
+		return isset( $map[ $state ] ) ? $map[ $state ] : 'inspect_executor_availability';
 	}
 
 	private static function executor_status( $executor ) {

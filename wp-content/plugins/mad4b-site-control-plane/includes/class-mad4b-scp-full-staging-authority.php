@@ -247,6 +247,14 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			&& ! empty( $developer['breakglass_enabled'] )
 			&& ! empty( $developer['breakglass_authority']['ready'] );
 		$developer_execution = self::developer_execution_projection( $developer );
+		$operational = self::operational_readiness(
+			$write_ready,
+			$normal_ready,
+			$breakglass_ready,
+			is_array( $write_plan ) && isset( $write_plan['current_readiness_blockers'] ) && is_array( $write_plan['current_readiness_blockers'] ) ? $write_plan['current_readiness_blockers'] : array( 'write_reconciliation_plan_unavailable' ),
+			$developer_execution
+		);
+		$authority_ready = $write_ready && $normal_ready && $breakglass_ready;
 		return array(
 			'contract' => self::CONTRACT,
 			'read_only' => true,
@@ -279,7 +287,18 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'execution' => $developer_execution,
 				'status' => $developer,
 			),
-			'ready' => $write_ready && $normal_ready && $breakglass_ready,
+			'ready' => $authority_ready,
+			'ready_semantics' => 'authority_ready_legacy_compatibility',
+			'authority_ready' => $authority_ready,
+			'operational_ready' => ! empty( $operational['ready'] ),
+			'operational_state' => isset( $operational['state'] ) ? (string) $operational['state'] : 'operationally_blocked',
+			'operational_blockers' => isset( $operational['blockers'] ) ? $operational['blockers'] : array(),
+			'operational_client_action' => isset( $operational['client_action'] ) ? $operational['client_action'] : '',
+			'lane_readiness' => isset( $operational['lane_readiness'] ) ? $operational['lane_readiness'] : array(),
+			'available_lanes' => isset( $operational['available_lanes'] ) ? $operational['available_lanes'] : array(),
+			'blocked_lanes' => isset( $operational['blocked_lanes'] ) ? $operational['blocked_lanes'] : array(),
+			'degraded_mode' => ! empty( $operational['degraded_mode'] ),
+			'degraded_mode_semantics' => isset( $operational['degraded_mode_semantics'] ) ? $operational['degraded_mode_semantics'] : '',
 		);
 	}
 
@@ -310,6 +329,11 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				$write_checkpoint_ready = ! empty( $write['effective_ready'] );
 				$write_grant_snapshot_ready = ! empty( $write['current_ready'] );
 				$write_ready = $write_checkpoint_ready && $write_grant_snapshot_ready;
+				$write_blockers = isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] )
+					? $write['current_readiness_blockers']
+					: array( 'write_reconciliation_plan_unavailable' );
+				$authority_ready = $write_ready && $normal_ready && $breakglass_ready;
+				$operational = self::operational_readiness( $write_ready, $normal_ready, $breakglass_ready, $write_blockers, $developer_execution );
 
 				return array(
 					'contract' => 'mad4b.full-staging-authority-handshake.v1',
@@ -321,6 +345,17 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'generic_raw_sql_breakglass_included' => false,
 					'observed_at' => isset( $after['observed_at'] ) ? (string) $after['observed_at'] : gmdate( 'c' ),
 					'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
+					'ready_to_apply_semantics' => 'authority_convergence_only',
+					'authority_ready' => $authority_ready,
+					'operational_ready' => ! empty( $operational['ready'] ),
+					'operational_state' => isset( $operational['state'] ) ? (string) $operational['state'] : 'operationally_blocked',
+					'operational_blockers' => isset( $operational['blockers'] ) ? $operational['blockers'] : array(),
+					'operational_client_action' => isset( $operational['client_action'] ) ? $operational['client_action'] : '',
+					'lane_readiness' => isset( $operational['lane_readiness'] ) ? $operational['lane_readiness'] : array(),
+					'available_lanes' => isset( $operational['available_lanes'] ) ? $operational['available_lanes'] : array(),
+					'blocked_lanes' => isset( $operational['blocked_lanes'] ) ? $operational['blocked_lanes'] : array(),
+					'degraded_mode' => ! empty( $operational['degraded_mode'] ),
+					'degraded_mode_semantics' => isset( $operational['degraded_mode_semantics'] ) ? $operational['degraded_mode_semantics'] : '',
 					'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
 					// write_ready is operational/current truth. Preserve the historical
 					// checkpoint and grant snapshot as explicit component fields so clients
@@ -374,12 +409,108 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			if ( ! isset( $execution[ $key ] ) || ! is_array( $execution[ $key ] ) ) continue;
 			$blockers = array_merge( $blockers, $execution[ $key ] );
 		}
+		$blockers = self::compact_string_list( $blockers, 16 );
 		return array(
 			'host_capabilities_observed' => ! empty( $runtime ),
 			'process_backend_ready' => $process_ready,
 			'normal_no_network_execution_ready' => $normal_no_network_ready,
 			'execution_ready' => $process_ready && $normal_no_network_ready,
-			'blockers' => self::compact_string_list( $blockers, 16 ),
+			'blockers' => $blockers,
+			'host_recovery' => self::developer_host_recovery( $blockers ),
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	private static function developer_host_recovery( array $blockers ) {
+		$actions = array();
+		foreach ( $blockers as $blocker ) {
+			switch ( sanitize_key( (string) $blocker ) ) {
+				case 'resource_limiter_unavailable':
+					$actions[] = 'install_or_configure_prlimit';
+					break;
+				case 'network_isolation_unavailable':
+					$actions[] = 'install_or_configure_bwrap_or_unshare';
+					break;
+				case 'network_isolation_backend_uncertified':
+					$actions[] = 'replace_uncertified_network_sandbox';
+					break;
+				case 'proc_open_unavailable':
+					$actions[] = 'enable_proc_open_in_host_php_policy';
+					break;
+				case 'root_execution_denied':
+					$actions[] = 'run_php_worker_as_non_root';
+					break;
+				case 'php_linter_unavailable':
+					$actions[] = 'ensure_executable_php_binary';
+					break;
+			}
+		}
+		$actions = self::compact_string_list( $actions, 12 );
+		return array(
+			'required' => ! empty( $actions ),
+			'owner' => ! empty( $actions ) ? 'host_platform_operator' : '',
+			'actions' => $actions,
+			'accepted_resource_limiter' => 'prlimit',
+			'resource_limiter_config_constant' => 'MAD4B_MCP_DEVELOPER_PRLIMIT_BIN',
+			'accepted_network_isolation_backends' => array( 'bubblewrap', 'unshare-net' ),
+			'network_sandbox_config_constant' => 'MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN',
+			'external_host_change_required' => ! empty( $actions ),
+			'wordpress_self_repair_allowed' => false,
+			'automatic_install_allowed' => false,
+			'weaker_unsandboxed_fallback_allowed' => false,
+			'production_mutation_allowed' => false,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	private static function operational_readiness( $write_ready, $normal_ready, $breakglass_ready, array $write_blockers, array $developer_execution ) {
+		$blockers = array();
+		if ( ! $write_ready ) {
+			$blockers[] = 'write_authority_not_current';
+			$blockers = array_merge( $blockers, $write_blockers );
+		}
+		if ( ! $normal_ready ) $blockers[] = 'developer_authority_not_ready';
+		if ( ! $breakglass_ready ) $blockers[] = 'developer_breakglass_authority_not_ready';
+		if ( empty( $developer_execution['execution_ready'] ) ) {
+			$blockers[] = 'developer_execution_not_ready';
+			if ( isset( $developer_execution['blockers'] ) && is_array( $developer_execution['blockers'] ) ) {
+				$blockers = array_merge( $blockers, $developer_execution['blockers'] );
+			}
+		}
+		$blockers = self::compact_string_list( $blockers, 24 );
+		$authority_ready = (bool) $write_ready && (bool) $normal_ready && (bool) $breakglass_ready;
+		$developer_execution_ready = ! empty( $developer_execution['execution_ready'] );
+		$lane_readiness = array(
+			'governed_write' => (bool) $write_ready,
+			'developer' => (bool) $normal_ready && $developer_execution_ready,
+			'developer_breakglass' => (bool) $breakglass_ready && $developer_execution_ready,
+		);
+		$available_lanes = array();
+		$blocked_lanes = array();
+		foreach ( $lane_readiness as $lane => $lane_ready ) {
+			if ( $lane_ready ) $available_lanes[] = $lane;
+			else $blocked_lanes[] = $lane;
+		}
+		$ready = $authority_ready && $developer_execution_ready;
+		$degraded_mode = ! $ready && ! empty( $available_lanes );
+		$state = $ready
+			? 'operationally_ready'
+			: ( ! $authority_ready ? 'authority_convergence_required' : ( $degraded_mode ? 'degraded_host_execution' : 'operationally_blocked' ) );
+		return array(
+			'ready' => $ready,
+			'state' => $state,
+			'authority_ready' => $authority_ready,
+			'lane_readiness' => $lane_readiness,
+			'available_lanes' => $available_lanes,
+			'blocked_lanes' => $blocked_lanes,
+			'degraded_mode' => $degraded_mode,
+			'degraded_mode_semantics' => 'unavailable_lanes_fail_closed_available_lanes_remain_usable',
+			'blockers' => $blockers,
+			'client_action' => $ready
+				? 'operationally_ready'
+				: ( ! $authority_ready ? 'converge_authority_before_operational_use' : 'resolve_developer_host_execution_prerequisites' ),
 			'authorizing' => false,
 			'mutation_performed' => false,
 		);
@@ -489,6 +620,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'write_reconciliation' => $write_plan,
 			'write_subject_preflight_blockers' => $write_subject_preflight_blockers,
 			'developer_status' => $developer_status,
+			'developer_execution' => self::developer_execution_projection( $developer_status ),
+			'ready_to_apply_semantics' => 'authority_convergence_only',
 			'developer_plan' => $developer_plan,
 			'developer_breakglass_plan' => $developer_breakglass_plan,
 			'developer_breakglass_hard_blockers' => $breakglass_hard_blockers,
@@ -721,12 +854,26 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				if ( is_wp_error( $complete ) ) return self::fail_closed( 'completion_audit_failed', new WP_Error( 'mad4b_full_authority_completion_audit_failed', 'Idempotent full authority completion audit failed.' ) );
 			}
 
+			$post_apply_developer = MAD4B_SCP_Developer_Authority::status();
+			$post_apply_execution = self::developer_execution_projection( is_array( $post_apply_developer ) ? $post_apply_developer : array() );
+			$post_apply_operational = self::operational_readiness( true, true, true, array(), $post_apply_execution );
 			return array(
 				'contract' => self::CONTRACT,
 				'state' => 'full_staging_authority_ready',
+				'ready_semantics' => 'authority_converged_execution_reported_separately',
 				'write_ready' => true,
 				'developer_ready' => true,
 				'developer_breakglass_ready' => true,
+				'developer_execution' => $post_apply_execution,
+				'operational_ready' => ! empty( $post_apply_operational['ready'] ),
+				'operational_state' => isset( $post_apply_operational['state'] ) ? (string) $post_apply_operational['state'] : 'operationally_blocked',
+				'operational_blockers' => isset( $post_apply_operational['blockers'] ) ? $post_apply_operational['blockers'] : array(),
+				'operational_client_action' => isset( $post_apply_operational['client_action'] ) ? $post_apply_operational['client_action'] : '',
+				'lane_readiness' => isset( $post_apply_operational['lane_readiness'] ) ? $post_apply_operational['lane_readiness'] : array(),
+				'available_lanes' => isset( $post_apply_operational['available_lanes'] ) ? $post_apply_operational['available_lanes'] : array(),
+				'blocked_lanes' => isset( $post_apply_operational['blocked_lanes'] ) ? $post_apply_operational['blocked_lanes'] : array(),
+				'degraded_mode' => ! empty( $post_apply_operational['degraded_mode'] ),
+				'degraded_mode_semantics' => isset( $post_apply_operational['degraded_mode_semantics'] ) ? $post_apply_operational['degraded_mode_semantics'] : '',
 				'candidate_binding_committed' => $binding_required && ! $binding_match_before,
 				'candidate_binding_result' => is_array( $bind ) ? $bind : array(),
 				'candidate_binding_lineage' => array(

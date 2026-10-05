@@ -45,6 +45,35 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'mad4b/control-plane-native-apply' => 'core',
 			'mad4b/context-ai-review' => 'core',
 			'mad4b/approval-ai-decide' => 'core',
+
+			// Feature 007 core mutation abilities are part of the reviewed governed
+			// write universe and resolve to the bundled core provider. Keep this
+			// list exact and code-reviewed: never derive grant creation authority
+			// from runtime registration or third-party adapter hooks.
+			'mad4b/data-processing-bound-decision-record' => 'core',
+			'mad4b/data-processing-profile-apply' => 'core',
+			'mad4b/decommission-finalize-apply' => 'core',
+			'mad4b/decommission-quiesce-apply' => 'core',
+			'mad4b/decommission-resume-apply' => 'core',
+			'mad4b/portability-import-quarantine-apply' => 'core',
+			'mad4b/rights-record-apply' => 'core',
+			'mad4b/rights-takedown-apply' => 'core',
+			'mad4b/scheduler-backlog-claim-next' => 'core',
+			'mad4b/scheduler-backlog-complete' => 'core',
+			'mad4b/scheduler-backlog-enqueue' => 'core',
+			'mad4b/scheduler-backlog-heartbeat' => 'core',
+			'mad4b/scheduler-backlog-reconcile' => 'core',
+			'mad4b/search-budget-apply' => 'core',
+			'mad4b/search-capture-apply' => 'core',
+			'mad4b/search-compile-apply' => 'core',
+			'mad4b/search-control' => 'core',
+			'mad4b/search-import-evidence' => 'core',
+			'mad4b/search-post-change-apply' => 'core',
+			'mad4b/search-profile-apply' => 'core',
+			'mad4b/search-provider-probe' => 'core',
+			'mad4b/search-recompute' => 'core',
+			'mad4b/search-reconcile' => 'core',
+			'mad4b/search-retention' => 'core',
 			'jetengine/create-cct' => 'native-provider',
 			'jetengine/create-cpt' => 'native-provider',
 			'jetengine/create-glossary' => 'native-provider',
@@ -81,6 +110,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		if ( class_exists( 'MAD4B_SCP_Dynamic_Content_Adapter' ) ) {
 			$allowed[ MAD4B_SCP_Dynamic_Content_Adapter::APPLY ] = 'core';
 			$allowed[ MAD4B_SCP_Dynamic_Content_Adapter::PIPELINE_UPDATE ] = 'core';
+		}
+		if ( class_exists( 'MAD4B_SCP_Media_Adapter' ) ) {
+			$contracts = ( new MAD4B_SCP_Media_Adapter() )->reversible_contracts();
+			foreach ( array( 'media/update-metadata', 'media/set-featured', 'media/set-parent' ) as $ability ) {
+				if ( ! empty( $contracts[ $ability ] ) ) $allowed[ $ability ] = 'media';
+			}
 		}
 
 		ksort( $allowed, SORT_STRING );

@@ -20,6 +20,7 @@ audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8"
 authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
 registration_bridge = (root / "includes/class-mad4b-scp-mcp-registration-bridge.php").read_text(encoding="utf-8")
+adapter_registry = (root / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 self_update = (root / "includes/class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 repo_root = root.parents[2]
 external_diagnostic_workflow = (repo_root / ".github/workflows/mad4b-wpml-external-diagnostic.yml").read_text(encoding="utf-8")
@@ -456,9 +457,26 @@ for marker in (
 ):
     assert marker in request_scope, marker
 
-# Compact protocol planes must not instantiate every provider adapter merely to
-# create the addressed server. Provider-backed read/content/write/admin retain
-# the full registry.
+# Adapter Ability definitions and provider MCP server materialization are
+# deliberately separate. WordPress' canonical Abilities lifecycle owns
+# definitions once via Adapter_Registry; the MCP bridge may materialize provider
+# server planes only for the provider-backed read/content/write/admin resources.
+for marker in (
+    "private static $ability_hooks_bound",
+    "public static function boot_ability_registration()",
+    "add_action( 'wp_abilities_api_categories_init', array( $registry, 'register_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( $registry, 'register_abilities' ), 20 )",
+):
+    assert marker in adapter_registry, marker
+
+for forbidden in (
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
+    "request_needs_adapter_ability_registry()",
+    "self::prepare_registry( true );",
+):
+    assert forbidden not in registration_bridge, forbidden
+
 for marker in (
     "private static function request_needs_adapter_registry()",
     "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()",
@@ -466,7 +484,6 @@ for marker in (
     "MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id()",
     "if ( $protocol_hotpath && '' === $server_id ) return false;",
     "'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin'",
-    "if ( ! self::request_needs_adapter_registry() ) return;",
     "if ( self::request_needs_adapter_registry() ) self::prepare_registry();",
 ):
     assert marker in registration_bridge, marker

@@ -72,6 +72,14 @@ The preferred connector entry point is `mad4b/connector-preflight`, which:
 - identifies failed, retryable, and request-budget-skipped checks;
 - never mutates state.
 
+Session-safe operator guidance must order dependencies before authority recovery:
+inspect the exact certified runtime release, inspect the database writer blockers,
+resolve unknown operational evidence, then request the governed Write-only
+convergence handshake. Unknown writer/protocol evidence cannot produce a
+`HEALTHY` operator summary. A database topology error alone does not prove that
+Query Monitor's observer bootstrap is the correct repair. Write-only recovery
+must not default to Full Staging Developer or Breakglass convergence.
+
 ### Request budget
 
 Composite diagnostics have a bounded request budget. Once the budget is
@@ -233,6 +241,84 @@ deliberate single-scope inspection, but they MUST NOT be projected as direct
 read allowlist centered on `mad4b/session-safe-diagnostics`, discovery/info and
 single-target dispatch. Deep follow-up uses `mad4b-read` or exactly one
 generation-bound `read-execute` target at a time.
+
+### Rate-limit storage recovery
+
+Rate-limit exhaustion and rate-limit storage failure are different conditions.
+
+A genuine request quota exhaustion uses the `rate_limit` category and requires
+backoff. A failure of the atomic rate-limit storage topology uses the
+`rate_storage` category and requires repair before retry. The latter MUST NOT
+be retried blindly or treated as ordinary 429 backoff.
+
+For `mad4b_abuse_rate_storage_unavailable`, the resilience layer may preserve
+only a bounded whitelist of recovery metadata:
+
+- sanitized cause code;
+- bounded topology blockers;
+- the read-only recovery Ability;
+- the bounded repair Ability;
+- recheck action and storage phase;
+- explicit `blind_retry_allowed` and `authorizing` booleans.
+
+All other source error data is discarded. The same category/action must be
+recognized when an outer transport converts the source condition into a textual
+exception such as "Rate-limit writer topology is unavailable"; structured
+recovery metadata is preserved only when it actually exists.
+
+### Deterministic recovery routing
+
+A session-safe report that is coherent but not operationally ready MUST expose
+exactly one recommended next step for the highest-priority current blocker.
+This recommendation is orchestration guidance only and never grants authority.
+
+Current routing rules are:
+
+- partial report -> inspect the bounded partial report and retry only the missing
+  scope; do not invent a mutation target;
+- ineffective current Write Authority -> request the read-only
+  `mad4b/full-staging-authority-handshake` as the next single call;
+- ineffective managed Skills runtime -> direct the operator to
+  `mad4b/reconcile-managed-skills`, but mark explicit authority required and
+  `automatic_apply_allowed=false`;
+- ready subject -> continue with one target operation.
+
+The recommendation must survive payload reduction in compact form. It never
+authorizes blind retries, parallel diagnostic fan-out, implicit Write/Developer
+enablement, or Production mutation.
+
+### Session-safe comparative performance observation
+
+Routine session-safe diagnostics expose a comparative performance observation
+without inventing one universal DB-query, include-count, or memory threshold.
+
+The observation is bound to the same runtime generation and records:
+
+- diagnostic elapsed milliseconds and diagnostic-budget headroom;
+- total request elapsed milliseconds as a separate comparative signal;
+- database query count;
+- included-file count;
+- current and peak memory usage.
+
+These values are operational signals, not authorization gates. Performance
+acceptance compares them with the **previous exact Staging release** for the same
+site/workload profile. Material release-to-release regression requires review;
+one large absolute number alone does not prove a defect unless it violates an
+existing explicit diagnostic/payload/time budget. The diagnostic budget MUST
+be compared with diagnostic elapsed time, not total request latency.
+
+The observation must therefore declare:
+
+- `comparison_required=true`;
+- `comparison_baseline_scope=previous_exact_staging_release`;
+- no fixed universal DB-query/include-count/memory threshold;
+- a client action to compare the exact release baseline before performance
+  acceptance;
+- `authorizing=false`, `read_only=true`, and `mutation_performed=false`.
+
+Payload reduction must preserve a compact form of this observation so recovery
+clients do not lose performance context merely because diagnostic sections were
+compressed.
 
 ## Full Staging Authority session-safe handshake
 

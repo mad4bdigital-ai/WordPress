@@ -55,6 +55,9 @@ final class MAD4B_SCP_Content_Experience_Governance {
 			'hierarchy' => ! empty( $profile['hierarchy'] ),
 			'helpers' => $helpers,
 		);
+		if ( ! empty( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ) {
+			$payload['media_meta_fields'] = $profile['media_meta_fields'];
+		}
 		return $payload;
 	}
 

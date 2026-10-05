@@ -29,6 +29,8 @@ Default snapshot lifetime is one hour and object retention is seven days. The de
 
 An unchanged manifest reuses its stored definitions and schema descriptors, avoiding per-Ability rewrites. It still scans current registered definitions to detect changes. Adapter/filter changes outside Ability metadata must update `mad4b_scp_catalog_wire_generation`. Snapshot cursors pin contract, query, delta base, authority scope and expiration. Removals and upserts share the page limit. Query deltas compare membership both before and after a change.
 
+Manifest snapshots persist definitions only (`mad4b.catalog-definitions-only.v1`). Execution classification is observed anew for the returned page, including cursor continuations; building a two-item page does not inspect the entire provider universe. Classification failures or exhausted page budgets leave the affected row explicitly ineligible while preserving sibling definitions. Cached decisions in older, still-leased snapshots are ignored. Definition deltas do not represent changes in grants or provider readiness. Every execution still requires fresh single-target preparation and live dispatcher authorization.
+
 ## Host client integration
 
 `client/ability-catalog-client.mjs` is a host adapter, not automatic native ChatGPT integration:

@@ -11,6 +11,34 @@ $check( class_exists( 'MAD4B_SCP_Adapter_Coverage_Admin_UI' ), 'Adapter Coverage
 $check( class_exists( 'MAD4B_SCP_Repository_Artifact_Catalog' ), 'Repository artifact catalog is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Family_Adapter' ), 'Repository family adapter class is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Plugins_Adapter' ), 'Repository inventory adapter class is unavailable.' );
+$adapter_lifecycle_abilities = array(
+	'mad4b/adapters-inventory' => true,
+	'media/search' => true,
+	'media/get' => true,
+	'media/update-metadata' => false,
+	'fluentforms/status' => true,
+	'fluentforms/list-forms' => true,
+	'jetformbuilder/status' => true,
+	'litespeed/status' => true,
+	'mad4b/content-modeling-context' => true,
+	'mad4b/taxonomy-get-term' => true,
+	'mad4b/taxonomy-update-term' => false,
+	'mad4b/translation-status' => true,
+	'mad4b/translation-list-languages' => true,
+	'mad4b/translation-set-post-language' => false,
+);
+foreach ( $adapter_lifecycle_abilities as $ability_name => $expected_readonly ) {
+	$check( wp_has_ability( $ability_name ), 'Adapter lifecycle read ability is missing: ' . $ability_name );
+	$ability = wp_get_ability( $ability_name );
+	$meta = $ability->get_meta();
+	$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+	if ( $expected_readonly ) {
+		$check( ! empty( $annotations['readonly'] ), 'Adapter read ability lost readonly semantics: ' . $ability_name );
+	} else {
+		$check( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'], 'Adapter mutation ability lost explicit mutation semantics: ' . $ability_name );
+	}
+}
+$check( ! wp_has_ability( 'mad4b/taxonomy-delete-term' ), 'Irreversible taxonomy deletion leaked into the normal Abilities surface.' );
 foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/functional-gap-runtime-evidence', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
 	$check( wp_has_ability( $ability_name ), 'Missing discovery ability: ' . $ability_name );
 	$ability = wp_get_ability( $ability_name );

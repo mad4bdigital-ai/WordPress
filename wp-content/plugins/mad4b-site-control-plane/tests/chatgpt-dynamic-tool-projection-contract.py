@@ -32,6 +32,13 @@ for marker in [
     "ability_names",
     "input_schema_sha256",
     "currently_projected",
+    "execution_eligibility_scope",
+    "current_runtime_authority_evaluated",
+    "current_runtime_authority_required_for_execution",
+    "'structural_classification_only'",
+    "private static function discovery_query_matches",
+    "preg_split( '/[^\\\\p{L}\\\\p{N}]+/u'",
+    "self::discovery_query_matches( $haystack, $query )",
 ]:
     require(marker in PROJECTION, f"all-site Ability discovery invariant missing: {marker}")
 

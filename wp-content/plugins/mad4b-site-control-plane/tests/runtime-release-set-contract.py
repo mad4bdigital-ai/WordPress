@@ -19,6 +19,8 @@ def require(condition: bool, message: str) -> None:
 
 policy = json.loads((CONFIG / "runtime-release-policy.json").read_text(encoding="utf-8"))
 profiles = json.loads((CONFIG / "certified-provider-profiles.json").read_text(encoding="utf-8"))
+handoff = json.loads((CONFIG / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
+protocol = json.loads((CONFIG / "mcp-protocol-profiles.json").read_text(encoding="utf-8"))
 
 require(policy.get("contract") == "mad4b.runtime-release-policy.v1", "runtime release policy contract mismatch")
 require(policy.get("target_adapter_version") == "0.7.0", "runtime release policy target must be MCP Adapter 0.7.0")
@@ -28,9 +30,267 @@ require(policy.get("exact_provider_profile_required") is True, "exact provider p
 require(policy.get("authority", {}).get("production_auto_apply") is False, "Production auto apply must remain disabled")
 require(policy.get("authority", {}).get("breakglass_required") is False, "Breakglass must not be required")
 
+require(handoff.get("contract") == "mad4b.wordpress-deployment-handoff.v2", "staging deployment handoff contract mismatch")
+handoff_adapter = ((handoff.get("target") or {}).get("mcp_adapter") or {})
+target_adapter_version = str(policy.get("target_adapter_version") or "")
+require(
+    handoff_adapter.get("required_version_source") == "runtime_release_policy.target_adapter_version",
+    "staging deployment handoff must declare runtime release policy as the Adapter version source",
+)
+require(
+    handoff_adapter.get("required_version") == target_adapter_version,
+    "staging deployment handoff Adapter version drifted from runtime release policy",
+)
+
+authority_handoff = ((handoff.get("post_deploy") or {}).get("authority_handoff") or {})
+require(
+    authority_handoff.get("contract") == "mad4b.staging-write-post-deploy-handoff.v1",
+    "post-deploy governed write authority handoff contract missing",
+)
+require(
+    authority_handoff.get("current_truth_source") == "mad4b/staging-write-authority-convergence-handshake",
+    "post-deploy authority handoff must use the narrow read-only convergence handshake",
+)
+require(
+    authority_handoff.get("compatibility_plan_ability") == "mad4b/staging-write-grant-reconciliation-plan",
+    "post-deploy authority handoff compatibility plan missing",
+)
+require(
+    authority_handoff.get("apply_ability") == "mad4b/staging-write-authority-convergence-apply",
+    "post-deploy authority handoff must use narrow write-only convergence apply",
+)
+require(
+    authority_handoff.get("required_confirmation") == "ENABLE GOVERNED STAGING WRITE AUTHORITY",
+    "post-deploy authority handoff confirmation drift",
+)
+for key in (
+    "exact_runtime_identity_required",
+    "exact_site_profile_binding_required",
+    "exact_grant_inventory_required",
+    "exact_transport_grant_inventory_required",
+    "read_only_plan_before_apply",
+    "explicit_apply_required",
+    "fail_closed_on_allowlist_drift",
+    "same_cycle_readback_required",
+    "append_only_audit_required",
+):
+    require(authority_handoff.get(key) is True, f"post-deploy authority handoff invariant missing: {key}")
+for key in (
+    "automatic_apply_allowed",
+    "production_allowed",
+    "developer_authority_included",
+    "developer_breakglass_included",
+    "generic_raw_sql_breakglass_included",
+    "wildcard_grants_allowed",
+    "caller_supplied_provider_allowed",
+):
+    require(authority_handoff.get(key) is False, f"post-deploy authority handoff widened forbidden authority: {key}")
+
+operational = ((handoff.get("post_deploy") or {}).get("operational_readiness") or {})
+require(
+    operational.get("contract") == "mad4b.staging-operational-readiness.v1",
+    "lane-aware post-deploy operational readiness contract missing",
+)
+require(
+    operational.get("truth_model") == "lane_aware_fail_closed",
+    "post-deploy operational readiness truth model drift",
+)
+require(
+    operational.get("required_sequence") == [
+        "exact_runtime_identity",
+        "certified_mcp_protocol_profile",
+        "query_monitor_observer_attribution",
+        "database_topology_write_safe",
+        "chatgpt_catalog_preflight",
+        "abuse_budget_discovery_admission",
+        "current_write_authority_and_candidate_binding",
+        "provider_closure_current_authority_consistency",
+        "session_safe_subject_readiness",
+        "lane_level_operational_readiness",
+    ],
+    "post-deploy operational readiness sequence drift",
+)
+truth_sources = operational.get("read_only_truth_sources") or {}
+require(truth_sources.get("runtime_and_session") == "mad4b/session-safe-diagnostics", "session-safe operational truth source drift")
+require(truth_sources.get("catalog_and_protocol") == "mad4b/chatgpt-tool-projection-status", "catalog/protocol operational truth source drift")
+require(truth_sources.get("current_write_authority") == "mad4b/staging-write-authority-convergence-handshake", "write authority operational truth source drift")
+require(truth_sources.get("provider_closure") == "mad4b/provider-closure-matrix", "provider closure operational truth source drift")
+require(truth_sources.get("full_authority_and_lanes") == "mad4b/full-staging-authority-handshake", "lane readiness operational truth source drift")
+
+smoke = operational.get("smoke_checks") or {}
+require(smoke.get("discovery_surface") == "mad4b/tool-discover", "operational discovery smoke surface drift")
+for key in (
+    "discovery_must_not_fail_on_certified_query_monitor_observer",
+    "rate_limit_storage_must_report_actionable_topology_recovery",
+    "direct_catalog_must_remain_within_tool_and_serialized_byte_budgets",
+):
+    require(smoke.get(key) is True, f"operational smoke invariant missing: {key}")
+
+degraded = operational.get("graceful_degradation") or {}
+require(
+    degraded.get("unavailable_lane_policy") == "fail_closed_without_disabling_ready_sibling_lanes",
+    "graceful degradation policy drift",
+)
+require(degraded.get("developer_host_limitations_do_not_false_mark_governed_write_unready") is True, "Developer host limits must not falsely disable governed Write")
+require(degraded.get("production_is_never_inferred_from_staging_lane_readiness") is True, "Staging lane readiness must never imply Production")
+require("database_topology_write_safe" in (degraded.get("governed_write_lane_requires") or []), "governed Write lane lost DB topology gate")
+require("process_backend_ready" in (degraded.get("developer_lane_requires") or []), "Developer lane lost process backend gate")
+require("normal_no_network_execution_ready" in (degraded.get("developer_lane_requires") or []), "Developer lane lost network-isolation gate")
+
+developer_host_recovery = degraded.get("developer_host_recovery") or {}
+require(developer_host_recovery.get("truth_source") == "mad4b/full-staging-authority-handshake.developer_execution.host_recovery", "Developer host recovery truth source drift")
+require(developer_host_recovery.get("owner") == "host_platform_operator", "Developer host recovery ownership drift")
+require(developer_host_recovery.get("accepted_resource_limiter") == "prlimit", "Developer resource limiter certification drift")
+require(developer_host_recovery.get("resource_limiter_config_constant") == "MAD4B_MCP_DEVELOPER_PRLIMIT_BIN", "Developer resource limiter override drift")
+require(developer_host_recovery.get("accepted_network_isolation_backends") == ["bubblewrap", "unshare-net"], "Developer network sandbox certification drift")
+require(developer_host_recovery.get("network_sandbox_config_constant") == "MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN", "Developer network sandbox override drift")
+for key in (
+    "proc_open_required",
+    "non_root_worker_required",
+    "php_binary_required_for_lint",
+    "developer_lane_remains_blocked_until_reverified",
+    "governed_write_sibling_lane_may_remain_available",
+):
+    require(developer_host_recovery.get(key) is True, f"Developer host recovery required invariant missing: {key}")
+for key in (
+    "wordpress_self_repair_allowed",
+    "automatic_install_allowed",
+    "weaker_unsandboxed_fallback_allowed",
+    "production_mutation_allowed",
+):
+    require(developer_host_recovery.get(key) is False, f"Developer host recovery widened unsafe fallback: {key}")
+
+recovery = operational.get("recovery") or {}
+rate_recovery = recovery.get("rate_limit_topology_failure") or {}
+require(rate_recovery.get("read_first") == "mad4b/session-safe-diagnostics", "rate-limit recovery must start with session-safe diagnostics")
+require(rate_recovery.get("bounded_repair") == "mad4b/query-monitor-db-attribution-bootstrap", "rate-limit recovery lost bounded Query Monitor repair")
+require(rate_recovery.get("blind_retry_allowed") is False, "rate-limit topology recovery must forbid blind retries")
+write_recovery = recovery.get("write_authority_drift") or {}
+require(write_recovery.get("plan_first") == "mad4b/staging-write-authority-convergence-handshake", "write authority recovery plan drift")
+require(write_recovery.get("apply") == "mad4b/staging-write-authority-convergence-apply", "write authority recovery apply drift")
+require(write_recovery.get("automatic_apply_allowed") is False, "write authority recovery must remain explicit")
+protocol_recovery = recovery.get("protocol_profile_drift") or {}
+require(protocol_recovery.get("exact_adapter_pair_certification_required") is True, "protocol recovery must remain exact-pair certified")
+require(protocol_recovery.get("fallback_protocol_negotiation_allowed") is False, "protocol recovery must not silently downgrade")
+catalog_recovery = recovery.get("catalog_refresh") or {}
+require(catalog_recovery.get("visibility_change_never_changes_execution_authority") is True, "catalog refresh must not widen authority")
+
+router = recovery.get("deterministic_router") or {}
+require(router.get("source") == "mad4b/session-safe-diagnostics.recommended_next_step", "deterministic recovery router source drift")
+require(router.get("one_next_step_only") is True, "deterministic recovery router must expose one next step only")
+require(router.get("parallel_diagnostic_fanout_allowed") is False, "deterministic recovery router must deny parallel diagnostic fan-out")
+write_route = router.get("write_authority_not_effective") or {}
+require(write_route.get("action") == "request_full_staging_authority_handshake", "write recovery route drift")
+require(write_route.get("ability") == "mad4b/full-staging-authority-handshake", "write recovery ability drift")
+require(write_route.get("read_only") is True and write_route.get("automatic_apply_allowed") is False, "write recovery route must remain read-only and non-automatic")
+skills_route = router.get("skills_runtime_not_effective") or {}
+require(skills_route.get("ability") == "mad4b/reconcile-managed-skills", "skills recovery ability drift")
+require(skills_route.get("explicit_authority_required") is True and skills_route.get("automatic_apply_allowed") is False, "skills recovery must require explicit authority")
+partial_route = router.get("partial_report") or {}
+require(partial_route.get("mutation_target") == "" and partial_route.get("automatic_apply_allowed") is False, "partial report recovery must not invent a mutation target")
+ready_route = router.get("ready_subject") or {}
+require(ready_route.get("action") == "continue_with_single_target_operation", "ready subject routing drift")
+
+performance = operational.get("performance") or {}
+require(
+    performance.get("contract") == "mad4b.staging-operational-performance-comparison.v1",
+    "post-deploy comparative performance contract missing",
+)
+require(
+    performance.get("source") == "mad4b/session-safe-diagnostics.performance_observation",
+    "post-deploy performance source drift",
+)
+require(performance.get("exact_runtime_generation_required") is True, "performance comparison must bind exact runtime generation")
+require(performance.get("exact_site_profile_required") is True, "performance comparison must bind exact Site Profile")
+require(performance.get("comparison_required") is True, "performance comparison must remain mandatory for acceptance")
+require(performance.get("baseline_scope") == "previous_exact_staging_release", "performance baseline scope drift")
+require(
+    performance.get("metrics") == [
+        "request_elapsed_ms",
+        "db_query_count",
+        "included_file_count",
+        "memory_usage_bytes",
+        "peak_memory_bytes",
+    ],
+    "post-deploy performance metric set drift",
+)
+require(performance.get("explicit_diagnostic_budget_is_hard_boundary") is True, "explicit diagnostic budget must remain a hard boundary")
+require(performance.get("total_request_elapsed_is_comparative_signal") is True, "total request elapsed must remain comparative rather than misusing the diagnostic budget")
+require(performance.get("diagnostic_elapsed_is_budgeted_signal") is True, "diagnostic elapsed must remain the budgeted signal")
+for key in (
+    "universal_db_query_threshold",
+    "universal_included_file_threshold",
+    "universal_memory_threshold",
+    "automatic_tuning_allowed",
+    "automatic_index_ddl_allowed",
+    "automatic_cache_authority_allowed",
+    "authorizing",
+    "production_mutation_allowed",
+):
+    require(performance.get(key) is False, f"post-deploy performance policy widened unsafe automation or invented a universal threshold: {key}")
+require(performance.get("material_regression_requires_review") is True, "material performance regression must require review")
+require(performance.get("missing_baseline_state") == "baseline_required_not_failure", "missing performance baseline semantics drift")
+require(performance.get("regression_state") == "review_required", "performance regression state drift")
+require(performance.get("no_regression_state") == "accepted_comparative_observation", "no-regression performance state drift")
+
+acceptance = operational.get("acceptance") or {}
+for key in (
+    "operational_ready_requires_all_requested_lanes_ready",
+    "degraded_mode_is_explicit",
+    "available_lanes_must_be_reported",
+    "blocked_lanes_must_be_reported",
+    "blockers_must_have_recovery_action",
+):
+    require(acceptance.get(key) is True, f"operational acceptance invariant missing: {key}")
+for key in (
+    "automatic_authority_mutation_allowed",
+    "production_mutation_allowed",
+    "generic_raw_sql_breakglass_included",
+):
+    require(acceptance.get(key) is False, f"operational acceptance widened forbidden authority: {key}")
+
+require(
+    acceptance.get("operational_state_enum") == [
+        "authority_convergence_required",
+        "degraded_host_execution",
+        "operationally_blocked",
+        "operationally_ready",
+    ],
+    "operational acceptance state enum drift",
+)
+require(
+    acceptance.get("provider_write_authority_state_enum") == [
+        "write_authority_reconciliation_required",
+        "write_authority_current",
+    ],
+    "provider write-authority acceptance state enum drift",
+)
+require(
+    acceptance.get("state_is_derived_from_current_truth_not_persisted_checkpoint_only") is True,
+    "operational state must remain bound to current runtime truth",
+)
+
 adapter_profiles = (profiles.get("providers") or {}).get("mcp_adapter") or {}
 p070 = adapter_profiles.get("0.7.0") or {}
 require(p070.get("version") == "0.7.0", "MCP Adapter 0.7.0 exact profile missing")
+protocol_adapter = protocol.get("certified_adapter") or {}
+require(
+    protocol_adapter.get("version") == policy.get("target_adapter_version"),
+    "MCP protocol catalog Adapter drifted from runtime release policy",
+)
+require(
+    protocol_adapter.get("version_source") == "runtime_release_policy.target_adapter_version",
+    "MCP protocol catalog lacks canonical Adapter version source",
+)
+transport_compat = p070.get("transport_compatibility") or {}
+expected_protocols = list(transport_compat.get("modern_per_request_revisions") or []) + list(
+    reversed(transport_compat.get("legacy_session_revisions") or [])
+)
+require(
+    protocol.get("supported_protocol_versions") == expected_protocols,
+    "MCP protocol catalog revisions drifted from certified Adapter profile",
+)
+require("2026-07-28" in expected_protocols, "MCP Adapter 0.7.0 modern protocol revision is not release-certified")
 require(
     p070.get("archive_sha256") == "9168c18dbd018428ff14ee28e7018aa0399d4b8819b7c98b406f6610731c3a79",
     "MCP Adapter 0.7.0 official release SHA drift",
@@ -40,6 +300,25 @@ require(
     p070.get("package_url") == "https://github.com/WordPress/mcp-adapter/releases/download/v0.7.0/mcp-adapter.zip",
     "MCP Adapter 0.7.0 release URL drift",
 )
+
+pre_staging_workflow = (REPO / ".github/workflows/feature-007-pre-staging-hybrid-audit.yml").read_text(encoding="utf-8")
+certified_materializer = (ROOT / "tests/materialize-certified-mcp-adapter.py").read_text(encoding="utf-8")
+require(
+    pre_staging_workflow.count("materialize-certified-mcp-adapter.py") >= 2,
+    "Pre-Staging runtime jobs must materialize the certified Adapter release",
+)
+require(
+    "--archive wp-content/plugins/mcp-adapter.zip" not in pre_staging_workflow,
+    "Pre-Staging runtime regressed to the stale repository Adapter fixture",
+)
+for marker in (
+    "runtime-release-policy.json",
+    "certified-provider-profiles.json",
+    "archive_sha256",
+    "archive_bytes",
+    "ALLOWED_INITIAL_PREFIX",
+):
+    require(marker in certified_materializer, "certified Adapter materializer invariant missing: " + marker)
 runtime_surface = p070.get("runtime_surface") or {}
 runtime_symbols = p070.get("runtime_symbols") or []
 require(runtime_surface.get("contract") == "mad4b.mcp-runtime-surface.v1", "MCP Adapter 0.7.0 runtime surface contract missing")
@@ -174,6 +453,11 @@ require("generic_plugin_update_for_adapter_allowed' => false" in runtime, "gener
 self_update = (INCLUDES / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 require("runtime_release_set" in self_update, "Control Plane update manifest does not carry runtime release-set identity")
 require("mad4b_self_update_runtime_release_set_adapter_url_invalid" in self_update, "runtime release-set Adapter URL is not validated")
+require("mad4b.staging-write-post-deploy-handoff.v1" in self_update, "self-update authority handoff projection missing")
+require("'authority_handoff' => $authority_handoff" in self_update, "native release plan does not expose independent authority handoff truth")
+require("'current_authority_blockers' => $current_blockers" in self_update, "self-update projection drops exact current authority blockers")
+require("'automatic_apply_allowed' => false" in self_update, "post-release authority handoff must never auto-apply")
+require("'developer_breakglass_included' => false" in self_update, "post-release authority handoff must exclude Developer Breakglass")
 
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 require("class-mad4b-scp-runtime-release-set.php" in main, "runtime release-set class is not loaded")

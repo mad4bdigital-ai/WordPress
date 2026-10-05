@@ -17,6 +17,7 @@ final class MAD4B_SCP_Read_Consistency {
 	const BUNDLE_ABILITY = 'mad4b/read-diagnostic-bundle';
 	const METADATA_ABILITY = 'mad4b/read-metadata-envelope';
 	const SESSION_SAFE_REPORT_ABILITY = 'mad4b/session-safe-diagnostics';
+	const SESSION_SAFE_OPERATOR_SUMMARY_CONTRACT = 'mad4b.session-safe-operator-summary.v1';
 	const MAX_SESSION_SAFE_REPORT_BYTES = 16384;
 	const DEFAULT_SESSION_SAFE_BUDGET_MS = 12000;
 	const MAX_SESSION_SAFE_BUDGET_MS = 20000;
@@ -527,6 +528,7 @@ final class MAD4B_SCP_Read_Consistency {
 			if ( empty( $summary[ $effective_key ] ) ) $subject_blockers[] = $check_name . '_not_effective';
 		}
 		$subject_blockers = array_values( array_unique( $subject_blockers ) );
+		$operator_summary = self::session_safe_operator_summary( $sections, $partial, $subject_blockers, $after );
 		$valid_for_session_evidence_merge = ! $partial && empty( $subject_blockers );
 		$deep_checks_deferred = array(
 			'full_runtime_provenance_hash',
@@ -538,6 +540,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'write_catalog_runtime_rebuild',
 		);
 
+		$diagnostic_elapsed_ms = max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) );
+		$request_metrics = self::request_metrics();
+		$performance_observation = self::performance_observation( $request_metrics, $budget_ms, $runtime_generation, $diagnostic_elapsed_ms );
 		$report = array(
 			'contract' => 'mad4b.session-safe-diagnostics.v1',
 			'state' => $partial ? 'partial' : ( $valid_for_session_evidence_merge ? 'ready' : 'subject_not_ready' ),
@@ -555,12 +560,15 @@ final class MAD4B_SCP_Read_Consistency {
 			'merge_scope' => 'session_safe_subject_evidence_only',
 			'deep_acceptance_required' => true,
 			'subject_blockers' => $subject_blockers,
+			'operator_summary' => $operator_summary,
 			'subject_live_validation_deferred' => array( 'skills_runtime' ),
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
-			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
+			'elapsed_ms' => $diagnostic_elapsed_ms,
 			'budget_ms' => $budget_ms,
-			'request_metrics' => self::request_metrics(),
+			'request_metrics' => $request_metrics,
+			'performance_observation' => $performance_observation,
+			'recommended_next_step' => self::session_safe_next_step( $partial, $subject_blockers, $operator_summary ),
 			'deep_checks_deferred' => $deep_checks_deferred,
 			'release_acceptance_deferred_checks' => $deep_checks_deferred,
 			'fixed_bundle_order' => self::bundle_names(),
@@ -581,6 +589,115 @@ final class MAD4B_SCP_Read_Consistency {
 			'production_mutation_performed' => false,
 		);
 		return self::bound_session_safe_report( $report );
+	}
+
+	private static function session_safe_operator_summary( array $sections, $partial, array $subject_blockers, array $snapshot ) {
+		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
+		$write = isset( $runtime_checks['write_authority']['summary'] ) && is_array( $runtime_checks['write_authority']['summary'] ) ? $runtime_checks['write_authority']['summary'] : array();
+		$adapter_lifecycle = isset( $runtime_checks['adapter_lifecycle']['summary'] ) && is_array( $runtime_checks['adapter_lifecycle']['summary'] ) ? $runtime_checks['adapter_lifecycle']['summary'] : array();
+		$skills = isset( $runtime_checks['skills_runtime']['summary'] ) && is_array( $runtime_checks['skills_runtime']['summary'] ) ? $runtime_checks['skills_runtime']['summary'] : array();
+		$topology = isset( $runtime_checks['database_topology']['summary'] ) && is_array( $runtime_checks['database_topology']['summary'] ) ? $runtime_checks['database_topology']['summary'] : array();
+		$protocol = isset( $runtime_checks['mcp_protocol_profile']['summary'] ) && is_array( $runtime_checks['mcp_protocol_profile']['summary'] ) ? $runtime_checks['mcp_protocol_profile']['summary'] : array();
+
+		$adapter_lifecycle_ready = array_key_exists( 'ready', $adapter_lifecycle ) && null !== $adapter_lifecycle['ready'] ? (bool) $adapter_lifecycle['ready'] : null;
+		$write_ready = array_key_exists( 'effective_authority_ready', $write ) && null !== $write['effective_authority_ready'] ? (bool) $write['effective_authority_ready'] : null;
+		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) && null !== $write['candidate_binding_match'] ? (bool) $write['candidate_binding_match'] : null;
+		$grant_snapshot_ready = array_key_exists( 'current_grant_snapshot_ready', $write ) && null !== $write['current_grant_snapshot_ready'] ? (bool) $write['current_grant_snapshot_ready'] : null;
+		$skills_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready'] ? (bool) $skills['effective_skill_ready'] : null;
+		$topology_ready = array_key_exists( 'ready', $topology ) && null !== $topology['ready'] ? (bool) $topology['ready'] : null;
+		$read_your_writes = array_key_exists( 'read_your_writes', $topology ) && null !== $topology['read_your_writes'] ? (bool) $topology['read_your_writes'] : null;
+		$protocol_ready = array_key_exists( 'ready', $protocol ) && null !== $protocol['ready'] ? (bool) $protocol['ready'] : null;
+
+		$reasons = self::bounded_scalar_list( $subject_blockers, 12 );
+		$actions = array();
+		$blocking = false;
+		if ( false === $adapter_lifecycle_ready ) {
+			$reasons[] = 'adapter_ability_lifecycle_incomplete';
+			$actions[] = 'repair_adapter_ability_lifecycle_registration';
+			$blocking = true;
+		}
+		if ( false === $write_ready ) {
+			$reasons[] = 'write_authority_not_current';
+			$actions[] = 'reconcile_exact_staging_write_authority';
+			$blocking = true;
+		}
+		if ( false === $candidate_match ) {
+			$reasons[] = 'runtime_authority_candidate_not_reconciled';
+			$actions[] = 'reconcile_exact_staging_write_authority';
+			$blocking = true;
+		}
+		if ( false === $grant_snapshot_ready ) {
+			$reasons[] = 'exact_write_grants_not_current';
+			$actions[] = 'reconcile_exact_staging_write_authority';
+			$blocking = true;
+		}
+		foreach ( isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? $write['current_readiness_blockers'] : array() as $reason ) {
+			$reason = sanitize_key( (string) $reason );
+			if ( '' !== $reason ) $reasons[] = $reason;
+		}
+		if ( false === $topology_ready || false === $read_your_writes ) {
+			$reasons[] = 'database_topology_not_write_safe';
+			$actions[] = 'inspect_database_writer_topology';
+			$blocking = true;
+		}
+		foreach ( isset( $topology['blockers'] ) && is_array( $topology['blockers'] ) ? $topology['blockers'] : array() as $reason ) {
+			$reason = sanitize_key( (string) $reason );
+			if ( '' !== $reason ) $reasons[] = $reason;
+		}
+		if ( false === $protocol_ready ) {
+			$reasons[] = 'mcp_protocol_profile_not_ready';
+			if ( ! empty( $protocol['blocker'] ) ) $reasons[] = sanitize_key( (string) $protocol['blocker'] );
+			$actions[] = 'deploy_exact_certified_runtime_release';
+			$blocking = true;
+		}
+		if ( false === $skills_ready ) {
+			$reasons[] = 'skills_runtime_not_ready';
+			$actions[] = 'reconcile_managed_skills';
+		}
+		foreach ( array(
+			'adapter_lifecycle_ready' => $adapter_lifecycle_ready,
+			'write_authority_ready' => $write_ready,
+			'candidate_binding_match' => $candidate_match,
+			'current_grant_snapshot_ready' => $grant_snapshot_ready,
+			'database_topology_ready' => $topology_ready,
+			'read_your_writes' => $read_your_writes,
+			'mcp_protocol_profile_ready' => $protocol_ready,
+		) as $signal => $ready ) {
+			if ( null !== $ready ) continue;
+			$reasons[] = $signal . '_unknown';
+			$actions[] = 'inspect_operational_readiness';
+		}
+		if ( $partial ) {
+			$reasons[] = 'diagnostics_partial';
+			$actions[] = 'query_one_generation_bound_bundle';
+		}
+		$reasons = array_values( array_unique( self::bounded_scalar_list( $reasons, 16 ) ) );
+		$actions = array_values( array_unique( self::bounded_scalar_list( $actions, 8 ) ) );
+		$state = $blocking ? 'BLOCKED' : ( ! empty( $reasons ) ? 'DEGRADED' : 'HEALTHY' );
+		return array(
+			'contract' => self::SESSION_SAFE_OPERATOR_SUMMARY_CONTRACT,
+			'state' => $state,
+			'effective_environment' => isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '',
+			'reasons' => $reasons,
+			'next_actions' => $actions,
+			'signals' => array(
+				'adapter_lifecycle_ready' => $adapter_lifecycle_ready,
+				'adapter_lifecycle_missing_abilities' => self::bounded_scalar_list(
+					isset( $adapter_lifecycle['missing_abilities'] ) && is_array( $adapter_lifecycle['missing_abilities'] ) ? $adapter_lifecycle['missing_abilities'] : array(),
+					8
+				),
+				'write_authority_ready' => $write_ready,
+				'candidate_binding_match' => $candidate_match,
+				'current_grant_snapshot_ready' => $grant_snapshot_ready,
+				'database_topology_ready' => $topology_ready,
+				'read_your_writes' => $read_your_writes,
+				'mcp_protocol_profile_ready' => $protocol_ready,
+				'skills_runtime_ready' => $skills_ready,
+			),
+			'read_only' => true,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 	}
 
 	private static function compact_bundle_result( $bundle, array $result ) {
@@ -620,6 +737,7 @@ final class MAD4B_SCP_Read_Consistency {
 		$name = sanitize_key( (string) $name );
 		$scalar_keys = array(
 			'contract', 'ready', 'state', 'supported', 'configured', 'environment', 'revision',
+			'expected_count', 'registered_count', 'registration_only', 'authority_evaluated',
 			'profile_digest', 'exact_profile_bound', 'write_enabled', 'skills_enabled',
 			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
 			'artifact_identity', 'mcp_adapter_version', 'runtime_manifest_match', 'stale',
@@ -641,6 +759,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'live_skill_evaluation_deferred', 'runtime_catalog_rebuild_deferred',
 			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'effective_skill_ready_scope', 'candidate_identity_bound_ready', 'live_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
 			'persisted_authority_ready', 'effective_authority_ready',
+			'read_your_writes', 'database_dropin_present', 'database_dropin_observer_certified', 'database_dropin_ownership', 'observer_dropin_certified',
+			'blocker', 'certified_adapter_version', 'runtime_adapter_version', 'adapter_version_match', 'successor_certification_state',
 			'current_grant_snapshot_performed', 'current_grant_snapshot_ready',
 			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
 			'deep_oauth_validation_deferred', 'provider_runtime_hash_validation_deferred',
@@ -653,7 +773,7 @@ final class MAD4B_SCP_Read_Consistency {
 			$value = $data[ $key ];
 			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
 		}
-		foreach ( array( 'blockers', 'current_readiness_blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
+		foreach ( array( 'missing_abilities', 'blockers', 'current_readiness_blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
 			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
 		}
 		foreach ( array( 'current', 'target', 'build', 'connection', 'write_authority' ) as $nested_key ) {
@@ -752,7 +872,23 @@ final class MAD4B_SCP_Read_Consistency {
 			'merge_scope' => 'session_safe_subject_evidence_only',
 			'deep_acceptance_required' => true,
 			'subject_blockers' => isset( $report['subject_blockers'] ) && is_array( $report['subject_blockers'] ) ? array_values( array_slice( $report['subject_blockers'], 0, 8 ) ) : array(),
+			'operator_summary' => isset( $report['operator_summary'] ) && is_array( $report['operator_summary'] ) ? $report['operator_summary'] : array(),
 			'release_acceptance_deferred_checks' => isset( $report['release_acceptance_deferred_checks'] ) && is_array( $report['release_acceptance_deferred_checks'] ) ? array_values( array_slice( $report['release_acceptance_deferred_checks'], 0, 12 ) ) : array(),
+			'performance_observation' => isset( $report['performance_observation'] ) && is_array( $report['performance_observation'] ) ? array(
+				'contract' => isset( $report['performance_observation']['contract'] ) ? (string) $report['performance_observation']['contract'] : '',
+				'classification' => isset( $report['performance_observation']['classification'] ) ? (string) $report['performance_observation']['classification'] : '',
+				'diagnostic_budget_ratio' => isset( $report['performance_observation']['diagnostic_budget_ratio'] ) ? (float) $report['performance_observation']['diagnostic_budget_ratio'] : 0,
+				'comparison_required' => ! empty( $report['performance_observation']['comparison_required'] ),
+				'comparison_baseline_scope' => isset( $report['performance_observation']['comparison_baseline_scope'] ) ? (string) $report['performance_observation']['comparison_baseline_scope'] : '',
+				'client_action' => isset( $report['performance_observation']['client_action'] ) ? (string) $report['performance_observation']['client_action'] : '',
+			) : array(),
+			'recommended_next_step' => isset( $report['recommended_next_step'] ) && is_array( $report['recommended_next_step'] ) ? array(
+				'action' => isset( $report['recommended_next_step']['action'] ) ? (string) $report['recommended_next_step']['action'] : '',
+				'ability' => isset( $report['recommended_next_step']['ability'] ) ? (string) $report['recommended_next_step']['ability'] : '',
+				'read_only' => ! empty( $report['recommended_next_step']['read_only'] ),
+				'explicit_authority_required' => ! empty( $report['recommended_next_step']['explicit_authority_required'] ),
+				'automatic_apply_allowed' => false,
+			) : array(),
 			'section_digests' => array(),
 			'session_termination_count' => isset( $report['session_termination_count'] ) ? max( 0, (int) $report['session_termination_count'] ) : 0,
 			'payload_reduced' => true,
@@ -826,6 +962,17 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( 'runtime' === $bundle ) {
 			return array(
 				'write_authority' => static function () { return self::session_safe_write_authority_projection(); },
+				'adapter_lifecycle' => static function () { return self::adapter_lifecycle_projection(); },
+				'database_topology' => static function () {
+					return class_exists( 'MAD4B_SCP_Database_Topology' ) && method_exists( 'MAD4B_SCP_Database_Topology', 'status' )
+						? MAD4B_SCP_Database_Topology::status( false )
+						: array( 'ready' => null, 'state' => 'unavailable', 'blockers' => array( 'database_topology_unavailable' ), 'read_only' => true, 'mutation_performed' => false );
+				},
+				'mcp_protocol_profile' => static function () {
+					return class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) && method_exists( 'MAD4B_SCP_MCP_Protocol_Profile', 'status' )
+						? MAD4B_SCP_MCP_Protocol_Profile::status()
+						: array( 'ready' => null, 'blocker' => 'mcp_protocol_profile_unavailable', 'authorizing' => false );
+				},
 				'skills_runtime' => static function () { return self::skills_projection(); },
 				'update_state' => static function () { return self::update_projection(); },
 			);
@@ -1145,6 +1292,42 @@ final class MAD4B_SCP_Read_Consistency {
 		) );
 	}
 
+	private static function adapter_lifecycle_projection() {
+		$expected = array(
+			'mad4b/adapters-inventory',
+			'media/search',
+			'media/get',
+			'media/update-metadata',
+			'fluentforms/status',
+			'fluentforms/list-forms',
+			'jetformbuilder/status',
+			'litespeed/status',
+			'mad4b/content-modeling-context',
+			'mad4b/taxonomy-get-term',
+			'mad4b/taxonomy-update-term',
+			'mad4b/translation-status',
+			'mad4b/translation-list-languages',
+			'mad4b/translation-set-post-language',
+		);
+		$missing = array();
+		foreach ( $expected as $ability_name ) {
+			if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_name ) ) $missing[] = $ability_name;
+		}
+		return array(
+			'contract' => 'mad4b.adapter-lifecycle-projection.v1',
+			'ready' => empty( $missing ),
+			'state' => empty( $missing ) ? 'ready' : 'adapter_ability_lifecycle_incomplete',
+			'expected_count' => count( $expected ),
+			'registered_count' => count( $expected ) - count( $missing ),
+			'missing_abilities' => $missing,
+			'registration_only' => true,
+			'authority_evaluated' => false,
+			'read_only' => true,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 	private static function skills_projection() {
 		$status = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) && method_exists( 'MAD4B_SCP_Skill_Runtime_Certification', 'persisted_status' )
 			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status()
@@ -1338,6 +1521,153 @@ final class MAD4B_SCP_Read_Consistency {
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
+		);
+	}
+
+	private static function session_safe_next_step( $partial, array $subject_blockers, array $operator_summary = array() ) {
+		$subject_blockers = self::bounded_scalar_list( $subject_blockers, 8 );
+		if ( $partial ) {
+			return array(
+				'action' => 'inspect_partial_report_then_retry_missing_scope',
+				'ability' => '',
+				'read_only' => true,
+				'explicit_authority_required' => false,
+				'automatic_apply_allowed' => false,
+			);
+		}
+
+		$operator_actions = isset( $operator_summary['next_actions'] ) && is_array( $operator_summary['next_actions'] )
+			? self::bounded_scalar_list( $operator_summary['next_actions'], 8 )
+			: array();
+		// Dependency order is independent of the order blockers were collected.
+		// Never ask for grant convergence while its runtime or writer is blocked.
+		$operator_actions = array_values( array_intersect( array(
+			'deploy_exact_certified_runtime_release',
+			'inspect_database_writer_topology',
+			'repair_query_monitor_db_attribution_then_retry',
+			'inspect_operational_readiness',
+			'repair_adapter_ability_lifecycle_registration',
+			'reconcile_exact_staging_write_authority',
+			'reconcile_managed_skills',
+		), $operator_actions ) );
+		foreach ( $operator_actions as $action ) {
+			$action = sanitize_key( (string) $action );
+			if ( 'repair_adapter_ability_lifecycle_registration' === $action ) {
+				return array(
+					'action' => 'materialize_governed_read_adapter_lifecycle_then_retry',
+					'ability' => 'mad4b/read-execute',
+					'target_ability' => 'mad4b/adapters-inventory',
+					'why' => 'adapter_ability_lifecycle_is_incomplete_on_the_current_request_generation',
+					'read_only' => true,
+					'explicit_authority_required' => false,
+					'automatic_apply_allowed' => false,
+					'persistent_mutation_allowed' => false,
+				);
+			}
+			if ( 'deploy_exact_certified_runtime_release' === $action ) {
+				return array(
+					'action' => $action,
+					'ability' => 'mad4b/control-plane-native-plan',
+					'why' => 'mcp_protocol_or_runtime_release_identity_is_not_currently_certified',
+					'read_only' => true,
+					'explicit_authority_required' => false,
+					'automatic_apply_allowed' => false,
+				);
+			}
+			if ( 'inspect_database_writer_topology' === $action || 'repair_query_monitor_db_attribution_then_retry' === $action || 'inspect_operational_readiness' === $action ) {
+				return array(
+					'action' => 'inspect_operational_readiness' === $action ? $action : 'inspect_database_writer_topology',
+					'ability' => 'mad4b/session-safe-diagnostics',
+					'why' => 'inspect_exact_operational_blockers_before_selecting_a_bounded_repair',
+					'read_only' => true,
+					'explicit_authority_required' => false,
+					'automatic_apply_allowed' => false,
+				);
+			}
+			if ( 'reconcile_exact_staging_write_authority' === $action ) {
+				return array(
+					'action' => 'request_staging_write_authority_handshake',
+					'ability' => 'mad4b/staging-write-authority-convergence-handshake',
+					'why' => 'current_write_authority_or_candidate_binding_requires_reconciliation',
+					'read_only' => true,
+					'explicit_authority_required' => false,
+					'automatic_apply_allowed' => false,
+				);
+			}
+			if ( 'reconcile_managed_skills' === $action ) {
+				return array(
+					'action' => 'inspect_then_explicitly_reconcile_managed_skills',
+					'ability' => 'mad4b/reconcile-managed-skills',
+					'why' => 'managed_skills_runtime_not_effective',
+					'read_only' => false,
+					'explicit_authority_required' => true,
+					'automatic_apply_allowed' => false,
+				);
+			}
+		}
+
+		// Backward-compatible fallback for clients that receive a report produced
+		// without the richer operator summary.
+		if ( in_array( 'write_authority_not_effective', $subject_blockers, true ) ) {
+			return array(
+				'action' => 'request_staging_write_authority_handshake',
+				'ability' => 'mad4b/staging-write-authority-convergence-handshake',
+				'why' => 'current_write_authority_or_candidate_binding_requires_reconciliation',
+				'read_only' => true,
+				'explicit_authority_required' => false,
+				'automatic_apply_allowed' => false,
+			);
+		}
+		if ( in_array( 'skills_runtime_not_effective', $subject_blockers, true ) ) {
+			return array(
+				'action' => 'inspect_then_explicitly_reconcile_managed_skills',
+				'ability' => 'mad4b/reconcile-managed-skills',
+				'why' => 'managed_skills_runtime_not_effective',
+				'read_only' => false,
+				'explicit_authority_required' => true,
+				'automatic_apply_allowed' => false,
+			);
+		}
+		return array(
+			'action' => 'continue_with_single_target_operation',
+			'ability' => '',
+			'read_only' => true,
+			'explicit_authority_required' => false,
+			'automatic_apply_allowed' => false,
+		);
+	}
+
+	private static function performance_observation( array $metrics, $budget_ms, $runtime_generation, $diagnostic_elapsed_ms ) {
+		$budget_ms = max( 1, (int) $budget_ms );
+		$diagnostic_elapsed_ms = max( 0, (int) $diagnostic_elapsed_ms );
+		$request_elapsed_ms = isset( $metrics['request_elapsed_ms'] ) ? max( 0, (int) $metrics['request_elapsed_ms'] ) : 0;
+		$headroom_ms = max( 0, $budget_ms - $diagnostic_elapsed_ms );
+		$budget_ratio = $budget_ms > 0 ? min( 10, round( $diagnostic_elapsed_ms / $budget_ms, 4 ) ) : 0;
+		return array(
+			'contract' => 'mad4b.session-safe-performance-observation.v1',
+			'classification' => $diagnostic_elapsed_ms > $budget_ms ? 'diagnostic_budget_exceeded' : 'observed_within_diagnostic_budget',
+			'diagnostic_budget_ms' => $budget_ms,
+			'diagnostic_elapsed_ms' => $diagnostic_elapsed_ms,
+			'diagnostic_budget_headroom_ms' => $headroom_ms,
+			'diagnostic_budget_ratio' => $budget_ratio,
+			'request_elapsed_ms' => $request_elapsed_ms,
+			'request_overhead_ms' => max( 0, $request_elapsed_ms - $diagnostic_elapsed_ms ),
+			'db_query_count' => isset( $metrics['db_query_count'] ) ? max( 0, (int) $metrics['db_query_count'] ) : 0,
+			'included_file_count' => isset( $metrics['included_file_count'] ) ? max( 0, (int) $metrics['included_file_count'] ) : 0,
+			'memory_usage_bytes' => isset( $metrics['memory_usage_bytes'] ) ? max( 0, (int) $metrics['memory_usage_bytes'] ) : 0,
+			'peak_memory_bytes' => isset( $metrics['peak_memory_bytes'] ) ? max( 0, (int) $metrics['peak_memory_bytes'] ) : 0,
+			'runtime_generation' => preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $runtime_generation ) ) ? strtolower( (string) $runtime_generation ) : '',
+			'comparison_required' => true,
+			'comparison_baseline_scope' => 'previous_exact_staging_release',
+			'comparison_metrics' => array( 'request_elapsed_ms', 'db_query_count', 'included_file_count', 'memory_usage_bytes', 'peak_memory_bytes' ),
+			'fixed_universal_db_query_threshold_applied' => false,
+			'fixed_universal_included_file_threshold_applied' => false,
+			'fixed_universal_memory_threshold_applied' => false,
+			'regression_policy' => 'compare_exact_release_baseline_then_review_material_regression',
+			'client_action' => 'compare_against_previous_exact_staging_release_before_performance_acceptance',
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
 		);
 	}
 

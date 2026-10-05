@@ -62,6 +62,7 @@ final class MAD4B_SCP_Connector_Resilience {
 						'retry_after_seconds' => self::retry_after_seconds_from_wp_error( $value ),
 						'error_code' => self::safe_error_code( $value ),
 						'error_fingerprint' => self::wp_error_fingerprint( $name, $value ),
+						'recovery' => self::safe_wp_error_recovery_metadata( $value ),
 						'raw_error_message_exposed' => false,
 						'session_termination_count' => $session_termination_count,
 						'read_only' => true,
@@ -159,6 +160,7 @@ final class MAD4B_SCP_Connector_Resilience {
 					'category' => isset( $read['category'] ) ? (string) $read['category'] : 'unknown',
 					'source_error_code' => isset( $read['error_code'] ) ? sanitize_key( (string) $read['error_code'] ) : '',
 					'client_action' => isset( $read['client_action'] ) ? (string) $read['client_action'] : 'reconnect_then_retry_once',
+					'recovery' => isset( $read['recovery'] ) && is_array( $read['recovery'] ) ? $read['recovery'] : array(),
 					'automatic_retry_performed' => ! empty( $read['automatic_retry_performed'] ),
 					'automatic_retry_exhausted' => ! empty( $read['automatic_retry_exhausted'] ),
 					'mutation_performed' => false,
@@ -256,6 +258,7 @@ final class MAD4B_SCP_Connector_Resilience {
 				'automatic_retry_exhausted' => ! empty( $result['automatic_retry_exhausted'] ),
 				'category' => isset( $result['category'] ) ? (string) $result['category'] : 'unknown',
 				'client_action' => isset( $result['client_action'] ) ? (string) $result['client_action'] : 'inspect',
+				'recovery' => isset( $result['recovery'] ) && is_array( $result['recovery'] ) ? $result['recovery'] : array(),
 				'retry_after_seconds' => isset( $result['retry_after_seconds'] ) ? (int) $result['retry_after_seconds'] : 0,
 				'attempts' => isset( $result['attempts'] ) ? (int) $result['attempts'] : 1,
 				'elapsed_ms' => isset( $result['elapsed_ms'] ) ? (int) $result['elapsed_ms'] : 0,
@@ -491,7 +494,9 @@ final class MAD4B_SCP_Connector_Resilience {
 			'retry_transient_read_once' => true,
 			'no_immediate_retry_after_automatic_retry_exhausted' => true,
 			'rate_limit_requires_backoff' => true,
-			'supported_error_categories' => array( 'runtime_restart', 'runtime_maintenance', 'rate_limit', 'timeout', 'session_terminated', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' ),
+			'rate_storage_requires_repair_before_retry' => true,
+			'rate_storage_blind_retry_allowed' => false,
+			'supported_error_categories' => array( 'runtime_restart', 'runtime_maintenance', 'rate_limit', 'rate_storage', 'timeout', 'session_terminated', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' ),
 			'runtime_restart_honors_retry_after' => true,
 			'runtime_restart_immediate_auto_retry_allowed' => false,
 			'runtime_maintenance_honors_retry_after' => true,
@@ -517,7 +522,10 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( self::contains_any( $message, array( 'runtime maintenance', 'maintenance is active', 'mad4b_mcp_runtime_maintenance_busy' ) ) ) {
 			return array( 'category' => 'runtime_maintenance', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'retry_after_runtime_maintenance' );
 		}
-		if ( self::contains_any( $message, array( '429', 'rate limit', 'too many requests' ) ) ) {
+		if ( self::contains_any( $message, array( 'rate-limit writer topology is unavailable', 'rate storage unavailable', 'mad4b_abuse_rate_storage_unavailable' ) ) ) {
+			return array( 'category' => 'rate_storage', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'repair_rate_storage_then_retry' );
+		}
+		if ( self::contains_any( $message, array( '429', 'rate limit', 'rate-limit', 'too many requests' ) ) ) {
 			return array( 'category' => 'rate_limit', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'backoff_then_retry' );
 		}
 		if ( self::contains_any( $message, array( 'timeout', 'timed out' ) ) || false !== strpos( $class, 'timeout' ) ) {
@@ -551,7 +559,10 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( 'mad4b_mcp_runtime_maintenance_busy' === $code || self::contains_any( $haystack, array( 'runtime_maintenance_busy', 'runtime maintenance', 'maintenance is active' ) ) ) {
 			return array( 'category' => 'runtime_maintenance', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'retry_after_runtime_maintenance' );
 		}
-		if ( self::contains_any( $haystack, array( '429', 'rate_limit', 'rate limit', 'too many requests' ) ) ) {
+		if ( 'mad4b_abuse_rate_storage_unavailable' === $code ) {
+			return array( 'category' => 'rate_storage', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'repair_rate_storage_then_retry' );
+		}
+		if ( self::contains_any( $haystack, array( '429', 'rate_limit', 'rate limit', 'rate-limit', 'too many requests' ) ) ) {
 			return array( 'category' => 'rate_limit', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'backoff_then_retry' );
 		}
 		if ( self::contains_any( $haystack, array( 'timeout', 'timed out' ) ) ) {
@@ -601,6 +612,36 @@ final class MAD4B_SCP_Connector_Resilience {
 			),
 			true
 		);
+	}
+
+	private static function safe_wp_error_recovery_metadata( WP_Error $error ) {
+		$data = $error->get_error_data();
+		if ( ! is_array( $data ) ) return array();
+		$out = array();
+		foreach ( array( 'cause_code', 'recheck_action', 'storage_phase', 'surface' ) as $key ) {
+			if ( ! isset( $data[ $key ] ) || ! is_scalar( $data[ $key ] ) ) continue;
+			$value = sanitize_key( (string) $data[ $key ] );
+			if ( '' !== $value ) $out[ $key ] = substr( $value, 0, 96 );
+		}
+		foreach ( array( 'recovery_read_ability', 'bounded_repair_ability' ) as $key ) {
+			if ( ! isset( $data[ $key ] ) || ! is_scalar( $data[ $key ] ) ) continue;
+			$value = trim( (string) $data[ $key ] );
+			if ( 1 === preg_match( '/^[A-Za-z0-9._+\/-]{3,191}$/', $value ) ) $out[ $key ] = $value;
+		}
+		if ( isset( $data['topology_blockers'] ) && is_array( $data['topology_blockers'] ) ) {
+			$blockers = array();
+			foreach ( $data['topology_blockers'] as $blocker ) {
+				$blocker = sanitize_key( (string) $blocker );
+				if ( '' === $blocker ) continue;
+				$blockers[] = substr( $blocker, 0, 96 );
+				if ( count( $blockers ) >= 12 ) break;
+			}
+			$out['topology_blockers'] = array_values( array_unique( $blockers ) );
+		}
+		foreach ( array( 'blind_retry_allowed', 'authorizing' ) as $key ) {
+			if ( array_key_exists( $key, $data ) ) $out[ $key ] = (bool) $data[ $key ];
+		}
+		return $out;
 	}
 
 	private static function retry_after_seconds_from_wp_error( WP_Error $error ) {

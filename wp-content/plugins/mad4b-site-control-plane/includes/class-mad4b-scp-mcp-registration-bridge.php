@@ -54,13 +54,11 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$registry = MAD4B_SCP_Adapter_Registry::instance();
 		self::$servers = new MAD4B_SCP_Servers();
 
-		// Preserve registration ordering: core first (10), certified adapters
-		// second (20). All actual ability/server creation remains on canonical
-		// WordPress/MCP actions.
+		// Preserve registration ordering: core definitions stay on the bridge at
+		// priority 10. Adapter definitions are bound once by Adapter_Registry at
+		// priority 20; duplicating those hooks here would double-register Abilities.
 		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 );
-		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 );
 		// Bind catalog definitions independently from update/resource lifecycle boot.
 		// Passive AJAX jobs skip those writers; their authorized catalog still needs
 		// every declared planner and the compact session diagnostic. Registration
@@ -427,20 +425,8 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		if ( self::$abilities ) self::$abilities->register_categories();
 	}
 
-	public static function register_registry_categories() {
-		if ( ! self::request_needs_adapter_registry() ) return;
-		self::prepare_registry();
-		if ( self::$registry ) self::$registry->register_categories();
-	}
-
 	public static function register_core_abilities() {
 		if ( self::$abilities ) self::$abilities->register_abilities();
-	}
-
-	public static function register_registry_abilities() {
-		if ( ! self::request_needs_adapter_registry() ) return;
-		self::prepare_registry();
-		if ( self::$registry ) self::$registry->register_abilities();
 	}
 
 	public static function register_servers( $adapter ) {
@@ -451,10 +437,10 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		// do not exist yet. wp_get_abilities() is idempotent and fires the normal
 		// wp_abilities_api_init lifecycle; it does not create grants or authority.
 		if ( function_exists( 'wp_get_abilities' ) && did_action( 'wp_abilities_api_init' ) < 1 ) wp_get_abilities();
-		// Adapter registration is required only by the provider-backed read/content/
-		// write/admin planes. ChatGPT, enrollment and Developer protocol requests use
-		// core governed abilities and must not instantiate every provider adapter
-		// before initialize/tools-list can complete.
+		// Provider-backed server materialization remains limited to read/content/write/admin.
+		// The ChatGPT protocol may register Adapter Ability definitions during the
+		// canonical Abilities lifecycle, but it must not materialize provider MCP planes
+		// merely to initialize or list the compact fixed-dispatch catalog.
 		if ( self::request_needs_adapter_registry() ) self::prepare_registry();
 		if ( ! self::$servers ) self::$servers = new MAD4B_SCP_Servers();
 		self::$servers->register_servers( $adapter );
@@ -470,6 +456,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		$expected_ids = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' ) ? MAD4B_SCP_Servers::expected_server_ids() : array();
 		$registrations = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'registration_status' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$row = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] ) ? $registrations[ $server_id ] : array();
+		$adapter_registry = class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ? MAD4B_SCP_Adapter_Registry::instance() : null;
 		$fact = array(
 			'contract' => 'mad4b.mcp-registration-fact.v1',
 			'connection_fingerprint' => class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' ) ? MAD4B_SCP_Connection_Identity_Resolver::fingerprint() : '',
@@ -480,9 +467,9 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			'bridge_booted' => self::$booted,
 			'server_hook_bound' => false !== has_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ) ),
 			'core_ability_hook_bound' => false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ) ),
-			'registry_ability_hook_bound' => false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ) ),
+			'registry_ability_hook_bound' => $adapter_registry && false !== has_action( 'wp_abilities_api_init', array( $adapter_registry, 'register_abilities' ) ),
 			'core_category_hook_bound' => false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ) ),
-			'registry_category_hook_bound' => false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ) ),
+			'registry_category_hook_bound' => $adapter_registry && false !== has_action( 'wp_abilities_api_categories_init', array( $adapter_registry, 'register_categories' ) ),
 		);
 		return class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'mcp_registration_identity' )
 			? MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )
@@ -522,10 +509,11 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			$errors[ sanitize_key( (string) $server_id ) ] = isset( $entry['error'] ) ? sanitize_key( (string) $entry['error'] ) : '';
 		}
 
+		$adapter_registry = class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ? MAD4B_SCP_Adapter_Registry::instance() : null;
 		$core_ability_hook_bound = false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ) );
-		$registry_ability_hook_bound = false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ) );
+		$registry_ability_hook_bound = $adapter_registry && false !== has_action( 'wp_abilities_api_init', array( $adapter_registry, 'register_abilities' ) );
 		$core_category_hook_bound = false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ) );
-		$registry_category_hook_bound = false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ) );
+		$registry_category_hook_bound = $adapter_registry && false !== has_action( 'wp_abilities_api_categories_init', array( $adapter_registry, 'register_categories' ) );
 
 		return array(
 			'contract' => self::CONTRACT,

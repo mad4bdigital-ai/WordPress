@@ -17,6 +17,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	const PROFILE_DELETE_APPLY_ABILITY = 'mad4b/content-experience-profile-delete-apply';
 	const MAX_PROFILES = 64;
 	const MAX_META_KEYS = 128;
+	const MAX_MEDIA_META_FIELDS = 32;
+	const MAX_MEDIA_GALLERY_ITEMS = 100;
 	const MAX_TAXONOMIES = 32;
 	const MAX_HELPERS = 32;
 
@@ -209,6 +211,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		}
 		$meta_keys = self::normalize_string_list( isset( $raw['meta_keys'] ) ? $raw['meta_keys'] : array(), self::MAX_META_KEYS, '/^[A-Za-z0-9_-]+$/' );
 		$protected_meta_keys = self::normalize_string_list( isset( $raw['protected_meta_keys'] ) ? $raw['protected_meta_keys'] : array(), self::MAX_META_KEYS, '/^_[A-Za-z0-9_-]+$/' );
+		$media_meta_fields = MAD4B_SCP_Content_Experience_Media::normalize_field_specs( isset( $raw['media_meta_fields'] ) ? $raw['media_meta_fields'] : array(), $meta_keys, $protected_meta_keys );
+		if ( is_wp_error( $media_meta_fields ) ) return $media_meta_fields;
 		foreach ( $protected_meta_keys as $key ) {
 			if ( MAD4B_SCP_Policy::is_sensitive_database_column( $key ) ) {
 				return new WP_Error( 'mad4b_content_experience_sensitive_meta_denied', 'Sensitive/authentication-like metadata cannot be enabled by an experience profile.' );
@@ -279,6 +283,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'meta_mode' => $meta_mode,
 			'meta_keys' => $meta_keys,
 			'protected_meta_keys' => $protected_meta_keys,
+			'media_meta_fields' => $media_meta_fields,
 			'taxonomy_mode' => $taxonomy_mode,
 			'taxonomies' => $taxonomies,
 			'featured_media' => ! array_key_exists( 'featured_media', $raw ) || ! empty( $raw['featured_media'] ),

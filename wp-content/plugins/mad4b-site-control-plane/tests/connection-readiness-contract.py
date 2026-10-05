@@ -31,6 +31,7 @@ transport_registry = read('includes/class-mad4b-scp-provider-transport-registry.
 transport_catalog = read('config/provider-transport-registry.json')
 certified_providers = read('config/certified-providers.json')
 bridge = read('includes/class-mad4b-scp-mcp-registration-bridge.php')
+adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
 diagnostics = read('includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
@@ -514,15 +515,29 @@ forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_serve
 for marker in (
     "const CONTRACT = 'mad4b.mcp-registration-bridge.v2'",
     "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 )",
-    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
     "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 )",
-    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
     "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 )",
+    "array( $adapter_registry, 'register_abilities' )",
+    "array( $adapter_registry, 'register_categories' )",
     "'ability_hook_bound' => $core_ability_hook_bound && $registry_ability_hook_bound",
     "'adapter_init_seen_before_bridge_boot'", "'adapter_runtime_from_official_plugin'", "'registration_errors'",
     "'rest_init_seen_before_bridge_boot'", "'missed_rest_recovery_succeeded'", "'missed_rest_recovery_blocker'",
 ):
     require(bridge, marker, 'mcp-registration-bridge')
+
+for marker in (
+    "private static $ability_hooks_bound",
+    "public static function boot_ability_registration()",
+    "add_action( 'wp_abilities_api_categories_init', array( $registry, 'register_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( $registry, 'register_abilities' ), 20 )",
+):
+    require(adapter_registry, marker, 'adapter-registry-canonical-lifecycle')
+
+for duplicate in (
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
+):
+    forbid(bridge, duplicate, 'mcp-registration-bridge-no-duplicate-adapter-hooks')
 for marker in (
     'MAD4B MCP registration diagnostics', 'Adapter runtime from official plugin',
     'Adapter init happened before bridge boot', 'Registration error:',

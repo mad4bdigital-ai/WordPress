@@ -21,7 +21,8 @@
     "plugin_slug": "mad4b-site-control-plane",
     "mcp_adapter": {
       "slug": "mcp-adapter",
-      "required_version": "0.6.1",
+      "required_version": "0.7.0",
+      "required_version_source": "runtime_release_policy.target_adapter_version",
       "deployment_mode": "require_exact_preinstalled_or_verified_bundled"
     }
   },
@@ -133,7 +134,208 @@
       "full_staging_authority_plan_read_only_before_apply",
       "full_staging_authority_apply_requires_exact_clean_plan_and_explicit_operator_authority",
       "generic_raw_sql_breakglass_remains_excluded"
-    ]
+    ],
+    "authority_handoff": {
+      "contract": "mad4b.staging-write-post-deploy-handoff.v1",
+      "scope": "exact_enrolled_staging_write_authority_only",
+      "trigger": "current_runtime_identity_differs_from_persisted_candidate_binding_or_exact_write_grants_are_incomplete",
+      "current_truth_source": "mad4b/staging-write-authority-convergence-handshake",
+      "compatibility_plan_ability": "mad4b/staging-write-grant-reconciliation-plan",
+      "apply_ability": "mad4b/staging-write-authority-convergence-apply",
+      "required_confirmation": "ENABLE GOVERNED STAGING WRITE AUTHORITY",
+      "exact_runtime_identity_required": true,
+      "exact_site_profile_binding_required": true,
+      "exact_grant_inventory_required": true,
+      "exact_transport_grant_inventory_required": true,
+      "read_only_plan_before_apply": true,
+      "explicit_apply_required": true,
+      "automatic_apply_allowed": false,
+      "production_allowed": false,
+      "developer_authority_included": false,
+      "developer_breakglass_included": false,
+      "generic_raw_sql_breakglass_included": false,
+      "wildcard_grants_allowed": false,
+      "caller_supplied_provider_allowed": false,
+      "fail_closed_on_allowlist_drift": true,
+      "same_cycle_readback_required": true,
+      "append_only_audit_required": true
+    },
+    "operational_readiness": {
+      "contract": "mad4b.staging-operational-readiness.v1",
+      "truth_model": "lane_aware_fail_closed",
+      "purpose": "prove_post_deploy_runtime_is_not_only_installed_but_operationally_usable_with_actionable_recovery",
+      "required_sequence": [
+        "exact_runtime_identity",
+        "certified_mcp_protocol_profile",
+        "query_monitor_observer_attribution",
+        "database_topology_write_safe",
+        "chatgpt_catalog_preflight",
+        "abuse_budget_discovery_admission",
+        "current_write_authority_and_candidate_binding",
+        "provider_closure_current_authority_consistency",
+        "session_safe_subject_readiness",
+        "lane_level_operational_readiness"
+      ],
+      "read_only_truth_sources": {
+        "runtime_and_session": "mad4b/session-safe-diagnostics",
+        "catalog_and_protocol": "mad4b/chatgpt-tool-projection-status",
+        "current_write_authority": "mad4b/staging-write-authority-convergence-handshake",
+        "provider_closure": "mad4b/provider-closure-matrix",
+        "full_authority_and_lanes": "mad4b/full-staging-authority-handshake",
+        "update_channel": "mad4b/control-plane-native-plan"
+      },
+      "smoke_checks": {
+        "discovery_surface": "mad4b/tool-discover",
+        "discovery_must_not_fail_on_certified_query_monitor_observer": true,
+        "rate_limit_storage_must_report_actionable_topology_recovery": true,
+        "direct_catalog_must_remain_within_tool_and_serialized_byte_budgets": true
+      },
+      "graceful_degradation": {
+        "governed_write_lane_requires": [
+          "current_exact_write_grants",
+          "current_candidate_binding",
+          "write_provider_mounts_current",
+          "database_topology_write_safe",
+          "abuse_budget_storage_ready"
+        ],
+        "developer_lane_requires": [
+          "developer_authority_ready",
+          "process_backend_ready",
+          "normal_no_network_execution_ready"
+        ],
+        "developer_breakglass_lane_requires": [
+          "developer_breakglass_authority_ready",
+          "process_backend_ready",
+          "normal_no_network_execution_ready"
+        ],
+        "unavailable_lane_policy": "fail_closed_without_disabling_ready_sibling_lanes",
+        "developer_host_limitations_do_not_false_mark_governed_write_unready": true,
+        "production_is_never_inferred_from_staging_lane_readiness": true,
+        "developer_host_recovery": {
+          "truth_source": "mad4b/full-staging-authority-handshake.developer_execution.host_recovery",
+          "owner": "host_platform_operator",
+          "accepted_resource_limiter": "prlimit",
+          "resource_limiter_config_constant": "MAD4B_MCP_DEVELOPER_PRLIMIT_BIN",
+          "accepted_network_isolation_backends": [
+            "bubblewrap",
+            "unshare-net"
+          ],
+          "network_sandbox_config_constant": "MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN",
+          "proc_open_required": true,
+          "non_root_worker_required": true,
+          "php_binary_required_for_lint": true,
+          "wordpress_self_repair_allowed": false,
+          "automatic_install_allowed": false,
+          "weaker_unsandboxed_fallback_allowed": false,
+          "developer_lane_remains_blocked_until_reverified": true,
+          "governed_write_sibling_lane_may_remain_available": true,
+          "production_mutation_allowed": false
+        }
+      },
+      "recovery": {
+        "rate_limit_topology_failure": {
+          "read_first": "mad4b/session-safe-diagnostics",
+          "bounded_repair": "mad4b/query-monitor-db-attribution-bootstrap",
+          "blind_retry_allowed": false,
+          "retry_original_operation_only_after_topology_repair": true
+        },
+        "write_authority_drift": {
+          "plan_first": "mad4b/staging-write-authority-convergence-handshake",
+          "compatibility_plan": "mad4b/staging-write-grant-reconciliation-plan",
+          "apply": "mad4b/staging-write-authority-convergence-apply",
+          "explicit_confirmation_required": true,
+          "automatic_apply_allowed": false
+        },
+        "protocol_profile_drift": {
+          "truth_source": "mad4b/chatgpt-tool-projection-status",
+          "exact_adapter_pair_certification_required": true,
+          "fallback_protocol_negotiation_allowed": false
+        },
+        "catalog_refresh": {
+          "truth_source": "mad4b/chatgpt-tool-projection-status",
+          "refresh_tools_list_after_projection_change": true,
+          "reconnect_only_if_client_cache_remains_stale": true,
+          "visibility_change_never_changes_execution_authority": true
+        },
+        "deterministic_router": {
+          "source": "mad4b/session-safe-diagnostics.recommended_next_step",
+          "one_next_step_only": true,
+          "parallel_diagnostic_fanout_allowed": false,
+          "write_authority_not_effective": {
+            "action": "request_full_staging_authority_handshake",
+            "ability": "mad4b/full-staging-authority-handshake",
+            "read_only": true,
+            "automatic_apply_allowed": false
+          },
+          "skills_runtime_not_effective": {
+            "action": "inspect_then_explicitly_reconcile_managed_skills",
+            "ability": "mad4b/reconcile-managed-skills",
+            "explicit_authority_required": true,
+            "automatic_apply_allowed": false
+          },
+          "partial_report": {
+            "action": "inspect_partial_report_then_retry_missing_scope",
+            "mutation_target": "",
+            "automatic_apply_allowed": false
+          },
+          "ready_subject": {
+            "action": "continue_with_single_target_operation"
+          }
+        }
+      },
+      "acceptance": {
+        "operational_ready_requires_all_requested_lanes_ready": true,
+        "degraded_mode_is_explicit": true,
+        "available_lanes_must_be_reported": true,
+        "blocked_lanes_must_be_reported": true,
+        "blockers_must_have_recovery_action": true,
+        "automatic_authority_mutation_allowed": false,
+        "production_mutation_allowed": false,
+        "generic_raw_sql_breakglass_included": false,
+        "operational_state_enum": [
+          "authority_convergence_required",
+          "degraded_host_execution",
+          "operationally_blocked",
+          "operationally_ready"
+        ],
+        "provider_write_authority_state_enum": [
+          "write_authority_reconciliation_required",
+          "write_authority_current"
+        ],
+        "state_is_derived_from_current_truth_not_persisted_checkpoint_only": true
+      },
+      "performance": {
+        "contract": "mad4b.staging-operational-performance-comparison.v1",
+        "source": "mad4b/session-safe-diagnostics.performance_observation",
+        "exact_runtime_generation_required": true,
+        "exact_site_profile_required": true,
+        "comparison_required": true,
+        "baseline_scope": "previous_exact_staging_release",
+        "workload_profile": "same_site_same_session_safe_bundle_order",
+        "metrics": [
+          "request_elapsed_ms",
+          "db_query_count",
+          "included_file_count",
+          "memory_usage_bytes",
+          "peak_memory_bytes"
+        ],
+        "universal_db_query_threshold": false,
+        "universal_included_file_threshold": false,
+        "universal_memory_threshold": false,
+        "material_regression_requires_review": true,
+        "missing_baseline_state": "baseline_required_not_failure",
+        "regression_state": "review_required",
+        "no_regression_state": "accepted_comparative_observation",
+        "automatic_tuning_allowed": false,
+        "automatic_index_ddl_allowed": false,
+        "automatic_cache_authority_allowed": false,
+        "authorizing": false,
+        "production_mutation_allowed": false,
+        "explicit_diagnostic_budget_is_hard_boundary": true,
+        "total_request_elapsed_is_comparative_signal": true,
+        "diagnostic_elapsed_is_budgeted_signal": true
+      }
+    }
   },
   "forbidden": {
     "unenrolled_target": true,

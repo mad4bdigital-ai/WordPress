@@ -81,8 +81,19 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 					array( 'key' => $key )
 				);
 			}
+			$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+			if ( isset( $media_fields[ $key ] ) && is_array( $media_fields[ $key ] ) ) {
+				$value = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( $key, $value, $media_fields[ $key ] );
+				if ( is_wp_error( $value ) ) return $value;
+			}
+			if ( ! MAD4B_SCP_Content_Experience_Media::value_within_budget( $value ) ) {
+				return new WP_Error( 'mad4b_content_experience_meta_value_too_large', 'Meta value exceeds the bounded content-experience payload size.', array( 'key' => $key ) );
+			}
 			$result[ $key ] = $value;
 		}
+		$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+		$usage_guard = MAD4B_SCP_Content_Experience_Media::validate_usage_bindings( $media_fields, $result );
+		if ( is_wp_error( $usage_guard ) ) return $usage_guard;
 		ksort( $result, SORT_STRING );
 		return $result;
 	}
@@ -281,6 +292,28 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 
 		$meta = self::validate_meta_payload( $profile, isset( $input['meta'] ) ? $input['meta'] : array() );
 		if ( is_wp_error( $meta ) ) return $meta;
+		$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+		$effective_media_state = MAD4B_SCP_Content_Experience_Media::effective_meta_state(
+			$post ? (int) $post->ID : 0,
+			$media_fields,
+			$meta
+		);
+		if ( is_wp_error( $effective_media_state ) ) return $effective_media_state;
+		$effective_media_state_sha256 = MAD4B_SCP_Content_Experience_Media::effective_state_sha256( $effective_media_state );
+		$media_publish_rights = null;
+		if ( 'publish' === $operation ) {
+			$rights_enforced = false;
+			foreach ( $media_fields as $media_spec ) {
+				if ( is_array( $media_spec ) && 'require_valid' === ( isset( $media_spec['publish_rights_policy'] ) ? (string) $media_spec['publish_rights_policy'] : 'none' ) ) {
+					$rights_enforced = true;
+					break;
+				}
+			}
+			if ( $rights_enforced ) {
+				$media_publish_rights = MAD4B_SCP_Content_Experience_Media_Rights::publish_guard( $media_fields, $effective_media_state );
+				if ( is_wp_error( $media_publish_rights ) ) return $media_publish_rights;
+			}
+		}
 		$taxonomies = self::normalize_taxonomy_payload( $profile, isset( $input['taxonomies'] ) ? $input['taxonomies'] : array() );
 		if ( is_wp_error( $taxonomies ) ) return $taxonomies;
 		$helpers = self::normalize_helper_payloads( $profile, $operation, isset( $input['helpers'] ) ? $input['helpers'] : array() );
@@ -338,6 +371,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'operation' => $operation,
 			'post_type' => (string) $profile['post_type'],
 			'current_state_sha256' => $current_state_sha256,
+			'effective_media_state_sha256' => $effective_media_state_sha256,
+			'media_publish_rights' => $media_publish_rights,
 			'normalized_input' => $normalized,
 			'mutation_performed' => false,
 		);
@@ -816,6 +851,11 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		}
 		$filtered_verification = apply_filters( 'mad4b_scp_content_experience_verify_helpers', $helper_verification, $helper_context );
 		if ( is_array( $filtered_verification ) ) $helper_verification = $filtered_verification;
+		$media_state = MAD4B_SCP_Content_Experience_Media::verify_post_meta(
+			$post_id,
+			isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array()
+		);
+		if ( is_wp_error( $media_state ) ) return $media_state;
 		$current_authority = isset( $profile['authority_sha256'] ) ? strtolower( trim( (string) $profile['authority_sha256'] ) ) : '';
 		$stored_authority = strtolower( trim( $stored_authority ) );
 		$authority_match = 1 === preg_match( '/^[a-f0-9]{64}$/', $current_authority )
@@ -837,6 +877,10 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'authority_match' => $authority_match,
 			'core_state_sha256' => self::post_state_hash( $post ),
 			'featured_media_id' => (int) get_post_thumbnail_id( $post_id ),
+			'media_state_sha256' => (string) $media_state['media_state_sha256'],
+			'media_field_count' => (int) $media_state['field_count'],
+			'media_fields' => $media_state['fields'],
+			'media_state_valid' => ! empty( $media_state['valid'] ),
 			'helper_verification' => $helper_verification,
 			'mutation_performed' => false,
 		);

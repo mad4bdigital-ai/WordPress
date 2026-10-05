@@ -67,6 +67,25 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			? (array) MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array();
 
+		$current_readiness = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+			? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()
+			: array();
+		$current_readiness = is_array( $current_readiness ) ? $current_readiness : array();
+		$current_grants_ready = ! empty( $current_readiness['ready'] );
+		$current_readiness_blockers = isset( $current_readiness['blockers'] ) && is_array( $current_readiness['blockers'] )
+			? array_values( array_unique( array_filter( array_map( 'sanitize_key', $current_readiness['blockers'] ) ) ) )
+			: array( 'write_current_readiness_unavailable' );
+		$candidate_binding_match = isset( $binding_status['match'] )
+			? (bool) $binding_status['match']
+			: ( isset( $authority_status['candidate_binding_match'] ) ? (bool) $authority_status['candidate_binding_match'] : false );
+		$checkpoint_ready = isset( $authority_status['ready'] ) ? (bool) $authority_status['ready'] : false;
+		$write_authority_ready = $checkpoint_ready && $current_grants_ready && $candidate_binding_match;
+		$write_authority_blockers = $current_readiness_blockers;
+		if ( ! $checkpoint_ready ) $write_authority_blockers[] = 'write_authority_checkpoint_not_ready';
+		if ( ! $candidate_binding_match ) $write_authority_blockers[] = 'runtime_authority_candidate_not_reconciled';
+		$write_authority_blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $write_authority_blockers ) ) ) );
+		sort( $write_authority_blockers, SORT_STRING );
+
 		$inventory = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
 			? MAD4B_SCP_Provider_Compatibility_Certification::inventory()
 			: array();
@@ -151,8 +170,15 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'provider_gated_count' => count( $items ),
 			'closure_class_counts' => $counts,
 			'items' => $items,
-			'candidate_binding_match' => isset( $binding_status['match'] ) ? (bool) $binding_status['match'] : ( isset( $authority_status['candidate_binding_match'] ) ? (bool) $authority_status['candidate_binding_match'] : false ),
-			'write_authority_ready' => isset( $authority_status['ready'] ) ? (bool) $authority_status['ready'] : false,
+			'candidate_binding_match' => $candidate_binding_match,
+			'write_authority_ready' => $write_authority_ready,
+			'write_authority_state' => $write_authority_ready ? 'write_authority_current' : 'write_authority_reconciliation_required',
+			'write_authority_ready_semantics' => 'checkpoint_plus_current_exact_grants_plus_current_candidate_binding',
+			'write_authority_checkpoint_ready' => $checkpoint_ready,
+			'write_authority_current_grant_snapshot_ready' => $current_grants_ready,
+			'write_authority_blockers' => $write_authority_blockers,
+			'write_authority_reconciliation_required' => ! $write_authority_ready,
+			'write_authority_recovery_action' => ! $write_authority_ready ? 'reconcile_exact_staging_write_authority_then_refresh_provider_closure_matrix' : '',
 			'principle' => 'observe_live_gate_then_correlate_capability_truth_then_require_exact_evidence_before_activation',
 		);
 	}

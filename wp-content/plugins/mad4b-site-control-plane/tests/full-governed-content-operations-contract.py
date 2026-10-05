@@ -8,17 +8,20 @@ full = adapters / "class-mad4b-scp-full-content-operations-adapter.php"
 translation = adapters / "class-mad4b-scp-translation-bridge-adapter.php"
 provider = adapters / "class-mad4b-scp-native-provider-bridge-adapter.php"
 jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
+media = adapters / "class-mad4b-scp-media-adapter.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
 experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
+experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
+experience_media_rights = root / "includes" / "class-mad4b-scp-content-experience-media-rights.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
 descriptor = root / "includes" / "class-mad4b-scp-capability-descriptor-registry.php"
 experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, servers, semantic, experience, experience_governance, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_media, experience_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -26,10 +29,13 @@ full_src = full.read_text(encoding="utf-8")
 translation_src = translation.read_text(encoding="utf-8")
 provider_src = provider.read_text(encoding="utf-8")
 jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
+media_src = media.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
 experience_governance_src = experience_governance.read_text(encoding="utf-8")
+experience_media_src = experience_media.read_text(encoding="utf-8")
+experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
 descriptor_src = descriptor.read_text(encoding="utf-8")
 experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
@@ -43,6 +49,32 @@ for filename, class_name in (
 ):
     assert filename in base_src, f"adapter base does not load {filename}"
     assert f"{class_name}::boot();" in base_src, f"adapter base does not boot {class_name}"
+
+for token in (
+    "media/update-metadata",
+    "media/set-featured",
+    "media/set-parent",
+    "mad4b.rollback.media-metadata.v1",
+    "mad4b.rollback.featured-image.v1",
+    "mad4b.rollback.media-parent.v1",
+    "metadata_sha256",
+    "parent_id",
+    "parent_post_id",
+    "unattached_only",
+    "image_only",
+    "detail_level",
+    "mutable_state_from_post",
+    "wp_attachment_is_image(",
+    "mad4b_media_metadata_readback_mismatch",
+    "mad4b_media_parent_readback_mismatch",
+    "mad4b_media_featured_readback_mismatch",
+    "mad4b_media_restore_readback_mismatch",
+):
+    assert token in media_src, f"media governance contract missing: {token}"
+
+assert "$wpdb" not in media_src
+assert "database-raw-query" not in media_src
+assert "BREAKGLASS" not in media_src.upper()
 
 for ability in (
     "mad4b/content-modeling-context",
@@ -132,8 +164,43 @@ for token in (
     "migration_required",
     "helper_bindings",
     "binding_sha256",
+    "media_meta_fields",
+    "MAX_MEDIA_META_FIELDS",
+    "MAX_MEDIA_GALLERY_ITEMS",
 ):
     assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
+
+# Typed media kinds/storage are intentionally owned by the dedicated media
+# component. Profiles retain only bounded limits and normalized media field
+# configuration so new media semantics do not grow the profile registry into a
+# business/runtime monolith.
+for token in (
+    "image_gallery",
+    "attachment_gallery",
+    "csv_ids",
+    "image_gallery_usage",
+    "attachment_gallery_usage",
+    "alt_override",
+    "caption_override",
+    "title_override",
+    "description_override",
+    "credit",
+    "copyright",
+    "license",
+    "license_expires_on",
+    "source_url",
+    "focal_point",
+    "aria_label",
+    "decorative",
+    "link_url",
+    "link_target",
+    "licenses",
+    "publish_rights_policy",
+    "expiry_required_licenses",
+    "effective_meta_state",
+    "effective_state_sha256",
+):
+    assert token in experience_media_src, f"content experience media contract missing: {token}"
 
 for token in (
     "mad4b.content-experience-operation-plan.v1",
@@ -161,10 +228,53 @@ for token in (
     "mad4b_content_experience_locked_plan_drift",
     "featured_media_read_denied",
     "parent_read_denied",
+    "effective_media_state_sha256",
+    "media_publish_rights",
+    "MAD4B_SCP_Content_Experience_Media_Rights::publish_guard",
     "authority_match",
     "mad4b_content_experience_helper_restore_contract_drift",
 ):
     assert token in experience_runtime_src, f"dynamic content experience execution contract missing: {token}"
+
+for token in (
+    "mad4b_content_experience_media_gallery_shape_invalid",
+    "mad4b_content_experience_media_gallery_duplicate",
+    "mad4b_content_experience_media_image_required",
+    "mad4b_content_experience_media_attachment_missing",
+    "mad4b_content_experience_media_usage_license_denied",
+    "mad4b_content_experience_media_usage_decorative_alt_conflict",
+    "mad4b_content_experience_media_usage_decorative_aria_conflict",
+    "mad4b_content_experience_media_usage_link_target_without_url",
+    "mad4b_content_experience_media_usage_date_invalid",
+    "MAX_META_VALUE_BYTES",
+    "normalize_meta_value",
+    "validate_usage_bindings",
+    "verify_post_meta",
+    "value_within_budget",
+):
+    assert token in experience_media_src, f"content-experience media contract missing: {token}"
+assert "$wpdb" not in experience_media_src
+assert "database-raw-query" not in experience_media_src
+assert "BREAKGLASS" not in experience_media_src.upper()
+assert len(experience_media_src.splitlines()) <= 500, "content-experience-media exceeds the focused 500-line domain-service budget"
+
+for token in (
+    "mad4b.content-experience-media-publish-rights.v1",
+    "publish_guard",
+    "mad4b_content_experience_media_rights_usage_required",
+    "mad4b_content_experience_media_rights_license_required",
+    "mad4b_content_experience_media_rights_expiry_required",
+    "mad4b_content_experience_media_rights_expired",
+    "checked_item_count",
+    "nearest_expiry",
+):
+    assert token in experience_media_rights_src, f"content-experience media rights contract missing: {token}"
+assert "$wpdb" not in experience_media_rights_src
+assert "database-raw-query" not in experience_media_rights_src
+assert "BREAKGLASS" not in experience_media_rights_src.upper()
+assert len(experience_media_rights_src.splitlines()) <= 180, "content-experience-media-rights exceeds the focused 180-line domain-service budget"
+assert "class-mad4b-scp-content-experience-media-rights.php" in plugin_src
+assert len(media_src.splitlines()) <= 550, "media adapter exceeds the focused 550-line adapter budget"
 
 for src, label in (
     (experience_src, "experience-registry"),
@@ -262,6 +372,10 @@ for token in (
     "MAD4B_SCP_Provider_Contracts::mutation_guard",
 ):
     assert token in experience_runtime_src, f"experience helper provider certification missing: {token}"
+
+assert "MAD4B_SCP_Content_Experience_Media::normalize_meta_value" in experience_runtime_src
+assert "MAD4B_SCP_Content_Experience_Media::value_within_budget" in experience_runtime_src
+assert "class-mad4b-scp-content-experience-media.php" in plugin_src
 
 assert "class-mad4b-scp-content-experience-profiles.php" in plugin_src
 assert "class-mad4b-scp-content-experience-runtime.php" in plugin_src

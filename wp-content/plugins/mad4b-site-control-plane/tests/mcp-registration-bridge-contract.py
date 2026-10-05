@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 bridge = (ROOT / 'includes/class-mad4b-scp-mcp-registration-bridge.php').read_text('utf-8')
+registry = (ROOT / 'includes/class-mad4b-scp-adapter-registry.php').read_text('utf-8')
 diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
@@ -31,9 +32,7 @@ for marker in (
     "did_action( 'mcp_adapter_init' ) > 0",
     "did_action( 'rest_api_init' ) > 0",
     "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 )",
-    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
     "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 )",
-    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
     "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 )",
     "add_action( 'init', array( __CLASS__, 'recover_missed_rest_lifecycle' ), 9999 )",
     'public static function recover_missed_rest_lifecycle()',
@@ -57,9 +56,7 @@ for marker in (
     "'missed_rest_recovery_state'",
     "'missed_rest_recovery_blocker'",
     'public static function register_core_categories()',
-    'public static function register_registry_categories()',
     'public static function register_core_abilities()',
-    'public static function register_registry_abilities()',
     'self::$registry->register_defaults();',
     'self::$servers->register_servers( $adapter );',
     "'core_ability_hook_bound'",
@@ -71,6 +68,41 @@ for marker in (
     "'adapter_init_seen_before_bridge_boot'",
 ):
     require(bridge, marker, 'bridge-contract')
+
+# Adapter Ability definitions have one canonical owner: Adapter_Registry.
+# The bridge owns only core definitions and provider-server materialization.
+for marker in (
+    'private static $ability_hooks_bound',
+    'public static function boot_ability_registration()',
+    "add_action( 'wp_abilities_api_categories_init', array( $registry, 'register_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( $registry, 'register_abilities' ), 20 )",
+    '$this->register_defaults();',
+):
+    require(registry, marker, 'canonical-adapter-ability-owner')
+
+for marker in (
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
+    'public static function register_registry_categories()',
+    'public static function register_registry_abilities()',
+    'request_needs_adapter_ability_registry()',
+    'self::prepare_registry( true )',
+):
+    forbid(bridge, marker, 'no-duplicate-adapter-ability-owner')
+
+server_registration_method = bridge.split(
+    'public static function register_servers( $adapter )', 1
+)[1].split(
+    '/**\n\t * Lightweight', 1
+)[0]
+require(server_registration_method, 'request_needs_adapter_registry()', 'provider-server-materialization-stays-bounded')
+
+for marker in (
+    "MAD4B_SCP_Adapter_Registry::instance()",
+    "array( $adapter_registry, 'register_abilities' )",
+    "array( $adapter_registry, 'register_categories' )",
+):
+    require(bridge, marker, 'canonical-adapter-hook-status-truth')
 
 require(bridge, "endpoint_diagnostic_routing_server_id()", 'diagnostic-routing-before-registry-materialization')
 for marker in (

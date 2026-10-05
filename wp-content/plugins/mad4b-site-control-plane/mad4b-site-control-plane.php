@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.92
+ * Version: 0.4.0-rc.93
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.92' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.93' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
@@ -301,6 +301,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-work-queue.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media-rights.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-profiles.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-search-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-governance.php';
@@ -323,8 +325,13 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-polylang-adapter
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-litespeed-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-form-provider-adapters.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-wp-import-export-adapter.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-full-content-operations-adapter.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-translation-bridge-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-family-adapter.php';
+MAD4B_SCP_Full_Content_Operations_Adapter::boot();
+MAD4B_SCP_Translation_Bridge_Adapter::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
+MAD4B_SCP_Adapter_Registry::boot_ability_registration();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';

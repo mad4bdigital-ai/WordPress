@@ -121,6 +121,80 @@ mad4b_assert_true( empty( $rate['automatic_retry_allowed'] ), 'rate limit must r
 mad4b_assert_true( 'backoff_then_retry' === $rate['client_action'], 'rate-limit client action drifted' );
 mad4b_assert_true( 7 === (int) $rate['retry_after_seconds'], 'retry-after hint must be preserved safely' );
 
+$rate_storage_attempts = 0;
+$rate_storage = MAD4B_SCP_Connector_Resilience::safe_read(
+	'rate_storage',
+	static function () use ( &$rate_storage_attempts ) {
+		$rate_storage_attempts++;
+		return new WP_Error(
+			'mad4b_abuse_rate_storage_unavailable',
+			'Rate-limit writer topology is unavailable.',
+			array(
+				'cause_code' => 'mad4b_database_topology_not_write_safe',
+				'topology_blockers' => array( 'uncertified_database_router_dropin', 'database_topology_probe_error' ),
+				'blind_retry_allowed' => false,
+				'authorizing' => false,
+				'recovery_read_ability' => 'mad4b/session-safe-diagnostics',
+				'bounded_repair_ability' => 'mad4b/query-monitor-db-attribution-bootstrap',
+				'recheck_action' => 'retry_original_operation_after_topology_repair',
+				'surface' => 'discovery',
+				'secret_untrusted_detail' => 'SECRET-MUST-NOT-LEAK',
+			)
+		);
+	}
+);
+mad4b_assert_true( empty( $rate_storage['ok'] ), 'rate storage failure must remain failed' );
+mad4b_assert_true( 1 === $rate_storage_attempts, 'rate storage failure must not auto retry' );
+mad4b_assert_true( 'rate_storage' === $rate_storage['category'], 'rate storage category drifted' );
+mad4b_assert_true( ! empty( $rate_storage['retryable'] ) && empty( $rate_storage['automatic_retry_allowed'] ), 'rate storage must be repairable later without immediate replay' );
+mad4b_assert_true( 'repair_rate_storage_then_retry' === $rate_storage['client_action'], 'rate storage client action drifted' );
+mad4b_assert_true( isset( $rate_storage['recovery'] ) && is_array( $rate_storage['recovery'] ), 'rate storage recovery metadata missing' );
+mad4b_assert_true( 'mad4b_database_topology_not_write_safe' === $rate_storage['recovery']['cause_code'], 'rate storage cause code lost' );
+mad4b_assert_true( in_array( 'uncertified_database_router_dropin', $rate_storage['recovery']['topology_blockers'], true ), 'rate storage topology blocker lost' );
+mad4b_assert_true( 'mad4b/session-safe-diagnostics' === $rate_storage['recovery']['recovery_read_ability'], 'rate storage read recovery ability lost' );
+mad4b_assert_true( 'mad4b/query-monitor-db-attribution-bootstrap' === $rate_storage['recovery']['bounded_repair_ability'], 'rate storage bounded repair ability lost' );
+mad4b_assert_true( empty( $rate_storage['recovery']['blind_retry_allowed'] ), 'rate storage recovery must forbid blind retry' );
+mad4b_assert_true( ! array_key_exists( 'secret_untrusted_detail', $rate_storage['recovery'] ), 'untrusted rate storage error data leaked through recovery whitelist' );
+
+$rate_storage_dispatch = MAD4B_SCP_Connector_Resilience::execute_read(
+	'mad4b/example-rate-storage-read',
+	static function () {
+		return new WP_Error(
+			'mad4b_abuse_rate_storage_unavailable',
+			'Rate-limit writer topology is unavailable.',
+			array(
+				'cause_code' => 'mad4b_database_topology_not_write_safe',
+				'topology_blockers' => array( 'uncertified_database_router_dropin' ),
+				'blind_retry_allowed' => false,
+				'authorizing' => false,
+				'recovery_read_ability' => 'mad4b/session-safe-diagnostics',
+				'bounded_repair_ability' => 'mad4b/query-monitor-db-attribution-bootstrap',
+				'recheck_action' => 'retry_original_operation_after_topology_repair',
+			)
+		);
+	}
+);
+mad4b_assert_true( is_wp_error( $rate_storage_dispatch ), 'governed read dispatcher must preserve rate storage failure' );
+$rate_storage_dispatch_data = $rate_storage_dispatch->get_error_data();
+mad4b_assert_true( 'rate_storage' === $rate_storage_dispatch_data['category'], 'governed read dispatcher lost rate storage category' );
+mad4b_assert_true( 'repair_rate_storage_then_retry' === $rate_storage_dispatch_data['client_action'], 'governed read dispatcher lost rate storage recovery action' );
+mad4b_assert_true( 'mad4b/query-monitor-db-attribution-bootstrap' === $rate_storage_dispatch_data['recovery']['bounded_repair_ability'], 'governed read dispatcher lost bounded rate storage repair metadata' );
+mad4b_assert_true( empty( $rate_storage_dispatch_data['blind_retry_allowed'] ), 'governed read dispatcher must deny blind retry for rate storage failure' );
+
+$wrapped_rate_storage_attempts = 0;
+$wrapped_rate_storage = MAD4B_SCP_Connector_Resilience::safe_read(
+	'wrapped_rate_storage',
+	static function () use ( &$wrapped_rate_storage_attempts ) {
+		$wrapped_rate_storage_attempts++;
+		throw new RuntimeException( 'RuntimeException: Error calling MCP tool: Rate-limit writer topology is unavailable.' );
+	}
+);
+mad4b_assert_true( empty( $wrapped_rate_storage['ok'] ), 'wrapped rate storage exception must remain failed' );
+mad4b_assert_true( 1 === $wrapped_rate_storage_attempts, 'wrapped rate storage exception must not auto retry' );
+mad4b_assert_true( 'rate_storage' === $wrapped_rate_storage['category'], 'wrapped rate storage exception category drifted' );
+mad4b_assert_true( 'repair_rate_storage_then_retry' === $wrapped_rate_storage['client_action'], 'wrapped rate storage exception recovery action drifted' );
+mad4b_assert_true( empty( $wrapped_rate_storage['automatic_retry_allowed'] ), 'wrapped rate storage exception must not blind retry' );
+
 $error_code_probe = MAD4B_SCP_Connector_Resilience::safe_read(
 	'provider_error_code_sanitization',
 	static function () {
@@ -319,6 +393,64 @@ mad4b_assert_true( 'mad4b/read-metadata-envelope' === $guidance['metadata_envelo
 mad4b_assert_true( ! empty( $guidance['resume_after_reconnect_requires_generation_match'] ), 'resume after reconnect must require runtime generation match' );
 
 $read_consistency_reflection = new ReflectionClass( 'MAD4B_SCP_Read_Consistency' );
+
+$next_step_method = $read_consistency_reflection->getMethod( 'session_safe_next_step' );
+$next_step_method->setAccessible( true );
+$write_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ) );
+mad4b_assert_true( 'request_staging_write_authority_handshake' === $write_next['action'], 'session-safe write recovery route drifted' );
+mad4b_assert_true( 'mad4b/staging-write-authority-convergence-handshake' === $write_next['ability'], 'session-safe write recovery must exclude Developer and Breakglass convergence' );
+mad4b_assert_true( ! empty( $write_next['read_only'] ) && empty( $write_next['automatic_apply_allowed'] ), 'session-safe write recovery must remain read-only and non-automatic' );
+
+$skills_next = $next_step_method->invoke( null, false, array( 'skills_runtime_not_effective' ) );
+mad4b_assert_true( 'mad4b/reconcile-managed-skills' === $skills_next['ability'], 'session-safe skills recovery ability drifted' );
+mad4b_assert_true( ! empty( $skills_next['explicit_authority_required'] ) && empty( $skills_next['automatic_apply_allowed'] ), 'skills recovery must require explicit authority and never auto-apply' );
+
+$adapter_next = $next_step_method->invoke(
+	null,
+	false,
+	array(),
+	array( 'next_actions' => array( 'repair_adapter_ability_lifecycle_registration' ) )
+);
+mad4b_assert_true( 'materialize_governed_read_adapter_lifecycle_then_retry' === $adapter_next['action'], 'adapter lifecycle recovery action drifted' );
+mad4b_assert_true( 'mad4b/read-execute' === $adapter_next['ability'], 'adapter lifecycle recovery must use fixed read dispatcher' );
+mad4b_assert_true( 'mad4b/adapters-inventory' === $adapter_next['target_ability'], 'adapter lifecycle recovery target drifted' );
+mad4b_assert_true( ! empty( $adapter_next['read_only'] ) && empty( $adapter_next['explicit_authority_required'] ), 'adapter lifecycle recovery must remain read-only and non-authorizing' );
+mad4b_assert_true( empty( $adapter_next['automatic_apply_allowed'] ) && empty( $adapter_next['persistent_mutation_allowed'] ), 'adapter lifecycle recovery must never auto-apply or persist mutation' );
+
+$partial_next = $next_step_method->invoke( null, true, array() );
+mad4b_assert_true( 'inspect_partial_report_then_retry_missing_scope' === $partial_next['action'], 'partial session-safe recovery route drifted' );
+mad4b_assert_true( '' === $partial_next['ability'] && ! empty( $partial_next['read_only'] ), 'partial session-safe recovery must not invent a mutation target' );
+
+$performance_method = $read_consistency_reflection->getMethod( 'performance_observation' );
+$performance_method->setAccessible( true );
+$performance = $performance_method->invoke( null, array(
+	'request_elapsed_ms' => 1087,
+	'db_query_count' => 425,
+	'included_file_count' => 6040,
+	'memory_usage_bytes' => 48234496,
+	'peak_memory_bytes' => 48234496,
+), 20000, str_repeat( 'd', 64 ), 13 );
+mad4b_assert_true( 'mad4b.session-safe-performance-observation.v1' === $performance['contract'], 'session-safe performance observation contract drifted' );
+mad4b_assert_true( 'observed_within_diagnostic_budget' === $performance['classification'], 'session-safe request budget classification drifted' );
+mad4b_assert_true( 19987 === (int) $performance['diagnostic_budget_headroom_ms'], 'session-safe request budget headroom drifted' );
+mad4b_assert_true( 425 === (int) $performance['db_query_count'], 'session-safe comparative DB query signal lost' );
+mad4b_assert_true( 1074 === (int) $performance['request_overhead_ms'], 'session-safe request overhead decomposition drifted' );
+mad4b_assert_true( 6040 === (int) $performance['included_file_count'], 'session-safe comparative include-count signal lost' );
+mad4b_assert_true( ! empty( $performance['comparison_required'] ), 'session-safe performance must require exact-release comparison' );
+mad4b_assert_true( 'previous_exact_staging_release' === $performance['comparison_baseline_scope'], 'session-safe performance baseline scope drifted' );
+mad4b_assert_true( empty( $performance['fixed_universal_db_query_threshold_applied'] ), 'session-safe performance must not invent a universal DB-query threshold' );
+mad4b_assert_true( empty( $performance['authorizing'] ) && ! empty( $performance['read_only'] ) && empty( $performance['mutation_performed'] ), 'session-safe performance observation widened authority or mutation' );
+
+$over_budget = $performance_method->invoke( null, array(
+	'request_elapsed_ms' => 2500,
+	'db_query_count' => 1,
+	'included_file_count' => 1,
+	'memory_usage_bytes' => 1,
+	'peak_memory_bytes' => 1,
+), 1000, str_repeat( 'e', 64 ), 1200 );
+mad4b_assert_true( 'diagnostic_budget_exceeded' === $over_budget['classification'], 'session-safe performance must classify explicit request budget exhaustion' );
+mad4b_assert_true( 0 === (int) $over_budget['diagnostic_budget_headroom_ms'], 'over-budget session-safe request must expose zero headroom' );
+
 $compact_method = $read_consistency_reflection->getMethod( 'compact_status_data' );
 $compact_method->setAccessible( true );
 $oversized_blockers = array();
@@ -340,6 +472,79 @@ mad4b_assert_true( 12 === count( $compact['blocking_gates'] ), 'session-safe com
 mad4b_assert_true( ! array_key_exists( 'unknown_large_field', $compact ), 'session-safe compact projection must drop unknown large fields' );
 mad4b_assert_true( ! array_key_exists( 'providers', $compact ), 'session-safe compact projection must not leak unbounded provider maps' );
 mad4b_assert_true( '0.4.0-rc.77' === $compact['build']['version'], 'session-safe compact projection must preserve bounded build identity' );
+
+$operator_method = $read_consistency_reflection->getMethod( 'session_safe_operator_summary' );
+$operator_method->setAccessible( true );
+$operator_sections = array(
+	'runtime' => array(
+		'checks' => array(
+			'adapter_lifecycle' => array( 'summary' => array(
+				'ready' => false,
+				'state' => 'adapter_ability_lifecycle_incomplete',
+				'expected_count' => 14,
+				'registered_count' => 10,
+				'missing_abilities' => array( 'media/search', 'fluentforms/status', 'litespeed/status', 'mad4b/translation-status' ),
+			) ),
+			'write_authority' => array( 'summary' => array(
+				'effective_authority_ready' => false,
+				'candidate_binding_match' => false,
+				'current_grant_snapshot_ready' => false,
+				'current_readiness_blockers' => array( 'exact_write_grants_missing' ),
+			) ),
+			'database_topology' => array( 'summary' => array(
+				'ready' => false,
+				'read_your_writes' => false,
+				'blockers' => array( 'uncertified_database_router_dropin' ),
+			) ),
+			'mcp_protocol_profile' => array( 'summary' => array(
+				'ready' => false,
+				'blocker' => 'adapter_version_uncertified',
+				'certified_adapter_version' => '0.7.0',
+				'runtime_adapter_version' => '0.8.0',
+				'adapter_version_match' => false,
+			) ),
+			'skills_runtime' => array( 'summary' => array( 'effective_skill_ready' => true ) ),
+		),
+	),
+);
+$operator_summary = $operator_method->invoke( null, $operator_sections, false, array( 'write_authority_not_effective' ), array( 'environment' => 'staging' ) );
+mad4b_assert_true( 'BLOCKED' === $operator_summary['state'], 'session-safe operator summary must classify current authority/topology drift as BLOCKED' );
+mad4b_assert_true( 'staging' === $operator_summary['effective_environment'], 'session-safe operator summary must preserve effective Site Profile environment' );
+mad4b_assert_true( in_array( 'reconcile_exact_staging_write_authority', $operator_summary['next_actions'], true ), 'session-safe operator summary must route authority drift to exact reconciliation' );
+mad4b_assert_true( false === $operator_summary['signals']['adapter_lifecycle_ready'], 'session-safe operator summary must expose adapter lifecycle readiness' );
+mad4b_assert_true( in_array( 'adapter_ability_lifecycle_incomplete', $operator_summary['reasons'], true ), 'session-safe operator summary must retain adapter lifecycle blocker' );
+mad4b_assert_true( in_array( 'repair_adapter_ability_lifecycle_registration', $operator_summary['next_actions'], true ), 'session-safe operator summary must route adapter lifecycle repair' );
+mad4b_assert_true( 4 === count( $operator_summary['signals']['adapter_lifecycle_missing_abilities'] ), 'session-safe operator summary must preserve bounded missing adapter ability detail' );
+foreach ( $operator_summary['reasons'] as $operator_reason ) {
+	mad4b_assert_true( 0 !== strpos( (string) $operator_reason, 'missing_adapter_ability:' ), 'session-safe operator summary must not flood reasons with one entry per missing adapter ability' );
+}
+mad4b_assert_true( in_array( 'inspect_database_writer_topology', $operator_summary['next_actions'], true ), 'session-safe operator summary must distinguish writer faults from observer bootstrap' );
+mad4b_assert_true( false === $operator_summary['signals']['database_topology_ready'], 'session-safe operator summary must expose topology readiness' );
+mad4b_assert_true( false === $operator_summary['signals']['mcp_protocol_profile_ready'], 'session-safe operator summary must expose MCP protocol readiness' );
+mad4b_assert_true( in_array( 'adapter_version_uncertified', $operator_summary['reasons'], true ), 'session-safe operator summary must retain exact protocol blocker' );
+mad4b_assert_true( in_array( 'deploy_exact_certified_runtime_release', $operator_summary['next_actions'], true ), 'session-safe operator summary must route protocol drift to exact certified runtime deployment' );
+mad4b_assert_true( empty( $operator_summary['authorizing'] ) && empty( $operator_summary['mutation_performed'] ), 'session-safe operator summary must remain non-authorizing/read-only' );
+
+$combined_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ), $operator_summary );
+mad4b_assert_true( 'mad4b/control-plane-native-plan' === $combined_next['ability'], 'Runtime certification must be inspected before topology repair or authority convergence' );
+$adapter_only_summary = $operator_summary;
+$adapter_only_summary['next_actions'] = array( 'reconcile_exact_staging_write_authority', 'repair_adapter_ability_lifecycle_registration' );
+$adapter_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ), $adapter_only_summary );
+mad4b_assert_true( 'materialize_governed_read_adapter_lifecycle_then_retry' === $adapter_next['action'] && 'mad4b/read-execute' === $adapter_next['ability'], 'Canonical registration repair must precede grant convergence' );
+mad4b_assert_true( ! empty( $adapter_next['read_only'] ) && empty( $adapter_next['automatic_apply_allowed'] ), 'Registration repair recommendation must remain non-authorizing' );
+$topology_only_summary = $operator_summary;
+$topology_only_summary['next_actions'] = array( 'reconcile_exact_staging_write_authority', 'repair_query_monitor_db_attribution_then_retry' );
+$topology_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ), $topology_only_summary );
+mad4b_assert_true( 'inspect_database_writer_topology' === $topology_next['action'] && ! empty( $topology_next['read_only'] ), 'Topology failure must precede grant reconciliation and must not recommend a blind observer write' );
+$topology_only_summary['next_actions'][] = 'repair_adapter_ability_lifecycle_registration';
+$writer_before_adapter = $next_step_method->invoke( null, false, array(), $topology_only_summary );
+mad4b_assert_true( 'inspect_database_writer_topology' === $writer_before_adapter['action'], 'Writer readiness must precede a governed read that needs preparation storage' );
+$unknown_operator = $operator_method->invoke( null, array(), false, array(), array( 'environment' => 'staging' ) );
+mad4b_assert_true( 'DEGRADED' === $unknown_operator['state'], 'Missing operational readiness must not be projected as HEALTHY' );
+mad4b_assert_true( in_array( 'database_topology_ready_unknown', $unknown_operator['reasons'], true ), 'Unknown topology evidence must remain explicit' );
+$null_write_sections = array( 'runtime' => array( 'checks' => array( 'write_authority' => array( 'summary' => array( 'effective_authority_ready' => null, 'candidate_binding_match' => null, 'current_grant_snapshot_ready' => null ) ) ) ) );
+$null_operator = $operator_method->invoke( null, $null_write_sections, false, array(), array() );
+mad4b_assert_true( null === $null_operator['signals']['write_authority_ready'] && in_array( 'write_authority_ready_unknown', $null_operator['reasons'], true ), 'Unknown write readiness was coerced into a negative observation' );
 
 $bound_method = $read_consistency_reflection->getMethod( 'bound_session_safe_report' );
 $bound_method->setAccessible( true );
@@ -372,12 +577,14 @@ $bounded = $bound_method->invoke( null, array(
 	'partial' => false,
 	'read_transaction_id' => 'rtx_runtime_test_1234',
 	'runtime_generation' => str_repeat( 'c', 64 ),
+	'operator_summary' => $operator_summary,
 	'sections' => $synthetic_sections,
 	'read_only' => true,
 	'mutation_performed' => false,
 	'production_mutation_performed' => false,
 ) );
 mad4b_assert_true( ! empty( $bounded['payload_reduced'] ), 'oversized session-safe report must reduce itself' );
+mad4b_assert_true( isset( $bounded['operator_summary'] ) && 'BLOCKED' === $bounded['operator_summary']['state'], 'bounded session-safe report must preserve operator summary' );
 mad4b_assert_true( $bounded['response_bytes'] <= MAD4B_SCP_Read_Consistency::MAX_SESSION_SAFE_REPORT_BYTES, 'session-safe report must enforce the hard response byte cap' );
 $bounded_json = wp_json_encode( $bounded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 mad4b_assert_true( false !== $bounded_json && strlen( $bounded_json ) <= MAD4B_SCP_Read_Consistency::MAX_SESSION_SAFE_REPORT_BYTES, 'final encoded session-safe report must remain under the hard byte cap' );

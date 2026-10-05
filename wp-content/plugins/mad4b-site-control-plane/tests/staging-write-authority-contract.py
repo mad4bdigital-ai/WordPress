@@ -23,6 +23,7 @@ main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 portable = json.loads((repo / 'plugins' / 'mad4b-wordpress' / 'plugin.json').read_text(encoding='utf-8'))
 deployment = json.loads((wp / 'config' / 'staging-deployment-handoff.json').read_text(encoding='utf-8'))
+runtime_release_policy = json.loads((wp / 'config' / 'runtime-release-policy.json').read_text(encoding='utf-8'))
 
 # A previous stacked patch accidentally appended a second authority implementation
 # after the class closing brace. Lock the file to one canonical lifecycle.
@@ -450,6 +451,7 @@ for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
         raise SystemExit('direct ChatGPT mutation transport grant leaked into the normal governed-write allowlist: ' + dispatcher)
 for required_pair in [
     "'mad4b/control-plane-upload-apply' => 'core'",
+    "$allowed[ $ability ] = 'media'",
     "'jetengine/create-cpt' => 'native-provider'",
     "'elementor/clone-subtree' => 'elementor'",
     "'elementor/move-element' => 'elementor'",
@@ -461,6 +463,55 @@ for required_pair in [
 ]:
     if required_pair not in allowlist:
         raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
+
+feature007_core_grants = [
+    "mad4b/data-processing-bound-decision-record",
+    "mad4b/data-processing-profile-apply",
+    "mad4b/decommission-finalize-apply",
+    "mad4b/decommission-quiesce-apply",
+    "mad4b/decommission-resume-apply",
+    "mad4b/portability-import-quarantine-apply",
+    "mad4b/rights-record-apply",
+    "mad4b/rights-takedown-apply",
+    "mad4b/scheduler-backlog-claim-next",
+    "mad4b/scheduler-backlog-complete",
+    "mad4b/scheduler-backlog-enqueue",
+    "mad4b/scheduler-backlog-heartbeat",
+    "mad4b/scheduler-backlog-reconcile",
+    "mad4b/search-budget-apply",
+    "mad4b/search-capture-apply",
+    "mad4b/search-compile-apply",
+    "mad4b/search-control",
+    "mad4b/search-import-evidence",
+    "mad4b/search-post-change-apply",
+    "mad4b/search-profile-apply",
+    "mad4b/search-provider-probe",
+    "mad4b/search-recompute",
+    "mad4b/search-reconcile",
+    "mad4b/search-retention",
+]
+for ability_name in feature007_core_grants:
+    exact_pair = f"'{ability_name}' => 'core'"
+    if exact_pair not in allowlist:
+        raise SystemExit(f'Feature 007 governed core write grant is outside exact reconciliation allowlist: {ability_name}')
+if len(feature007_core_grants) != 24:
+    raise SystemExit('Feature 007 exact core grant regression fixture count changed unexpectedly')
+
+for media_ability in ("media/update-metadata", "media/set-featured", "media/set-parent"):
+    if media_ability not in grant_reconcile:
+        raise SystemExit(f'reviewed media ability missing from bounded grant reconciliation: {media_ability}')
+for media_contract in (
+    "mad4b.rollback.media-metadata.v1",
+    "mad4b.rollback.featured-image.v1",
+    "mad4b.rollback.media-parent.v1",
+):
+    if media_contract not in (wp / "includes" / "adapters" / "class-mad4b-scp-media-adapter.php").read_text(encoding="utf-8"):
+        raise SystemExit(f'reviewed media grant lacks reversible contract: {media_contract}')
+if "foreach ( array( 'media/update-metadata', 'media/set-featured', 'media/set-parent' ) as $ability )" not in allowlist:
+    raise SystemExit('media grant creation must remain an exact reviewed ability set, not a dynamic adapter wildcard')
+if "$allowed[ $ability ] = 'media';" not in allowlist:
+    raise SystemExit('reviewed media grants must resolve to exact media provider')
+
 
 if "'elementor/update-widget-settings' => 'elementor'" in allowlist:
     raise SystemExit('historical Elementor grant leaked back into grant-creation allowlist')
@@ -1171,9 +1222,13 @@ if any(key in target for key in ('environment', 'origin', 'host')):
     raise SystemExit('generic deployment handoff must not embed a tenant environment/origin/host')
 if target.get('plugin_slug') != 'mad4b-site-control-plane':
     raise SystemExit('deployment handoff plugin slug mismatch')
+expected_adapter_version = str(runtime_release_policy.get('target_adapter_version') or '')
+if not expected_adapter_version:
+    raise SystemExit('runtime release policy target Adapter version is missing')
 if target.get('mcp_adapter') != {
     'slug': 'mcp-adapter',
-    'required_version': '0.6.1',
+    'required_version': expected_adapter_version,
+    'required_version_source': 'runtime_release_policy.target_adapter_version',
     'deployment_mode': 'require_exact_preinstalled_or_verified_bundled',
 }:
     raise SystemExit('deployment handoff MCP Adapter dependency contract drift')

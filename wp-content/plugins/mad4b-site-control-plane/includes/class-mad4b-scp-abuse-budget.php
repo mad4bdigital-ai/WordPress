@@ -146,11 +146,11 @@ final class MAD4B_SCP_Abuse_Budget {
 		global $wpdb;
 		if ( class_exists('MAD4B_SCP_Database_Topology') && method_exists('MAD4B_SCP_Database_Topology','assert_write_ready') ) {
 			$ready = MAD4B_SCP_Database_Topology::assert_write_ready( false );
-			if ( is_wp_error( $ready ) ) return new WP_Error( 'mad4b_abuse_rate_storage_unavailable', 'Rate-limit writer topology is unavailable.', array('surface'=>$surface,'retryable'=>true) );
+			if ( is_wp_error( $ready ) ) return self::rate_storage_error( 'Rate-limit writer topology is unavailable.', $surface, $ready );
 		}
-		if ( ! class_exists('MAD4B_SCP_Schema') || ! method_exists('MAD4B_SCP_Schema','tables') ) return new WP_Error( 'mad4b_abuse_rate_storage_unavailable', 'Rate-limit schema is unavailable.' );
+		if ( ! class_exists('MAD4B_SCP_Schema') || ! method_exists('MAD4B_SCP_Schema','tables') ) return self::rate_storage_error( 'Rate-limit schema is unavailable.', $surface );
 		$tables = MAD4B_SCP_Schema::tables();
-		if ( empty($tables['metric_buckets']) ) return new WP_Error( 'mad4b_abuse_rate_storage_unavailable', 'Rate-limit bucket storage is unavailable.' );
+		if ( empty($tables['metric_buckets']) ) return self::rate_storage_error( 'Rate-limit bucket storage is unavailable.', $surface );
 		$limit = max(1,(int)$limits['requests_per_window']);
 		$window_seconds = max(1,min(3600,(int)$window_seconds));
 		$now = class_exists('MAD4B_SCP_Time_Policy') && method_exists('MAD4B_SCP_Time_Policy','now_epoch') ? (int)MAD4B_SCP_Time_Policy::now_epoch() : time();
@@ -166,9 +166,9 @@ final class MAD4B_SCP_Abuse_Budget {
 			$bucket_key,$metric_name,$bucket_start,$updated_at
 		);
 		$written = $wpdb->query($sql);
-		if ( false === $written ) return new WP_Error( 'mad4b_abuse_rate_storage_unavailable', 'Rate-limit bucket update failed.', array('surface'=>$surface,'retryable'=>true) );
+		if ( false === $written ) return self::rate_storage_error( 'Rate-limit bucket update failed.', $surface, null, array( 'storage_phase' => 'bucket_update' ) );
 		$count = $wpdb->get_var( $wpdb->prepare( "SELECT count_value FROM {$tables['metric_buckets']} WHERE BINARY bucket_key=BINARY %s LIMIT 1", $bucket_key ) );
-		if ( ! is_numeric($count) ) return new WP_Error( 'mad4b_abuse_rate_storage_unavailable', 'Rate-limit bucket readback failed.', array('surface'=>$surface,'retryable'=>true) );
+		if ( ! is_numeric($count) ) return self::rate_storage_error( 'Rate-limit bucket readback failed.', $surface, null, array( 'storage_phase' => 'bucket_readback' ) );
 		$count=(int)$count;
 		if ( $count > $limit ) return new WP_Error(
 			'mad4b_rate_limit_exceeded',
@@ -176,6 +176,33 @@ final class MAD4B_SCP_Abuse_Budget {
 			array('surface'=>$surface,'limit'=>$limit,'count'=>$count,'window_seconds'=>$window_seconds,'retry_after_seconds'=>max(1,$window_start+$window_seconds-$now),'authorizing'=>false)
 		);
 		return array('count'=>$count,'limit'=>$limit,'window_seconds'=>$window_seconds,'remaining'=>max(0,$limit-$count),'authorizing'=>false);
+	}
+
+	private static function rate_storage_error( $message, $surface = '', $cause = null, array $extra = array() ) {
+		$data = array(
+			'contract' => self::CONTRACT,
+			'surface' => sanitize_key( (string) $surface ),
+			'retryable' => true,
+			'blind_retry_allowed' => false,
+			'authorizing' => false,
+			'recovery_read_ability' => 'mad4b/session-safe-diagnostics',
+			'bounded_repair_ability' => 'mad4b/query-monitor-db-attribution-bootstrap',
+			'recheck_action' => 'retry_original_operation_after_topology_repair',
+		);
+		if ( is_wp_error( $cause ) ) {
+			$data['cause_code'] = sanitize_key( (string) $cause->get_error_code() );
+			$cause_data = $cause->get_error_data();
+			$cause_data = is_array( $cause_data ) ? $cause_data : array();
+			$data['topology_blockers'] = isset( $cause_data['blockers'] ) && is_array( $cause_data['blockers'] )
+				? array_values( array_unique( array_filter( array_map( 'sanitize_key', $cause_data['blockers'] ) ) ) )
+				: array();
+		}
+		foreach ( $extra as $key => $value ) {
+			$key = sanitize_key( (string) $key );
+			if ( '' === $key ) continue;
+			$data[ $key ] = is_scalar( $value ) || is_array( $value ) ? $value : (string) $value;
+		}
+		return new WP_Error( 'mad4b_abuse_rate_storage_unavailable', (string) $message, $data );
 	}
 
 	private static function complexity_error( $code, $message, array $metrics, array $limits ) {

@@ -106,6 +106,16 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
           php wp-content/plugins/mad4b-site-control-plane/tests/release-closure-hardening-contract.php
 
+      - name: Operating flow regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/content-experience-media-validation-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-heartbeat-runtime.php
+
       - name: Feature 007 closure foundations and workstream certification
         shell: bash
         run: |
@@ -199,6 +209,7 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/database-topology-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php
@@ -424,7 +435,7 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
-          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-certified-mcp-adapter.py" --plugins-dir "$WP_PATH/wp-content/plugins"
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php" "$WP_PATH/wp-content/object-cache.php"
@@ -587,7 +598,7 @@ jobs:
           wp config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           wp core install --path="$WP_PATH" --url=http://asi-disposable.test --title='Search CI' --admin_user=asi-ci --admin_password=ci-only-not-a-secret --admin_email=ci@example.invalid --skip-email
           wp config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-certified-mcp-adapter.py" --plugins-dir "$WP_PATH/wp-content/plugins"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           wp plugin activate mcp-adapter mad4b-site-control-plane --path="$WP_PATH"
 

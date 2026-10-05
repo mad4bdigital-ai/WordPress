@@ -575,6 +575,7 @@ final class MAD4B_SCP_Self_Update {
 				'apply_preflight_ready' => (bool) $apply_preflight_ready,
 				'maintenance_preflight' => $maintenance_projection,
 				'continuation_policy' => $continuation_projection,
+				'authority_handoff' => isset( $continuation_projection['authority_handoff'] ) && is_array( $continuation_projection['authority_handoff'] ) ? $continuation_projection['authority_handoff'] : array(),
 				'bootstrap_candidate_drift' => $bootstrap_drift_policy,
 				'apply_mode' => $bootstrap_drift_eligible ? 'local_admin_candidate_drift_bootstrap' : 'normal',
 				'modifies_core_update_transients' => false,
@@ -814,6 +815,11 @@ final class MAD4B_SCP_Self_Update {
 			if ( ! empty( $current['version'] ) && version_compare( $current['version'], $manifest['version'], '>' ) ) $blockers[] = 'target_version_older_than_runtime';
 		}
 
+		$continuation_projection = self::continuation_policy_projection();
+		$authority_handoff = isset( $continuation_projection['authority_handoff'] ) && is_array( $continuation_projection['authority_handoff'] )
+			? $continuation_projection['authority_handoff']
+			: self::authority_handoff_projection( false, null, array(), null, null );
+
 		$plan = array(
 			'contract' => self::NATIVE_PLAN_CONTRACT,
 			'plugin' => plugin_basename( MAD4B_SCP_FILE ),
@@ -836,6 +842,8 @@ final class MAD4B_SCP_Self_Update {
 			'embedded_provenance_required' => true,
 			'rollback_on_failed_readback' => true,
 			'release_channel_bound' => true,
+			'authority_handoff' => $authority_handoff,
+			'continuation_policy' => $continuation_projection,
 			'production_allowed' => false,
 			'eligible' => empty( $blockers ),
 			'blockers' => array_values( array_unique( $blockers ) ),
@@ -1311,6 +1319,36 @@ final class MAD4B_SCP_Self_Update {
 		return $out;
 	}
 
+	private static function authority_handoff_projection( $required, $current_ready, array $blockers, $candidate_binding_required, $candidate_binding_match ) {
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		sort( $blockers, SORT_STRING );
+		$current_ready = is_bool( $current_ready ) ? $current_ready : null;
+		$candidate_binding_required = is_bool( $candidate_binding_required ) ? $candidate_binding_required : null;
+		$candidate_binding_match = is_bool( $candidate_binding_match ) ? $candidate_binding_match : null;
+		return array(
+			'contract' => 'mad4b.staging-write-post-deploy-handoff.v1',
+			'state' => $required ? 'reconciliation_required' : ( null === $current_ready ? 'not_observed' : 'current' ),
+			'required' => (bool) $required,
+			'current_authority_ready' => $current_ready,
+			'current_authority_blockers' => $blockers,
+			'candidate_binding_required' => $candidate_binding_required,
+			'candidate_binding_match' => $candidate_binding_match,
+			'plan_ability' => 'mad4b/staging-write-authority-convergence-handshake',
+			'compatibility_plan_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
+			'apply_ability' => 'mad4b/staging-write-authority-convergence-apply',
+			'required_confirmation' => 'ENABLE GOVERNED STAGING WRITE AUTHORITY',
+			'operator_action' => $required ? 'reconcile_staging_write_authority' : '',
+			'automatic_apply_allowed' => false,
+			'production_allowed' => false,
+			'developer_authority_included' => false,
+			'developer_breakglass_included' => false,
+			'generic_raw_sql_breakglass_included' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
 	private static function continuation_policy_projection() {
 		$policy = self::post_update_continuation_policy();
 		if ( is_wp_error( $policy ) ) {
@@ -1319,6 +1357,19 @@ final class MAD4B_SCP_Self_Update {
 			$drift_blocked = 'mad4b_self_update_continuation_prior_authority_drift' === $policy->get_error_code();
 			$bootstrap = $drift_blocked ? self::bootstrap_candidate_drift_policy() : array();
 			$bootstrap_eligible = is_array( $bootstrap ) && ! empty( $bootstrap['eligible'] );
+			$current_ready = array_key_exists( 'current_authority_ready', $data ) ? (bool) $data['current_authority_ready'] : null;
+			$current_blockers = isset( $data['current_authority_blockers'] ) && is_array( $data['current_authority_blockers'] )
+				? array_values( array_unique( array_map( 'sanitize_key', $data['current_authority_blockers'] ) ) )
+				: array();
+			$binding_required = array_key_exists( 'candidate_binding_required', $data ) ? (bool) $data['candidate_binding_required'] : null;
+			$binding_match = array_key_exists( 'candidate_binding_match', $data ) ? (bool) $data['candidate_binding_match'] : null;
+			$authority_handoff = self::authority_handoff_projection(
+				$drift_blocked,
+				$current_ready,
+				$current_blockers,
+				$binding_required,
+				$binding_match
+			);
 			return array(
 				'contract' => 'mad4b.self-update-continuation-policy.v1',
 				'blocked' => true,
@@ -1326,11 +1377,14 @@ final class MAD4B_SCP_Self_Update {
 				'required' => null,
 				'mode' => 'blocked',
 				'prior_authority_effective' => isset( $data['prior_authority_effective'] ) ? (bool) $data['prior_authority_effective'] : null,
-				'candidate_binding_required' => isset( $data['candidate_binding_required'] ) ? (bool) $data['candidate_binding_required'] : null,
-				'candidate_binding_match' => isset( $data['candidate_binding_match'] ) ? (bool) $data['candidate_binding_match'] : null,
+				'current_authority_ready' => $current_ready,
+				'current_authority_blockers' => $current_blockers,
+				'candidate_binding_required' => $binding_required,
+				'candidate_binding_match' => $binding_match,
 				'operator_action' => $drift_blocked
 					? ( $bootstrap_eligible ? 'retry_native_update_with_candidate_drift_bootstrap' : 'reconcile_staging_write_authority' )
 					: '',
+				'authority_handoff' => $authority_handoff,
 				'bootstrap_candidate_drift_eligible' => $bootstrap_eligible,
 				'bootstrap_candidate_drift' => $bootstrap,
 				'automatic_mutation_retry_allowed' => false,
@@ -1341,6 +1395,12 @@ final class MAD4B_SCP_Self_Update {
 				'mutation_performed' => false,
 			);
 		}
+		$current_ready = array_key_exists( 'current_authority_ready', $policy ) ? (bool) $policy['current_authority_ready'] : null;
+		$current_blockers = isset( $policy['current_authority_blockers'] ) && is_array( $policy['current_authority_blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $policy['current_authority_blockers'] ) ) )
+			: array();
+		$binding_required = array_key_exists( 'candidate_binding_required', $policy ) ? (bool) $policy['candidate_binding_required'] : null;
+		$binding_match = array_key_exists( 'candidate_binding_match', $policy ) ? (bool) $policy['candidate_binding_match'] : null;
 		return array(
 			'contract' => 'mad4b.self-update-continuation-policy.v1',
 			'blocked' => false,
@@ -1350,7 +1410,11 @@ final class MAD4B_SCP_Self_Update {
 			'write_profile_enabled' => ! empty( $policy['write_profile_enabled'] ),
 			'authority_checkpoint_exists' => ! empty( $policy['authority_checkpoint_exists'] ),
 			'prior_authority_effective' => ! empty( $policy['prior_authority_effective'] ),
-			'candidate_binding_match' => ! empty( $policy['candidate_binding_match'] ),
+			'current_authority_ready' => $current_ready,
+			'current_authority_blockers' => $current_blockers,
+			'candidate_binding_required' => $binding_required,
+			'candidate_binding_match' => $binding_match,
+			'authority_handoff' => self::authority_handoff_projection( false, $current_ready, $current_blockers, $binding_required, $binding_match ),
 			'bootstrap_without_authority' => ! empty( $policy['bootstrap_without_authority'] ),
 			'bootstrap_candidate_drift_eligible' => false,
 			'bootstrap_candidate_drift' => array(),
@@ -1435,6 +1499,7 @@ final class MAD4B_SCP_Self_Update {
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'authority_presence_status' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) ) {
 			return new WP_Error(
 				'mad4b_self_update_continuation_authority_state_unavailable',
@@ -1495,12 +1560,21 @@ final class MAD4B_SCP_Self_Update {
 		}
 		$out['prior_authority_effective'] = (bool) $effective;
 		$out['candidate_binding_match'] = is_array( $binding ) && ! empty( $binding['match'] );
-		if ( ! $effective || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {
+		$current_readiness = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
+		$current_ready = is_array( $current_readiness ) && ! empty( $current_readiness['ready'] );
+		$current_blockers = is_array( $current_readiness ) && isset( $current_readiness['blockers'] ) && is_array( $current_readiness['blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $current_readiness['blockers'] ) ) )
+			: array( 'write_current_readiness_unavailable' );
+		$out['current_authority_ready'] = $current_ready;
+		$out['current_authority_blockers'] = $current_blockers;
+		if ( ! $effective || ! $current_ready || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {
 			return new WP_Error(
 				'mad4b_self_update_continuation_prior_authority_drift',
-				'Existing governed-write authority is stale or candidate-bound to a different build; reconcile it before updating.',
+				'Existing governed-write authority is stale, grant-drifted, or candidate-bound to a different build; reconcile it before updating.',
 				array(
 					'prior_authority_effective' => (bool) $effective,
+					'current_authority_ready' => $current_ready,
+					'current_authority_blockers' => $current_blockers,
 					'candidate_binding_required' => is_array( $binding ) && ! empty( $binding['required'] ),
 					'candidate_binding_match' => is_array( $binding ) && ! empty( $binding['match'] ),
 					'operator_action' => 'reconcile_staging_write_authority',

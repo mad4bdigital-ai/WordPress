@@ -103,6 +103,35 @@ if ( ! isset( $routes['/mcp/mad4b-chatgpt'] ) ) $fail( 'MAD4B ChatGPT MCP transp
 if ( isset( $routes['/wp/v2/types/post'] ) ) $fail( 'full Core REST routes were unexpectedly materialized on MCP protocol request' );
 if ( did_action( 'mcp_adapter_init' ) < 1 ) $fail( 'official MCP Adapter did not initialize for MCP protocol request' );
 
+// The compact ChatGPT protocol still needs canonical WordPress Ability
+// definitions for hidden fixed-dispatch targets. Definitions are not direct
+// tools and must be present without materializing provider REST planes.
+foreach ( array(
+	'media/search',
+	'media/get',
+	'media/update-metadata',
+	'media/set-featured',
+	'media/set-parent',
+	'mad4b/content-create-post',
+	'mad4b/taxonomy-create-term',
+	'mad4b/taxonomy-set-object-terms',
+	'jetengine/create-taxonomy',
+) as $ability_name ) {
+	if ( ! wp_has_ability( $ability_name ) || ! is_object( wp_get_ability( $ability_name ) ) ) {
+		$fail( 'ChatGPT protocol did not materialize hidden Adapter Ability definition.', $ability_name );
+	}
+}
+
+$chatgpt_server = \WP\MCP\Core\McpAdapter::instance()->get_server( 'mad4b-chatgpt' );
+if ( ! $chatgpt_server || ! method_exists( $chatgpt_server, 'get_tools' ) ) $fail( 'ChatGPT server unavailable for compact-tool verification' );
+$direct_tool_names = array();
+foreach ( (array) $chatgpt_server->get_tools() as $tool ) {
+	if ( is_object( $tool ) && method_exists( $tool, 'getName' ) ) $direct_tool_names[] = (string) $tool->getName();
+}
+foreach ( array( 'media-update-metadata', 'media-set-featured', 'media-set-parent', 'mad4b-content-create-post', 'jetengine-create-taxonomy' ) as $hidden_tool ) {
+	if ( in_array( $hidden_tool, $direct_tool_names, true ) ) $fail( 'Hidden Adapter Ability leaked into direct ChatGPT tools/list.', $hidden_tool );
+}
+
 if ( empty( $scope['protocol_core_rest_isolation_request_local_only'] )
 	|| empty( $scope['protocol_external_rest_isolation_request_local_only'] )
 	|| empty( $scope['protocol_external_rest_isolation_evaluated'] )

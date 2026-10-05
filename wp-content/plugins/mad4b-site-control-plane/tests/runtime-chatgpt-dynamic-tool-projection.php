@@ -35,6 +35,20 @@ if ( is_wp_error( $found ) ) $fail( 'Projection discovery failed.', $found->get_
 $found_names = array();
 foreach ( $found['items'] ?? array() as $row ) if ( is_array( $row ) && isset( $row['ability_name'] ) ) $found_names[] = (string) $row['ability_name'];
 if ( ! in_array( 'mad4b/diagnostics-health', $found_names, true ) ) $fail( 'Projection discovery did not search the full site Ability universe.', $found );
+$addon_found = $discover->execute( array( 'query' => 'addon registry', 'limit' => 100, 'offset' => 0 ) );
+if ( is_wp_error( $addon_found ) ) $fail( 'Token-normalized projection discovery failed.', $addon_found->get_error_code() );
+$addon_names = array();
+foreach ( $addon_found['items'] ?? array() as $row ) if ( is_array( $row ) && isset( $row['ability_name'] ) ) $addon_names[] = (string) $row['ability_name'];
+if ( ! in_array( 'mad4b/addon-registry-status', $addon_names, true ) ) $fail( 'Token-normalized projection discovery did not bridge punctuation in Ability metadata.', $addon_found );
+$raw_discovery = $discover->execute( array( 'query' => 'mad4b/database-raw-query', 'limit' => 10, 'offset' => 0 ) );
+$raw_row = isset( $raw_discovery['items'][0] ) && is_array( $raw_discovery['items'][0] ) ? $raw_discovery['items'][0] : array();
+if ( 'structural_classification_only' !== (string) ( $raw_row['execution_eligibility_scope'] ?? '' )
+	|| ! empty( $raw_row['current_runtime_authority_evaluated'] )
+	|| empty( $raw_row['current_runtime_authority_required_for_execution'] ) ) {
+	$fail( 'Projection discovery structural eligibility must not imply current runtime authority.', $raw_row );
+}
+
+
 
 $base = MAD4B_SCP_Servers::chatgpt_base_tools();
 if ( in_array( 'mad4b/diagnostics-health', $base, true ) ) $fail( 'Fixture Ability unexpectedly belongs to the stable base tools/list.' );

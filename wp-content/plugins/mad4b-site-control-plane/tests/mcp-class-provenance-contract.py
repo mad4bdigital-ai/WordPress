@@ -49,6 +49,9 @@ for marker in (
 if "trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter'" in runtime:
     raise SystemExit("Runtime provenance must not hardcode the MCP plugin directory")
 
+if "elseif ( ! $uses_blob_identity && ! $row['sha256_match'] ) $row['reason'] = 'runtime_class_sha256_mismatch';" not in runtime:
+    raise SystemExit("blob-certified success must not emit a SHA mismatch reason")
+
 
 profile_070 = profiles["providers"]["mcp_adapter"]["0.7.0"]
 surface = profile_070.get("runtime_surface") or {}

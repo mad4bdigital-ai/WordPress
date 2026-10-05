@@ -131,5 +131,18 @@ mad4b_release_assert( 'HEALTHY' === MAD4B_SCP_Operator_Control_Center::reduce( $
 $d = $base; $d['live_evidence_ready'] = false; mad4b_release_assert( 'DEGRADED' === MAD4B_SCP_Operator_Control_Center::reduce( $d )['state'], 'degraded' );
 $b = $base; $b['runtime_identity_match'] = false; mad4b_release_assert( 'BLOCKED' === MAD4B_SCP_Operator_Control_Center::reduce( $b )['state'], 'blocked' );
 $r = $base; $r['mutation_uncertain'] = true; mad4b_release_assert( 'RECOVERY_REQUIRED' === MAD4B_SCP_Operator_Control_Center::reduce( $r )['state'], 'recovery' );
+$w = $base; $w['write_authority_ready'] = false; $w['candidate_binding_match'] = false; $w['database_topology_ready'] = true;
+$w_state = MAD4B_SCP_Operator_Control_Center::reduce( $w );
+mad4b_release_assert( 'BLOCKED' === $w_state['state'], 'operator current write authority blocker' );
+mad4b_release_assert( in_array( 'reconcile_exact_staging_write_authority', $w_state['next_actions'], true ), 'operator write recovery action' );
+$t = $base; $t['write_authority_ready'] = true; $t['candidate_binding_match'] = true; $t['database_topology_ready'] = false;
+$t_state = MAD4B_SCP_Operator_Control_Center::reduce( $t );
+mad4b_release_assert( 'BLOCKED' === $t_state['state'], 'operator database topology blocker' );
+mad4b_release_assert( in_array( 'repair_query_monitor_db_attribution_then_retry', $t_state['next_actions'], true ), 'operator topology recovery action' );
+$operator_source = file_get_contents( $repo . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php' );
+foreach ( array( 'MAD4B_SCP_Environment::snapshot()', 'MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()', 'MAD4B_SCP_Database_Topology::status( false )', "'effective_environment'", "'wordpress_environment'" ) as $marker ) {
+	mad4b_release_assert( false !== strpos( $operator_source, $marker ), 'operator live-truth marker missing: ' . $marker );
+}
+
 
 echo "mad4b.feature007-release-closure-hardening.v1: PASS" . PHP_EOL;

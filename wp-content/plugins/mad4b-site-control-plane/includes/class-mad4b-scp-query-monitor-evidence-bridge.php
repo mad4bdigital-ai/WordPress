@@ -72,14 +72,18 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			}
 		}
 		if ( $dropin_exists && ! $owned && is_readable( $dropin ) ) {
-			$prefix = file_get_contents( $dropin, false, null, 0, 32768 );
+			$contents = file_get_contents( $dropin );
 			$loader = self::bounded_loader_contents();
-			if ( is_string( $prefix ) && hash_equals( hash( 'sha256', $loader ), hash( 'sha256', $prefix ) ) ) {
+			if ( is_string( $contents ) && hash_equals( hash( 'sha256', $loader ), hash( 'sha256', $contents ) ) ) {
 				$owned = true;
 				$ownership = 'mad4b_bounded_loader';
-			} elseif ( is_string( $prefix ) && false !== strpos( $prefix, 'QM_DB' ) && false !== strpos( $prefix, 'Query Monitor' ) ) {
-				$owned = true;
-				$ownership = 'query_monitor_native_dropin';
+			} elseif ( $source_exists && is_string( $contents ) ) {
+				$source_hash = hash_file( 'sha256', $source );
+				$dropin_hash = hash_file( 'sha256', $dropin );
+				if ( is_string( $source_hash ) && is_string( $dropin_hash ) && hash_equals( $source_hash, $dropin_hash ) ) {
+					$owned = true;
+					$ownership = 'query_monitor_exact_copy';
+				}
 			}
 		}
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
