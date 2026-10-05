@@ -2586,6 +2586,12 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	private static function option_values_equal( $left, $right ) {
+		// WordPress stores top-level scalar options as strings. After invalidating
+		// the option cache, a persisted integer revision is read back as e.g. "1".
+		// Keep structured records type-exact; only compare scalar storage values.
+		if ( ( is_scalar( $left ) || null === $left ) && ( is_scalar( $right ) || null === $right ) ) {
+			return (string) $left === (string) $right;
+		}
 		return serialize( $left ) === serialize( $right );
 	}
 
@@ -2604,17 +2610,19 @@ final class MAD4B_SCP_Context_Authority {
 		if ( '' === $name ) return false;
 
 		self::clear_option_read_cache( $name, true );
-		$current = get_option( $name, false );
-		if ( false !== $current && self::option_values_equal( $current, $value ) ) return true;
+		$missing = '__mad4b_missing_option__' . hash( 'sha256', $name );
+		$current = get_option( $name, $missing );
+		if ( $missing !== $current && self::option_values_equal( $current, $value ) ) return true;
 
 		update_option( $name, $value, false );
 		self::clear_option_read_cache( $name );
-		$readback = get_option( $name, false );
-		if ( self::option_values_equal( $readback, $value ) ) return true;
+		$readback = get_option( $name, $missing );
+		if ( $missing !== $readback && self::option_values_equal( $readback, $value ) ) return true;
 
 		self::clear_option_read_cache( $name, true );
 		update_option( $name, $value, false );
 		self::clear_option_read_cache( $name, true );
-		return self::option_values_equal( get_option( $name, false ), $value );
+		$readback = get_option( $name, $missing );
+		return $missing !== $readback && self::option_values_equal( $readback, $value );
 	}
 }

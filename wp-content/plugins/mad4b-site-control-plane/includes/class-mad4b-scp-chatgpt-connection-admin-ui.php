@@ -273,3 +273,6 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		echo '<tr><th style="width:220px">' . esc_html( $label ) . '</th><td><input id="' . esc_attr( $id ) . '" type="text" readonly value="' . esc_attr( (string) $value ) . '" style="width:min(100%,760px)"> <button type="button" class="button mad4b-chatgpt-copy" data-copy-target="' . esc_attr( $id ) . '">' . esc_html__( 'Copy', 'mad4b-site-control-plane' ) . '</button></td></tr>';
 	}
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_ChatGPT_Connection_Admin_UI::PAGE_SLUG, 'manage_options' );

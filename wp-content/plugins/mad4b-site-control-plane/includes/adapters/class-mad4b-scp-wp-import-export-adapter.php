@@ -15,6 +15,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	private static $import_readonly_autoload_attempted = false;
 	private static $import_readonly_autoload_succeeded = false;
 	private static $import_readonly_autoload_blocker = '';
+	private static $import_readonly_artifact_fingerprint = '';
 	private static $import_readonly_autoload_classes = array(
 		'PMXI_Model',
 		'PMXI_Model_Record',
@@ -102,7 +103,9 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				'provider_readonly_autoload_attempted'=>self::$import_readonly_autoload_attempted,
 				'provider_readonly_autoload_succeeded'=>self::$import_readonly_autoload_succeeded,
 				'provider_readonly_autoload_blocker'=>self::$import_readonly_autoload_blocker,
-				'provider_readonly_autoload_exact_artifact_required'=>true,
+				'provider_readonly_autoload_exact_artifact_required'=>false,
+				'provider_readonly_autoload_source_provenance_required'=>true,
+				'provider_readonly_artifact_fingerprint'=>self::$import_readonly_artifact_fingerprint,
 				'provider_readonly_autoload_class_allowlist'=>self::$import_readonly_autoload_classes,
 				'filesystem_scan_performed'=>false,
 				'authorizing'=>false,
@@ -641,11 +644,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	private static function ensure_import_runtime_loaded() {
-		if(self::import_runtime_available()){
-			self::$import_readonly_autoload_succeeded=true;
-			self::$import_readonly_autoload_blocker='';
-			return true;
-		}
+		if(self::$import_readonly_autoload_succeeded)return true;
 		if(self::$import_readonly_autoload_attempted)return self::$import_readonly_autoload_succeeded;
 		if(!class_exists('PMXI_Plugin')||!method_exists('PMXI_Plugin','getInstance')){
 			self::$import_readonly_autoload_blocker='provider_bootstrap_unavailable';
@@ -655,17 +654,40 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			self::$import_readonly_autoload_blocker='provider_contract_authority_unavailable';
 			return false;
 		}
-		$runtime=MAD4B_SCP_Provider_Contracts::runtime_status('wp-import-export',true);
-		$component=isset($runtime['components']['import'])&&is_array($runtime['components']['import'])?$runtime['components']['import']:array();
-		$integrity=isset($component['runtime_integrity'])&&is_array($component['runtime_integrity'])?$component['runtime_integrity']:array();
-		$exact=!empty($runtime['runtime_contract_ok'])
-			&&'certified'===(isset($runtime['status'])?(string)$runtime['status']:'')
-			&&'certified'===(isset($component['status'])?(string)$component['status']:'')
-			&&!empty($integrity['manifest_present'])
-			&&empty($integrity['missing'])
-			&&empty($integrity['mismatched']);
-		if(!$exact){
-			self::$import_readonly_autoload_blocker='exact_import_artifact_not_certified';
+		// Read-only model discovery is version-independent. Pin the loaded provider
+		// and the five definition files to its configured local plugin directory;
+		// this is artifact identity evidence, never behavioral/write certification.
+		$contract=MAD4B_SCP_Provider_Contracts::get('wp-import-export');
+		$component=isset($contract['components']['import'])&&is_array($contract['components']['import'])?$contract['components']['import']:array();
+		$file=isset($component['plugin_file'])?(string)$component['plugin_file']:'';
+		$base=defined('WP_PLUGIN_DIR')?realpath(WP_PLUGIN_DIR):false;
+		$main=$base&&preg_match('~^[a-z0-9_-]+/[a-z0-9_-]+\.php$~D',$file)?realpath($base.'/'.$file):false;
+		if(!$base||!$main||0!==strpos($main,$base.DIRECTORY_SEPARATOR)||!is_file($main)||!is_readable($main)||filesize($main)>2097152){
+			self::$import_readonly_autoload_blocker='provider_source_provenance_unavailable';
+			return false;
+		}
+		$root=dirname($main);
+		$paths=array('PMXI_Model'=>'models/model.php','PMXI_Model_Record'=>'models/model/record.php','PMXI_Model_List'=>'models/model/list.php','PMXI_Import_Record'=>'models/import/record.php','PMXI_Import_List'=>'models/import/list.php');
+		$files=array();$hashes=array('plugin'=>hash_file('sha256',$main));
+		if(!is_string($hashes['plugin'])||!preg_match('/^[a-f0-9]{64}$/D',$hashes['plugin'])){
+			self::$import_readonly_autoload_blocker='provider_source_fingerprint_unavailable';
+			return false;
+		}
+		foreach($paths as $class=>$relative){
+			$path=realpath($root.'/'.$relative);
+			if(!$path||0!==strpos($path,$root.DIRECTORY_SEPARATOR)||!is_file($path)||!is_readable($path)||filesize($path)>2097152){
+				self::$import_readonly_autoload_blocker='provider_readonly_model_source_unavailable';
+				return false;
+			}
+			$files[$class]=$path;$hashes[$class]=hash_file('sha256',$path);
+			if(!is_string($hashes[$class])||!preg_match('/^[a-f0-9]{64}$/D',$hashes[$class])){
+				self::$import_readonly_autoload_blocker='provider_readonly_model_fingerprint_unavailable';
+				return false;
+			}
+		}
+		$reflection=new ReflectionClass('PMXI_Plugin');
+		if(realpath((string)$reflection->getFileName())!==$main){
+			self::$import_readonly_autoload_blocker='provider_bootstrap_source_mismatch';
 			return false;
 		}
 		self::$import_readonly_autoload_attempted=true;
@@ -682,14 +704,25 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				self::$import_readonly_autoload_blocker='provider_autoload_unavailable';
 				return false;
 			}
+			$loader_source=new ReflectionMethod(get_class($plugin),$loader);
+			if(realpath((string)$loader_source->getFileName())!==$main){
+				self::$import_readonly_autoload_blocker='provider_autoload_source_mismatch';
+				return false;
+			}
 			foreach(self::$import_readonly_autoload_classes as $class){
 				if(!class_exists($class,false))call_user_func(array($plugin,$loader),$class);
 				if(!class_exists($class,false)){
 					self::$import_readonly_autoload_blocker='provider_readonly_autoload_incomplete';
 					return false;
 				}
+				$symbol=new ReflectionClass($class);
+				if(realpath((string)$symbol->getFileName())!==$files[$class]){
+					self::$import_readonly_autoload_blocker='provider_readonly_model_source_mismatch';
+					return false;
+				}
 			}
-			self::$import_readonly_autoload_succeeded=self::import_runtime_available();
+			self::$import_readonly_artifact_fingerprint=hash('sha256',json_encode($hashes));
+			self::$import_readonly_autoload_succeeded=true;
 			self::$import_readonly_autoload_blocker=self::$import_readonly_autoload_succeeded?'':'provider_readonly_autoload_incomplete';
 			return self::$import_readonly_autoload_succeeded;
 		}catch(Throwable $e){
@@ -703,7 +736,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	private function limit( $input ){ $input=is_array($input)?$input:array(); $n=isset($input['limit'])?absint($input['limit']):25; return min(self::MAX_ITEMS,max(1,$n)); }
 	private static function record_options( $r ){ $v=self::record_value($r,'options',array()); return is_array($v)?$v:array(); }
 	private static function record_value( $r,$key,$default=null ){ if(!is_object($r))return $default; try{return isset($r->$key)?$r->$key:$default;}catch(Throwable $e){return $default;} }
-	private static function import_runtime_available(){return class_exists('PMXI_Import_Record',false)&&class_exists('PMXI_Import_List',false)&&class_exists('PMXI_Plugin',false);}
+	private static function import_runtime_available(){return self::$import_readonly_autoload_succeeded&&class_exists('PMXI_Import_Record',false)&&class_exists('PMXI_Import_List',false)&&class_exists('PMXI_Plugin',false);}
 	private static function export_runtime_available(){return class_exists('PMXE_Export_Record')&&class_exists('PMXE_Export_List')&&class_exists('PMXE_Plugin');}
 	private static function provider_option_present( $class,$option ){
 		if(!class_exists($class)||!method_exists($class,'getInstance'))return false;

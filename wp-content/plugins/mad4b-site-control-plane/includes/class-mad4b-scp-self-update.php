@@ -2563,6 +2563,21 @@ final class MAD4B_SCP_Self_Update {
 			&& MAD4B_SCP_Site_Profile::environment_allowed( array( 'production' ), 'write' );
 	}
 
+	/** Fixed-channel, root-trusted identity for an already installed manual replacement. */
+	public static function observed_release_target() {
+		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_observed_release_staging_required', 'Observed release convergence is Staging-only.' );
+		$manifest = self::fetch_manifest( true );
+		if ( is_wp_error( $manifest ) ) return $manifest;
+		$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( empty( $identity['runtime_manifest_match'] ) ) return new WP_Error( 'mad4b_observed_release_integrity_required', 'The actual installed package must pass full manifest verification.' );
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+			if ( empty( $manifest[ $key ] ) || empty( $identity[ $key ] ) || ! hash_equals( (string) $manifest[ $key ], (string) $identity[ $key ] ) ) return new WP_Error( 'mad4b_observed_release_identity_mismatch', 'Installed package does not match the root-trusted release channel.' );
+		}
+		$target = self::public_manifest( $manifest );
+		$target['artifact_identity'] = $identity['artifact_identity'];
+		return $target;
+	}
+
 	private static function public_manifest( array $manifest ) {
 		$out = array(
 			'version' => $manifest['version'],

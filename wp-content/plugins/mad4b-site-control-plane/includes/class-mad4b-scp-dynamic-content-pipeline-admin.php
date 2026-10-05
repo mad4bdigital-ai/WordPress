@@ -77,3 +77,6 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 	}
 }
 MAD4B_SCP_Dynamic_Content_Pipeline_Admin::boot();
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Dynamic_Content_Pipeline_Admin::PAGE, 'manage_options' );

@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.93
+ * Version: 0.4.0-rc.94
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.93' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.94' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
@@ -88,6 +88,8 @@ if ( '' !== $mad4b_scp_early_zero_touch_reason ) {
 }
 unset( $mad4b_scp_early_zero_touch_reason );
 
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-route-registry.php';
+MAD4B_SCP_Admin_Route_Registry::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-identity-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-doctor.php';
@@ -153,6 +155,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-circuit-breaker.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-eligibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-health-view.php';
@@ -466,6 +469,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 // telemetry, write/catalog reconciliation, package/update lifecycle and Skill
 // certification run only on explicit deep/action/protocol/CLI surfaces.
 if ( ! $mad4b_passive_admin_read ) {
+	MAD4B_SCP_Adaptive_Runtime_Convergence::boot();
 	MAD4B_SCP_Live_Acceptance_Observer::boot_early();
 	MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();
 	MAD4B_SCP_Admin_Query_Performance::boot();

@@ -606,3 +606,12 @@ delete_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION );
 
 mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
 echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v14: PASS\n";
+
+// A rejected grant must expose an external action without persisting new tokens.
+$before_rejected_grant = get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array() );
+$persist_tokens = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'persist_tokens' );
+$persist_tokens->setAccessible( true ); // Required on PHP 7.4; harmless on newer supported runtimes.
+$rejected_grant = $persist_tokens->invoke( null, 'NEVER_STORE_ACCESS', 'NEVER_STORE_REFRESH', 3600, MAD4B_SCP_Google_Drive_Context::READ_SCOPE . ' https://unsupported.invalid/scope', array(), 'read_only', 'dedicated_google', MAD4B_SCP_Google_Drive_Context::READ_SCOPE );
+mad4b_oauth_assert( is_wp_error( $rejected_grant ) && 'mad4b_google_workspace_scope_not_allowed' === $rejected_grant->get_error_code(), 'Unsupported Workspace scope was accepted.' );
+mad4b_oauth_assert( 'EXTERNAL_ACTION_REQUIRED' === $rejected_grant->get_error_data()['operation_state'], 'Unsupported scope did not expose the required external action.' );
+mad4b_oauth_assert( $before_rejected_grant === get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array() ), 'Rejected OAuth tokens were persisted.' );

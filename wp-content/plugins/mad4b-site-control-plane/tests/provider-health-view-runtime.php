@@ -69,7 +69,7 @@ $blocked = MAD4B_SCP_Provider_Health_View::normalize( $drift, array( 'version_dr
 	'partial' => false,
 	'session_breaker_open' => false,
 ) );
-$check( 'BLOCKED' === $blocked['health_state'], 'Healthy request diagnostics overrode provider contract drift.', $blocked );
+$check( 'UNKNOWN' === $blocked['health_state'], 'Healthy request diagnostics overrode provider contract drift.', $blocked );
 $check( false === $blocked['runtime_contract_mutation_eligible'] && false === $blocked['mutation_authorized'], 'Blocked provider was reported mutation-authorized.', $blocked );
 
 $unavailable = MAD4B_SCP_Provider_Health_View::normalize( array(
@@ -97,6 +97,19 @@ $check( 'HEALTHY' === $delegated['health_state'] && 'fixture' === $delegated['pr
 MAD4B_SCP_Provider_Contracts::$status = $drift;
 MAD4B_SCP_Provider_Contracts::$violations = array( 'version_drift' );
 $delegated_blocked = MAD4B_SCP_Provider_Health_View::provider( 'fixture' );
-$check( 'BLOCKED' === $delegated_blocked['health_state'], 'Provider drift delegation was not blocked.', $delegated_blocked );
+$check( 'UNKNOWN' === $delegated_blocked['health_state'], 'Provider drift delegation was not blocked.', $delegated_blocked );
 
 echo "mad4b.provider-health-view.v1: PASS\n";
+
+$capability_evidence = array( 'contract' => 'mad4b.provider-capability-certification-result.v1', 'provider_id' => 'fixture', 'capabilities' => array(
+ 'read.current' => array( 'surface_exposed' => true, 'structural_compatible' => true, 'read_eligible' => true ),
+ 'write.unknown' => array( 'surface_exposed' => true, 'structural_compatible' => true, 'write_eligible' => false ),
+ 'latent.broken' => array( 'surface_exposed' => false, 'structural_compatible' => false ),
+) );
+$local = MAD4B_SCP_Provider_Health_View::normalize( $drift, array( 'version_drift' ), array(), $capability_evidence );
+$check( 'HEALTHY' === $local['health_state'] && array( 'write.unknown' ) === $local['isolated_capabilities'], 'Drift or latent contract failure poisoned compatible reads.', $local );
+$check( ! $local['runtime_contract_mutation_eligible'] && ! $local['mutation_authorized'], 'Compatible read evidence authorized writes.', $local );
+$capability_evidence['provider_id'] = 'another-provider';
+$foreign = MAD4B_SCP_Provider_Health_View::normalize( $drift, array( 'version_drift' ), array(), $capability_evidence );
+$check( ! $foreign['capability_scope'] && 'UNKNOWN' === $foreign['health_state'], 'Foreign provider evidence admitted.', $foreign );
+echo "Capability-local provider health: PASS\n";

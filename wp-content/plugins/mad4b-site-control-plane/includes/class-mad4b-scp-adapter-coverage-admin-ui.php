@@ -280,3 +280,6 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		echo '</tbody></table></div>';
 	}
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Adapter_Coverage_Admin_UI::PAGE_SLUG, 'manage_options' );

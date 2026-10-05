@@ -44,4 +44,14 @@ check( in_array( 'mcp_catalog_projection_mismatch', $failed['local_blockers'], t
 unset( MAD4B_SCP_Servers::$row['catalog_evidence'] );
 $unknown = MAD4B_SCP_Connection_Status::status( true );
 check( null === $unknown['servers'][0]['catalog_ready'], 'Unobserved catalog fabricated as failed' );
+MAD4B_SCP_Servers::$row['descriptor_evidence'] = array( 'ready' => false, 'blockers' => array(
+	'mad4b/staging-write-candidate-binding-audit:mad4b_chatgpt_projection_ability_unavailable',
+	'PRIVATE/PATH:PRIVATE exception details',
+) );
+$diagnostic = MAD4B_SCP_Connection_Status::endpoint_diagnostic( 'mad4b-chatgpt' );
+check( false === $diagnostic['capability_descriptor_ready'] && 2 === $diagnostic['capability_descriptor_failure_count'], 'Descriptor failure was not projected' );
+check( 'mad4b/staging-write-candidate-binding-audit' === $diagnostic['capability_descriptor_failures'][0]['failing_ability'], 'Missing ability identity lost' );
+check( false === strpos( json_encode( $diagnostic ), 'PRIVATE' ), 'Private descriptor error leaked' );
+unset( MAD4B_SCP_Servers::$row['descriptor_evidence'] );
+check( null === MAD4B_SCP_Connection_Status::endpoint_diagnostic( 'mad4b-chatgpt' )['capability_descriptor_ready'], 'Unobserved descriptor evidence fabricated' );
 echo "Connection catalog readiness runtime: PASS\n";

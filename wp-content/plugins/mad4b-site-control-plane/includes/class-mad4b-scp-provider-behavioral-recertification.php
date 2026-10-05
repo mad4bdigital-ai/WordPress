@@ -24,6 +24,7 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 	const MAX_STATE_BYTES = 262144;
 
 	private static $booted = false;
+	private static $probe_context = array();
 
 	public static function boot_early() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
@@ -34,6 +35,46 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 			add_filter( 'mad4b_provider_behavioral_evidence_verifiers', array( __CLASS__, 'provide_verifiers' ), 20, 2 );
 		}
 	}
+
+	/**
+	 * Request-local bridge used only by an adapter while this exact approved
+	 * behavioral probe is executing. It never grants normal write authority.
+	 */
+	public static function probe_context_allows( $provider, $ability, $target_input = null ) {
+		$provider = sanitize_key( (string) $provider );
+		$ability = trim( (string) $ability );
+		$context = self::$probe_context;
+		if ( empty( $context ) || '' === $provider || '' === $ability ) return false;
+		if ( ! hash_equals( (string) ( $context['provider_id'] ?? '' ), $provider ) ) return false;
+		if ( ! hash_equals( (string) ( $context['target_ability'] ?? '' ), $ability ) ) return false;
+		foreach ( array( 'capability_id', 'artifact_fingerprint', 'capability_contract_digest', 'target_input_digest' ) as $field ) {
+			if ( empty( $context[ $field ] ) ) return false;
+		}
+		if ( null !== $target_input ) {
+			if ( ! is_array( $target_input ) ) return false;
+			$json = self::bounded_json( $target_input, self::MAX_TARGET_INPUT_BYTES );
+			if ( is_wp_error( $json ) ) return false;
+			if ( ! hash_equals( (string) $context['target_input_digest'], hash( 'sha256', $json ) ) ) return false;
+		}
+		return true;
+	}
+
+	private static function activate_probe_context( array $context ) {
+		if ( ! empty( self::$probe_context ) ) return new WP_Error( 'mad4b_provider_recertification_probe_reentry_denied', 'A behavioral recertification probe is already active in this request.' );
+		$required = array( 'provider_id', 'capability_id', 'target_ability', 'artifact_fingerprint', 'capability_contract_digest', 'target_input_digest' );
+		foreach ( $required as $field ) if ( empty( $context[ $field ] ) ) return new WP_Error( 'mad4b_provider_recertification_probe_context_incomplete', 'Behavioral probe context is incomplete.' );
+		self::$probe_context = array(
+			'provider_id' => sanitize_key( (string) $context['provider_id'] ),
+			'capability_id' => (string) $context['capability_id'],
+			'target_ability' => (string) $context['target_ability'],
+			'artifact_fingerprint' => (string) $context['artifact_fingerprint'],
+			'capability_contract_digest' => (string) $context['capability_contract_digest'],
+			'target_input_digest' => (string) $context['target_input_digest'],
+		);
+		return true;
+	}
+
+	private static function clear_probe_context() { self::$probe_context = array(); }
 
 	public static function register_ability() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
@@ -241,6 +282,16 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 	}
 
 	private static function probe_and_restore( array $context ) {
+		$activated = self::activate_probe_context( $context );
+		if ( is_wp_error( $activated ) ) return $activated;
+		try {
+			return self::probe_and_restore_active( $context );
+		} finally {
+			self::clear_probe_context();
+		}
+	}
+
+	private static function probe_and_restore_active( array $context ) {
 		$adapter = $context['adapter'];
 		$ability = $context['target_ability'];
 		$input = $context['target_input'];

@@ -439,6 +439,19 @@ final class MAD4B_SCP_Connection_Status {
 		$server['catalog_tool_count'] = isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : null;
 		$server['catalog_count_match'] = null === $server['tool_count'] || null === $server['catalog_tool_count'] ? null : $server['tool_count'] === $server['catalog_tool_count'];
 		$server['requested_tool_count'] = isset( $row['requested_tool_count'] ) ? max( 0, (int) $row['requested_tool_count'] ) : null;
+		$descriptor = isset( $row['descriptor_evidence'] ) && is_array( $row['descriptor_evidence'] ) ? $row['descriptor_evidence'] : array();
+		$descriptor_blockers = isset( $descriptor['blockers'] ) && is_array( $descriptor['blockers'] ) ? $descriptor['blockers'] : array();
+		$server['capability_descriptor_ready'] = $descriptor ? ! empty( $descriptor['ready'] ) : null;
+		$server['capability_descriptor_failure_count'] = count( $descriptor_blockers );
+		$server['capability_descriptor_failures'] = array();
+		foreach ( array_slice( $descriptor_blockers, 0, 12 ) as $blocker ) {
+			if ( ! is_string( $blocker ) ) continue;
+			$parts = explode( ':', $blocker, 2 );
+			$ability = 2 === count( $parts ) && preg_match( '/^mad4b\/[a-z0-9-]{1,120}$/D', $parts[0] ) ? $parts[0] : '';
+			$code = 2 === count( $parts ) ? $parts[1] : $parts[0];
+			$code = preg_match( '/^[a-z][a-z0-9_]{0,159}$/D', $code ) ? $code : 'descriptor_binding_failed';
+			$server['capability_descriptor_failures'][] = array( 'failing_ability' => $ability, 'stage' => 'capability_descriptor_binding', 'error_code' => $code );
+		}
 		$preflight = isset( $row['preflight'] ) && is_array( $row['preflight'] ) ? $row['preflight'] : array();
 		$failures = isset( $preflight['failures'] ) && is_array( $preflight['failures'] ) ? $preflight['failures'] : array();
 		$server['preflight_ready'] = $preflight ? ! empty( $preflight['ready'] ) : null;
