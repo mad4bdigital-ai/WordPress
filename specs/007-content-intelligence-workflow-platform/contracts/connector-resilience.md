@@ -234,6 +234,37 @@ read allowlist centered on `mad4b/session-safe-diagnostics`, discovery/info and
 single-target dispatch. Deep follow-up uses `mad4b-read` or exactly one
 generation-bound `read-execute` target at a time.
 
+### Session-safe comparative performance observation
+
+Routine session-safe diagnostics expose a comparative performance observation
+without inventing one universal DB-query, include-count, or memory threshold.
+
+The observation is bound to the same runtime generation and records:
+
+- request elapsed milliseconds and request-budget headroom;
+- database query count;
+- included-file count;
+- current and peak memory usage.
+
+These values are operational signals, not authorization gates. Performance
+acceptance compares them with the **previous exact Staging release** for the same
+site/workload profile. Material release-to-release regression requires review;
+one large absolute number alone does not prove a defect unless it violates an
+existing explicit request/payload/time budget.
+
+The observation must therefore declare:
+
+- `comparison_required=true`;
+- `comparison_baseline_scope=previous_exact_staging_release`;
+- no fixed universal DB-query/include-count/memory threshold;
+- a client action to compare the exact release baseline before performance
+  acceptance;
+- `authorizing=false`, `read_only=true`, and `mutation_performed=false`.
+
+Payload reduction must preserve a compact form of this observation so recovery
+clients do not lose performance context merely because diagnostic sections were
+compressed.
+
 ## Full Staging Authority session-safe handshake
 
 ChatGPT MUST NOT prepare Full Staging Authority by issuing the deep
