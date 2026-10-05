@@ -223,7 +223,7 @@
   "authorizing": false,
   "reviewability": {
     "contract": "mad4b.feature007-reviewability.v1",
-    "changed_file_count": 348,
+    "changed_file_count": 347,
     "semantic_slice_count": 17,
     "max_declared_paths_per_slice": 35,
     "max_allowed_paths_per_slice": 35,
@@ -231,7 +231,7 @@
     "exact_head_verification": "architecture-maintainability-contract.py",
     "reviewer_unit": "semantic_slice_with_explicit_revert_boundary",
     "pr_size_is_risk_not_waived": true,
-    "changed_paths_sha256": "730409b68002747388a2af4f08d3c6f3c61a608ba4375cb8ffe5a670d1266d09",
+    "changed_paths_sha256": "063bf0e0ee8a13d6a498c3c0137643b4197dce2958da7cfa2a10af4a9a158355",
     "changed_paths_sha256_mode": "sha256_sorted_exact_changed_paths_newline_terminated"
   },
   "performance_validation": {
