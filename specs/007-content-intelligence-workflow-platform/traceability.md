@@ -302,3 +302,6 @@ A ranking delta is invalid unless its observations satisfy the declared Comparab
 ### Adaptive Search runtime evidence binding
 
 The ASI families bind to `wp-content/plugins/mad4b-site-control-plane/includes/search/` and `class-mad4b-scp-adaptive-search-intelligence.php`. `adaptive-search-runtime-acceptance.json` is the exhaustive mapping of each of the 15 repository conformance gates to named runtime/provider fixtures, quantitative assertion thresholds and denial cases. The Feature-owned `feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance` matrix requires PHP 7.4/8.3 and disposable WordPress/MySQL evidence before emitting exact-head gates. This extends and preserves the previously certified Phase 38 P0 and Phase 38A foundation evidence; it does not substitute local fixtures for live provider certification.
+
+
+P1 review closure is bound to Search runtime exact head `e8791ae6253b5667f1ffffdcf1693bd1d08a641a`: all six P1 findings are CLOSED at repository-runtime scope after PHP 7.4/8.3 feature-owned conformance passed (40 fixtures, 938 assertions, 15 gates). Live provider/account certification remains `NOT_CLAIMED` and is not substituted by repository fixtures.
