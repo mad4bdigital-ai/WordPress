@@ -203,6 +203,13 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php
 
+      - name: Verify Feature 007 release-closure hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/release-closure-hardening-contract.php
+
       - name: Verify durable schema dbDelta contract
         shell: bash
         run: |
