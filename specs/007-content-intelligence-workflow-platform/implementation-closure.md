@@ -205,7 +205,7 @@ Phase 38 is now an explicit MATURITY_REQUIRED extension documented by `adaptive-
 This extension is deliberately outside the current Critical Kernel terminal proof unless a concrete runtime dependency is later admitted through the normal Architecture Freeze process. It creates no Production authority, no Breakglass widening, no generic HTTP surface and no direct search-signal-to-content mutation path.
 
 
-## Adaptive Search review status: APPROVED_P0_CLOSED_P1_OPEN
+## Adaptive Search review status: APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED
 
 The independent Phase 38 review is recorded in `adaptive-search-intelligence-review.md` and `adaptive-search-intelligence-review.json`.
 
@@ -213,7 +213,7 @@ Current review score: **88/100 overall specification maturity**.
 
 The review identified 12 P0 and 6 P1 gaps. The **12 P0 gaps are now CLOSED** at repository/runtime-contract level by exact implementation head `042e49926d909dd11d0925b5b19b19143561b556`, Feature 007 Spec Quality CI run `37239748455`, Runtime Integration run `37239748528` (WordPress 6.9 + latest PASS), and Spec Kit consistency run `37239748494`, and Pre-Staging Hybrid Audit run `37239748433`. Closure includes certified cross-provider comparability, canonical query/URL/rank/capture semantics, fail-closed SearchEligibilityEnvelope, bounded surface admission with cardinality and URL-pagination protection, truthful shared-account budget authority with stable provider account identity, evidence-rights retention, deterministic decision policy, measurable gates and composed cross-fault behavior.
 
-The **6 P1 findings remain OPEN**. Phase 38 remains MATURITY_REQUIRED and OPEN; P0 closure does not imply provider-live completeness, Staging certification, Production authorization or direct content mutation authority.
+The **6 P1 findings are CLOSED at repository-runtime scope** against exact Search runtime head `e8791ae6253b5667f1ffffdcf1693bd1d08a641a`. Live provider/account certification remains NOT_CLAIMED; this closure does not imply Production authorization or direct content mutation authority.
 
 ## Phase 38 repository runtime implementation
 
@@ -221,4 +221,4 @@ The complete discovery → context → target → budgeted capture → immutable
 
 `adaptive-search-runtime-acceptance.json` binds all 15 repository conformance gates to executable positive/denial fixtures and thresholds. The dedicated workflow runs PHP 7.4/8.3 plus disposable WordPress/MySQL proof of real CAS races, public CPT/taxonomy discovery, governed ability mounting and accessible operator rendering. PASS gate records require a clean exact CI head and source digest. Local fixtures currently pass 40 scenarios and 938 assertions; local evidence emits no PASS gates.
 
-Phase 38 repository implementation tasks T3807–T3860 are closed against the feature-owned exact-head workflow (40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof). The six P1 review findings remain OPEN; provider account/site certification and Production authority are not claimed.
+Phase 38 repository implementation tasks and all six P1 review tasks are closed against the feature-owned exact-head workflow (40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof). Phase 38 is 80/80 DONE at repository-runtime scope. Provider account/site live certification and Production authority are not claimed.
