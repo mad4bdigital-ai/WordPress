@@ -13,13 +13,14 @@ servers = root / "includes" / "class-mad4b-scp-servers.php"
 semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
 experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
+experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
 descriptor = root / "includes" / "class-mad4b-scp-capability-descriptor-registry.php"
 experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_media, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -32,6 +33,7 @@ servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
 experience_governance_src = experience_governance.read_text(encoding="utf-8")
+experience_media_src = experience_media.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
 descriptor_src = descriptor.read_text(encoding="utf-8")
 experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
@@ -188,15 +190,24 @@ for token in (
     "mad4b_content_experience_locked_plan_drift",
     "featured_media_read_denied",
     "parent_read_denied",
-    "media_gallery_shape_invalid",
-    "media_gallery_duplicate",
-    "media_image_required",
-    "media_attachment_missing",
-    "MAX_META_VALUE_BYTES",
     "authority_match",
     "mad4b_content_experience_helper_restore_contract_drift",
 ):
     assert token in experience_runtime_src, f"dynamic content experience execution contract missing: {token}"
+
+for token in (
+    "mad4b_content_experience_media_gallery_shape_invalid",
+    "mad4b_content_experience_media_gallery_duplicate",
+    "mad4b_content_experience_media_image_required",
+    "mad4b_content_experience_media_attachment_missing",
+    "MAX_META_VALUE_BYTES",
+    "normalize_meta_value",
+    "value_within_budget",
+):
+    assert token in experience_media_src, f"content-experience media contract missing: {token}"
+assert "$wpdb" not in experience_media_src
+assert "database-raw-query" not in experience_media_src
+assert "BREAKGLASS" not in experience_media_src.upper()
 
 for src, label in (
     (experience_src, "experience-registry"),
@@ -294,6 +305,10 @@ for token in (
     "MAD4B_SCP_Provider_Contracts::mutation_guard",
 ):
     assert token in experience_runtime_src, f"experience helper provider certification missing: {token}"
+
+assert "MAD4B_SCP_Content_Experience_Media::normalize_meta_value" in experience_runtime_src
+assert "MAD4B_SCP_Content_Experience_Media::value_within_budget" in experience_runtime_src
+assert "class-mad4b-scp-content-experience-media.php" in plugin_src
 
 assert "class-mad4b-scp-content-experience-profiles.php" in plugin_src
 assert "class-mad4b-scp-content-experience-runtime.php" in plugin_src
