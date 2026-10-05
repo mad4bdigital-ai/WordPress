@@ -159,6 +159,95 @@
       "fail_closed_on_allowlist_drift": true,
       "same_cycle_readback_required": true,
       "append_only_audit_required": true
+    },
+    "operational_readiness": {
+      "contract": "mad4b.staging-operational-readiness.v1",
+      "truth_model": "lane_aware_fail_closed",
+      "purpose": "prove_post_deploy_runtime_is_not_only_installed_but_operationally_usable_with_actionable_recovery",
+      "required_sequence": [
+        "exact_runtime_identity",
+        "certified_mcp_protocol_profile",
+        "query_monitor_observer_attribution",
+        "database_topology_write_safe",
+        "chatgpt_catalog_preflight",
+        "abuse_budget_discovery_admission",
+        "current_write_authority_and_candidate_binding",
+        "provider_closure_current_authority_consistency",
+        "session_safe_subject_readiness",
+        "lane_level_operational_readiness"
+      ],
+      "read_only_truth_sources": {
+        "runtime_and_session": "mad4b/session-safe-diagnostics",
+        "catalog_and_protocol": "mad4b/chatgpt-tool-projection-status",
+        "current_write_authority": "mad4b/staging-write-authority-convergence-handshake",
+        "provider_closure": "mad4b/provider-closure-matrix",
+        "full_authority_and_lanes": "mad4b/full-staging-authority-handshake",
+        "update_channel": "mad4b/control-plane-native-plan"
+      },
+      "smoke_checks": {
+        "discovery_surface": "mad4b/tool-discover",
+        "discovery_must_not_fail_on_certified_query_monitor_observer": true,
+        "rate_limit_storage_must_report_actionable_topology_recovery": true,
+        "direct_catalog_must_remain_within_tool_and_serialized_byte_budgets": true
+      },
+      "graceful_degradation": {
+        "governed_write_lane_requires": [
+          "current_exact_write_grants",
+          "current_candidate_binding",
+          "write_provider_mounts_current",
+          "database_topology_write_safe",
+          "abuse_budget_storage_ready"
+        ],
+        "developer_lane_requires": [
+          "developer_authority_ready",
+          "process_backend_ready",
+          "normal_no_network_execution_ready"
+        ],
+        "developer_breakglass_lane_requires": [
+          "developer_breakglass_authority_ready",
+          "process_backend_ready",
+          "normal_no_network_execution_ready"
+        ],
+        "unavailable_lane_policy": "fail_closed_without_disabling_ready_sibling_lanes",
+        "developer_host_limitations_do_not_false_mark_governed_write_unready": true,
+        "production_is_never_inferred_from_staging_lane_readiness": true
+      },
+      "recovery": {
+        "rate_limit_topology_failure": {
+          "read_first": "mad4b/session-safe-diagnostics",
+          "bounded_repair": "mad4b/query-monitor-db-attribution-bootstrap",
+          "blind_retry_allowed": false,
+          "retry_original_operation_only_after_topology_repair": true
+        },
+        "write_authority_drift": {
+          "plan_first": "mad4b/staging-write-authority-convergence-handshake",
+          "compatibility_plan": "mad4b/staging-write-grant-reconciliation-plan",
+          "apply": "mad4b/staging-write-authority-convergence-apply",
+          "explicit_confirmation_required": true,
+          "automatic_apply_allowed": false
+        },
+        "protocol_profile_drift": {
+          "truth_source": "mad4b/chatgpt-tool-projection-status",
+          "exact_adapter_pair_certification_required": true,
+          "fallback_protocol_negotiation_allowed": false
+        },
+        "catalog_refresh": {
+          "truth_source": "mad4b/chatgpt-tool-projection-status",
+          "refresh_tools_list_after_projection_change": true,
+          "reconnect_only_if_client_cache_remains_stale": true,
+          "visibility_change_never_changes_execution_authority": true
+        }
+      },
+      "acceptance": {
+        "operational_ready_requires_all_requested_lanes_ready": true,
+        "degraded_mode_is_explicit": true,
+        "available_lanes_must_be_reported": true,
+        "blocked_lanes_must_be_reported": true,
+        "blockers_must_have_recovery_action": true,
+        "automatic_authority_mutation_allowed": false,
+        "production_mutation_allowed": false,
+        "generic_raw_sql_breakglass_included": false
+      }
     }
   },
   "forbidden": {
