@@ -90,6 +90,7 @@ for marker in (
 developer_projection = full.split("private static function developer_execution_projection", 1)[1].split("private static function compact_string_list", 1)[0]
 for source in ("process_backend_blockers", "normal_no_network_execution_blockers"):
     assert source in developer_projection, source
+assert "'host_recovery' => self::developer_host_recovery( $blockers )" in developer_projection, "Developer execution projection must carry host recovery guidance"
 assert "ready_to_apply" not in developer_projection, "host execution projection must remain diagnostic and must not silently redefine authority apply eligibility"
 
 fixable = full.split("'fixable_write_drift' => array(", 1)[1].split("),", 1)[0]
@@ -247,7 +248,6 @@ for marker in (
     "'developer_breakglass_authority_not_ready'",
     "'developer_execution_not_ready'",
     "'resolve_developer_host_execution_prerequisites'",
-    "'host_recovery' => self::developer_host_recovery( $blockers )",
     "'converge_authority_before_operational_use'",
     "'lane_readiness' => $lane_readiness",
     "'available_lanes' => $available_lanes",
