@@ -143,9 +143,15 @@ No class grants authority. Production, Breakglass, host execution and public pub
 
 ## Execution-ledger rule
 
-A task is not DONE because code with a similar name exists. DONE requires an exact evidence reference tied to a commit/artifact/runtime receipt. PARTIAL requires an explicit remainder. OPEN and DEFERRED are distinct.
+A task is not DONE because code with a similar name exists. The task ledger keeps DONE/PARTIAL/OPEN/DEFERRED semantics. Workstream closure additionally uses EXTERNAL_PENDING only when repository implementation/evidence paths are present and the remaining blockers require exact-candidate Live or external evidence; EXTERNAL_PENDING is not DONE and never implies Production readiness or authority.
 
 The legacy unchecked task list therefore MUST be reconciled; it MUST NOT be mass-marked complete.
+
+### External-pending closure state
+
+The 23 former PARTIAL workstreams have repository implementation and machine-evaluable certification paths. They are now **EXTERNAL_PENDING** because their remaining conditions require exact deployed-candidate, provider/account, host, edge, Staging mutation/recovery, or other trusted Live evidence. Repository metadata cannot promote any of them to DONE.
+
+The canonical mapping is `config/feature-007-workstream-certification.json`, evaluated at runtime by `mad4b/feature-007-workstream-certification-status`. Caller-supplied Live booleans are rejected as evidence.
 
 ## Critical Kernel Definition of Done
 
@@ -196,7 +202,7 @@ Repository CI proves contracts and denial behavior only. Live ETG gates still re
 
 Repository implementation now includes the bounded `wordpress_plugin_deploy` Host Bridge → Host Runner semantic operation. It accepts exact package identity only, consumes a pre-staged General Distribution bundle from the fixed runner zone, verifies manifest/receipt/provenance/archive inventory, backs up the current Control Plane, performs an atomic plugin-directory swap, verifies the installed exact package in the same cycle, and rolls back on failed readback.
 
-This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **PARTIAL** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.
+This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **EXTERNAL_PENDING** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.
 
 ## Phase 38 maturity extension — Adaptive Search Intelligence
 
