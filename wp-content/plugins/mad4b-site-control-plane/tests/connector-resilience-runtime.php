@@ -463,6 +463,13 @@ $operator_sections = array(
 				'read_your_writes' => false,
 				'blockers' => array( 'uncertified_database_router_dropin' ),
 			) ),
+			'mcp_protocol_profile' => array( 'summary' => array(
+				'ready' => false,
+				'blocker' => 'adapter_version_uncertified',
+				'certified_adapter_version' => '0.7.0',
+				'runtime_adapter_version' => '0.8.0',
+				'adapter_version_match' => false,
+			) ),
 			'skills_runtime' => array( 'summary' => array( 'effective_skill_ready' => true ) ),
 		),
 	),
@@ -473,6 +480,9 @@ mad4b_assert_true( 'staging' === $operator_summary['effective_environment'], 'se
 mad4b_assert_true( in_array( 'reconcile_exact_staging_write_authority', $operator_summary['next_actions'], true ), 'session-safe operator summary must route authority drift to exact reconciliation' );
 mad4b_assert_true( in_array( 'repair_query_monitor_db_attribution_then_retry', $operator_summary['next_actions'], true ), 'session-safe operator summary must route topology drift to bounded Query Monitor repair' );
 mad4b_assert_true( false === $operator_summary['signals']['database_topology_ready'], 'session-safe operator summary must expose topology readiness' );
+mad4b_assert_true( false === $operator_summary['signals']['mcp_protocol_profile_ready'], 'session-safe operator summary must expose MCP protocol readiness' );
+mad4b_assert_true( in_array( 'adapter_version_uncertified', $operator_summary['reasons'], true ), 'session-safe operator summary must retain exact protocol blocker' );
+mad4b_assert_true( in_array( 'deploy_exact_certified_runtime_release', $operator_summary['next_actions'], true ), 'session-safe operator summary must route protocol drift to exact certified runtime deployment' );
 mad4b_assert_true( empty( $operator_summary['authorizing'] ) && empty( $operator_summary['mutation_performed'] ), 'session-safe operator summary must remain non-authorizing/read-only' );
 
 $bound_method = $read_consistency_reflection->getMethod( 'bound_session_safe_report' );
