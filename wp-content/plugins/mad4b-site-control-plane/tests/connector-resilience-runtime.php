@@ -466,6 +466,13 @@ $operator_method->setAccessible( true );
 $operator_sections = array(
 	'runtime' => array(
 		'checks' => array(
+			'adapter_lifecycle' => array( 'summary' => array(
+				'ready' => false,
+				'state' => 'adapter_ability_lifecycle_incomplete',
+				'expected_count' => 14,
+				'registered_count' => 10,
+				'missing_abilities' => array( 'media/search', 'fluentforms/status', 'litespeed/status', 'mad4b/translation-status' ),
+			) ),
 			'write_authority' => array( 'summary' => array(
 				'effective_authority_ready' => false,
 				'candidate_binding_match' => false,
@@ -493,6 +500,9 @@ mad4b_assert_true( 'BLOCKED' === $operator_summary['state'], 'session-safe opera
 mad4b_assert_true( 'staging' === $operator_summary['effective_environment'], 'session-safe operator summary must preserve effective Site Profile environment' );
 mad4b_assert_true( in_array( 'reconcile_exact_staging_write_authority', $operator_summary['next_actions'], true ), 'session-safe operator summary must route authority drift to exact reconciliation' );
 mad4b_assert_true( in_array( 'repair_query_monitor_db_attribution_then_retry', $operator_summary['next_actions'], true ), 'session-safe operator summary must route topology drift to bounded Query Monitor repair' );
+mad4b_assert_true( false === $operator_summary['signals']['adapter_lifecycle_ready'], 'session-safe operator summary must expose adapter lifecycle readiness' );
+mad4b_assert_true( in_array( 'adapter_ability_lifecycle_incomplete', $operator_summary['reasons'], true ), 'session-safe operator summary must retain adapter lifecycle blocker' );
+mad4b_assert_true( in_array( 'repair_adapter_ability_lifecycle_registration', $operator_summary['next_actions'], true ), 'session-safe operator summary must route adapter lifecycle repair' );
 mad4b_assert_true( false === $operator_summary['signals']['database_topology_ready'], 'session-safe operator summary must expose topology readiness' );
 mad4b_assert_true( false === $operator_summary['signals']['mcp_protocol_profile_ready'], 'session-safe operator summary must expose MCP protocol readiness' );
 mad4b_assert_true( in_array( 'adapter_version_uncertified', $operator_summary['reasons'], true ), 'session-safe operator summary must retain exact protocol blocker' );
