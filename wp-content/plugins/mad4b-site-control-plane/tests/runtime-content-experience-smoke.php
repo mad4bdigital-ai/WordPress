@@ -311,6 +311,35 @@ try {
 	) );
 	$check( is_wp_error( $duplicate_gallery_plan ) && 'mad4b_content_experience_media_gallery_duplicate' === $duplicate_gallery_plan->get_error_code(), 'Image gallery accepted duplicate attachment IDs.' );
 
+	$partial_gallery_drift = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array( 'ci_gallery' => array( $image_one, $image_two ) ),
+	) );
+	$check( is_wp_error( $partial_gallery_drift ) && 'mad4b_content_experience_media_usage_reference_drift' === $partial_gallery_drift->get_error_code(), 'Partial gallery mutation escaped effective gallery/usage binding validation.' );
+
+	$media_drift_input = array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'post_excerpt' => 'media-plan-drift-check',
+	);
+	$media_drift_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', $media_drift_input );
+	$check( ! is_wp_error( $media_drift_plan ) && ! empty( $media_drift_plan['effective_media_state_sha256'] ), 'Update plan did not bind effective media state identity.' );
+	$original_gallery = get_post_meta( $post_id, 'ci_gallery', true );
+	$original_usage = get_post_meta( $post_id, 'ci_gallery_usage', true );
+	$external_gallery = array( $image_one, $image_two );
+	$external_usage = array( $original_usage[1], $original_usage[0] );
+	update_post_meta( $post_id, 'ci_gallery', $external_gallery );
+	update_post_meta( $post_id, 'ci_gallery_usage', $external_usage );
+	$media_drift_capture = MAD4B_SCP_Content_Experience_Runtime::capture_reversible_state(
+		'ci-trip',
+		'update',
+		array_merge( $media_drift_input, array( 'plan_sha256' => $media_drift_plan['plan_sha256'] ) )
+	);
+	$check( is_wp_error( $media_drift_capture ) && 'mad4b_content_experience_operation_plan_drift' === $media_drift_capture->get_error_code(), 'External media-meta drift did not invalidate the reviewed operation plan.' );
+	update_post_meta( $post_id, 'ci_gallery', $original_gallery );
+	update_post_meta( $post_id, 'ci_gallery_usage', $original_usage );
+
 	$usage_without_reference = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
 		'post_id' => $post_id,
 		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
