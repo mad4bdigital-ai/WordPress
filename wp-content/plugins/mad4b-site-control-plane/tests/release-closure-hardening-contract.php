@@ -45,6 +45,17 @@ $ledger = mad4b_release_json( $repo . '/specs/007-content-intelligence-workflow-
 $projection = mad4b_release_json( $repo . '/specs/007-content-intelligence-workflow-platform/release-closure-readiness.json' );
 mad4b_release_assert( false === $projection['semantics']['task_ledger_ratio_is_readiness_metric'], 'profile readiness semantics' );
 mad4b_release_assert( false === $projection['production_authorized'], 'projection non-authorizing' );
+mad4b_release_assert( 'mad4b.feature007-reviewability.v1' === $projection['reviewability']['contract'], 'reviewability contract' );
+mad4b_release_assert( true === $projection['reviewability']['pr_size_is_risk_not_waived'], 'large PR risk remains explicit' );
+mad4b_release_assert( 35 === (int) $projection['reviewability']['max_allowed_paths_per_slice'], 'reviewability slice budget' );
+mad4b_release_assert( (int) $projection['reviewability']['max_declared_paths_per_slice'] <= 35, 'declared slices within budget' );
+mad4b_release_assert( 'mad4b.feature007-performance-validation.v1' === $projection['performance_validation']['contract'], 'performance validation contract' );
+mad4b_release_assert( true === $projection['performance_validation']['repository_runtime']['required'], 'repository performance required' );
+mad4b_release_assert( true === $projection['performance_validation']['disposable_runtime']['required'], 'disposable runtime performance required' );
+mad4b_release_assert( true === $projection['performance_validation']['live_etg']['required_before_production_core_promotion'], 'live ETG performance required' );
+mad4b_release_assert( 'LIVE_EXTERNAL_EVIDENCE_REQUIRED' === $projection['performance_validation']['live_etg']['state'], 'live ETG performance remains external' );
+mad4b_release_assert( true === $projection['performance_validation']['live_etg']['repository_metadata_cannot_mark_pass'], 'repository cannot manufacture live performance' );
+
 
 $tasks = isset( $ledger['tasks'] ) && is_array( $ledger['tasks'] ) ? $ledger['tasks'] : array();
 $phase38 = array_values( array_filter( $tasks, function( $row ) { return 38 === (int) $row['phase']; } ) );
