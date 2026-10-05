@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "a2208930c675e9a5889fa0ac73a4cd964b63569b",
-  "changed_file_count": 53,
+  "changed_file_count": 54,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -288,6 +288,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/ability-contract-inspector-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/approval-console-v2-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/approval-ticket-replay-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php",
