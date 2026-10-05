@@ -568,7 +568,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'budget_ms' => $budget_ms,
 			'request_metrics' => $request_metrics,
 			'performance_observation' => $performance_observation,
-			'recommended_next_step' => self::session_safe_next_step( $partial, $subject_blockers ),
+			'recommended_next_step' => self::session_safe_next_step( $partial, $subject_blockers, $operator_summary ),
 			'deep_checks_deferred' => $deep_checks_deferred,
 			'release_acceptance_deferred_checks' => $deep_checks_deferred,
 			'fixed_bundle_order' => self::bundle_names(),
@@ -1461,7 +1461,7 @@ final class MAD4B_SCP_Read_Consistency {
 		);
 	}
 
-	private static function session_safe_next_step( $partial, array $subject_blockers ) {
+	private static function session_safe_next_step( $partial, array $subject_blockers, array $operator_summary = array() ) {
 		$subject_blockers = self::bounded_scalar_list( $subject_blockers, 8 );
 		if ( $partial ) {
 			return array(
@@ -1472,6 +1472,56 @@ final class MAD4B_SCP_Read_Consistency {
 				'automatic_apply_allowed' => false,
 			);
 		}
+
+		$operator_actions = isset( $operator_summary['next_actions'] ) && is_array( $operator_summary['next_actions'] )
+			? self::bounded_scalar_list( $operator_summary['next_actions'], 8 )
+			: array();
+		foreach ( $operator_actions as $action ) {
+			$action = sanitize_key( (string) $action );
+			if ( 'deploy_exact_certified_runtime_release' === $action ) {
+				return array(
+					'action' => $action,
+					'ability' => 'mad4b/control-plane-native-plan',
+					'why' => 'mcp_protocol_or_runtime_release_identity_is_not_currently_certified',
+					'read_only' => true,
+					'explicit_authority_required' => false,
+					'automatic_apply_allowed' => false,
+				);
+			}
+			if ( 'repair_query_monitor_db_attribution_then_retry' === $action ) {
+				return array(
+					'action' => $action,
+					'ability' => 'mad4b/query-monitor-db-attribution-bootstrap',
+					'why' => 'database_topology_is_not_write_safe_for_abuse_budget_or_governed_writes',
+					'read_only' => false,
+					'explicit_authority_required' => true,
+					'automatic_apply_allowed' => false,
+				);
+			}
+			if ( 'reconcile_exact_staging_write_authority' === $action ) {
+				return array(
+					'action' => 'request_full_staging_authority_handshake',
+					'ability' => 'mad4b/full-staging-authority-handshake',
+					'why' => 'current_write_authority_or_candidate_binding_requires_reconciliation',
+					'read_only' => true,
+					'explicit_authority_required' => false,
+					'automatic_apply_allowed' => false,
+				);
+			}
+			if ( 'reconcile_managed_skills' === $action ) {
+				return array(
+					'action' => 'inspect_then_explicitly_reconcile_managed_skills',
+					'ability' => 'mad4b/reconcile-managed-skills',
+					'why' => 'managed_skills_runtime_not_effective',
+					'read_only' => false,
+					'explicit_authority_required' => true,
+					'automatic_apply_allowed' => false,
+				);
+			}
+		}
+
+		// Backward-compatible fallback for clients that receive a report produced
+		// without the richer operator summary.
 		if ( in_array( 'write_authority_not_effective', $subject_blockers, true ) ) {
 			return array(
 				'action' => 'request_full_staging_authority_handshake',
