@@ -321,3 +321,10 @@ External machine diagnostics follow `config/external-machine-diagnostic-policy.j
 Future capabilities follow `CAPABILITY-GOLDEN-PATH.md`: Define → Register → Certify → Plan → Execute → Evidence → Reconcile.
 
 Protected backup, restore rehearsal, recovery drill, exact-runtime deployment/root-trust readback and request → receipt → rollback remain live gates. Repository metadata cannot mark them DONE.
+
+
+### Three-layer performance proof
+
+Release closure separates performance evidence into three layers. Repository/runtime CI must keep **MAD4B Admin Performance** and the SLO contract green. Disposable runtime evidence must exercise real database/runtime contention and fault semantics. The final ETG layer remains external live evidence bound to the exact deployed candidate and must cover server latency, query pressure, peak memory, concurrency/backpressure, and provider latency/timeout behavior.
+
+Repository CI cannot substitute for the live ETG performance layer, and documentation cannot mark that layer PASS. The live layer is read-only/non-authorizing with respect to Production.
