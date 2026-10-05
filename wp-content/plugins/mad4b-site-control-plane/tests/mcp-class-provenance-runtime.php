@@ -115,6 +115,11 @@ foreach ( $dynamic_specs as $spec ) {
 }
 $dynamic_ready = MAD4B_SCP_MCP_Class_Provenance::inspect_contract( $dynamic_contract, $dynamic_root );
 check( ! empty( $dynamic_ready['ready'] ) && 3 === $dynamic_ready['verified_count'], 'generated class/interface/trait surface did not verify' );
+foreach ( $dynamic_ready['classes'] as $row ) {
+	check( ! empty( $row['ready'] ), 'blob-certified fixture symbol unexpectedly not ready' );
+	check( '' === (string) $row['reason'], 'blob-certified ready symbol must not carry a mismatch reason' );
+}
+
 $trait_file = $dynamic_root . '/includes/Core/RuntimeTrait.php';
 file_put_contents( $trait_file, "\n// dynamic drift\n", FILE_APPEND );
 clearstatcache( true, $trait_file );
