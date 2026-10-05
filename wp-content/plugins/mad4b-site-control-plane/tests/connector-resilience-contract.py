@@ -217,6 +217,12 @@ for marker in [
     "'fixed_universal_db_query_threshold_applied' => false",
     "'regression_policy' => 'compare_exact_release_baseline_then_review_material_regression'",
     "'client_action' => 'compare_against_previous_exact_staging_release_before_performance_acceptance'",
+    "private static function session_safe_next_step( $partial, array $subject_blockers )",
+    "'recommended_next_step' => self::session_safe_next_step( $partial, $subject_blockers )",
+    "'request_full_staging_authority_handshake'",
+    "'mad4b/full-staging-authority-handshake'",
+    "'inspect_then_explicitly_reconcile_managed_skills'",
+    "'automatic_apply_allowed' => false",
 ]:
     require(read_consistency, marker, "session-safe diagnostic invariant")
 
@@ -244,6 +250,7 @@ for marker in (
     "'subject_blockers'",
     "'release_acceptance_deferred_checks'",
     "'performance_observation'",
+    "'recommended_next_step'",
 ):
     require(reduced_report, marker, "reduced session-safe merge-scope invariant")
 generation_envelope = read_consistency.split("private static function generation_changed_envelope(", 1)[1].split("private static function request_metrics()", 1)[0]
