@@ -34,6 +34,7 @@ for marker in required:
         raise SystemExit(f'missing provider closure matrix invariant: {marker}')
 
 for marker in [
+    "'write_authority_state' => $write_authority_ready ? 'write_authority_current' : 'write_authority_reconciliation_required'",
     "'write_authority_ready_semantics' => 'checkpoint_plus_current_exact_grants_plus_current_candidate_binding'",
     "'write_authority_checkpoint_ready' => $checkpoint_ready",
     "'write_authority_current_grant_snapshot_ready' => $current_grants_ready",
