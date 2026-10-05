@@ -405,6 +405,18 @@ $skills_next = $next_step_method->invoke( null, false, array( 'skills_runtime_no
 mad4b_assert_true( 'mad4b/reconcile-managed-skills' === $skills_next['ability'], 'session-safe skills recovery ability drifted' );
 mad4b_assert_true( ! empty( $skills_next['explicit_authority_required'] ) && empty( $skills_next['automatic_apply_allowed'] ), 'skills recovery must require explicit authority and never auto-apply' );
 
+$adapter_next = $next_step_method->invoke(
+	null,
+	false,
+	array(),
+	array( 'next_actions' => array( 'repair_adapter_ability_lifecycle_registration' ) )
+);
+mad4b_assert_true( 'materialize_governed_read_adapter_lifecycle_then_retry' === $adapter_next['action'], 'adapter lifecycle recovery action drifted' );
+mad4b_assert_true( 'mad4b/read-execute' === $adapter_next['ability'], 'adapter lifecycle recovery must use fixed read dispatcher' );
+mad4b_assert_true( 'mad4b/adapters-inventory' === $adapter_next['target_ability'], 'adapter lifecycle recovery target drifted' );
+mad4b_assert_true( ! empty( $adapter_next['read_only'] ) && empty( $adapter_next['explicit_authority_required'] ), 'adapter lifecycle recovery must remain read-only and non-authorizing' );
+mad4b_assert_true( empty( $adapter_next['automatic_apply_allowed'] ) && empty( $adapter_next['persistent_mutation_allowed'] ), 'adapter lifecycle recovery must never auto-apply or persist mutation' );
+
 $partial_next = $next_step_method->invoke( null, true, array() );
 mad4b_assert_true( 'inspect_partial_report_then_retry_missing_scope' === $partial_next['action'], 'partial session-safe recovery route drifted' );
 mad4b_assert_true( '' === $partial_next['ability'] && ! empty( $partial_next['read_only'] ), 'partial session-safe recovery must not invent a mutation target' );
