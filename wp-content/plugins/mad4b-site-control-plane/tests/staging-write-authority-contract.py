@@ -505,7 +505,7 @@ for media_contract in (
     "mad4b.rollback.featured-image.v1",
     "mad4b.rollback.media-parent.v1",
 ):
-    if media_contract not in (ROOT / "includes/adapters/class-mad4b-scp-media-adapter.php").read_text("utf-8"):
+    if media_contract not in (wp / "includes" / "adapters" / "class-mad4b-scp-media-adapter.php").read_text(encoding="utf-8"):
         raise SystemExit(f'reviewed media grant lacks reversible contract: {media_contract}')
 if "foreach ( array( 'media/update-metadata', 'media/set-featured', 'media/set-parent' ) as $ability )" not in allowlist:
     raise SystemExit('media grant creation must remain an exact reviewed ability set, not a dynamic adapter wildcard')
