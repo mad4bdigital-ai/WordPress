@@ -974,17 +974,17 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 ### 38M — Distributed provider economics and evidence rights
 - [x] T3869 P0 Implement ProviderAccountBudgetAuthority keyed by provider account/credential identity for quotas shared across sites/workers.
 - [x] T3870 P0 Implement fenced global budget reservations, billing-cycle/reset-time semantics, stale reservation expiry and provider usage reconciliation; downgrade enforcement claims when no shared authority exists.
-- [ ] T3871 P1 Compose first-party SearchPerformanceProvider evidence into opportunity/decline/refresh decisions without relabeling it as live SERP evidence.
-- [ ] T3872 P1 Define QueryLanguageProvenance for translation/transcreation, market evidence, semantic cluster relation, confidence and approval independently from page translation state.
+- [x] T3871 P1 Compose first-party SearchPerformanceProvider evidence into opportunity/decline/refresh decisions without relabeling it as live SERP evidence.
+- [x] T3872 P1 Define QueryLanguageProvenance for translation/transcreation, market evidence, semantic cluster relation, confidence and approval independently from page translation state.
 - [x] T3873 P0 Bind provider licensing/usage/retention constraints to raw and normalized evidence storage, redistribution, region and deletion policy.
 
 ### 38N — Deterministic decisions, portability and adaptive UX stability
 - [x] T3874 P0 Define deterministic versioned DecisionPolicy factor ranges, missing-value handling, normalization, monotonicity, calibration and stable tie-break semantics; v1 MUST NOT require opaque ML.
-- [ ] T3875 P1 Define adaptive UX stability and operator controls: stable section IDs/order/deep links plus audited pause/resume profile, disable provider, freeze spend, pin/mute target and request-refresh controls.
-- [ ] T3876 P1 Define portable Search Intelligence execution/storage profiles for WordPress-local, external worker and external evidence/blob store while preserving canonical identities/evidence semantics.
+- [x] T3875 P1 Define adaptive UX stability and operator controls: stable section IDs/order/deep links plus audited pause/resume profile, disable provider, freeze spend, pin/mute target and request-refresh controls.
+- [x] T3876 P1 Define portable Search Intelligence execution/storage profiles for WordPress-local, external worker and external evidence/blob store while preserving canonical identities/evidence semantics.
 - [x] T3877 P0 GATE Map every Phase 38 PASS gate to exact fixtures, assertions, thresholds, denial cases, evidence artifact and required CI/disposable/live evidence class.
-- [ ] T3878 P1 Define open/versioned SERP feature schema preserving known normalized family plus provider-native unknown/pass-through evidence.
-- [ ] T3879 P1 Bind every DecisionPolicy factor, including commercial value/search volume, to source, market/language scope, freshness, confidence and normalization version.
+- [x] T3878 P1 Define open/versioned SERP feature schema preserving known normalized family plus provider-native unknown/pass-through evidence.
+- [x] T3879 P1 Bind every DecisionPolicy factor, including commercial value/search volume, to source, market/language scope, freshness, confidence and normalization version.
 
 ### 38O — Composed adversarial acceptance
 - [x] T3880 P0 GATE Execute composed cross-fault matrix covering profile/provider/language/surface drift, shared-budget races, lease loss, quota reset, partial capture, cache equivalence, uncertain provider effects and adaptive UI state; exact-head executable evidence required.
