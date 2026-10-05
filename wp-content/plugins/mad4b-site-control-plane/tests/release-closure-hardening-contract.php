@@ -108,9 +108,9 @@ mad4b_release_count_equal( $projection['profiles']['control_plane_core_optional_
 mad4b_release_count_equal( $projection['profiles']['full_feature007_blocking']['counts'], mad4b_release_counts( $blocking ), 'full feature' );
 mad4b_release_count_equal( $projection['profiles']['long_term_maturity']['counts'], mad4b_release_counts( $maturity ), 'maturity' );
 
-$critical_kernel = file_get_contents( $repo . '/.github/workflows/feature-007-critical-kernel.yml' );
+$feature_owned_prestaging = file_get_contents( $repo . '/.github/workflows/feature-007-pre-staging-hybrid-audit.yml' );
 foreach ( array(
-	'Verify Feature 007 closure foundations and workstream certification',
+	'Feature 007 closure foundations and workstream certification',
 	'provider-execution-binding-contract.php',
 	'governed-provider-plan-contract.php',
 	'provider-callback-order-contract.php',
@@ -120,7 +120,12 @@ foreach ( array(
 	'portability-import-contract.php',
 	'workstream-certification-contract.php',
 ) as $required_ci_marker ) {
-	mad4b_release_assert( false !== strpos( $critical_kernel, $required_ci_marker ), 'critical kernel closure suite marker missing: ' . $required_ci_marker );
+	mad4b_release_assert( false !== strpos( $feature_owned_prestaging, $required_ci_marker ), 'feature-owned pre-staging closure suite marker missing: ' . $required_ci_marker );
+}
+$baseline_critical_kernel = shell_exec( 'git show ' . escapeshellarg( 'origin/master:.github/workflows/feature-007-critical-kernel.yml' ) . ' 2>/dev/null' );
+if ( is_string( $baseline_critical_kernel ) && '' !== $baseline_critical_kernel ) {
+	$current_critical_kernel = file_get_contents( $repo . '/.github/workflows/feature-007-critical-kernel.yml' );
+	mad4b_release_assert( hash_equals( hash( 'sha256', $baseline_critical_kernel ), hash( 'sha256', $current_critical_kernel ) ), 'baseline-owned critical kernel workflow changed from Feature 007' );
 }
 
 $golden = file_get_contents( $repo . '/wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md' );
