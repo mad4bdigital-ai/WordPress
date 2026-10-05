@@ -361,11 +361,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/projection-hotset-abilities.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-plan-contract.py",
@@ -383,7 +379,6 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py"
       ]
     },
@@ -398,6 +393,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php"
+      ]
+    },
+    {
+      "id": "tests-governed-operations",
+      "semantic_unit": "Governed operation registry, mutation gateway, legacy dispatch and network-operation verification",
+      "revert_boundary": "Revert governed-operation verification independently from MCP/provider compatibility tests.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
       ]
     },
     {
