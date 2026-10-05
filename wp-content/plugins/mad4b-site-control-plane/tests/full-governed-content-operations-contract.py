@@ -132,6 +132,12 @@ for token in (
     "migration_required",
     "helper_bindings",
     "binding_sha256",
+    "media_meta_fields",
+    "MAX_MEDIA_META_FIELDS",
+    "MAX_MEDIA_GALLERY_ITEMS",
+    "image_gallery",
+    "attachment_gallery",
+    "csv_ids",
 ):
     assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
 
@@ -161,6 +167,11 @@ for token in (
     "mad4b_content_experience_locked_plan_drift",
     "featured_media_read_denied",
     "parent_read_denied",
+    "media_gallery_shape_invalid",
+    "media_gallery_duplicate",
+    "media_image_required",
+    "media_attachment_missing",
+    "MAX_META_VALUE_BYTES",
     "authority_match",
     "mad4b_content_experience_helper_restore_contract_drift",
 ):
