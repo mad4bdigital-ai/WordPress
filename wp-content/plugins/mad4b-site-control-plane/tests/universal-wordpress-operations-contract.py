@@ -65,7 +65,13 @@ assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
 assert "wordpress.provider.recertify" in ids
 optional_ids = {row["id"] for row in operation["operations"] if row.get("required_runtime") is False}
-assert optional_ids == {"wordpress.content.import", "wordpress.content.export"}
+assert optional_ids == {"wordpress.content.import", "wordpress.content.export", "search.serp.capture"}
+serp_capture = next(row for row in operation["operations"] if row["id"] == "search.serp.capture")
+assert serp_capture["target_kind"] == "search_target"
+assert serp_capture["generic_mutation_dispatch"] is False
+assert serp_capture["side_effect_class"] == "external_cost"
+assert serp_capture["retry_semantics"] == "reconciliation_first"
+assert serp_capture["production_policy"] == "deny"
 
 for row in operation["operations"]:
     assert row["planner"]
