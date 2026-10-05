@@ -154,5 +154,49 @@
   "production_state": "LIVE_EVIDENCE_REQUIRED",
   "production_ready": false,
   "production_authorized": false,
-  "authorizing": false
+  "authorizing": false,
+  "reviewability": {
+    "contract": "mad4b.feature007-reviewability.v1",
+    "changed_file_count": 338,
+    "semantic_slice_count": 17,
+    "max_declared_paths_per_slice": 33,
+    "max_allowed_paths_per_slice": 35,
+    "exhaustive_ownership_required": true,
+    "exact_head_verification": "architecture-maintainability-contract.py",
+    "reviewer_unit": "semantic_slice_with_explicit_revert_boundary",
+    "pr_size_is_risk_not_waived": true
+  },
+  "performance_validation": {
+    "contract": "mad4b.feature007-performance-validation.v1",
+    "repository_runtime": {
+      "required": true,
+      "workflow": "MAD4B Admin Performance",
+      "slo_profile": "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+      "state": "EXACT_HEAD_CI_REQUIRED"
+    },
+    "disposable_runtime": {
+      "required": true,
+      "evidence": [
+        "Feature 007 Critical Kernel",
+        "MAD4B Runtime Integration",
+        "real MariaDB/runtime fault suites"
+      ],
+      "state": "EXACT_HEAD_CI_REQUIRED"
+    },
+    "live_etg": {
+      "required_before_production_core_promotion": true,
+      "state": "LIVE_EXTERNAL_EVIDENCE_REQUIRED",
+      "exact_deployed_candidate_required": true,
+      "production_mutation_allowed": false,
+      "repository_metadata_cannot_mark_pass": true,
+      "minimum_dimensions": [
+        "server_latency",
+        "database_query_pressure",
+        "peak_memory",
+        "concurrency_backpressure",
+        "provider_latency_and_timeout_behavior"
+      ]
+    },
+    "authorizing": false
+  }
 }
