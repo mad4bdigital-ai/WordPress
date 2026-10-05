@@ -193,6 +193,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-query-performance.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-query-performance-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-unchanged-attestation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-promotion-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-truth-projection.php';

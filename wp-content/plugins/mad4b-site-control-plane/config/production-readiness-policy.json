@@ -79,7 +79,13 @@
     "evidence_attestation_contract": "mad4b.production-evidence-attestation.v1",
     "evidence_crypto_purpose": "production_evidence",
     "evidence_signer_role": "production_evidence_attestor",
-    "canonical_runtime_verdict_required": true
+    "canonical_runtime_verdict_required": true,
+    "promotion_attestation_contract": "mad4b.production-promotion-attestation.v1",
+    "promotion_trust_mode": "verified_production_external_chatgpt_session",
+    "one_time_binding": "site_profile_revision_digest_transition",
+    "production_unchanged_receipt_required": true,
+    "site_profile_activation_surface": "mad4b/site-profile-write-enable",
+    "production_repair_via_activation_surface": false
   },
   "default_profile": "control_plane_core",
   "profiles": {
