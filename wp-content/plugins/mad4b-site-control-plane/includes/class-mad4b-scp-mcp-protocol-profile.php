@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_MCP_Protocol_Profile {
 	const CONTRACT = 'mad4b.mcp-protocol-profile.v1';
 	const CATALOG_CONTRACT = 'mad4b.mcp-protocol-profile-catalog.v1';
-	const CERTIFIED_ADAPTER_VERSION = '0.6.1';
+	const CERTIFIED_ADAPTER_VERSION_SOURCE = 'runtime_release_policy.target_adapter_version';
 	const MAX_FEATURES = 8;
 	private static $catalog = null;
 
@@ -41,7 +41,7 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 		$profile = $catalog['profiles'][ $version ];
 		$profile['protocol_version'] = $version;
 		$profile['contract'] = self::CONTRACT;
-		$profile['adapter_version'] = self::CERTIFIED_ADAPTER_VERSION;
+		$profile['adapter_version'] = (string) $catalog['certified_adapter']['version'];
 		$profile['authorizing'] = false;
 		return $profile;
 	}
@@ -70,7 +70,7 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 		return array(
 			'contract' => self::CONTRACT,
 			'protocol_version' => (string) $profile['protocol_version'],
-			'adapter_version' => self::CERTIFIED_ADAPTER_VERSION,
+			'adapter_version' => (string) $status['certified_adapter_version'],
 			'lifecycle' => (string) $profile['lifecycle'],
 			'server_capabilities' => array( 'tools' => array( 'listChanged' => false ) ),
 			'tools_list_pagination' => (string) $profile['tools_list_pagination'],
@@ -135,7 +135,8 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 		$runtime_version = class_exists( 'MAD4B_SCP_Provider_Contracts' )
 			? (string) MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' )
 			: '';
-		$version_match = '' !== $runtime_version && hash_equals( self::CERTIFIED_ADAPTER_VERSION, $runtime_version );
+		$certified_version = isset( $catalog['certified_adapter']['version'] ) ? (string) $catalog['certified_adapter']['version'] : '';
+		$version_match = '' !== $runtime_version && '' !== $certified_version && hash_equals( $certified_version, $runtime_version );
 		$successor = isset( $catalog['successor_certification'] ) && is_array( $catalog['successor_certification'] )
 			? $catalog['successor_certification'] : array();
 		return array(
@@ -143,7 +144,7 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 			'catalog_contract' => self::CATALOG_CONTRACT,
 			'ready' => $version_match,
 			'blocker' => $version_match ? '' : 'adapter_version_uncertified',
-			'certified_adapter_version' => self::CERTIFIED_ADAPTER_VERSION,
+			'certified_adapter_version' => $certified_version,
 			'runtime_adapter_version' => $runtime_version,
 			'adapter_version_match' => $version_match,
 			'certified_protocol_versions' => array_values( $catalog['supported_protocol_versions'] ),
@@ -168,12 +169,36 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 			return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_catalog_invalid', 'MCP protocol profile catalog contract is invalid.' );
 		}
 		$adapter = isset( $data['certified_adapter'] ) && is_array( $data['certified_adapter'] ) ? $data['certified_adapter'] : array();
-		if ( self::CERTIFIED_ADAPTER_VERSION !== ( isset( $adapter['version'] ) ? (string) $adapter['version'] : '' ) || empty( $adapter['exact_package_governed'] ) ) {
-			return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_adapter_binding_invalid', 'MCP protocol catalog is not bound to the certified Adapter package.' );
+		$release_policy_path = dirname( __DIR__ ) . '/config/runtime-release-policy.json';
+		$provider_profiles_path = dirname( __DIR__ ) . '/config/certified-provider-profiles.json';
+		$release_policy = is_readable( $release_policy_path ) ? json_decode( (string) file_get_contents( $release_policy_path ), true ) : null;
+		$provider_profiles = is_readable( $provider_profiles_path ) ? json_decode( (string) file_get_contents( $provider_profiles_path ), true ) : null;
+		$target_adapter_version = is_array( $release_policy ) && 'mad4b.runtime-release-policy.v1' === ( isset( $release_policy['contract'] ) ? (string) $release_policy['contract'] : '' )
+			? trim( (string) ( isset( $release_policy['target_adapter_version'] ) ? $release_policy['target_adapter_version'] : '' ) ) : '';
+		$catalog_adapter_version = isset( $adapter['version'] ) ? trim( (string) $adapter['version'] ) : '';
+		if ( '' === $target_adapter_version
+			|| '' === $catalog_adapter_version
+			|| ! hash_equals( $target_adapter_version, $catalog_adapter_version )
+			|| self::CERTIFIED_ADAPTER_VERSION_SOURCE !== ( isset( $adapter['version_source'] ) ? (string) $adapter['version_source'] : '' )
+			|| empty( $adapter['exact_package_governed'] ) ) {
+			return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_adapter_binding_invalid', 'MCP protocol catalog is not bound to the canonical runtime release Adapter target.' );
 		}
+		$provider_profile = is_array( $provider_profiles )
+			&& isset( $provider_profiles['providers']['mcp_adapter'][ $target_adapter_version ] )
+			&& is_array( $provider_profiles['providers']['mcp_adapter'][ $target_adapter_version ] )
+			? $provider_profiles['providers']['mcp_adapter'][ $target_adapter_version ] : array();
+		$compatibility = isset( $provider_profile['transport_compatibility'] ) && is_array( $provider_profile['transport_compatibility'] )
+			? $provider_profile['transport_compatibility'] : array();
+		$legacy_versions = isset( $compatibility['legacy_session_revisions'] ) && is_array( $compatibility['legacy_session_revisions'] )
+			? array_values( array_map( 'strval', $compatibility['legacy_session_revisions'] ) ) : array();
+		$modern_versions = isset( $compatibility['modern_per_request_revisions'] ) && is_array( $compatibility['modern_per_request_revisions'] )
+			? array_values( array_map( 'strval', $compatibility['modern_per_request_revisions'] ) ) : array();
+		$expected_versions = array_merge( $modern_versions, array_reverse( $legacy_versions ) );
 		$versions = isset( $data['supported_protocol_versions'] ) && is_array( $data['supported_protocol_versions'] ) ? array_values( $data['supported_protocol_versions'] ) : array();
 		$profiles = isset( $data['profiles'] ) && is_array( $data['profiles'] ) ? $data['profiles'] : array();
-		if ( empty( $versions ) || count( $versions ) > 8 ) return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_versions_invalid', 'Certified MCP protocol version set is invalid.' );
+		if ( empty( $expected_versions ) || $versions !== $expected_versions || count( $versions ) > 8 ) {
+			return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_versions_invalid', 'Certified MCP protocol versions drifted from the exact Adapter provider profile.' );
+		}
 		$seen = array();
 		foreach ( $versions as $version ) {
 			$version = trim( (string) $version );
@@ -181,7 +206,8 @@ final class MAD4B_SCP_MCP_Protocol_Profile {
 				return self::$catalog = new WP_Error( 'mad4b_mcp_protocol_versions_invalid', 'Certified MCP protocol version set is incomplete or duplicated.' );
 			}
 			$profile = $profiles[ $version ];
-			if ( 'initialize_session' !== ( isset( $profile['lifecycle'] ) ? (string) $profile['lifecycle'] : '' )
+			$expected_lifecycle = in_array( $version, $modern_versions, true ) ? 'per_request_revision' : 'initialize_session';
+			if ( $expected_lifecycle !== ( isset( $profile['lifecycle'] ) ? (string) $profile['lifecycle'] : '' )
 				|| false !== ( isset( $profile['tools_list_changed'] ) ? (bool) $profile['tools_list_changed'] : true )
 				|| 'none' !== ( isset( $profile['tools_list_pagination'] ) ? (string) $profile['tools_list_pagination'] : '' )
 				|| 'pull_tools_list_then_reconnect_if_cached' !== ( isset( $profile['refresh_semantics'] ) ? (string) $profile['refresh_semantics'] : '' )
