@@ -879,7 +879,13 @@
         "production_mutation_during_readonly_certification": false,
         "production_authorized_by_readonly_certification": false,
         "repository_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py",
-        "repository_ci_binding_mode": "ci_runtime_exact_head"
+        "repository_ci_binding_mode": "ci_runtime_exact_head",
+        "operator_control_center_contract": "mad4b.operator-control-center.v1",
+        "operator_control_center_ability": "mad4b/operator-control-center",
+        "external_machine_diagnostic_policy": "config/external-machine-diagnostic-policy.json",
+        "release_closure_readiness_projection": "specs/007-content-intelligence-workflow-platform/release-closure-readiness.json",
+        "release_scope_freeze_enforced": true,
+        "operator_projection_authorizing": false
       },
       "remainder": [
         "bind Operator Doctor/DLQ readback to the exact deployed ETG runtime release before closing the live operator gate"
@@ -1242,6 +1248,22 @@
     "one_time_binding": "site_profile_revision_digest_transition",
     "production_unchanged_receipt_required": true,
     "activation_surface": "mad4b/site-profile-write-enable",
-    "activation_surface_repair_after_enable": false
+    "activation_surface_repair_after_enable": false,
+    "readiness_projection_ref": "specs/007-content-intelligence-workflow-platform/release-closure-readiness.json",
+    "task_ledger_ratio_is_authoritative_readiness": false,
+    "operator_control_center_contract": "mad4b.operator-control-center.v1",
+    "external_machine_diagnostic_policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/external-machine-diagnostic-policy.json"
+  },
+  "release_closure_hardening": {
+    "contract": "mad4b.feature007-release-closure-hardening.v1",
+    "scope_state": "FROZEN_FOR_RELEASE_CLOSURE",
+    "readiness_projection_ref": "release-closure-readiness.json",
+    "operator_control_center_contract": "mad4b.operator-control-center.v1",
+    "external_machine_diagnostic_policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/external-machine-diagnostic-policy.json",
+    "developer_golden_path_ref": "wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md",
+    "task_ledger_ratio_is_readiness_metric": false,
+    "live_evidence_status_changes_require_live_evidence": true,
+    "production_authorized": false,
+    "authorizing": false
   }
 }
