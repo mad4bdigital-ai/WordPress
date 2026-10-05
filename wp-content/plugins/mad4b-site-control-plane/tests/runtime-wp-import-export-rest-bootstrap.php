@@ -41,9 +41,13 @@ $diag = isset( $status['runtime_symbol_diagnostic'] ) && is_array( $status['runt
 $import = isset( $diag['import'] ) && is_array( $diag['import'] ) ? $diag['import'] : array();
 if ( empty( $import['complete'] ) ) $fail( 'Import runtime symbols are incomplete after bounded bootstrap.' );
 if ( ! empty( $import['missing_classes'] ) ) $fail( 'Import runtime still reports missing classes.' );
-if ( empty( $diag['provider_readonly_autoload_exact_artifact_required'] ) ) $fail( 'Exact-artifact prerequisite diagnostic is missing.' );
+if ( ! array_key_exists( 'provider_readonly_autoload_exact_artifact_required', $diag ) || false !== $diag['provider_readonly_autoload_exact_artifact_required'] ) $fail( 'Read-only discovery still depends on a static exact-version baseline.' );
+if ( true !== ( $diag['provider_readonly_autoload_source_provenance_required'] ?? false ) ) $fail( 'Read-only discovery lost its exact loaded-source provenance requirement.' );
+if ( empty( $diag['provider_readonly_autoload_succeeded'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $diag['provider_readonly_artifact_fingerprint'] ?? '' ) ) ) $fail( 'Read-only discovery did not verify and fingerprint the actual local provider files.' );
 if ( ! empty( $diag['autoload_or_bootstrap_mutation_attempted'] ) ) $fail( 'Read-only bootstrap was misclassified as mutation.' );
 if ( ! empty( $diag['filesystem_scan_performed'] ) ) $fail( 'Read-only bootstrap performed a filesystem scan.' );
+$map = $adapter->ability_names();
+if ( ! empty( $map['content'] ) || ! empty( $map['admin'] ) || ! empty( $map['write'] ) ) $fail( 'Read-only source discovery mounted provider execution.' );
 
 $list = $adapter->list_imports( array( 'limit' => 5 ) );
 if ( is_wp_error( $list ) ) $fail( 'Governed import list still fails in plain WordPress bootstrap: ' . $list->get_error_code() );

@@ -94,7 +94,9 @@ if ( ! empty( $map['content'] ) || ! empty( $map['admin'] ) || ! empty( $map['wr
 $status = $adapter->status();
 if ( empty( $status['provider_certification']['runtime_contract_ok'] ) ) $fail( 'Adapter did not inherit exact composite artifact certification.' );
 $symbol_diag = isset( $status['runtime_symbol_diagnostic'] ) && is_array( $status['runtime_symbol_diagnostic'] ) ? $status['runtime_symbol_diagnostic'] : array();
-if ( empty( $symbol_diag['provider_readonly_autoload_exact_artifact_required'] ) ) $fail( 'Provider read-only autoload lost its exact-artifact prerequisite.' );
+if ( ! array_key_exists( 'provider_readonly_autoload_exact_artifact_required', $symbol_diag ) || false !== $symbol_diag['provider_readonly_autoload_exact_artifact_required'] ) $fail( 'Provider read-only discovery must not require a static exact-version baseline.' );
+if ( true !== ( $symbol_diag['provider_readonly_autoload_source_provenance_required'] ?? false ) ) $fail( 'Provider read-only discovery lost its exact loaded-source provenance prerequisite.' );
+if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $symbol_diag['provider_readonly_artifact_fingerprint'] ?? '' ) ) ) $fail( 'Provider read-only discovery did not fingerprint the verified current artifact.' );
 if ( empty( $symbol_diag['provider_readonly_autoload_succeeded'] ) ) $fail( 'Provider read-only autoload/runtime availability did not resolve exact import model classes.' );
 if ( ! empty( $symbol_diag['autoload_or_bootstrap_mutation_attempted'] ) ) $fail( 'Read-only provider bootstrap was misclassified as mutation.' );
 if ( ! empty( $symbol_diag['filesystem_scan_performed'] ) ) $fail( 'Read-only provider bootstrap performed an unbounded filesystem scan.' );

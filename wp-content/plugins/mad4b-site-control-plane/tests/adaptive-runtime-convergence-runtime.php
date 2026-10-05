@@ -43,16 +43,18 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 }
 class MAD4B_SCP_Provider_Contracts { static function all() { return array_fill_keys( array( 'alpha', 'beta', 'gamma', 'delta', 'epsilon' ), array() ); } }
 class MAD4B_SCP_Provider_Compatibility_Certification {
- static $calls = array(); static $version = '5.1.0'; static $throw = ''; static $verified = false;
+ static $calls = array(); static $version = '5.1.0'; static $throw = ''; static $invalid = ''; static $malformed = false; static $verified = false;
  static function supports_provider( $provider ) { return true; } static function clear_request_cache() {}
  static function capability_certification( $input ) {
   $id = $input['provider_id']; self::$calls[] = $id;
   if ( self::$throw === $id ) throw new RuntimeException( 'PRIVATE ERROR PATH' );
+  if ( self::$invalid === $id ) return new WP_Error();
   $base = array( 'risk' => 'read', 'structural_compatible' => true, 'read_eligible' => true, 'surface_exposed' => true, 'capability_contract_digest' => str_repeat( 'b', 64 ) );
-  return array( 'artifact' => array( 'runtime_artifact_fingerprint' => hash( 'sha256', self::$version . $id ), 'installed_version' => self::$version ), 'capabilities' => array(
+  return array( 'contract' => 'mad4b.provider-capability-certification-result.v1', 'provider_id' => $id, 'artifact' => array( 'runtime_artifact_fingerprint' => hash( 'sha256', self::$version . $id ), 'installed_version' => self::$version ), 'capabilities' => array(
    'read' => $base,
    'write' => array_merge( $base, array( 'risk' => 'bounded_write', 'read_eligible' => false, 'write_eligible' => self::$verified, 'reversible' => true, 'behavioral_evidence' => array( 'behavioral_verified' => self::$verified, 'rollback_verified' => self::$verified ) ) ),
    'broken' => array_merge( $base, array( 'structural_compatible' => false, 'read_eligible' => false ) ),
+   'malformed' => self::$malformed ? 'invalid' : array_merge( $base, array( 'read_eligible' => false ) ),
   ) );
  }
 }
@@ -70,7 +72,11 @@ check( 'CANARY_REQUIRED' === $ready['providers']['alpha']['capabilities']['write
 check( 'ISOLATED' === $ready['providers']['alpha']['capabilities']['broken']['state'], 'Broken capability was not isolated' );
 check( ! $ready['authorizing'] && ! $ready['production_mutation'], 'Observation claimed authority' );
 check( 1 === MAD4B_SCP_Runtime_Convergence::$calls && 1 === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Core or Managed Skills convergence repeated across slices' );
-MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$partial = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'STALE_OBSERVATION' === $partial['providers']['gamma']['capabilities']['read']['state'] && ! $partial['providers']['gamma']['observation_current'], 'A provider awaiting the current slice was reported as freshly compatible' );
+check( $partial['providers']['alpha']['observation_current'], 'Current provider slice was hidden as stale' );
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( 1 === MAD4B_SCP_Runtime_Convergence::$calls && 1 === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Unchanged graph triggered repeated convergence' );
 $before = $GLOBALS['writes']; MAD4B_SCP_Adaptive_Runtime_Convergence::status(); check( $before === $GLOBALS['writes'], 'Read status performed a write' );
 MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.123'; MAD4B_SCP_Provider_Compatibility_Certification::$verified = true;
@@ -86,6 +92,12 @@ MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Co
 $isolated = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
 check( 'ISOLATED' === $isolated['providers']['alpha']['state'] && 'READ_COMPATIBLE' === $isolated['providers']['beta']['capabilities']['read']['state'], 'Provider exception poisoned neighboring capabilities' );
 check( false === strpos( json_encode( $isolated ), 'PRIVATE' ), 'Raw provider error leaked' );
+MAD4B_SCP_Provider_Compatibility_Certification::$throw = ''; MAD4B_SCP_Provider_Compatibility_Certification::$invalid = 'alpha'; MAD4B_SCP_Provider_Compatibility_Certification::$malformed = true;
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$invalid = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'ISOLATED' === $invalid['providers']['alpha']['state'] && 'READ_COMPATIBLE' === $invalid['providers']['beta']['capabilities']['read']['state'], 'Invalid provider result poisoned a neighboring provider' );
+check( 'ISOLATED' === $invalid['providers']['beta']['capabilities']['malformed']['state'], 'Malformed capability row broke the observer' );
+MAD4B_SCP_Provider_Compatibility_Certification::$invalid = ''; MAD4B_SCP_Provider_Compatibility_Certification::$malformed = false;
 $GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION]['providers']['beta']['capabilities']['read']['state'] = 'FAKED';
 check( 'NOT_OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['state'], 'Tampered receipt was accepted' );
 MAD4B_SCP_Provider_Compatibility_Certification::$throw = ''; MAD4B_SCP_Live_Acceptance_Observer::$race = true;
@@ -114,6 +126,11 @@ MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_Live_Acceptance_Ob
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( array() === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['last_worker_failure'], 'Failed old worker poisoned a newer event' );
 MAD4B_SCP_Live_Acceptance_Observer::$throw = false;
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION] = 'corrupt';
+$before_writes = $GLOBALS['writes']; MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( $before_writes === $GLOBALS['writes'], 'Corrupted event was repaired by a passive status read' );
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+check( 'OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['state'], 'Worker did not recover a malformed event without poisoning neighbors' );
 MAD4B_SCP_Site_Profile::$environment = 'production'; $before = $GLOBALS['writes'];
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( $before === $GLOBALS['writes'], 'Production observation mutated state' );
