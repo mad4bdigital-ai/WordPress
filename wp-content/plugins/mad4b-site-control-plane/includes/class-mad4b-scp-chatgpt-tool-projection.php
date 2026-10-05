@@ -429,6 +429,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'currently_projected' => isset( $projected[ $ability_name ] ),
 				'classification_available' => ! $blocked,
 				'execution_governed' => ! $blocked && ! empty( $row['execution_eligible'] ),
+				'execution_eligibility_scope' => 'structural_classification_only',
+				'current_runtime_authority_evaluated' => false,
+				'current_runtime_authority_required_for_execution' => ! $blocked && isset( $row['classification'] ) && 'read' !== (string) $row['classification'],
 			) );
 		}
 		return array(
