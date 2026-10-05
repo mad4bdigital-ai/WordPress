@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "a2208930c675e9a5889fa0ac73a4cd964b63569b",
-  "changed_file_count": 44,
+  "changed_file_count": 50,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -14,6 +14,7 @@
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         ".github/workflows/feature-007-spec-ci.yml",
         ".github/workflows/mad4b-admin-performance.yml",
+        ".github/workflows/mad4b-provider-behavioral-recertification.yml",
         "specs/007-content-intelligence-workflow-platform/adaptive-runtime-convergence.md",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence-review.json",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence-review.md",
@@ -62,6 +63,7 @@
         "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json",
         "wp-content/plugins/mad4b-site-control-plane/config/production-certification-producers.json",
         "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json",
         "wp-content/plugins/mad4b-site-control-plane/config/provider-postcondition-profiles.json",
         "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json",
         "wp-content/plugins/mad4b-site-control-plane/config/resource-constraint-contracts.json",
@@ -145,6 +147,7 @@
       "revert_boundary": "Revert MCP/provider runtime slice as one semantic boundary.",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-wp-import-export-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-catalog-transport.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
@@ -161,6 +164,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-callback-order.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php",
@@ -278,7 +282,7 @@
     },
     {
       "id": "tests-authority-security-01",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 1",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 1",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -319,7 +323,7 @@
     },
     {
       "id": "tests-authority-security-02",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 2",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 2",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -359,7 +363,7 @@
     },
     {
       "id": "tests-authority-security-03",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 3",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 3",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -451,6 +455,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-evaluator-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/projection-hotset-recommender-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/projection-registration-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-callback-order-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py",
