@@ -293,6 +293,11 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'operational_ready' => ! empty( $operational['ready'] ),
 			'operational_blockers' => isset( $operational['blockers'] ) ? $operational['blockers'] : array(),
 			'operational_client_action' => isset( $operational['client_action'] ) ? $operational['client_action'] : '',
+			'lane_readiness' => isset( $operational['lane_readiness'] ) ? $operational['lane_readiness'] : array(),
+			'available_lanes' => isset( $operational['available_lanes'] ) ? $operational['available_lanes'] : array(),
+			'blocked_lanes' => isset( $operational['blocked_lanes'] ) ? $operational['blocked_lanes'] : array(),
+			'degraded_mode' => ! empty( $operational['degraded_mode'] ),
+			'degraded_mode_semantics' => isset( $operational['degraded_mode_semantics'] ) ? $operational['degraded_mode_semantics'] : '',
 		);
 	}
 
@@ -344,6 +349,11 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'operational_ready' => ! empty( $operational['ready'] ),
 					'operational_blockers' => isset( $operational['blockers'] ) ? $operational['blockers'] : array(),
 					'operational_client_action' => isset( $operational['client_action'] ) ? $operational['client_action'] : '',
+					'lane_readiness' => isset( $operational['lane_readiness'] ) ? $operational['lane_readiness'] : array(),
+					'available_lanes' => isset( $operational['available_lanes'] ) ? $operational['available_lanes'] : array(),
+					'blocked_lanes' => isset( $operational['blocked_lanes'] ) ? $operational['blocked_lanes'] : array(),
+					'degraded_mode' => ! empty( $operational['degraded_mode'] ),
+					'degraded_mode_semantics' => isset( $operational['degraded_mode_semantics'] ) ? $operational['degraded_mode_semantics'] : '',
 					'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
 					// write_ready is operational/current truth. Preserve the historical
 					// checkpoint and grant snapshot as explicit component fields so clients
@@ -424,10 +434,28 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		}
 		$blockers = self::compact_string_list( $blockers, 24 );
 		$authority_ready = (bool) $write_ready && (bool) $normal_ready && (bool) $breakglass_ready;
-		$ready = $authority_ready && ! empty( $developer_execution['execution_ready'] );
+		$developer_execution_ready = ! empty( $developer_execution['execution_ready'] );
+		$lane_readiness = array(
+			'governed_write' => (bool) $write_ready,
+			'developer' => (bool) $normal_ready && $developer_execution_ready,
+			'developer_breakglass' => (bool) $breakglass_ready && $developer_execution_ready,
+		);
+		$available_lanes = array();
+		$blocked_lanes = array();
+		foreach ( $lane_readiness as $lane => $lane_ready ) {
+			if ( $lane_ready ) $available_lanes[] = $lane;
+			else $blocked_lanes[] = $lane;
+		}
+		$ready = $authority_ready && $developer_execution_ready;
+		$degraded_mode = ! $ready && ! empty( $available_lanes );
 		return array(
 			'ready' => $ready,
 			'authority_ready' => $authority_ready,
+			'lane_readiness' => $lane_readiness,
+			'available_lanes' => $available_lanes,
+			'blocked_lanes' => $blocked_lanes,
+			'degraded_mode' => $degraded_mode,
+			'degraded_mode_semantics' => 'unavailable_lanes_fail_closed_available_lanes_remain_usable',
 			'blockers' => $blockers,
 			'client_action' => $ready
 				? 'operationally_ready'
@@ -789,6 +817,11 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'operational_ready' => ! empty( $post_apply_operational['ready'] ),
 				'operational_blockers' => isset( $post_apply_operational['blockers'] ) ? $post_apply_operational['blockers'] : array(),
 				'operational_client_action' => isset( $post_apply_operational['client_action'] ) ? $post_apply_operational['client_action'] : '',
+				'lane_readiness' => isset( $post_apply_operational['lane_readiness'] ) ? $post_apply_operational['lane_readiness'] : array(),
+				'available_lanes' => isset( $post_apply_operational['available_lanes'] ) ? $post_apply_operational['available_lanes'] : array(),
+				'blocked_lanes' => isset( $post_apply_operational['blocked_lanes'] ) ? $post_apply_operational['blocked_lanes'] : array(),
+				'degraded_mode' => ! empty( $post_apply_operational['degraded_mode'] ),
+				'degraded_mode_semantics' => isset( $post_apply_operational['degraded_mode_semantics'] ) ? $post_apply_operational['degraded_mode_semantics'] : '',
 				'candidate_binding_committed' => $binding_required && ! $binding_match_before,
 				'candidate_binding_result' => is_array( $bind ) ? $bind : array(),
 				'candidate_binding_lineage' => array(
