@@ -158,11 +158,21 @@ for token in (
     "media_meta_fields",
     "MAX_MEDIA_META_FIELDS",
     "MAX_MEDIA_GALLERY_ITEMS",
+):
+    assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
+
+# Typed media kinds/storage are intentionally owned by the dedicated media
+# component. Profiles retain only bounded limits and normalized media field
+# configuration so new media semantics do not grow the profile registry into a
+# business/runtime monolith.
+for token in (
     "image_gallery",
     "attachment_gallery",
     "csv_ids",
+    "image_gallery_usage",
+    "attachment_gallery_usage",
 ):
-    assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
+    assert token in experience_media_src, f"content experience media contract missing: {token}"
 
 for token in (
     "mad4b.content-experience-operation-plan.v1",
