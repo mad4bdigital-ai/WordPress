@@ -371,6 +371,34 @@ mad4b_assert_true( ! array_key_exists( 'unknown_large_field', $compact ), 'sessi
 mad4b_assert_true( ! array_key_exists( 'providers', $compact ), 'session-safe compact projection must not leak unbounded provider maps' );
 mad4b_assert_true( '0.4.0-rc.77' === $compact['build']['version'], 'session-safe compact projection must preserve bounded build identity' );
 
+$operator_method = $read_consistency_reflection->getMethod( 'session_safe_operator_summary' );
+$operator_method->setAccessible( true );
+$operator_sections = array(
+	'runtime' => array(
+		'checks' => array(
+			'write_authority' => array( 'summary' => array(
+				'effective_authority_ready' => false,
+				'candidate_binding_match' => false,
+				'current_grant_snapshot_ready' => false,
+				'current_readiness_blockers' => array( 'exact_write_grants_missing' ),
+			) ),
+			'database_topology' => array( 'summary' => array(
+				'ready' => false,
+				'read_your_writes' => false,
+				'blockers' => array( 'uncertified_database_router_dropin' ),
+			) ),
+			'skills_runtime' => array( 'summary' => array( 'effective_skill_ready' => true ) ),
+		),
+	),
+);
+$operator_summary = $operator_method->invoke( null, $operator_sections, false, array( 'write_authority_not_effective' ), array( 'environment' => 'staging' ) );
+mad4b_assert_true( 'BLOCKED' === $operator_summary['state'], 'session-safe operator summary must classify current authority/topology drift as BLOCKED' );
+mad4b_assert_true( 'staging' === $operator_summary['effective_environment'], 'session-safe operator summary must preserve effective Site Profile environment' );
+mad4b_assert_true( in_array( 'reconcile_exact_staging_write_authority', $operator_summary['next_actions'], true ), 'session-safe operator summary must route authority drift to exact reconciliation' );
+mad4b_assert_true( in_array( 'repair_query_monitor_db_attribution_then_retry', $operator_summary['next_actions'], true ), 'session-safe operator summary must route topology drift to bounded Query Monitor repair' );
+mad4b_assert_true( false === $operator_summary['signals']['database_topology_ready'], 'session-safe operator summary must expose topology readiness' );
+mad4b_assert_true( empty( $operator_summary['authorizing'] ) && empty( $operator_summary['mutation_performed'] ), 'session-safe operator summary must remain non-authorizing/read-only' );
+
 $bound_method = $read_consistency_reflection->getMethod( 'bound_session_safe_report' );
 $bound_method->setAccessible( true );
 $synthetic_sections = array();
@@ -402,12 +430,14 @@ $bounded = $bound_method->invoke( null, array(
 	'partial' => false,
 	'read_transaction_id' => 'rtx_runtime_test_1234',
 	'runtime_generation' => str_repeat( 'c', 64 ),
+	'operator_summary' => $operator_summary,
 	'sections' => $synthetic_sections,
 	'read_only' => true,
 	'mutation_performed' => false,
 	'production_mutation_performed' => false,
 ) );
 mad4b_assert_true( ! empty( $bounded['payload_reduced'] ), 'oversized session-safe report must reduce itself' );
+mad4b_assert_true( isset( $bounded['operator_summary'] ) && 'BLOCKED' === $bounded['operator_summary']['state'], 'bounded session-safe report must preserve operator summary' );
 mad4b_assert_true( $bounded['response_bytes'] <= MAD4B_SCP_Read_Consistency::MAX_SESSION_SAFE_REPORT_BYTES, 'session-safe report must enforce the hard response byte cap' );
 $bounded_json = wp_json_encode( $bounded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 mad4b_assert_true( false !== $bounded_json && strlen( $bounded_json ) <= MAD4B_SCP_Read_Consistency::MAX_SESSION_SAFE_REPORT_BYTES, 'final encoded session-safe report must remain under the hard byte cap' );
