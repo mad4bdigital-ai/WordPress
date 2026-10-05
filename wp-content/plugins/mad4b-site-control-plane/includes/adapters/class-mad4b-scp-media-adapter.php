@@ -1,6 +1,5 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
-
 final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function id() { return 'media'; }
 	public function label() { return 'Media'; }
