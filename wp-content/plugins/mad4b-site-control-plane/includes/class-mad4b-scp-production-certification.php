@@ -13,6 +13,7 @@ final class MAD4B_SCP_Production_Certification {
 	const CONTRACT = 'mad4b.production-certification-runtime.v1';
 	const ABILITY = 'mad4b/production-certification-readonly-evidence';
 	const STATUS_ABILITY = 'mad4b/production-certification-status';
+	const PLAN_ABILITY = 'mad4b/production-certification-plan';
 	const MULTI_AUTH_CONTRACT = 'mad4b.multi-authority-live-canary.v1';
 	const POLICY_PROBE_CONTRACT = 'mad4b.production-policy-probe.v1';
 	const SECURITY_CANARY_CONTRACT = 'mad4b.production-security-live-canary.v1';
@@ -81,6 +82,26 @@ final class MAD4B_SCP_Production_Certification {
 				)
 			);
 		}
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::PLAN_ABILITY ) ) {
+			wp_register_ability(
+				self::PLAN_ABILITY,
+				array(
+					'label' => 'Production Certification Plan',
+					'description' => 'Build one deterministic exact-candidate Staging certification session plan with local read-only evidence and bounded external evidence requirements.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'plan' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => array(
+						'public' => false,
+						'show_in_rest' => false,
+						'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+						'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+					),
+				)
+			);
+		}
 	}
 
 	public static function execute( $input = array() ) {
@@ -97,6 +118,107 @@ final class MAD4B_SCP_Production_Certification {
 		if ( 'security_fault_canary' === $stage ) return self::security_fault_canary( $identity );
 		if ( 'operator_doctor' === $stage ) return self::operator_doctor( $identity );
 		return new WP_Error( 'mad4b_production_certification_stage_unimplemented', 'Requested Production certification stage is not implemented.' );
+	}
+
+	public static function plan( $input = array() ) {
+		$identity = self::candidate_identity();
+		if ( is_wp_error( $identity ) ) return $identity;
+		$environment = self::current_environment();
+		if ( 'staging' !== $environment ) {
+			return new WP_Error( 'mad4b_production_certification_plan_environment_not_staging', 'Production certification session planning is Staging-only.' );
+		}
+		$plan = self::load_config( 'production-certification-plan.json', 'mad4b.production-certification-plan.v1' );
+		if ( is_wp_error( $plan ) ) return $plan;
+		$policy = self::load_config( 'production-readiness-policy.json', 'mad4b.production-readiness-policy.v2' );
+		if ( is_wp_error( $policy ) ) return $policy;
+
+		$stage_rows = array();
+		$local_evidence = array();
+		$external_requirements = array();
+		$ordinal = 0;
+		foreach ( isset( $plan['stages'] ) && is_array( $plan['stages'] ) ? $plan['stages'] : array() as $stage ) {
+			if ( ! is_array( $stage ) ) continue;
+			$ordinal++;
+			$id = sanitize_key( isset( $stage['id'] ) ? (string) $stage['id'] : '' );
+			$gate = sanitize_key( isset( $stage['gate'] ) ? (string) $stage['gate'] : '' );
+			$mutation_class = sanitize_key( isset( $stage['mutation_class'] ) ? (string) $stage['mutation_class'] : '' );
+			$trust_mode = sanitize_key( isset( $stage['trust_mode'] ) ? (string) $stage['trust_mode'] : '' );
+			$local = isset( self::$stages[ $id ] )
+				&& 'runtime_recompute' === $trust_mode
+				&& self::ABILITY === ( isset( $stage['producer_ability'] ) ? (string) $stage['producer_ability'] : '' );
+			$row = array(
+				'ordinal' => $ordinal,
+				'stage_id' => $id,
+				'gate' => $gate,
+				'mutation_class' => $mutation_class,
+				'producer' => isset( $stage['producer'] ) ? (string) $stage['producer'] : '',
+				'producer_contract' => isset( $stage['producer_contract'] ) ? (string) $stage['producer_contract'] : '',
+				'trust_mode' => $trust_mode,
+				'attestation_method' => isset( $stage['attestation_method'] ) ? sanitize_key( (string) $stage['attestation_method'] ) : '',
+				'rollback_required' => true === ( isset( $stage['rollback_required'] ) ? $stage['rollback_required'] : false ),
+				'collection_mode' => $local ? 'runtime_recompute' : ( 'reversible_staging_mutation' === $mutation_class ? 'external_reversible_staging_evidence' : 'external_signed_evidence' ),
+			);
+			$stage_rows[] = $row;
+			if ( $local ) {
+				$evidence = self::execute( array( 'stage_id' => $id ) );
+				if ( is_wp_error( $evidence ) ) {
+					return new WP_Error(
+						'mad4b_production_certification_plan_local_evidence_blocked',
+						'Production certification session cannot be planned while a local read-only certification stage is blocked.',
+						array( 'stage_id' => $id, 'cause' => $evidence->get_error_code(), 'mutation_performed' => false, 'production_authorized' => false )
+					);
+				}
+				$local_evidence[] = $evidence;
+			} else {
+				$external_requirements[] = $row;
+			}
+		}
+
+		$core = isset( $policy['profiles']['control_plane_core'] ) && is_array( $policy['profiles']['control_plane_core'] ) ? $policy['profiles']['control_plane_core'] : array();
+		$optional = isset( $core['optional_workstream_ids'] ) && is_array( $core['optional_workstream_ids'] ) ? array_values( array_map( 'strval', $core['optional_workstream_ids'] ) ) : array();
+		sort( $optional, SORT_STRING );
+		$material = array(
+			'contract' => 'mad4b.production-certification-session-material.v1',
+			'profile' => 'control_plane_core',
+			'environment' => $environment,
+			'candidate_identity' => $identity,
+			'stages' => $stage_rows,
+			'optional_capabilities_disabled' => $optional,
+			'terminal_evaluator' => 'mad4b/production-readiness-evaluate',
+		);
+		$plan_sha256 = self::canonical_digest( $material );
+		if ( '' === $plan_sha256 ) return new WP_Error( 'mad4b_production_certification_plan_digest_failed', 'Production certification session plan could not be canonicalized.' );
+
+		return array(
+			'contract' => 'mad4b.production-certification-session-plan.v1',
+			'profile' => 'control_plane_core',
+			'environment' => $environment,
+			'candidate_identity' => $identity,
+			'session_id' => 'pc-' . substr( $plan_sha256, 0, 24 ),
+			'plan_sha256' => $plan_sha256,
+			'stage_count' => count( $stage_rows ),
+			'local_evidence_count' => count( $local_evidence ),
+			'external_evidence_required_count' => count( $external_requirements ),
+			'stages' => $stage_rows,
+			'local_evidence_seed' => $local_evidence,
+			'external_evidence_requirements' => $external_requirements,
+			'bundle_template' => array(
+				'contract' => 'mad4b.production-live-evidence-bundle.v1',
+				'profile' => 'control_plane_core',
+				'candidate_identity' => $identity,
+				'evidence' => $local_evidence,
+				'authorizing' => false,
+				'production_authorized' => false,
+			),
+			'terminal_evaluator' => 'mad4b/production-readiness-evaluate',
+			'optional_capabilities_disabled' => $optional,
+			'production_ready' => false,
+			'production_authorized' => false,
+			'promotion_required' => true,
+			'authorizing' => false,
+			'mutation_performed' => false,
+			'production_mutation' => false,
+		);
 	}
 
 	public static function status( $input = array() ) {

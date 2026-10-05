@@ -130,8 +130,11 @@ MAD4B_SCP_Production_Certification::register_ability();
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
 check( isset( $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::ABILITY ] ), 'evidence_ability_not_registered' );
 check( isset( $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::STATUS_ABILITY ] ), 'status_ability_not_registered' );
+check( isset( $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::PLAN_ABILITY ] ), 'plan_ability_not_registered' );
 $status_ability = $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::STATUS_ABILITY ];
 check( ! empty( $status_ability['meta']['annotations']['readonly'] ) && empty( $status_ability['meta']['annotations']['destructive'] ), 'status_ability_not_read_only' );
+$plan_ability = $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Production_Certification::PLAN_ABILITY ];
+check( ! empty( $plan_ability['meta']['annotations']['readonly'] ) && empty( $plan_ability['meta']['annotations']['destructive'] ), 'plan_ability_not_read_only' );
 $stages = array(
 	'provider_side_channel_inventory',
 	'multi_authority_canary',
@@ -147,6 +150,15 @@ foreach ( $stages as $stage ) {
 	check( str_repeat( 'a', 40 ) === $row['candidate_identity']['source_commit_sha'], $stage . ' lost candidate binding' );
 	check( 64 === strlen( $row['producer_evidence_sha256'] ), $stage . ' evidence digest missing' );
 }
+$session = MAD4B_SCP_Production_Certification::plan();
+check( ! is_wp_error( $session ) && 'mad4b.production-certification-session-plan.v1' === $session['contract'], 'certification session plan unavailable' );
+check( count( $stages ) === $session['local_evidence_count'] && 0 < $session['external_evidence_required_count'], 'certification session did not separate local and external evidence' );
+check( $session['stage_count'] === $session['local_evidence_count'] + $session['external_evidence_required_count'], 'certification session stage accounting drifted' );
+check( 64 === strlen( $session['plan_sha256'] ) && 0 === strpos( $session['session_id'], 'pc-' ), 'certification session identity missing' );
+check( 'mad4b/production-readiness-evaluate' === $session['terminal_evaluator'], 'certification session terminal evaluator drifted' );
+check( false === $session['production_ready'] && false === $session['production_authorized'] && false === $session['mutation_performed'], 'certification session became authorizing or mutating' );
+$session_repeat = MAD4B_SCP_Production_Certification::plan();
+check( ! is_wp_error( $session_repeat ) && hash_equals( $session['plan_sha256'], $session_repeat['plan_sha256'] ) && hash_equals( $session['session_id'], $session_repeat['session_id'] ), 'certification session plan is not deterministic for one exact candidate' );
 $status = MAD4B_SCP_Production_Certification::status();
 check( ! is_wp_error( $status ) && 'mad4b.production-certification-status.v1' === $status['contract'], 'certification status unavailable' );
 check( count( $stages ) === $status['local_runtime_stage_count'] && count( $stages ) === $status['local_ready_count'], 'local certification status did not execute all read-only canaries' );
