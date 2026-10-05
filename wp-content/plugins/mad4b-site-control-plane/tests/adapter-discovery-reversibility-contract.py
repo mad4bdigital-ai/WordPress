@@ -66,6 +66,7 @@ def main():
 
     discovery = text(ROOT / "includes" / "class-mad4b-scp-plugin-discovery.php")
     registry = text(ROOT / "includes" / "class-mad4b-scp-adapter-registry.php")
+    entrypoint = text(ROOT / "mad4b-site-control-plane.php")
     base = text(ROOT / "includes" / "adapters" / "class-mad4b-scp-adapter-base.php")
     reversible = text(ROOT / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php")
     overrides = text(ROOT / "includes" / "class-mad4b-scp-governed-ability-overrides.php")
@@ -96,6 +97,15 @@ def main():
 
     for marker in ["mad4b/plugin-adapter-coverage", "mad4b/adapter-support-requests", "reversible_adapter_count"]:
         require(marker in registry, f"registry discovery marker missing: {marker}")
+
+    for marker in [
+        "private static $ability_hooks_bound",
+        "public static function boot_ability_registration()",
+        "add_action( 'wp_abilities_api_categories_init', array( $registry, 'register_categories' ), 20 )",
+        "add_action( 'wp_abilities_api_init', array( $registry, 'register_abilities' ), 20 )",
+    ]:
+        require(marker in registry, f"adapter ability lifecycle marker missing: {marker}")
+    require("MAD4B_SCP_Adapter_Registry::boot_ability_registration();" in entrypoint, "entrypoint does not bind adapter abilities before protocol hotpath")
 
     for marker in [
         "public function reversible_contracts()",
