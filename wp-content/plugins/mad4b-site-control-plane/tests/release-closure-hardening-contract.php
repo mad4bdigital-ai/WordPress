@@ -12,12 +12,12 @@ function mad4b_release_json( $path ) {
 	return $value;
 }
 function mad4b_release_counts( array $rows ) {
-	$out = array( 'total' => 0, 'DONE' => 0, 'PARTIAL' => 0, 'OPEN' => 0, 'DEFERRED' => 0 );
+	$out = array( 'total' => 0, 'DONE' => 0, 'PARTIAL' => 0, 'EXTERNAL_PENDING' => 0, 'OPEN' => 0, 'DEFERRED' => 0 );
 	foreach ( $rows as $row ) { $out['total']++; $s = isset( $row['status'] ) ? (string) $row['status'] : ''; if ( isset( $out[ $s ] ) ) $out[ $s ]++; }
 	return $out;
 }
 function mad4b_release_count_equal( array $expected, array $actual, $label ) {
-	foreach ( array( 'total', 'DONE', 'PARTIAL', 'OPEN', 'DEFERRED' ) as $key ) mad4b_release_assert( (int) $expected[ $key ] === (int) $actual[ $key ], $label . ':' . $key );
+	foreach ( array( 'total', 'DONE', 'PARTIAL', 'EXTERNAL_PENDING', 'OPEN', 'DEFERRED' ) as $key ) mad4b_release_assert( (int) $expected[ $key ] === (int) $actual[ $key ], $label . ':' . $key );
 }
 
 $feature = mad4b_release_json( $repo . '/specs/007-content-intelligence-workflow-platform/feature.json' );
@@ -50,8 +50,8 @@ mad4b_release_assert( false === $workstream_certification['rules']['caller_live_
 mad4b_release_assert( true === $workstream_certification['rules']['repository_structure_is_not_live_certification'], 'repository is not live certification' );
 mad4b_release_assert( true === $workstream_certification['rules']['unknown_live_evidence_fails_closed'], 'unknown live evidence fails closed' );
 
-$partial_ids = array();
-foreach ( $closure['workstreams'] as $row ) if ( 'PARTIAL' === (string) $row['status'] ) $partial_ids[] = (string) $row['id'];
+$external_pending_ids = array();
+foreach ( $closure['workstreams'] as $row ) if ( 'EXTERNAL_PENDING' === (string) $row['status'] ) $external_pending_ids[] = (string) $row['id'];
 $certified_partial_ids = array();
 $plugin_root = $repo . '/wp-content/plugins/mad4b-site-control-plane/';
 foreach ( $workstream_certification['workstreams'] as $row ) {
@@ -64,10 +64,10 @@ foreach ( $workstream_certification['workstreams'] as $row ) {
 		mad4b_release_assert( is_file( $full ) && ! is_link( $full ), 'workstream repository evidence missing or symlinked: ' . $row['id'] . ':' . $relative );
 	}
 }
-sort( $partial_ids, SORT_STRING );
+sort( $external_pending_ids, SORT_STRING );
 sort( $certified_partial_ids, SORT_STRING );
-mad4b_release_assert( 23 === count( $partial_ids ), 'exactly 23 PARTIAL workstreams expected during closure' );
-mad4b_release_assert( $partial_ids === $certified_partial_ids, 'certification policy must cover exactly the 23 PARTIAL workstreams' );
+mad4b_release_assert( 23 === count( $external_pending_ids ), 'exactly 23 EXTERNAL_PENDING workstreams expected after repository closure' );
+mad4b_release_assert( $external_pending_ids === $certified_partial_ids, 'certification policy must cover exactly the 23 EXTERNAL_PENDING workstreams' );
 mad4b_release_assert( false === $projection['semantics']['task_ledger_ratio_is_readiness_metric'], 'profile readiness semantics' );
 mad4b_release_assert( false === $projection['production_authorized'], 'projection non-authorizing' );
 mad4b_release_assert( 'mad4b.feature007-reviewability.v1' === $projection['reviewability']['contract'], 'reviewability contract' );
