@@ -291,7 +291,18 @@
         "blockers_must_have_recovery_action": true,
         "automatic_authority_mutation_allowed": false,
         "production_mutation_allowed": false,
-        "generic_raw_sql_breakglass_included": false
+        "generic_raw_sql_breakglass_included": false,
+        "operational_state_enum": [
+          "authority_convergence_required",
+          "degraded_host_execution",
+          "operationally_blocked",
+          "operationally_ready"
+        ],
+        "provider_write_authority_state_enum": [
+          "write_authority_reconciliation_required",
+          "write_authority_current"
+        ],
+        "state_is_derived_from_current_truth_not_persisted_checkpoint_only": true
       },
       "performance": {
         "contract": "mad4b.staging-operational-performance-comparison.v1",
