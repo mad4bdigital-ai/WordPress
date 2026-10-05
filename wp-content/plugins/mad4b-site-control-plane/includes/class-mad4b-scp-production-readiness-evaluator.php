@@ -20,6 +20,9 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 	const EVIDENCE_ATTESTATION_CONTRACT = 'mad4b.production-evidence-attestation.v1';
 	const EVIDENCE_CRYPTO_PURPOSE = 'production_evidence';
 	const EVIDENCE_TTL = 1800;
+	const STAGING_PROMOTION_PROOF_CONTRACT = 'mad4b.staging-readiness-promotion-proof.v1';
+	const STAGING_PROMOTION_PROOF_PURPOSE = 'production_promotion_staging_readiness';
+	const STAGING_PROMOTION_PROOF_TTL = 1800;
 	const MAX_BUNDLE_BYTES = 524288;
 	const MAX_EVIDENCE_ROWS = 64;
 
@@ -87,6 +90,7 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 		if ( ! self::identity_equal( $identity, $current_identity ) ) {
 			return self::error( 'mad4b_production_readiness_runtime_identity_mismatch', array( 'fresh_certification_required' => true ) );
 		}
+		$verdict_identity = $current_identity;
 
 		$plan = self::load_config( 'config/production-certification-plan.json', 'mad4b.production-certification-plan.v1' );
 		if ( is_wp_error( $plan ) ) return $plan;
@@ -191,10 +195,10 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 		if ( $optional !== $disabled ) return self::error( 'mad4b_production_readiness_optional_fail_closed_set_invalid' );
 		if ( count( $trusted_gates ) !== count( $stage_by_gate ) ) return self::error( 'mad4b_production_readiness_trusted_gate_count_mismatch' );
 
-		return array(
+		$verdict = array(
 			'contract' => self::VERDICT_CONTRACT,
 			'profile' => 'control_plane_core',
-			'candidate_identity' => $identity,
+			'candidate_identity' => $verdict_identity,
 			'evidence_gate_count' => count( $stage_by_gate ),
 			'trusted_evidence_gate_count' => count( $trusted_gates ),
 			'evidence_trust_contract' => self::EVIDENCE_TRUST_CONTRACT,
@@ -206,6 +210,9 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 			'mutation_performed' => false,
 			'production_mutation' => false,
 		);
+		$proof = self::staging_promotion_proof( $verdict, $verdict_identity );
+		if ( ! is_wp_error( $proof ) ) $verdict['staging_promotion_proof'] = $proof;
+		return $verdict;
 	}
 
 
@@ -455,6 +462,49 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 		return self::EVIDENCE_TTL;
 	}
 
+	private static function staging_promotion_proof( array $verdict, array $identity ) {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			|| ! method_exists( 'MAD4B_SCP_Site_Profile', 'deployment_binding_proof' ) ) {
+			return self::error( 'mad4b_production_readiness_promotion_proof_unavailable' );
+		}
+		$artifact = isset( $identity['artifact_identity'] ) ? trim( (string) $identity['artifact_identity'] ) : '';
+		if ( '' === $artifact || strlen( $artifact ) > 191 ) {
+			return self::error( 'mad4b_production_readiness_promotion_artifact_identity_missing' );
+		}
+		$binding = strtolower( trim( (string) MAD4B_SCP_Site_Profile::deployment_binding_digest() ) );
+		$staging_origin = method_exists( 'MAD4B_SCP_Site_Profile', 'site_origin' ) ? rtrim( (string) MAD4B_SCP_Site_Profile::site_origin(), '/' ) : '';
+		$production_origin = method_exists( 'MAD4B_SCP_Site_Profile', 'related_origin' ) ? rtrim( (string) MAD4B_SCP_Site_Profile::related_origin( 'production' ), '/' ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $binding ) || '' === $staging_origin || '' === $production_origin ) {
+			return self::error( 'mad4b_production_readiness_promotion_binding_unavailable' );
+		}
+		$core_sha = self::canonical_digest( $verdict );
+		if ( is_wp_error( $core_sha ) ) return $core_sha;
+		$issued = self::evidence_trust_now();
+		$proof = array(
+			'contract' => self::STAGING_PROMOTION_PROOF_CONTRACT,
+			'purpose' => self::STAGING_PROMOTION_PROOF_PURPOSE,
+			'profile' => 'control_plane_core',
+			'environment' => 'staging',
+			'staging_origin' => $staging_origin,
+			'production_origin' => $production_origin,
+			'candidate_identity' => $identity,
+			'core_verdict_sha256' => $core_sha,
+			'deployment_binding_digest' => $binding,
+			'issued_at' => (int) $issued,
+			'expires_at' => (int) $issued + self::STAGING_PROMOTION_PROOF_TTL,
+			'authorizing' => false,
+		);
+		$material_sha = self::canonical_digest( $proof );
+		if ( is_wp_error( $material_sha ) ) return $material_sha;
+		$mac = MAD4B_SCP_Site_Profile::deployment_binding_proof( self::STAGING_PROMOTION_PROOF_PURPOSE, $material_sha );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $mac ) ) {
+			return self::error( 'mad4b_production_readiness_promotion_proof_unavailable' );
+		}
+		$proof['material_sha256'] = $material_sha;
+		$proof['mac_sha256'] = strtolower( (string) $mac );
+		return $proof;
+	}
+
 	public static function canonical_digest( $value ) {
 		$normalized = self::canonicalize( $value, 0 );
 		if ( is_wp_error( $normalized ) ) return $normalized;
@@ -510,6 +560,11 @@ final class MAD4B_SCP_Production_Readiness_Evaluator {
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity['build_fingerprint'] )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity['package_manifest_digest'] ) ) {
 			return self::error( 'mad4b_production_readiness_candidate_identity_invalid' );
+		}
+		if ( isset( $source['artifact_identity'] ) && '' !== trim( (string) $source['artifact_identity'] ) ) {
+			$artifact = trim( (string) $source['artifact_identity'] );
+			if ( strlen( $artifact ) > 191 ) return self::error( 'mad4b_production_readiness_candidate_identity_invalid' );
+			$identity['artifact_identity'] = $artifact;
 		}
 		return $identity;
 	}

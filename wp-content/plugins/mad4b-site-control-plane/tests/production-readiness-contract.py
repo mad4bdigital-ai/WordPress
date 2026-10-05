@@ -57,13 +57,21 @@ for rel in policy.get("required_fail_closed_repository_evidence") or []:
         fail("PRODUCTION_FAIL_CLOSED_EVIDENCE_MISSING:"+str(rel))
 
 promotion=(root/"includes/class-mad4b-scp-production-promotion-attestation.php").read_text(encoding="utf-8")
+readiness_evaluator=(root/"includes/class-mad4b-scp-production-readiness-evaluator.php").read_text(encoding="utf-8")
+site_profile=(root/"includes/class-mad4b-scp-site-profile.php").read_text(encoding="utf-8")
 write_enable=(root/"includes/class-mad4b-scp-site-profile-write-enablement.php").read_text(encoding="utf-8")
-for marker in ("mad4b.production-promotion-attestation.v1","mad4b.production-live-evidence-verdict.v1","mad4b.external-staging-readiness-observer.v1","site_profile_revision_digest_transition","Production_Unchanged_Attestation::evaluate_receipt","External_Handshake_Evidence::status"):
+for marker in ("mad4b.production-promotion-attestation.v1","mad4b.production-live-evidence-verdict.v1","mad4b.external-staging-readiness-observer.v1","mad4b.staging-readiness-promotion-proof.v1","production_promotion_staging_readiness","validate_staging_promotion_proof","verify_deployment_binding_proof","site_profile_revision_digest_transition","Production_Unchanged_Attestation::evaluate_receipt","External_Handshake_Evidence::status"):
     if marker not in promotion:
         fail("PRODUCTION_PROMOTION_ATTESTATION_MARKER_MISSING:"+marker)
 for marker in ("production_promotion_attestation","MAD4B_SCP_Production_Promotion_Attestation::validate_for_activation","mad4b_production_write_activation_already_enabled","production_readiness_verified"):
     if marker not in write_enable:
         fail("PRODUCTION_ACTIVATION_READINESS_FENCE_MISSING:"+marker)
+for marker in ("mad4b.staging-readiness-promotion-proof.v1","production_promotion_staging_readiness","staging_promotion_proof","deployment_binding_proof"):
+    if marker not in readiness_evaluator:
+        fail("PRODUCTION_STAGING_PROOF_ISSUER_MISSING:"+marker)
+for marker in ("deployment_binding_proof","verify_deployment_binding_proof","mad4b-deployment-proof-v1"):
+    if marker not in site_profile:
+        fail("PRODUCTION_DEPLOYMENT_TRUST_PRIMITIVE_MISSING:"+marker)
 if policy.get("promotion",{}).get("promotion_attestation_contract")!="mad4b.production-promotion-attestation.v1":
     fail("PRODUCTION_PROMOTION_POLICY_CONTRACT_MISSING")
 if policy.get("promotion",{}).get("one_time_binding")!="site_profile_revision_digest_transition":

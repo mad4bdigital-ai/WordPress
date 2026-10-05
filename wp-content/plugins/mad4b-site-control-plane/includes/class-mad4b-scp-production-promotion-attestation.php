@@ -11,6 +11,8 @@ final class MAD4B_SCP_Production_Promotion_Attestation {
 	const STAGING_SOURCE_CONTRACT = 'mad4b.external-staging-readiness-observer.v1';
 	const VERDICT_CONTRACT = 'mad4b.production-live-evidence-verdict.v1';
 	const EVIDENCE_TRUST_CONTRACT = 'mad4b.production-evidence-trust.v1';
+	const STAGING_PROMOTION_PROOF_CONTRACT = 'mad4b.staging-readiness-promotion-proof.v1';
+	const STAGING_PROMOTION_PROOF_PURPOSE = 'production_promotion_staging_readiness';
 	const PROFILE = 'control_plane_core';
 	const FINALIZER_ISSUER = 'chatgpt_external_read_only_finalizer';
 	const FINALIZER_PROVENANCE = 'verified_oauth_readonly_session';
@@ -134,7 +136,7 @@ final class MAD4B_SCP_Production_Promotion_Attestation {
 			|| ! isset( $source['verdict_sha256'] ) || ! hash_equals( $declared_verdict_sha, strtolower( (string) $source['verdict_sha256'] ) ) ) return self::error( 'mad4b_production_promotion_staging_source_invalid', 'Production Promotion Attestation does not identify the exact Staging readiness source.' );
 
 		$verdict = isset( $attestation['staging_readiness_verdict'] ) && is_array( $attestation['staging_readiness_verdict'] ) ? $attestation['staging_readiness_verdict'] : array();
-		$verdict_check = self::validate_readiness_verdict( $verdict, $current_identity );
+		$verdict_check = self::validate_readiness_verdict( $verdict, $current_identity, $now );
 		if ( is_wp_error( $verdict_check ) ) return $verdict_check;
 		$actual_verdict_sha = self::verdict_digest( $verdict );
 		if ( ! hash_equals( $declared_verdict_sha, $actual_verdict_sha ) ) return self::error( 'mad4b_production_promotion_verdict_digest_mismatch', 'Staging Production-readiness verdict digest does not match its reviewed payload.' );
@@ -173,7 +175,7 @@ final class MAD4B_SCP_Production_Promotion_Attestation {
 	public static function attestation_digest( array $attestation ) { unset( $attestation['evidence_digest'] ); return hash( 'sha256', self::canonical_json( $attestation ) ); }
 	public static function verdict_digest( array $verdict ) { return hash( 'sha256', self::canonical_json( $verdict ) ); }
 
-	private static function validate_readiness_verdict( array $verdict, array $identity ) {
+	private static function validate_readiness_verdict( array $verdict, array $identity, $now ) {
 		if ( self::VERDICT_CONTRACT !== ( isset( $verdict['contract'] ) ? (string) $verdict['contract'] : '' ) || self::PROFILE !== ( isset( $verdict['profile'] ) ? (string) $verdict['profile'] : '' ) ) return self::error( 'mad4b_production_promotion_verdict_contract_invalid', 'Staging Production-readiness verdict contract/profile is invalid.' );
 		if ( empty( $verdict['production_ready'] ) || ! empty( $verdict['production_authorized'] ) || empty( $verdict['promotion_required'] ) || ! empty( $verdict['authorizing'] ) || ! empty( $verdict['mutation_performed'] ) || ! empty( $verdict['production_mutation'] ) ) return self::error( 'mad4b_production_promotion_verdict_not_ready', 'Staging verdict is not a non-authorizing Production-ready verdict.' );
 		if ( self::EVIDENCE_TRUST_CONTRACT !== ( isset( $verdict['evidence_trust_contract'] ) ? (string) $verdict['evidence_trust_contract'] : '' ) ) return self::error( 'mad4b_production_promotion_verdict_trust_invalid', 'Staging verdict does not use the certified Production evidence trust contract.' );
@@ -182,6 +184,63 @@ final class MAD4B_SCP_Production_Promotion_Attestation {
 		if ( $gate_count < 1 || $trusted_count !== $gate_count ) return self::error( 'mad4b_production_promotion_verdict_evidence_incomplete', 'Staging verdict is missing trusted evidence for one or more required gates.' );
 		$verdict_identity = self::normalize_identity( isset( $verdict['candidate_identity'] ) && is_array( $verdict['candidate_identity'] ) ? $verdict['candidate_identity'] : array() );
 		if ( is_wp_error( $verdict_identity ) || ! self::identity_matches( $identity, $verdict_identity ) ) return self::error( 'mad4b_production_promotion_verdict_candidate_mismatch', 'Staging readiness verdict belongs to a different runtime candidate.' );
+		$proof_check = self::validate_staging_promotion_proof( $verdict, $identity, $now );
+		if ( is_wp_error( $proof_check ) ) return $proof_check;
+		return true;
+	}
+
+	private static function validate_staging_promotion_proof( array $verdict, array $identity, $now ) {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			|| ! method_exists( 'MAD4B_SCP_Site_Profile', 'verify_deployment_binding_proof' ) ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_verifier_unavailable', 'Deployment-family proof verifier is unavailable.' );
+		}
+		$proof = isset( $verdict['staging_promotion_proof'] ) && is_array( $verdict['staging_promotion_proof'] ) ? $verdict['staging_promotion_proof'] : array();
+		if ( self::STAGING_PROMOTION_PROOF_CONTRACT !== ( isset( $proof['contract'] ) ? (string) $proof['contract'] : '' )
+			|| self::STAGING_PROMOTION_PROOF_PURPOSE !== ( isset( $proof['purpose'] ) ? (string) $proof['purpose'] : '' )
+			|| self::PROFILE !== ( isset( $proof['profile'] ) ? (string) $proof['profile'] : '' )
+			|| 'staging' !== ( isset( $proof['environment'] ) ? sanitize_key( (string) $proof['environment'] ) : '' )
+			|| ! empty( $proof['authorizing'] ) ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_invalid', 'Staging readiness proof is missing or malformed.' );
+		}
+		$staging_origin = rtrim( (string) MAD4B_SCP_Site_Profile::related_origin( 'staging' ), '/' );
+		$production_origin = rtrim( (string) MAD4B_SCP_Site_Profile::related_origin( 'production' ), '/' );
+		if ( '' === $staging_origin || '' === $production_origin
+			|| ! hash_equals( $staging_origin, rtrim( (string) ( isset( $proof['staging_origin'] ) ? $proof['staging_origin'] : '' ), '/' ) )
+			|| ! hash_equals( $production_origin, rtrim( (string) ( isset( $proof['production_origin'] ) ? $proof['production_origin'] : '' ), '/' ) ) ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_origin_mismatch', 'Staging readiness proof does not match the related deployment origins.' );
+		}
+		$proof_identity = self::normalize_identity( isset( $proof['candidate_identity'] ) && is_array( $proof['candidate_identity'] ) ? $proof['candidate_identity'] : array() );
+		if ( is_wp_error( $proof_identity ) || ! self::identity_matches( $identity, $proof_identity ) ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_candidate_mismatch', 'Staging readiness proof belongs to another candidate.' );
+		}
+		$core = $verdict;
+		unset( $core['staging_promotion_proof'] );
+		$core_sha = self::verdict_digest( $core );
+		if ( ! self::valid_hash( isset( $proof['core_verdict_sha256'] ) ? $proof['core_verdict_sha256'] : '' )
+			|| ! hash_equals( $core_sha, strtolower( (string) $proof['core_verdict_sha256'] ) ) ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_verdict_mismatch', 'Staging readiness proof is not bound to the exact verdict core.' );
+		}
+		$binding = strtolower( trim( (string) MAD4B_SCP_Site_Profile::deployment_binding_digest() ) );
+		if ( ! self::valid_hash( $binding )
+			|| ! isset( $proof['deployment_binding_digest'] )
+			|| ! hash_equals( $binding, strtolower( (string) $proof['deployment_binding_digest'] ) ) ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_binding_mismatch', 'Staging and Production do not share the exact deployment trust binding.' );
+		}
+		$issued = isset( $proof['issued_at'] ) ? (int) $proof['issued_at'] : 0;
+		$expires = isset( $proof['expires_at'] ) ? (int) $proof['expires_at'] : 0;
+		if ( $issued < 1 || $expires <= $issued || $expires - $issued !== self::TTL || $issued > (int) $now + 60 || $expires <= (int) $now ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_stale', 'Staging readiness proof is stale or has an invalid validity window.' );
+		}
+		$provided_material = strtolower( trim( (string) ( isset( $proof['material_sha256'] ) ? $proof['material_sha256'] : '' ) ) );
+		$mac = strtolower( trim( (string) ( isset( $proof['mac_sha256'] ) ? $proof['mac_sha256'] : '' ) ) );
+		$material = $proof;
+		unset( $material['material_sha256'], $material['mac_sha256'] );
+		$computed_material = self::verdict_digest( $material );
+		if ( ! self::valid_hash( $provided_material ) || ! hash_equals( $provided_material, $computed_material )
+			|| ! self::valid_hash( $mac )
+			|| ! MAD4B_SCP_Site_Profile::verify_deployment_binding_proof( self::STAGING_PROMOTION_PROOF_PURPOSE, $provided_material, $mac ) ) {
+			return self::error( 'mad4b_production_promotion_staging_proof_invalid', 'Staging readiness proof MAC is invalid.' );
+		}
 		return true;
 	}
 
