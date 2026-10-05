@@ -105,7 +105,7 @@
     {
       "id": "governed_tool_execution",
       "priority": "LIVE_PRECONDITION",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "recovery_tooling_available",
       "evidence": {
         "filesystem_read_abilities_present": true,
@@ -184,12 +184,14 @@
         "prove live MCP/WP-CLI/Host Runner authority parity on the exact deployed candidate, including one governed reversible write",
         "prove live ETG Host Runner canary, protected storage, and repair/requeue behavior",
         "execute the one-time first bootstrap of the Host Bridge/Runner-capable candidate through an already-authorized external deployment connector on ETG Staging"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "protected_backup_recovery",
       "priority": "LIVE_PRECONDITION",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "protected_backup_recovery_ready",
       "evidence": {
         "exists": false,
@@ -212,7 +214,9 @@
       "remainder": [
         "prove protected ETG Staging backup-root isolation/capacity and create exact-live-runtime backup receipt",
         "execute live restore rehearsal against that protected root before deployment"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "etg_exact_runtime_release_deployment",
@@ -251,7 +255,7 @@
     {
       "id": "recovery_live_drill",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "recovery_live_verified",
       "remainder": [
         "execute the same drill on ETG Staging with normal WordPress/Control Plane route intentionally unavailable",
@@ -264,7 +268,9 @@
         "wordpress_boot_unavailable_repository_proven": true,
         "receipt_persistence_uncertainty_repository_proven": true,
         "blind_retry_disabled_on_uncertainty": true
-      }
+      },
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "bitflows_1_29_exact_certification",
@@ -283,7 +289,7 @@
     {
       "id": "provider_side_channel",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "provider_side_channel_safe",
       "evidence": {
         "isolation_contract": "mad4b.mcp-provider-isolation.v3",
@@ -321,12 +327,14 @@
       "remainder": [
         "run live ETG provider-side-channel inventory after exact deployment and bind it to runtime identity",
         "prove all enabled third-party MCP/provider transports are either isolated, reviewed non-transport, or fail-closed before write authority"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "capability_traits",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "capability_traits_ready",
       "evidence": {
         "contract": "mad4b.capability-traits.v1",
@@ -356,12 +364,14 @@
       "remainder": [
         "measure and bind max_runtime_seconds/max_payload_bytes from trusted provider/runtime evidence instead of unknown placeholders",
         "prove exact live provider trait evidence before eligibility on ETG Staging"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "multi_authority_live",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "multi_authority_live",
       "evidence": {
         "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
@@ -384,12 +394,14 @@
         "prove exact issuer/subject/resource mapping on the current deployed candidate",
         "prove full live filter-chain/canary behavior with current candidate binding",
         "bind resulting live evidence to the exact deployed source/build identity"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "policy_engine",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "policy_engine_ready",
       "evidence": {
         "contract": "mad4b.policy-resolution.v1",
@@ -415,7 +427,9 @@
         "bind exact live ETG policy-resolution evidence to the deployed candidate",
         "prove provider/capability policy fingerprints are committed into live execution plans",
         "prove policy mode and kill-switch behavior through the live authority path"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "gate_liveness",
@@ -435,7 +449,7 @@
     {
       "id": "site_bootstrap",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "site_bootstrap_reconciled",
       "evidence": {
         "contract": "mad4b.site-content-bootstrap.v1",
@@ -467,12 +481,14 @@
       "remainder": [
         "run the bounded inventory snapshot against exact ETG Staging candidate",
         "apply explicitly reviewed Intent reconciliation scopes on ETG Staging through the governed write path"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "intent_registry",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "intent_registry_reconciled",
       "evidence": {
         "contract": "mad4b.intent-ownership.v1",
@@ -505,12 +521,14 @@
       "remainder": [
         "run bootstrap inventory + explicit classifications against exact ETG Staging and apply through governed reconcile authority",
         "prove live CREATE_NEW/SUPPORT_EXISTING/UPDATE_EXISTING/CONSOLIDATE/HUMAN_REVIEW job-resolution policy against the exact deployed candidate"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "content_job_domain",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "content_job_domain_ready",
       "evidence": {
         "contract": "mad4b.content-job.v1",
@@ -549,12 +567,14 @@
       },
       "remainder": [
         "bind the post-merge selected runtime release and exact deployed-candidate live readback before marking content_job_domain_ready"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "artifact_registry_store",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "artifact_lineage_ready",
       "evidence": {
         "contract": "mad4b.artifact-registry.v1",
@@ -583,12 +603,14 @@
       },
       "remainder": [
         "bind artifact lineage evidence to the exact deployed ETG candidate"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "context_writer",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "context_writer_ready",
       "evidence": {
         "requirements_contract": "mad4b.job-knowledge-requirements.v1",
@@ -620,12 +642,14 @@
       "remainder": [
         "prove the same requirements/dispatcher behavior against the exact deployed ETG Context Authority registry",
         "prove exact live WriterProfile asset/version evidence resolves to the ContentJob-bound immutable fingerprint"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "research_competitive",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "research_intelligence_ready",
       "evidence": {
         "contract": "mad4b.research-intelligence.v1",
@@ -664,12 +688,14 @@
         "connect certified Keyword/SERP/Search/Scrape providers to the normalized recording contracts",
         "prove live provider timeout/rate-limit/budget/retry behavior on ETG Staging",
         "bind live research evidence to the exact deployed candidate before research_intelligence_ready"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "blueprint_draft_qa",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "blueprint_draft_qa_ready",
       "evidence": {
         "contract": "mad4b.content-intelligence-pipeline.v1",
@@ -693,12 +719,14 @@
       "remainder": [
         "prove the same artifact lineage and stale-evidence gates against the exact deployed ETG candidate",
         "bind live model/provider outputs through governed Skills/providers to the immutable ContentJob WriterProfile fingerprint"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "governed_wp_draft",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "governed_wp_draft_ready",
       "evidence": {
         "contract": "mad4b.governed-draft.v1",
@@ -732,12 +760,14 @@
       "remainder": [
         "exercise create/update draft on exact ETG Staging candidate through normal authorization/approval path",
         "record resulting draft mutation/audit evidence without public publication"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "semantic_publication_verification",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "semantic_publication_verification_ready",
       "evidence": {
         "draft_origin_verification_contract": "mad4b.draft-verification.v1",
@@ -769,12 +799,14 @@
         "connect certified origin/public-edge observation adapters on exact ETG Staging",
         "prove canonical/robots/schema/language/media/link/sitemap dimensions on exact deployed candidate",
         "prove live bounded PENDING_PROPAGATION and timeout behavior before marking publication verification ready"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "authoritative_consistency_fencing",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "authoritative_execution_verified",
       "evidence": {
         "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
@@ -814,12 +846,14 @@
       "remainder": [
         "prove aggregate/event/artifact consistency on the exact deployed candidate",
         "repeat the critical stale/zombie/uncertain repository-proven fault cases on ETG Staging"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "security_ai_eval_faults",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "kernel_quality_verified",
       "evidence": {
         "contract": "mad4b.feature007.security-ai-eval-faults.v1",
@@ -846,12 +880,14 @@
       },
       "remainder": [
         "execute live ETG fault canaries for the repository-proven fault classes"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "operator_doctor_dlq",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "operator_recovery_review_ready",
       "evidence": {
         "host_runner": "tools/mad4b_host_runner.py",
@@ -905,7 +941,9 @@
       },
       "remainder": [
         "bind Operator Doctor/DLQ readback to the exact deployed ETG runtime release before closing the live operator gate"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "formal_state_proof",
@@ -947,7 +985,7 @@
     {
       "id": "provider_resolver_rings_dynamic_cert",
       "priority": "MATURITY_REQUIRED",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "provider_resolver_dynamic_cert_ready",
       "evidence": {
         "contract": "mad4b.capability-trait-resolution.v1",
@@ -985,12 +1023,14 @@
       },
       "remainder": [
         "prove shadow→canary→active promotion and rollback against exact ETG Staging provider identities"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "rights_ai_data",
       "priority": "MATURITY_REQUIRED",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "rights_ai_data_ready",
       "evidence": {
         "rights_contract": "mad4b.content-rights.v1",
@@ -1049,12 +1089,14 @@
       "remainder": [
         "prove live ETG provider/model fallback independently satisfies the same or stricter policy",
         "exercise data-subject/tenant retention obligations where applicable"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "cron_provider_backlog",
       "priority": "MATURITY_REQUIRED",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "scheduler_backlog_semantics_ready",
       "evidence": {
         "contract": "mad4b.scheduler-admission.v1",
@@ -1097,7 +1139,9 @@
       "remainder": [
         "bind actual WordPress/Host/external cron adapters to exact desired/expected state and budgets",
         "prove noisy-neighbor, anti-starvation and provider-backlog behavior under disposable/live ETG load"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     },
     {
       "id": "growth_fairness_localization_evalops",
@@ -1107,7 +1151,7 @@
     {
       "id": "decommission_portability",
       "priority": "MATURITY_REQUIRED",
-      "status": "PARTIAL",
+      "status": "EXTERNAL_PENDING",
       "gate": "decommission_portability_ready",
       "evidence": {
         "contract": "mad4b.decommission-portability-preflight.v1",
@@ -1163,7 +1207,9 @@
         "bind export-bundle payload sections to certified live governed provider/site inventory producers instead of caller-supplied snapshots",
         "certify domain-specific revoke/remove/rehydration adapters through the quarantine-first protocol with rollback/recovery evidence",
         "prove complete ETG Staging provider/site decommission rehearsal including late callbacks and central registry cleanup"
-      ]
+      ],
+      "external_pending_contract": "mad4b.feature007-workstream-certification-policy.v1",
+      "external_pending_reason": "repository_implementation_present_live_or_external_evidence_required"
     }
   ],
   "observed_live_etg_state": {
