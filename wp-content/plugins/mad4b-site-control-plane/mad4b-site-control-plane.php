@@ -230,6 +230,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-compatibility-pro
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-commit-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy-resolution.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-workstream-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-readiness-evaluator.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-control-center.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
