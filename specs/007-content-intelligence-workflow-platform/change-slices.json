@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 314,
+  "changed_file_count": 315,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -94,6 +94,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resource-constraint-set.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-write-enablement.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php"
@@ -456,6 +457,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "9d0c22e66468b1f8b6335007b72d4eeca1b8509316bb264a1165d59bb7892c8e",
+  "changed_paths_sha256": "33c7a2506fc6bc3618cb0d80f234cea1e0cc151d28fd162cb1dfbf0007425a22",
   "changed_paths_sha256_mode": "sorted_relative_paths_newline_sha256"
 }
