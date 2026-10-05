@@ -57,9 +57,16 @@ for token in (
     "mad4b.rollback.media-parent.v1",
     "metadata_sha256",
     "parent_id",
+    "parent_post_id",
+    "unattached_only",
+    "image_only",
+    "detail_level",
+    "mutable_state_from_post",
     "wp_attachment_is_image(",
     "mad4b_media_metadata_readback_mismatch",
     "mad4b_media_parent_readback_mismatch",
+    "mad4b_media_featured_readback_mismatch",
+    "mad4b_media_restore_readback_mismatch",
 ):
     assert token in media_src, f"media governance contract missing: {token}"
 
