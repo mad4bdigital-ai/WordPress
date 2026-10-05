@@ -210,7 +210,27 @@
         ],
         "unavailable_lane_policy": "fail_closed_without_disabling_ready_sibling_lanes",
         "developer_host_limitations_do_not_false_mark_governed_write_unready": true,
-        "production_is_never_inferred_from_staging_lane_readiness": true
+        "production_is_never_inferred_from_staging_lane_readiness": true,
+        "developer_host_recovery": {
+          "truth_source": "mad4b/full-staging-authority-handshake.developer_execution.host_recovery",
+          "owner": "host_platform_operator",
+          "accepted_resource_limiter": "prlimit",
+          "resource_limiter_config_constant": "MAD4B_MCP_DEVELOPER_PRLIMIT_BIN",
+          "accepted_network_isolation_backends": [
+            "bubblewrap",
+            "unshare-net"
+          ],
+          "network_sandbox_config_constant": "MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN",
+          "proc_open_required": true,
+          "non_root_worker_required": true,
+          "php_binary_required_for_lint": true,
+          "wordpress_self_repair_allowed": false,
+          "automatic_install_allowed": false,
+          "weaker_unsandboxed_fallback_allowed": false,
+          "developer_lane_remains_blocked_until_reverified": true,
+          "governed_write_sibling_lane_may_remain_available": true,
+          "production_mutation_allowed": false
+        }
       },
       "recovery": {
         "rate_limit_topology_failure": {
