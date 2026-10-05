@@ -567,6 +567,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'budget_ms' => $budget_ms,
 			'request_metrics' => $request_metrics,
 			'performance_observation' => $performance_observation,
+			'recommended_next_step' => self::session_safe_next_step( $partial, $subject_blockers ),
 			'deep_checks_deferred' => $deep_checks_deferred,
 			'release_acceptance_deferred_checks' => $deep_checks_deferred,
 			'fixed_bundle_order' => self::bundle_names(),
@@ -843,6 +844,13 @@ final class MAD4B_SCP_Read_Consistency {
 				'comparison_required' => ! empty( $report['performance_observation']['comparison_required'] ),
 				'comparison_baseline_scope' => isset( $report['performance_observation']['comparison_baseline_scope'] ) ? (string) $report['performance_observation']['comparison_baseline_scope'] : '',
 				'client_action' => isset( $report['performance_observation']['client_action'] ) ? (string) $report['performance_observation']['client_action'] : '',
+			) : array(),
+			'recommended_next_step' => isset( $report['recommended_next_step'] ) && is_array( $report['recommended_next_step'] ) ? array(
+				'action' => isset( $report['recommended_next_step']['action'] ) ? (string) $report['recommended_next_step']['action'] : '',
+				'ability' => isset( $report['recommended_next_step']['ability'] ) ? (string) $report['recommended_next_step']['ability'] : '',
+				'read_only' => ! empty( $report['recommended_next_step']['read_only'] ),
+				'explicit_authority_required' => ! empty( $report['recommended_next_step']['explicit_authority_required'] ),
+				'automatic_apply_allowed' => false,
 			) : array(),
 			'section_digests' => array(),
 			'session_termination_count' => isset( $report['session_termination_count'] ) ? max( 0, (int) $report['session_termination_count'] ) : 0,
@@ -1434,6 +1442,46 @@ final class MAD4B_SCP_Read_Consistency {
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
+		);
+	}
+
+	private static function session_safe_next_step( $partial, array $subject_blockers ) {
+		$subject_blockers = self::bounded_scalar_list( $subject_blockers, 8 );
+		if ( $partial ) {
+			return array(
+				'action' => 'inspect_partial_report_then_retry_missing_scope',
+				'ability' => '',
+				'read_only' => true,
+				'explicit_authority_required' => false,
+				'automatic_apply_allowed' => false,
+			);
+		}
+		if ( in_array( 'write_authority_not_effective', $subject_blockers, true ) ) {
+			return array(
+				'action' => 'request_full_staging_authority_handshake',
+				'ability' => 'mad4b/full-staging-authority-handshake',
+				'why' => 'current_write_authority_or_candidate_binding_requires_reconciliation',
+				'read_only' => true,
+				'explicit_authority_required' => false,
+				'automatic_apply_allowed' => false,
+			);
+		}
+		if ( in_array( 'skills_runtime_not_effective', $subject_blockers, true ) ) {
+			return array(
+				'action' => 'inspect_then_explicitly_reconcile_managed_skills',
+				'ability' => 'mad4b/reconcile-managed-skills',
+				'why' => 'managed_skills_runtime_not_effective',
+				'read_only' => false,
+				'explicit_authority_required' => true,
+				'automatic_apply_allowed' => false,
+			);
+		}
+		return array(
+			'action' => 'continue_with_single_target_operation',
+			'ability' => '',
+			'read_only' => true,
+			'explicit_authority_required' => false,
+			'automatic_apply_allowed' => false,
 		);
 	}
 
