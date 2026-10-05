@@ -187,7 +187,7 @@
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
-  "last_reviewed_master_parent_sha": "a3ef595a5a8e6f8e41566c6c59073cc43d07affb",
+  "last_reviewed_master_parent_sha": "a2208930c675e9a5889fa0ac73a4cd964b63569b",
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
@@ -201,7 +201,7 @@
     "general_distribution_artifact_id": 10838403565,
     "runtime_affecting_changes_since_release": true,
     "repository_changes_since_release_are_non_runtime": false,
-    "recapture_reason": "rc.92 changes the WordPress-native governed self-update UX while retaining the signed release channel, exact archive/provenance verification, rollback and authority quarantine semantics; recapture the exact post-merge runtime package before Staging deployment."
+    "recapture_reason": "rc.94 changes runtime recovery, capability-local provider convergence, admin route compatibility, Context persistence, and governed behavioral recertification boundaries; recapture the exact post-merge runtime package before Staging deployment."
   },
   "runtime_identity_paths": [
     "wp-content/plugins/mad4b-site-control-plane/",
