@@ -27,6 +27,10 @@ mad4b_release_assert( 39 === (int) $freeze['required_phase_count'] && 38 === (in
 mad4b_release_assert( false === $freeze['new_required_phases_allowed'] && false === $freeze['new_capability_families_allowed'], 'scope growth denied' );
 mad4b_release_assert( true === $freeze['future_capability_work_requires_new_pr'], 'future capability new PR' );
 mad4b_release_assert( false === $freeze['task_ledger_ratio_is_readiness_metric'], 'ledger ratio not readiness' );
+mad4b_release_assert( 837 === (int) $freeze['frozen_task_count'], 'frozen task count' );
+mad4b_release_assert( 34 === (int) $freeze['frozen_workstream_count'], 'frozen workstream count' );
+mad4b_release_assert( 80 === (int) $freeze['frozen_phase38_task_count'], 'frozen phase38 task count' );
+mad4b_release_assert( 35 === (int) $freeze['max_change_slice_files'], 'slice budget frozen' );
 
 $external = mad4b_release_json( $repo . '/wp-content/plugins/mad4b-site-control-plane/config/external-machine-diagnostic-policy.json' );
 mad4b_release_assert( false === $external['authorizing'] && 'none' === $external['bypass_mode'], 'diagnostic non-authorizing no-bypass' );
@@ -49,6 +53,9 @@ mad4b_release_count_equal( $projection['phase_38_adaptive_search'], mad4b_releas
 mad4b_release_assert( 80 === count( $phase38 ) && 80 === mad4b_release_counts( $phase38 )['DONE'], 'phase38 80/80' );
 
 $workstreams = isset( $closure['workstreams'] ) && is_array( $closure['workstreams'] ) ? $closure['workstreams'] : array();
+mad4b_release_assert( (int) $freeze['frozen_task_count'] === count( $tasks ), 'task count remains frozen' );
+mad4b_release_assert( (int) $freeze['frozen_workstream_count'] === count( $workstreams ), 'workstream count remains frozen' );
+mad4b_release_assert( (int) $freeze['frozen_phase38_task_count'] === count( $phase38 ), 'phase38 count remains frozen' );
 $core_ids = array_flip( $policy['profiles']['control_plane_core']['required_workstream_ids'] );
 $optional_ids = array_flip( $policy['profiles']['control_plane_core']['optional_workstream_ids'] );
 $blocking_priorities = array_flip( $policy['required_blocking_priorities'] );
