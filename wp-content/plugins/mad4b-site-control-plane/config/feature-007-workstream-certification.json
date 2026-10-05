@@ -359,13 +359,15 @@
       "repository_paths": [
         "includes/class-mad4b-scp-decommission-portability.php",
         "includes/class-mad4b-scp-decommission-governance.php",
-        "tests/decommission-governance-contract.php"
+        "includes/class-mad4b-scp-portability-import.php",
+        "tests/decommission-governance-contract.php",
+        "tests/portability-import-contract.php"
       ],
       "live_evidence": {
         "required": true,
         "production_certification_stage": null,
         "additional_requirements": [
-          "governed_import_execution_protocol",
+          "live_certified_revoke_remove_rehydration",
           "live_decommission_rehearsal"
         ]
       }
