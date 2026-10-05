@@ -93,10 +93,24 @@ final class MAD4B_SCP_Content_Experience_Media {
 				if ( in_array( 'license', $usage_fields, true ) && empty( $licenses ) ) {
 					return new WP_Error( 'mad4b_content_experience_media_usage_licenses_required', 'Media usage license is enabled but no exact license allowlist is configured.', array( 'key' => $key ) );
 				}
+				$publish_rights_policy = isset( $spec['publish_rights_policy'] ) ? sanitize_key( (string) $spec['publish_rights_policy'] ) : 'none';
+				if ( ! in_array( $publish_rights_policy, array( 'none', 'require_valid' ), true ) ) {
+					return new WP_Error( 'mad4b_content_experience_media_rights_policy_invalid', 'Media publish rights policy must be none or require_valid.', array( 'key' => $key ) );
+				}
+				$expiry_required_licenses = self::normalize_string_list( isset( $spec['expiry_required_licenses'] ) ? $spec['expiry_required_licenses'] : array(), 32, '/^[a-z0-9][a-z0-9._-]*$/' );
+				if ( array_diff( $expiry_required_licenses, $licenses ) ) {
+					return new WP_Error( 'mad4b_content_experience_media_rights_license_unknown', 'Expiry-required licenses must be a subset of the exact license allowlist.', array( 'key' => $key ) );
+				}
+				if ( 'require_valid' === $publish_rights_policy && ! empty( $expiry_required_licenses )
+					&& ( ! in_array( 'license', $usage_fields, true ) || ! in_array( 'license_expires_on', $usage_fields, true ) ) ) {
+					return new WP_Error( 'mad4b_content_experience_media_rights_fields_required', 'Publish rights enforcement requires license and license_expires_on usage fields.', array( 'key' => $key ) );
+				}
 				$row['references_field'] = $reference;
 				$row['usage_fields'] = $usage_fields;
 				$row['roles'] = $roles;
 				$row['licenses'] = $licenses;
+				$row['publish_rights_policy'] = $publish_rights_policy;
+				$row['expiry_required_licenses'] = $expiry_required_licenses;
 			}
 			$result[ $key ] = $row;
 		}
