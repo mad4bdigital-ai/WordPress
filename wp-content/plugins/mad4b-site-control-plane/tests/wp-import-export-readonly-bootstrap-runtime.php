@@ -46,8 +46,11 @@ if ( 'oversized_model' === $case ) file_put_contents( $plugin . '/models/import/
 if ( 'oversized_plugin' === $case ) file_put_contents( $plugin . '/wp-all-import-pro.php', $provider . str_repeat( ' ', 2097153 ) );
 require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-wp-import-export-adapter.php';
 $adapter = new MAD4B_SCP_WP_Import_Export_Adapter(); $available = $adapter->is_available();
+$blocker_property = new ReflectionProperty( 'MAD4B_SCP_WP_Import_Export_Adapter', 'import_readonly_autoload_blocker' );
+$blocker_property->setAccessible( true );
+$autoload_blocker = (string) $blocker_property->getValue();
 if ( in_array( $case, array( 'drift', 'baseline' ), true ) ) {
- check( $available, 'Compatible local models were blocked by artifact drift' );
+ check( $available, 'Compatible local models were blocked by artifact drift: ' . $autoload_blocker );
  check( array_keys( $paths ) === PMXI_Plugin::$autoloaded, 'Class allowlist/order changed' );
  check( array() === $adapter->ability_names()['content'] && array() === $adapter->ability_names()['admin'], 'Structural read discovery mounted an execution ability' );
 } else {
