@@ -86,6 +86,88 @@ for key in (
 ):
     require(authority_handoff.get(key) is False, f"post-deploy authority handoff widened forbidden authority: {key}")
 
+operational = ((handoff.get("post_deploy") or {}).get("operational_readiness") or {})
+require(
+    operational.get("contract") == "mad4b.staging-operational-readiness.v1",
+    "lane-aware post-deploy operational readiness contract missing",
+)
+require(
+    operational.get("truth_model") == "lane_aware_fail_closed",
+    "post-deploy operational readiness truth model drift",
+)
+require(
+    operational.get("required_sequence") == [
+        "exact_runtime_identity",
+        "certified_mcp_protocol_profile",
+        "query_monitor_observer_attribution",
+        "database_topology_write_safe",
+        "chatgpt_catalog_preflight",
+        "abuse_budget_discovery_admission",
+        "current_write_authority_and_candidate_binding",
+        "provider_closure_current_authority_consistency",
+        "session_safe_subject_readiness",
+        "lane_level_operational_readiness",
+    ],
+    "post-deploy operational readiness sequence drift",
+)
+truth_sources = operational.get("read_only_truth_sources") or {}
+require(truth_sources.get("runtime_and_session") == "mad4b/session-safe-diagnostics", "session-safe operational truth source drift")
+require(truth_sources.get("catalog_and_protocol") == "mad4b/chatgpt-tool-projection-status", "catalog/protocol operational truth source drift")
+require(truth_sources.get("current_write_authority") == "mad4b/staging-write-authority-convergence-handshake", "write authority operational truth source drift")
+require(truth_sources.get("provider_closure") == "mad4b/provider-closure-matrix", "provider closure operational truth source drift")
+require(truth_sources.get("full_authority_and_lanes") == "mad4b/full-staging-authority-handshake", "lane readiness operational truth source drift")
+
+smoke = operational.get("smoke_checks") or {}
+require(smoke.get("discovery_surface") == "mad4b/tool-discover", "operational discovery smoke surface drift")
+for key in (
+    "discovery_must_not_fail_on_certified_query_monitor_observer",
+    "rate_limit_storage_must_report_actionable_topology_recovery",
+    "direct_catalog_must_remain_within_tool_and_serialized_byte_budgets",
+):
+    require(smoke.get(key) is True, f"operational smoke invariant missing: {key}")
+
+degraded = operational.get("graceful_degradation") or {}
+require(
+    degraded.get("unavailable_lane_policy") == "fail_closed_without_disabling_ready_sibling_lanes",
+    "graceful degradation policy drift",
+)
+require(degraded.get("developer_host_limitations_do_not_false_mark_governed_write_unready") is True, "Developer host limits must not falsely disable governed Write")
+require(degraded.get("production_is_never_inferred_from_staging_lane_readiness") is True, "Staging lane readiness must never imply Production")
+require("database_topology_write_safe" in (degraded.get("governed_write_lane_requires") or []), "governed Write lane lost DB topology gate")
+require("process_backend_ready" in (degraded.get("developer_lane_requires") or []), "Developer lane lost process backend gate")
+require("normal_no_network_execution_ready" in (degraded.get("developer_lane_requires") or []), "Developer lane lost network-isolation gate")
+
+recovery = operational.get("recovery") or {}
+rate_recovery = recovery.get("rate_limit_topology_failure") or {}
+require(rate_recovery.get("read_first") == "mad4b/session-safe-diagnostics", "rate-limit recovery must start with session-safe diagnostics")
+require(rate_recovery.get("bounded_repair") == "mad4b/query-monitor-db-attribution-bootstrap", "rate-limit recovery lost bounded Query Monitor repair")
+require(rate_recovery.get("blind_retry_allowed") is False, "rate-limit topology recovery must forbid blind retries")
+write_recovery = recovery.get("write_authority_drift") or {}
+require(write_recovery.get("plan_first") == "mad4b/staging-write-authority-convergence-handshake", "write authority recovery plan drift")
+require(write_recovery.get("apply") == "mad4b/staging-write-authority-convergence-apply", "write authority recovery apply drift")
+require(write_recovery.get("automatic_apply_allowed") is False, "write authority recovery must remain explicit")
+protocol_recovery = recovery.get("protocol_profile_drift") or {}
+require(protocol_recovery.get("exact_adapter_pair_certification_required") is True, "protocol recovery must remain exact-pair certified")
+require(protocol_recovery.get("fallback_protocol_negotiation_allowed") is False, "protocol recovery must not silently downgrade")
+catalog_recovery = recovery.get("catalog_refresh") or {}
+require(catalog_recovery.get("visibility_change_never_changes_execution_authority") is True, "catalog refresh must not widen authority")
+
+acceptance = operational.get("acceptance") or {}
+for key in (
+    "operational_ready_requires_all_requested_lanes_ready",
+    "degraded_mode_is_explicit",
+    "available_lanes_must_be_reported",
+    "blocked_lanes_must_be_reported",
+    "blockers_must_have_recovery_action",
+):
+    require(acceptance.get(key) is True, f"operational acceptance invariant missing: {key}")
+for key in (
+    "automatic_authority_mutation_allowed",
+    "production_mutation_allowed",
+    "generic_raw_sql_breakglass_included",
+):
+    require(acceptance.get(key) is False, f"operational acceptance widened forbidden authority: {key}")
+
 adapter_profiles = (profiles.get("providers") or {}).get("mcp_adapter") or {}
 p070 = adapter_profiles.get("0.7.0") or {}
 require(p070.get("version") == "0.7.0", "MCP Adapter 0.7.0 exact profile missing")
