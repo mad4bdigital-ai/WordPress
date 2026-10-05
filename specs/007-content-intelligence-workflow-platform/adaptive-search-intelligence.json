@@ -128,11 +128,11 @@
     "contract": "mad4b.adaptive-search-intelligence-review.v1",
     "document": "adaptive-search-intelligence-review.md",
     "ledger": "adaptive-search-intelligence-review.json",
-    "status": "APPROVED_P0_CLOSED_P1_OPEN",
+    "status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
     "score": 88,
     "p0_open": 0,
-    "p1_open": 6,
-    "score_semantics": "baseline_pre_p0_closure_review_score",
+    "p1_open": 0,
+    "score_semantics": "historical_pre_closure_review_score",
     "p0_closed": 12,
     "p0_closure": {
       "contract": "mad4b.adaptive-search-p0-closure.v1",
@@ -144,7 +144,12 @@
       "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
       "authorizing": false,
       "pre_staging_run": 37239748433
-    }
+    },
+    "p1_closed": 6,
+    "repository_runtime_status": "REPOSITORY_RUNTIME_VALIDATED",
+    "live_provider_account_certification": "NOT_CLAIMED",
+    "production_authorized": false,
+    "authorizing": false
   },
   "phase_38a_closure": {
     "contract": "mad4b.adaptive-search-phase-38a-closure.v1",
