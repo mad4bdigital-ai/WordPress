@@ -244,6 +244,25 @@ try {
 	$parent_result = $media_adapter->set_parent( array( 'attachment_id' => $image_one, 'parent_post_id' => $post_id, 'expected_parent_id' => 0 ) );
 	$check( ! is_wp_error( $parent_result ) && $post_id === (int) get_post( $image_one )->post_parent, 'Attachment-to-trip parent binding failed.' );
 
+	$trip_media_search = $media_adapter->search( array( 'parent_post_id' => $post_id, 'image_only' => true, 'limit' => 10 ) );
+	$check( ! is_wp_error( $trip_media_search ) && 1 === (int) $trip_media_search['count'], 'Trip-scoped media search did not isolate the attached image.' );
+	$trip_media_item = $trip_media_search['items'][0];
+	$check( $image_one === (int) $trip_media_item['media']['id'], 'Trip-scoped media search returned the wrong attachment.' );
+	$check( 'summary' === $trip_media_item['media']['detail_level'] && ! isset( $trip_media_item['media']['metadata'], $trip_media_item['media']['sizes'], $trip_media_item['media']['description'] ), 'Media search leaked deep attachment metadata instead of compact summary state.' );
+	$deep_trip_media = $media_adapter->get_media( array( 'attachment_id' => $image_one ) );
+	$check( ! is_wp_error( $deep_trip_media ) && 'full' === $deep_trip_media['detail_level'] && isset( $deep_trip_media['media']['metadata'], $deep_trip_media['media']['sizes'], $deep_trip_media['media']['description'] ), 'Deep media read did not return full attachment metadata.' );
+	$check( hash_equals( (string) $trip_media_item['sha256'], (string) $deep_trip_media['sha256'] ), 'Compact media search and deep media get disagree on optimistic-concurrency identity.' );
+	$check( 1600 === (int) $trip_media_item['media']['width'] && 900 === (int) $trip_media_item['media']['height'] && 1.777778 === (float) $trip_media_item['media']['aspect_ratio'], 'Compact media summary lost image dimensions/aspect ratio.' );
+
+	$unattached_images = $media_adapter->search( array( 'unattached_only' => true, 'image_only' => true, 'limit' => 10 ) );
+	$check( ! is_wp_error( $unattached_images ), 'Unattached image search failed.' );
+	$unattached_ids = array_map( static function ( $row ) { return (int) $row['media']['id']; }, (array) $unattached_images['items'] );
+	$check( in_array( $image_two, $unattached_ids, true ) && ! in_array( $image_one, $unattached_ids, true ), 'Unattached media search did not respect attachment parent identity.' );
+	$parent_conflict = $media_adapter->search( array( 'parent_post_id' => $post_id, 'unattached_only' => true ) );
+	$check( is_wp_error( $parent_conflict ) && 'mad4b_media_search_parent_conflict' === $parent_conflict->get_error_code(), 'Media search accepted contradictory parent filters.' );
+	$mime_conflict = $media_adapter->search( array( 'image_only' => true, 'mime_type' => 'application/pdf' ) );
+	$check( is_wp_error( $mime_conflict ) && 'mad4b_media_search_mime_conflict' === $mime_conflict->get_error_code(), 'Media search accepted an image-only/non-image MIME contradiction.' );
+
 	$current_for_media_guard = get_post( $post_id );
 	$bad_gallery_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
 		'post_id' => $post_id,
