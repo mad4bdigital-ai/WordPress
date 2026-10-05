@@ -42,6 +42,50 @@ require(
     "staging deployment handoff Adapter version drifted from runtime release policy",
 )
 
+authority_handoff = ((handoff.get("post_deploy") or {}).get("authority_handoff") or {})
+require(
+    authority_handoff.get("contract") == "mad4b.staging-write-post-deploy-handoff.v1",
+    "post-deploy governed write authority handoff contract missing",
+)
+require(
+    authority_handoff.get("current_truth_source") == "mad4b/staging-write-authority-convergence-handshake",
+    "post-deploy authority handoff must use the narrow read-only convergence handshake",
+)
+require(
+    authority_handoff.get("compatibility_plan_ability") == "mad4b/staging-write-grant-reconciliation-plan",
+    "post-deploy authority handoff compatibility plan missing",
+)
+require(
+    authority_handoff.get("apply_ability") == "mad4b/staging-write-authority-convergence-apply",
+    "post-deploy authority handoff must use narrow write-only convergence apply",
+)
+require(
+    authority_handoff.get("required_confirmation") == "ENABLE GOVERNED STAGING WRITE AUTHORITY",
+    "post-deploy authority handoff confirmation drift",
+)
+for key in (
+    "exact_runtime_identity_required",
+    "exact_site_profile_binding_required",
+    "exact_grant_inventory_required",
+    "exact_transport_grant_inventory_required",
+    "read_only_plan_before_apply",
+    "explicit_apply_required",
+    "fail_closed_on_allowlist_drift",
+    "same_cycle_readback_required",
+    "append_only_audit_required",
+):
+    require(authority_handoff.get(key) is True, f"post-deploy authority handoff invariant missing: {key}")
+for key in (
+    "automatic_apply_allowed",
+    "production_allowed",
+    "developer_authority_included",
+    "developer_breakglass_included",
+    "generic_raw_sql_breakglass_included",
+    "wildcard_grants_allowed",
+    "caller_supplied_provider_allowed",
+):
+    require(authority_handoff.get(key) is False, f"post-deploy authority handoff widened forbidden authority: {key}")
+
 adapter_profiles = (profiles.get("providers") or {}).get("mcp_adapter") or {}
 p070 = adapter_profiles.get("0.7.0") or {}
 require(p070.get("version") == "0.7.0", "MCP Adapter 0.7.0 exact profile missing")
@@ -225,6 +269,11 @@ require("generic_plugin_update_for_adapter_allowed' => false" in runtime, "gener
 self_update = (INCLUDES / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 require("runtime_release_set" in self_update, "Control Plane update manifest does not carry runtime release-set identity")
 require("mad4b_self_update_runtime_release_set_adapter_url_invalid" in self_update, "runtime release-set Adapter URL is not validated")
+require("mad4b.staging-write-post-deploy-handoff.v1" in self_update, "self-update authority handoff projection missing")
+require("'authority_handoff' => $authority_handoff" in self_update, "native release plan does not expose independent authority handoff truth")
+require("'current_authority_blockers' => $current_blockers" in self_update, "self-update projection drops exact current authority blockers")
+require("'automatic_apply_allowed' => false" in self_update, "post-release authority handoff must never auto-apply")
+require("'developer_breakglass_included' => false" in self_update, "post-release authority handoff must exclude Developer Breakglass")
 
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 require("class-mad4b-scp-runtime-release-set.php" in main, "runtime release-set class is not loaded")
