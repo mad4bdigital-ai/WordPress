@@ -522,7 +522,10 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( self::contains_any( $message, array( 'runtime maintenance', 'maintenance is active', 'mad4b_mcp_runtime_maintenance_busy' ) ) ) {
 			return array( 'category' => 'runtime_maintenance', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'retry_after_runtime_maintenance' );
 		}
-		if ( self::contains_any( $message, array( '429', 'rate limit', 'too many requests' ) ) ) {
+		if ( self::contains_any( $message, array( 'rate-limit writer topology is unavailable', 'rate storage unavailable', 'mad4b_abuse_rate_storage_unavailable' ) ) ) {
+			return array( 'category' => 'rate_storage', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'repair_rate_storage_then_retry' );
+		}
+		if ( self::contains_any( $message, array( '429', 'rate limit', 'rate-limit', 'too many requests' ) ) ) {
 			return array( 'category' => 'rate_limit', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'backoff_then_retry' );
 		}
 		if ( self::contains_any( $message, array( 'timeout', 'timed out' ) ) || false !== strpos( $class, 'timeout' ) ) {
