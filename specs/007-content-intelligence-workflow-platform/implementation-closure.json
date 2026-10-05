@@ -1143,11 +1143,25 @@
         "unknown_inventory_dimensions_fail_closed": true,
         "safe_drain_allowlist": true,
         "resume_requires_fresh_governed_plan": true,
-        "finalization_requires_external_revocation_and_export_receipts": true
+        "finalization_requires_external_revocation_and_export_receipts": true,
+        "portability_import_contract": "mad4b.portability-import-quarantine.v1",
+        "portability_import_plan_contract": "mad4b.portability-import-quarantine-plan.v1",
+        "portability_import_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-portability-import.php",
+        "portability_import_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/portability-import-contract.php",
+        "quarantine_first_import": true,
+        "validated_bundle_rechecked_at_apply": true,
+        "exact_target_site_binding": true,
+        "rollback_snapshot_binding": true,
+        "raw_bundle_payload_persisted": false,
+        "credentials_imported": false,
+        "grants_imported": false,
+        "production_authority_imported": false,
+        "public_content_mutated": false,
+        "domain_release_requires_fresh_governed_plan": true
       },
       "remainder": [
-        "bind export-bundle builder payload sections to certified live governed provider/site inventory producers instead of caller-supplied snapshots",
-        "implement certified revoke/remove adapters and governed import execution protocol behind explicit authority and rollback/recovery policy",
+        "bind export-bundle payload sections to certified live governed provider/site inventory producers instead of caller-supplied snapshots",
+        "certify domain-specific revoke/remove/rehydration adapters through the quarantine-first protocol with rollback/recovery evidence",
         "prove complete ETG Staging provider/site decommission rehearsal including late callbacks and central registry cleanup"
       ]
     }
