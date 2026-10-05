@@ -23,8 +23,10 @@ final class MAD4B_SCP_Database_Topology {
 		if ( ! $refresh && is_array( self::$cache ) ) return self::$cache;
 		$blockers = array();
 		$dropin = defined( 'WP_CONTENT_DIR' ) ? trailingslashit( WP_CONTENT_DIR ) . 'db.php' : '';
-		$dropin_present = '' !== $dropin && is_file( $dropin );
-		if ( $dropin_present ) $blockers[] = 'uncertified_database_router_dropin';
+		$dropin_present = '' !== $dropin && ( file_exists( $dropin ) || is_link( $dropin ) );
+		$dropin_certification = self::observer_dropin_certification( $dropin );
+		$observer_dropin_certified = $dropin_present && ! empty( $dropin_certification['certified'] );
+		if ( $dropin_present && ! $observer_dropin_certified ) $blockers[] = 'uncertified_database_router_dropin';
 
 		$row = null;
 		if ( isset( $wpdb ) && is_object( $wpdb ) && method_exists( $wpdb, 'get_row' ) ) {
@@ -66,10 +68,13 @@ final class MAD4B_SCP_Database_Topology {
 
 		$status = array(
 			'contract' => self::CONTRACT,
-			'mode' => $dropin_present ? 'uncertified_router' : 'single_wpdb_writer_session',
+			'mode' => $dropin_present ? ( $observer_dropin_certified ? 'certified_observer_dropin_single_wpdb_writer_session' : 'uncertified_router' ) : 'single_wpdb_writer_session',
 			'database_dropin_present' => $dropin_present,
+			'database_dropin_observer_certified' => $observer_dropin_certified,
+			'database_dropin_ownership' => isset( $dropin_certification['ownership'] ) ? (string) $dropin_certification['ownership'] : '',
 			'database_dropin_path_sha256' => $dropin_present ? hash( 'sha256', (string) $dropin ) : '',
 			'router_certified' => false,
+			'observer_dropin_certified' => $observer_dropin_certified,
 			'connection_id' => $connection_id,
 			'database_name' => $database_name,
 			'server_hostname' => $server_hostname,
@@ -77,7 +82,7 @@ final class MAD4B_SCP_Database_Topology {
 			'server_read_only' => 0 !== $server_read_only,
 			'server_fingerprint' => $server_fingerprint,
 			'connection_fingerprint' => $connection_fingerprint,
-			'read_your_writes' => ! $dropin_present && 0 === $server_read_only && $connection_id > 0,
+			'read_your_writes' => ( ! $dropin_present || $observer_dropin_certified ) && 0 === $server_read_only && $connection_id > 0,
 			'readback_policy' => 'same_connection_id_and_server_fingerprint',
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'ready' => empty( $blockers ),
@@ -124,6 +129,24 @@ final class MAD4B_SCP_Database_Topology {
 			}
 		}
 		return $current;
+	}
+
+	private static function observer_dropin_certification( $dropin ) {
+		$out = array(
+			'certified' => false,
+			'ownership' => 'none',
+		);
+		if ( '' === (string) $dropin || ( ! file_exists( $dropin ) && ! is_link( $dropin ) ) ) return $out;
+		$out['ownership'] = 'untrusted';
+		if ( ! class_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge' )
+			|| ! method_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'db_attribution_status' ) ) return $out;
+		$status = MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status();
+		if ( ! is_array( $status ) || empty( $status['dropin_exists'] ) || empty( $status['dropin_owned_by_query_monitor'] ) || ! empty( $status['dropin_conflict'] ) ) return $out;
+		$ownership = isset( $status['dropin_ownership'] ) ? sanitize_key( (string) $status['dropin_ownership'] ) : '';
+		if ( ! in_array( $ownership, array( 'query_monitor_symlink', 'query_monitor_exact_copy', 'mad4b_bounded_loader' ), true ) ) return $out;
+		$out['certified'] = true;
+		$out['ownership'] = $ownership;
+		return $out;
 	}
 
 	private static function digest( $value ) {
