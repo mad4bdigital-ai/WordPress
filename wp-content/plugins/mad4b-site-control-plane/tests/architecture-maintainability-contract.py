@@ -102,7 +102,7 @@ if over_limit and not grandfathered:
         raise SystemExit("CHANGE_SLICE_EXHAUSTIVE_OWNERSHIP_REQUIRED")
     if int(manifest.get("changed_file_count") or -1)!=len(changed):
         raise SystemExit("CHANGE_SLICE_FILE_COUNT_INVALID")
-    scope_material="\\n".join(sorted(changed))+"\\n"
+    scope_material="\n".join(sorted(changed))+"\n"
     expected_scope_sha256=hashlib.sha256(scope_material.encode("utf-8")).hexdigest()
     observed_scope_sha256=str(manifest.get("changed_paths_sha256") or "")
     if observed_scope_sha256!=expected_scope_sha256:
