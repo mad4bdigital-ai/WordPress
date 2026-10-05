@@ -594,10 +594,12 @@ final class MAD4B_SCP_Read_Consistency {
 	private static function session_safe_operator_summary( array $sections, $partial, array $subject_blockers, array $snapshot ) {
 		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
 		$write = isset( $runtime_checks['write_authority']['summary'] ) && is_array( $runtime_checks['write_authority']['summary'] ) ? $runtime_checks['write_authority']['summary'] : array();
+		$adapter_lifecycle = isset( $runtime_checks['adapter_lifecycle']['summary'] ) && is_array( $runtime_checks['adapter_lifecycle']['summary'] ) ? $runtime_checks['adapter_lifecycle']['summary'] : array();
 		$skills = isset( $runtime_checks['skills_runtime']['summary'] ) && is_array( $runtime_checks['skills_runtime']['summary'] ) ? $runtime_checks['skills_runtime']['summary'] : array();
 		$topology = isset( $runtime_checks['database_topology']['summary'] ) && is_array( $runtime_checks['database_topology']['summary'] ) ? $runtime_checks['database_topology']['summary'] : array();
 		$protocol = isset( $runtime_checks['mcp_protocol_profile']['summary'] ) && is_array( $runtime_checks['mcp_protocol_profile']['summary'] ) ? $runtime_checks['mcp_protocol_profile']['summary'] : array();
 
+		$adapter_lifecycle_ready = array_key_exists( 'ready', $adapter_lifecycle ) && null !== $adapter_lifecycle['ready'] ? (bool) $adapter_lifecycle['ready'] : null;
 		$write_ready = array_key_exists( 'effective_authority_ready', $write ) ? (bool) $write['effective_authority_ready'] : null;
 		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) ? (bool) $write['candidate_binding_match'] : null;
 		$grant_snapshot_ready = array_key_exists( 'current_grant_snapshot_ready', $write ) ? (bool) $write['current_grant_snapshot_ready'] : null;
@@ -661,6 +663,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'reasons' => $reasons,
 			'next_actions' => $actions,
 			'signals' => array(
+				'adapter_lifecycle_ready' => $adapter_lifecycle_ready,
 				'write_authority_ready' => $write_ready,
 				'candidate_binding_match' => $candidate_match,
 				'current_grant_snapshot_ready' => $grant_snapshot_ready,
@@ -712,6 +715,7 @@ final class MAD4B_SCP_Read_Consistency {
 		$name = sanitize_key( (string) $name );
 		$scalar_keys = array(
 			'contract', 'ready', 'state', 'supported', 'configured', 'environment', 'revision',
+			'expected_count', 'registered_count', 'registration_only', 'authority_evaluated',
 			'profile_digest', 'exact_profile_bound', 'write_enabled', 'skills_enabled',
 			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
 			'artifact_identity', 'mcp_adapter_version', 'runtime_manifest_match', 'stale',
@@ -747,7 +751,7 @@ final class MAD4B_SCP_Read_Consistency {
 			$value = $data[ $key ];
 			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
 		}
-		foreach ( array( 'blockers', 'current_readiness_blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
+		foreach ( array( 'missing_abilities', 'blockers', 'current_readiness_blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
 			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
 		}
 		foreach ( array( 'current', 'target', 'build', 'connection', 'write_authority' ) as $nested_key ) {
@@ -936,6 +940,7 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( 'runtime' === $bundle ) {
 			return array(
 				'write_authority' => static function () { return self::session_safe_write_authority_projection(); },
+				'adapter_lifecycle' => static function () { return self::adapter_lifecycle_projection(); },
 				'database_topology' => static function () {
 					return class_exists( 'MAD4B_SCP_Database_Topology' ) && method_exists( 'MAD4B_SCP_Database_Topology', 'status' )
 						? MAD4B_SCP_Database_Topology::status( false )
@@ -1263,6 +1268,42 @@ final class MAD4B_SCP_Read_Consistency {
 			'write_inventory_fingerprint', 'provider_blocked_fingerprint', 'wildcard_grants',
 			'breakglass_included', 'production_auto_enable', 'breakglass_auto_enable', 'observed_at',
 		) );
+	}
+
+	private static function adapter_lifecycle_projection() {
+		$expected = array(
+			'mad4b/adapters-inventory',
+			'media/search',
+			'media/get',
+			'media/update-metadata',
+			'fluentforms/status',
+			'fluentforms/list-forms',
+			'jetformbuilder/status',
+			'litespeed/status',
+			'mad4b/content-modeling-context',
+			'mad4b/taxonomy-get-term',
+			'mad4b/taxonomy-update-term',
+			'mad4b/translation-status',
+			'mad4b/translation-list-languages',
+			'mad4b/translation-set-post-language',
+		);
+		$missing = array();
+		foreach ( $expected as $ability_name ) {
+			if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_name ) ) $missing[] = $ability_name;
+		}
+		return array(
+			'contract' => 'mad4b.adapter-lifecycle-projection.v1',
+			'ready' => empty( $missing ),
+			'state' => empty( $missing ) ? 'ready' : 'adapter_ability_lifecycle_incomplete',
+			'expected_count' => count( $expected ),
+			'registered_count' => count( $expected ) - count( $missing ),
+			'missing_abilities' => $missing,
+			'registration_only' => true,
+			'authority_evaluated' => false,
+			'read_only' => true,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 	}
 
 	private static function skills_projection() {
