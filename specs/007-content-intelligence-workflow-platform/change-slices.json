@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "a2208930c675e9a5889fa0ac73a4cd964b63569b",
-  "changed_file_count": 51,
+  "changed_file_count": 50,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -14,7 +14,6 @@
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         ".github/workflows/feature-007-spec-ci.yml",
         ".github/workflows/mad4b-admin-performance.yml",
-        ".github/workflows/mad4b-provider-behavioral-recertification.yml",
         "specs/007-content-intelligence-workflow-platform/adaptive-runtime-convergence.md",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence-review.json",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence-review.md",
