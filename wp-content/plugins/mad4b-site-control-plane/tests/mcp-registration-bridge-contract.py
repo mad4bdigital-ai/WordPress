@@ -60,6 +60,9 @@ for marker in (
     'public static function register_registry_categories()',
     'public static function register_core_abilities()',
     'public static function register_registry_abilities()',
+    'private static function request_needs_adapter_ability_registry()',
+    "'mad4b-chatgpt' === MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id()",
+    'self::prepare_registry( true );',
     'self::$registry->register_defaults();',
     'self::$servers->register_servers( $adapter );',
     "'core_ability_hook_bound'",
@@ -71,6 +74,23 @@ for marker in (
     "'adapter_init_seen_before_bridge_boot'",
 ):
     require(bridge, marker, 'bridge-contract')
+
+# ChatGPT fixed-dispatch needs Adapter Ability definitions in WordPress' canonical
+# registry, but must not materialize provider MCP servers merely to list tools.
+ability_registry_method = bridge.split(
+    'private static function request_needs_adapter_ability_registry()', 1
+)[1].split(
+    'private static function prepare_registry', 1
+)[0]
+require(ability_registry_method, "'mad4b-chatgpt'", 'chatgpt-adapter-definition-registration')
+require(ability_registry_method, 'current_request_is_protocol_hotpath()', 'chatgpt-adapter-definition-protocol-boundary')
+server_registration_method = bridge.split(
+    'public static function register_servers( $adapter )', 1
+)[1].split(
+    '/**\n\t * Lightweight', 1
+)[0]
+forbid(server_registration_method, 'request_needs_adapter_ability_registry()', 'chatgpt-no-provider-server-materialization')
+require(server_registration_method, 'request_needs_adapter_registry()', 'provider-server-materialization-stays-bounded')
 
 require(bridge, "endpoint_diagnostic_routing_server_id()", 'diagnostic-routing-before-registry-materialization')
 for marker in (
