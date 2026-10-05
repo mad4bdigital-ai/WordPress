@@ -305,5 +305,27 @@
     "live_provider_account_certification": "NOT_CLAIMED",
     "production_authorized": false,
     "authorizing": false
+  },
+  "release_closure_scope_freeze": {
+    "contract": "mad4b.feature007-release-scope-freeze.v1",
+    "state": "FROZEN_FOR_RELEASE_CLOSURE",
+    "required_phase_count": 39,
+    "max_phase": 38,
+    "new_required_phases_allowed": false,
+    "new_capability_families_allowed": false,
+    "defect_and_evidence_fixes_allowed": true,
+    "allowed_change_classes": [
+      "defect_fix",
+      "test_hardening",
+      "evidence_binding",
+      "staging_certification",
+      "release_readiness",
+      "documentation_accuracy",
+      "maintainability_decomposition"
+    ],
+    "future_capability_work_requires_new_pr": true,
+    "task_ledger_ratio_is_readiness_metric": false,
+    "live_evidence_cannot_be_closed_by_repository_metadata": true,
+    "authorizing": false
   }
 }
