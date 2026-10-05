@@ -98,7 +98,8 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-authorization.php';
 
 $fail = static function ( $message, $value = null ) {
-	fwrite( STDERR, 'FAIL canonical-capability-descriptor-consumers: ' . $message . ( null === $value ? '' : ' ' . json_encode( $value ) ) . PHP_EOL );
+	$detail = null === $value ? '' : ( is_wp_error( $value ) ? ' ' . json_encode( array( 'code' => $value->get_error_code(), 'message' => $value->get_error_message(), 'data' => $value->get_error_data() ) ) : ' ' . json_encode( $value ) );
+	fwrite( STDERR, 'FAIL canonical-capability-descriptor-consumers: ' . $message . $detail . PHP_EOL );
 	exit( 1 );
 };
 $check = static function ( $condition, $message, $value = null ) use ( $fail ) { if ( ! $condition ) $fail( $message, $value ); };
