@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Stable IDs/order and generic primitives; provider names never select UI code. */
 final class MAD4B_SCP_Search_Experience {
 	const PAGE_SLUG = 'mad4b-search-intelligence';
+	const MENU_PRIORITY = 20;
 	public static function model( $profile, array $providers, array $jobs, array $views, $inventory_ready = true ) {
 		$state = $profile ? ( ! empty( $profile['enabled'] ) ? 'READY' : 'PROFILE_DRAFTED' ) : 'UNCONFIGURED';
 		$blockers = array(); $healthy = 0; $budgeted = 0; $fresh = 0;
@@ -30,7 +31,11 @@ final class MAD4B_SCP_Search_Experience {
 		return array( 'contract' => 'mad4b.search-experience-model.v1', 'state' => $state, 'headline' => str_replace( '_', ' ', $state ), 'metrics' => array( array( 'id' => 'fresh_observations', 'value' => $fresh, 'scope' => 'bounded_current_page' ), array( 'id' => 'provider_count', 'value' => count( $providers ) ), array( 'id' => 'pending_jobs', 'value' => count( $jobs ), 'scope' => 'bounded_current_page' ) ), 'blockers' => array_values( array_unique( $blockers ) ), 'opportunities' => array(), 'recommended_actions' => array( $profile ? 'Review the observation cohort and its exact plan before capture.' : 'Create a search profile; markets and desired languages are independent of Site Profile.' ), 'sections' => $sections, 'reason_chain' => array( 'profile state', 'certified capabilities', 'known allowance', 'evidence freshness', 'outstanding job reconciliation' ), 'historical_intelligence_usable' => (bool) $views, 'authorizing' => false );
 	}
 	public static function boot() {
-		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
+		// Register after the MAD4B parent menu (default priority 10). Registering
+		// this submenu first can make WordPress derive a different plugin-page hook
+		// before the parent exists, causing admin.php?page=... to fail with the
+		// generic core "not allowed" screen even for an authorized administrator.
+		add_action( 'admin_menu', array( __CLASS__, 'menu' ), self::MENU_PRIORITY );
 		add_action( 'admin_post_mad4b_search_control', array( __CLASS__, 'control_post' ) );
 	}
 	public static function menu() { add_submenu_page( 'mad4b-control-plane', 'Search Intelligence', 'Search Intelligence', 'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) ); }
