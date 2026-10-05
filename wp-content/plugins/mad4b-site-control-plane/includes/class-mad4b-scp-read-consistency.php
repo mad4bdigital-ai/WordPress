@@ -596,6 +596,7 @@ final class MAD4B_SCP_Read_Consistency {
 		$write = isset( $runtime_checks['write_authority']['summary'] ) && is_array( $runtime_checks['write_authority']['summary'] ) ? $runtime_checks['write_authority']['summary'] : array();
 		$skills = isset( $runtime_checks['skills_runtime']['summary'] ) && is_array( $runtime_checks['skills_runtime']['summary'] ) ? $runtime_checks['skills_runtime']['summary'] : array();
 		$topology = isset( $runtime_checks['database_topology']['summary'] ) && is_array( $runtime_checks['database_topology']['summary'] ) ? $runtime_checks['database_topology']['summary'] : array();
+		$protocol = isset( $runtime_checks['mcp_protocol_profile']['summary'] ) && is_array( $runtime_checks['mcp_protocol_profile']['summary'] ) ? $runtime_checks['mcp_protocol_profile']['summary'] : array();
 
 		$write_ready = array_key_exists( 'effective_authority_ready', $write ) ? (bool) $write['effective_authority_ready'] : null;
 		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) ? (bool) $write['candidate_binding_match'] : null;
@@ -603,6 +604,7 @@ final class MAD4B_SCP_Read_Consistency {
 		$skills_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready'] ? (bool) $skills['effective_skill_ready'] : null;
 		$topology_ready = array_key_exists( 'ready', $topology ) && null !== $topology['ready'] ? (bool) $topology['ready'] : null;
 		$read_your_writes = array_key_exists( 'read_your_writes', $topology ) && null !== $topology['read_your_writes'] ? (bool) $topology['read_your_writes'] : null;
+		$protocol_ready = array_key_exists( 'ready', $protocol ) && null !== $protocol['ready'] ? (bool) $protocol['ready'] : null;
 
 		$reasons = self::bounded_scalar_list( $subject_blockers, 12 );
 		$actions = array();
@@ -635,6 +637,12 @@ final class MAD4B_SCP_Read_Consistency {
 			$reason = sanitize_key( (string) $reason );
 			if ( '' !== $reason ) $reasons[] = $reason;
 		}
+		if ( false === $protocol_ready ) {
+			$reasons[] = 'mcp_protocol_profile_not_ready';
+			if ( ! empty( $protocol['blocker'] ) ) $reasons[] = sanitize_key( (string) $protocol['blocker'] );
+			$actions[] = 'deploy_exact_certified_runtime_release';
+			$blocking = true;
+		}
 		if ( false === $skills_ready ) {
 			$reasons[] = 'skills_runtime_not_ready';
 			$actions[] = 'reconcile_managed_skills';
@@ -658,6 +666,7 @@ final class MAD4B_SCP_Read_Consistency {
 				'current_grant_snapshot_ready' => $grant_snapshot_ready,
 				'database_topology_ready' => $topology_ready,
 				'read_your_writes' => $read_your_writes,
+				'mcp_protocol_profile_ready' => $protocol_ready,
 				'skills_runtime_ready' => $skills_ready,
 			),
 			'read_only' => true,
@@ -725,6 +734,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'effective_skill_ready_scope', 'candidate_identity_bound_ready', 'live_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
 			'persisted_authority_ready', 'effective_authority_ready',
 			'read_your_writes', 'database_dropin_present', 'database_dropin_observer_certified', 'database_dropin_ownership', 'observer_dropin_certified',
+			'blocker', 'certified_adapter_version', 'runtime_adapter_version', 'adapter_version_match', 'successor_certification_state',
 			'current_grant_snapshot_performed', 'current_grant_snapshot_ready',
 			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
 			'deep_oauth_validation_deferred', 'provider_runtime_hash_validation_deferred',
@@ -930,6 +940,11 @@ final class MAD4B_SCP_Read_Consistency {
 					return class_exists( 'MAD4B_SCP_Database_Topology' ) && method_exists( 'MAD4B_SCP_Database_Topology', 'status' )
 						? MAD4B_SCP_Database_Topology::status( false )
 						: array( 'ready' => null, 'state' => 'unavailable', 'blockers' => array( 'database_topology_unavailable' ), 'read_only' => true, 'mutation_performed' => false );
+				},
+				'mcp_protocol_profile' => static function () {
+					return class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) && method_exists( 'MAD4B_SCP_MCP_Protocol_Profile', 'status' )
+						? MAD4B_SCP_MCP_Protocol_Profile::status()
+						: array( 'ready' => null, 'blocker' => 'mcp_protocol_profile_unavailable', 'authorizing' => false );
 				},
 				'skills_runtime' => static function () { return self::skills_projection(); },
 				'update_state' => static function () { return self::update_projection(); },
