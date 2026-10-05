@@ -451,6 +451,7 @@ for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
         raise SystemExit('direct ChatGPT mutation transport grant leaked into the normal governed-write allowlist: ' + dispatcher)
 for required_pair in [
     "'mad4b/control-plane-upload-apply' => 'core'",
+    "$allowed[ $ability ] = 'media'",
     "'jetengine/create-cpt' => 'native-provider'",
     "'elementor/clone-subtree' => 'elementor'",
     "'elementor/move-element' => 'elementor'",
@@ -495,6 +496,22 @@ for ability_name in feature007_core_grants:
         raise SystemExit(f'Feature 007 governed core write grant is outside exact reconciliation allowlist: {ability_name}')
 if len(feature007_core_grants) != 24:
     raise SystemExit('Feature 007 exact core grant regression fixture count changed unexpectedly')
+
+for media_ability in ("media/update-metadata", "media/set-featured", "media/set-parent"):
+    if media_ability not in grant_reconcile:
+        raise SystemExit(f'reviewed media ability missing from bounded grant reconciliation: {media_ability}')
+for media_contract in (
+    "mad4b.rollback.media-metadata.v1",
+    "mad4b.rollback.featured-image.v1",
+    "mad4b.rollback.media-parent.v1",
+):
+    if media_contract not in (ROOT / "includes/adapters/class-mad4b-scp-media-adapter.php").read_text("utf-8"):
+        raise SystemExit(f'reviewed media grant lacks reversible contract: {media_contract}')
+if "foreach ( array( 'media/update-metadata', 'media/set-featured', 'media/set-parent' ) as $ability )" not in allowlist:
+    raise SystemExit('media grant creation must remain an exact reviewed ability set, not a dynamic adapter wildcard')
+if "$allowed[ $ability ] = 'media';" not in allowlist:
+    raise SystemExit('reviewed media grants must resolve to exact media provider')
+
 
 if "'elementor/update-widget-settings' => 'elementor'" in allowlist:
     raise SystemExit('historical Elementor grant leaked back into grant-creation allowlist')
