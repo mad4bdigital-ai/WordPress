@@ -55,7 +55,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/decommission-preflight',
 				'mad4b/export-bundle-build', 'mad4b/import-bundle-validate',
 				'mad4b/scheduler-admission-evaluate',
-				'mad4b/scheduler-fair-rank',
+				'mad4b/scheduler-fair-rank', 'mad4b/scheduler-backlog-status',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-readiness-evaluate',
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
@@ -127,7 +127,7 @@ final class MAD4B_SCP_Servers {
 			array(
 				'mad4b/content-get-post', 'mad4b/content-update-post',
 				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
-				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply',
+				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile',
 			),
 			array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
