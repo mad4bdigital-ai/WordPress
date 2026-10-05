@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Managed_Skills_Lease' ) ) require_once __DIR__ . '/class-mad4b-scp-managed-skills-lease.php';
 
 /**
  * Remote Operation Parity
@@ -844,82 +845,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		return true;
 	}
 
-	private static function compare_and_swap_option( $name, $expected, $replacement = null ) {
-		global $wpdb;
-		if ( ! isset( $wpdb->options ) ) return false;
-		$where = array(
-			'option_name' => (string) $name,
-			'option_value' => maybe_serialize( $expected ),
-		);
-		if ( null === $replacement ) {
-			$changed = $wpdb->delete( $wpdb->options, $where, array( '%s', '%s' ) );
-		} else {
-			$changed = $wpdb->update(
-				$wpdb->options,
-				array( 'option_value' => maybe_serialize( $replacement ) ),
-				$where,
-				array( '%s' ),
-				array( '%s', '%s' )
-			);
-		}
-		if ( 1 === (int) $changed ) {
-			wp_cache_delete( (string) $name, 'options' );
-			return true;
-		}
-		return false;
-	}
-
-	private static function refresh_skills_lock( $owner ) {
-		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
-		if ( ! is_array( $current ) || empty( $current['owner'] ) || ! hash_equals( (string) $current['owner'], (string) $owner ) ) {
-			return new WP_Error( 'mad4b_remote_skill_lock_fenced', 'Managed Skill reconciliation lost its durable lock ownership.' );
-		}
-		$now = time();
-		if ( $now > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
-			return new WP_Error( 'mad4b_remote_skill_lock_expired', 'Managed Skill reconciliation lock expired before heartbeat.' );
-		}
-		$next = $current;
-		$next['expires_at_epoch'] = $now + self::SKILLS_LOCK_TTL;
-		$next['heartbeat_at'] = gmdate( 'c', $now );
-
-		// Multiple bounded reconciliation checkpoints can heartbeat within the same
-		// second. In that case the durable record is already exactly the desired
-		// lease state and wpdb->update() legitimately returns 0 ("no rows changed").
-		// Treat only that byte-equivalent no-op as success; any different record
-		// still goes through the fenced compare-and-swap path below.
-		$current_serialized = maybe_serialize( $current );
-		$next_serialized = maybe_serialize( $next );
-		if ( is_string( $current_serialized ) && is_string( $next_serialized )
-			&& hash_equals( hash( 'sha256', $current_serialized ), hash( 'sha256', $next_serialized ) ) ) {
-			return true;
-		}
-
-		if ( ! self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, $next ) ) {
-			return new WP_Error( 'mad4b_remote_skill_lock_heartbeat_raced', 'Managed Skill reconciliation lock changed during heartbeat.' );
-		}
-		return true;
-	}
-
-	private static function acquire_skills_lock() {
-		$owner = strtolower( wp_generate_uuid4() );
-		$record = array( 'owner' => $owner, 'expires_at_epoch' => time() + self::SKILLS_LOCK_TTL, 'acquired_at' => gmdate( 'c' ) );
-		if ( add_option( self::SKILLS_LOCK_OPTION, $record, '', false ) ) return $owner;
-		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
-		if ( is_array( $current ) && time() > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
-			if ( ! self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, null ) ) {
-				return new WP_Error( 'mad4b_remote_skill_lock_reclaim_raced', 'Managed Skill reconciliation lock changed while reclaiming an expired lease.' );
-			}
-			if ( add_option( self::SKILLS_LOCK_OPTION, $record, '', false ) ) return $owner;
-		}
-		return new WP_Error( 'mad4b_remote_skill_reconciliation_busy', 'Managed Skill reconciliation already has an active durable lease.' );
-	}
-
-	private static function release_skills_lock( $owner ) {
-		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) {
-			self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, null );
-		}
-	}
+	private static function refresh_skills_lock( $owner ) { return MAD4B_SCP_Managed_Skills_Lease::refresh( self::SKILLS_LOCK_OPTION, self::SKILLS_LOCK_TTL, $owner ); }
+	private static function acquire_skills_lock() { return MAD4B_SCP_Managed_Skills_Lease::acquire( self::SKILLS_LOCK_OPTION, self::SKILLS_LOCK_TTL ); }
+	private static function release_skills_lock( $owner ) { MAD4B_SCP_Managed_Skills_Lease::release( self::SKILLS_LOCK_OPTION, $owner ); }
 
 	private static function skills_job_status() {
 		$state = get_option( self::SKILLS_STATE_OPTION, array() );

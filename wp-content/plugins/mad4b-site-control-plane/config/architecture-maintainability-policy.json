@@ -23,11 +23,11 @@
   "size_budgets": {
     "new_php_domain_service_max_lines": 900,
     "legacy_facades": {
-      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php": 2300,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php": 2200,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": 1700,
-      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php": 1250,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php": 1100,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php": 1050,
-      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php": 1025
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php": 950
     },
     "legacy_facade_growth_policy": "absolute_line_budget_no_growth_beyond_declared_ceiling",
     "touched_legacy_facade_requires_parity_test_reference": true,
@@ -37,6 +37,24 @@
         "current_ceiling": 1050,
         "extracted_service": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
         "rationale": "Server registration failure/provenance evidence is now owned by a dedicated domain service; the facade may not absorb that responsibility again."
+      },
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php": {
+        "previous_ceiling": 2300,
+        "current_ceiling": 2200,
+        "extracted_service": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-managed-skills-lease.php",
+        "rationale": "Managed Skills lease acquisition, heartbeat, fenced reclaim and release now belong to a dedicated domain service."
+      },
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php": {
+        "previous_ceiling": 1250,
+        "current_ceiling": 1100,
+        "extracted_service": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-db-boundary.php",
+        "rationale": "Durable transaction/topology/uncertainty boundary semantics now belong to a dedicated domain service; Durable Execution retains stable wrappers."
+      },
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php": {
+        "previous_ceiling": 1025,
+        "current_ceiling": 950,
+        "extracted_service": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-target-fingerprint.php",
+        "rationale": "Mutation-target canonicalization and resource-bound fingerprinting now belong to a dedicated domain service behind the Authorization facade."
       }
     }
   },
