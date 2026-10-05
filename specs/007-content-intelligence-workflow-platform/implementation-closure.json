@@ -801,11 +801,18 @@
         "pre_staging_workflow_run_id": 37214537248,
         "repository_fault_suite_exact_head_proven": true,
         "prior_exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
-        "repository_recertification_required": true
+        "repository_recertification_required": true,
+        "provider_callback_order_contract": "mad4b.provider-callback-order.v1",
+        "provider_callback_order_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-callback-order.php",
+        "provider_callback_order_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/provider-callback-order-contract.php",
+        "out_of_order_callback_gap_buffers_without_advance": true,
+        "contiguous_gap_reconciliation_returns_exact_order": true,
+        "duplicate_callback_idempotent": true,
+        "conflicting_duplicate_fails_closed": true,
+        "provider_binding_drift_fails_closed": true
       },
       "remainder": [
         "prove aggregate/event/artifact consistency on the exact deployed candidate",
-        "add explicit out-of-order callback revision-reconciliation fixture when an ordered callback provider contract is admitted",
         "repeat the critical stale/zombie/uncertain repository-proven fault cases on ETG Staging"
       ]
     },
