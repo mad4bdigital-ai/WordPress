@@ -168,6 +168,8 @@ try {
 				'usage_fields' => array( 'role', 'alt_override', 'caption_override', 'title_override', 'description_override', 'credit', 'copyright', 'license', 'license_expires_on', 'source_url', 'focal_point', 'aria_label', 'decorative', 'link_url', 'link_target' ),
 				'roles' => array( 'hero', 'gallery', 'card' ),
 				'licenses' => array( 'owned', 'licensed', 'editorial', 'public-domain' ),
+				'publish_rights_policy' => 'require_valid',
+				'expiry_required_licenses' => array( 'licensed', 'editorial' ),
 			),
 			'ci_gallery_csv' => array( 'kind' => 'image_gallery', 'storage' => 'csv_ids', 'max_items' => 12 ),
 			'ci_attachments' => array( 'kind' => 'attachment_gallery', 'storage' => 'ids', 'max_items' => 8 ),
@@ -212,7 +214,7 @@ try {
 					'credit' => 'All Royal Egypt',
 					'copyright' => 'All Royal Egypt',
 					'license' => 'licensed',
-					'license_expires_on' => '2028-12-31',
+					'license_expires_on' => '2099-12-31',
 					'source_url' => 'https://example.invalid/media-source-two',
 					'focal_point' => array( 'x' => 0.35, 'y' => 0.45 ),
 					'aria_label' => 'Open Cairo gallery image details',
@@ -255,7 +257,7 @@ try {
 	$check( 'gallery' === $usage_readback[0]['role'] && 'hero' === $usage_readback[1]['role'], 'Contextual gallery roles readback mismatch.' );
 	$check( 'Trip-specific hero alt distinct from the attachment global alt' === $usage_readback[1]['alt_override'], 'Contextual hero alt override readback mismatch.' );
 	$check( array( 'x' => 0.5, 'y' => 0.4 ) === $usage_readback[1]['focal_point'], 'Contextual focal point readback mismatch.' );
-	$check( 'licensed' === $usage_readback[0]['license'] && '2028-12-31' === $usage_readback[0]['license_expires_on'], 'Contextual media rights metadata readback mismatch.' );
+	$check( 'licensed' === $usage_readback[0]['license'] && '2099-12-31' === $usage_readback[0]['license_expires_on'], 'Contextual media rights metadata readback mismatch.' );
 	$check( false === $usage_readback[0]['decorative'] && '_blank' === $usage_readback[0]['link_target'], 'Contextual accessibility/link semantics readback mismatch.' );
 	$check( 'Open Cairo gallery image details' === $usage_readback[0]['aria_label'], 'Contextual ARIA label readback mismatch.' );
 	$check( '<p>Trip-specific contextual image description.</p>' === $usage_readback[0]['description_override'], 'Contextual description override readback mismatch.' );
@@ -294,7 +296,7 @@ try {
 	$check( array( $image_two, $image_one ) === $usage_verify['attachment_ids'], 'Media verify usage IDs drifted from canonical gallery order.' );
 	$check( array( 'gallery', 'hero' ) === $usage_verify['roles'], 'Media verify lost contextual media roles.' );
 	$check( array( 'licensed', 'owned' ) === $usage_verify['licenses'], 'Media verify lost contextual media licenses.' );
-	$check( array( '2028-12-31' ) === $usage_verify['license_expiries'], 'Media verify lost bounded rights-expiry evidence.' );
+	$check( array( '2099-12-31' ) === $usage_verify['license_expiries'], 'Media verify lost bounded rights-expiry evidence.' );
 	$check( 1 === (int) $usage_verify['aria_label_count'] && 1 === (int) $usage_verify['linked_count'] && 2 === (int) $usage_verify['focal_point_count'], 'Media verify accessibility/link/focal summaries are incomplete.' );
 
 	$current_for_media_guard = get_post( $post_id );
@@ -535,7 +537,32 @@ try {
 	// Publish is the last visible transition after all preconditions/helper stages.
 	$current = get_post( $post_id );
 	$publish_input = array( 'post_id' => $post_id, 'expected_modified_gmt' => $current->post_modified_gmt, 'post_status' => 'publish' );
+	$rights_usage = get_post_meta( $post_id, 'ci_gallery_usage', true );
+
+	$expired_rights = $rights_usage;
+	$expired_rights[0]['license_expires_on'] = '2000-01-01';
+	update_post_meta( $post_id, 'ci_gallery_usage', $expired_rights );
+	$expired_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
+	$check( is_wp_error( $expired_publish ) && 'mad4b_content_experience_media_rights_expired' === $expired_publish->get_error_code(), 'Publish accepted an expired contextual media license.' );
+	update_post_meta( $post_id, 'ci_gallery_usage', $rights_usage );
+
+	$missing_expiry = $rights_usage;
+	$missing_expiry[0]['license_expires_on'] = '';
+	update_post_meta( $post_id, 'ci_gallery_usage', $missing_expiry );
+	$missing_expiry_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
+	$check( is_wp_error( $missing_expiry_publish ) && 'mad4b_content_experience_media_rights_expiry_required' === $missing_expiry_publish->get_error_code(), 'Publish accepted a licensed image without its required expiry date.' );
+	update_post_meta( $post_id, 'ci_gallery_usage', $rights_usage );
+
+	$missing_license = $rights_usage;
+	unset( $missing_license[0]['license'] );
+	update_post_meta( $post_id, 'ci_gallery_usage', $missing_license );
+	$missing_license_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
+	$check( is_wp_error( $missing_license_publish ) && 'mad4b_content_experience_media_rights_license_required' === $missing_license_publish->get_error_code(), 'Publish accepted contextual media without a governed license.' );
+	update_post_meta( $post_id, 'ci_gallery_usage', $rights_usage );
+
 	$publish_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
+	$check( ! is_wp_error( $publish_plan ) && ! empty( $publish_plan['media_publish_rights']['valid'] ), 'Publish plan did not certify contextual media rights.' );
+	$check( 2 === (int) $publish_plan['media_publish_rights']['checked_item_count'] && '2099-12-31' === $publish_plan['media_publish_rights']['nearest_expiry'], 'Publish rights evidence did not preserve the reviewed gallery license state.' );
 	$publish = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'publish', array_merge( $publish_input, array( 'plan_sha256' => $publish_plan['plan_sha256'] ) ) );
 	$check( ! is_wp_error( $publish ) && 'publish' === get_post_status( $post_id ), 'Governed publish did not complete as final visible transition.' );
 	$verify = MAD4B_SCP_Content_Experience_Runtime::verify( 'ci-trip', array( 'post_id' => $post_id ) );
