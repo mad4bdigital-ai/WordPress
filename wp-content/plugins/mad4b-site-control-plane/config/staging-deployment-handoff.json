@@ -134,7 +134,32 @@
       "full_staging_authority_plan_read_only_before_apply",
       "full_staging_authority_apply_requires_exact_clean_plan_and_explicit_operator_authority",
       "generic_raw_sql_breakglass_remains_excluded"
-    ]
+    ],
+    "authority_handoff": {
+      "contract": "mad4b.staging-write-post-deploy-handoff.v1",
+      "scope": "exact_enrolled_staging_write_authority_only",
+      "trigger": "current_runtime_identity_differs_from_persisted_candidate_binding_or_exact_write_grants_are_incomplete",
+      "current_truth_source": "mad4b/staging-write-authority-convergence-handshake",
+      "compatibility_plan_ability": "mad4b/staging-write-grant-reconciliation-plan",
+      "apply_ability": "mad4b/staging-write-authority-convergence-apply",
+      "required_confirmation": "ENABLE GOVERNED STAGING WRITE AUTHORITY",
+      "exact_runtime_identity_required": true,
+      "exact_site_profile_binding_required": true,
+      "exact_grant_inventory_required": true,
+      "exact_transport_grant_inventory_required": true,
+      "read_only_plan_before_apply": true,
+      "explicit_apply_required": true,
+      "automatic_apply_allowed": false,
+      "production_allowed": false,
+      "developer_authority_included": false,
+      "developer_breakglass_included": false,
+      "generic_raw_sql_breakglass_included": false,
+      "wildcard_grants_allowed": false,
+      "caller_supplied_provider_allowed": false,
+      "fail_closed_on_allowlist_drift": true,
+      "same_cycle_readback_required": true,
+      "append_only_audit_required": true
+    }
   },
   "forbidden": {
     "unenrolled_target": true,
