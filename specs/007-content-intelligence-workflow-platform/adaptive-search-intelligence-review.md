@@ -4,7 +4,7 @@ Review contract: `mad4b.adaptive-search-intelligence-review.v1`
 
 Scope: Feature 007 Phase 38, `mad4b.adaptive-search-intelligence.v1`.
 
-Status: **APPROVED_P0_CLOSED_P1_OPEN**. The original review score remains the baseline pre-closure assessment; Phase 38 is still OPEN and this does not approve Production activation, provider spend, or content mutation.
+Status: **APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED**. The original review score remains the historical pre-closure assessment. Phase 38 repository-runtime scope is closed; this does not approve Production activation, live provider/account certification, provider spend, or content mutation.
 
 ## P0 closure update
 
@@ -34,13 +34,13 @@ Implemented closure surfaces:
 - measurable acceptance descriptors for all Phase 38 gates;
 - composed drift/budget/lease/partial-capture/cache/uncertain-effect fault guard.
 
-Remaining review backlog: **6 P1 findings**. Phase 38 remains a non-authorizing MATURITY_REQUIRED extension and is not globally complete.
+Remaining review backlog: **0 P0 / 0 P1 findings** at repository-runtime scope. Live provider/account certification remains explicitly outside this closure and is not claimed.
 
 ## Executive assessment
 
 The Phase 38 design is structurally strong and materially better than a vendor-specific SERP integration. It has clear separation between governance identity, search configuration, runtime discovery, target compilation, provider execution, immutable evidence, inference and governed content change.
 
-The original review identified measurement semantics and distributed economics as the largest P0 risks. Those risks are now closed at the foundation-contract level: comparability is context- and certification-bound, and hard-global provider budgets fail closed without stable account identity plus a shared authoritative coordinator. The remaining review risk is concentrated in the six P1 maturity lanes and live provider/Staging integration.
+The original review identified measurement semantics and distributed economics as the largest P0 risks. Those risks are now closed at the foundation-contract level: comparability is context- and certification-bound, and hard-global provider budgets fail closed without stable account identity plus a shared authoritative coordinator. The six P1 maturity lanes are now closed by executable repository-runtime evidence. Residual risk is limited to live provider/account and environment-specific certification, which remains separately governed.
 
 ### Scorecard
 
@@ -487,7 +487,7 @@ Task: T3880.
 
 # Quality conclusion
 
-The P0 semantic blockers ASIR-001 through ASIR-008, ASIR-011, ASIR-012 and ASIR-015/018 are now closed by exact-head executable evidence. Broad Phase 38 work may continue, while the six P1 findings and provider/live-execution maturity remain open.
+The P0 semantic blockers and all six P1 maturity findings are now closed at repository-runtime scope. Provider/account live certification remains separate and is not implied by this closure.
 
 The strongest parts are:
 1. governance separation;
@@ -528,4 +528,9 @@ Adaptive UX stability / operator controls
 Cross-fault generalization proof
 ```
 
-With the P0 set closed, the design has moved from **strong architecture specification** to an **implementation-ready Search Intelligence foundation**. This is not a claim that the full Phase 38 runtime, providers, live Staging acceptance, or Production activation is complete.
+With P0 and P1 closed, Phase 38 is **repository-runtime validated** across the feature-owned dual-PHP acceptance path. This is not a claim of live provider/account certification or Production activation.
+
+
+## Repository-runtime P1 closure
+
+All six P1 findings (ASIR-009, ASIR-010, ASIR-013, ASIR-014, ASIR-016, ASIR-017) are CLOSED against Search runtime exact head `e8791ae6253b5667f1ffffdcf1693bd1d08a641a`. Feature-owned Adaptive Search conformance passed on PHP 7.4 and 8.3 with 40 fixtures, 938 assertions and 15 emitted gates. Live provider/account certification remains `NOT_CLAIMED`; Production authority remains false.
