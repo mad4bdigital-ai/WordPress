@@ -1,0 +1,28 @@
+{
+  "contract": "mad4b.egress-policy.v1",
+  "version": 1,
+  "default_unknown_purpose": "deny",
+  "proxy_trust": "explicit_allowlist_only",
+  "dns_change_policy": "deny_within_request_scope",
+  "transport_error_policy": "fail_closed_no_tls_downgrade",
+  "purposes": {
+    "oauth_discovery": {
+      "require_https": true,
+      "sslverify_required": true,
+      "max_redirects": 0,
+      "reject_unsafe_urls": true
+    },
+    "oauth_jwks": {
+      "require_https": true,
+      "sslverify_required": true,
+      "max_redirects": 0,
+      "reject_unsafe_urls": true
+    },
+    "serp_capture": {
+      "require_https": true,
+      "sslverify_required": true,
+      "max_redirects": 0,
+      "reject_unsafe_urls": true
+    }
+  }
+}

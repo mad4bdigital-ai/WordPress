@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.91**.
+Current plugin version: **0.4.0-rc.92**.
+
+### rc.92 WordPress-native governed update UX
+
+rc.92 keeps the signed, immutable MAD4B release channel and exact archive/provenance verification unchanged while making the Plugins screen behave like a normal WordPress plugin. The plugin action row exposes one **Check for updates** action. A missing or failed governed-manifest cache no longer renders a diagnostic/update row and internal reason codes stay in governed diagnostics and audit evidence. When a verified newer build is cached, MAD4B renders the ordinary WordPress plugin-update row and the visible **Update now** action still routes only through the MAD4B governed updater, including release-manifest binding, SHA/provenance verification, maintenance fencing, backup, rollback and exact-build readback.
+
+The Plugins screen remains cache-only: it performs no outbound release-channel request while rendering, does not inject or replace WordPress core update transients, and does not enroll MAD4B in the WordPress core automatic-updater path. Explicit update checks are the only wp-admin action that refreshes the governed release manifest. The visible Plugins update lane resolves only the Release-Verdict-gated `mad4b-site-control-plane-update-channel`, whose pointer is published from `master`; unmerged pull-request candidates are deliberately excluded from that stable lane. The separate Control Plane + MCP Adapter release-set action is no longer injected into the generic Plugins row; it lives under **MAD4B Control Plane → Runtime Components → Runtime Update**, so the MAD4B plugin action row stays limited to the normal explicit update check.
 
 ### rc.91 decoupled Staging Write authority
 

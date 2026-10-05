@@ -7,6 +7,7 @@ class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['allowed']
 class MAD4B_SCP_Ability_Contract_Inspector { static function site_binding() { return array( 'origin' => 'https://ci.test', 'revision' => $GLOBALS['binding'] ); } }
 class MAD4B_SCP_Capability_Descriptor_Registry { static function describe( $name ) { return array( 'lane' => 'read', 'readonly' => true, 'execution_eligible' => true, 'input_schema_sha256' => str_repeat( 'a', 64 ), 'classification_sha256' => str_repeat( 'b', 64 ) ); } }
 function wp_json_encode( $v ) { return json_encode( $v ); }
+function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\\-]/i', '', (string) $value ) ); }
 function get_current_user_id() { return $GLOBALS['user']; }
 function wp_get_current_user() { return (object) array( 'allcaps' => array( 'read' => true ) ); }
 function wp_salt( $v ) { return 'test-signing-key'; }
@@ -112,6 +113,19 @@ $query_delta = request( array( 'query' => 'booking', 'known_snapshot' => $query[
 class CycleAbility extends FixtureAbility { function get_input_schema() { $v = new stdClass(); $v->self = $v; return $v; } }
 $GLOBALS['abilities']['cycle'] = new CycleAbility( '' ); $cycle = request( array() );
 check( ! is_wp_error( $cycle ) && ! empty( $cycle['items'][0]['unavailable'] ), 'Invalid schema destroyed catalog' );
+$cycle_item = array_values( array_filter( $cycle['items'], static fn($v) => $v['ability_name'] === 'cycle' ) )[0];
+check(
+	isset( $cycle_item['classification_sha256'] )
+	&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $cycle_item['classification_sha256'] )
+	&& 'schema_serialization_failed' === (string) $cycle_item['reason'],
+	'Invalid schema did not receive one deterministic fail-closed catalog identity'
+);
+$cycle_again = request( array( 'force_refresh' => true ) );
+$cycle_again_item = array_values( array_filter( $cycle_again['items'], static fn($v) => $v['ability_name'] === 'cycle' ) )[0];
+check(
+	hash_equals( (string) $cycle_item['classification_sha256'], (string) $cycle_again_item['classification_sha256'] ),
+	'Unavailable schema fingerprint changed across equivalent catalog rebuilds'
+);
 $directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
 $expired = reset( $directory ); $key = array_key_first( $directory ); $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY][$key]['expires'] = time()-1;
 MAD4B_SCP_Catalog_Object_Store::collect_expired();
@@ -128,7 +142,15 @@ $GLOBALS['abilities']['shared'] = new FixtureAbility( str_repeat( 'محتوى', 
 $shared_manifest = request( array() ); check( ! is_wp_error( $shared_manifest ), 'Shared-block publication failed' );
 $shared_item = array_values( array_filter( $shared_manifest['items'], static fn($v) => $v['ability_name'] === 'shared' ) )[0];
 $descriptor_key = hash( 'sha256', ':schema:' . $shared_item['schema_sha256'] );
-$directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]; $shared_descriptor = $GLOBALS['options'][$directory[$descriptor_key]['option']];
+$directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
+$shared_descriptor_envelope = $GLOBALS['options'][$directory[$descriptor_key]['option']];
+check(
+	'mad4b.catalog-object-envelope.v1' === ( $shared_descriptor_envelope['contract'] ?? '' )
+	&& 1 === (int) ( $shared_descriptor_envelope['version'] ?? 0 )
+	&& 'schema' === ( $shared_descriptor_envelope['kind'] ?? '' ),
+	'Published schema descriptor is not versioned'
+);
+$shared_descriptor = $shared_descriptor_envelope['payload'];
 foreach ( $shared_descriptor['blocks'] as $block ) check( $directory[hash( 'sha256', ':block:' . $block )]['expires'] >= $shared_descriptor['retain_until'], 'Shared block expires before advertised schema retention' );
 class WireFixtureDTO {
  function getName() { return 'object-tool'; }
@@ -144,7 +166,45 @@ $wire = request( array( 'transport_action' => 'schema', 'schema_format' => 'wire
 check( ! is_wp_error( $wire ) && is_object( $wire['schema']->inputSchema->properties ), 'Lazy official wire schema unavailable' );
 $bad_format = request( array( 'transport_action' => 'schema', 'snapshot' => $lazy['snapshot'], 'schema_sha256' => $lazy['item']['wire']['sha256'] ) );
 check( is_wp_error( $bad_format ), 'Wire digest admitted as source' );
-echo "PASS catalog transport: large schema, chunks, frozen pages, delta, tampering, user and site isolation\n";
+
+// Persisted catalog objects are exact-version/generation envelopes.
+$GLOBALS['abilities'] = array( 'version-a' => new FixtureAbility( 'a' ), 'version-b' => new FixtureAbility( 'b' ) );
+$versioned = request( array( 'limit' => 1, 'force_refresh' => true ) );
+check( ! is_wp_error( $versioned ) && ! empty( $versioned['next_cursor'] ), 'Versioned catalog fixture did not paginate' );
+$scope = MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope();
+$directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
+
+$snapshot_key = hash( 'sha256', $scope . ':snapshot:' . $versioned['snapshot'] );
+$snapshot_option = $directory[$snapshot_key]['option'];
+$snapshot_envelope = $GLOBALS['options'][$snapshot_option];
+$future_snapshot = $snapshot_envelope; $future_snapshot['version'] = 999;
+$GLOBALS['options'][$snapshot_option] = $future_snapshot;
+$future_cursor = request( array( 'cursor' => $versioned['next_cursor'] ) );
+check( is_wp_error( $future_cursor ) && 'mad4b_catalog_object_generation_mismatch' === $future_cursor->code, 'Future snapshot envelope was interpreted by an older runtime' );
+$GLOBALS['options'][$snapshot_option] = $snapshot_envelope;
+
+$schema_digest = $versioned['items'][0]['schema_sha256'];
+$schema_key = hash( 'sha256', ':schema:' . $schema_digest );
+$schema_option = $directory[$schema_key]['option'];
+$schema_envelope = $GLOBALS['options'][$schema_option];
+$future_schema = $schema_envelope; $future_schema['wire_generation'] = 'future-generation';
+$GLOBALS['options'][$schema_option] = $future_schema;
+$future_schema_result = request( array( 'transport_action' => 'schema', 'snapshot' => $versioned['snapshot'], 'schema_sha256' => $schema_digest ) );
+check( is_wp_error( $future_schema_result ) && 'mad4b_catalog_object_generation_mismatch' === $future_schema_result->code, 'Future schema envelope was interpreted by an older runtime' );
+$GLOBALS['options'][$schema_option] = $schema_envelope;
+
+$current_key = hash( 'sha256', $scope . ':current:' );
+$current_option = $directory[$current_key]['option'];
+$old_current = $GLOBALS['options'][$current_option];
+$stale_current = $old_current; unset( $stale_current['contract'] );
+$GLOBALS['options'][$current_option] = $stale_current;
+$rebuilt = request( array() );
+check( ! is_wp_error( $rebuilt ), 'Legacy current pointer blocked safe catalog rebuild' );
+$directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
+$current_after = $GLOBALS['options'][$directory[$current_key]['option']];
+check( 'mad4b.catalog-object-envelope.v1' === ( $current_after['contract'] ?? '' ) && 'current' === ( $current_after['kind'] ?? '' ), 'Legacy current pointer was reused instead of rebuilt' );
+
+echo "PASS catalog transport: large schema, chunks, frozen pages, delta, tampering, generation envelopes, user and site isolation\n";
 
 // The reader holds the old directory while another publisher replaces its value.
 $writer = new MAD4B_SCP_Catalog_Object_Store(); $writer->put( 'reader-race', 'old', 3600 ); $writer->flush();
@@ -249,3 +309,19 @@ $one = MAD4B_SCP_Distributed_Lock::catalog_name( 'same-scope' );
 $GLOBALS['wpdb']->dbname = 'database-two';
 check( $one !== MAD4B_SCP_Distributed_Lock::catalog_name( 'same-scope' ), 'Server-wide mutex omitted database namespace' );
 echo "PASS lock fault injection: connection loss denies publication and database namespaces are isolated\n";
+$mad4b_child_tests = array(
+	'database-transaction-guard-runtime.php',
+	'database-topology-runtime.php',
+	'runtime-compatibility-profile-runtime.php',
+	'runtime-compatibility-profile-cron.php',
+	'request-generation-runtime.php',
+);
+foreach ( $mad4b_child_tests as $mad4b_child_test ) {
+	$mad4b_child_path = __DIR__ . '/' . $mad4b_child_test;
+	if ( ! is_file( $mad4b_child_path ) ) continue;
+	$mad4b_exit = 0;
+	$mad4b_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( $mad4b_child_path );
+	passthru( $mad4b_command, $mad4b_exit );
+	check( 0 === $mad4b_exit, 'Standalone hardening fixture failed: ' . $mad4b_child_test );
+}
+

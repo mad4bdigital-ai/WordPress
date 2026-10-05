@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.91
+ * Version: 0.4.0-rc.92
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,9 +13,13 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.91' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.92' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
+define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
+$mad4b_scp_boot_provenance_path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
+define( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256', is_readable( $mad4b_scp_boot_provenance_path ) ? hash_file( 'sha256', $mad4b_scp_boot_provenance_path ) : '' );
+unset( $mad4b_scp_boot_provenance_path );
 
 // Keep this tiny lifecycle hook available even on the foreign REST kernel.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';
@@ -92,13 +96,26 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-maintenance-lease
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-post-update-continuation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portable-readonly-connection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-manager.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-topology.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-failure-semantics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-persisted-contract-compatibility.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-generation-fence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-transaction-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-durable-execution.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-network-operation-journal.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-canonicalization.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-time-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-entropy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-resource-constraint-set.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-journal.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-structural-redaction.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-evidence-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-metrics.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-observability.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-projection-hotset-recommender.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-diff.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-provider-contract.php';
@@ -112,12 +129,22 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-draft.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-publication-verification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-pack.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-research-intelligence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-measurement.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-runtime-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-eligibility.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-evidence-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-account-budget-authority.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-search-decision-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-search-acceptance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-search-fault-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-bootstrap.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-doctor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cli.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identifiers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abuse-budget.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-legacy-dispatch-migration.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-runtime-gates.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
@@ -125,13 +152,27 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-circuit-breaker.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-eligibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-health-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-traits.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-execution-binding.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-callback-order.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-provider-plan.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-addon-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-data-governance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-data-governance-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-decommission-portability.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-decommission-governance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portability-import.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-scheduler-admission.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-scheduler-backlog.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-impact-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-impact-binding.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization-decision-graph.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-crypto-profile.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-receipt.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-provider-isolation.php';
@@ -145,6 +186,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-server.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-oauth-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-consent-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-key-path-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-restore-epoch.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-init-lock.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canary.php';
@@ -158,6 +200,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-query-performance.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-query-performance-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-unchanged-attestation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-promotion-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-truth-projection.php';
@@ -168,30 +211,42 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-runner.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-core.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-request-context-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-jwt-header-guard.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-egress-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-outbound-budget-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-gate.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-client-profile-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-protocol-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-client-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-challenge-alignment.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-transport-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-transport-admission.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-status.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-authority.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-content-field-contracts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-approval.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-brand-context-builder.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-compatibility-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-commit-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy-resolution.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-workstream-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-readiness-evaluator.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-control-center.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-error-contract-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 // The mutation execution-boundary filter must exist before any ability can be
 // materialized. Nested write dispatch calls Ability::execute() directly, so
 // permission callbacks alone are not a sufficient execution fence.
 MAD4B_SCP_Authorization::boot();
+MAD4B_SCP_Error_Contract_Registry::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-fence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mutation-manager.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-postcondition-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reversible-adapter-mutations.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-autopilot.php';
@@ -204,12 +259,14 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-impact-graph.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-intent-router.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-transaction.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-resume.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-state-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-activation-state.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-lifecycle.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-package.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-plugin-update.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-self-update.php';
@@ -219,9 +276,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operating-model.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-ability-overrides.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-distributed-lock.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-table-backend.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-backend-controller.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ability-contract-inspector.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-descriptor-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-preparation-receipt.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-replay-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-object-store.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-adapter-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ability-catalog-transport.php';
@@ -241,6 +301,11 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-work-queue.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-profiles.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-search-intelligence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-governance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-runtime.php';
+MAD4B_SCP_Content_Experience_Governance::boot();
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-context-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-skills-adapter.php';
@@ -331,6 +396,9 @@ MAD4B_SCP_Upgrade_Continuity::boot();
 MAD4B_SCP_Reconnect_Hardening::boot();
 MAD4B_SCP_Dependency_Manager::boot();
 MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
+MAD4B_SCP_Production_Certification::boot();
+MAD4B_SCP_Production_Readiness_Evaluator::boot();
+MAD4B_SCP_Operator_Control_Center::boot();
 
 $mad4b_passive_admin_read = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 	&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();

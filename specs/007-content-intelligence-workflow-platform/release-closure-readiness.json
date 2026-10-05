@@ -1,0 +1,270 @@
+{
+  "contract": "mad4b.feature007-release-closure-readiness.v1",
+  "source_contracts": {
+    "task_ledger": "mad4b.feature007-task-ledger.v1",
+    "implementation_closure": "mad4b.feature007-implementation-closure.v2",
+    "production_readiness_policy": "mad4b.production-readiness-policy.v2"
+  },
+  "semantics": {
+    "task_ledger_ratio_is_readiness_metric": false,
+    "profile_specific_readiness_required": true,
+    "live_evidence_required_for_live_status_changes": true,
+    "ready_is_not_authorized": true,
+    "repository_changes_cannot_manufacture_live_evidence": true
+  },
+  "task_ledger": {
+    "total": 837,
+    "DONE": 214,
+    "PARTIAL": 68,
+    "OPEN": 553,
+    "DEFERRED": 2
+  },
+  "phase_38_adaptive_search": {
+    "total": 80,
+    "DONE": 80,
+    "PARTIAL": 0,
+    "OPEN": 0,
+    "DEFERRED": 0
+  },
+  "profiles": {
+    "control_plane_core_required": {
+      "counts": {
+        "total": 13,
+        "DONE": 1,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 9,
+        "OPEN": 3,
+        "DEFERRED": 0
+      },
+      "workstream_ids": [
+        "governed_tool_execution",
+        "protected_backup_recovery",
+        "etg_exact_runtime_release_deployment",
+        "runtime_root_trust_readback",
+        "recovery_live_drill",
+        "provider_side_channel",
+        "multi_authority_live",
+        "policy_engine",
+        "authoritative_consistency_fencing",
+        "security_ai_eval_faults",
+        "operator_doctor_dlq",
+        "formal_state_proof",
+        "etg_vertical_slice"
+      ],
+      "open_or_partial": [
+        {
+          "id": "governed_tool_execution",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "protected_backup_recovery",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "etg_exact_runtime_release_deployment",
+          "status": "OPEN"
+        },
+        {
+          "id": "runtime_root_trust_readback",
+          "status": "OPEN"
+        },
+        {
+          "id": "recovery_live_drill",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "provider_side_channel",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "multi_authority_live",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "policy_engine",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "authoritative_consistency_fencing",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "security_ai_eval_faults",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "operator_doctor_dlq",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "etg_vertical_slice",
+          "status": "OPEN"
+        }
+      ],
+      "unresolved": [
+        {
+          "id": "governed_tool_execution",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "protected_backup_recovery",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "etg_exact_runtime_release_deployment",
+          "status": "OPEN"
+        },
+        {
+          "id": "runtime_root_trust_readback",
+          "status": "OPEN"
+        },
+        {
+          "id": "recovery_live_drill",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "provider_side_channel",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "multi_authority_live",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "policy_engine",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "authoritative_consistency_fencing",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "security_ai_eval_faults",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "operator_doctor_dlq",
+          "status": "EXTERNAL_PENDING"
+        },
+        {
+          "id": "etg_vertical_slice",
+          "status": "OPEN"
+        }
+      ]
+    },
+    "control_plane_core_optional_fail_closed": {
+      "counts": {
+        "total": 11,
+        "DONE": 0,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 10,
+        "OPEN": 1,
+        "DEFERRED": 0
+      },
+      "workstream_ids": [
+        "bitflows_1_29_exact_certification",
+        "capability_traits",
+        "site_bootstrap",
+        "intent_registry",
+        "content_job_domain",
+        "artifact_registry_store",
+        "context_writer",
+        "research_competitive",
+        "blueprint_draft_qa",
+        "governed_wp_draft",
+        "semantic_publication_verification"
+      ],
+      "policy": "disabled_and_fail_closed_until_live_certified",
+      "external_pending": [
+        "capability_traits",
+        "site_bootstrap",
+        "intent_registry",
+        "content_job_domain",
+        "artifact_registry_store",
+        "context_writer",
+        "research_competitive",
+        "blueprint_draft_qa",
+        "governed_wp_draft",
+        "semantic_publication_verification"
+      ]
+    },
+    "full_feature007_blocking": {
+      "counts": {
+        "total": 29,
+        "DONE": 6,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 19,
+        "OPEN": 4,
+        "DEFERRED": 0
+      },
+      "priorities": [
+        "KERNEL_BLOCKER",
+        "LIVE_PRECONDITION"
+      ]
+    },
+    "long_term_maturity": {
+      "counts": {
+        "total": 5,
+        "DONE": 0,
+        "PARTIAL": 0,
+        "EXTERNAL_PENDING": 4,
+        "OPEN": 0,
+        "DEFERRED": 1
+      },
+      "priorities": [
+        "MATURITY_REQUIRED",
+        "DEFERRED_MATURITY"
+      ]
+    }
+  },
+  "production_state": "LIVE_EVIDENCE_REQUIRED",
+  "production_ready": false,
+  "production_authorized": false,
+  "authorizing": false,
+  "reviewability": {
+    "contract": "mad4b.feature007-reviewability.v1",
+    "changed_file_count": 347,
+    "semantic_slice_count": 17,
+    "max_declared_paths_per_slice": 35,
+    "max_allowed_paths_per_slice": 35,
+    "exhaustive_ownership_required": true,
+    "exact_head_verification": "architecture-maintainability-contract.py",
+    "reviewer_unit": "semantic_slice_with_explicit_revert_boundary",
+    "pr_size_is_risk_not_waived": true,
+    "changed_paths_sha256": "063bf0e0ee8a13d6a498c3c0137643b4197dce2958da7cfa2a10af4a9a158355",
+    "changed_paths_sha256_mode": "sha256_sorted_exact_changed_paths_newline_terminated"
+  },
+  "performance_validation": {
+    "contract": "mad4b.feature007-performance-validation.v1",
+    "repository_runtime": {
+      "required": true,
+      "workflow": "MAD4B Admin Performance",
+      "slo_profile": "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+      "state": "EXACT_HEAD_CI_REQUIRED"
+    },
+    "disposable_runtime": {
+      "required": true,
+      "evidence": [
+        "Feature 007 Critical Kernel",
+        "MAD4B Runtime Integration",
+        "real MariaDB/runtime fault suites"
+      ],
+      "state": "EXACT_HEAD_CI_REQUIRED"
+    },
+    "live_etg": {
+      "required_before_production_core_promotion": true,
+      "state": "LIVE_EXTERNAL_EVIDENCE_REQUIRED",
+      "exact_deployed_candidate_required": true,
+      "production_mutation_allowed": false,
+      "repository_metadata_cannot_mark_pass": true,
+      "minimum_dimensions": [
+        "server_latency",
+        "database_query_pressure",
+        "peak_memory",
+        "concurrency_backpressure",
+        "provider_latency_and_timeout_behavior"
+      ]
+    },
+    "authorizing": false
+  }
+}

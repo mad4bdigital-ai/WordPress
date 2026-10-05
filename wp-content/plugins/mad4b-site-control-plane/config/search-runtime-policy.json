@@ -1,0 +1,26 @@
+{
+  "contract": "mad4b.search-runtime-policy.v1",
+  "schema_version": 1,
+  "max_profiles": 64,
+  "max_targets_per_compile": 5000,
+  "max_surfaces_per_discovery": 100,
+  "profile_fields": ["profile_id", "brand_id", "enabled", "markets", "language_policy", "surface_policy", "provider_policy", "budget_policy", "refresh_policy", "priority_policy", "experiment_policy", "overlays", "objective"],
+  "overlay_fields": ["surface_policy", "provider_policy", "budget_policy", "refresh_policy", "priority_policy", "objective"],
+  "security_keys": ["authority", "authorization", "production", "breakglass", "egress", "sslverify", "url", "endpoint", "secret", "api_key", "token", "password", "credentials", "capabilities"],
+  "purposes": ["OWNED_RANK_TRACKING", "MARKET_DISCOVERY", "COMPETITOR_DISCOVERY", "CONTENT_GAP", "CANNIBALIZATION_PROBE", "SERP_FEATURE_PROBE", "LANGUAGE_GAP", "ARCHIVE_OPPORTUNITY", "POST_CHANGE_VALIDATION", "EXPERIMENT_MEASUREMENT"],
+  "defaults": {
+    "enabled": false,
+    "markets": [],
+    "language_policy": {"desired": [], "owned_requires_live_surface": true},
+    "surface_policy": {"max_surfaces": 10000, "max_pagination": 20, "virtual_routes": [], "query_parameters": []},
+    "provider_policy": {"engines": [], "devices": ["desktop"], "depth": 10, "allowed": [], "disabled": [], "freeze_spend": false},
+    "budget_policy": {"nodes": [], "reserve_fraction": 0.1, "burst_multiplier": 1},
+    "refresh_policy": {"min_seconds": 3600, "max_seconds": 2592000, "baseline_seconds": 604800, "reuse_allowed": true},
+    "priority_policy": {"version": "evo-bounded.v1", "weights": {"business_value": 1, "information_gain": 1, "urgency": 1, "actionability": 1, "change_probability": 1, "confidence_need": 1}, "missing_value": 0.5, "aging_seconds": 86400, "fairness_dimensions": ["site_uuid", "brand_id", "market", "language", "purpose", "cluster_id", "surface_type", "provider_id"]},
+    "experiment_policy": {"pre_seconds": 604800, "post_seconds": 604800},
+    "overlays": {},
+    "objective": "coverage"
+  },
+  "section_order": ["overview", "diagnostics", "markets", "languages", "surfaces", "targets", "serp", "competitors", "archives", "experiments", "budgets", "providers"],
+  "render_primitives": ["STATUS_CARD", "METRIC", "TABLE", "MATRIX", "GRAPH", "TIMELINE", "DIAGNOSTIC", "PLAN_REVIEW", "ACTION"]
+}

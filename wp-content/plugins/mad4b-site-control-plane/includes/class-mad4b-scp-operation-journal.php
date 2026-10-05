@@ -1,5 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) ) require_once __DIR__ . '/class-mad4b-scp-database-transaction-guard.php';
+if ( ! class_exists( 'MAD4B_SCP_Identifiers' ) ) require_once __DIR__ . '/class-mad4b-scp-identifiers.php';
 
 final class MAD4B_SCP_Operation_Journal {
 	const CONTRACT = 'mad4b.dynamic-operation-journal.v1';
@@ -14,6 +16,8 @@ final class MAD4B_SCP_Operation_Journal {
 		global $wpdb;
 		$valid = self::validate_context( $context );
 		if ( is_wp_error( $valid ) ) return $valid;
+		$transaction_preflight = MAD4B_SCP_Database_Transaction_Guard::preflight( array( 'operation_heads', 'operation_events' ), true );
+		if ( is_wp_error( $transaction_preflight ) ) return $transaction_preflight;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$deadline = self::mysql_time( $context['hard_deadline_at'] );
@@ -21,7 +25,7 @@ final class MAD4B_SCP_Operation_Journal {
 			"INSERT IGNORE INTO {$t['operation_heads']} (operation_id,operation_key,operation_binding_sha256,latest_sequence,latest_event_sha256,lifecycle_state,terminal_outcome,heartbeat_at,lock_expires_at,stale_after,hard_deadline_at,created_at,updated_at) VALUES (%s,%s,%s,0,%s,%s,'',%s,NULL,%s,%s,%s,%s)",
 			$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], str_repeat( '0', 64 ), sanitize_key( $lifecycle_state ), $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $deadline, $now, $now
 		) );
-		if ( false === $inserted ) return new WP_Error( 'mad4b_operation_journal_head_create_failed', 'Unable to initialize operation journal.', array( 'db_error' => $wpdb->last_error ) );
+		if ( false === $inserted ) return MAD4B_SCP_Database_Failure_Semantics::error( 'mad4b_operation_journal_head_create_failed', 'Unable to initialize operation journal.', 'operation_journal_head_create', (string) $wpdb->last_error, null );
 		return self::append( $context, 'operation_started', array( 'checkpoint' => 'planned', 'lifecycle_state' => $lifecycle_state, 'metadata' => $metadata ) );
 	}
 
@@ -39,11 +43,12 @@ final class MAD4B_SCP_Operation_Journal {
 		$metadata_json = wp_json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $metadata_json ) ) return new WP_Error( 'mad4b_operation_metadata_encode_failed', 'Operation metadata could not be encoded.' );
 		$t = MAD4B_SCP_Schema::tables();
-		$wpdb->query( 'START TRANSACTION' );
+		$transaction = MAD4B_SCP_Database_Transaction_Guard::begin( 'operation_journal_append', array( 'operation_heads', 'operation_events' ), false );
+		if ( is_wp_error( $transaction ) ) return $transaction;
 		try {
-			$head = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE operation_id=%s FOR UPDATE", $context['operation_id'] ), ARRAY_A );
+			$head = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE BINARY operation_id=BINARY %s FOR UPDATE", $context['operation_id'] ), ARRAY_A );
 			if ( ! is_array( $head ) ) throw new RuntimeException( 'operation_head_missing' );
-			if ( ! hash_equals( (string) $head['operation_binding_sha256'], (string) $context['operation_binding_sha256'] ) || (string) $head['operation_key'] !== (string) $context['operation_key'] ) throw new RuntimeException( 'operation_identity_conflict' );
+			if ( ! hash_equals( (string) $head['operation_binding_sha256'], (string) $context['operation_binding_sha256'] ) || ! hash_equals( (string) $head['operation_key'], (string) $context['operation_key'] ) ) throw new RuntimeException( 'operation_identity_conflict' );
 			if ( (int) $head['latest_sequence'] >= self::MAX_EVENTS_PER_OPERATION ) throw new RuntimeException( 'operation_event_limit_exceeded' );
 			$sequence = (int) $head['latest_sequence'] + 1;
 			$previous = (string) $head['latest_event_sha256'];
@@ -68,24 +73,36 @@ final class MAD4B_SCP_Operation_Journal {
 			) );
 			if ( 1 !== (int) $ok ) throw new RuntimeException( 'operation_event_insert_failed' );
 			$updated = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t['operation_heads']} SET latest_sequence=%d,latest_event_sha256=%s,lifecycle_state=%s,terminal_outcome=%s,heartbeat_at=%s,stale_after=%s,updated_at=%s WHERE operation_id=%s AND latest_sequence=%d AND latest_event_sha256=%s",
+				"UPDATE {$t['operation_heads']} SET latest_sequence=%d,latest_event_sha256=%s,lifecycle_state=%s,terminal_outcome=%s,heartbeat_at=%s,stale_after=%s,updated_at=%s WHERE BINARY operation_id=BINARY %s AND latest_sequence=%d AND BINARY latest_event_sha256=BINARY %s",
 				$sequence, $event_sha, $lifecycle, $outcome, $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $now, $context['operation_id'], $sequence - 1, $previous
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'operation_head_cas_failed' );
-			$wpdb->query( 'COMMIT' );
+			$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $transaction );
+			if ( is_wp_error( $committed ) ) {
+				return new WP_Error( 'mad4b_operation_journal_commit_uncertain', 'Operation journal commit could not be verified; reconciliation is required.', array( 'cause' => $committed->get_error_code(), 'reconciliation_required' => true ) );
+			}
 			return array( 'contract' => self::CONTRACT, 'operation_id' => $context['operation_id'], 'sequence' => $sequence, 'event_sha256' => $event_sha, 'journal_head_sha256' => $event_sha, 'lifecycle_state' => $lifecycle, 'terminal_outcome' => $outcome );
 		} catch ( Throwable $e ) {
-			$wpdb->query( 'ROLLBACK' );
-			return new WP_Error( 'mad4b_operation_journal_append_failed', 'Unable to append operation journal event.', array( 'reason' => substr( $e->getMessage(), 0, 100 ), 'db_error' => $wpdb->last_error ) );
+			$db_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
+			$rolled_back = MAD4B_SCP_Database_Transaction_Guard::rollback( $transaction );
+			$rollback_verified = true === $rolled_back;
+			$semantics = MAD4B_SCP_Database_Failure_Semantics::classify( 'operation_journal_append', $db_error . ' ' . $e->getMessage(), $rollback_verified );
+			$code = ! empty( $semantics['reconciliation_required'] ) ? 'mad4b_operation_journal_persistence_uncertain' : 'mad4b_operation_journal_append_failed';
+			return new WP_Error( $code, 'Unable to append operation journal event.', array_merge( $semantics, array(
+				'reason' => substr( $e->getMessage(), 0, 100 ),
+				'db_error' => substr( $db_error, 0, 191 ),
+				'rollback_error' => is_wp_error( $rolled_back ) ? $rolled_back->get_error_code() : '',
+			) ) );
 		}
 	}
 
 	public static function head( $operation_id ) {
 		global $wpdb;
-		$operation_id = strtolower( trim( (string) $operation_id ) );
-		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );
+		$identity = MAD4B_SCP_Identifiers::operation_lookup( $operation_id );
+		if ( is_wp_error( $identity ) ) return $identity;
+		$operation_id = (string) $identity['value'];
 		$t = MAD4B_SCP_Schema::tables();
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE operation_id=%s LIMIT 1", $operation_id ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE BINARY operation_id=BINARY %s LIMIT 1", $operation_id ), ARRAY_A );
 		return is_array( $row ) ? $row : new WP_Error( 'mad4b_operation_not_found', 'Operation journal head was not found.' );
 	}
 
@@ -104,20 +121,21 @@ final class MAD4B_SCP_Operation_Journal {
 			$lock = gmdate( 'Y-m-d H:i:s', $ts );
 		}
 		if ( '' === $lock ) {
-			$ok = $wpdb->query( $wpdb->prepare( "UPDATE {$t['operation_heads']} SET heartbeat_at=%s,stale_after=%s,updated_at=%s WHERE operation_id=%s AND operation_binding_sha256=%s", $now, $stale, $now, $context['operation_id'], $context['operation_binding_sha256'] ) );
+			$ok = $wpdb->query( $wpdb->prepare( "UPDATE {$t['operation_heads']} SET heartbeat_at=%s,stale_after=%s,updated_at=%s WHERE BINARY operation_id=BINARY %s AND BINARY operation_binding_sha256=BINARY %s", $now, $stale, $now, $context['operation_id'], $context['operation_binding_sha256'] ) );
 		} else {
-			$ok = $wpdb->query( $wpdb->prepare( "UPDATE {$t['operation_heads']} SET heartbeat_at=%s,lock_expires_at=%s,stale_after=%s,updated_at=%s WHERE operation_id=%s AND operation_binding_sha256=%s", $now, $lock, $stale, $now, $context['operation_id'], $context['operation_binding_sha256'] ) );
+			$ok = $wpdb->query( $wpdb->prepare( "UPDATE {$t['operation_heads']} SET heartbeat_at=%s,lock_expires_at=%s,stale_after=%s,updated_at=%s WHERE BINARY operation_id=BINARY %s AND BINARY operation_binding_sha256=BINARY %s", $now, $lock, $stale, $now, $context['operation_id'], $context['operation_binding_sha256'] ) );
 		}
 		return false === $ok ? new WP_Error( 'mad4b_operation_heartbeat_failed', 'Operation heartbeat update failed.' ) : true;
 	}
 
 	public static function trace( $operation_id, $limit = 200 ) {
 		global $wpdb;
-		$operation_id = strtolower( trim( (string) $operation_id ) );
+		$identity = MAD4B_SCP_Identifiers::operation_lookup( $operation_id );
+		if ( is_wp_error( $identity ) ) return $identity;
+		$operation_id = (string) $identity['value'];
 		$limit = max( 1, min( 1000, absint( $limit ) ) );
-		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );
 		$t = MAD4B_SCP_Schema::tables();
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['operation_events']} WHERE operation_id=%s ORDER BY sequence ASC LIMIT %d", $operation_id, $limit ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['operation_events']} WHERE BINARY operation_id=BINARY %s ORDER BY sequence ASC LIMIT %d", $operation_id, $limit ), ARRAY_A );
 		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_operation_trace_read_failed', 'Unable to read operation trace.' );
 		$valid = true;
 		$previous = str_repeat( '0', 64 );
@@ -149,7 +167,7 @@ final class MAD4B_SCP_Operation_Journal {
 		$head = self::head( $operation_id );
 		$complete = ! is_wp_error( $head ) && (int)$head['latest_sequence'] === count( $events );
 		if ( $complete && ! empty( $events ) && ! hash_equals( (string)$head['latest_event_sha256'], (string)$previous ) ) $valid = false;
-		return array( 'contract'=>'mad4b.dynamic-operation-trace.v1','operation_id'=>$operation_id,'chain_valid'=>$valid,'complete'=>$complete,'count'=>count($events),'events'=>$events,'read_only'=>true,'mutation_performed'=>false );
+		return array( 'contract'=>'mad4b.dynamic-operation-trace.v1','operation_id'=>$operation_id,'operation_identity_class'=>(string)$identity['identity_class'],'historical_identity_preserved'=>!empty($identity['historical_identity_preserved']),'rewrite_allowed'=>!empty($identity['rewrite_allowed']),'chain_valid'=>$valid,'complete'=>$complete,'count'=>count($events),'events'=>$events,'read_only'=>true,'mutation_performed'=>false );
 	}
 
 	public static function status( $operation_id ) {
@@ -184,7 +202,8 @@ final class MAD4B_SCP_Operation_Journal {
 
 	private static function validate_context( array $context ) {
 		foreach ( array( 'operation_id', 'operation_key', 'operation_binding_sha256', 'hard_deadline_at' ) as $key ) if ( empty( $context[ $key ] ) ) return new WP_Error( 'mad4b_operation_context_incomplete', 'Operation context is incomplete.', array( 'missing' => $key ) );
-		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', strtolower( (string) $context['operation_id'] ) ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );
+		$canonical_operation_id = MAD4B_SCP_Identifiers::operation_id_for_write( $context['operation_id'] );
+		if ( '' === $canonical_operation_id || ! hash_equals( $canonical_operation_id, (string) $context['operation_id'] ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'New operation journal writes require a canonical lowercase UUIDv4 identity.' );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $context['operation_binding_sha256'] ) ) ) return new WP_Error( 'mad4b_operation_binding_invalid', 'Operation binding digest is invalid.' );
 		return true;
 	}

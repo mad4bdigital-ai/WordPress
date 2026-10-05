@@ -1,0 +1,20 @@
+{
+  "contract": "mad4b.replay-policy.v1",
+  "durable_record_ttl_seconds": 86400,
+  "risk_modes": {
+    "low": "reusable_same_idempotency",
+    "medium": "reusable_same_idempotency",
+    "high": "single_use",
+    "exceptional": "single_use"
+  },
+  "rules": {
+    "missing_idempotency_key": "single_use",
+    "idempotency_key_rebind": "deny",
+    "request_digest_rebind": "deny",
+    "completed_reuse": "return_recorded_result",
+    "pending_reuse": "deny_reconciliation_required",
+    "ambiguous_execution": "keep_pending",
+    "verified_no_effect_reclaim": "durable_execution_only",
+    "authority_effect": "none"
+  }
+}

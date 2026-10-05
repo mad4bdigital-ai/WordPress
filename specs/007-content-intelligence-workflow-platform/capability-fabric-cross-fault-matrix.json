@@ -1,0 +1,69 @@
+{
+  "contract": "mad4b.capability-fabric-cross-fault-matrix.v1",
+  "required_dimensions": [
+    "long_lived_worker_cache_leakage",
+    "read_replica_lag",
+    "db_deadlock_or_connection_loss",
+    "hook_order_interference",
+    "clone_restore_time_travel",
+    "subject_revocation",
+    "evidence_store_exhaustion",
+    "fatal_interruption",
+    "post_side_effect_cancellation",
+    "mixed_generation_transport"
+  ],
+  "scenarios": [
+    {
+      "id": "isolation_restore_revocation",
+      "dimensions": [
+        "long_lived_worker_cache_leakage",
+        "hook_order_interference",
+        "clone_restore_time_travel",
+        "subject_revocation"
+      ],
+      "test_ids": [
+        "request_generation",
+        "hook_order_contract",
+        "clone_quarantine",
+        "restore_replay_contract",
+        "subject_lifecycle"
+      ],
+      "expected": "no stale identity, restored authority, or revoked subject can commit"
+    },
+    {
+      "id": "persistence_crash_evidence",
+      "dimensions": [
+        "read_replica_lag",
+        "db_deadlock_or_connection_loss",
+        "evidence_store_exhaustion",
+        "fatal_interruption"
+      ],
+      "test_ids": [
+        "database_topology",
+        "durable_execution_contract",
+        "terminal_evidence_faults",
+        "fatal_interruption"
+      ],
+      "expected": "ambiguous persistence or interruption never becomes terminal success or blind retry"
+    },
+    {
+      "id": "cancel_transport_evidence",
+      "dimensions": [
+        "post_side_effect_cancellation",
+        "mixed_generation_transport",
+        "evidence_store_exhaustion"
+      ],
+      "test_ids": [
+        "remote_cancellation",
+        "catalog_chunk_reassembly",
+        "terminal_evidence_faults"
+      ],
+      "expected": "post-entry cancellation reconciles, mixed transport is rejected, and missing evidence suppresses success"
+    }
+  ],
+  "execution_layers": {
+    "hermetic_composition": "This matrix executes only repository-local hermetic/static contracts.",
+    "real_database_evidence": "Durable execution and restore integration remain separately certified by Critical Kernel and Pre-Staging database runtime jobs.",
+    "authorizing": false
+  }
+}

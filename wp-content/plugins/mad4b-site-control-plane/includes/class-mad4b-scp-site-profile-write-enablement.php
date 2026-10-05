@@ -2,6 +2,8 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+if ( ! class_exists( 'MAD4B_SCP_Production_Promotion_Attestation' ) ) require_once __DIR__ . '/class-mad4b-scp-production-promotion-attestation.php';
+
 /**
  * Exact environment-bound transition that enables governed write on an already
  * enrolled Staging or Production Site Profile without exposing the generic Site Profile save path.
@@ -59,6 +61,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 						'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 						'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION, self::PRODUCTION_CONFIRMATION ) ),
+						'production_promotion_attestation' => MAD4B_SCP_Production_Promotion_Attestation::schema(),
 					),
 					'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'confirmation' ),
 					'additionalProperties' => false,
@@ -75,6 +78,8 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 						'generic_remote_admin' => false,
 						'production_mutation_allowed' => true,
 						'production_exact_confirmation_required' => true,
+						'production_readiness_required' => true,
+						'production_promotion_attestation_contract' => MAD4B_SCP_Production_Promotion_Attestation::CONTRACT,
 					),
 					'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
 				),
@@ -93,6 +98,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_site_profile_write_enable_subject_not_enrolled', 'The authenticated WordPress administrator is not enrolled in this Site Profile.' );
 		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_site_profile_write_enable_environment_denied', 'Remote governed write enablement is limited to Staging or Production.' );
+		if ( 'production' === $environment && ( ! is_array( $input ) || empty( $input['production_promotion_attestation'] ) || ! is_array( $input['production_promotion_attestation'] ) ) ) return new WP_Error( 'mad4b_production_promotion_attestation_required', 'Production write enablement requires one fresh exact Production Promotion Attestation.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_site_profile_write_enable_profile_not_exact', 'The current origin, environment, home URL and site URL must exactly match the enrolled Site Profile.' );
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_write_enable_https_required', 'Remote governed write enablement requires HTTPS.' );
 		return true;
@@ -124,6 +130,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		$current_fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
 		if ( ! hash_equals( $expected_sha, $current_sha ) ) return new WP_Error( 'mad4b_site_profile_write_enable_candidate_mismatch', 'Source commit does not match the exact requested candidate.' );
 		if ( ! hash_equals( $expected_fingerprint, $current_fingerprint ) ) return new WP_Error( 'mad4b_site_profile_write_enable_fingerprint_mismatch', 'Build fingerprint does not match the exact requested candidate.' );
+		if ( 'production' === $environment && MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_production_write_activation_already_enabled', 'Production write activation is a one-time Site Profile transition; use governed authority reconciliation after activation.' );
 
 		if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() ) return new WP_Error( 'mad4b_site_profile_write_enable_app_mapping_missing', 'A valid stored ChatGPT App ID is required before governed write can be enabled.' );
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) return new WP_Error( 'mad4b_site_profile_write_enable_oauth_required', 'OAuth must be enabled before governed write can be enabled.' );
@@ -135,6 +142,19 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		$before = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		if ( ! is_array( $before ) || ! isset( $before['features'] ) || ! is_array( $before['features'] ) ) return new WP_Error( 'mad4b_site_profile_write_enable_profile_invalid', 'Stored Site Profile is invalid.' );
 		if ( empty( $before['features']['oauth'] ) || empty( $before['features']['acceptance'] ) || empty( $before['features']['skills'] ) || ! empty( $before['features']['write'] ) ) return new WP_Error( 'mad4b_site_profile_write_enable_feature_state_invalid', 'Stored OAuth, Acceptance and Skills must be enabled while Write remains disabled before this transition.' );
+
+		$promotion_receipt = array();
+		if ( 'production' === $environment ) {
+			$promotion_receipt = MAD4B_SCP_Production_Promotion_Attestation::validate_for_activation(
+				$input['production_promotion_attestation'],
+				$current_revision,
+				$current_digest,
+				$current_sha,
+				$current_fingerprint
+			);
+			if ( is_wp_error( $promotion_receipt ) ) return $promotion_receipt;
+			if ( empty( $promotion_receipt['ready'] ) || ! empty( $promotion_receipt['production_authorized'] ) ) return new WP_Error( 'mad4b_production_promotion_attestation_not_ready', 'Production Promotion Attestation did not prove a fresh non-authorizing Production-ready candidate.' );
+		}
 
 		$next = $before;
 		$next['revision'] = $current_revision + 1;
@@ -154,6 +174,9 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 				'write_enabled' => true,
 				'production_write_confirmed' => 'production' === $environment,
 				'production_mutation_authorized' => 'production' === $environment,
+				'production_readiness_verified' => 'production' === $environment,
+				'production_promotion_attestation_sha256' => 'production' === $environment && isset( $promotion_receipt['promotion_attestation_sha256'] ) ? (string) $promotion_receipt['promotion_attestation_sha256'] : '',
+				'production_readiness_verdict_sha256' => 'production' === $environment && isset( $promotion_receipt['staging_readiness_verdict_sha256'] ) ? (string) $promotion_receipt['staging_readiness_verdict_sha256'] : '',
 				'source_commit_sha' => $current_sha,
 				'build_fingerprint' => $current_fingerprint,
 				'authority_reconciliation_deferred' => true,
@@ -189,6 +212,9 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 			'write_enabled' => true,
 			'production_write_confirmed' => 'production' === $environment,
 			'production_mutation_authorized' => 'production' === $environment,
+			'production_readiness_verified' => 'production' === $environment,
+			'production_promotion_attestation_sha256' => 'production' === $environment && isset( $promotion_receipt['promotion_attestation_sha256'] ) ? (string) $promotion_receipt['promotion_attestation_sha256'] : '',
+			'production_readiness_verdict_sha256' => 'production' === $environment && isset( $promotion_receipt['staging_readiness_verdict_sha256'] ) ? (string) $promotion_receipt['staging_readiness_verdict_sha256'] : '',
 			'source_commit_sha' => $current_sha,
 			'build_fingerprint' => $current_fingerprint,
 			'authority_reconciliation_deferred' => true,

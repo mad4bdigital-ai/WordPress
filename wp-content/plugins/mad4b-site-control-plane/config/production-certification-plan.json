@@ -1,0 +1,233 @@
+{
+  "contract": "mad4b.production-certification-plan.v1",
+  "profile": "control_plane_core",
+  "environment": "staging",
+  "target_environment": "production",
+  "authorizing": false,
+  "production_mutation_performed": false,
+  "exact_candidate_identity_required": true,
+  "stages": [
+    {
+      "id": "exact_deployment_identity",
+      "gate": "etg_exact_runtime_release_deployed",
+      "mutation_class": "read_only",
+      "producer": ".github/workflows/mad4b-etg-deployment-readiness.yml",
+      "evidence_contract": "mad4b.etg-deployment-readiness.v1",
+      "rollback_required": false,
+      "producer_contract": "mad4b.etg-deployment-readiness.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "exact_deployment_verifier"
+    },
+    {
+      "id": "runtime_root_trust",
+      "gate": "runtime_root_trust_readback",
+      "mutation_class": "read_only",
+      "producer": "tools/verify_release_root_trust.py#trusted-master-release-root",
+      "evidence_contract": "mad4b.release-root-trust-verification.v1",
+      "rollback_required": false,
+      "producer_contract": "mad4b.release-root-trust-verification.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "external_release_root_verifier"
+    },
+    {
+      "id": "rollback_retention",
+      "gate": "rollback_retention_verified",
+      "mutation_class": "read_only",
+      "producer": ".github/workflows/mad4b-rollback-retention-receipt.yml",
+      "evidence_contract": "mad4b.rollback-retention-receipt.v1",
+      "rollback_required": false,
+      "foundation_only": true,
+      "producer_contract": "mad4b.rollback-retention-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "rollback_retention_verifier"
+    },
+    {
+      "id": "host_runner_parity",
+      "gate": "recovery_tooling_available",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "mad4b/host-operation-apply#workspace.file.replace+workspace.file.rollback",
+      "evidence_contract": "mad4b.tool-execution-receipt.v1",
+      "rollback_required": true,
+      "producer_contract": "mad4b.tool-execution-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "durable_host_runner_receipt"
+    },
+    {
+      "id": "protected_backup_restore",
+      "gate": "protected_backup_recovery_ready",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "tools/mad4b_recovery_plane.py#plan-backup+apply-backup+verify-backup+plan-backup-restore+apply-backup-restore",
+      "evidence_contract": "mad4b.protected-backup-restore-receipt.v1",
+      "rollback_required": true,
+      "producer_contract": "mad4b.protected-backup-restore-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "recovery_plane_receipt"
+    },
+    {
+      "id": "out_of_band_recovery",
+      "gate": "recovery_live_verified",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "tools/mad4b_recovery_plane.py#plan-restore+apply-restore",
+      "evidence_contract": "mad4b.recovery-receipt.v1",
+      "rollback_required": true,
+      "producer_contract": "mad4b.recovery-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "recovery_plane_receipt"
+    },
+    {
+      "id": "provider_side_channel_inventory",
+      "gate": "provider_side_channel_safe",
+      "mutation_class": "read_only",
+      "producer": "mad4b/production-certification-readonly-evidence#mcp-peer-governance",
+      "evidence_contract": "mad4b.mcp-peer-governance.v2",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "provider_side_channel_inventory",
+      "producer_contract": "mad4b.mcp-peer-governance.v2",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
+    },
+    {
+      "id": "multi_authority_canary",
+      "gate": "multi_authority_live",
+      "mutation_class": "read_only",
+      "producer": "mad4b/production-certification-readonly-evidence#multi-authority",
+      "evidence_contract": "mad4b.multi-authority-live-canary.v1",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "multi_authority_canary",
+      "producer_contract": "mad4b.multi-authority-live-canary.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
+    },
+    {
+      "id": "policy_resolution_canary",
+      "gate": "policy_engine_ready",
+      "mutation_class": "read_only",
+      "producer": "mad4b/production-certification-readonly-evidence#policy-probe",
+      "evidence_contract": "mad4b.production-policy-probe.v1",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "policy_resolution_canary",
+      "producer_contract": "mad4b.production-policy-probe.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
+    },
+    {
+      "id": "consistency_fault_canary",
+      "gate": "authoritative_execution_verified",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "mad4b-write#media/set-featured+mad4b/mutation-undo",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": true,
+      "producer_contract": "mad4b.execution-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "governed_execution_receipt"
+    },
+    {
+      "id": "security_fault_canary",
+      "gate": "kernel_quality_verified",
+      "mutation_class": "read_only",
+      "producer": "mad4b/production-certification-readonly-evidence#security-fault-canary",
+      "evidence_contract": "mad4b.production-security-live-canary.v1",
+      "rollback_required": false,
+      "producer_contract": "mad4b.production-security-live-canary.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute",
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "security_fault_canary"
+    },
+    {
+      "id": "operator_doctor",
+      "gate": "operator_recovery_review_ready",
+      "mutation_class": "read_only",
+      "producer": "mad4b/production-certification-readonly-evidence#operator-doctor",
+      "evidence_contract": "mad4b.operator-doctor.v1",
+      "rollback_required": false,
+      "producer_ability": "mad4b/production-certification-readonly-evidence",
+      "producer_stage_id": "operator_doctor",
+      "producer_contract": "mad4b.operator-doctor.v1",
+      "trust_mode": "runtime_recompute",
+      "attestation_method": "runtime_recompute"
+    },
+    {
+      "id": "formal_state_repository_proof",
+      "gate": "formal_critical_state_verified",
+      "mutation_class": "read_only",
+      "producer": ".github/workflows/feature-007-critical-kernel.yml",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": false,
+      "producer_contract": "mad4b.github-workflow-run-evidence.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "repository_workflow_verifier"
+    },
+    {
+      "id": "request_receipt_rollback_vertical_slice",
+      "gate": "critical_kernel_vertical_slice_verified",
+      "mutation_class": "reversible_staging_mutation",
+      "producer": "mad4b/host-operation-apply#request-receipt-rollback-vertical-slice",
+      "evidence_contract": "mad4b.production-live-gate-evidence.v1",
+      "rollback_required": true,
+      "producer_contract": "mad4b.tool-execution-receipt.v1",
+      "trust_mode": "signed_attestation",
+      "attestation_method": "durable_host_runner_receipt"
+    }
+  ],
+  "evidence_envelope": {
+    "contract": "mad4b.production-live-gate-evidence.v1",
+    "required_fields": [
+      "gate",
+      "environment",
+      "candidate_identity",
+      "producer_contract",
+      "producer_evidence_sha256",
+      "ready",
+      "mutation_performed",
+      "production_mutation",
+      "authorizing",
+      "producer",
+      "producer_evidence"
+    ],
+    "candidate_identity_fields": [
+      "source_commit_sha",
+      "build_fingerprint",
+      "package_manifest_digest"
+    ],
+    "mutation_requirements": {
+      "reversible_staging_mutation": [
+        "rollback_verified",
+        "postcondition_verified"
+      ],
+      "read_only": [
+        "mutation_performed=false"
+      ]
+    },
+    "producer_evidence_sha256_mode": "canonical_json_sha256",
+    "embedded_producer_evidence_required": true,
+    "trust": {
+      "contract": "mad4b.production-evidence-trust.v1",
+      "allowed_modes": [
+        "runtime_recompute",
+        "signed_attestation"
+      ],
+      "signed_attestation_contract": "mad4b.production-evidence-attestation.v1",
+      "signed_attestation_field": "evidence_attestation",
+      "crypto_purpose": "production_evidence",
+      "caller_supplied_ready_flags_authoritative": false,
+      "exact_producer_contract_required": true,
+      "fresh_attestation_required": true
+    }
+  },
+  "terminal": {
+    "all_stages_ready_required": true,
+    "exact_identity_equal_across_all_stages": true,
+    "optional_capabilities_remain_fail_closed": true,
+    "production_ready_result_authorizing": false,
+    "production_promotion_separate": true,
+    "producer_evidence_content_addressed": true,
+    "foundation_stages_content_addressed": true,
+    "producer_evidence_trust_required": true,
+    "caller_supplied_ready_flags_not_authoritative": true,
+    "fresh_evidence_attestation_required": true
+  }
+}

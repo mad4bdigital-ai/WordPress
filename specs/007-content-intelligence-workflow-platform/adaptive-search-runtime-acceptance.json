@@ -1,0 +1,554 @@
+{
+  "contract": "mad4b.adaptive-search-runtime-acceptance.v1",
+  "phase": 38,
+  "scope": "repository_runtime_conformance",
+  "authorizing": false,
+  "live_provider_certification": "separate_exact_runtime_account_descriptor_usage_and_rights_evidence_required",
+  "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+  "evidence_artifact": "adaptive-search-<exact-head>-php-<version>/asi-evidence-<version>.json",
+  "required_evidence_classes": [
+    "exact_head_ci_hermetic_runtime",
+    "disposable_wordpress_mysql"
+  ],
+  "thresholds": {
+    "min_total_fixtures": 42,
+    "min_total_assertions": 981,
+    "min_disposable_assertions": 80,
+    "disposable_cas_workers": 8,
+    "disposable_cas_winners": 1,
+    "hermetic_race_rounds": 8,
+    "hermetic_workers_per_round": 12,
+    "compiled_targets": 4201,
+    "fairness_targets": 48,
+    "fairness_slots": 48
+  },
+  "gates": {
+    "ADAPTIVE_SEARCH_META_MODEL_PASS": {
+      "fixtures": [
+        "profile_exact_plan_revision_and_boundary",
+        "object_surface_virtual_admission_and_indexability_conflicts",
+        "target_identity_unicode_url_and_purpose_separation",
+        "registered_operation_and_private_ability_boundaries"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "profile_exact_plan_revision_and_boundary": 17,
+          "object_surface_virtual_admission_and_indexability_conflicts": 16,
+          "target_identity_unicode_url_and_purpose_separation": 27,
+          "registered_operation_and_private_ability_boundaries": 27
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "object and surface identity conflation",
+        "authority in profile overlay"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_CONTEXT_COMPILER_PASS": {
+      "fixtures": [
+        "profile_exact_plan_revision_and_boundary",
+        "overlay_precedence_minimal_drift_and_reason_chain",
+        "language_registry_conflict_partial_and_new_translation",
+        "composed_profile_language_surface_drift_preserves_history",
+        "compile_timestamp_stability_and_seo_generation_drift",
+        "live_archive_home_blog_and_public_registration_drift"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "profile_exact_plan_revision_and_boundary": 17,
+          "overlay_precedence_minimal_drift_and_reason_chain": 6,
+          "language_registry_conflict_partial_and_new_translation": 12,
+          "composed_profile_language_surface_drift_preserves_history": 10,
+          "compile_timestamp_stability_and_seo_generation_drift": 4,
+          "live_archive_home_blog_and_public_registration_drift": 17
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "unknown language owned tracking",
+        "stale profile apply",
+        "SEO generation drift",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "INDEXABLE_SURFACE_GRAPH_PASS": {
+      "fixtures": [
+        "object_surface_virtual_admission_and_indexability_conflicts",
+        "wordpress_inventory_pagination_and_public_cpt_taxonomy",
+        "language_registry_conflict_partial_and_new_translation",
+        "target_4k_compilation_owned_and_discovery_independence",
+        "live_archive_home_blog_and_public_registration_drift"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "object_surface_virtual_admission_and_indexability_conflicts": 16,
+          "wordpress_inventory_pagination_and_public_cpt_taxonomy": 251,
+          "language_registry_conflict_partial_and_new_translation": 12,
+          "target_4k_compilation_owned_and_discovery_independence": 5,
+          "live_archive_home_blog_and_public_registration_drift": 17
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "unknown robots evidence",
+        "unapproved facet combination",
+        "URL pagination or cardinality overflow",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEO_FIELD_PROVENANCE_PASS": {
+      "fixtures": [
+        "object_surface_virtual_admission_and_indexability_conflicts",
+        "compile_timestamp_stability_and_seo_generation_drift"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "object_surface_virtual_admission_and_indexability_conflicts": 16,
+          "compile_timestamp_stability_and_seo_generation_drift": 4
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "conflicting effective metadata",
+        "raw fallback displacing authoritative field"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_TARGET_COMPILER_PASS": {
+      "fixtures": [
+        "target_identity_unicode_url_and_purpose_separation",
+        "target_4k_compilation_owned_and_discovery_independence",
+        "compile_timestamp_stability_and_seo_generation_drift",
+        "live_archive_home_blog_and_public_registration_drift"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "target_identity_unicode_url_and_purpose_separation": 27,
+          "target_4k_compilation_owned_and_discovery_independence": 5,
+          "compile_timestamp_stability_and_seo_generation_drift": 4,
+          "live_archive_home_blog_and_public_registration_drift": 17
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "owned target without eligible localized surface",
+        "cross-purpose deduplication",
+        "over 5000 candidates",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_DECISION_EXPLAINABILITY_PASS": {
+      "fixtures": [
+        "decision_policy_provenance_monotonicity_and_refresh",
+        "fairness_aging_and_minimum_coverage_no_starvation",
+        "cache_equivalence_depth_retention_and_unknown_context",
+        "billing_window_pacing_and_bounded_burst_admission",
+        "first_party_composition_rejects_malformed_and_live_serp_claims"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "decision_policy_provenance_monotonicity_and_refresh": 5,
+          "fairness_aging_and_minimum_coverage_no_starvation": 4,
+          "cache_equivalence_depth_retention_and_unknown_context": 8,
+          "billing_window_pacing_and_bounded_burst_admission": 13,
+          "first_party_composition_rejects_malformed_and_live_serp_claims": 27
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "expired or out-of-scope decision factor",
+        "negative cost or unknown pacing",
+        "incomparable cache reuse",
+        "malformed first-party evidence overriding valid decision factors",
+        "first-party performance claiming a live SERP receipt"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_FAIR_SCHEDULER_PASS": {
+      "fixtures": [
+        "fairness_aging_and_minimum_coverage_no_starvation",
+        "shared_account_race_across_processes_and_sites",
+        "portable_storage_site_isolation_and_operator_due_controls",
+        "operator_mute_fences_direct_capture_and_provider_entry",
+        "first_party_composition_rejects_malformed_and_live_serp_claims"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "fairness_aging_and_minimum_coverage_no_starvation": 4,
+          "shared_account_race_across_processes_and_sites": 305,
+          "portable_storage_site_isolation_and_operator_due_controls": 7,
+          "operator_mute_fences_direct_capture_and_provider_entry": 16,
+          "first_party_composition_rejects_malformed_and_live_serp_claims": 27
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "noisy neighbor starvation",
+        "duplicate shared account allowance",
+        "muted target selection",
+        "muted targets admitted through a direct capture route",
+        "malformed decision adapters crashing the observation cohort"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_BUDGET_GOVERNOR_PASS": {
+      "fixtures": [
+        "budget_hierarchy_protected_reserve_depth_rate_and_expiry",
+        "shared_account_race_across_processes_and_sites",
+        "last_unit_and_single_concurrency_capture_revalidates_own_hold",
+        "foundation_shared_budget_and_stable_account_identity_integration",
+        "quota_reset_fencing_cost_overrun_and_rate_limit",
+        "billing_window_pacing_and_bounded_burst_admission"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "budget_hierarchy_protected_reserve_depth_rate_and_expiry": 13,
+          "shared_account_race_across_processes_and_sites": 305,
+          "last_unit_and_single_concurrency_capture_revalidates_own_hold": 6,
+          "foundation_shared_budget_and_stable_account_identity_integration": 6,
+          "quota_reset_fencing_cost_overrun_and_rate_limit": 11,
+          "billing_window_pacing_and_bounded_burst_admission": 13
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "last-unit race overspend",
+        "depth/rate/concurrency overflow",
+        "old billing cycle receipt",
+        "uncertain charge reclaimed"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SERP_PROVIDER_CONFORMANCE_PASS": {
+      "fixtures": [
+        "provider_auction_quota_open_probe_failover_and_generation",
+        "serpapi_translation_secrets_egress_geo_and_features",
+        "dataforseo_translation_literal_operators_and_rank_semantics",
+        "provider_geo_missing_mismatched_locale_and_malformed_payload",
+        "bounded_half_open_probes_do_not_purchase_search",
+        "transport_timeout_oversize_and_upstream_secret_error",
+        "certification_and_credential_fail_closed"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "provider_auction_quota_open_probe_failover_and_generation": 8,
+          "serpapi_translation_secrets_egress_geo_and_features": 9,
+          "dataforseo_translation_literal_operators_and_rank_semantics": 7,
+          "provider_geo_missing_mismatched_locale_and_malformed_payload": 9,
+          "bounded_half_open_probes_do_not_purchase_search": 6,
+          "transport_timeout_oversize_and_upstream_secret_error": 8,
+          "certification_and_credential_fail_closed": 1
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "uncertified outbound request",
+        "missing provider geo receipt",
+        "paid HALF_OPEN probe",
+        "secret reflection"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SERP_EVIDENCE_INTEGRITY_PASS": {
+      "fixtures": [
+        "durable_capture_replay_cache_and_no_authority",
+        "local_checkpoint_resume_does_not_repurchase",
+        "composed_profile_language_surface_drift_preserves_history",
+        "evidence_tamper_trust_completeness_and_measurement_semantics",
+        "comparability_cannibalization_archives_and_no_incomplete_loss",
+        "cache_equivalence_depth_retention_and_unknown_context",
+        "expired_checkpoint_retention_preserves_cost_reconciliation_only"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "durable_capture_replay_cache_and_no_authority": 26,
+          "local_checkpoint_resume_does_not_repurchase": 6,
+          "composed_profile_language_surface_drift_preserves_history": 10,
+          "evidence_tamper_trust_completeness_and_measurement_semantics": 15,
+          "comparability_cannibalization_archives_and_no_incomplete_loss": 12,
+          "cache_equivalence_depth_retention_and_unknown_context": 8,
+          "expired_checkpoint_retention_preserves_cost_reconciliation_only": 7
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "snapshot tamper",
+        "partial capture reported as ranking loss",
+        "provider-incomparable rank delta",
+        "mutable target recomputation"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_EXTERNAL_EVIDENCE_TRUST_PASS": {
+      "fixtures": [
+        "evidence_tamper_trust_completeness_and_measurement_semantics",
+        "licensing_storage_region_retention_and_recomputation",
+        "serpapi_translation_secrets_egress_geo_and_features",
+        "transport_timeout_oversize_and_upstream_secret_error",
+        "expired_checkpoint_retention_preserves_cost_reconciliation_only"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "evidence_tamper_trust_completeness_and_measurement_semantics": 15,
+          "licensing_storage_region_retention_and_recomputation": 7,
+          "serpapi_translation_secrets_egress_geo_and_features": 9,
+          "transport_timeout_oversize_and_upstream_secret_error": 8,
+          "expired_checkpoint_retention_preserves_cost_reconciliation_only": 7
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "tool or prompt instruction in SERP text",
+        "oversized malformed response",
+        "forged imported live receipt",
+        "licensed storage region mismatch"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_RECONCILIATION_BEFORE_RETRY_PASS": {
+      "fixtures": [
+        "ambiguous_effect_reconciliation_before_any_retry",
+        "last_unit_and_single_concurrency_capture_revalidates_own_hold",
+        "verified_no_effect_release_without_blind_retry",
+        "late_lease_restore_and_provider_generation_fences",
+        "local_checkpoint_resume_does_not_repurchase",
+        "pre_entry_crash_and_unused_quota_reconciliation",
+        "quota_reset_fencing_cost_overrun_and_rate_limit",
+        "expired_checkpoint_retention_preserves_cost_reconciliation_only"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "ambiguous_effect_reconciliation_before_any_retry": 11,
+          "last_unit_and_single_concurrency_capture_revalidates_own_hold": 6,
+          "verified_no_effect_release_without_blind_retry": 3,
+          "late_lease_restore_and_provider_generation_fences": 6,
+          "local_checkpoint_resume_does_not_repurchase": 6,
+          "pre_entry_crash_and_unused_quota_reconciliation": 5,
+          "quota_reset_fencing_cost_overrun_and_rate_limit": 11,
+          "expired_checkpoint_retention_preserves_cost_reconciliation_only": 7
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "blind paid retry",
+        "observation epoch bypass",
+        "unbound provider receipt",
+        "late or restored worker result"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "ADAPTIVE_SEARCH_EXPERIENCE_PASS": {
+      "fixtures": [
+        "adaptive_experience_outage_cache_states_stable_sections_and_controls",
+        "registered_operation_and_private_ability_boundaries",
+        "portable_storage_site_isolation_and_operator_due_controls",
+        "operator_mute_fences_direct_capture_and_provider_entry"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "adaptive_experience_outage_cache_states_stable_sections_and_controls": 10,
+          "registered_operation_and_private_ability_boundaries": 27,
+          "portable_storage_site_isolation_and_operator_due_controls": 7,
+          "operator_mute_fences_direct_capture_and_provider_entry": 16
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "outage erasing valid licensed history",
+        "unstable section identifiers",
+        "secret/debug leakage",
+        "configuration creating spend authority",
+        "direct capture of an operator-muted target",
+        "mute arriving between provider preparation and entry"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS": {
+      "fixtures": [
+        "durable_capture_replay_cache_and_no_authority",
+        "post_change_fingerprint_binding_experiment_and_no_causality"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "durable_capture_replay_cache_and_no_authority": 26,
+          "post_change_fingerprint_binding_experiment_and_no_causality": 10
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "direct signal to content mutation",
+        "Production capture authority",
+        "unverified content/SEO post-change binding",
+        "unsupported causal claim"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    },
+    "ADAPTIVE_SEARCH_GENERALIZATION_PASS": {
+      "fixtures": [
+        "profile_exact_plan_revision_and_boundary",
+        "overlay_precedence_minimal_drift_and_reason_chain",
+        "object_surface_virtual_admission_and_indexability_conflicts",
+        "wordpress_inventory_pagination_and_public_cpt_taxonomy",
+        "language_registry_conflict_partial_and_new_translation",
+        "target_identity_unicode_url_and_purpose_separation",
+        "target_4k_compilation_owned_and_discovery_independence",
+        "decision_policy_provenance_monotonicity_and_refresh",
+        "fairness_aging_and_minimum_coverage_no_starvation",
+        "budget_hierarchy_protected_reserve_depth_rate_and_expiry",
+        "shared_account_race_across_processes_and_sites",
+        "provider_auction_quota_open_probe_failover_and_generation",
+        "durable_capture_replay_cache_and_no_authority",
+        "ambiguous_effect_reconciliation_before_any_retry",
+        "last_unit_and_single_concurrency_capture_revalidates_own_hold",
+        "verified_no_effect_release_without_blind_retry",
+        "late_lease_restore_and_provider_generation_fences",
+        "local_checkpoint_resume_does_not_repurchase",
+        "composed_profile_language_surface_drift_preserves_history",
+        "evidence_tamper_trust_completeness_and_measurement_semantics",
+        "comparability_cannibalization_archives_and_no_incomplete_loss",
+        "licensing_storage_region_retention_and_recomputation",
+        "adaptive_experience_outage_cache_states_stable_sections_and_controls",
+        "expired_checkpoint_retention_preserves_cost_reconciliation_only",
+        "registered_operation_and_private_ability_boundaries",
+        "foundation_shared_budget_and_stable_account_identity_integration",
+        "pre_entry_crash_and_unused_quota_reconciliation",
+        "quota_reset_fencing_cost_overrun_and_rate_limit",
+        "compile_timestamp_stability_and_seo_generation_drift",
+        "billing_window_pacing_and_bounded_burst_admission",
+        "cache_equivalence_depth_retention_and_unknown_context",
+        "post_change_fingerprint_binding_experiment_and_no_causality",
+        "portable_storage_site_isolation_and_operator_due_controls",
+        "serpapi_translation_secrets_egress_geo_and_features",
+        "dataforseo_translation_literal_operators_and_rank_semantics",
+        "provider_geo_missing_mismatched_locale_and_malformed_payload",
+        "bounded_half_open_probes_do_not_purchase_search",
+        "transport_timeout_oversize_and_upstream_secret_error",
+        "certification_and_credential_fail_closed",
+        "live_archive_home_blog_and_public_registration_drift",
+        "operator_mute_fences_direct_capture_and_provider_entry",
+        "first_party_composition_rejects_malformed_and_live_serp_claims"
+      ],
+      "assertions": "Each named executable fixture must pass every positive and denial assertion.",
+      "thresholds": {
+        "minimum_assertions_per_fixture": {
+          "profile_exact_plan_revision_and_boundary": 17,
+          "overlay_precedence_minimal_drift_and_reason_chain": 6,
+          "object_surface_virtual_admission_and_indexability_conflicts": 16,
+          "wordpress_inventory_pagination_and_public_cpt_taxonomy": 251,
+          "language_registry_conflict_partial_and_new_translation": 12,
+          "target_identity_unicode_url_and_purpose_separation": 27,
+          "target_4k_compilation_owned_and_discovery_independence": 5,
+          "decision_policy_provenance_monotonicity_and_refresh": 5,
+          "fairness_aging_and_minimum_coverage_no_starvation": 4,
+          "budget_hierarchy_protected_reserve_depth_rate_and_expiry": 13,
+          "shared_account_race_across_processes_and_sites": 305,
+          "provider_auction_quota_open_probe_failover_and_generation": 8,
+          "durable_capture_replay_cache_and_no_authority": 26,
+          "ambiguous_effect_reconciliation_before_any_retry": 11,
+          "last_unit_and_single_concurrency_capture_revalidates_own_hold": 6,
+          "verified_no_effect_release_without_blind_retry": 3,
+          "late_lease_restore_and_provider_generation_fences": 6,
+          "local_checkpoint_resume_does_not_repurchase": 6,
+          "composed_profile_language_surface_drift_preserves_history": 10,
+          "evidence_tamper_trust_completeness_and_measurement_semantics": 15,
+          "comparability_cannibalization_archives_and_no_incomplete_loss": 12,
+          "licensing_storage_region_retention_and_recomputation": 7,
+          "adaptive_experience_outage_cache_states_stable_sections_and_controls": 10,
+          "expired_checkpoint_retention_preserves_cost_reconciliation_only": 7,
+          "registered_operation_and_private_ability_boundaries": 27,
+          "foundation_shared_budget_and_stable_account_identity_integration": 6,
+          "pre_entry_crash_and_unused_quota_reconciliation": 5,
+          "quota_reset_fencing_cost_overrun_and_rate_limit": 11,
+          "compile_timestamp_stability_and_seo_generation_drift": 4,
+          "billing_window_pacing_and_bounded_burst_admission": 13,
+          "cache_equivalence_depth_retention_and_unknown_context": 8,
+          "post_change_fingerprint_binding_experiment_and_no_causality": 10,
+          "portable_storage_site_isolation_and_operator_due_controls": 7,
+          "serpapi_translation_secrets_egress_geo_and_features": 9,
+          "dataforseo_translation_literal_operators_and_rank_semantics": 7,
+          "provider_geo_missing_mismatched_locale_and_malformed_payload": 9,
+          "bounded_half_open_probes_do_not_purchase_search": 6,
+          "transport_timeout_oversize_and_upstream_secret_error": 8,
+          "certification_and_credential_fail_closed": 1,
+          "live_archive_home_blog_and_public_registration_drift": 17,
+          "operator_mute_fences_direct_capture_and_provider_entry": 16,
+          "first_party_composition_rejects_malformed_and_live_serp_claims": 27
+        },
+        "failed_assertions": 0
+      },
+      "denial_cases": [
+        "single provider assumption",
+        "hardcoded CPT/language/market",
+        "sequential fake race evidence",
+        "dirty or non-CI PASS gate",
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift",
+        "operator mute bypassed outside the cohort",
+        "malformed or misclassified first-party performance evidence"
+      ],
+      "required_evidence_classes": [
+        "exact_head_ci_hermetic_runtime",
+        "disposable_wordpress_mysql"
+      ]
+    }
+  }
+}

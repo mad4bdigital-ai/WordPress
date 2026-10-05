@@ -24,6 +24,20 @@ for marker in [
     "identity_matches",
     "public static function claim(",
     "public static function complete(",
+    "reconcile_provider_state_before_any_retry",
+    "reconciliation_completion_valid",
+    "mad4b_remote_work_reconciliation_required",
+    "'reconciling'",
+    "'cancelled_no_effect'",
+    "public static function cancel(",
+    "public static function cancellation_signal(",
+    "public static function provider_checkpoint(",
+    "public static function acknowledge_cancellation(",
+    "'provider_checkpoint'",
+    "'provider_side_effect_possible'",
+    "'provider_cancel_required'",
+    "mad4b_remote_work_cancel_before_provider_entry",
+    "mad4b_remote_work_cancel_ack_generation_mismatch",
     "unset( $job['lease_token_sha256'] )",
 ]:
     if marker not in queue:
@@ -58,6 +72,10 @@ for marker in [
     "MAD4B_SCP_Remote_Work_Queue::enqueue(",
     "MAD4B_SCP_Remote_Work_Queue::claim(",
     "MAD4B_SCP_Remote_Work_Queue::complete(",
+    "MAD4B_SCP_Remote_Work_Queue::cancel(",
+    "MAD4B_SCP_Remote_Work_Queue::cancellation_signal(",
+    "MAD4B_SCP_Remote_Work_Queue::provider_checkpoint(",
+    "MAD4B_SCP_Remote_Work_Queue::acknowledge_cancellation(",
     "mad4b_remote_work_evidence_not_observed",
     "query_monitor_frontend_probe_telemetry",
     "matched_frontend_probe_samples",
@@ -117,6 +135,10 @@ enrollment = parity[enrollment_start:enrollment_end]
 for marker in (
     "self::WORK_CLAIM_ABILITY",
     "self::WORK_COMPLETE_ABILITY",
+    "self::WORK_CANCEL_ABILITY",
+    "self::WORK_CANCEL_SIGNAL_ABILITY",
+    "self::WORK_PROVIDER_CHECKPOINT_ABILITY",
+    "self::WORK_CANCEL_ACK_ABILITY",
 ):
     if marker not in enrollment:
         raise SystemExit("remote external-executor mutation ability is not projected through enrollment_abilities(): " + marker)
@@ -132,3 +154,32 @@ if queue_load < 0 or parity_load < 0 or queue_load > parity_load:
     raise SystemExit("Remote Work Queue must load before Remote Operation Parity")
 
 print("mad4b.remote-work-queue.v1: PASS")
+
+
+# Cancellation/replay safety.
+if "'claimed' === $status && $expired" in queue:
+    raise SystemExit("claimed expired work must not be treated as safely reclaimable")
+if "in_array( $status, array( 'completed', 'cancelled_no_effect' )" not in queue:
+    raise SystemExit("only completed/cancelled-no-effect work may be terminally reclaimed")
+if "reconciliation_completion_valid" not in queue or "postcondition_verified" not in queue:
+    raise SystemExit("reconciling work lacks explicit postcondition-proof completion gate")
+if "WORK_CANCEL_ABILITY" not in parity or "cancel_remote_work" not in parity:
+    raise SystemExit("governed remote cancellation surface is missing")
+
+
+# Provider-boundary cancellation propagation must be enforceable by the governed executor surface.
+for marker in (
+    "const WORK_CANCEL_SIGNAL_ABILITY = 'mad4b/remote-operation-work-cancel-signal';",
+    "const WORK_PROVIDER_CHECKPOINT_ABILITY = 'mad4b/remote-operation-work-provider-checkpoint';",
+    "const WORK_CANCEL_ACK_ABILITY = 'mad4b/remote-operation-work-cancel-ack';",
+    "remote_work_cancellation_signal",
+    "provider_checkpoint_remote_work",
+    "acknowledge_remote_work_cancellation",
+    "work_provider_checkpoint_schema",
+    "work_cancel_ack_schema",
+):
+    if marker not in parity:
+        raise SystemExit("provider-boundary cancellation surface missing: " + marker)
+
+if "'applied' === $effect && ! $provider_entry_proven" not in queue:
+    raise SystemExit("applied cancellation reconciliation can terminalize without durable provider-entry proof")

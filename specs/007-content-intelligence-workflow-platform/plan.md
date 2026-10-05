@@ -829,3 +829,178 @@ Bulk closure hardening lane:
 - close the lane only through one full request→plan→approval→execution→readback→durable receipt→rollback evidence chain.
 
 Architecture Freeze remains active: this lane closes implementation/safety gaps and MUST NOT become a vehicle for new documentation-only abstractions.
+## Phase 37 — Post-merge Capability Fabric completeness
+
+Objective: convert the residual post-#230 Capability Fabric review into explicit Spec Kit ownership so no architectural, security, durability, operability or evolution dimension remains implicit.
+
+This phase does not reopen the merged capability-dispatch architecture and does not authorize Production or Breakglass. It is a post-merge closure backlog. Existing P0/P1/P2 tasks remain authoritative where they already cover a concern; Phase 37 adds only missing explicit contracts, refinements and acceptance gates.
+
+Workstreams:
+1. Canonical capability semantics: converge Operation Registry, Capability Traits, Servers and Authorization on the Capability Descriptor generation roots and eliminate independent truth re-derivation.
+2. Provider semantic content contracts and a resource-constraint compiler bound through plan/approval/commit/readback.
+3. Per-mutation-family postcondition certification and a formally conservative Execution State View.
+4. Dedicated immutable catalog storage migration, storage-level fencing, cache coherence and horizontal-worker proofs.
+5. Durable multisite/network orchestration with partial-completion and crash-resume evidence.
+6. Projection isolation and MCP refresh/protocol evolution without making projection a correctness path.
+7. Durable provider circuit breakers plus WordPress-native lifecycle migration only after parity certification.
+8. Distributed tracing, measured stage SLOs, error budgets and explicit telemetry/audit outage semantics.
+9. Impact-bound approvals, explainable authorization, a unified signed execution receipt and non-authorizing semantic routing.
+10. Cryptographic agility, time/clock policy, replay semantics, Unicode canonicalization, abuse-rate limits and egress TLS/DNS policy.
+11. Maintainability/change slicing, dependency-direction enforcement, stable reason codes and configuration-generation governance.
+12. A terminal completeness audit proving every dimension has ownership, fail-closed interim semantics and evidence.
+13. Request-scope and database consistency: cache lifetimes, long-lived workers, authoritative DB routing, deadlocks and hook/reentrancy interference.
+14. Clone/restore security lifecycle: foreign-clone quarantine, rollback time-travel protection and subject/user revocation propagation.
+15. Mixed-runtime evolution: persisted-contract versioning, N/N-1 workers, rollback/downgrade and stale-process generation fencing.
+16. Evidence infrastructure failure: crash-point ordering, storage exhaustion, archival verification and fatal interruption semantics.
+17. Cancellation/transport integrity: post-side-effect cancellation, chunk-generation integrity and a terminal cross-fault matrix.
+18. Canonical/DB storage safety: single canonical security hash interpretation, binary identity semantics, transactional engine certification and safe nested-transaction ownership.
+
+Exit gates:
+- CAPABILITY_FABRIC_DIMENSION_OWNERSHIP=PASS
+- CAPABILITY_FABRIC_NO_UNTRIAGED_P0_P1=PASS
+- CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING=PASS
+
+Phase 37 is complete only when T3768–T3770, T3795 and T3799 pass. T3768–T3770 establish ownership/traceability/non-authorizing semantics; T3795 supplies composed cross-fault runtime proof; T3799 closes canonical identity and transactional database invariants. Documentation alone cannot satisfy runtime/security/live gates.
+
+## Phase 38 — Adaptive Search Intelligence Fabric
+
+Objective: extend the provider-neutral research layer into a long-lived adaptive Search Intelligence runtime that discovers site/search capabilities, compiles an effective market/language/surface context, schedules the highest-value observations under fair economic constraints, preserves immutable evidence and exposes a capability/state-driven operator experience.
+
+Normative design:
+- `adaptive-search-intelligence.md`
+- `contracts/adaptive-search-intelligence-runtime.md`
+- `adaptive-search-intelligence.json`
+
+This is a maturity extension. It does not widen the frozen Critical Kernel, Production authority, Breakglass or ordinary mutation authority. Search observations and recommendations remain non-authorizing; content changes continue through Dynamic Content Experience plan/apply/verify.
+
+### 38A — Meta-model, profiles and effective context
+- define Search Profile independently from governance Site Profile;
+- implement composable brand/market/language/surface/objective overlays;
+- compile exact EffectiveSearchContext with reason chain and dependency fingerprints;
+- preserve security/governance precedence outside business-policy overlays;
+- detect profile/runtime drift and invalidate only dependent work.
+
+### 38B — Language, surface and SEO observation graph
+- provider-neutral live Language Registry;
+- distinguish WordPress objects from Search Surfaces;
+- inventory Posts, Pages, public CPTs, Terms, Term Archives, Post Type Archives, Home, Blog Index and provider-approved virtual surfaces;
+- resolve effective indexability from object, SEO and rendered evidence;
+- preserve conflicts instead of silently preferring one provider;
+- record SEO metadata with field-level provenance.
+
+### 38C — Search target compilation and temporal evidence
+- define query identity over query/market/language/engine/device/purpose;
+- support owned tracking and market discovery as different target purposes;
+- compile targets from SEO metadata, keyword registries, surface changes, clusters, competitors and post-change validation;
+- maintain immutable observations/events and recomputable current projections;
+- model rank as temporal trajectory with freshness, stability and volatility.
+
+### 38D — Adaptive decision engine and dynamic refresh
+- score Expected Value of Observation using business value, information gain, urgency, actionability, confidence need, change probability and expected cost;
+- make weights profile data rather than business hardcode;
+- generate explainable DecisionRecords;
+- calculate target-specific refresh cadence from evidence and economic state;
+- reuse sufficiently fresh equivalent evidence before spending provider budget.
+
+### 38E — Fair scheduler and hierarchical budget governor
+- fairness across site/brand/market/language/purpose/cluster/surface/provider;
+- aging/minimum-coverage controls to prevent starvation;
+- hierarchical monthly/daily/monetary/rate/concurrency constraints;
+- soft reservations, safe budget reclaim and protected reserve;
+- fail closed on hard-budget overspend.
+
+### 38F — Provider execution mesh
+- generic SERP provider descriptor, health, usage and economic interfaces;
+- first adapter: SerpApi;
+- second conforming adapter: DataForSEO or a full conformance fixture before live enablement;
+- capability/economic/policy-based provider routing rather than fixed primary/fallback branching;
+- reuse Provider Certification, Circuit Breaker, egress policy, structural redaction and durable execution;
+- reconcile ambiguous quota-consuming external effects before retry;
+- keep historical/imported/HYPD/manual evidence as evidence sources, not false live-execution receipts.
+
+### 38G — Evidence trust, normalization and intelligence
+- validate and bound untrusted provider content before processing;
+- separate raw evidence, normalized facts and inference;
+- immutable versioned SERP snapshots with request/provider/runtime/cost provenance;
+- confidence-aware ranking/volatility/competitor/cannibalization/gap/archive/SERP-feature/post-change signals;
+- preserve provider/SEO contradictions as explicit evidence.
+
+### 38H — Adaptive operator experience
+- derive an ExperienceModel from runtime state/capabilities/gaps/blockers/opportunities;
+- base navigation on registered capabilities, not provider-specific UI branches;
+- support unconfigured/discovering/baselining/active/degraded/reconciliation/drift/stale states;
+- degraded provider/quota states retain historical/cache intelligence instead of presenting total system failure;
+- expose explainable queue/provider/budget decisions without secrets.
+
+### 38I — Closed-loop but non-authorizing content optimization
+- Search signal -> recommendation -> governed content-change proposal;
+- hand off only through Dynamic Content Experience plan/approval/apply/verify;
+- generate post-change observation windows;
+- measure outcomes while distinguishing correlation from causality;
+- never allow ranking evidence to silently edit or publish content.
+
+### 38J — Generalization and fault acceptance
+Prove the same runtime without PHP business/vendor branches across:
+- single-language simple site;
+- multilingual archive-heavy site;
+- 4,000+ target inventory;
+- partial translations;
+- provider quota scarcity;
+- provider outage/circuit recovery;
+- new provider/SEO adapter;
+- new CPT/taxonomy/archive;
+- new market launch;
+- post-change validation;
+- SEO/provider contradiction;
+- fairness starvation;
+- profile/provider/language/surface/budget drift.
+
+Exit gates:
+- ADAPTIVE_SEARCH_META_MODEL_PASS
+- SEARCH_CONTEXT_COMPILER_PASS
+- INDEXABLE_SURFACE_GRAPH_PASS
+- SEO_FIELD_PROVENANCE_PASS
+- SEARCH_TARGET_COMPILER_PASS
+- SEARCH_DECISION_EXPLAINABILITY_PASS
+- SEARCH_FAIR_SCHEDULER_PASS
+- SEARCH_BUDGET_GOVERNOR_PASS
+- SERP_PROVIDER_CONFORMANCE_PASS
+- SERP_EVIDENCE_INTEGRITY_PASS
+- SEARCH_EXTERNAL_EVIDENCE_TRUST_PASS
+- SEARCH_RECONCILIATION_BEFORE_RETRY_PASS
+- ADAPTIVE_SEARCH_EXPERIENCE_PASS
+- SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS
+- ADAPTIVE_SEARCH_GENERALIZATION_PASS
+
+### 38K — Measurement semantics, canonical identity and comparability
+- define ObservationContext and ComparabilityKey so ranking deltas are only derived across materially comparable captures;
+- version query normalization without erasing locale-significant semantics;
+- version owned URL identity/canonical matching;
+- normalize organic/group/absolute/provider-native rank semantics;
+- distinguish complete, partial, truncated and not-found-within-depth captures.
+
+### 38L — Search eligibility and surface admission hardening
+- replace scalar indexability assumptions with crawlability/robots/canonical/discoverability/hreflang eligibility envelope;
+- include robots.txt and X-Robots-Tag/header evidence;
+- bound facets, parameters, pagination and virtual-surface cardinality through explicit Surface Admission Policy.
+
+### 38M — Distributed economics, evidence rights and deterministic decisions
+- introduce provider-account budget authority for credentials shared across sites/workers;
+- use lease/fencing/reservation/reconciliation around account-level quota;
+- constrain raw/normalized evidence retention by provider licensing/usage policy;
+- make EVO scoring deterministic, bounded, versioned and calibratable;
+- bind each decision factor to source/freshness/confidence provenance.
+
+### 38N — Evidence composition, portability and operator stability
+- compose first-party SearchPerformance evidence without pretending it is live SERP evidence;
+- distinguish page language from query translation/transcreation provenance;
+- keep storage/worker execution profile portable beyond WordPress-local runtime;
+- make dynamic UI stable through persistent section IDs/order/deep links and audited pause/provider/spend/target controls;
+- use open/versioned SERP feature normalization with safe unknown pass-through.
+
+### 38O — Objective acceptance and composed fault proof
+- map every Phase 38 gate to exact fixtures, thresholds, denial cases and evidence class;
+- execute composed drift/budget/provider/lease/cache/partial-capture faults;
+- forbid generalization/completion claims until exact-head executable evidence satisfies all mandatory gates.
+
+Phase 38 cannot be closed by documentation alone.

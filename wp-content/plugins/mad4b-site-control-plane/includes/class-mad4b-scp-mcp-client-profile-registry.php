@@ -18,6 +18,11 @@ final class MAD4B_SCP_MCP_Client_Profile_Registry {
 
 	private static $cache = null;
 
+	public static function reset_request_cache() {
+		self::$cache = null;
+		return true;
+	}
+
 	public static function status() {
 		$catalog = self::catalog();
 		return array(

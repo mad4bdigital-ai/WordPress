@@ -69,4 +69,17 @@ update_option(
 	false
 );
 
+// Keep the two-process contention proof away from a legitimate fixed-window
+// rollover. The workflow releases both workers three seconds after this setup
+// returns; if that release lands near the 60-second boundary, the serialized
+// loser may correctly acquire the lock in the next window and both contenders
+// may be allowed without any oversubscription. Align the fixture to a fresh
+// window when less than 30 seconds remain so the contention assertion proves
+// one-window atomicity instead of depending on wall-clock luck.
+$seconds_into_budget_window = time() % 60;
+$seconds_remaining_in_budget_window = 60 - $seconds_into_budget_window;
+if ( $seconds_remaining_in_budget_window < 30 ) {
+	sleep( $seconds_remaining_in_budget_window + 1 );
+}
+
 echo "mad4b.site-control-plane.runtime-budget-concurrency-setup.v1: PASS\n";

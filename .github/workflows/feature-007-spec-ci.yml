@@ -8,8 +8,14 @@ on:
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-*.php'
 
 permissions:
   contents: read
@@ -143,3 +149,19 @@ jobs:
         run: |
           python wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php
+      - name: Verify adaptive search P0 + Phase 38A runtime contracts
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-eligibility.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-evidence-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-decision-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py
+

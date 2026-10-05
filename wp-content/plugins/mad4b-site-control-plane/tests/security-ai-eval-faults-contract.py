@@ -16,6 +16,9 @@ cli = (PLUGIN / "includes/class-mad4b-scp-cli.php").read_text(encoding="utf-8")
 jobs = (PLUGIN / "includes/class-mad4b-scp-content-jobs.php").read_text(encoding="utf-8")
 pipeline = (PLUGIN / "includes/class-mad4b-scp-content-intelligence-pipeline.php").read_text(encoding="utf-8")
 draft = (PLUGIN / "includes/class-mad4b-scp-governed-draft.php").read_text(encoding="utf-8")
+governed_provider_plan = (PLUGIN / "includes/class-mad4b-scp-governed-provider-plan.php").read_text(encoding="utf-8")
+data_governance_registry = (PLUGIN / "includes/class-mad4b-scp-data-governance-registry.php").read_text(encoding="utf-8")
+provider_execution_binding = (PLUGIN / "includes/class-mad4b-scp-provider-execution-binding.php").read_text(encoding="utf-8")
 recovery = (ROOT / "tools/mad4b_recovery_plane.py").read_text(encoding="utf-8")
 hardening = json.loads((SPEC / "bulk-closure-hardening.json").read_text(encoding="utf-8"))
 
@@ -53,6 +56,31 @@ for required in (
 ):
     if required not in bridge:
         raise SystemExit(f"host_bridge: missing fail-closed marker: {required}")
+
+# Generic AI/model provider planning must consume durable data-governance evidence
+# and exact capability/certification binding before any provider execution.
+for required in (
+    "mad4b.governed-provider-plan.v1",
+    "data_governance_artifact_id",
+    "data_governance_fingerprint",
+    "rights_summary_fingerprint",
+    "processor_profile_fingerprint",
+    "provider_binding_sha256",
+    "'provider_execution_performed' => false",
+    "'authorizing' => false",
+    "'mutation_performed' => false",
+):
+    if required not in governed_provider_plan:
+        raise SystemExit(f"governed_provider_plan: missing AI/model governance marker: {required}")
+
+for label, source in {
+    "governed_provider_plan": governed_provider_plan,
+    "data_governance_registry": data_governance_registry,
+    "provider_execution_binding": provider_execution_binding,
+}.items():
+    for forbidden in ("wp_remote_get(", "wp_remote_post(", "curl_exec(", "shell_exec(", "proc_open("):
+        if forbidden in source:
+            raise SystemExit(f"{label}: outbound/provider primitive present before governed execution: {forbidden}")
 
 # ContentJob remains provider-neutral: provider observations belong in artifacts/events.
 for vendor in ("openai", "anthropic", "gemini", "semrush", "ahrefs", "dataforseo", "serpapi"):

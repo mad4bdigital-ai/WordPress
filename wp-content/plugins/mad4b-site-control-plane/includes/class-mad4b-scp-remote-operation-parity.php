@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Managed_Skills_Lease' ) ) require_once __DIR__ . '/class-mad4b-scp-managed-skills-lease.php';
 
 /**
  * Remote Operation Parity
@@ -23,6 +24,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const WORK_QUEUE_ABILITY = 'mad4b/remote-operation-work-queue';
 	const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';
 	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
+	const WORK_CANCEL_ABILITY = 'mad4b/remote-operation-work-cancel';
+	const WORK_CANCEL_SIGNAL_ABILITY = 'mad4b/remote-operation-work-cancel-signal';
+	const WORK_PROVIDER_CHECKPOINT_ABILITY = 'mad4b/remote-operation-work-provider-checkpoint';
+	const WORK_CANCEL_ACK_ABILITY = 'mad4b/remote-operation-work-cancel-ack';
 	const SKILLS_STATE_OPTION = 'mad4b_scp_remote_skills_reconciliation_v1';
 	const SKILLS_LOCK_OPTION = 'mad4b_scp_remote_skills_reconciliation_lock_v1';
 	const SKILLS_LOCK_TTL = 900;
@@ -56,6 +61,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::QUERY_MONITOR_ATTRIBUTION_ABILITY,
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
+			self::WORK_CANCEL_ABILITY,
+			self::WORK_CANCEL_SIGNAL_ABILITY,
+			self::WORK_PROVIDER_CHECKPOINT_ABILITY,
+			self::WORK_CANCEL_ACK_ABILITY,
 		);
 
 		// During Ability registration keep the deterministic built-in seed only.
@@ -217,6 +226,42 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::work_complete_schema(),
 			array( __CLASS__, 'complete_remote_work' ),
 			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_CANCEL_ABILITY,
+			'Cancel Remote Operation Work',
+			'Cancel unclaimed semantic work as verified no-effect, or quarantine claimed work for provider reconciliation without replay.',
+			self::work_cancel_schema(),
+			array( __CLASS__, 'cancel_remote_work' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_CANCEL_SIGNAL_ABILITY,
+			'Read Remote Work Cancellation Signal',
+			'Read the exact durable cancellation generation and provider-boundary state for an active external-executor lease.',
+			self::work_lease_schema(),
+			array( __CLASS__, 'remote_work_cancellation_signal' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_PROVIDER_CHECKPOINT_ABILITY,
+			'Record Remote Work Provider Checkpoint',
+			'Record provider entry/return under the active fenced lease. Entry is denied if cancellation won the race before provider execution.',
+			self::work_provider_checkpoint_schema(),
+			array( __CLASS__, 'provider_checkpoint_remote_work' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_CANCEL_ACK_ABILITY,
+			'Acknowledge Remote Work Cancellation',
+			'Acknowledge cancellation as verified no-effect only when the durable queue proves the provider was never entered.',
+			self::work_cancel_ack_schema(),
+			array( __CLASS__, 'acknowledge_remote_work_cancellation' ),
+			false
 		);
 	}
 
@@ -800,82 +845,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		return true;
 	}
 
-	private static function compare_and_swap_option( $name, $expected, $replacement = null ) {
-		global $wpdb;
-		if ( ! isset( $wpdb->options ) ) return false;
-		$where = array(
-			'option_name' => (string) $name,
-			'option_value' => maybe_serialize( $expected ),
-		);
-		if ( null === $replacement ) {
-			$changed = $wpdb->delete( $wpdb->options, $where, array( '%s', '%s' ) );
-		} else {
-			$changed = $wpdb->update(
-				$wpdb->options,
-				array( 'option_value' => maybe_serialize( $replacement ) ),
-				$where,
-				array( '%s' ),
-				array( '%s', '%s' )
-			);
-		}
-		if ( 1 === (int) $changed ) {
-			wp_cache_delete( (string) $name, 'options' );
-			return true;
-		}
-		return false;
-	}
-
-	private static function refresh_skills_lock( $owner ) {
-		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
-		if ( ! is_array( $current ) || empty( $current['owner'] ) || ! hash_equals( (string) $current['owner'], (string) $owner ) ) {
-			return new WP_Error( 'mad4b_remote_skill_lock_fenced', 'Managed Skill reconciliation lost its durable lock ownership.' );
-		}
-		$now = time();
-		if ( $now > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
-			return new WP_Error( 'mad4b_remote_skill_lock_expired', 'Managed Skill reconciliation lock expired before heartbeat.' );
-		}
-		$next = $current;
-		$next['expires_at_epoch'] = $now + self::SKILLS_LOCK_TTL;
-		$next['heartbeat_at'] = gmdate( 'c', $now );
-
-		// Multiple bounded reconciliation checkpoints can heartbeat within the same
-		// second. In that case the durable record is already exactly the desired
-		// lease state and wpdb->update() legitimately returns 0 ("no rows changed").
-		// Treat only that byte-equivalent no-op as success; any different record
-		// still goes through the fenced compare-and-swap path below.
-		$current_serialized = maybe_serialize( $current );
-		$next_serialized = maybe_serialize( $next );
-		if ( is_string( $current_serialized ) && is_string( $next_serialized )
-			&& hash_equals( hash( 'sha256', $current_serialized ), hash( 'sha256', $next_serialized ) ) ) {
-			return true;
-		}
-
-		if ( ! self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, $next ) ) {
-			return new WP_Error( 'mad4b_remote_skill_lock_heartbeat_raced', 'Managed Skill reconciliation lock changed during heartbeat.' );
-		}
-		return true;
-	}
-
-	private static function acquire_skills_lock() {
-		$owner = strtolower( wp_generate_uuid4() );
-		$record = array( 'owner' => $owner, 'expires_at_epoch' => time() + self::SKILLS_LOCK_TTL, 'acquired_at' => gmdate( 'c' ) );
-		if ( add_option( self::SKILLS_LOCK_OPTION, $record, '', false ) ) return $owner;
-		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
-		if ( is_array( $current ) && time() > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
-			if ( ! self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, null ) ) {
-				return new WP_Error( 'mad4b_remote_skill_lock_reclaim_raced', 'Managed Skill reconciliation lock changed while reclaiming an expired lease.' );
-			}
-			if ( add_option( self::SKILLS_LOCK_OPTION, $record, '', false ) ) return $owner;
-		}
-		return new WP_Error( 'mad4b_remote_skill_reconciliation_busy', 'Managed Skill reconciliation already has an active durable lease.' );
-	}
-
-	private static function release_skills_lock( $owner ) {
-		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) {
-			self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, null );
-		}
-	}
+	private static function refresh_skills_lock( $owner ) { return MAD4B_SCP_Managed_Skills_Lease::refresh( self::SKILLS_LOCK_OPTION, self::SKILLS_LOCK_TTL, $owner ); }
+	private static function acquire_skills_lock() { return MAD4B_SCP_Managed_Skills_Lease::acquire( self::SKILLS_LOCK_OPTION, self::SKILLS_LOCK_TTL ); }
+	private static function release_skills_lock( $owner ) { MAD4B_SCP_Managed_Skills_Lease::release( self::SKILLS_LOCK_OPTION, $owner ); }
 
 	private static function skills_job_status() {
 		$state = get_option( self::SKILLS_STATE_OPTION, array() );
@@ -1247,6 +1219,45 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
+	private static function work_cancel_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
+		$properties['reason_code'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9_-]+$' );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_lease_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
+		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+$' );
+		$properties['lease_token'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id', 'executor_id', 'lease_token' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_provider_checkpoint_schema() {
+		$schema = self::work_lease_schema();
+		$schema['properties']['checkpoint'] = array( 'type' => 'string', 'enum' => array( 'provider_entered', 'provider_returned' ) );
+		$schema['required'][] = 'checkpoint';
+		return $schema;
+	}
+
+	private static function work_cancel_ack_schema() {
+		$schema = self::work_lease_schema();
+		$schema['properties']['cancel_generation'] = array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 2147483647 );
+		$schema['required'][] = 'cancel_generation';
+		return $schema;
+	}
+
 	private static function work_complete_schema() {
 		$properties = self::exact_build_properties();
 		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
@@ -1338,6 +1349,92 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'job_id' => (string) $input['job_id'],
 			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
 			'claim_generation' => isset( $result['job']['claim_generation'] ) ? (int) $result['job']['claim_generation'] : 0,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function cancel_remote_work( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::cancel(
+			(string) $input['job_id'],
+			isset( $input['reason_code'] ) ? (string) $input['reason_code'] : 'cancel_requested'
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_CANCEL_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'cancel_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'reconciliation_required' => ! empty( $result['job']['reconciliation_required'] ),
+			'blind_retry_allowed' => false,
+			'reason_code' => isset( $input['reason_code'] ) ? sanitize_key( (string) $input['reason_code'] ) : 'cancel_requested',
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function remote_work_cancellation_signal( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::cancellation_signal(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token']
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_CANCEL_SIGNAL_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'cancel_requested' => ! empty( $result['cancel_requested'] ),
+			'cancel_generation' => isset( $result['cancel_generation'] ) ? (int) $result['cancel_generation'] : 0,
+			'provider_checkpoint' => isset( $result['provider_checkpoint'] ) ? (string) $result['provider_checkpoint'] : 'not_entered',
+			'provider_side_effect_possible' => ! empty( $result['provider_side_effect_possible'] ),
+			'authorizing' => false,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function provider_checkpoint_remote_work( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::provider_checkpoint(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token'],
+			(string) $input['checkpoint']
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_PROVIDER_CHECKPOINT_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'provider_checkpoint' => isset( $result['job']['provider_checkpoint'] ) ? (string) $result['job']['provider_checkpoint'] : '',
+			'provider_side_effect_possible' => ! empty( $result['job']['provider_side_effect_possible'] ),
+			'reconciliation_required' => ! empty( $result['job']['reconciliation_required'] ),
+			'blind_retry_allowed' => false,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function acknowledge_remote_work_cancellation( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$result = MAD4B_SCP_Remote_Work_Queue::acknowledge_cancellation(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token'],
+			(int) $input['cancel_generation']
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_CANCEL_ACK_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'cancel_generation' => (int) $input['cancel_generation'],
+			'cancel_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'provider_checkpoint' => isset( $result['job']['provider_checkpoint'] ) ? (string) $result['job']['provider_checkpoint'] : '',
+			'provider_side_effect_possible' => ! empty( $result['job']['provider_side_effect_possible'] ),
+			'blind_retry_allowed' => false,
 		) );
 		return is_wp_error( $audit ) ? $audit : $result;
 	}

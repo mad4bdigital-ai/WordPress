@@ -958,42 +958,16 @@ final class MAD4B_SCP_Self_Update {
 	private static function native_update_action_link( array $links ) {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return $links;
 
-		// Auto-update state belongs in WordPress' native Auto-updates column.
-		// Keep the plugin action row limited to actual plugin/update actions.
-		// wp-admin/plugins.php is a latency-sensitive render path. Never perform
-		// outbound HTTP here; use only a previously verified manifest cache.
-		$manifest = self::cached_manifest();
-		$ui = self::native_update_ui_state( $manifest );
-		if ( 'available' === $ui['state'] && is_array( $manifest ) ) {
-			$url = wp_nonce_url(
-				admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
-				'mad4b_control_plane_native_update'
-			);
-			$label = sprintf(
-				/* translators: %s: target version. */
-				__( 'Update MAD4B to %s', 'mad4b-site-control-plane' ),
-				$manifest['display_version']
-			);
-			$links['mad4b_update'] = '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $label ) . '">' . esc_html( $label ) . '</a>';
-			return $links;
-		}
-
-		if ( in_array( $ui['state'], array( 'current', 'manifest_unavailable' ), true ) ) {
-			$url = wp_nonce_url(
-				admin_url( 'admin-post.php?action=mad4b_control_plane_refresh_update' ),
-				'mad4b_control_plane_refresh_update'
-			);
-			$label = 'manifest_unavailable' === $ui['state']
-				? __( 'Retry MAD4B update check', 'mad4b-site-control-plane' )
-				: __( 'Check MAD4B update', 'mad4b-site-control-plane' );
-			$links['mad4b_update_check'] = '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
-			return $links;
-		}
-
-		if ( 'policy_blocked' === $ui['state'] ) {
-			$links['mad4b_update_state'] = '<span aria-label="' . esc_attr__( 'MAD4B update policy status', 'mad4b-site-control-plane' ) . '">'
-				. esc_html__( 'MAD4B update blocked by policy', 'mad4b-site-control-plane' ) . '</span>';
-		}
+		// Keep wp-admin/plugins.php cache-only and visually consistent with ordinary
+		// plugins. The action row exposes one explicit check; update availability is
+		// rendered below by the standard plugin-update row only after a verified
+		// governed manifest already exists in cache.
+		$url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=mad4b_control_plane_refresh_update' ),
+			'mad4b_control_plane_refresh_update'
+		);
+		$label = __( 'Check for updates', 'mad4b-site-control-plane' );
+		$links['mad4b_update_check'] = '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 		return $links;
 	}
 
@@ -1156,68 +1130,32 @@ final class MAD4B_SCP_Self_Update {
 		$row_key = wp_normalize_path( (string) $plugin_file );
 		if ( isset( self::$rendered_update_rows[ $row_key ] ) ) return;
 
+		// The Plugins screen is deliberately cache-only. A missing or failed
+		// manifest check is diagnostic state, not a plugin-update row. Keep those
+		// reason codes in MAD4B diagnostics and show nothing here until a verified,
+		// newer governed build is actually available.
 		$manifest = self::cached_manifest();
 		$ui = self::native_update_ui_state( $manifest );
-		if ( 'current' === $ui['state'] ) return;
+		if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;
 		self::$rendered_update_rows[ $row_key ] = true;
 
-		if ( 'available' === $ui['state'] && is_array( $manifest ) ) {
-			$url = wp_nonce_url(
-				admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
-				'mad4b_control_plane_native_update'
-			);
-			$current = self::installed_identity();
-			$current_display = isset( $current['version'] ) ? (string) $current['version'] : '';
-			if ( ! empty( $current['source_commit_sha'] ) ) $current_display .= '+build.' . substr( (string) $current['source_commit_sha'], 0, 7 );
-			$target_display = isset( $manifest['display_version'] ) ? (string) $manifest['display_version'] : (string) $manifest['version'];
-			$message = sprintf(
-				/* translators: 1: current exact build display, 2: target exact build display. */
-				__( 'A governed MAD4B build update is available: %1$s → %2$s.', 'mad4b-site-control-plane' ),
-				$current_display,
-				$target_display
-			);
-			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
-				. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
-				. esc_html__( 'Update now', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
-			return;
-		}
-
-		if ( 'manifest_unavailable' === $ui['state'] ) {
-			$url = wp_nonce_url(
-				admin_url( 'admin-post.php?action=mad4b_control_plane_refresh_update' ),
-				'mad4b_control_plane_refresh_update'
-			);
-			$reason = ! empty( $ui['blockers'] ) ? implode( ', ', $ui['blockers'] ) : 'manifest_unavailable';
-			$uncached = array( 'mad4b_self_update_manifest_not_cached' ) === array_values( (array) $ui['blockers'] );
-			$channel_message = $uncached
-				? __( 'Governed update channel has not been checked yet. Run the explicit update check before choosing an update.', 'mad4b-site-control-plane' )
-				: __( 'MAD4B could not verify the governed update channel.', 'mad4b-site-control-plane' );
-			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline ' . ( $uncached ? 'notice-info' : 'notice-error' ) . ' notice-alt"><p>'
-				. esc_html( $channel_message )
-				. ' ' . esc_html( $reason ) . ' <a href="' . esc_url( $url ) . '">'
-				. esc_html__( 'Retry update check', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
-			return;
-		}
-
-		if ( 'policy_blocked' === $ui['state'] ) {
-			$reason = ! empty( $ui['blockers'] ) ? implode( ', ', $ui['blockers'] ) : 'policy_blocked';
-			$environment_resolution = self::environment_resolution();
-			$environment_help = '';
-			if (
-				in_array( 'native_update_environment_policy_blocked', (array) $ui['blockers'], true )
-				&& 'staging' === (string) ( isset( $environment_resolution['suggested_environment'] ) ? $environment_resolution['suggested_environment'] : '' )
-				&& 'staging' !== (string) ( isset( $environment_resolution['effective_environment'] ) ? $environment_resolution['effective_environment'] : '' )
-			) {
-				$environment_help = ' <a href="' . esc_url( admin_url( 'admin.php?page=mad4b-control-plane-site-profile' ) ) . '">'
-					. esc_html__( 'Bind this exact origin as Staging', 'mad4b-site-control-plane' ) . '</a>'
-					. ' — ' . esc_html__( 'no wp-config.php edit required.', 'mad4b-site-control-plane' );
-			}
-			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
-				. esc_html__( 'MAD4B update is currently blocked by policy.', 'mad4b-site-control-plane' )
-				. ' ' . esc_html( $reason ) . $environment_help . '</p></div></td></tr>';
-		}
+		$url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
+			'mad4b_control_plane_native_update'
+		);
+		$target_display = isset( $manifest['display_version'] ) && '' !== trim( (string) $manifest['display_version'] )
+			? (string) $manifest['display_version']
+			: (string) $manifest['version'];
+		$message = sprintf(
+			/* translators: 1: plugin name, 2: target version. */
+			__( 'There is a new version of %1$s available. Version %2$s.', 'mad4b-site-control-plane' ),
+			'MAD4B Site Control Plane',
+			$target_display
+		);
+		echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
+			. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
+			. esc_html__( 'Update now', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
 	}
-
 	public static function render_update_row_fallback( $plugin_file, $plugin_data = array(), $status = '' ) {
 		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return;
 		self::render_update_row( $plugin_file, $plugin_data, $status );
@@ -1227,7 +1165,6 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to check plugin updates.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_control_plane_refresh_update' );
 		self::clear_manifest_cache();
-		delete_site_transient( 'update_plugins' );
 
 		// Explicit refresh is the only wp-admin UI action allowed to perform
 		// outbound manifest I/O. The plugins table itself remains cache-only.
@@ -1285,41 +1222,41 @@ final class MAD4B_SCP_Self_Update {
 		$state = isset( $_GET['mad4b_control_plane_update'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_control_plane_update'] ) ) : '';
 		if ( '' === $state ) return;
 		$code = isset( $_GET['mad4b_update_code'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_code'] ) ) : '';
+
 		if ( 'success' === $state ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane updated and exact-build readback passed.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane updated successfully.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
 		if ( 'bootstrap_success' === $state ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane updated through the bounded candidate-drift bootstrap path. Governed write authority remains quarantined until the exact new candidate is explicitly rebound.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane updated successfully. Governed write authority must be reviewed before it is rebound to the new build.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
 		if ( 'current' === $state ) {
-			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane is already on the current governed build.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane is up to date.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
-		$message = __( 'MAD4B Site Control Plane update did not complete.', 'mad4b-site-control-plane' );
-		if ( '' !== $code ) $message .= ' ' . sprintf( __( 'Reason: %s', 'mad4b-site-control-plane' ), $code );
-		if ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
-			$message .= ' ' . __( 'Review governed write authority and reconcile its binding to the currently installed build before retrying this update.', 'mad4b-site-control-plane' );
+
+		if ( 'manifest_error' === $state ) {
+			$message = __( 'MAD4B could not check for updates right now. Try again later or review Update diagnostics in MAD4B Control Plane.', 'mad4b-site-control-plane' );
+		} elseif ( 'download_error' === $state ) {
+			$message = __( 'The MAD4B update package could not be downloaded. No plugin files were changed.', 'mad4b-site-control-plane' );
+		} elseif ( 'verify_error' === $state ) {
+			$message = __( 'The MAD4B update package could not be verified, so it was not installed.', 'mad4b-site-control-plane' );
+		} else {
+			$message = __( 'The MAD4B update did not complete. The governed updater kept or restored the previous verified build. Review Update diagnostics in MAD4B Control Plane.', 'mad4b-site-control-plane' );
 		}
 
-		$maintenance_state = isset( $_GET['mad4b_update_maintenance_state'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) : '';
-		if ( '' !== $maintenance_state ) {
-			$owner = isset( $_GET['mad4b_update_maintenance_owner'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_owner'] ) ) : '';
-			$retry = isset( $_GET['mad4b_update_retry_after'] ) ? min( 1200, absint( wp_unslash( $_GET['mad4b_update_retry_after'] ) ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only redirect evidence.
-			$source = isset( $_GET['mad4b_update_fence_source'] ) ? sanitize_text_field( wp_unslash( $_GET['mad4b_update_fence_source'] ) ) : '';
-			$count = isset( $_GET['mad4b_update_fence_count'] ) ? min( 16, absint( wp_unslash( $_GET['mad4b_update_fence_count'] ) ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only redirect evidence.
-			$conflict = isset( $_GET['mad4b_update_fence_conflict'] ) && '1' === sanitize_key( wp_unslash( $_GET['mad4b_update_fence_conflict'] ) );
-			$message .= ' ' . sprintf( __( 'Maintenance state: %s.', 'mad4b-site-control-plane' ), $maintenance_state );
-			if ( '' !== $owner ) $message .= ' ' . sprintf( __( 'Owner: %s.', 'mad4b-site-control-plane' ), $owner );
-			if ( $retry > 0 ) $message .= ' ' . sprintf( __( 'Retry after: %d seconds.', 'mad4b-site-control-plane' ), $retry );
-			if ( '' !== $source ) $message .= ' ' . sprintf( __( 'Fence source: %s.', 'mad4b-site-control-plane' ), $source );
-			if ( $count > 0 ) $message .= ' ' . sprintf( __( 'Active fences: %d.', 'mad4b-site-control-plane' ), $count );
-			if ( $conflict ) $message .= ' ' . __( 'Conflicting maintenance fence tokens require operator inspection.', 'mad4b-site-control-plane' );
+		if ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
+			$message .= ' ' . __( 'Governed write authority must be reconciled to the currently installed build before updating.', 'mad4b-site-control-plane' );
+		} elseif ( isset( $_GET['mad4b_update_maintenance_state'] ) && '' !== sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) ) {
+			$message .= ' ' . __( 'Another governed maintenance operation is active; try again after it finishes.', 'mad4b-site-control-plane' );
 		}
+
+		// Internal reason codes, maintenance owners/fences and exact failure details
+		// remain available through governed diagnostics/audit. The Plugins screen
+		// intentionally presents only actionable operator-facing language.
 		echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
 	}
-
 	private static function redirect_native_result( $state, $code, array $details = array() ) {
 		$args = array( 'mad4b_control_plane_update' => sanitize_key( (string) $state ) );
 		if ( '' !== (string) $code ) $args['mad4b_update_code'] = sanitize_key( (string) $code );

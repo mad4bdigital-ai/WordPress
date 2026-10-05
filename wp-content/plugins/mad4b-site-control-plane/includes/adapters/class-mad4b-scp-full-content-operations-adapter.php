@@ -32,7 +32,10 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 			'mad4b/taxonomy-delete-term',
 			'mad4b/content-import-bundle',
 		);
-		return in_array( (string) $ability_name, $high, true ) ? 'high' : $impact;
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
+			$high = array_merge( $high, MAD4B_SCP_Content_Experience_Profiles::high_impact_abilities() );
+		}
+		return in_array( (string) $ability_name, array_values( array_unique( $high ) ), true ) ? 'high' : $impact;
 	}
 
 	public function id() { return 'full-content-operations'; }
@@ -42,36 +45,46 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 	protected function mutation_requires_certification() { return false; }
 
 	public function ability_names() {
+		$read = array(
+			'mad4b/content-modeling-context',
+			'mad4b/content-get-meta',
+			'mad4b/content-list-meta',
+			'mad4b/taxonomy-get-term',
+			'mad4b/taxonomy-get-object-terms',
+			'mad4b/content-export-bundle',
+		);
+		$content = array(
+			'mad4b/content-trash-post',
+			'mad4b/content-set-meta',
+			'mad4b/content-delete-meta',
+			'mad4b/taxonomy-update-term',
+			'mad4b/taxonomy-delete-term',
+			'mad4b/content-import-bundle',
+		);
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
+			$read = array_merge( $read, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ) );
+			$content = array_merge( $content, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'content' ) );
+		}
 		return array(
-			'read' => array(
-				'mad4b/content-modeling-context',
-				'mad4b/content-get-meta',
-				'mad4b/content-list-meta',
-				'mad4b/taxonomy-get-term',
-				'mad4b/taxonomy-get-object-terms',
-				'mad4b/content-export-bundle',
-			),
-			'content' => array(
-				'mad4b/content-trash-post',
-				'mad4b/content-set-meta',
-				'mad4b/content-delete-meta',
-				'mad4b/taxonomy-update-term',
-				'mad4b/taxonomy-delete-term',
-				'mad4b/content-import-bundle',
-			),
+			'read' => array_values( array_unique( $read ) ),
+			'content' => array_values( array_unique( $content ) ),
 			'admin' => array(),
 			'write' => array(),
 		);
 	}
 
 	public function reversible_contracts() {
-		return array(
+		$contracts = array(
 			'mad4b/content-trash-post' => 'mad4b.rollback.trashed-post.v1',
 			'mad4b/content-set-meta' => 'mad4b.rollback.post-meta.v1',
 			'mad4b/content-delete-meta' => 'mad4b.rollback.post-meta.v1',
 			'mad4b/taxonomy-update-term' => 'mad4b.rollback.updated-term.v1',
 			'mad4b/content-import-bundle' => 'mad4b.rollback.created-content-bundle.v2',
 		);
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
+			$contracts = array_merge( $contracts, MAD4B_SCP_Content_Experience_Profiles::reversible_contracts() );
+		}
+		return $contracts;
 	}
 
 	public function register_abilities() {
@@ -128,6 +141,22 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 			'bundle' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'force_status' => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'private' ), 'default' => 'draft' ),
 		), array( 'bundle' ) ), 'content', false, true, false );
+
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
+			foreach ( MAD4B_SCP_Content_Experience_Profiles::ability_definitions() as $definition ) {
+				$this->add_ability(
+					$definition['name'],
+					$definition['label'],
+					$definition['callback'],
+					$definition['permission'],
+					$definition['schema'],
+					$definition['surface'],
+					$definition['readonly'],
+					$definition['destructive'],
+					$definition['idempotent']
+				);
+			}
+		}
 	}
 
 	private function slug_schema() { return array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[a-zA-Z0-9_-]+$' ); }
@@ -623,6 +652,9 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 	}
 
 	public function capture_reversible_state( $ability_name, array $input ) {
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) && MAD4B_SCP_Content_Experience_Profiles::owns_ability( $ability_name ) ) {
+			return MAD4B_SCP_Content_Experience_Profiles::capture_reversible_state( $ability_name, $input );
+		}
 		if ( in_array( $ability_name, array( 'mad4b/content-set-meta','mad4b/content-delete-meta' ), true ) ) {
 			$id = absint( $input['post_id'] );
 			$key = $this->validate_meta_key( $input['key'], $id, true );
@@ -660,6 +692,9 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 	}
 
 	public function read_reversible_state( $ability_name, array $target ) {
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) && MAD4B_SCP_Content_Experience_Profiles::owns_ability( $ability_name ) ) {
+			return MAD4B_SCP_Content_Experience_Profiles::read_reversible_state( $ability_name, $target );
+		}
 		if ( in_array( $ability_name, array( 'mad4b/content-set-meta','mad4b/content-delete-meta' ), true ) ) {
 			$id = absint( $target['post_id'] );
 			$key = $this->validate_meta_key( $target['key'], $id, false );
@@ -683,6 +718,9 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 	}
 
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) {
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) && MAD4B_SCP_Content_Experience_Profiles::owns_ability( $ability_name ) ) {
+			return MAD4B_SCP_Content_Experience_Profiles::restore_reversible_state( $ability_name, $target, $state, $record );
+		}
 		if ( in_array( $ability_name, array( 'mad4b/content-set-meta','mad4b/content-delete-meta' ), true ) ) {
 			$id = absint( $target['post_id'] );
 			$key = $this->validate_meta_key( $target['key'], $id, true );

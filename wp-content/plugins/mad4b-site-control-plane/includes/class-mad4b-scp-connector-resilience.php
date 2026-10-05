@@ -218,11 +218,26 @@ final class MAD4B_SCP_Connector_Resilience {
 	}
 
 	public static function execute_read( $target, $callback ) {
+		$call = static function() use ( $target, $callback ) { return self::execute_read_impl( $target, $callback ); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'provider_execution', $call, '', array(
+				'operation'=>'read',
+				'target_sha256'=>hash('sha256',(string)$target),
+			) )
+			: $call();
+	}
+
+	private static function execute_read_impl( $target, $callback ) {
 		$target = sanitize_text_field( (string) $target );
+		$breaker = class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ? MAD4B_SCP_Provider_Circuit_Breaker::begin_for_target( 'read', $target ) : array( 'applicable'=>false );
+		if ( is_wp_error( $breaker ) ) return $breaker;
 		$result = self::safe_read( 'dispatch_' . sanitize_key( $target ), $callback, array(
 			'retry_transient' => true,
-			'max_attempts' => self::DEFAULT_READ_ATTEMPTS,
+			'max_attempts' => ! empty( $breaker['half_open_probe'] ) ? 1 : self::DEFAULT_READ_ATTEMPTS,
 		) );
+		if ( class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ) {
+			MAD4B_SCP_Provider_Circuit_Breaker::record_result( $breaker, ! empty( $result['ok'] ), isset( $result['category'] ) ? (string) $result['category'] : '' );
+		}
 		if ( ! empty( $result['ok'] ) ) {
 			return array(
 				'result' => array_key_exists( 'data', $result ) ? $result['data'] : null,
@@ -254,15 +269,41 @@ final class MAD4B_SCP_Connector_Resilience {
 	}
 
 	public static function execute_mutation( $surface, $target, $callback ) {
+		$call = static function() use ( $surface, $target, $callback ) { return self::execute_mutation_impl( $surface, $target, $callback ); };
+		return class_exists( 'MAD4B_SCP_Observability' )
+			? MAD4B_SCP_Observability::run_stage( 'provider_execution', $call, '', array(
+				'operation'=>'mutation',
+				'surface'=>sanitize_key((string)$surface),
+				'target_sha256'=>hash('sha256',(string)$target),
+			) )
+			: $call();
+	}
+
+	private static function execute_mutation_impl( $surface, $target, $callback ) {
 		$surface = sanitize_key( (string) $surface );
 		$target = sanitize_text_field( (string) $target );
+		$eligibility = class_exists( 'MAD4B_SCP_Provider_Transport_Eligibility' )
+			? MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation( $surface, $target )
+			: array( 'applicable'=>false, 'transport_eligible'=>true );
+		if ( is_wp_error( $eligibility ) ) return $eligibility;
+		$breaker = class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ? MAD4B_SCP_Provider_Circuit_Breaker::begin_for_target( $surface, $target ) : array( 'applicable'=>false, 'transport_eligible'=>true );
+		if ( is_wp_error( $breaker ) ) return $breaker;
+		if ( class_exists( 'MAD4B_SCP_Provider_Transport_Eligibility' ) ) {
+			$eligibility = MAD4B_SCP_Provider_Transport_Eligibility::finalize_breaker( $eligibility, is_array( $breaker ) ? $breaker : array() );
+			if ( is_wp_error( $eligibility ) ) return $eligibility;
+		}
 		$started = microtime( true );
 		try {
 			$result = call_user_func( $callback );
 			if ( is_wp_error( $result ) ) {
 				$classification = self::classify_wp_error( $result );
 				$original_error_code = self::safe_error_code( $result );
+				$original_data = method_exists( $result, 'get_error_data' ) ? $result->get_error_data( $original_error_code ) : array();
+				$mutation_evidence = is_array( $original_data ) && isset( $original_data['mad4b_mutation_evidence'] ) && is_array( $original_data['mad4b_mutation_evidence'] ) ? $original_data['mad4b_mutation_evidence'] : array();
+				$postcondition_recovery = isset( $mutation_evidence['postcondition_recovery'] ) && is_array( $mutation_evidence['postcondition_recovery'] ) ? $mutation_evidence['postcondition_recovery'] : array();
+				if ( class_exists( 'MAD4B_SCP_Structural_Redaction' ) ) $postcondition_recovery = MAD4B_SCP_Structural_Redaction::redact( $postcondition_recovery, 'provider_error_metadata' );
 				$dispatch_not_started = self::wp_error_proves_mutation_not_started( $original_error_code );
+				if ( class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ) MAD4B_SCP_Provider_Circuit_Breaker::record_result( $breaker, false, isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown' );
 				$code_suffix = $dispatch_not_started
 					? '_dispatch_not_started'
 					: ( ! empty( $classification['retryable'] ) ? '_dispatch_uncertain_remote_error' : '_dispatch_target_error' );
@@ -284,11 +325,15 @@ final class MAD4B_SCP_Connector_Resilience {
 						'mutation_state' => $dispatch_not_started ? 'not_started' : 'unknown',
 						'reconciliation_required' => ! $dispatch_not_started,
 						'blind_retry_allowed' => false,
+						'postcondition_recovery' => $postcondition_recovery,
+						'postcondition_reader_certified' => ! empty( $postcondition_recovery['reader_certified'] ),
+						'retry_reclaim_eligible' => ! empty( $postcondition_recovery['retry_reclaim_eligible'] ),
 						'automatic_retry_performed' => false,
 						'raw_error_message_exposed' => false,
 					)
 				);
 			}
+			if ( class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ) MAD4B_SCP_Provider_Circuit_Breaker::record_result( $breaker, true, '' );
 			return array(
 				'result' => $result,
 				'attempts' => 1,
@@ -297,6 +342,7 @@ final class MAD4B_SCP_Connector_Resilience {
 			);
 		} catch ( Throwable $e ) {
 			$classification = self::classify_exception( $e );
+			if ( class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ) MAD4B_SCP_Provider_Circuit_Breaker::record_result( $breaker, false, isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown' );
 			return new WP_Error(
 				'mad4b_' . ( '' !== $surface ? $surface : 'mutation' ) . '_dispatch_execution_exception',
 				'Governed mutation execution failed inside the target callback. Reconcile observed postconditions before any retry.',

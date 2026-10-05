@@ -76,6 +76,26 @@
 | REPOGOV | external repository governance | active master ruleset + pinned Release Verdict + zero bypass actors |
 | BACKUP | protected backup/recovery readiness | protected-root readiness + current-runtime backup receipt + known-good restore proof |
 | CLOSURE | unified implementation closure | closure ledger + Phase 36 evidence + terminal vertical-slice chain |
+| CAPFAB | post-merge Capability Fabric completeness overlay | Phase 37 closure ledger + contract + task ledger + cross-fault evidence |
+
+| ASI | adaptive-search-intelligence | Phase 38 design + runtime contract + machine-readable ledger |
+| ASICTX | adaptive search context compiler | profile/overlay precedence + dependency fingerprint tests |
+| ASISURF | indexable search surface graph | object/surface/indexability/archive fixtures |
+| ASISEO | field-level SEO provenance | provider conflict + rendered evidence tests |
+| ASITGT | search target compiler | owned/discovery identity + temporal target fixtures |
+| ASIDEC | adaptive search decision engine | DecisionRecord + dynamic refresh explainability evidence |
+| ASIBUD | fair scheduler and hierarchical budget | starvation + reserve + overspend denial tests |
+| ASIPROV | SERP provider mesh | SerpApi + second-provider conformance/circuit/egress evidence |
+| ASIEVID | immutable SERP evidence | raw/normalized/inference integrity + trust-boundary tests |
+| ASIEXP | adaptive search experience | capability/state-driven ExperienceModel/UI acceptance |
+| ASICL | non-authorizing closed loop | signal -> recommendation -> Content Experience proposal boundary |
+| ASICOMP | search observation comparability | ObservationContext/ComparabilityKey + geo/locale/rank/depth fixtures |
+| ASIELIG | search eligibility and surface admission | robots/header/canonical/discoverability + facet-cardinality denial fixtures |
+| ASIACCT | distributed provider-account economics | shared-credential reservation/fencing/reset/reconciliation evidence |
+| ASIRIGHTS | provider evidence rights/retention | provider usage-policy constrained storage/deletion evidence |
+| ASIDET | deterministic adaptive decision policy | bounded factor/tie-break/calibration/provenance fixtures |
+| ASISTABLE | adaptive UX stability/operability | persistent section/control/accessibility acceptance |
+| ASIACC | measurable acceptance and cross-fault proof | per-gate thresholds + composed fault matrix |
 
 ## Dependency graph
 release-lineage
@@ -216,3 +236,72 @@ REPOGOV + BASESYNC + CLOSURE
 → CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED
 
 Maturity families remain outside this critical proof unless a concrete dependency requires admission.
+
+## Capability Fabric post-merge dependency overlay
+
+canonical capability descriptor
+→ resource-constrained plan/approval
+→ commit-time revalidation
+→ provider postcondition reconciliation
+→ unified execution receipt
+
+request-scope isolation + authoritative DB routing + hook/reentrancy safety
+→ reliable admission and durable evidence
+
+site clone/restore epoch + subject lifecycle revocation
+→ replay-safe authority after backup/restore and identity changes
+
+persisted contract compatibility + runtime generation fencing
+→ safe mixed-version rollout/rollback
+
+evidence commit ordering + degraded infrastructure semantics
+→ conservative terminal execution truth
+
+cancellation + chunk transport integrity + composed cross-fault fixtures
+→ CAPABILITY_FABRIC_COMPLETENESS
+
+CAPFAB is non-authorizing and maps to existing hard quality families; it does not replace the Critical Kernel terminal gate.
+
+## Adaptive Search Intelligence dependency overlay
+
+runtime discovery
+→ effective search context
+→ market-language matrix + indexable surface graph + SEO provenance
+→ search target compiler
+→ temporal evidence/freshness
+→ expected-value decision engine
+→ fair scheduler + hierarchical budget governor
+→ provider capability/economic router
+→ durable SERP execution/reconciliation
+→ immutable normalized evidence
+→ confidence-aware signals
+→ adaptive ExperienceModel
+→ governed Content Experience proposal
+→ separately authorized content plan/apply/verify
+→ post-change search observation
+
+ASI is non-authorizing. Provider availability, ranking loss, opportunity score or search signal can never create WordPress mutation, Production or Breakglass authority.
+
+
+## Adaptive Search Intelligence review-hardening overlay
+
+observation comparability + canonical identities
+→ capture/rank correctness
+→ SearchEligibilityEnvelope + bounded SurfaceAdmission
+→ distributed ProviderAccountBudgetAuthority
+→ deterministic explainable DecisionPolicy
+→ provider-constrained evidence retention
+→ first-party/search-performance evidence composition
+→ stable adaptive operator experience
+→ measurable gate criteria
+→ composed cross-fault acceptance
+→ ADAPTIVE_SEARCH_GENERALIZATION_PASS
+
+A ranking delta is invalid unless its observations satisfy the declared ComparabilityKey. A hard account-budget claim is invalid unless shared credentials are protected by account-level reservation/reconciliation or the claim is explicitly downgraded.
+
+### Adaptive Search runtime evidence binding
+
+The ASI families bind to `wp-content/plugins/mad4b-site-control-plane/includes/search/` and `class-mad4b-scp-adaptive-search-intelligence.php`. `adaptive-search-runtime-acceptance.json` is the exhaustive mapping of each of the 15 repository conformance gates to named runtime/provider fixtures, quantitative assertion thresholds and denial cases. The Feature-owned `feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance` matrix requires PHP 7.4/8.3 and disposable WordPress/MySQL evidence before emitting exact-head gates. This extends and preserves the previously certified Phase 38 P0 and Phase 38A foundation evidence; it does not substitute local fixtures for live provider certification.
+
+
+P1 review closure is bound to Search runtime exact head `e8791ae6253b5667f1ffffdcf1693bd1d08a641a`: all six P1 findings are CLOSED at repository-runtime scope after PHP 7.4/8.3 feature-owned conformance passed (40 fixtures, 938 assertions, 15 gates). Live provider/account certification remains `NOT_CLAIMED` and is not substituted by repository fixtures.

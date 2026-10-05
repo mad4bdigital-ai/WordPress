@@ -1,0 +1,83 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
+$GLOBALS['now']=time();$GLOBALS['trusted']=true;$GLOBALS['unchanged_ready']=true;
+$GLOBALS['identity']=array('identity_ready'=>true,'source_commit_sha'=>str_repeat('a',40),'build_fingerprint'=>str_repeat('b',64),'package_manifest_digest'=>str_repeat('c',64),'artifact_identity'=>'mad4b-site-control-plane@'.str_repeat('a',40));
+$GLOBALS['deployment_secret']=str_repeat('k',32);
+class WP_Error{private $c,$m,$d;function __construct($c,$m='',$d=null){$this->c=$c;$this->m=$m;$this->d=$d;}function get_error_code(){return $this->c;}function get_error_data(){return $this->d;}}
+function is_wp_error($v){return $v instanceof WP_Error;}function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v));}function absint($v){return abs((int)$v);}function wp_json_encode($v,$f=0){return json_encode($v,$f);}
+final class MAD4B_SCP_Site_Profile{
+ static function current_environment(){return'production';}
+ static function site_uuid(){return'123e4567-e89b-42d3-a456-426614174000';}
+ static function revision(){return 7;}
+ static function profile_digest(){return str_repeat('d',64);}
+ static function related_origin($e){return'staging'===$e?'https://staging.example.test':'https://example.test';}
+ static function deployment_binding_digest(){return hash('sha256',$GLOBALS['deployment_secret']);}
+ static function deployment_binding_proof($purpose,$sha){return hash_hmac('sha256',"mad4b-deployment-proof-v1\0".$purpose."\0".$sha,$GLOBALS['deployment_secret']);}
+ static function verify_deployment_binding_proof($purpose,$sha,$proof){$expected=self::deployment_binding_proof($purpose,$sha);return preg_match('/^[a-f0-9]{64}$/',(string)$proof)&&hash_equals($expected,(string)$proof);}
+}
+final class MAD4B_SCP_OAuth_Resource_Bridge{const AUTHORITY_STEP_UP_SCOPE='mad4b:authority:step-up';static function verified_bearer_active(){return true;}}
+final class MAD4B_SCP_Identity_Context{static function current(){return array('authenticated'=>true,'auth_method'=>'oauth2_bearer','token_scopes'=>array('mad4b:read','mad4b:authority:step-up'));}}
+final class MAD4B_SCP_External_Handshake_Evidence{static function status(){$i=$GLOBALS['identity'];return array('verified'=>$GLOBALS['trusted'],'environment'=>'production','server_id'=>'mad4b-chatgpt','client_id'=>'https://chatgpt.com/oauth/client.json','auth_method'=>'oauth2_bearer','package_identity_match'=>true,'source_commit_sha'=>$i['source_commit_sha'],'package_build_fingerprint'=>$i['build_fingerprint'],'package_manifest_digest'=>$i['package_manifest_digest'],'artifact_identity'=>$i['artifact_identity']);}}
+final class MAD4B_SCP_Live_Acceptance_Observer{static function build_provenance_identity_status(){return $GLOBALS['identity'];}}
+final class MAD4B_SCP_Production_Unchanged_Attestation{static function evaluate_receipt($receipt,$candidate,$trusted,$now=null){return array('ready'=>!!$GLOBALS['unchanged_ready']&&$trusted,'fresh'=>!!$GLOBALS['unchanged_ready'],'blockers'=>$GLOBALS['unchanged_ready']?array():array('production_snapshot_changed'),'state'=>$GLOBALS['unchanged_ready']?'ready':'production_snapshot_changed','production_runtime_identity'=>'sha256:'.str_repeat('e',64));}}
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-production-promotion-attestation.php';
+function ok($v,$m){if(!$v){fwrite(STDERR,"FAIL: $m\n");exit(1);}}function err($v,$c,$m){ok(is_wp_error($v)&&$c===$v->get_error_code(),$m.' got='.(is_wp_error($v)?$v->get_error_code():'success'));}
+function proof_for(array $core,$issued=null){
+ $i=$GLOBALS['identity'];$issued=null===$issued?$GLOBALS['now']:(int)$issued;
+ $p=array(
+  'contract'=>'mad4b.staging-readiness-promotion-proof.v1',
+  'purpose'=>'production_promotion_staging_readiness',
+  'profile'=>'control_plane_core',
+  'environment'=>'staging',
+  'staging_origin'=>'https://staging.example.test',
+  'production_origin'=>'https://example.test',
+  'candidate_identity'=>array('source_commit_sha'=>$i['source_commit_sha'],'build_fingerprint'=>$i['build_fingerprint'],'package_manifest_digest'=>$i['package_manifest_digest'],'artifact_identity'=>$i['artifact_identity']),
+  'core_verdict_sha256'=>MAD4B_SCP_Production_Promotion_Attestation::verdict_digest($core),
+  'deployment_binding_digest'=>MAD4B_SCP_Site_Profile::deployment_binding_digest(),
+  'issued_at'=>$issued,
+  'expires_at'=>$issued+1800,
+  'authorizing'=>false,
+ );
+ $p['material_sha256']=MAD4B_SCP_Production_Promotion_Attestation::verdict_digest($p);
+ $p['mac_sha256']=MAD4B_SCP_Site_Profile::deployment_binding_proof('production_promotion_staging_readiness',$p['material_sha256']);
+ return$p;
+}
+function verdict(){
+ $i=$GLOBALS['identity'];
+ $v=array('contract'=>'mad4b.production-live-evidence-verdict.v1','profile'=>'control_plane_core','candidate_identity'=>array('source_commit_sha'=>$i['source_commit_sha'],'build_fingerprint'=>$i['build_fingerprint'],'package_manifest_digest'=>$i['package_manifest_digest'],'artifact_identity'=>$i['artifact_identity']),'evidence_gate_count'=>13,'trusted_evidence_gate_count'=>13,'evidence_trust_contract'=>'mad4b.production-evidence-trust.v1','production_ready'=>true,'full_feature007_complete'=>false,'production_authorized'=>false,'promotion_required'=>true,'authorizing'=>false,'mutation_performed'=>false,'production_mutation'=>false);
+ $v['staging_promotion_proof']=proof_for($v);
+ return$v;
+}
+function attestation(){
+ $i=$GLOBALS['identity'];$v=verdict();$vsha=MAD4B_SCP_Production_Promotion_Attestation::verdict_digest($v);
+ $a=array('contract'=>'mad4b.production-promotion-attestation.v1','profile'=>'control_plane_core','target'=>'production','environment'=>'production','staging_origin'=>'https://staging.example.test','production_origin'=>'https://example.test','site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','site_profile_revision'=>7,'site_profile_digest'=>str_repeat('d',64),'candidate_identity'=>array('source_commit_sha'=>$i['source_commit_sha'],'build_fingerprint'=>$i['build_fingerprint'],'package_manifest_digest'=>$i['package_manifest_digest'],'artifact_identity'=>$i['artifact_identity']),'staging_source'=>array('contract'=>'mad4b.external-staging-readiness-observer.v1','environment'=>'staging','origin'=>'https://staging.example.test','ability'=>'mad4b/production-readiness-evaluate','verdict_sha256'=>$vsha),'staging_readiness_verdict'=>$v,'staging_readiness_verdict_sha256'=>$vsha,'production_unchanged_receipt'=>array('contract'=>'fixture.production-unchanged'),'issued_at'=>gmdate('c',$GLOBALS['now']),'issuer'=>'chatgpt_external_read_only_finalizer','provenance'=>'verified_oauth_readonly_session');
+ $a['evidence_digest']=MAD4B_SCP_Production_Promotion_Attestation::attestation_digest($a);return$a;
+}
+function rehash_attestation(array $a){
+ $vsha=MAD4B_SCP_Production_Promotion_Attestation::verdict_digest($a['staging_readiness_verdict']);
+ $a['staging_readiness_verdict_sha256']=$vsha;$a['staging_source']['verdict_sha256']=$vsha;
+ $a['evidence_digest']=MAD4B_SCP_Production_Promotion_Attestation::attestation_digest($a);return$a;
+}
+$a=attestation();$r=MAD4B_SCP_Production_Promotion_Attestation::evaluate($a,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']);ok(!is_wp_error($r)&&!empty($r['ready'])&&false===$r['production_authorized'],'valid promotion attestation is non-authorizing and ready');ok('site_profile_revision_digest_transition'===$r['one_time_binding'],'one-time binding is revision/digest transition');
+$b=$a;$b['staging_readiness_verdict']['production_ready']=false;$b=rehash_attestation($b);err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_verdict_not_ready','not-ready verdict denied');
+$b=$a;$b['candidate_identity']['source_commit_sha']=str_repeat('f',40);$b['evidence_digest']=MAD4B_SCP_Production_Promotion_Attestation::attestation_digest($b);err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_candidate_mismatch','candidate mismatch denied');
+$b=$a;$b['site_profile_revision']=6;$b['evidence_digest']=MAD4B_SCP_Production_Promotion_Attestation::attestation_digest($b);err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_site_binding_mismatch','stale profile denied');
+$b=$a;$b['issued_at']=gmdate('c',$GLOBALS['now']-1900);$b['evidence_digest']=MAD4B_SCP_Production_Promotion_Attestation::attestation_digest($b);err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_attestation_stale','stale attestation denied');
+err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($a,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],false,$GLOBALS['now']),'mad4b_production_promotion_finalizer_untrusted','untrusted finalizer denied');
+$GLOBALS['unchanged_ready']=false;err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($a,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_production_unchanged_required','changed Production snapshot denied');$GLOBALS['unchanged_ready']=true;
+$b=$a;$b['evidence_digest']=str_repeat('f',64);err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_attestation_digest_mismatch','digest mismatch denied');
+
+// A caller can recompute all ordinary JSON digests, but cannot manufacture the
+// Staging-origin MAC after changing the verdict.
+$b=$a;$b['staging_readiness_verdict']['evidence_gate_count']=99;$b['staging_readiness_verdict']['trusted_evidence_gate_count']=99;$b=rehash_attestation($b);
+err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_staging_proof_verdict_mismatch','self-consistent forged staging verdict denied');
+$b=$a;unset($b['staging_readiness_verdict']['staging_promotion_proof']);$b=rehash_attestation($b);
+err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_staging_proof_invalid','unsigned staging verdict denied');
+$b=$a;$b['staging_readiness_verdict']['staging_promotion_proof']['mac_sha256']=str_repeat('f',64);$b=rehash_attestation($b);
+err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_staging_proof_invalid','forged staging MAC denied');
+$b=$a;$core=$b['staging_readiness_verdict'];unset($core['staging_promotion_proof']);$b['staging_readiness_verdict']['staging_promotion_proof']=proof_for($core,$GLOBALS['now']-1900);$b=rehash_attestation($b);
+err(MAD4B_SCP_Production_Promotion_Attestation::evaluate($b,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64),$GLOBALS['identity'],true,$GLOBALS['now']),'mad4b_production_promotion_staging_proof_stale','stale signed staging proof denied');
+
+$GLOBALS['trusted']=false;err(MAD4B_SCP_Production_Promotion_Attestation::validate_for_activation($a,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64)),'mad4b_production_promotion_finalizer_untrusted','runtime requires verified external finalizer');$GLOBALS['trusted']=true;
+$r=MAD4B_SCP_Production_Promotion_Attestation::validate_for_activation($a,7,str_repeat('d',64),str_repeat('a',40),str_repeat('b',64));ok(!is_wp_error($r)&&!empty($r['ready']),'runtime validates exact promotion attestation');
+echo "mad4b.production-promotion-attestation.runtime.v2: PASS\n";

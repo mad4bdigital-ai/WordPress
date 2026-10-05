@@ -1,0 +1,60 @@
+{
+  "contract": "mad4b.identifier-policies.v1",
+  "policies": {
+    "approval_ticket_id": {
+      "format": "uuidv4",
+      "normalize": "lowercase",
+      "min_length": 36,
+      "max_length": 36,
+      "entropy_requirement": "uuidv4_122_random_bits",
+      "write_mode": "canonical_only",
+      "read_mode": "canonical_only"
+    },
+    "operation_id": {
+      "format": "uuidv4",
+      "normalize": "lowercase",
+      "min_length": 36,
+      "max_length": 36,
+      "entropy_requirement": "uuidv4_122_random_bits",
+      "write_mode": "canonical_only",
+      "read_mode": "canonical_or_legacy_read_only",
+      "legacy_read": {
+        "format": "legacy_opaque_v1",
+        "min_length": 8,
+        "max_length": 191,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,190}$",
+        "preserve_exact_bytes": true,
+        "rewrite_allowed": false
+      }
+    },
+    "job_id": {
+      "format": "uuidv4",
+      "normalize": "lowercase",
+      "min_length": 36,
+      "max_length": 36,
+      "entropy_requirement": "uuidv4_122_random_bits",
+      "write_mode": "canonical_only",
+      "read_mode": "canonical_only"
+    },
+    "receipt_id": {
+      "format": "receipt_v1",
+      "normalize": "lowercase_digest",
+      "prefix": "receipt:v1:",
+      "min_length": 75,
+      "max_length": 75,
+      "entropy_requirement": "sha256_256_bits",
+      "write_mode": "derived_content_address",
+      "read_mode": "canonical_only"
+    },
+    "provider_id": {
+      "format": "provider_slug_v1",
+      "normalize": "lowercase",
+      "min_length": 1,
+      "max_length": 64,
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "entropy_requirement": "semantic_registry_key_not_random",
+      "write_mode": "canonical_only",
+      "read_mode": "canonical_only"
+    }
+  }
+}

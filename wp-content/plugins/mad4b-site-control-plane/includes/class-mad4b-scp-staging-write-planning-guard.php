@@ -78,18 +78,27 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			$original_execute = $args['execute_callback'];
 			$args['execute_callback'] = static function ( $input = null ) use ( $original_execute ) {
 				$remote = MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport();
+				$resource_preparation_evidence = array();
 				if ( $remote ) {
 					$input = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
 					if ( is_wp_error( $input ) ) return $input;
 					$guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $input );
 					if ( is_wp_error( $guard ) ) return $guard;
+					if ( ! class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ) return new WP_Error( 'mad4b_resource_constraint_compiler_unavailable', 'Resource preparation evidence compiler is unavailable.' );
+					$target_ability = isset( $input['ability'] ) ? (string) $input['ability'] : '';
+					$target_provider = isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : 'core';
+					$target_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+					$resource_preparation_evidence = MAD4B_SCP_Resource_Constraint_Set::preparation_evidence( $target_ability, $target_provider, $target_input );
+					if ( is_wp_error( $resource_preparation_evidence ) ) return $resource_preparation_evidence;
 				}
 				$result = call_user_func( $original_execute, $input );
 				if ( is_wp_error( $result ) || ! $remote ) return $result;
 				if ( ! is_array( $result ) || empty( $result['ticket_id'] ) ) return new WP_Error( 'mad4b_remote_plan_ticket_missing', 'Remote approval planning did not return a pending ticket.' );
 				if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return new WP_Error( 'mad4b_remote_plan_binding_unavailable', 'Approval ticket candidate binding is unavailable.' );
 				$binding = MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate( $result['ticket_id'] );
-				return is_wp_error( $binding ) ? $binding : $result;
+				if ( is_wp_error( $binding ) ) return $binding;
+				$result['resource_preparation_evidence'] = $resource_preparation_evidence;
+				return $result;
 			};
 		}
 
@@ -323,6 +332,9 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			if ( isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) && sanitize_key( (string) $input['provider'] ) !== $expected_provider ) return new WP_Error( 'mad4b_remote_plan_provider_mismatch', 'Remote approval target provider does not match the certified mad4b-write mount.' );
 		}
 
+		if ( ! class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ) return new WP_Error( 'mad4b_resource_constraint_compiler_unavailable', 'Resource constraint compiler is unavailable for approval planning.' );
+		$resource_set = MAD4B_SCP_Resource_Constraint_Set::compile( $target_ability, $expected_provider, $operation_input );
+		if ( is_wp_error( $resource_set ) ) return $resource_set;
 		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
 			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $target_ability, $operation_input );
 			if ( is_wp_error( $context_guard ) ) return $context_guard;

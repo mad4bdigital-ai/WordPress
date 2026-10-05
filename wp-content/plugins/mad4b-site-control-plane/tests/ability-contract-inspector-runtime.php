@@ -13,6 +13,7 @@ function wp_check_invalid_utf8( $value ) { return $value; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][ $name ] ); }
 function wp_get_ability( $name ) { return $GLOBALS['abilities'][ $name ] ?? null; }
 function get_current_blog_id() { return 1; }
+function apply_filters( $hook, $value ) { return $value; }
 
 class MAD4B_SCP_Authorization {
 	public static function execution_boundary_verified( $ability ) { return true; }

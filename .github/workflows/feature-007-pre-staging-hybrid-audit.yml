@@ -5,6 +5,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'specs/007-content-intelligence-workflow-platform/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
   push:
@@ -33,6 +34,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
 
       - name: Setup PHP 7.4
         uses: shivammathur/setup-php@v2
@@ -47,6 +49,84 @@ jobs:
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \
             | sort -z \
             | xargs -0 -n1 php -l
+
+      - name: Architecture maintainability and change-slice gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --pr-number "${{ github.event.pull_request.number || 0 }}" \
+            --output dist/mad4b-architecture-dependency-graph.json
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-contract.py
+
+
+      - name: Production readiness contract (non-authorizing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-contract.py \
+            --output dist/mad4b-production-readiness-contract.json
+
+      - name: Production certification plan contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-certification-plan-contract.py
+
+      - name: Production live evidence contract self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-live-evidence-contract.py --self-test
+
+      - name: Production certification producer registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-certification-producer-contract.py
+
+      - name: Production read-only live producer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/production-promotion-attestation-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/production-readiness-evaluator-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py
+
+      - name: Feature 007 release-closure hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/release-closure-hardening-contract.php
+
+      - name: Feature 007 closure foundations and workstream certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-execution-binding.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-provider-plan.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-callback-order.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-governance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-portability-import.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workstream-certification.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-execution-binding-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/governed-provider-plan-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-callback-order-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/data-governance-registry-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/research-provider-plan-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/decommission-governance-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/portability-import-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/workstream-certification-contract.php
 
       - name: Dynamic Skill distribution contract
         shell: bash
@@ -71,6 +151,145 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php
+
+      - name: Canonical Capability Descriptor consumer drift contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php
+
+      - name: Semantic content-field classification contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
+
+      - name: Provider-neutral resource constraint compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py
+
+      - name: Certified provider postcondition recovery semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/durable-postcondition-binding-contract.py
+
+      - name: Recomputable cross-source Execution State View
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php
+          ! grep -Eq 'update_option|add_option|delete_option|wpdb->(insert|update|delete|query)' wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-state-view.php
+
+      - name: Canonical and legacy identifier policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py
+
+      - name: Unicode confusable and canonical identity policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-contract.py
+
+
+      - name: Catalog table backend shadow and cutover contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/catalog-table-backend-contract.py
+
+      - name: Durable network orchestration contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py
+
+      - name: Durable provider circuit breaker and eligibility precedence contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-profile-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/catalog-lifecycle-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php
+          node wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs
+
+      - name: MCP protocol and adaptive projection contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/projection-hotset-recommender-contract.py
+          node --check wp-content/plugins/mad4b-site-control-plane/client/ability-catalog-client.mjs
+          node wp-content/plugins/mad4b-site-control-plane/tests/catalog-chunk-reassembly-adversarial.mjs
+
+      - name: Impact approvals receipts and semantic routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/terminal-evidence-fault-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/execution-fatal-interruption-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/preparation-receipt-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py
+
+
+      - name: Capability Fabric composed cross-fault matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py
+
+      - name: Hermetic deterministic security kernel
+        shell: bash
+        env:
+          MAD4B_TEST_SEED: feature007-hermetic-v1
+          MAD4B_TEST_WALL_EPOCH: '2000000000'
+          MAD4B_TEST_MONOTONIC_MS: '500000'
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php > /tmp/mad4b-hermetic-a.json
+          php wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php > /tmp/mad4b-hermetic-b.json
+          cmp -s /tmp/mad4b-hermetic-a.json /tmp/mad4b-hermetic-b.json
+          cat /tmp/mad4b-hermetic-a.json
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py
+
 
       - name: WordPress Plugin Check (generic distribution hygiene)
         uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
@@ -113,6 +332,284 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: feature-007-pre-staging-hybrid-audit-${{ github.event.pull_request.head.sha || github.sha }}
-          path: dist/pre-staging-hybrid-audit.json
+          path: |
+            dist/pre-staging-hybrid-audit.json
+            dist/mad4b-architecture-dependency-graph.json
+          if-no-files-found: error
+          retention-days: 14
+
+  catalog-backend-runtime:
+    name: Catalog backend runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - wordpress: '6.9'
+            php: '7.4'
+            database: mysql:8.0
+            health_command: mysqladmin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: 'latest'
+            php: '8.3'
+            database: mysql:8.0
+            health_command: mysqladmin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: 'latest'
+            php: '8.3'
+            database: mariadb:11.8
+            health_command: mariadb-admin ping -h 127.0.0.1 -uroot -proot
+
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="${{ matrix.health_command }}"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7.4.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, mbstring, openssl, redis
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+
+      - name: Provision disposable Staging WordPress
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-catalog.test' --title='MAD4B Catalog Backend CI' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar option update home 'https://mad4b-catalog.test' --path="$WP_PATH"
+          php /tmp/wp-cli.phar option update siteurl 'https://mad4b-catalog.test' --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+
+      - name: Install exact MCP Adapter and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php" "$WP_PATH/wp-content/object-cache.php"
+          MAD4B_CI_REDIS_HOST=127.0.0.1 MAD4B_CI_REDIS_PORT=6379 php -r '$r=new Redis(); if(!$r->connect(getenv("MAD4B_CI_REDIS_HOST"),(int)getenv("MAD4B_CI_REDIS_PORT"),2.0)||false===$r->ping()) exit(1);'
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove schema v13 migration contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
+
+      - name: Prove table shadow cutover cache isolation and rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove multi-worker publication fencing
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-a host-a --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-a.json &
+          PID_A=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID" worker-b host-b --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-b.json &
+          PID_B=$!
+          wait "$PID_A"
+          wait "$PID_B"
+          cat /tmp/catalog-worker-a.json
+          cat /tmp/catalog-worker-b.json
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          RUN_ID_WARM="${RUN_ID}-warm"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID_WARM" worker-a host-a --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-warm-a.json &
+          PID_WA=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php" "$RUN_ID_WARM" worker-b host-b --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/catalog-worker-warm-b.json &
+          PID_WB=$!
+          wait "$PID_WA"
+          wait "$PID_WB"
+          cat /tmp/catalog-worker-warm-a.json
+          cat /tmp/catalog-worker-warm-b.json
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php" "$RUN_ID_WARM" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove persistent Redis cache cannot resurrect catalog authority
+        shell: bash
+        env:
+          MAD4B_CI_REDIS_HOST: 127.0.0.1
+          MAD4B_CI_REDIS_PORT: 6379
+        run: |
+          set -euo pipefail
+          RUN_ID="redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove MCP protocol refresh and adaptive hot-set semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/fixtures/projection-hotset-abilities.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-hotset-ci.php"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          rm -f "$WP_PATH/wp-content/mu-plugins/mad4b-projection-hotset-ci.php"
+
+      - name: Prove durable provider circuit breaker state machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove durable network fan-out crash reconstruction and site binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="network-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php" "$RUN_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-setup.json
+          cat /tmp/network-setup.json
+          OP_ID="$(python3 -c 'import json; print(json.load(open("/tmp/network-setup.json"))["network_operation_id"])')"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php" "$OP_ID" 101 worker-a committed --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-worker-a.json &
+          PID_A=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php" "$OP_ID" 202 worker-b reconciling --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-worker-b.json &
+          PID_B=$!
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php" "$OP_ID" 404 worker-crash crash --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/network-worker-crash.json &
+          PID_C=$!
+          wait "$PID_A"
+          wait "$PID_B"
+          wait "$PID_C"
+          cat /tmp/network-worker-a.json
+          cat /tmp/network-worker-b.json
+          cat /tmp/network-worker-crash.json
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php" "$OP_ID" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove activate deactivate uninstall governance retention
+        shell: bash
+        env:
+          MAD4B_CI_REDIS_HOST: 127.0.0.1
+          MAD4B_CI_REDIS_PORT: 6379
+        run: |
+          set -euo pipefail
+          SNAPSHOT="/tmp/mad4b-lifecycle-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}.json"
+          MAD4B_LIFECYCLE_PHASE=capture MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar plugin deactivate mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          MAD4B_LIFECYCLE_PHASE=verify MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          MAD4B_LIFECYCLE_PHASE=verify MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar plugin deactivate mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar plugin uninstall mad4b-site-control-plane --path=/tmp/mad4b-wordpress
+          MAD4B_LIFECYCLE_PHASE=verify MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+  adaptive-search-conformance:
+    name: Adaptive Search runtime / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up PHP and WP-CLI
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite, intl, pcntl, ctype, mysqli, mbstring
+          tools: wp-cli
+          coverage: none
+
+      - name: Lint and execute Adaptive Search runtime/provider contracts
+        env:
+          ASI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py --output "$RUNNER_TEMP/asi-evidence-${{ matrix.php }}.json"
+
+      - name: Provision disposable WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH="$RUNNER_TEMP/asi-wordpress"
+          wp core download --path="$WP_PATH" --version=6.9
+          wp config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          wp core install --path="$WP_PATH" --url=http://asi-disposable.test --title='Search CI' --admin_user=asi-ci --admin_password=ci-only-not-a-secret --admin_email=ci@example.invalid --skip-email
+          wp config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          wp plugin activate mcp-adapter mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Verify real WordPress CAS discovery catalog UI and breaker
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH="$RUNNER_TEMP/asi-wordpress"
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci
+
+      - name: Bind Adaptive Search gates to exact head and disposable evidence
+        env:
+          ASI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py --finalize "$RUNNER_TEMP/asi-evidence-${{ matrix.php }}.json" --wordpress "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
+
+      - name: Upload exact-head Adaptive Search acceptance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-search-${{ github.event.pull_request.head.sha || github.sha }}-php-${{ matrix.php }}
+          path: |
+            ${{ runner.temp }}/asi-evidence-${{ matrix.php }}.json
+            ${{ runner.temp }}/asi-wordpress-${{ matrix.php }}.json
           if-no-files-found: error
           retention-days: 14

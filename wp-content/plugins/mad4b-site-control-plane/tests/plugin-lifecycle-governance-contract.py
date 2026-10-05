@@ -7,6 +7,7 @@ abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(enco
 policy = (root / "includes" / "class-mad4b-scp-policy.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+plugin_boot = (root / "includes" / "class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 
 for marker in (
     "mad4b.plugin-lifecycle-plan.v1",
@@ -53,5 +54,16 @@ if "mad4b/plugin-lifecycle-plan" not in servers:
     raise SystemExit("plugin lifecycle plan must be exposed on a governed read surface")
 if "class-mad4b-scp-plugin-lifecycle.php" not in main or "MAD4B_SCP_Plugin_Lifecycle::boot();" not in main:
     raise SystemExit("main plugin does not load and boot plugin lifecycle governance")
+
+for marker in (
+    "WP_CLI",
+    "$GLOBALS['argv']",
+    "'activate', 'deactivate', 'install', 'update', 'delete', 'uninstall'",
+    "$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();",
+    "if ( ! $plugin_lifecycle && ! $protocol_hotpath && $schema_reconciliation",
+    "if ( ! $plugin_lifecycle && ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation()",
+):
+    if marker not in plugin_boot:
+        raise SystemExit(f"WP-CLI plugin lifecycle reconciliation isolation missing: {marker}")
 
 print("mad4b.plugin-lifecycle-governance.v1: PASS")

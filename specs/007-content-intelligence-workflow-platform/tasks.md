@@ -740,3 +740,251 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3653 P0 Recertify exact installed Bit Flows 1.29.0 against permanent behavioral/security probes before execution eligibility.
 - [ ] T3654 P0 Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.
 - [ ] T3630 P0 GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.
+## Phase 37 — Post-merge Capability Fabric completeness
+
+### 37A — Canonical capability semantics and drift elimination
+- [x] T3701 P0 Build a post-merge Capability Fabric dimension matrix mapping every reviewed dimension to an owning contract, task, gate, evidence source and explicit status; no P0/P1 dimension may remain unowned.
+- [x] T3702 P0 Bind Operation Registry entries to the canonical Capability Descriptor identity instead of independently re-deriving execution/classification facts.
+- [x] T3703 P0 Bind Capability Traits profiles to the canonical descriptor/classification generation roots and prove trait metadata cannot override execution truth.
+- [x] T3704 P0 Bind Servers/catalog/direct projection rows to descriptor identity and generation roots; presentation layers remain consumers only.
+- [x] T3705 P0 Bind Authorization admission/readback to canonical descriptor identity while preserving live grant/approval/policy revalidation and no cached authority grant.
+- [x] T3706 P0 GATE Add cross-consumer drift/property/mutation tests proving Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization fail closed on any schema/lane/classification/generation disagreement.
+
+### 37B — Semantic content fields and least-privilege resource constraints
+- [x] T3707 P0 Define provider-specific semantic content-field contracts for posts, SEO, media, WooCommerce, Elementor, JetEngine and future plugins; generic string heuristics become fallback evidence only.
+- [x] T3708 P0 Unknown or newly introduced brand-bearing provider fields require explicit classification/review and cannot silently inherit mutation eligibility.
+- [x] T3709 P0 Define and compile a provider-neutral resource-constraint DSL for post IDs/types, taxonomies, filesystem zones/paths, DB tables/columns, provider object IDs, mutation counts and byte/value limits.
+- [x] T3710 P0 Bind the compiled resource-set digest to plan, preparation evidence, approval, execution guard and readback evidence.
+- [x] T3711 P0 GATE Mutation/property tests must reject resource widening, alternate identifiers, wildcard expansion, path aliasing and provider-side object substitution after approval.
+
+### 37C — Provider postconditions, reconciliation and execution-state truth
+- [x] T3712 P0 Define a ProviderPostconditionProfile per mutation family with authoritative committed/no-effect/unknown readers and exact evidence freshness requirements.
+- [x] T3713 P0 Durable retry/reclaim eligibility requires a certified postcondition reader for that mutation family; unsupported families remain reconciliation-required and blind-retry denied.
+- [x] T3714 P0 Add timeout-after-possible-side-effect, lost-response, duplicate-callback and provider-commit/readback-delay fixtures for every certified mutation family.
+- [x] T3715 P0 Formalize Execution State View precedence across Operation Journal, Durable Execution and Connector Resilience, including a complete contradictory-evidence matrix.
+- [x] T3716 P0 GATE Prove Execution State View is fully recomputable, owns no durable state, and can never promote unknown/contradictory evidence to COMMITTED or retryable.
+- [x] T3717 P0 Define a canonical identifier-policy registry for operation/job/approval/receipt/provider IDs with UUIDv4 or explicitly versioned opaque formats, normalization and length/entropy requirements.
+- [x] T3718 P1 Provide compatibility/migration semantics for legacy non-canonical operation identifiers without rewriting historical journal identity.
+
+### 37D — Catalog backend, cache coherence and horizontal concurrency
+- [x] T3719 P1 Design a dedicated immutable catalog table backend with content-addressed rows, generation directory, indexed expiry/GC and explicit capacity accounting.
+- [x] T3720 P1 Implement shadow-read parity and bounded cutover from options storage with one authoritative publisher at a time; no dual-authority catalog state.
+- [x] T3721 P1 Add storage-level publication fencing token/CAS semantics so lost/reused DB connections cannot publish a stale generation.
+- [x] T3722 P1 Certify persistent object-cache/Redis behavior: stale option/object cache cannot resurrect retired objects, bypass CAS, or hide a newer catalog directory.
+- [x] T3723 P1 Run multi-PHP-worker and multi-host concurrency tests proving process-local caches/mutexes are never authoritative and DB-scoped locks remain isolated.
+- [x] T3724 P1 GATE Prove backend rollback/retirement preserves projection/grants/approvals/audit/site profile and leaves no orphan capacity accounting.
+
+### 37E — Durable multisite/network orchestration
+- [x] T3725 P0 Define a durable NetworkOperation journal with per-site target identity, authority scope, plan/preparation digest, state and evidence refs.
+- [x] T3726 P0 Define partial-completion, pause, resume and reconciliation semantics; completed sites are never falsely rolled back because another site failed.
+- [x] T3727 P0 Add network idempotency/deduplication keys and duplicate/reordered site-dispatch tests across independent workers.
+- [x] T3728 P0 Prove credentials, catalog ownership, receipts, approvals, context and authority remain site-bound during concurrent fan-out and cannot cross sites.
+- [x] T3729 P0 GATE Crash mid-fan-out and reconnect/resume must reconstruct exact completed/pending/reconciling site sets from durable evidence without replaying committed mutations.
+
+### 37F — Projection isolation and MCP protocol evolution
+- [x] T3730 P1 Decide and codify direct hot-set isolation semantics (site-global versus client/session scoped), including contention behavior and explicit statement that fixed dispatch correctness is independent.
+- [x] T3731 P2 Add telemetry-driven adaptive hot-set recommendations with bounded quotas; recommendation/ranking can never grant authority or auto-project privileged capabilities.
+- [x] T3732 P1 Define exact tools/list refresh/reconnect/listChanged behavior per certified MCP client/protocol profile, including stale projection detection.
+- [x] T3733 P1 Add exact protocol capability negotiation and fail-closed behavior for unknown/newer protocol features rather than opportunistic assumptions.
+- [ ] T3734 P1 Add dual-protocol regression for tool schemas, pagination/chunk transport, refresh semantics, notifications and error normalization when a successor Adapter is certified.
+- [x] T3735 P1 GATE Concurrent projection changes or stale clients cannot alter fixed-dispatch schema/lane/classification/authority validation or execute a removed hot-set item by visibility alone.
+
+### 37G — Durable provider resilience and WordPress lifecycle
+- [x] T3736 P0 Implement a durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN states, bounded timers and persisted transition evidence.
+- [x] T3737 P0 Breaker probe success may restore transport eligibility only; it never grants provider certification, write authority, approval or Production eligibility.
+- [x] T3738 P0 Define deterministic precedence among breaker state, provider quarantine, release ring, kill switch, certification and authority; strongest deny wins.
+- [x] T3739 P1 Define a WordPress-native lifecycle migration profile and parity certification before replacing provenance wrappers/Reflection-based compatibility paths.
+- [x] T3740 P1 Add activate/deactivate/update/uninstall/network-activate lifecycle tests proving governance retention, bounded catalog cleanup, multisite isolation and rollback compatibility.
+
+### 37H — Distributed tracing, SLOs and observability failure semantics
+- [x] T3741 P1 Propagate a standards-compatible trace context across discovery, preparation, policy, approval, commit guard, provider call, readback, reconciliation and network fan-out.
+- [x] T3742 P1 Define tenant-safe trace/span identity, sampling, cardinality ceilings and recursive payload redaction; raw inputs/tokens/secrets/provider payloads are excluded by default.
+- [x] T3743 P1 Measure stage-level P50/P95/P99 for discovery, prepare, authorization, provider execution, readback, reconciliation and catalog rebuild, not only hard budgets.
+- [x] T3744 P1 Bind stage SLOs to error-budget/burn-rate policies and operator evidence without converting telemetry into authority.
+- [x] T3745 P1 Define observability-backend outage semantics: optional telemetry failure cannot block safe reads, while mandatory audit/evidence persistence for governed writes remains fail closed.
+- [x] T3746 P1 GATE Cross-provider/network traces must preserve causal continuity without cross-tenant correlation leakage or unbounded high-cardinality labels.
+
+### 37I — Impact-bound approvals, explainability, execution receipts and semantic routing
+- [x] T3747 P0 Extend approval identity with exact input digest, constrained resource set, dependency generation and blast-radius/impact digest.
+- [x] T3748 P0 Invalidate approval when the resource set, dependency generation, impact graph or target fingerprint materially changes before commit.
+- [x] T3749 P1 Implement an authorization decision graph exposing PASS/FAIL/NOT_EVALUATED steps, stable reason codes, policy/evidence versions and redacted evidence refs without revealing secrets.
+- [x] T3750 P0 Define mad4b.execution-receipt.v1 linking preparation, descriptor, policy decision, approval, idempotency claim, operation journal, provider evidence, readback/reconciliation and terminal outcome.
+- [x] T3751 P0 Hash/sign the unified execution receipt, support independent verification/export and prove no missing stage can be represented as terminal success.
+- [x] T3752 P1 Implement provider-neutral semantic intent routing: user intent → required traits → provider candidates → exact capability, with confidence/evidence/ambiguity/human-review semantics.
+- [x] T3753 P1 GATE Semantic routing remains non-authorizing and cannot choose a capability outside current certification, authority, environment, resource constraints or risk policy.
+
+### 37J — Cryptography, time, replay, canonicalization and abuse resistance
+- [x] T3754 P0 Define recursive structural redaction/classification for provider/plugin errors, callback return data, metadata and nested arrays/objects; add adversarial fuzz cases for unexpected secret field names.
+- [x] T3755 P0 Introduce versioned cryptographic profiles/key IDs for preparation/context/execution receipts with rotation, overlap, revocation and algorithm-agility rules.
+- [x] T3756 P0 Define clock-skew and monotonic-time policy for receipt TTL, lease deadlines, breaker windows, offline authorization and reconciliation observation windows.
+- [x] T3757 P0 Define replay semantics by operation risk class, including when preparation evidence is reusable versus single-use and how replay prevention composes with idempotency.
+- [x] T3758 P0 Define Unicode/canonicalization/confusable policy for ability names, semantic operation IDs, resource identifiers, URLs, paths, headers and canonical JSON/hash inputs.
+- [x] T3759 P0 Add per-principal/site/client rate limits and complexity budgets for discovery/prepare/execute, deep nesting, schema bombs, pathological regex/search terms and oversized metadata.
+- [x] T3760 P1 Extend egress policy beyond SSRF with TLS verification, proxy trust, redirect revalidation, DNS-answer changes and certificate/hostname failure semantics.
+- [x] T3761 P1 Define backward-compatible migration/deprecation telemetry for legacy unprepared dispatcher callers, versioned error contracts and explicit sunset gates.
+- [ ] T3762 P1 Make critical CI hermetic/deterministic with injectable clocks, bounded deterministic test randomness, stable fixtures and no flaky-check bypass for release gates.
+
+### 37K — Maintainability, change architecture and configuration governance
+- [ ] T3763 P1 Split oversized responsibility concentrations into domain services behind stable public contracts, with dependency-cycle/size budgets and behavior-parity tests before deletion of legacy façades.
+- [x] T3764 P1 Define change-slice policy for large features: reviewable semantic units, bisect/revert boundaries, exact-head certification per slice and early split gates that prevent another mega-PR review surface.
+- [x] T3765 P1 Generate an architecture dependency graph and enforce forbidden dependency directions so presentation/adapters cannot become sources of authority or contract truth.
+- [x] T3766 P1 Define a stable machine-readable error/reason-code registry and response-schema evolution policy so clients can upgrade without parsing human messages.
+- [x] T3767 P1 Bind material configuration/feature-flag generations into diagnostics/plans where they affect behavior; config flags cannot widen authority or bypass certification.
+
+### 37L — Completeness closure
+- [ ] T3768 P0 GATE Execute the post-merge Capability Fabric completeness audit: every dimension has an owner, task, contract or explicit non-goal, test strategy, evidence source and current status.
+- [ ] T3769 P0 GATE No P0/P1 dimension may remain untriaged; any OPEN item must have explicit priority, dependencies and fail-closed interim behavior.
+- [ ] T3770 P0 GATE Phase 37 must map into existing quality/traceability families and must not authorize Production, Breakglass, generic shell/raw SQL, or any new authority by documentation alone.
+
+### 37M — Request scope, database consistency and extension interference
+- [x] T3771 P0 Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.
+- [x] T3772 P0 Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.
+- [x] T3773 P0 Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.
+- [x] T3774 P0 Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.
+- [x] T3775 P0 GATE Prove final execution admission cannot be bypassed by WordPress hook/filter priority, registration order or a later/same-priority extension mutating projected tool metadata or call arguments.
+- [x] T3776 P0 Add reentrancy/recursive-dispatch protection so nested Ability calls cannot reuse/rebind approval, preparation, context, idempotency or execution evidence from a parent call without an explicit governed child operation.
+- [x] T3777 P1 Certify a compatibility/conflict matrix for persistent object cache, HyperDB/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron so unsupported infrastructure fails closed with stable reason codes.
+
+### 37N — Clone, restore time-travel and subject lifecycle
+- [x] T3778 P0 Add database/site clone fixtures proving copied Site Profile, OAuth state, approvals, grants, projections and durable execution evidence are quarantined on foreign origin/environment and require explicit re-enrollment/rebinding.
+- [x] T3779 P0 Define same-origin backup-restore time-travel detection: restoring an older database snapshot must not silently resurrect consumed approvals, revoked credentials, stale grants, completed idempotency claims or pre-restore projection authority assumptions.
+- [x] T3780 P0 Define a monotonic RestoreEpoch/AuthorityEpoch anchored outside rollback-prone application state, or an equivalent independently verifiable mechanism, and bind it to security-sensitive persisted evidence that could otherwise replay after restore.
+- [x] T3781 P0 GATE Rehearse restore of a snapshot containing previously valid but now consumed/revoked approval/token/idempotency records and prove post-restore replay is denied until governed reconciliation/re-enrollment completes.
+- [x] T3782 P0 Define subject lifecycle invalidation for user deletion, role/capability demotion, Site Profile unenrollment, ChatGPT App remapping and authority/key revocation; active sessions/tokens/receipts remain non-authorizing and next admission/commit revalidates live subject state.
+- [x] T3783 P0 GATE Approve an operation, then demote/delete the subject or alter its enrolled mapping before provider entry/commit; execution must fail closed without consuming a successful terminal receipt.
+
+### 37O — Persisted contract evolution and mixed-runtime safety
+- [x] T3784 P0 Define persisted contract/schema version compatibility for profiles, approvals, receipts, journal rows, catalog objects and execution records: unknown/newer versions fail closed and downgrade never silently reinterprets newer security fields.
+- [x] T3785 P0 Add rolling-deploy N/N-1 worker compatibility tests across PHP workers for schema, receipts, policy/config generations, catalog state and durable records; mixed workers cannot widen authority or corrupt evidence.
+- [x] T3786 P0 Define upgrade rollback/downgrade semantics with explicit durable-identity preservation or invalidation; rollback may not resurrect an older interpretation of a newer approval/receipt/authority record.
+- [x] T3787 P1 Prove stale long-lived workers/processes loaded before plugin/package update cannot commit after runtime/code generation changes; they must observe a generation fence or terminate/reload before governed mutation.
+
+### 37P — Evidence commit ordering and infrastructure exhaustion
+- [x] T3788 P0 Define a mutation crash-point table covering intent persistence, approval claim, provider entry, provider return, readback, audit/journal append, durable receipt and terminal state; every boundary maps to exactly one conservative recovery state.
+- [x] T3789 P0 GATE Inject audit/journal/receipt database failure, read-only filesystem, disk-full/quota exhaustion and evidence-store unavailability before/after provider side effects; terminal success is forbidden unless required durable evidence is committed.
+- [ ] T3790 P1 Preserve evidence hash-chain/trust references through archival, tiering, export/import, retention and legal-hold workflows; moving evidence cannot weaken verification or recreate authority.
+- [x] T3791 P0 Define bounded evidence truncation semantics: oversized provider/error metadata may be summarized/redacted, but mandatory reason codes, digests, target identity and reconciliation pointers can never be silently dropped.
+- [x] T3792 P0 Add fatal-error/OOM/process-kill fixtures around provider entry and evidence persistence; recovery must distinguish not-started, possible-side-effect and committed-with-missing-receipt without inferring success.
+
+### 37Q — Cancellation, transport integrity and cross-fault closure
+- [x] T3793 P0 Define cancellation propagation across queue/worker/provider boundaries; cancellation after possible side effect becomes RECONCILING/UNKNOWN until postcondition proof, never a simple cancelled terminal state.
+- [x] T3794 P1 Certify chunked/schema/catalog transport reassembly against missing, duplicate, reordered and mixed-generation chunks with content digests, bounded decompression and payload/ratio limits.
+- [x] T3795 P0 GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.
+
+### 37R — Canonical identity and transactional database storage
+- [x] T3796 P0 Eliminate alternate PHP serialization fallback from security-sensitive capability/schema/classification fingerprints; unsupported canonical input must become unavailable/fail-closed rather than acquire a second hash interpretation.
+- [x] T3797 P0 Define database identity collation semantics for UUIDs, SHA digests, operation/idempotency/provider keys and authority fingerprints; canonical normalization plus binary/case-exact comparison must prevent collation aliases.
+- [x] T3798 P0 Certify transactional storage-engine/runtime capabilities for approval, idempotency, operation-journal, audit and execution tables; nontransactional engines or unsupported implicit-commit behavior must block governed mutation.
+- [x] T3799 P0 GATE Prove transaction ownership/nesting behavior (including savepoint or explicit nesting denial), canonical-hash single interpretation, storage-engine requirements and collation identity fixtures; a MAD4B transaction must never accidentally commit/rollback an unrelated caller transaction.
+
+## Phase 38 — Adaptive Search Intelligence Fabric
+
+### 38A — Meta-model and context compiler
+- [x] T3801 P0 Define canonical Search Runtime Fact, Search Profile and Effective Search Context contracts.
+- [x] T3802 P0 Implement Search Profile plan/apply/verify with revision and exact plan drift guards; keep it separate from governance Site Profile.
+- [x] T3803 P0 Implement composable brand/market/language/surface/objective overlays with deterministic precedence.
+- [x] T3804 P0 GATE Prove business overlays can specialize but cannot widen security, authority, egress or Production policy.
+- [x] T3805 P0 Implement dependency fingerprints and minimal invalidation for PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA drift.
+- [x] T3806 P1 Implement explainable effective-context reason chains and read-only status projection.
+
+### 38B — Language, surfaces and SEO provenance
+- [x] T3807 P0 Implement provider-neutral Language Registry with WPML adapter and generic conformance contract.
+- [x] T3808 P0 Model WordPress Object and Search Surface as separate canonical identities.
+- [x] T3809 P0 Inventory Posts, Pages, public CPTs, Terms, Term Archives, Post Type Archives, Home and Blog Index.
+- [x] T3810 P0 Add provider-approved virtual/paginated surface semantics without generic arbitrary-URL admission.
+- [x] T3811 P0 Implement effective Indexability Resolver across object status, site policy, SEO metadata, canonical/redirect, language state and rendered evidence.
+- [x] T3812 P0 GATE Preserve indexability conflicts as reconciliation evidence; forbid silent provider winner.
+- [x] T3813 P0 Implement SEO Metadata Provider Registry with field-level provenance and Rank Math + WordPress/rendered fallback adapters.
+- [x] T3814 P1 Add Yoast/AIOSEO/SEOPress adapter conformance fixtures without core branching.
+
+### 38C — Targets, temporal evidence and projections
+- [x] T3815 P0 Define Search Target identity over normalized query, market, language, engine, device and purpose.
+- [x] T3816 P0 Implement OWNED_RANK_TRACKING and MARKET_DISCOVERY as independent target purposes.
+- [x] T3817 P0 Implement target compilation from SEO targets, canonical keyword registry, surface changes, clusters, competitors and post-change validation.
+- [x] T3818 P0 Implement immutable search observations/events plus recomputable materialized views.
+- [x] T3819 P0 Implement temporal rank trajectory, freshness, stability and volatility projections.
+- [x] T3820 P0 GATE Prove historical evidence survives target/profile/language/surface drift without identity corruption.
+
+### 38D — Adaptive decisions, refresh and fairness
+- [x] T3821 P0 Implement Expected Value of Observation Decision Engine with profile-driven weights.
+- [x] T3822 P0 Implement DecisionRecord with positive/negative factors, alternatives, evidence freshness and provider/budget reasoning.
+- [x] T3823 P0 Implement target-specific dynamic refresh cadence; forbid one universal refresh interval.
+- [x] T3824 P0 Reuse fresh equivalent evidence before provider execution when policy permits.
+- [x] T3825 P0 Implement multidimensional fair scheduler across site/brand/market/language/purpose/cluster/surface/provider.
+- [x] T3826 P0 GATE Prove aging/minimum coverage prevents permanent starvation under constrained budget.
+
+### 38E — Economic plane
+- [x] T3827 P0 Implement hierarchical budget tree with monthly/daily/monetary/rate/concurrency/depth constraints.
+- [x] T3828 P0 Implement soft reservations, protected reserve and safe unused-budget reclaim.
+- [x] T3829 P0 Bind provider usage/reset evidence to scheduling decisions without exposing credentials.
+- [x] T3830 P0 GATE Prove hard budget overspend and negative/unknown budget states fail closed.
+- [x] T3831 P1 Implement budget pacing and controlled burst policy from remaining allowance and billing window.
+
+### 38F — SERP provider mesh and durable execution
+- [x] T3832 P0 Define provider-neutral SERP descriptor/request/usage/economic/failure/normalization contracts.
+- [x] T3833 P0 Implement SerpApi adapter behind registered egress/secret/certification boundaries.
+- [x] T3834 P0 Implement DataForSEO adapter or an executable second-provider conformance fixture before provider-neutrality is claimed.
+- [x] T3835 P0 Replace fixed search-specific primary/fallback logic with capability/economic/policy-based provider candidate selection.
+- [x] T3836 P0 Extend semantic Remote Work Operation Registry for registered `search.serp.capture` without generic URL/command execution.
+- [x] T3837 P0 Reuse Provider Circuit Breaker state for eligibility and bounded HALF_OPEN read probes.
+- [x] T3838 P0 GATE Reconcile ambiguous quota-consuming provider effects before retry; no blind duplicate request.
+- [x] T3839 P0 Keep imported/HYPD/manual/historical sources typed as evidence sources, not forged live provider receipts.
+
+### 38G — SERP evidence and intelligence
+- [x] T3840 P0 Implement immutable versioned SERP Snapshot with request/provider/runtime/raw/normalized/cost provenance.
+- [x] T3841 P0 Implement external SERP content schema/size/sanitization trust boundary and prompt/tool-instruction isolation.
+- [x] T3842 P0 Separate raw evidence, normalized facts and derived inference so inference can be recomputed without repurchasing evidence.
+- [x] T3843 P0 Implement confidence-aware ranking, volatility, competitor, cannibalization, content/language/market gap, archive and SERP-feature signals.
+- [x] T3844 P0 GATE Prove cannibalization can relate pages, CPTs, term archives and post-type archives under exact query/market/language/device identity.
+
+### 38H — Adaptive experience
+- [x] T3845 P0 Define Search Experience Model and generic renderer primitives.
+- [x] T3846 P0 Implement capability/state-driven Search Intelligence navigation and sections; forbid provider-name UI branching.
+- [x] T3847 P0 Implement UNCONFIGURED/DISCOVERING/PROFILE_DRAFTED/READY/BASELINING/ACTIVE and degraded/reconciliation/drift/stale states.
+- [x] T3848 P0 GATE Prove provider outage/quota exhaustion yields degraded-safe experience while valid cached/historical intelligence remains usable.
+- [x] T3849 P1 Expose explainable queue, provider, budget and freshness decisions without secret/debug leakage.
+
+### 38I — Closed-loop handoff and experimentation
+- [x] T3850 P0 Implement Search Signal -> Recommendation -> governed Content Experience proposal boundary.
+- [x] T3851 P0 GATE Prove Search Intelligence cannot directly edit, publish or create Production authority.
+- [x] T3852 P0 Implement post-change observation windows bound to exact content/SEO fingerprints.
+- [x] T3853 P1 Implement experiment outcome projection with explicit confounders and no unsupported causality claim.
+
+### 38J — Generalization, resilience and completion
+- [x] T3854 P0 Execute conformance matrix across simple single-language, multilingual/archive-heavy, 4K+ target and partial-translation fixtures.
+- [x] T3855 P0 Execute provider low-quota/outage/HALF_OPEN/failover/recovery and stale-cache fixtures.
+- [x] T3856 P0 Execute new provider/new SEO adapter/new CPT/taxonomy/archive/new language/new market drift fixtures.
+- [x] T3857 P0 Execute cross-market/language fairness and noisy-neighbor budget fixtures.
+- [x] T3858 P0 Execute evidence tamper, provider contradiction, malformed/untrusted content and normalization-version fixtures.
+- [x] T3859 P0 GATE Prove no vendor/business hardcode is required to add a new Search Profile/provider/site.
+- [x] T3860 P0 GATE Emit ADAPTIVE_SEARCH_GENERALIZATION_PASS only from exact-head executable evidence; documentation-only closure is forbidden.
+
+### 38K — Measurement semantics and identity hardening
+- [x] T3861 P0 Define ObservationContext + ComparabilityKey and prohibit ranking deltas across materially incomparable location/provider/engine/device/depth/normalization contexts.
+- [x] T3862 P0 Define provider-resolved geo/locale fidelity including requested market, provider location ID, precision, country/gl, language/hl, engine/domain and device evidence.
+- [x] T3863 P0 Define versioned query canonicalization preserving raw query, Unicode/locale semantics, normalized query and normalization reason/version.
+- [x] T3864 P0 Define versioned owned-URL identity/matching across scheme/host/trailing slash/parameters/redirects/canonical aliases/localized URLs and registrable-domain ownership.
+- [x] T3865 P0 Define normalized rank semantics separating result type, organic rank, grouped rank, absolute SERP position and provider-native position.
+- [x] T3866 P0 Define capture completeness semantics: requested/returned depth, partial/truncated reason, validation state and NOT_FOUND_WITHIN_DEPTH; forbid loss signals from incomplete captures.
+
+### 38L — Search eligibility and bounded surface admission
+- [x] T3867 P0 Replace scalar indexability with SearchEligibilityEnvelope covering crawlable, robots.txt, X-Robots-Tag, meta robots, canonical/redirect, sitemap/discoverability, hreflang and effective confidence.
+- [x] T3868 P0 Implement bounded Surface Admission Policy for facets/filters/query parameters/pagination/virtual surfaces with allowlists, cardinality caps, canonical policy and unknown-combination denial.
+
+### 38M — Distributed provider economics and evidence rights
+- [x] T3869 P0 Implement ProviderAccountBudgetAuthority keyed by provider account/credential identity for quotas shared across sites/workers.
+- [x] T3870 P0 Implement fenced global budget reservations, billing-cycle/reset-time semantics, stale reservation expiry and provider usage reconciliation; downgrade enforcement claims when no shared authority exists.
+- [x] T3871 P1 Compose first-party SearchPerformanceProvider evidence into opportunity/decline/refresh decisions without relabeling it as live SERP evidence.
+- [x] T3872 P1 Define QueryLanguageProvenance for translation/transcreation, market evidence, semantic cluster relation, confidence and approval independently from page translation state.
+- [x] T3873 P0 Bind provider licensing/usage/retention constraints to raw and normalized evidence storage, redistribution, region and deletion policy.
+
+### 38N — Deterministic decisions, portability and adaptive UX stability
+- [x] T3874 P0 Define deterministic versioned DecisionPolicy factor ranges, missing-value handling, normalization, monotonicity, calibration and stable tie-break semantics; v1 MUST NOT require opaque ML.
+- [x] T3875 P1 Define adaptive UX stability and operator controls: stable section IDs/order/deep links plus audited pause/resume profile, disable provider, freeze spend, pin/mute target and request-refresh controls.
+- [x] T3876 P1 Define portable Search Intelligence execution/storage profiles for WordPress-local, external worker and external evidence/blob store while preserving canonical identities/evidence semantics.
+- [x] T3877 P0 GATE Map every Phase 38 PASS gate to exact fixtures, assertions, thresholds, denial cases, evidence artifact and required CI/disposable/live evidence class.
+- [x] T3878 P1 Define open/versioned SERP feature schema preserving known normalized family plus provider-native unknown/pass-through evidence.
+- [x] T3879 P1 Bind every DecisionPolicy factor, including commercial value/search volume, to source, market/language scope, freshness, confidence and normalization version.
+
+### 38O — Composed adversarial acceptance
+- [x] T3880 P0 GATE Execute composed cross-fault matrix covering profile/provider/language/surface drift, shared-budget races, lease loss, quota reset, partial capture, cache equivalence, uncertain provider effects and adaptive UI state; exact-head executable evidence required.

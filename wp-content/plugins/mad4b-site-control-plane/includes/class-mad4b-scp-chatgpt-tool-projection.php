@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) require_once __DIR__ . '/class-mad4b-scp-projection-hotset-recommender.php';
 
 /**
  * Governed dynamic projection of registered WordPress Abilities into the compact
@@ -10,6 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	const CONTRACT = 'mad4b.chatgpt-tool-projection.v1';
+	const ISOLATION_SCOPE = 'site_global';
+	const CONTENTION_POLICY = 'optimistic_cas_single_winner';
 	const OPTION = 'mad4b_scp_chatgpt_tool_projection_v1';
 	const STATUS_ABILITY = 'mad4b/chatgpt-tool-projection-status';
 	const DISCOVER_ABILITY = 'mad4b/chatgpt-tool-projection-discover';
@@ -37,7 +40,15 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'category' => 'mad4b-read',
 				'execute_callback' => array( __CLASS__, 'status' ),
 				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
-				'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+				'input_schema' => array(
+					'type' => 'object',
+					'properties' => array(
+						'include_recommendations' => array( 'type' => 'boolean', 'default' => false ),
+						'recommendation_quota' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_QUOTA, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA ),
+						'recommendation_hours' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_HOURS, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS ),
+					),
+					'additionalProperties' => false,
+				),
 				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 				'meta' => self::meta( true ),
 			) );
@@ -174,6 +185,21 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return $state;
 	}
 
+	public static function projection_revision() { return (int) self::raw_state()['revision']; }
+
+	public static function isolation_contract() {
+		return array(
+			'contract' => self::CONTRACT,
+			'isolation_scope' => self::ISOLATION_SCOPE,
+			'session_scoped_hot_set' => false,
+			'contention_policy' => self::CONTENTION_POLICY,
+			'stale_writer_policy' => 'reject_and_replan',
+			'fixed_dispatch_correctness_independent' => true,
+			'visibility_creates_authority' => false,
+			'authorizing' => false,
+		);
+	}
+
 	public static function bounded_metadata( $value, $bytes ) {
 		if ( class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
 			return MAD4B_SCP_Ability_Contract_Inspector::bounded_metadata( $value, $bytes );
@@ -200,6 +226,21 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
 	}
 
+	private static function planning_row( $ability_name ) {
+		$row = self::ability_row( $ability_name );
+		if ( is_wp_error( $row ) ) return $row;
+		$final_verified = class_exists( 'MAD4B_SCP_Execution_Fence' )
+			&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
+		$row['final_execution_admission_verified'] = $final_verified;
+		if ( ! $final_verified ) {
+			$row['projection_eligible'] = false;
+			if ( ! isset( $row['projection_blockers'] ) || ! is_array( $row['projection_blockers'] ) ) $row['projection_blockers'] = array();
+			$row['projection_blockers'][] = 'final_execution_admission_required';
+			$row['projection_blockers'] = array_values( array_unique( $row['projection_blockers'] ) );
+		}
+		return $row;
+	}
+
 	public static function current_binding() {
 		return class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
 			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
@@ -222,6 +263,19 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$name = isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
 		// Existing base tools retain their independent permission and execution contracts.
 		if ( in_array( $name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ) ) return $args;
+		if ( '' === $name ) {
+			return new WP_Error( 'mad4b_projection_ability_identity_missing', 'Dynamic projected execution requires an exact Ability identity.' );
+		}
+		// Arm the final callback boundary before any projection/binding/policy
+		// check can return a denial. WordPress filters at the same priority may
+		// replace an earlier WP_Error, but they cannot mint the private execution
+		// seal. A stale/cached MCP tool therefore remains fail-closed even if a
+		// later filter attempts to erase this guard's result.
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) ) {
+			return new WP_Error( 'mad4b_projection_execution_fence_unavailable', 'Projected execution fence is unavailable.' );
+		}
+		$requirement = MAD4B_SCP_Execution_Fence::require_projected_call_seal( $name );
+		if ( is_wp_error( $requirement ) ) return $requirement;
 		$state = self::raw_state();
 		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Dynamic projection is not bound to this enrolled Staging runtime.' );
 		$row = self::effective_row( $name, $state, true );
@@ -244,6 +298,12 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			$lane = self::execution_server( $name );
 			if ( is_wp_error( $lane ) ) return $lane;
 		}
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) {
+			return new WP_Error( 'mad4b_projection_final_execution_admission_required', 'Projected Ability is missing the final execution-admission wrapper.' );
+		}
+		$seal = MAD4B_SCP_Execution_Fence::seal_projected_call( $name, $args, $tool, $server );
+		if ( is_wp_error( $seal ) ) return $seal;
+		if ( class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) MAD4B_SCP_Projection_Hotset_Recommender::record_usage( $name, 'direct_projection' );
 		return $args;
 	}
 
@@ -411,7 +471,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$include_breakglass = ! empty( $input['include_breakglass'] );
 		$rows = array();
 		foreach ( $desired as $ability_name ) {
-			$row = self::ability_row( $ability_name );
+			$row = self::planning_row( $ability_name );
 			if ( is_wp_error( $row ) ) return $row;
 			if ( ! empty( $row['breakglass'] ) && ! $include_breakglass ) {
 				return new WP_Error( 'mad4b_chatgpt_projection_breakglass_explicit_opt_in_required', 'Breakglass Ability projection requires include_breakglass=true.', array( 'ability_name' => $ability_name ) );
@@ -468,6 +528,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'unprojectable_abilities' => $unprojectable,
 			'ready_for_apply' => $ready_for_apply,
 			'projection_changes_authority' => false,
+			'isolation' => self::isolation_contract(),
 			'execution_permission_callbacks_preserved' => true,
 			'read_only' => true,
 			'mutation_performed' => false,
@@ -618,11 +679,19 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function status( $input = null ) {
-		unset( $input );
+		$input = is_array( $input ) ? $input : array();
 		$state = self::raw_state();
 		$effective = self::effective_projection_rows();
 		$catalog = array_values( array_unique( array_merge( MAD4B_SCP_Servers::chatgpt_base_tools(), array_keys( $effective ) ) ) );
 		$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $catalog, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog ) );
+		$recommendations = array();
+		if ( ! empty( $input['include_recommendations'] ) && class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) {
+			$recommendations = MAD4B_SCP_Projection_Hotset_Recommender::recommend(
+				isset( $input['recommendation_quota'] ) ? absint( $input['recommendation_quota'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA,
+				isset( $input['recommendation_hours'] ) ? absint( $input['recommendation_hours'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS
+			);
+			if ( is_wp_error( $recommendations ) ) $recommendations = array( 'error_code' => $recommendations->get_error_code(), 'authorizing' => false );
+		}
 		$stored = array();
 		foreach ( $state['abilities'] as $ability_name => $row ) {
 			$current = self::ability_row( $ability_name );
@@ -659,6 +728,10 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'schema_size_policy' => 'bounded_direct_projection_with_dispatcher_fallback',
 			),
 			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
+			'isolation' => self::isolation_contract(),
+			'protocol_profile' => class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ? MAD4B_SCP_MCP_Protocol_Profile::status() : array(),
+			'hotset_recommendation_available' => class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ),
+			'hotset_recommendations' => $recommendations,
 			'primary_execution_mode' => 'fixed_dispatch',
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,

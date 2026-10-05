@@ -9,7 +9,7 @@ It does not redefine the existing contracts. It orders them into one executable 
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `acaaf43823b50b7840c8c265bd392871374d57e2`
+- reviewed repository parent: `deb28052ab6e89b87f6154557e2d0f78f2b122c6`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
@@ -133,6 +133,7 @@ No class grants authority. Production, Breakglass, host execution and public pub
 | Governed Tool Execution / CLI / Recovery Runner | LIVE_PRECONDITION | semantic operations, exact executor, no generic shell, terminal-independent Runner bootstrap/enrollment, recovery independence |
 | Cron semantic provider | MATURITY_REQUIRED | read/health/run then governed schedule/unschedule |
 | Provider backlog | MATURITY_REQUIRED | WP Import/Export, JetSmartFilters, SEO providers via same certification contracts |
+| Adaptive Search Intelligence Fabric | REPOSITORY_RUNTIME_VALIDATED | Phase 38 is 80/80 DONE at repository-runtime scope; explicitly non-authorizing; live provider/account certification remains NOT_CLAIMED |
 | Growth loop | DEFERRED_MATURITY | performance/index/decay/cannibalization/refresh observations |
 | Fair scheduling/local autonomy/localization/a11y/link graph | DEFERRED_MATURITY | quality and isolation evidence |
 | Eval ops/alerts/experiments/usage ledger | DEFERRED_MATURITY | governed operational/economic evidence |
@@ -142,9 +143,15 @@ No class grants authority. Production, Breakglass, host execution and public pub
 
 ## Execution-ledger rule
 
-A task is not DONE because code with a similar name exists. DONE requires an exact evidence reference tied to a commit/artifact/runtime receipt. PARTIAL requires an explicit remainder. OPEN and DEFERRED are distinct.
+A task is not DONE because code with a similar name exists. The task ledger keeps DONE/PARTIAL/OPEN/DEFERRED semantics. Workstream closure additionally uses EXTERNAL_PENDING only when repository implementation/evidence paths are present and the remaining blockers require exact-candidate Live or external evidence; EXTERNAL_PENDING is not DONE and never implies Production readiness or authority.
 
 The legacy unchecked task list therefore MUST be reconciled; it MUST NOT be mass-marked complete.
+
+### External-pending closure state
+
+The 23 former PARTIAL workstreams have repository implementation and machine-evaluable certification paths. They are now **EXTERNAL_PENDING** because their remaining conditions require exact deployed-candidate, provider/account, host, edge, Staging mutation/recovery, or other trusted Live evidence. Repository metadata cannot promote any of them to DONE.
+
+The canonical mapping is `config/feature-007-workstream-certification.json`, evaluated at runtime by `mad4b/feature-007-workstream-certification-status`. Caller-supplied Live booleans are rejected as evidence.
 
 ## Critical Kernel Definition of Done
 
@@ -195,4 +202,31 @@ Repository CI proves contracts and denial behavior only. Live ETG gates still re
 
 Repository implementation now includes the bounded `wordpress_plugin_deploy` Host Bridge → Host Runner semantic operation. It accepts exact package identity only, consumes a pre-staged General Distribution bundle from the fixed runner zone, verifies manifest/receipt/provenance/archive inventory, backs up the current Control Plane, performs an atomic plugin-directory swap, verifies the installed exact package in the same cycle, and rolls back on failed readback.
 
-This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **PARTIAL** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.
+This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **EXTERNAL_PENDING** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.
+
+## Phase 38 maturity extension — Adaptive Search Intelligence
+
+Phase 38 is repository-runtime validated and documented by `adaptive-search-intelligence.md`, `contracts/adaptive-search-intelligence-runtime.md` and `adaptive-search-intelligence.json`. It generalizes the Phase 6 SERPProvider and Phase 14 Growth concepts into an adaptive, provider-neutral Search Intelligence runtime with live surface/language/SEO discovery, target compilation, fair economic scheduling, immutable SERP evidence, confidence-aware signals and a capability/state-driven operator experience.
+
+This extension is deliberately outside the current Critical Kernel terminal proof unless a concrete runtime dependency is later admitted through the normal Architecture Freeze process. It creates no Production authority, no Breakglass widening, no generic HTTP surface and no direct search-signal-to-content mutation path.
+
+
+## Adaptive Search review status: APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED
+
+The independent Phase 38 review is recorded in `adaptive-search-intelligence-review.md` and `adaptive-search-intelligence-review.json`.
+
+Current review score: **88/100 overall specification maturity**.
+
+The review identified 12 P0 and 6 P1 gaps. The **12 P0 gaps are now CLOSED** at repository/runtime-contract level by exact implementation head `042e49926d909dd11d0925b5b19b19143561b556`, Feature 007 Spec Quality CI run `37239748455`, Runtime Integration run `37239748528` (WordPress 6.9 + latest PASS), and Spec Kit consistency run `37239748494`, and Pre-Staging Hybrid Audit run `37239748433`. Closure includes certified cross-provider comparability, canonical query/URL/rank/capture semantics, fail-closed SearchEligibilityEnvelope, bounded surface admission with cardinality and URL-pagination protection, truthful shared-account budget authority with stable provider account identity, evidence-rights retention, deterministic decision policy, measurable gates and composed cross-fault behavior.
+
+The **6 P1 findings are CLOSED at repository-runtime scope** against exact Search runtime head `e8791ae6253b5667f1ffffdcf1693bd1d08a641a`. Live provider/account certification remains NOT_CLAIMED; this closure does not imply Production authorization or direct content mutation authority.
+
+## Phase 38 repository runtime implementation
+
+The complete discovery → context → target → budgeted capture → immutable snapshot → signal/graph → governed Content Experience proposal path is implemented under `includes/search/`, loaded by `class-mad4b-scp-adaptive-search-intelligence.php`. The Phase 38A compiler remains a composed validation/dependency boundary, and the existing account budget authority shares the same fenced coordinator used by capture. Registered abilities use the existing execution wrapper and private catalogs. Search configuration grants no spend, content mutation or Production authority.
+
+`adaptive-search-runtime-acceptance.json` binds all 15 repository conformance gates to executable positive/denial fixtures and thresholds. The dedicated workflow runs PHP 7.4/8.3 plus disposable WordPress/MySQL proof of real CAS races, public CPT/taxonomy discovery, governed ability mounting and accessible operator rendering. PASS gate records require a clean exact CI head and source digest. Local fixtures currently pass 42 scenarios and 981 assertions; local evidence emits no PASS gates.
+
+Phase 38 repository implementation tasks and all six P1 review tasks are closed against the feature-owned exact-head workflow (40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof). Phase 38 is 80/80 DONE at repository-runtime scope. Provider account/site live certification and Production authority are not claimed.
+
+The follow-up acceptance matrix adds direct-capture mute enforcement, concurrent mute before provider entry, malformed factor rejection and first-party/live-SERP classification denials. These regressions increase the required suite to 42 scenarios and 981 assertions. The workflow recertifies all 15 gates on the current clean head; the earlier closure anchor remains historical evidence.

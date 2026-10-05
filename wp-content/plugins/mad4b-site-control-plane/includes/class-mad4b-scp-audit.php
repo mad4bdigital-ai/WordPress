@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit-integrity.php';
+if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-evidence-policy.php';
 
 final class MAD4B_SCP_Audit {
 	const LEGACY_OPTION = 'mad4b_scp_audit_log';
@@ -269,6 +270,59 @@ final class MAD4B_SCP_Audit {
 			'head_consistent' => ! empty( $status['head_consistent'] ),
 			'count' => count( $events ),
 			'events' => $events,
+		);
+	}
+
+
+	/**
+	 * Bounded read-only recovery lookup for one governed execution attempt.
+	 *
+	 * This never searches arbitrary audit data. It exposes only execution
+	 * checkpoint/terminal-receipt events correlated by a 64-hex attempt digest.
+	 */
+	public static function execution_checkpoint_events( $execution_attempt_sha256, $limit = 20 ) {
+		global $wpdb;
+		$attempt = strtolower( trim( (string) $execution_attempt_sha256 ) );
+		$limit = max( 1, min( 50, absint( $limit ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $attempt ) ) {
+			return new WP_Error( 'mad4b_execution_attempt_audit_identity_invalid', 'Execution attempt audit identity is invalid.' );
+		}
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_execution_attempt_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$needle = '%' . $wpdb->esc_like( '"execution_attempt_sha256":"' . $attempt . '"' ) . '%';
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$t['audit_events']} WHERE chain_name = %s AND ability LIKE %s AND summary_json LIKE %s ORDER BY sequence DESC LIMIT %d",
+				self::CHAIN,
+				'mad4b/authorization:%',
+				$needle,
+				$limit
+			),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_execution_attempt_audit_lookup_failed', 'Execution attempt audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$rows = array_reverse( $rows );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( ! is_array( $entry ) ) continue;
+			$summary = isset( $entry['summary'] ) && is_array( $entry['summary'] ) ? $entry['summary'] : array();
+			if ( ! isset( $summary['execution_attempt_sha256'] ) || ! hash_equals( $attempt, strtolower( (string) $summary['execution_attempt_sha256'] ) ) ) continue;
+			$reason = isset( $summary['reason_code'] ) ? sanitize_key( (string) $summary['reason_code'] ) : '';
+			if ( ! in_array( $reason, array( 'execution_checkpoint', 'unified_execution_receipt_committed' ), true ) ) continue;
+			$events[] = $entry;
+		}
+		return array(
+			'contract' => 'mad4b.execution-attempt-audit.v1',
+			'execution_attempt_sha256' => $attempt,
+			'chain' => self::CHAIN,
+			'chain_valid' => self::verify_chain(),
+			'head_consistent' => ! empty( $status['head_consistent'] ),
+			'count' => count( $events ),
+			'events' => $events,
+			'read_only' => true,
+			'mutation_performed' => false,
 		);
 	}
 
@@ -543,16 +597,18 @@ final class MAD4B_SCP_Audit {
 	}
 
 	private static function summary_payload( array $summary ) {
-		$clean = self::sanitize_summary_array( $summary, 0 );
+		if ( class_exists( 'MAD4B_SCP_Structural_Redaction' ) ) $summary = MAD4B_SCP_Structural_Redaction::redact( $summary, 'audit_summary' );
+		$clean = self::sanitize_summary_array( is_array( $summary ) ? $summary : array(), 0 );
 		$json = wp_json_encode( $clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $json ) return new WP_Error( 'mad4b_audit_summary_invalid', 'Audit summary could not be encoded.' );
 		if ( strlen( $json ) > self::SUMMARY_MAX_BYTES ) {
-			$clean = array(
-				'_truncated' => true,
-				'_original_bytes' => strlen( $json ),
-				'_sha256' => hash( 'sha256', $json ),
-			);
-			$json = wp_json_encode( $clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
+				return new WP_Error( 'mad4b_audit_evidence_policy_unavailable', 'Oversized audit evidence cannot be compacted safely.' );
+			}
+			$compacted = MAD4B_SCP_Execution_Evidence_Policy::compact_audit_summary( $clean, self::SUMMARY_MAX_BYTES );
+			if ( is_wp_error( $compacted ) ) return $compacted;
+			$clean = $compacted['summary'];
+			$json = $compacted['json'];
 		}
 		return array( 'summary' => $clean, 'json' => $json );
 	}

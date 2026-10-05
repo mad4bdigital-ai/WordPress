@@ -146,6 +146,35 @@ final class MAD4B_SCP_Site_Profile {
 	 */
 	/** Optional host identity outside the database; only its SHA-256 persists. */
 	public static function deployment_binding_digest() {
+		$value = self::deployment_binding_secret();
+		return '' === $value ? '' : hash( 'sha256', $value );
+	}
+
+	/**
+	 * Purpose-bound deployment-family proof. Only a digest may be signed, which
+	 * prevents this helper from becoming a generic signing oracle. Promotion
+	 * proofs require a high-entropy deployment binding shared by related
+	 * Staging/Production hosts; the raw binding is never persisted or returned.
+	 */
+	public static function deployment_binding_proof( $purpose, $material_sha256 ) {
+		$purpose = strtolower( trim( (string) $purpose ) );
+		$material_sha256 = strtolower( trim( (string) $material_sha256 ) );
+		if ( 1 !== preg_match( '/^[a-z0-9._-]{3,96}$/', $purpose )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $material_sha256 ) ) return '';
+		$secret = self::deployment_binding_secret();
+		if ( strlen( $secret ) < 32 ) return '';
+		$material = "mad4b-deployment-proof-v1\0" . $purpose . "\0" . $material_sha256;
+		return hash_hmac( 'sha256', $material, $secret );
+	}
+
+	public static function verify_deployment_binding_proof( $purpose, $material_sha256, $proof ) {
+		$proof = strtolower( trim( (string) $proof ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $proof ) ) return false;
+		$expected = self::deployment_binding_proof( $purpose, $material_sha256 );
+		return '' !== $expected && hash_equals( $expected, $proof );
+	}
+
+	private static function deployment_binding_secret() {
 		$value = '';
 		if ( defined( 'MAD4B_SCP_DEPLOYMENT_BINDING' ) ) {
 			$candidate = constant( 'MAD4B_SCP_DEPLOYMENT_BINDING' );
@@ -156,7 +185,7 @@ final class MAD4B_SCP_Site_Profile {
 			if ( is_string( $candidate ) ) $value = trim( $candidate );
 		}
 		if ( '' === $value || strlen( $value ) > 1024 ) return '';
-		return hash( 'sha256', $value );
+		return $value;
 	}
 
 	private static function record_deployment_binding_matches( array $profile ) {

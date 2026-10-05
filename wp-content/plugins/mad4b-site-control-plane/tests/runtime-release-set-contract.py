@@ -118,6 +118,7 @@ remote = (INCLUDES / "class-mad4b-scp-remote-plugin-update.php").read_text(encod
 require("0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' )" in remote, "generic remote updater must continue denying MCP Adapter")
 
 runtime = (INCLUDES / "class-mad4b-scp-runtime-release-set.php").read_text(encoding="utf-8")
+runtime_ui = (INCLUDES / "class-mad4b-scp-runtime-components-admin-ui.php").read_text(encoding="utf-8")
 servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 projection = (INCLUDES / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 catalog_diag = (INCLUDES / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
@@ -152,6 +153,17 @@ require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "Ch
 require("array_merge( $optional, $base_optional )" in projection, "explicit dynamic projections must outrank optional direct step-ups in plan budget")
 require("array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() )" in servers, "server materialization must preserve explicit dynamic projection priority")
 require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),\n\t\t\t\tMAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()" in catalog_diag, "shared catalog diagnostics must preserve dynamic-first optional ordering")
+require("add_filter( 'plugin_action_links_'" not in runtime, "runtime release-set mutation must not be injected into the generic Plugins action row")
+plugin_links = runtime.split("public static function plugin_action_links( $links )", 1)[1].split("public static function handle_admin_apply()", 1)[0]
+require("mad4b_runtime_release_set_apply" not in plugin_links, "compatibility plugin-action shim must remain presentation-only")
+for marker in (
+    "'maintenance' => __( 'Runtime Update'",
+    "private static function render_maintenance()",
+    "mad4b_runtime_release_set_apply",
+    "Update compatible runtime",
+    "wp_nonce_field( 'mad4b_runtime_release_set_apply' )",
+):
+    require(marker in runtime_ui, f"dedicated runtime maintenance UI marker missing: {marker}")
 require("self::apply_internal( $input, false, true )" in runtime, "remote bootstrap apply is not separated from local wp-admin apply")
 require("MAD4B_SCP_Self_Update::native_apply(" in runtime and "(bool) $bootstrap_step_up" in runtime, "Control Plane component does not inherit bootstrap revalidation")
 require(runtime.count("$revalidate = self::can_bootstrap_apply( $input );") >= 2, "each remote runtime component must revalidate OAuth step-up immediately before mutation")

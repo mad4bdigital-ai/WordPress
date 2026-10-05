@@ -107,6 +107,45 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		return '' !== $provider && isset( $catalog['providers'][ $provider ] ) && is_array( $catalog['providers'][ $provider ] );
 	}
 
+	public static function certification_generation_sha256( $provider ) {
+		$provider = sanitize_key( (string) $provider );
+		if ( '' === $provider || ! self::supports_provider( $provider ) ) return '';
+		$adapter = self::adapter_for_provider( $provider );
+		$assessment = self::assess_provider( $provider, $adapter );
+		if ( empty( $assessment ) || ! is_array( $assessment ) ) return '';
+		$capabilities = array();
+		foreach ( isset( $assessment['capabilities'] ) && is_array( $assessment['capabilities'] ) ? $assessment['capabilities'] : array() as $capability_id => $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$behavioral = isset( $row['behavioral_evidence'] ) && is_array( $row['behavioral_evidence'] ) ? $row['behavioral_evidence'] : array();
+			$capabilities[ (string) $capability_id ] = array(
+				'capability_contract_digest' => isset( $row['capability_contract_digest'] ) ? (string) $row['capability_contract_digest'] : '',
+				'structural_compatible' => ! empty( $row['structural_compatible'] ),
+				'certification_level' => isset( $row['certification_level'] ) ? (string) $row['certification_level'] : '',
+				'certification_source' => isset( $row['certification_source'] ) ? (string) $row['certification_source'] : '',
+				'activation_stage' => isset( $row['activation_stage'] ) ? (string) $row['activation_stage'] : '',
+				'read_eligible' => ! empty( $row['read_eligible'] ),
+				'write_eligible' => ! empty( $row['write_eligible'] ),
+				'behavioral_state' => isset( $behavioral['state'] ) ? (string) $behavioral['state'] : '',
+				'behavioral_verified' => ! empty( $behavioral['behavioral_verified'] ),
+				'rollback_verified' => ! empty( $behavioral['rollback_verified'] ),
+				'receipt_sha256' => isset( $behavioral['receipt_sha256'] ) ? (string) $behavioral['receipt_sha256'] : '',
+			);
+		}
+		ksort( $capabilities, SORT_STRING );
+		$artifact = isset( $assessment['artifact'] ) && is_array( $assessment['artifact'] ) ? $assessment['artifact'] : array();
+		return self::stable_digest( array(
+			'contract' => 'mad4b.provider-certification-generation.v1',
+			'provider_id' => $provider,
+			'adapter_id' => isset( $assessment['adapter_id'] ) ? (string) $assessment['adapter_id'] : '',
+			'available' => ! empty( $assessment['available'] ),
+			'compatibility_state' => isset( $assessment['compatibility_state'] ) ? (string) $assessment['compatibility_state'] : '',
+			'exact_runtime_certified' => ! empty( $assessment['exact_runtime_certified'] ),
+			'runtime_artifact_fingerprint' => isset( $artifact['runtime_artifact_fingerprint'] ) ? (string) $artifact['runtime_artifact_fingerprint'] : '',
+			'structural_fingerprint' => isset( $assessment['structural_fingerprint'] ) ? (string) $assessment['structural_fingerprint'] : '',
+			'capabilities' => $capabilities,
+		) );
+	}
+
 	public static function inventory() {
 		$items = array();
 		$registry = self::adapter_registry();

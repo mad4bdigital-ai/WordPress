@@ -1,0 +1,229 @@
+{
+  "contract": "mad4b.adaptive-search-intelligence-spec.v1",
+  "phase": 38,
+  "status": "REPOSITORY_RUNTIME_VALIDATED",
+  "authorizing": false,
+  "architecture_freeze_effect": "maturity_extension_only_no_kernel_authority_widening",
+  "documents": {
+    "design": "adaptive-search-intelligence.md",
+    "runtime_contract": "contracts/adaptive-search-intelligence-runtime.md",
+    "runtime_acceptance": "adaptive-search-runtime-acceptance.json"
+  },
+  "principles": [
+    "provider_neutral",
+    "profile_driven",
+    "capability_discovered",
+    "state_adaptive_experience",
+    "field_level_provenance",
+    "immutable_evidence",
+    "recomputable_projections",
+    "fair_budgeted_scheduling",
+    "reconciliation_before_retry",
+    "closed_loop_but_non_authorizing"
+  ],
+  "workstreams": [
+    {
+      "id": "ASI-01",
+      "name": "meta-model-and-context-compiler",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-02",
+      "name": "search-profile-and-overlays",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-03",
+      "name": "language-resolution",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-04",
+      "name": "indexable-surface-graph",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-05",
+      "name": "seo-provider-observation-registry",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-06",
+      "name": "search-target-compiler",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-07",
+      "name": "temporal-evidence-and-projections",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-08",
+      "name": "decision-engine-and-dynamic-refresh",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-09",
+      "name": "fair-scheduler-and-budget-tree",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-10",
+      "name": "serp-provider-mesh",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-11",
+      "name": "serp-normalization-and-trust-boundary",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-12",
+      "name": "signals-and-confidence",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-13",
+      "name": "adaptive-experience-resolver",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-14",
+      "name": "content-experience-feedback-loop",
+      "status": "DONE"
+    },
+    {
+      "id": "ASI-15",
+      "name": "fault-conformance-and-generalization",
+      "status": "DONE"
+    }
+  ],
+  "required_gates": [
+    "ADAPTIVE_SEARCH_META_MODEL_PASS",
+    "SEARCH_CONTEXT_COMPILER_PASS",
+    "INDEXABLE_SURFACE_GRAPH_PASS",
+    "SEO_FIELD_PROVENANCE_PASS",
+    "SEARCH_TARGET_COMPILER_PASS",
+    "SEARCH_DECISION_EXPLAINABILITY_PASS",
+    "SEARCH_FAIR_SCHEDULER_PASS",
+    "SEARCH_BUDGET_GOVERNOR_PASS",
+    "SERP_PROVIDER_CONFORMANCE_PASS",
+    "SERP_EVIDENCE_INTEGRITY_PASS",
+    "SEARCH_EXTERNAL_EVIDENCE_TRUST_PASS",
+    "SEARCH_RECONCILIATION_BEFORE_RETRY_PASS",
+    "ADAPTIVE_SEARCH_EXPERIENCE_PASS",
+    "SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS",
+    "ADAPTIVE_SEARCH_GENERALIZATION_PASS"
+  ],
+  "hard_boundaries": [
+    "no_production_authority",
+    "no_breakglass_widening",
+    "no_generic_outbound_http",
+    "no_secret_projection",
+    "no_direct_content_mutation_from_signal",
+    "no_vendor_or_business_hardcode",
+    "no_documentation_only_completion"
+  ],
+  "review": {
+    "contract": "mad4b.adaptive-search-intelligence-review.v1",
+    "document": "adaptive-search-intelligence-review.md",
+    "ledger": "adaptive-search-intelligence-review.json",
+    "status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
+    "score": 88,
+    "p0_open": 0,
+    "p1_open": 0,
+    "score_semantics": "historical_pre_closure_review_score",
+    "p0_closed": 12,
+    "p0_closure": {
+      "contract": "mad4b.adaptive-search-p0-closure.v1",
+      "exact_head_sha": "042e49926d909dd11d0925b5b19b19143561b556",
+      "workflow_run": 37239748455,
+      "runtime_integration_run": 37239748528,
+      "spec_consistency_run": 37239748494,
+      "evidence_status": "PASS",
+      "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
+      "authorizing": false,
+      "pre_staging_run": 37239748433
+    },
+    "p1_closed": 6,
+    "repository_runtime_status": "REPOSITORY_RUNTIME_VALIDATED",
+    "live_provider_account_certification": "NOT_CLAIMED",
+    "production_authorized": false,
+    "authorizing": false
+  },
+  "phase_38a_closure": {
+    "contract": "mad4b.adaptive-search-phase-38a-closure.v1",
+    "status": "DONE",
+    "tasks": [
+      "T3801",
+      "T3802",
+      "T3803",
+      "T3804",
+      "T3805",
+      "T3806"
+    ],
+    "task_count": 6,
+    "certification_head_sha": "cb1428eebce68a1613af74c37fd1d3cda93c114e",
+    "feature_007_spec_quality_run": 37242885199,
+    "runtime_file": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+    "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+    "authorizing": false,
+    "concurrency_guard": "profile_scoped_distributed_lock"
+  },
+  "implementation": {
+    "contract": "mad4b.adaptive-search-implementation.v1",
+    "state": "REPOSITORY_RUNTIME_VALIDATED",
+    "bootstrap": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php",
+    "runtime_directory": "wp-content/plugins/mad4b-site-control-plane/includes/search",
+    "acceptance_matrix": "adaptive-search-runtime-acceptance.json",
+    "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+    "evidence_binding": "clean_ci_head_and_source_manifest_digest",
+    "local_evidence": {
+      "fixtures": 42,
+      "assertions": 981,
+      "gates_emitted": 0,
+      "evidence_class": "hermetic_runtime_with_process_shared_cas",
+      "head_binding": "local_review_requires_exact_head_ci_recertification",
+      "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance"
+    },
+    "remaining_evidence": [
+      "separate_live_provider_account_certification_and_site_rendered_evidence"
+    ],
+    "production_authority": false,
+    "authorizing": false,
+    "recertification": {
+      "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+      "head_binding": "supplied_by_exact_head_ci",
+      "required_fixtures": 42,
+      "required_assertions": 981,
+      "pass_gate_emission": "clean_exact_head_ci_and_disposable_wordpress_required",
+      "authorizing": false
+    }
+  },
+  "review_status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
+  "review_score": 88,
+  "review_p1_open": 0,
+  "review_p1_closed": 6,
+  "repository_runtime_closure": {
+    "contract": "mad4b.adaptive-search-repository-runtime-closure.v1",
+    "status": "DONE",
+    "phase": 38,
+    "task_count": 80,
+    "done_task_count": 80,
+    "runtime_exact_head_sha": "e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+    "adaptive_search_pre_staging_run": 37249380939,
+    "php74_job": 111573698940,
+    "php83_job": 111573699131,
+    "fixture_count": 40,
+    "assertion_count": 938,
+    "emitted_gate_count": 15,
+    "authorizing": false,
+    "production_authorized": false,
+    "live_provider_account_certification": "NOT_CLAIMED"
+  },
+  "live_provider_certification": {
+    "status": "NOT_CLAIMED",
+    "required_for_repository_runtime_closure": false,
+    "authorizing": false
+  }
+}

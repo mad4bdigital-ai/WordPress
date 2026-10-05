@@ -25,6 +25,25 @@ adapter_registry = (PLUGIN / "includes/class-mad4b-scp-adapter-registry.php").re
 transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-registry.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
+search_runtime = (PLUGIN / "includes/class-mad4b-scp-adaptive-search-intelligence.php").read_text(encoding="utf-8")
+
+def runtime_represents_ability(ability: str) -> bool:
+    if ability in all_php:
+        return True
+    prefix = "mad4b/search-"
+    if not ability.startswith(prefix):
+        return False
+    # Adaptive Search intentionally registers provider-neutral abilities from a
+    # bounded method->lane registry. Prove the exact dynamic projection instead
+    # of requiring a duplicated literal solely for this static inspector.
+    method = ability[len(prefix):].replace("-", "_")
+    dynamic_builder = "$name = 'mad4b/search-' . str_replace( '_', '-', $method );"
+    return dynamic_builder in search_runtime and (
+        f"'{method}' => 'read'" in search_runtime
+        or f"'{method}' => 'write'" in search_runtime
+        or f"'{method}' => 'config'" in search_runtime
+    )
+
 
 build = (PLUGIN / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 release_lines = [line.strip() for line in build.splitlines() if line.strip().startswith("release=")]
@@ -65,17 +84,23 @@ assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
 assert "wordpress.provider.recertify" in ids
 optional_ids = {row["id"] for row in operation["operations"] if row.get("required_runtime") is False}
-assert optional_ids == {"wordpress.content.import", "wordpress.content.export"}
+assert optional_ids == {"wordpress.content.import", "wordpress.content.export", "search.serp.capture"}
+serp_capture = next(row for row in operation["operations"] if row["id"] == "search.serp.capture")
+assert serp_capture["target_kind"] == "search_target"
+assert serp_capture["generic_mutation_dispatch"] is False
+assert serp_capture["side_effect_class"] == "external_cost"
+assert serp_capture["retry_semantics"] == "reconciliation_first"
+assert serp_capture["production_policy"] == "deny"
 
 for row in operation["operations"]:
     assert row["planner"]
     assert row["executor"]
-    assert row["planner"] in all_php, f"planner not represented in runtime source: {row['planner']}"
+    assert runtime_represents_ability(row["planner"]), f"planner not represented in runtime source: {row['planner']}"
     if row["executor"] == "exact_executor_from_plan":
         assert row["id"] == "wordpress.plugin.transaction"
         assert row.get("generic_mutation_dispatch") is False
     else:
-        assert row["executor"] in all_php, f"executor not represented in runtime source: {row['executor']}"
+        assert runtime_represents_ability(row["executor"]), f"executor not represented in runtime source: {row['executor']}"
 
 assert "wp_register_ability( 'mad4b/wordpress-operation-discover', array(" in registry
 assert "wp_register_ability( 'mad4b/universal-operation-discover', array(" not in registry

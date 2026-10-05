@@ -916,6 +916,2280 @@
         "workflow_run:36095311341"
       ],
       "reason": "Real MariaDB runtime proof detects stuck/orphan jobs, expired leases, stale inbox, provider DLQ and Host Runner uncertain/recovery-required/dead-letter states while remaining site-scoped, read-only and non-authorizing."
+    },
+    "T3771": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php",
+        "workflow_run:36998811349",
+        "workflow_job:110811546225",
+        "workflow_job:110811546312",
+        "workflow_job:110811546391"
+      ],
+      "reason": "RequestScope authority context, presentation-generation separation, cache ownership/reset, quiescent transition checks and worker-recycle semantics are implemented and pass WordPress 6.9/PHP 7.4/MySQL 8 plus latest/PHP 8.3 on MySQL 8 and MariaDB 11.8."
+    },
+    "T3772": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php",
+        "workflow_run:36998811349",
+        "workflow_job:110811546225",
+        "workflow_job:110811546312",
+        "workflow_job:110811546391"
+      ],
+      "reason": "Sequential logical-request fixtures prove user/capability drift denial, request-id reset, transaction and scoped-identity boundary denial, non-authorizing projection generation isolation, and site/runtime worker-recycle behavior across the certified MySQL/MariaDB matrix."
+    },
+    "T3796": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-catalog-transport.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-transport-runtime.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Security-sensitive catalog definition identity has one canonical JSON interpretation; unsupported schema serialization becomes deterministic unavailable/fail-closed evidence instead of PHP serialize fallback."
+    },
+    "T3797": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Security-sensitive operation/journal identities use canonical normalization plus BINARY SQL comparisons; case/collation alias fixtures are rejected on the certified database matrix."
+    },
+    "T3798": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Governance/approval/idempotency/journal/audit/execution tables are runtime-checked for InnoDB transactional storage and commit admission binds the certified storage fingerprint; unsupported engines fail closed."
+    },
+    "T3799": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-transaction-guard-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Portable savepoint probing, explicit nested/reentrant denial, ownership-token commit/rollback verification and MySQL 8/MariaDB 11.8 runtime fixtures prove MAD4B does not commit or roll back unrelated caller transactions."
+    },
+    "T3773": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-topology-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Authoritative database topology now proves same-writer CONNECTION_ID/server fingerprint, read_your_writes, read-only state and uncertified db.php-router denial. Governance storage/transaction admission binds that topology and all three certified WordPress/PHP/MySQL-MariaDB runtime jobs passed."
+    },
+    "T3774": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-failure-semantics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-topology-runtime.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Deadlock, lock-wait timeout, connection loss and transaction-abort semantics are normalized across approval claims, journal and durable execution. Ambiguous persistence requires reconciliation, blind/automatic retry is forbidden, and the runtime matrix passed."
+    },
+    "T3775": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Final execution admission uses a one-time projected-call seal binding exact input, execution identity, structural pins and materialized tool/server identity. Late/same-priority filter argument/metadata mutation, stale callback identity and missing final wrapper are rejected in all certified runtime jobs."
+    },
+    "T3776": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-execution-fence-recursion.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Execution stack and one-time governed-child permits bind parent frame, exact child Ability/input and approval/preparation/context/idempotency evidence digests. Direct recursion, permit mismatch, evidence mutation and permit replay are denied; explicit governed child execution succeeds exactly once across the matrix."
+    },
+    "T3777": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile-cron.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Compatibility profile now classifies persistent object cache, uncertified db.php/HyperDB-style routers, known security/firewall plugins, maintenance mode, WP-CLI and cron. Unsupported/conflicting infrastructure fails closed with stable blockers and the real runtime profile passed on all certified database/PHP jobs."
+    },
+    "T3778": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "reason": "Foreign Site UUID/profile clones and copied restore-epoch state are quarantined. The exact-head runtime rehearsal proves copied authority/durable/projection state cannot cross Site identity on WordPress 6.9/PHP7.4/MySQL8 and latest/PHP8.3 on MySQL8/MariaDB11.8."
+    },
+    "T3782": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "Commit-time subject lifecycle revalidation rejects user deletion, capability demotion, Site Profile unenrollment/App remapping and authority/key-generation drift; active session/claim state cannot authorize the final commit."
+    },
+    "T3783": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "The runtime fixture captures an authorized commit snapshot then mutates subject capabilities, deletes the user, changes enrollment/App mapping and authority generation; every change fails closed with reapproval required before provider commit."
+    },
+    "T3779": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "reason": "Same-origin database rollback is detected because the external monotonic epoch remains ahead of the restored database binding. Approval admission and every durable replay/mutation surface fail closed while quarantined."
+    },
+    "T3780": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "reason": "Restore/AuthorityEpoch is stored outside the WordPress/document root, bound to exact Site UUID plus a database binding, advanced before provider entry, and post-advance commit material is recaptured/revalidated before callback entry."
+    },
+    "T3781": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "reason": "Real database rehearsal restores old approved-ticket, completed-idempotency, active-lease and projection state while external epoch remains newer; pre-ack replay is quarantined and governed acknowledgement revokes approvals, expires/reconciliation-marks idempotency, fails active leases and clears projection before rebinding."
+    },
+    "T3784": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/persisted-contract-compatibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-persisted-generation-compatibility.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Persisted profiles/approvals/receipts/journal/catalog/execution generations are explicitly versioned/fail-closed; unknown/future versions and downgrade reinterpretation are rejected, and exact-head compatibility tests pass across PHP 7.4/8.3 plus MySQL/MariaDB."
+    },
+    "T3785": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Rolling N/N-1 mixed-worker rehearsal is wired into MCP compatibility; schema/policy/catalog/runtime generation drift cannot widen authority or corrupt persisted evidence, and the exact-head matrix passed."
+    },
+    "T3786": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-persisted-contract-compatibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-persisted-generation-compatibility.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Rollback/downgrade semantics reject future schema/security generations and stale runtime interpretations instead of resurrecting older authority semantics; exact-head runtime compatibility proof passed."
+    },
+    "T3787": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php",
+        "workflow_run:37088812158"
+      ],
+      "reason": "Stale long-lived workers are fenced by boot-vs-disk runtime identity plus policy/catalog/persisted generations; commit admission revalidates the generation and rolling-worker tests require recycle on drift."
+    },
+    "T3788": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-bulk-hardening-contract.py",
+        "workflow_run:37088812158",
+        "workflow_job:111104546229"
+      ],
+      "reason": "A machine-readable crash-point table now maps intent/claim/provider-entry/provider-return/readback/audit/receipt boundaries to exactly one conservative execution state, reconciliation rule and non-blind client action; unknown points fail closed."
+    },
+    "T3791": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-evidence-policy-runtime.php",
+        "workflow_run:37088812158",
+        "workflow_job:111104546229"
+      ],
+      "reason": "Oversized audit evidence is compacted with a digest while mandatory reason codes, identity/digest/fingerprint fields and reconciliation pointers are preserved; if mandatory evidence alone exceeds the bound, persistence fails closed instead of silently dropping fields."
+    },
+    "T3701": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-audit.md",
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json"
+      ],
+      "reason": "The post-merge dimension matrix assigns reviewed Capability Fabric dimensions to explicit contracts, tasks, gates, evidence sources and statuses with no P0/P1 ownership gap in this workstream."
+    },
+    "T3702": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Operation Registry now consumes canonical Capability Descriptor identity/generation material instead of re-deriving execution truth independently."
+    },
+    "T3703": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Capability Traits are bound to canonical descriptor/classification generation roots and remain descriptive/non-authorizing."
+    },
+    "T3704": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Servers and projection/catalog presentation rows consume canonical descriptor identity and generation roots rather than becoming execution authority."
+    },
+    "T3705": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php"
+      ],
+      "reason": "Authorization admission/readback binds canonical descriptor identity while retaining live grant, approval and policy revalidation."
+    },
+    "T3706": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonical-capability-descriptor-consumers-runtime.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Cross-consumer runtime/contract fixtures fail closed on schema, lane, classification and generation drift across Descriptor consumers."
+    },
+    "T3707": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php"
+      ],
+      "reason": "Provider-specific semantic field contracts cover core posts, SEO, media, WooCommerce, Elementor and JetEngine with extensible explicit provider contracts."
+    },
+    "T3708": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php"
+      ],
+      "reason": "Unknown/new brand-bearing provider fields fail closed into explicit classification/review instead of silently inheriting mutation eligibility."
+    },
+    "T3709": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/resource-constraint-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resource-constraint-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php"
+      ],
+      "reason": "A provider-neutral resource constraint compiler covers IDs/types, taxonomies, paths/zones, DB resources, provider IDs, mutation counts and size/value bounds."
+    },
+    "T3710": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resource-constraint-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py"
+      ],
+      "reason": "The compiled resource-set digest is explicitly carried through planning/preparation, approval, authorization/commit guard and execution evidence/readback."
+    },
+    "T3711": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-set-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/resource-constraint-binding-contract.py"
+      ],
+      "reason": "Negative fixtures reject widening, alternate identifiers, wildcard expansion, path aliasing and provider-side substitution after approval."
+    },
+    "T3712": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-postcondition-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-postcondition-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-runtime.php"
+      ],
+      "reason": "Certified ProviderPostconditionProfile records define authoritative reader identity, freshness and committed/no-effect/unknown semantics for every registered mutation family."
+    },
+    "T3713": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-postcondition-binding-contract.py"
+      ],
+      "reason": "Durable reclaim/retry now requires certified, current and fresh postcondition evidence; unsupported/missing families remain reconciliation-required and blind-retry denied."
+    },
+    "T3714": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-postcondition-profiles.json"
+      ],
+      "reason": "The profile runtime loops every certified family through timeout-after-side-effect, lost-response/no-effect, duplicate callback, delayed readback, stale evidence and unsupported-reader cases."
+    },
+    "T3715": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-state-view.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php"
+      ],
+      "reason": "Execution State View combines Journal, Durable Execution and Connector Resilience conservatively with explicit cross-source contradiction handling."
+    },
+    "T3716": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Execution State View is recomputable/read-only and fixtures prove unknown or contradictory evidence remains reconciling instead of being promoted to committed/retryable."
+    },
+    "T3717": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/identifier-policies.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identifiers.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py"
+      ],
+      "reason": "The identifier policy registry centrally defines canonical UUIDv4/versioned opaque/provider/receipt identities, normalization and bounded formats."
+    },
+    "T3718": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py"
+      ],
+      "reason": "Legacy operation identifiers are admitted only through an exact-byte legacy-read-only lane and are never rewritten into new journal identity."
+    },
+    "T3719": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-table-backend-contract.py",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Schema v13 immutable content-addressed catalog storage, generation directories, indexed expiry/GC and capacity accounting are exact-head runtime certified across the Feature 007 matrix."
+    },
+    "T3720": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Shadow parity, single-authority CAS cutover, fail-closed table authority and bounded rollback are exact-head runtime certified with no dual-authority fallback."
+    },
+    "T3721": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Transactional head locking plus storage-level generation/fencing-token CAS are exact-head certified, including stale-writer and independent-worker publication fencing."
+    },
+    "T3722": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-redis-cache-verify.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Hermetic Redis persistent object-cache tests prove stale cross-process option/object cache cannot resurrect retired authority, bypass CAS or hide the table-authoritative catalog directory."
+    },
+    "T3723": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-distributed-lock.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-concurrency-verify.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Independent PHP workers with distinct host identities prove process-local state is non-authoritative and DB-scoped locking/fencing preserves a single publication lineage."
+    },
+    "T3724": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php",
+        "wp-content/plugins/mad4b-site-control-plane/tools/catalog-decommission.php",
+        "workflow_run:37114470060",
+        "workflow_run:37114469942",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Rollback plus reader-drained fenced retirement preserve projection/governance state and exact readback proves no retained scope generations or orphan capacity remain."
+    },
+    "T3725": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Durable NetworkOperation storage and append-only event journal are exact-head certified with per-site target identity, authority, plan/preparation and evidence bindings."
+    },
+    "T3726": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Partial completion, pause/resume and conservative reconciling semantics are exact-head certified; completed sites remain immutable and are never rolled back because another target fails."
+    },
+    "T3727": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Network and per-target idempotency, target-set binding, claim epochs, duplicate callback handling and reordered-dispatch denial are exact-head certified across independent workers."
+    },
+    "T3728": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/client/network-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/network-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Concurrent fan-out preserves site-bound credentials, catalog ownership, approvals, context, authority and receipt bindings with cross-site substitution denied."
+    },
+    "T3729": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-worker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-network-operation-verify.php",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Crash/reconnect/resume certification reconstructs exact completed/pending/reconciling target sets from durable evidence and never blindly replays committed or ambiguous mutations."
+    },
+    "T3730": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php"
+      ],
+      "reason": "Direct hot-set isolation is explicitly site-global, session_scoped_hot_set=false, contention is optimistic_cas_single_winner with reject-and-replan stale writers, and exact runtime tests prove fixed-dispatch correctness remains independent under another-session replacement."
+    },
+    "T3731": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-projection-hotset-recommender.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-projection-hotset-recommender.php"
+      ],
+      "reason": "Telemetry-driven hot-set recommendations use bounded quota/window/candidate budgets, are read-only and non-authorizing, never auto-apply, and runtime evidence proves privileged, mutating and Breakglass abilities remain excluded even when their observed usage is higher."
+    },
+    "T3732": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "reason": "Certified protocol profiles define exact projection-revision tracking and pull refresh semantics: fresh clients do nothing, stale clients refresh tools/list, cached stale clients reconnect then tools/list, listChanged remains false and no push notification is invented."
+    },
+    "T3733": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py"
+      ],
+      "reason": "Protocol negotiation is bound to the exact packaged Adapter and certified protocol revisions; unknown/newer versions and unknown/malformed feature claims fail closed without fallback negotiation or authority effects."
+    },
+    "T3734": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "specs/007-content-intelligence-workflow-platform/contracts/mcp-protocol-evolution.md"
+      ],
+      "reason": "The current Adapter v0.6.1 is regression-tested across all three certified protocol revisions and the successor gate is fail-closed, but the catalog truthfully records successor_certification_state=not_certified. The required successor-Adapter dual-protocol matrix cannot be claimed DONE until an exact successor package is certified."
+    },
+    "T3735": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-dynamic-tool-projection-contract.py",
+        ".github/workflows/mad4b-mcp-client-compatibility.yml"
+      ],
+      "reason": "Runtime evidence proves exact database CAS admits one projection writer and rejects the stale loser, cached removed hot-set tools fail closed, schema/classification/callback drift deactivates direct projection, and the same Ability remains correct through fixed dispatch independent of visibility."
+    },
+    "T3736": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
+        "workflow_run:37114470059",
+        "workflow_run:37114470020",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN state, bounded backoff/probe timers and hash-chained persisted transition evidence is exact-head runtime certified."
+    },
+    "T3737": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
+        "workflow_run:37114470059",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "HALF_OPEN probe success restores transport eligibility only; certification, authority, approval and Production eligibility remain false/non-authorizing and are exact-head certified."
+    },
+    "T3738": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py",
+        "workflow_run:37114469942",
+        "workflow_run:37114470059",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Provider mutation transport applies deterministic strongest-deny precedence across kill switch, authority, quarantine, certification, release ring and breaker before callback entry; runtime tests prove the ordering."
+    },
+    "T3739": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/wordpress-lifecycle-migration-profile.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py",
+        "workflow_run:37114469882",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "WordPress-native lifecycle migration profile and parity certification are implemented fail-closed while legacy provenance remains authoritative until exact parity; no automatic cutover is performed."
+    },
+    "T3740": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-lifecycle-runtime.php",
+        "workflow_run:37114469882",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Activation/deactivation/update/uninstall/network-activation lifecycle coverage proves governance retention, catalog cleanup/rollback compatibility and multisite scope isolation across the certified runtime matrix."
+    },
+    "T3741": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php"
+      ],
+      "reason": "W3C traceparent-compatible context is propagated through discovery, preparation, policy, approval, commit guard, provider execution, readback, reconciliation, catalog rebuild and network fan-out with causal parent/link semantics."
+    },
+    "T3742": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Trace/span identity, sampling, bounded attribute cardinality, tenant hashing, recursive redaction and default exclusion of raw secrets/provider payloads are runtime certified."
+    },
+    "T3743": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php"
+      ],
+      "reason": "Stage metrics expose P50/P95/P99 for the governed execution stages and catalog/network paths rather than only hard budget thresholds."
+    },
+    "T3744": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php"
+      ],
+      "reason": "Stage SLOs are bound to short/long error-budget burn-rate classification and operator evidence while remaining explicitly non-authorizing."
+    },
+    "T3745": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430"
+      ],
+      "reason": "Optional telemetry backend failure cannot block safe reads, while mandatory audit/execution evidence failure semantics for governed writes remain fail closed."
+    },
+    "T3746": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37114470060",
+        "exact_head:6507b9901c09cbb81dcfde3a5da189910bc4e430",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-network-operation-journal.php"
+      ],
+      "reason": "Cross-provider/network tracing preserves causal continuity through tenant forks without reusing cross-tenant trace IDs, leaking tenant identity or admitting unbounded labels."
+    },
+    "T3747": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Approval identity is bound to canonical exact-input, compiled resource-set, dependency-generation and impact/blast-radius digests; the binding is non-authorizing and canonically hashed."
+    },
+    "T3748": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Authorization recomputes the impact-bound approval payload and rejects drift in exact input, resource set, dependency generation, impact graph/classification or target fingerprint before commit."
+    },
+    "T3749": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Authorization emits a non-authorizing decision graph with PASS/FAIL/NOT_EVALUATED stages, stable reason codes, policy/evidence versions and hashed/redacted evidence references."
+    },
+    "T3750": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "mad4b.execution-receipt.v1 links preparation, descriptor, policy decision, approval when required, idempotency/journal when present, provider evidence, readback/reconciliation and terminal outcome; required stages are fail-closed."
+    },
+    "T3751": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py"
+      ],
+      "reason": "Unified execution receipts are canonically hashed, cryptographically signed, independently verifiable/exportable with public-key evidence, and fail closed when required execution stages or approval evidence are missing."
+    },
+    "T3752": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Semantic intent routing maps intent and target kind through required traits/provider candidates to exact capabilities with confidence, evidence, ambiguity and human-review semantics."
+    },
+    "T3753": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "workflow_run:37119261674",
+        "exact_head:21f1ef6e5f58d76d3035d07c72b590257ccf0a4f"
+      ],
+      "reason": "Semantic routing is explicitly non-authorizing and reuses current Authorization probe/resource/policy/descriptor/provider eligibility; unauthorized or insufficiently bound candidates remain unselected and require review."
+    },
+    "T3754": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-structural-redaction.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/structural-redaction-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php"
+      ],
+      "reason": "Recursive structural redaction classifies and bounds nested provider/plugin errors, callback and metadata surfaces; adversarial secret-key/value, URL-credential, private-key, JWT-like, depth and truncation fixtures are covered and shared evidence surfaces consume the redactor."
+    },
+    "T3755": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-crypto-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/crypto-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/preparation-receipt-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Preparation, Context and Execution receipts now use versioned purpose-bound RSA crypto profiles with key IDs, RS256/RS512 agility, bounded rotation overlap, revocation/retirement and fail-closed legacy-HMAC rejection."
+    },
+    "T3756": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/time-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/time-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-postcondition-profile.php"
+      ],
+      "reason": "A single time policy now bounds receipt and approval TTLs, durable leases/idempotency, breaker windows, reconciliation observation freshness and crypto signature skew; injectable wall/monotonic clocks prove rollback-safe monotonic behavior and risk-tiered offline authorization windows."
+    },
+    "T3757": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-replay-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/replay-policy-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php"
+      ],
+      "reason": "Preparation replay is policy-digest bound and risk-class aware: high risk and missing-idempotency paths are single-use, reusable paths bind the exact receipt/request/idempotency identity to Durable Execution, completed replays return recorded results, and rebinding or payload drift fails closed."
+    },
+    "T3758": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-canonicalization.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/canonicalization-policy-contract.py"
+      ],
+      "reason": "Canonicalization policy is explicit across ability names, semantic operation IDs, resource identifiers, relative paths, headers, URLs and canonical JSON/hash material; security identities are ASCII-only, hidden bidi/zero-width controls and confusables are denied, and real Unicode codepoint fixtures prove the behavior."
+    },
+    "T3759": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/abuse-budget.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abuse-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/abuse-budget-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preparation-receipt.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php"
+      ],
+      "reason": "Deny-only per-site/principal/client rate buckets and complexity budgets cover discovery, preparation and execution, including depth/node/string/metadata/schema/search/regex limits; transactional bucket updates and contract tests prove every governed discovery/execute surface consumes the appropriate budget."
+    },
+    "T3760": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-egress-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-contract.py",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Governed outbound transport requires HTTPS/TLS verification, explicit proxy trust, zero-redirect exact-endpoint policy with origin binding, public DNS answers with within-request change detection, and normalized certificate/hostname verification failure semantics."
+    },
+    "T3761": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/legacy-dispatch-migration.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-legacy-dispatch-migration.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-contract.py",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Legacy unprepared dispatcher callers receive a stable versioned denial contract with migration action, bounded telemetry and explicit fail-closed sunset gates; no compatibility bypass or schema-only admission remains."
+    },
+    "T3762": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-entropy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deterministic-test-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "specs/007-content-intelligence-workflow-platform/feature007-hermetic-critical-gate-handoff.json",
+        "workflow_run:37137981870",
+        "workflow_run:37139490468"
+      ],
+      "reason": "Injectable clocks, bounded deterministic test entropy and repeatable fixture comparison are implemented and proven. Final wiring into the baseline-owned Feature 007 Critical Kernel remains a separate governance-root change that can only land after the runtime files from PR #236 are merged to master."
+    },
+    "T3763": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Actual decomposition has begun: server registration failure/provenance evidence was extracted from the Servers facade into MAD4B_SCP_Server_Registration_Evidence and the facade ceiling was ratcheted from 1100 to 1050 lines. Remaining oversized legacy facades still require staged domain-service decomposition; size/dependency gates prevent regression meanwhile."
+    },
+    "T3764": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        "specs/007-content-intelligence-workflow-platform/change-slices.json",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "Large changes now require reviewable semantic slices with <=35 files, explicit revert boundaries, reviewed-base binding, CI-supplied exact-head context and exhaustive one-owner path coverage. PR #236 no longer relies on a grandfather exemption."
+    },
+    "T3765": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "The maintainability gate generates a machine-readable class dependency graph and fails closed when authority/contract-truth files depend on forbidden adapter or presentation layers."
+    },
+    "T3766": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/error-reason-codes.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-error-contract-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/error-contract-registry-contract.py"
+      ],
+      "reason": "A versioned machine-readable reason-code registry now defines stable family/retry/client-action semantics while human messages remain non-contractual; runtime errors are enriched without replacing trusted execution provenance."
+    },
+    "T3767": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-generation-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-fence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-generation-rolling-worker.php"
+      ],
+      "reason": "Material config/*.json state is deterministically hashed into runtime generation identity; behavior-changing configuration invalidates stale generation-bound plans/approvals and cannot widen authority by configuration alone."
+    },
+    "T3789": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/terminal-evidence-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py"
+      ],
+      "reason": "Terminal evidence failure injection covers unavailable/read-only/exhausted persistence before and after provider side effects; required durable evidence failure cannot become terminal success and post-side-effect uncertainty requires reconciliation."
+    },
+    "T3792": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-fatal-interruption-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py"
+      ],
+      "reason": "Fatal/process-interruption fixtures prove conservative recovery around provider entry and evidence persistence, distinguishing not-started, possible-side-effect and committed-but-evidence-uncertain states without inferring success."
+    },
+    "T3793": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py"
+      ],
+      "reason": "Queue/worker/provider cancellation carries an exact cancel generation and acknowledgement handshake; cancellation before provider entry can prove no-effect, while post-entry cancellation requires reconciliation and cannot collapse to a simple cancelled terminal state."
+    },
+    "T3794": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/client/ability-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-chunk-reassembly-adversarial.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-transport-failures.mjs"
+      ],
+      "reason": "Catalog transport reassembly validates snapshot/wire generation/compression/count/index/offset/payload-byte identity plus content digests and rejects missing, duplicate, reordered, corrupted and mixed-generation chunks."
+    },
+    "T3795": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/capability-fabric-cross-fault-matrix.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-fabric-cross-fault-matrix.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-replay-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-hook-order-contract.py",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+      ],
+      "reason": "The composed cross-fault gate now covers long-lived generation leakage, hook order, clone/restore replay, subject lifecycle, database topology/deadlock/loss, evidence exhaustion, fatal interruption, post-side-effect cancellation and mixed-generation catalog transport using hermetic/static contracts plus separately certified DB runtime jobs."
+    },
+    "T3861": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "ObservationContext and ComparabilityKey are implemented and deny ranking deltas across material context drift."
+    },
+    "T3862": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Provider-resolved geo/locale/device/engine/depth evidence is bound into the observation comparability context."
+    },
+    "T3863": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Versioned query canonicalization preserves raw query and semantic punctuation/accents while normalizing Unicode whitespace."
+    },
+    "T3864": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Versioned URL identity handles canonical/redirect aliases and explicit registrable-domain ownership evidence without fabricating unresolved ownership."
+    },
+    "T3865": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Normalized result semantics distinguish organic/group/absolute/provider-native positions and declare the comparison metric."
+    },
+    "T3866": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Capture completeness distinguishes complete/partial/not-found-within-depth and blocks loss inference from incomplete evidence."
+    },
+    "T3867": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "SearchEligibilityEnvelope now separates crawlability, robots/header/meta, canonical, redirect, sitemap, hreflang, language and confidence with fail-closed owned tracking."
+    },
+    "T3868": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-eligibility.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Surface Admission Policy enforces surface/path/query allowlists plus cardinality and pagination bounds for virtual/faceted surfaces."
+    },
+    "T3869": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "ProviderAccountBudgetAuthority is keyed by hashed provider account/credential identity and exposes truthful enforcement scope."
+    },
+    "T3870": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-account-budget-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Hard-global reservations require authoritative shared backend fencing; local mode is explicitly best-effort with cycle reset, stale reservation expiry and provider usage reconciliation."
+    },
+    "T3873": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-evidence-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Provider evidence rights constrain raw/normalized retention, redistribution class, storage region and deletion semantics."
+    },
+    "T3874": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-decision-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Deterministic versioned DecisionPolicy enforces bounded factor ranges, provenance, missing-value denial, cost penalty and stable lexical tie-break."
+    },
+    "T3877": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "All 15 Phase 38 gates plus review-hardening gates have machine-readable fixtures, assertion thresholds, evidence classes and exact-head requirement."
+    },
+    "T3880": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py",
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "pre_staging_run:37239748433"
+      ],
+      "reason": "Composed fault runtime covers profile/provider/language/surface drift, budget-cycle/lease failure, partial capture, cache incomparability and uncertain provider effects with derived degraded/reconciliation states."
+    },
+    "T3801": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
+      ],
+      "reason": "Canonical Search Runtime Fact, Search Profile and Effective Search Context v1 contracts are implemented with deterministic fingerprints and non-authorizing semantics."
+    },
+    "T3802": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
+      ],
+      "reason": "Search Profile uses separate storage and implements revision-bound exact-plan plan/apply/verify; site identity is immutable and no Site Profile or Production authority is granted."
+    },
+    "T3803": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
+      ],
+      "reason": "Brand, market, language, surface, experiment and request-safe overlays compose through deterministic precedence with stable output fingerprints."
+    },
+    "T3804": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
+      ],
+      "reason": "Runtime and tests deny protected authority, Production, Breakglass, egress, secret and WordPress-mutation fields in business overlays while governance constraints remain external and constraining."
+    },
+    "T3805": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
+      ],
+      "reason": "Dependency fingerprints cover PROFILE/LANGUAGE/SURFACE/PROVIDER/BUDGET/SCHEMA and emit minimal projection invalidation while preserving historical evidence."
+    },
+    "T3806": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-context-runtime.php",
+        "head:cb1428eebce68a1613af74c37fd1d3cda93c114e",
+        "workflow_run:37242885199"
+      ],
+      "reason": "Effective context emits deterministic reason chains and a read-only non-authorizing status projection."
+    },
+    "T3807": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3808": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3809": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3810": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3811": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3812": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3813": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3814": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3815": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3816": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3817": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3818": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3819": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3820": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3821": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3822": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3823": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3824": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3825": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3826": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3827": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3828": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3829": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3830": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3831": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3832": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3833": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3834": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3835": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3836": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3837": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3838": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3839": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3840": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3841": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3842": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3843": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3844": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3845": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3846": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3847": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3848": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3849": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3850": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3851": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3852": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3853": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3854": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3855": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3856": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3857": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3858": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3859": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3860": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
+      ],
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
+    },
+    "T3871": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
+      ],
+      "reason": "First-party SearchPerformance evidence is typed separately from live SERP evidence, composes into decision factor provenance, and is covered by exact-head PHP 7.4/8.3 repository runtime acceptance. Live account certification is not claimed."
+    },
+    "T3872": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
+      ],
+      "reason": "QueryLanguageProvenance v1 validates translation/transcreation source language, target language, market evidence, semantic relation, confidence and approval while explicitly denying page-translation-as-query-translation. Exact-head PHP 7.4/8.3 acceptance passed."
+    },
+    "T3875": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
+      ],
+      "reason": "Adaptive operator controls expose stable pin/mute/pause/resume/refresh behavior through capability/state-driven experience contracts and pass exact-head dual-PHP runtime acceptance."
+    },
+    "T3876": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
+      ],
+      "reason": "Execution/storage portability is explicit through registered external worker/store profiles, canonical IDs and bounded CAS semantics without generic worker commands; exact-head dual-PHP runtime acceptance passed."
+    },
+    "T3878": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
+      ],
+      "reason": "SERP feature evidence is open and versioned through mad4b.serp-feature.v1, preserves provider-native types, normalizes known aliases, preserves unknown future features and keeps external evidence inert; exact-head dual-PHP runtime acceptance passed."
+    },
+    "T3879": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
+      ],
+      "reason": "Decision factors carry bounded source/scope/freshness/confidence/normalization provenance and first-party performance composition, with deterministic scoring and exact-head dual-PHP runtime acceptance."
     }
   }
 }

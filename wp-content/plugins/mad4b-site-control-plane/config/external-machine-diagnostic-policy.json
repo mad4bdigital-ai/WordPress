@@ -1,0 +1,89 @@
+{
+  "contract": "mad4b.external-machine-diagnostic-policy.v1",
+  "authorizing": false,
+  "purpose": "Define fail-closed machine-verifiable external diagnostic ingress semantics without creating an origin/CDN bypass or widening public access.",
+  "ingress_owner": "external_edge_or_hosting_control_plane",
+  "bypass_mode": "none",
+  "public_widening_allowed": false,
+  "origin_direct_bypass_allowed": false,
+  "machine_identity_required": true,
+  "credentials_in_url_forbidden": true,
+  "diagnostic_requests_are_read_only": true,
+  "endpoint_classes": [
+    {
+      "id": "runtime_build",
+      "expected_http_statuses": [
+        200
+      ],
+      "mutation_allowed": false
+    },
+    {
+      "id": "build_provenance",
+      "expected_http_statuses": [
+        200
+      ],
+      "mutation_allowed": false
+    },
+    {
+      "id": "rest_index",
+      "expected_http_statuses": [
+        200
+      ],
+      "mutation_allowed": false
+    },
+    {
+      "id": "wpml_status",
+      "expected_http_statuses": [
+        200
+      ],
+      "mutation_allowed": false
+    },
+    {
+      "id": "mcp_chatgpt",
+      "expected_http_statuses": [
+        200,
+        400,
+        401,
+        405
+      ],
+      "mutation_allowed": false
+    },
+    {
+      "id": "oauth_protected_resource",
+      "expected_http_statuses": [
+        200
+      ],
+      "mutation_allowed": false
+    },
+    {
+      "id": "oauth_authorization_server",
+      "expected_http_statuses": [
+        200
+      ],
+      "mutation_allowed": false
+    },
+    {
+      "id": "oauth_jwks",
+      "expected_http_statuses": [
+        200
+      ],
+      "mutation_allowed": false
+    }
+  ],
+  "acceptance": {
+    "edge_challenge_403": "INCONCLUSIVE_FAIL_CLOSED",
+    "transport_unreachable": "INCONCLUSIVE_FAIL_CLOSED",
+    "runtime_identity_mismatch": "DEPLOYMENT_DRIFT",
+    "machine_identity_mismatch": "BLOCKED",
+    "malformed_metadata": "BLOCKED",
+    "challenge_bypass_must_not_be_inferred": true,
+    "repository_success_cannot_override_external_failure": true
+  },
+  "deployment_guidance": {
+    "preferred_mode": "edge_rule_scoped_to_machine_identity_and_read_only_diagnostic_endpoint_classes",
+    "unrestricted_ip_bypass_forbidden": true,
+    "unrestricted_user_agent_bypass_forbidden": true,
+    "disable_site_protection_for_diagnostics_forbidden": true,
+    "production_authority_granted": false
+  }
+}

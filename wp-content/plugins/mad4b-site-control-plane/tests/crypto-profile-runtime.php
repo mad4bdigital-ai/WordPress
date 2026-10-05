@@ -1,0 +1,175 @@
+<?php
+$tmp=getenv('MAD4B_CRYPTO_TEST_DIR')?:sys_get_temp_dir().'/mad4b-crypto-profile-'.getmypid();
+@mkdir($tmp.'/www',0777,true);@mkdir($tmp.'/keys',0777,true);
+define('ABSPATH',$tmp.'/www/');
+define('MAD4B_SCP_DIR',dirname(__DIR__).'/');
+define('MAD4B_SCP_CRYPTO_KEYRING_DIR',$tmp.'/keys');
+define('MAD4B_SCP_TEST_RUNTIME',true);
+$_SERVER['DOCUMENT_ROOT']=$tmp.'/www';
+
+class WP_Error{private $c;private $m;private $d;public function __construct($c='',$m='',$d=null){$this->c=(string)$c;$this->m=(string)$m;$this->d=$d;}public function get_error_code(){return$this->c;}public function get_error_data(){return$this->d;}}
+function is_wp_error($v){return$v instanceof WP_Error;}
+function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/i','',(string)$v));}
+function wp_json_encode($v,$f=0){return json_encode($v,$f);}
+function wp_mkdir_p($d){return is_dir($d)||mkdir($d,0777,true);}
+function trailingslashit($v){return rtrim((string)$v,'/\\').'/';}
+function wp_normalize_path($v){return str_replace('\\','/',(string)$v);}
+
+require dirname(__DIR__).'/includes/class-mad4b-scp-time-policy.php';
+require dirname(__DIR__).'/includes/class-mad4b-scp-crypto-profile.php';
+function mad4b_crypto_test_wait_process($proc,array $pipes,$timeout_seconds=15){
+ $stdout='';$stderr='';$deadline=microtime(true)+max(1,(int)$timeout_seconds);$last=array('running'=>true,'exitcode'=>-1);
+ foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i]))stream_set_blocking($pipes[$i],false);
+ while(true){
+  foreach(array(1,2)as$i){
+   if(!isset($pipes[$i])||!is_resource($pipes[$i]))continue;
+   $chunk=stream_get_contents($pipes[$i]);
+   if(false!==$chunk&&''!==$chunk){if(1===$i)$stdout.=$chunk;else$stderr.=$chunk;}
+  }
+  $last=proc_get_status($proc);
+  if(!is_array($last)||empty($last['running']))break;
+  if(microtime(true)>=$deadline){
+   @proc_terminate($proc,9);usleep(100000);
+   $last=proc_get_status($proc);
+   if(is_array($last)&&!empty($last['running']))@proc_terminate($proc);
+   foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i])){$chunk=stream_get_contents($pipes[$i]);if(false!==$chunk&&''!==$chunk){if(1===$i)$stdout.=$chunk;else$stderr.=$chunk;}}
+   foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i]))fclose($pipes[$i]);
+   @proc_close($proc);
+   return array('timed_out'=>true,'exitcode'=>-1,'stdout'=>$stdout,'stderr'=>$stderr);
+  }
+  usleep(10000);
+ }
+ foreach(array(1,2)as$i)if(isset($pipes[$i])&&is_resource($pipes[$i])){$chunk=stream_get_contents($pipes[$i]);if(false!==$chunk&&''!==$chunk){if(1===$i)$stdout.=$chunk;else$stderr.=$chunk;}fclose($pipes[$i]);}
+ $closed=@proc_close($proc);$exit=is_array($last)&&isset($last['exitcode'])?(int)$last['exitcode']:-1;if($exit<0&&is_int($closed)&&$closed>=0)$exit=$closed;
+ return array('timed_out'=>false,'exitcode'=>$exit,'stdout'=>$stdout,'stderr'=>$stderr);
+}
+
+if('1'===getenv('MAD4B_CRYPTO_VERIFY_CHILD')){
+ MAD4B_SCP_Time_Policy::set_test_clock((int)(getenv('MAD4B_CRYPTO_TEST_EPOCH')?:2000086401),500000);
+ $payload=json_decode((string)file_get_contents(getenv('MAD4B_CRYPTO_VERIFY_FILE')),true);
+ if(!is_array($payload)){fwrite(STDERR,"payload_invalid\n");exit(3);}
+ $verified=MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($payload['signature'],$payload['digest'],'execution_receipt');
+ if(is_wp_error($verified)){fwrite(STDERR,$verified->get_error_code().PHP_EOL);exit(4);}
+ echo json_encode(array('valid'=>true,'kid'=>$verified['kid'])).PHP_EOL;
+ exit(0);
+}
+if('1'===getenv('MAD4B_CRYPTO_CONCURRENCY_CHILD')){
+ MAD4B_SCP_Time_Policy::set_test_clock((int)(getenv('MAD4B_CRYPTO_TEST_EPOCH')?:2000086402),500000);
+ $child=MAD4B_SCP_Crypto_Profile::rotate('execution-receipt-rs256-v1');
+ if(is_wp_error($child)){fwrite(STDERR,$child->get_error_code().PHP_EOL);exit(2);}
+ echo json_encode(array('kid'=>$child['current_kid'],'revision'=>$child['revision'])).PHP_EOL;
+ exit(0);
+}
+$fail=static function($m,$v=null){fwrite(STDERR,'FAIL crypto-profile-runtime: '.$m.(null===$v?'':' '.json_encode($v)).PHP_EOL);exit(1);};
+$check=static function($c,$m,$v=null)use($fail){if(!$c)$fail($m,$v);};
+$code=static function($v){return is_wp_error($v)?$v->get_error_code():'';};
+
+$clock=MAD4B_SCP_Time_Policy::set_test_clock(2000000000,500000);
+$check(is_array($clock),'crypto test clock unavailable',$clock);
+$defaults=array(
+ 'execution_receipt'=>'execution-receipt-rs256-v1',
+ 'preparation_receipt'=>'preparation-receipt-rs256-v1',
+ 'context_receipt'=>'context-receipt-rs256-v1',
+);
+foreach($defaults as$purpose=>$expected){
+ $actual=MAD4B_SCP_Crypto_Profile::default_profile($purpose);
+ $check($expected===$actual,'default crypto profile mismatch for '.$purpose,$actual);
+ $profile=MAD4B_SCP_Crypto_Profile::profile($actual);
+ $check(is_array($profile)&&$purpose===$profile['purpose'],'profile purpose binding mismatch',$profile);
+}
+
+$p1='execution-receipt-rs256-v1';$p2='execution-receipt-rs512-v2';
+$provision=MAD4B_SCP_Crypto_Profile::provision_for_lifecycle($p1);
+$check(is_array($provision)&&!empty($provision['current_kid'])&&'RS256'===$provision['algorithm'],'RS256 profile provisioning failed',$provision);
+$old_kid=$provision['current_kid'];$digest=hash('sha256','receipt-a');
+$sig=MAD4B_SCP_Crypto_Profile::sign_digest_for_purpose('execution_receipt',$digest);
+$check(is_array($sig)&&$old_kid===$sig['kid'],'RS256 purpose-bound signing failed',$sig);
+$verify=MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($sig,$digest,'execution_receipt');
+$check(is_array($verify)&&!empty($verify['valid'])&&'execution_receipt'===$verify['purpose'],'purpose-bound local verification failed',$verify);
+$check('mad4b_crypto_signature_purpose_mismatch'===$code(MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($sig,$digest,'context_receipt')),'cross-purpose signature was accepted');
+$pub=MAD4B_SCP_Crypto_Profile::public_key($p1,$old_kid);
+$external=MAD4B_SCP_Crypto_Profile::verify_with_public_key($sig,$digest,$pub);
+$check(is_array($external)&&!empty($external['valid']),'independent public-key verification failed',$external);
+
+$rot=MAD4B_SCP_Crypto_Profile::rotate($p1);
+$check(is_array($rot)&&$old_kid!==$rot['current_kid'],'key rotation did not advance kid',$rot);
+$old_verify=MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($sig,$digest,'execution_receipt');
+$check(is_array($old_verify)&&!empty($old_verify['valid']),'old signature failed during rotation overlap',$old_verify);
+MAD4B_SCP_Time_Policy::advance_test_clock(86401,86401000);
+$check('mad4b_crypto_signature_overlap_expired'===$code(MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose($sig,$digest,'execution_receipt')),'expired rotation overlap still verified');
+$new_digest=hash('sha256','receipt-b');
+$new_sig=MAD4B_SCP_Crypto_Profile::sign_digest_for_purpose('execution_receipt',$new_digest);
+$check(is_array($new_sig)&&$rot['current_kid']===$new_sig['kid'],'rotated current key not used for signing',$new_sig);
+
+// Node A signs; an independent Node B process verifies against the same shared keyring.
+$verify_file=$tmp.'/node-b-verify.json';
+file_put_contents($verify_file,json_encode(array('digest'=>$new_digest,'signature'=>$new_sig)));
+$verify_cmd=escapeshellarg(PHP_BINARY).' '.escapeshellarg(__FILE__);
+$verify_env=array('MAD4B_CRYPTO_TEST_DIR'=>$tmp,'MAD4B_CRYPTO_VERIFY_CHILD'=>'1','MAD4B_CRYPTO_TEST_EPOCH'=>'2000086401','MAD4B_CRYPTO_VERIFY_FILE'=>$verify_file);
+$verify_spec=array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w'));
+$verify_pipes=array();$verify_proc=proc_open($verify_cmd,$verify_spec,$verify_pipes,null,$verify_env);
+$check(is_resource($verify_proc),'node B verification process failed to start');
+fclose($verify_pipes[0]);$verify_wait=mad4b_crypto_test_wait_process($verify_proc,$verify_pipes,15);@unlink($verify_file);
+$check(empty($verify_wait['timed_out'])&&0===$verify_wait['exitcode'],'node B could not verify node A receipt through shared keyring',$verify_wait);
+
+$rev=MAD4B_SCP_Crypto_Profile::revoke($p1,$old_kid);
+$check(is_array($rev),'old key revocation failed',$rev);
+$check('mad4b_crypto_signature_key_revoked'===$code(MAD4B_SCP_Crypto_Profile::verify_digest($sig,$digest)),'revoked key still verified');
+
+$provision2=MAD4B_SCP_Crypto_Profile::provision_for_lifecycle($p2);
+$check(is_array($provision2)&&'RS512'===$provision2['algorithm'],'RS512 profile provisioning failed',$provision2);
+$sig2=MAD4B_SCP_Crypto_Profile::sign_digest($p2,hash('sha256','receipt-c'));
+$check(is_array($sig2)&&'RS512'===$sig2['algorithm'],'RS512 algorithm agility failed',$sig2);
+$bad=$sig2;$bad['algorithm']='RS256';
+$check('mad4b_crypto_signature_profile_mismatch'===$code(MAD4B_SCP_Crypto_Profile::verify_digest($bad,$sig2['signed_sha256'])),'algorithm downgrade/mismatch did not fail closed');
+
+$status=MAD4B_SCP_Crypto_Profile::status($p1);
+$check(is_array($status)&&empty($status['private_key_exposed'])&&empty($status['private_key_stored_in_database']),'crypto status exposes private-key material',$status);
+$manifest=$tmp.'/keys/keyring-'.$p1.'.json';$raw=is_file($manifest)?file_get_contents($manifest):'';
+$check(false===strpos((string)$raw,'PRIVATE KEY'),'private key leaked into keyring manifest');
+foreach(glob($tmp.'/keys/private-*.pem')?:array() as$pem)$check(false!==strpos((string)file_get_contents($pem),'PRIVATE KEY'),'private key file missing key material');
+
+// Two writers sharing one keyring must serialize read-modify-write and advance revision twice.
+$before=MAD4B_SCP_Crypto_Profile::status($p1);$before_revision=(int)$before['revision'];
+$cmd=escapeshellarg(PHP_BINARY).' '.escapeshellarg(__FILE__);
+$env=array('MAD4B_CRYPTO_TEST_DIR'=>$tmp,'MAD4B_CRYPTO_CONCURRENCY_CHILD'=>'1','MAD4B_CRYPTO_TEST_EPOCH'=>'2000086402');
+$spec=array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w'));
+$pipes1=array();$pipes2=array();$proc1=proc_open($cmd,$spec,$pipes1,null,$env);$proc2=proc_open($cmd,$spec,$pipes2,null,$env);
+$check(is_resource($proc1)&&is_resource($proc2),'concurrency workers failed to start');
+fclose($pipes1[0]);fclose($pipes2[0]);
+$wait1=mad4b_crypto_test_wait_process($proc1,$pipes1,20);
+$wait2=mad4b_crypto_test_wait_process($proc2,$pipes2,20);
+$check(empty($wait1['timed_out'])&&empty($wait2['timed_out'])&&0===$wait1['exitcode']&&0===$wait2['exitcode'],'concurrent rotations did not serialize',array($wait1,$wait2));
+$after=MAD4B_SCP_Crypto_Profile::status($p1);
+$check((int)$after['revision']===$before_revision+2,'concurrent rotations lost a manifest update',$after);
+
+// Keyring DR uses an external encrypted backup, while the plugin attests exact restore identity without exposing key bytes.
+$recovery=MAD4B_SCP_Crypto_Profile::recovery_manifest($p1);
+$check(is_array($recovery)&&1===preg_match('/^[a-f0-9]{64}$/',$recovery['recovery_generation_sha256']),'keyring recovery manifest unavailable',$recovery);
+$check(!isset($recovery['private_key_pem'])&&!isset($recovery['private_key']),'recovery manifest exposed private key material',$recovery);
+$verified_recovery=MAD4B_SCP_Crypto_Profile::assert_recovery_generation($p1,$recovery['recovery_generation_sha256']);
+$check(is_array($verified_recovery)&&!empty($verified_recovery['verified'])&&!empty($verified_recovery['post_restore_recertification_required']),'recovery generation verification failed',$verified_recovery);
+
+// A private-key file symlink must never be followed.
+$manifest_data=json_decode((string)file_get_contents($manifest),true);
+$current_kid=(string)$manifest_data['current_kid'];$private_file=(string)$manifest_data['keys'][$current_kid]['private_key_file'];
+$private_path=$tmp.'/keys/'.$private_file;$private_backup=$private_path.'.real';
+$check(rename($private_path,$private_backup),'private-key symlink fixture rename failed');
+if(@symlink($private_backup,$private_path)){
+ $symlink_sign=MAD4B_SCP_Crypto_Profile::sign_digest($p1,hash('sha256','symlink-private-key'));
+ $check('mad4b_crypto_private_key_symlink_denied'===$code($symlink_sign),'private-key symlink was followed',$symlink_sign);
+ unlink($private_path);rename($private_backup,$private_path);
+}else{rename($private_backup,$private_path);}
+
+// A lexical keyring path outside WordPress that resolves into DOCUMENT_ROOT must fail closed.
+$real_keys=$tmp.'/keys-real';
+$check(rename($tmp.'/keys',$real_keys),'keyring symlink fixture rename failed');
+$exposed=$tmp.'/www/exposed-keyring';@mkdir($exposed,0777,true);
+if(@symlink($exposed,$tmp.'/keys')){
+ $symlink_dir=MAD4B_SCP_Crypto_Profile::status($p1);
+ $check(in_array($code($symlink_dir),array('mad4b_crypto_keyring_path_document_root_exposed','mad4b_crypto_keyring_path_wordpress_exposed'),true),'keyring canonical containment failed',$symlink_dir);
+ unlink($tmp.'/keys');rename($real_keys,$tmp.'/keys');
+}else{rename($real_keys,$tmp.'/keys');}
+
+MAD4B_SCP_Time_Policy::reset_test_clock();
+echo "mad4b.crypto-profile.runtime.v5: PASS\n";

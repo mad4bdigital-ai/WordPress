@@ -41,13 +41,14 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 			'drop-ins' => __( 'Drop-ins', 'mad4b-site-control-plane' ),
 			'themes' => __( 'Themes', 'mad4b-site-control-plane' ),
 			'astra' => __( 'Astra / Child', 'mad4b-site-control-plane' ),
+			'maintenance' => __( 'Runtime Update', 'mad4b-site-control-plane' ),
 		);
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
 
 		MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'MAD4B Runtime Components', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p class="description">' . esc_html__( 'Read-only runtime inventory across WordPress Core, regular plugins, must-use plugins, bootstrap drop-ins and themes. Astra and Astra Child receive specialized inspection while Core, MU plugins and drop-ins remain outside normal write authority.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Runtime inventory across WordPress Core, regular plugins, must-use plugins, bootstrap drop-ins and themes. Inspection tabs remain read-only; certified Control Plane + MCP Adapter maintenance is isolated in the Runtime Update tab.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( is_wp_error( $snapshot ) ) { echo '<div class="notice notice-error"><p>' . esc_html( $snapshot->get_error_message() ) . '</p></div></div>'; return; }
 
 		MAD4B_SCP_Admin_Experience::stages( self::stages( $snapshot ) );
@@ -60,6 +61,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		if ( 'drop-ins' === $tab ) self::render_drop_ins( isset( $snapshot['drop_ins'] ) ? $snapshot['drop_ins'] : array() );
 		if ( 'themes' === $tab ) self::render_themes( isset( $snapshot['themes'] ) ? $snapshot['themes'] : array() );
 		if ( 'astra' === $tab ) self::render_astra( isset( $snapshot['astra'] ) ? $snapshot['astra'] : array(), isset( $snapshot['astra_children'] ) ? $snapshot['astra_children'] : array() );
+		if ( 'maintenance' === $tab ) self::render_maintenance();
 		echo '</div>';
 	}
 
@@ -88,6 +90,30 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		) );
 		MAD4B_SCP_Admin_Experience::next_step( 'Runtime coverage boundary', 'Use Adapter Coverage for plugin-specific write readiness. This page intentionally keeps WordPress Core, MU plugins, drop-ins and theme inspection read-only until a separate certified mutation contract is designed.', 'complete' );
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Component classes', 'mad4b-site-control-plane' ) . '</h2><p><code>wordpress_core</code> · <code>regular_plugin</code> · <code>mu_plugin</code> · <code>drop_in</code> · <code>theme</code> · <code>child_theme</code></p></div>';
+	}
+
+
+	private static function render_maintenance() {
+		echo '<h2>' . esc_html__( 'Certified runtime update', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Update MAD4B Site Control Plane and the official MCP Adapter only as one certified compatible runtime set. The operation re-plans the exact release pair before mutation and preserves the existing governed verification, rollback and readback boundaries.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'The WordPress Plugins update channel is the stable Release-Verdict channel published from master only. Pull-request candidate builds are intentionally not offered there before merge.', 'mad4b-site-control-plane' ) . '</p></div>';
+
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Plugin update capability is required to change the certified runtime set.', 'mad4b-site-control-plane' ) . '</p></div>';
+			return;
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ) {
+			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Certified runtime-set maintenance is unavailable in this build.', 'mad4b-site-control-plane' ) . '</p></div>';
+			return;
+		}
+
+		echo '<div class="mad4b-scp-panel"><h3>' . esc_html__( 'Control Plane + MCP Adapter', 'mad4b-site-control-plane' ) . '</h3>';
+		echo '<p>' . esc_html__( 'Use this explicit maintenance action instead of the generic Plugins action row. It never converts the MCP Adapter into a generic independently updatable dependency.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( 'mad4b_runtime_release_set_apply' );
+		echo '<input type="hidden" name="action" value="mad4b_runtime_release_set_apply">';
+		echo '<button class="button button-primary" type="submit">' . esc_html__( 'Update compatible runtime', 'mad4b-site-control-plane' ) . '</button>';
+		echo '</form></div>';
 	}
 
 	private static function render_core( array $core ) {

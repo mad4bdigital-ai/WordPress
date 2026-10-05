@@ -11,7 +11,7 @@ $check( class_exists( 'MAD4B_SCP_Adapter_Coverage_Admin_UI' ), 'Adapter Coverage
 $check( class_exists( 'MAD4B_SCP_Repository_Artifact_Catalog' ), 'Repository artifact catalog is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Family_Adapter' ), 'Repository family adapter class is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Plugins_Adapter' ), 'Repository inventory adapter class is unavailable.' );
-foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/functional-gap-runtime-evidence', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
+foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/functional-gap-runtime-evidence', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
 	$check( wp_has_ability( $ability_name ), 'Missing discovery ability: ' . $ability_name );
 	$ability = wp_get_ability( $ability_name );
 	$meta = $ability->get_meta();
@@ -20,6 +20,13 @@ foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-request
 	$check( empty( $meta['annotations']['destructive'] ), 'Discovery ability is destructive: ' . $ability_name );
 	$check( 'read' === (string) ( $meta['mcp']['surface'] ?? '' ), 'Repository discovery ability escaped mad4b-read: ' . $ability_name );
 }
+
+$read_tools = MAD4B_SCP_Servers::core_tools( 'mad4b-read' );
+$chatgpt_tools = MAD4B_SCP_Servers::core_tools( 'mad4b-chatgpt' );
+$admin_tools = MAD4B_SCP_Servers::core_tools( 'mad4b-admin' );
+$check( in_array( 'mad4b/provider-candidate-matrix', $read_tools, true ), 'Provider candidate matrix is not mounted on mad4b-read.' );
+$check( in_array( 'mad4b/provider-candidate-matrix', $chatgpt_tools, true ), 'Provider candidate matrix is not mounted on mad4b-chatgpt.' );
+$check( ! in_array( 'mad4b/provider-candidate-matrix', $admin_tools, true ), 'Provider candidate matrix leaked to mad4b-admin.' );
 
 $zero_touch_ability = wp_get_ability( 'mad4b/functional-gap-runtime-evidence' );
 $zero_touch = $zero_touch_ability->execute();

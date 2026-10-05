@@ -195,6 +195,77 @@ Repository performance contracts prove architectural bounds and request-local ca
 
 Rollback retention proves the previous certified artifact still exists; it is not the same as a live rollback drill. Before Production promotion, perform one governed Staging drill: deploy the exact candidate, verify it, roll back to the retained certified package, verify provenance/read continuity with write authority fail-closed as required, then redeploy the candidate and re-run live acceptance. Record all three package identities and readbacks.
 
+## Production readiness certification
+
+Production readiness is a **non-authorizing** certification state. It does not grant Production write authority and it never implies automatic promotion.
+
+The machine-readable source of truth is:
+
+- `config/production-certification-plan.json` — ordered certification stages and expected evidence contracts.
+- `config/production-readiness-policy.json` — profile scope, required gates and fail-closed optional capabilities.
+- `tests/production-live-evidence-contract.py` — exact-candidate evidence reducer/verifier.
+- `mad4b/production-certification-readonly-evidence` — read-only Staging evidence producer exposed on `mad4b-read` and `mad4b-chatgpt`.
+
+Use the `control_plane_core` profile for the first Production promotion. Optional Feature 007 capabilities listed by that profile stay disabled and fail-closed until separately live-certified.
+
+### Certification sequence
+
+Before collecting any evidence, call `mad4b/production-certification-status` on the exact deployed Staging candidate. Treat its result as the canonical operator worklist: local read-only canaries are recomputed immediately, while signed external or reversible-Staging stages remain explicitly pending. The status surface is non-authorizing and always reports `production_ready=false`; only the canonical `mad4b/production-readiness-evaluate` verdict over a complete trusted bundle may report readiness.
+
+Operator flow:
+
+`production-certification-status → collect exact stage evidence → production-readiness-evaluate → separate Production promotion authorization`
+
+
+
+1. Freeze one exact candidate identity: source commit SHA, build fingerprint and package-manifest digest.
+2. Require repository CI for that exact head to pass. Repository evidence is bound by the current CI runtime; do not persist a historical run ID as current readiness truth.
+3. Deploy that exact candidate to enrolled **Staging** through the governed deployment path.
+4. Run the baseline-owned ETG Deployment Readiness check and prove the deployed runtime identity matches the candidate exactly.
+5. Capture runtime root-trust readback for the exact deployed package.
+6. Run the read-only Production certification stages through `mad4b/production-certification-readonly-evidence`:
+   - `provider_side_channel_inventory`
+   - `multi_authority_canary`
+   - `policy_resolution_canary`
+   - `operator_doctor`
+7. Execute the Host Runner parity canary on Staging using only registered semantic operations. No generic shell or caller-supplied executable path is permitted.
+8. Create a protected Staging backup with `tools/mad4b_recovery_plane.py`, verify it, and execute a governed restore rehearsal bound to the exact backup receipt.
+9. Execute the out-of-band recovery drill with the normal WordPress/Control Plane route intentionally unavailable and bind the recovery receipt to the same candidate identity.
+10. Execute the governed consistency/fencing canary and require rollback/postcondition evidence.
+11. Execute the request → approval/receipt → reversible mutation → rollback vertical slice on Staging and bind all receipts to the exact candidate.
+12. Collect one `mad4b.production-live-gate-evidence.v1` envelope for every stage in the certification plan. Every envelope must use the same candidate identity.
+13. Build one `mad4b.production-live-evidence-bundle.v1` and verify it:
+
+```bash
+python3 wp-content/plugins/mad4b-site-control-plane/tests/production-live-evidence-contract.py \
+  --bundle /path/to/production-live-evidence-bundle.json \
+  --output /path/to/production-live-evidence-verdict.json \
+  --enforce-ready
+```
+
+A passing verdict may report `production_ready=true`, but it must still report:
+
+```text
+production_authorized=false
+promotion_required=true
+authorizing=false
+```
+
+### Promotion boundary
+
+After the exact-candidate Production-readiness verdict is green:
+
+- obtain the exact-head owner attestation required by the repository release verdict;
+- obtain the separate one-time Production promotion authorization;
+- re-check that the candidate identity has not changed;
+- keep Breakglass, generic shell and generic raw SQL excluded;
+- apply only the reviewed Production promotion plan;
+- perform immediate Production readback and retain the pre-promotion rollback package.
+
+Any candidate change, evidence identity mismatch, failed live gate, missing rollback proof, or optional-capability drift invalidates readiness and requires re-certification. Production readiness never self-authorizes mutation.
+
+After the final Feature-owned change, treat every earlier CI run and owner attestation as historical only. Re-run the complete exact-head repository certification on the new SHA, then obtain a fresh exact-head owner attestation before merge or any Staging/Production promotion evidence is considered current.
+
 ## Production safety
 
 Production remains fail-closed unless a separately reviewed Production authority flow exists.
@@ -237,3 +308,25 @@ Product-complete additionally requires:
 - current provider capability certification for every remotely projected write
 
 Unsupported upstream operations may remain explicitly unavailable; they do not need unsafe emulation to qualify as a completed product.
+
+
+## Release-closure operating model
+
+PR #236 is frozen for release closure. New capability families move to a separate PR. Allowed changes are defect fixes, test hardening, evidence binding, Staging certification, release-readiness work, documentation accuracy and maintainability decomposition.
+
+Operator state is reduced to four non-authorizing states: `HEALTHY`, `DEGRADED`, `BLOCKED`, and `RECOVERY_REQUIRED`. The canonical read-only surface is `mad4b/operator-control-center`. Missing external evidence is never projected as success.
+
+Production readiness is profile-specific. Do not use the aggregate Feature 007 task-ledger DONE/total ratio as a readiness percentage. Use `release-closure-readiness.json` for separate Control Plane Core, optional fail-closed, full Feature 007 blocking, and long-term maturity views.
+
+External machine diagnostics follow `config/external-machine-diagnostic-policy.json`. A CDN/hosting 403 challenge is `INCONCLUSIVE_FAIL_CLOSED`; do not bypass it by disabling site protection or by unrestricted IP/User-Agent rules. Prefer a rule scoped to a machine identity and the bounded read-only diagnostic endpoint classes.
+
+Future capabilities follow `CAPABILITY-GOLDEN-PATH.md`: Define → Register → Certify → Plan → Execute → Evidence → Reconcile.
+
+Protected backup, restore rehearsal, recovery drill, exact-runtime deployment/root-trust readback and request → receipt → rollback remain live gates. Repository metadata cannot mark them DONE.
+
+
+### Three-layer performance proof
+
+Release closure separates performance evidence into three layers. Repository/runtime CI must keep **MAD4B Admin Performance** and the SLO contract green. Disposable runtime evidence must exercise real database/runtime contention and fault semantics. The final ETG layer remains external live evidence bound to the exact deployed candidate and must cover server latency, query pressure, peak memory, concurrency/backpressure, and provider latency/timeout behavior.
+
+Repository CI cannot substitute for the live ETG performance layer, and documentation cannot mark that layer PASS. The live layer is read-only/non-authorizing with respect to Production.

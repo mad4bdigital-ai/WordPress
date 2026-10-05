@@ -54,7 +54,8 @@ required = [
     "contracts/ai-eval-integrity.md","contracts/runtime-profile-compatibility.md",
     "contracts/offline-authorization-window.md","contracts/audit-telemetry-retention.md",
     "contracts/data-flow-policy.md","contracts/formal-model-critical-state.md",
-    "contracts/architecture-freeze.md",
+    "contracts/architecture-freeze.md","contracts/capability-fabric-post-merge-completeness.md",
+    "adaptive-search-intelligence.md","adaptive-search-intelligence.json","adaptive-search-intelligence-review.md","adaptive-search-intelligence-review.json","contracts/adaptive-search-intelligence-runtime.md",
     "references/host-provider-validation-profile.md",
     "contracts/bulk-runtime-closure-hardening.md","bulk-closure-hardening.json",
 ]
@@ -70,11 +71,51 @@ if feature_path.exists():
         "merge_authorized": False,
         "production_activation_authorized": False,
         "architecture_freeze": True,
-        "required_phase_count": 37,
+        "required_phase_count": 39,
     }
     for k, v in expected.items():
         if data.get(k) != v:
             errors.append(f"feature_field:{k}:expected={v!r}:got={data.get(k)!r}")
+    capfab_expected = {
+        "post_merge_capability_fabric_closure_ledger": "post-merge-capability-fabric-closure.json",
+        "post_merge_capability_fabric_contract": "mad4b.capability-fabric-post-merge-completeness.v1",
+        "post_merge_capability_fabric_contract_document": "contracts/capability-fabric-post-merge-completeness.md",
+        "post_merge_capability_fabric_completeness_claim": "NOT_YET_PROVEN",
+    }
+    for k, v in capfab_expected.items():
+        if data.get(k) != v:
+            errors.append(f"feature_capability_fabric_field:{k}:expected={v!r}:got={data.get(k)!r}")
+    adaptive_search_expected = {
+        "adaptive_search_intelligence_phase": 38,
+        "adaptive_search_intelligence_contract": "mad4b.adaptive-search-intelligence.v1",
+        "adaptive_search_intelligence_document": "adaptive-search-intelligence.md",
+        "adaptive_search_intelligence_runtime_contract_document": "contracts/adaptive-search-intelligence-runtime.md",
+        "adaptive_search_intelligence_ledger": "adaptive-search-intelligence.json",
+        "adaptive_search_intelligence_status": "REPOSITORY_RUNTIME_VALIDATED_NON_AUTHORIZING",
+        "adaptive_search_intelligence_review_document": "adaptive-search-intelligence-review.md",
+        "adaptive_search_intelligence_review_ledger": "adaptive-search-intelligence-review.json",
+        "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
+        "adaptive_search_intelligence_review_status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
+        "adaptive_search_intelligence_review_score": 88,
+        "adaptive_search_intelligence_review_p0_open": 0,
+        "adaptive_search_intelligence_review_p0_closed": 12,
+        "adaptive_search_intelligence_review_p1_open": 0,
+        "adaptive_search_intelligence_review_p1_closed": 6,
+    }
+    for k, v in adaptive_search_expected.items():
+        if data.get(k) != v:
+            errors.append(f"feature_adaptive_search_field:{k}:expected={v!r}:got={data.get(k)!r}")
+    feature_search_closure=data.get("adaptive_search_intelligence_p0_closure")
+    if not isinstance(feature_search_closure,dict):
+        errors.append("feature_adaptive_search_p0_closure_missing")
+    else:
+        closure_sha=feature_search_closure.get("exact_head_sha")
+        if not isinstance(closure_sha,str) or not re.fullmatch(r"[0-9a-f]{40}",closure_sha):
+            errors.append("feature_adaptive_search_p0_closure_sha_invalid")
+        if int(feature_search_closure.get("workflow_run") or 0) <= 0 or feature_search_closure.get("evidence_status")!="PASS":
+            errors.append("feature_adaptive_search_p0_closure_evidence_invalid")
+        if feature_search_closure.get("authorizing") is not False:
+            errors.append("feature_adaptive_search_p0_closure_must_be_non_authorizing")
     for key in ["baseline_head_at_creation","last_reviewed_master_parent_sha"]:
         val=data.get(key)
         if not isinstance(val,str) or not re.fullmatch(r"[0-9a-f]{40}", val):
@@ -195,12 +236,17 @@ if closure_path.exists() and feature_path.exists():
             errors.append(f"closure:missing_gate:{row.get('id')}")
         if row.get("status") == "DONE" and not row.get("evidence"):
             errors.append(f"closure:done_without_evidence:{row.get('id')}")
-        if row.get("status") == "PARTIAL":
+        if row.get("status") in {"PARTIAL","EXTERNAL_PENDING"}:
             if not row.get("evidence"):
-                errors.append(f"closure:partial_without_evidence:{row.get('id')}")
+                errors.append(f"closure:non_done_without_evidence:{row.get('id')}:{row.get('status')}")
             remainder = row.get("remainder")
             if not isinstance(remainder, list) or not remainder:
-                errors.append(f"closure:partial_without_remainder:{row.get('id')}")
+                errors.append(f"closure:non_done_without_remainder:{row.get('id')}:{row.get('status')}")
+        if row.get("status") == "EXTERNAL_PENDING":
+            if row.get("external_pending_contract") != "mad4b.feature007-workstream-certification-policy.v1":
+                errors.append(f"closure:external_pending_contract_missing:{row.get('id')}")
+            if row.get("external_pending_reason") != "repository_implementation_present_live_or_external_evidence_required":
+                errors.append(f"closure:external_pending_reason_invalid:{row.get('id')}")
 
 if closure_path.exists():
     observed = closure.get("observed_live_etg_state")
@@ -262,7 +308,7 @@ if tasks_path.exists():
     dupes = sorted({x for x in ids if ids.count(x) > 1})
     if dupes:
         errors.append("duplicate_task_ids:" + ",".join(dupes))
-    for phase in range(0, 37):
+    for phase in range(0, 39):
         if f"Phase {phase} " not in txt and f"Phase {phase} —" not in txt:
             errors.append(f"missing_task_phase:{phase}")
 
@@ -290,11 +336,146 @@ if trace.exists():
         "POLICY","ATTEST","BOOT","INTENT","STORE","RECOMP","PVERIFY","RIGHTS","AIDATA","OPS","CONF",
         "FAIR","LOC","EVALREG","EXP","USAGE","PORT","BASESYNC","ROOT","STATE","FENCE","COMMIT",
         "LIVENESS","TRAIT","PRIVHASH","PUBFP","AIINT","PROFILE","OFFLINE","AUDITSEP","DATAFLOW",
-        "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE"
+        "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE","CAPFAB",
+        "ASI","ASICTX","ASISURF","ASISEO","ASITGT","ASIDEC","ASIBUD","ASIPROV","ASIEVID","ASIEXP","ASICL",
+        "ASICOMP","ASIELIG","ASIACCT","ASIRIGHTS","ASIDET","ASISTABLE","ASIACC"
     ]
     for family in families:
         if f"| {family} |" not in t:
             errors.append(f"traceability_missing:{family}")
+
+
+adaptive_search_path = require_file("adaptive-search-intelligence.json")
+if adaptive_search_path.exists():
+    adaptive_search = json.loads(adaptive_search_path.read_text(encoding="utf-8"))
+    if adaptive_search.get("contract") != "mad4b.adaptive-search-intelligence-spec.v1":
+        errors.append("adaptive_search:contract_mismatch")
+    if adaptive_search.get("phase") != 38:
+        errors.append("adaptive_search:phase_mismatch")
+    if adaptive_search.get("status") != "REPOSITORY_RUNTIME_VALIDATED":
+        errors.append("adaptive_search:status_mismatch")
+    if adaptive_search.get("authorizing") is not False:
+        errors.append("adaptive_search:must_be_non_authorizing")
+    required_search_gates = {
+        "ADAPTIVE_SEARCH_META_MODEL_PASS",
+        "SEARCH_CONTEXT_COMPILER_PASS",
+        "INDEXABLE_SURFACE_GRAPH_PASS",
+        "SEO_FIELD_PROVENANCE_PASS",
+        "SEARCH_TARGET_COMPILER_PASS",
+        "SEARCH_DECISION_EXPLAINABILITY_PASS",
+        "SEARCH_FAIR_SCHEDULER_PASS",
+        "SEARCH_BUDGET_GOVERNOR_PASS",
+        "SERP_PROVIDER_CONFORMANCE_PASS",
+        "SERP_EVIDENCE_INTEGRITY_PASS",
+        "SEARCH_EXTERNAL_EVIDENCE_TRUST_PASS",
+        "SEARCH_RECONCILIATION_BEFORE_RETRY_PASS",
+        "ADAPTIVE_SEARCH_EXPERIENCE_PASS",
+        "SEARCH_CONTENT_HANDOFF_NON_AUTHORIZING_PASS",
+        "ADAPTIVE_SEARCH_GENERALIZATION_PASS",
+    }
+    if not required_search_gates.issubset(set(adaptive_search.get("required_gates", []))):
+        errors.append("adaptive_search:required_gate_set_incomplete")
+    workstreams=adaptive_search.get("workstreams", [])
+    if len(workstreams) != 15 or any(not isinstance(row,dict) or row.get("status")!="DONE" for row in workstreams):
+        errors.append("adaptive_search:workstreams_not_repository_runtime_closed")
+    repo_closure=adaptive_search.get("repository_runtime_closure")
+    if not isinstance(repo_closure,dict) or repo_closure.get("status")!="DONE" or int(repo_closure.get("done_task_count") or 0)!=80 or repo_closure.get("live_provider_account_certification")!="NOT_CLAIMED" or repo_closure.get("authorizing") is not False:
+        errors.append("adaptive_search:repository_runtime_closure_invalid")
+    boundaries=set(adaptive_search.get("hard_boundaries", []))
+    for boundary in [
+        "no_production_authority",
+        "no_breakglass_widening",
+        "no_generic_outbound_http",
+        "no_direct_content_mutation_from_signal",
+        "no_vendor_or_business_hardcode",
+        "no_documentation_only_completion",
+    ]:
+        if boundary not in boundaries:
+            errors.append(f"adaptive_search:missing_boundary:{boundary}")
+
+
+search_acceptance_path = require_file("adaptive-search-runtime-acceptance.json")
+if search_acceptance_path.exists():
+    search_acceptance = json.loads(search_acceptance_path.read_text(encoding="utf-8"))
+    if search_acceptance.get("contract") != "mad4b.adaptive-search-runtime-acceptance.v1" or search_acceptance.get("authorizing") is not False:
+        errors.append("adaptive_search:runtime_acceptance_contract_invalid")
+    if set(search_acceptance.get("gates", {})) != required_search_gates:
+        errors.append("adaptive_search:runtime_gate_parity_failed")
+    search_fixture_names = set()
+    for fixture_file, pattern in [
+        ("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php", r"scenario\( '([^']+)'"),
+        ("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php", r"provider_case\( '([^']+)'"),
+    ]:
+        fixture_path = pathlib.Path(fixture_file)
+        if not fixture_path.is_file():
+            errors.append("adaptive_search:runtime_fixture_missing:" + fixture_file)
+        else:
+            search_fixture_names.update(re.findall(pattern, fixture_path.read_text(encoding="utf-8")))
+    for gate, rule in search_acceptance.get("gates", {}).items():
+        names = rule.get("fixtures", [])
+        thresholds = rule.get("thresholds", {}).get("minimum_assertions_per_fixture", {})
+        if not names or not set(names).issubset(search_fixture_names) or set(thresholds) != set(names) or any(not isinstance(n, int) or n <= 0 for n in thresholds.values()) or not rule.get("denial_cases"):
+            errors.append("adaptive_search:runtime_gate_without_executable_assertions:" + gate)
+    if set(search_acceptance.get("required_evidence_classes", [])) != {"exact_head_ci_hermetic_runtime", "disposable_wordpress_mysql"}:
+        errors.append("adaptive_search:runtime_evidence_classes_invalid")
+    workflow_ref = str(search_acceptance.get("workflow", ""))
+    workflow_path_text, workflow_sep, workflow_job = workflow_ref.partition("#")
+    workflow_path = pathlib.Path(workflow_path_text) if workflow_path_text else pathlib.Path("missing-search-workflow")
+    if not workflow_path.is_file():
+        errors.append("adaptive_search:runtime_workflow_missing")
+    else:
+        workflow_text = workflow_path.read_text(encoding="utf-8")
+        if workflow_path_text != ".github/workflows/feature-007-pre-staging-hybrid-audit.yml":
+            errors.append("adaptive_search:runtime_workflow_not_feature_owned")
+        if not workflow_sep or workflow_job != "adaptive-search-conformance":
+            errors.append("adaptive_search:runtime_workflow_job_binding_invalid")
+        elif not re.search(r"(?m)^\s{2}adaptive-search-conformance:\s*$", workflow_text):
+            errors.append("adaptive_search:runtime_workflow_job_missing")
+
+adaptive_search_review_path = require_file("adaptive-search-intelligence-review.json")
+if adaptive_search_review_path.exists():
+    adaptive_search_review = json.loads(adaptive_search_review_path.read_text(encoding="utf-8"))
+    if adaptive_search_review.get("contract") != "mad4b.adaptive-search-intelligence-review.v1":
+        errors.append("adaptive_search_review:contract_mismatch")
+    if adaptive_search_review.get("status") != "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED":
+        errors.append("adaptive_search_review:status_mismatch")
+    if adaptive_search_review.get("authorizing") is not False:
+        errors.append("adaptive_search_review:must_be_non_authorizing")
+    scores=adaptive_search_review.get("scores", {})
+    if int(scores.get("overall") or -1) != 88:
+        errors.append("adaptive_search_review:overall_score_mismatch")
+    summary=adaptive_search_review.get("summary", {})
+    if int(summary.get("p0_open") if summary.get("p0_open") is not None else -1) != 0 or int(summary.get("p0_closed") or -1) != 12 or int(summary.get("p1_open") if summary.get("p1_open") is not None else -1) != 0 or int(summary.get("p1_closed") or -1) != 6:
+        errors.append("adaptive_search_review:open_gap_counts_mismatch")
+    findings=adaptive_search_review.get("findings", [])
+    ids=[row.get("id") for row in findings if isinstance(row, dict)]
+    if len(ids) != 18 or len(ids) != len(set(ids)):
+        errors.append("adaptive_search_review:finding_set_invalid")
+    p0=sum(1 for row in findings if isinstance(row, dict) and row.get("severity")=="P0")
+    p1=sum(1 for row in findings if isinstance(row, dict) and row.get("severity")=="P1")
+    if p0 != 12 or p1 != 6:
+        errors.append("adaptive_search_review:severity_counts_invalid")
+    p0_closure=adaptive_search_review.get("p0_closure")
+    if not isinstance(p0_closure,dict):
+        errors.append("adaptive_search_review:p0_closure_missing_or_invalid")
+    else:
+        closure_sha=p0_closure.get("exact_head_sha")
+        if not isinstance(closure_sha,str) or not re.fullmatch(r"[0-9a-f]{40}",closure_sha):
+            errors.append("adaptive_search_review:p0_closure_sha_invalid")
+        if int(p0_closure.get("workflow_run") or 0) <= 0:
+            errors.append("adaptive_search_review:p0_closure_run_invalid")
+        if p0_closure.get("evidence_status") != "PASS":
+            errors.append("adaptive_search_review:p0_closure_not_pass")
+    p1_closure=adaptive_search_review.get("p1_closure")
+    if not isinstance(p1_closure,dict) or p1_closure.get("evidence_status")!="PASS" or p1_closure.get("closure_scope")!="repository_runtime" or p1_closure.get("live_provider_account_certification")!="NOT_CLAIMED" or p1_closure.get("authorizing") is not False:
+        errors.append("adaptive_search_review:p1_closure_invalid")
+    for row in findings:
+        if not isinstance(row,dict):
+            continue
+        if row.get("severity")=="P0" and row.get("status")!="CLOSED":
+            errors.append(f"adaptive_search_review:p0_not_closed:{row.get('id')}")
+        if row.get("severity")=="P1" and row.get("status")!="CLOSED":
+            errors.append(f"adaptive_search_review:p1_status_invalid:{row.get('id')}")
 
 quality = require_file("quality-model.md")
 if quality.exists():
@@ -471,6 +652,144 @@ if bulk_hardening_path.exists():
             if all(str(x).startswith(("specs/",".github/","tools/","wp-content/")) for x in refs):
                 errors.append(f"bulk_hardening:live_proven_without_external_evidence:{fixture}")
 
+audit_path=require_file("post-merge-capability-fabric-audit.md")
+if audit_path.exists():
+    audit_txt=audit_path.read_text(encoding="utf-8")
+    for phrase in [
+        "Canonical capability semantics","Provider postcondition reconciliation","Resource constraint compiler",
+        "Durable multisite/network orchestration","Dedicated immutable catalog table","Distributed tracing",
+        "Impact-bound approval","Unified execution receipt","Authorization decision graph","Semantic intent routing",
+        "Cryptographic agility","Clock skew","Unicode canonicalization","Rate limiting and complexity budgets",
+        "Maintainability and change architecture","CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING",
+    ]:
+        if phrase not in audit_txt:
+            errors.append(f"capability_fabric_audit:missing:{phrase}")
+    for task_id in ["T3701","T3712","T3719","T3725","T3736","T3741","T3747","T3750","T3755","T3763","T3768","T3770"]:
+        if task_id not in audit_txt:
+            errors.append(f"capability_fabric_audit:task_missing:{task_id}")
+
+capfab_contract_path=require_file("contracts/capability-fabric-post-merge-completeness.md")
+if capfab_contract_path.exists():
+    contract_txt=capfab_contract_path.read_text(encoding="utf-8")
+    for phrase in ["mad4b.capability-fabric-post-merge-completeness.v1","Every Phase 37 task belongs to exactly one closure workstream","Production activation","Restore/time-travel protection","T3795","T3799"]:
+        if phrase not in contract_txt:
+            errors.append(f"capability_fabric_contract:missing:{phrase}")
+
+capfab_path=require_file("post-merge-capability-fabric-closure.json")
+if capfab_path.exists() and tasks_path.exists():
+    capfab=json.loads(capfab_path.read_text(encoding="utf-8"))
+    if capfab.get("contract") != "mad4b.capability-fabric-post-merge-closure.v1": errors.append("capability_fabric_closure:contract_mismatch")
+    if capfab.get("phase") != 37: errors.append("capability_fabric_closure:phase_mismatch")
+    for key in ["production_authorized","breakglass_widened","generic_shell_authorized","generic_raw_sql_authorized"]:
+        if capfab.get(key) is not False: errors.append(f"capability_fabric_closure:must_remain_false:{key}")
+    if capfab.get("critical_kernel_terminal_gate_unchanged") is not True or capfab.get("critical_kernel_terminal_gate") != "critical_kernel_vertical_slice_verified": errors.append("capability_fabric_closure:critical_kernel_gate_changed")
+    if capfab.get("completeness_claim") != "NOT_YET_PROVEN": errors.append("capability_fabric_closure:premature_completeness_claim")
+    phase37_ids=set(re.findall(r"^- \[[ x]\] (T37\d{2}) P\d ", task_txt, flags=re.MULTILINE))
+    rows=capfab.get("workstreams",[])
+    workstream_ids=[r.get("id") for r in rows if isinstance(r,dict)]
+    if not rows or None in workstream_ids or len(workstream_ids) != len(set(workstream_ids)): errors.append("capability_fabric_closure:workstream_ids_invalid")
+    mapped=[]
+    task_priorities={m.group(1):m.group(2) for m in re.finditer(r"^- \[[ x]\] (T37\d{2}) (P[0-2])\b", task_txt, flags=re.MULTILINE)}
+    expected_status={"OPEN","PARTIAL","DONE","DEFERRED"}
+    allowed_status=set(capfab.get("status_vocabulary",[]))
+    if allowed_status != expected_status:
+        errors.append("capability_fabric_closure:status_vocabulary_mismatch")
+    expected_quality={
+        "QCORRECTNESS","QRESILIENCE","QSECURITY","QSUPPLYCHAIN","QDATA","QPERF","QEVAL","QRECOVERY",
+        "QCOMPAT","QGOVERNANCE","QCONTENTSTATE","QRIGHTS","QOPERABILITY","QPORTABILITY","QROOTTRUST",
+        "QEXECUTIONMODEL","QLIVENESS","QSEMANTICS","QTEST"
+    }
+    if set(capfab.get("quality_family_vocabulary",[])) != expected_quality:
+        errors.append("capability_fabric_closure:quality_vocabulary_mismatch")
+    required_terminal={"ownership_closure","cancel_transport_cross_fault","canonical_db_storage"}
+    if set(capfab.get("completion_requires_workstreams",[])) != required_terminal:
+        errors.append("capability_fabric_closure:completion_workstreams_mismatch")
+    if capfab.get("dimension_ownership_contract") != "mad4b.capability-fabric-dimension-ownership.v1":
+        errors.append("capability_fabric_closure:dimension_ownership_contract_missing")
+    if capfab.get("open_priority_policy") != "P0_P1_REQUIRE_EXPLICIT_DEPENDENCIES_FAIL_CLOSED_INTERIM_AND_EVIDENCE_PATH":
+        errors.append("capability_fabric_closure:open_priority_policy_missing")
+    if capfab.get("traceability_family") != "CAPFAB":
+        errors.append("capability_fabric_closure:traceability_family_missing")
+    traceability_path=require_file("traceability.md")
+    if traceability_path.exists() and "| CAPFAB |" not in traceability_path.read_text(encoding="utf-8"):
+        errors.append("capability_fabric_closure:traceability_capfab_mapping_missing")
+    rules=capfab.get("closure_rules",{})
+    for key in ["exact_phase37_task_coverage","unique_task_ownership","dependency_graph_acyclic","unknown_quality_family_forbidden","docs_only_cannot_close_runtime_or_live_work","non_authorizing"]:
+        if rules.get(key) is not True:
+            errors.append(f"capability_fabric_closure:closure_rule_missing:{key}")
+    for row in rows:
+        if not isinstance(row,dict):
+            errors.append("capability_fabric_closure:workstream_not_object"); continue
+        tids=row.get("task_ids",[])
+        if not isinstance(tids,list) or not tids:
+            errors.append(f"capability_fabric_closure:task_ids_missing:{row.get('id')}"); continue
+        mapped.extend(tids)
+        if row.get("status") not in allowed_status: errors.append(f"capability_fabric_closure:invalid_status:{row.get('id')}:{row.get('status')}")
+        priorities=[task_priorities.get(t) for t in tids if task_priorities.get(t)]
+        expected_priority=sorted(priorities,key=lambda p:int(p[1:]))[0] if priorities else None
+        if row.get("priority") not in {"P0","P1","P2"}:
+            errors.append(f"capability_fabric_closure:priority_missing_or_invalid:{row.get('id')}")
+        elif expected_priority and row.get("priority") != expected_priority:
+            errors.append(f"capability_fabric_closure:priority_drift:{row.get('id')}:{row.get('priority')}:{expected_priority}")
+        for field in ["owner","contract_or_non_goal","test_strategy","traceability_family"]:
+            if not isinstance(row.get(field),str) or not row.get(field).strip():
+                errors.append(f"capability_fabric_closure:{field}_missing:{row.get('id')}")
+        if row.get("traceability_family") != "CAPFAB":
+            errors.append(f"capability_fabric_closure:traceability_family_invalid:{row.get('id')}")
+        if row.get("authorizing") is not False:
+            errors.append(f"capability_fabric_closure:workstream_must_be_non_authorizing:{row.get('id')}")
+        sources=row.get("evidence_sources",[])
+        if not isinstance(sources,list) or not sources or any(not isinstance(x,str) or not x.strip() for x in sources):
+            errors.append(f"capability_fabric_closure:evidence_sources_missing:{row.get('id')}")
+        if row.get("status") in {"OPEN","PARTIAL"} and row.get("priority") in {"P0","P1"}:
+            if not isinstance(row.get("dependencies",[]),list):
+                errors.append(f"capability_fabric_closure:open_priority_dependencies_invalid:{row.get('id')}")
+            if not isinstance(row.get("interim_behavior"),str) or not row.get("interim_behavior").strip():
+                errors.append(f"capability_fabric_closure:open_priority_interim_missing:{row.get('id')}")
+            if not sources:
+                errors.append(f"capability_fabric_closure:open_priority_evidence_path_missing:{row.get('id')}")
+        if not isinstance(row.get("quality_families",[]),list) or not row.get("quality_families"):
+            errors.append(f"capability_fabric_closure:quality_family_missing:{row.get('id')}")
+        else:
+            unknown_quality=set(row.get("quality_families",[]))-expected_quality
+            if unknown_quality:
+                errors.append(f"capability_fabric_closure:unknown_quality_family:{row.get('id')}:{','.join(sorted(unknown_quality))}")
+        if row.get("status") in {"DONE","PARTIAL"}:
+            refs=row.get("evidence_refs",[])
+            if not isinstance(refs,list) or not refs:
+                errors.append(f"capability_fabric_closure:closed_or_partial_without_evidence:{row.get('id')}")
+        for field in ["interim_behavior","evidence_strategy"]:
+            if not isinstance(row.get(field),str) or not row.get(field).strip(): errors.append(f"capability_fabric_closure:{field}_missing:{row.get('id')}")
+        if not isinstance(row.get("dependencies",[]),list): errors.append(f"capability_fabric_closure:dependencies_invalid:{row.get('id')}")
+    if len(mapped) != len(set(mapped)): errors.append("capability_fabric_closure:task_mapped_more_than_once")
+    if set(mapped) != phase37_ids: errors.append("capability_fabric_closure:phase37_task_coverage_mismatch:" + ",".join(sorted(set(mapped) ^ phase37_ids)))
+    known_workstreams=set(workstream_ids)
+    dep_graph={}
+    for row in rows:
+        if isinstance(row,dict):
+            deps=set(row.get("dependencies",[]))
+            dep_graph[row.get("id")]=deps
+            unknown=deps-known_workstreams
+            if unknown: errors.append(f"capability_fabric_closure:unknown_dependency:{row.get('id')}:{','.join(sorted(unknown))}")
+    visiting=set()
+    visited=set()
+    def capfab_dfs(node):
+        if node in visiting:
+            errors.append(f"capability_fabric_closure:dependency_cycle:{node}")
+            return
+        if node in visited: return
+        visiting.add(node)
+        for dep in dep_graph.get(node,set()):
+            capfab_dfs(dep)
+        visiting.remove(node)
+        visited.add(node)
+    for node in known_workstreams:
+        capfab_dfs(node)
+    if closure_path.exists() and capfab.get("baseline_merge_commit") != (closure.get("repository_baseline") or {}).get("last_reviewed_parent_sha"):
+        errors.append("capability_fabric_closure:baseline_mismatch")
+
+quality_path=require_file("quality-model.md")
+if quality_path.exists() and "Post-merge Capability Fabric completeness overlay" not in quality_path.read_text(encoding="utf-8"): errors.append("capability_fabric_closure:quality_overlay_missing")
 for rel in ["spec.md","plan.md","coverage-audit.md"]:
     p=require_file(rel)
     if p.exists() and "Production" not in p.read_text(encoding="utf-8"):

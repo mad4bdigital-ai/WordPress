@@ -126,3 +126,21 @@ The Governed Tool Execution Plane is evaluated through existing hard gates, not 
 - QPORTABILITY — provider/executor replacement without semantic operation rewrites.
 
 A host/tool capability is not Production-eligible while any applicable gate above is unproven.
+
+## Post-merge Capability Fabric completeness overlay
+
+Phase 37 is a cross-quality maturity overlay, not a parallel authority source and not an automatic new dependency of the first Critical Kernel vertical slice.
+
+It maps residual Capability Fabric work into existing hard quality gates:
+- canonical descriptor truth, resource constraints, identifiers, policy explainability and config generations → QSEMANTICS + QGOVERNANCE + QEXECUTIONMODEL;
+- provider postconditions, execution-state normalization, DB transaction failure and cancellation → QCORRECTNESS + QRESILIENCE + QEXECUTIONMODEL;
+- catalog storage, object-cache coherence, long-lived workers and mixed-runtime generations → QCORRECTNESS + QCOMPAT + QPERF;
+- multisite/network orchestration and site/subject/clone isolation → QRESILIENCE + QSECURITY + QDATA;
+- MCP/projection evolution and persisted-contract downgrade rules → QCOMPAT + QSEMANTICS;
+- durable circuit breakers, tracing/SLOs and infrastructure degraded modes → QRESILIENCE + QOPERABILITY + QPERF;
+- impact-bound approvals, unified execution receipts, crypto/replay/time semantics and restore time-travel → QGOVERNANCE + QSECURITY + QRECOVERY;
+- evidence commit ordering, storage exhaustion and archival integrity → QRECOVERY + QOPERABILITY + QDATA;
+- canonical fingerprint encoding, DB collation/engine and transaction ownership → QCORRECTNESS + QSECURITY + QCOMPAT + QEXECUTIONMODEL;
+- maintainability/change slicing/dependency direction are maturity controls and cannot by themselves grant or deny runtime authority.
+
+`CAPABILITY_FABRIC_COMPLETENESS=PASS` is a maturity claim only. It requires the machine-readable Phase 37 closure ledger plus T3768–T3770, cross-fault gate T3795 and canonical/DB storage gate T3799. It does not replace `CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED`, does not authorize Production, and cannot be satisfied by documentation-only evidence where runtime/security/live proof is required.

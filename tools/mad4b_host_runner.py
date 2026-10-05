@@ -1121,6 +1121,23 @@ def _installed_control_plane_identity(root: Path) -> dict[str, Any]:
     }
 
 
+def _runtime_candidate_identity_snapshot(profile: dict[str, Any]) -> dict[str, Any]:
+    plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
+    try:
+        identity = _control_plane_identity(_installed_control_plane_identity(plugin_root))
+    except Exception:
+        return {
+            "available": False,
+            "identity": {},
+            "reason_code": "runtime_candidate_identity_unavailable",
+        }
+    return {
+        "available": True,
+        "identity": identity,
+        "reason_code": "",
+    }
+
+
 def _zip_member_is_symlink(info: zipfile.ZipInfo) -> bool:
     mode = (info.external_attr >> 16) & 0o170000
     return mode == 0o120000
@@ -1852,6 +1869,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
     profile = load_profile(profile_path)
     job = load_json_bounded(job_path)
     verified = verify_job(job, profile)
+    runtime_identity_before = _runtime_candidate_identity_snapshot(profile)
     receipt_root = Path(profile["receipt_root"])
     if receipt_root.exists() and _is_link_like(receipt_root):
         raise ValueError("Host Runner receipt root symlink is forbidden")
@@ -1899,6 +1917,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         return existing
 
     result = execute_operation(profile, verified)
+    runtime_identity_after = _runtime_candidate_identity_snapshot(profile)
     is_write = verified["risk"] != "read_only"
     if is_write and result.get("mutation_performed") is not True:
         raise RuntimeError("Host Runner write operation did not report mutation")
@@ -1926,6 +1945,13 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "execution_location": str(job.get("execution_location") or "host_runner"),
         "submission_location": str(job.get("submission_location") or "external_job_file"),
         "commit_location": str(job.get("commit_location") or "host_runner"),
+        "runtime_identity_before": runtime_identity_before,
+        "runtime_identity_after": runtime_identity_after,
+        "runtime_identity_stable": (
+            runtime_identity_before.get("available") is True
+            and runtime_identity_after.get("available") is True
+            and runtime_identity_before.get("identity") == runtime_identity_after.get("identity")
+        ),
         "started_at": utc_now(),
         "completed_at": utc_now(),
         "result": {k: v for k, v in result.items() if not k.startswith("_")},

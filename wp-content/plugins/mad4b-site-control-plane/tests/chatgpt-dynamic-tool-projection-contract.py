@@ -7,6 +7,8 @@ INSPECTOR = (ROOT / "includes" / "class-mad4b-scp-ability-contract-inspector.php
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 DIAG = (ROOT / "includes" / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+FENCE = (ROOT / "includes" / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
+ABILITIES = (ROOT / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 
 def require(condition, message):
     if not condition:
@@ -48,6 +50,15 @@ for marker in [
 ]:
     require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
 require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
+
+# A pre-tool denial must arm the final callback seal requirement before any
+# same-priority filter can overwrite the returned WP_Error.
+for marker in [
+    "Arm the final callback boundary before any projection/binding/policy",
+    "require_projected_call_seal( $name )",
+    "mad4b_projection_execution_fence_unavailable",
+]:
+    require(marker in PROJECTION, f"final projected execution latch missing: {marker}")
 
 # Projection is schema-pinned and exact-plan fenced.
 for marker in [
@@ -153,3 +164,13 @@ for marker in [
     require(marker in PROJECTION, f"exact resulting catalog preflight missing: {marker}")
 
 print("mad4b.chatgpt-dynamic-tool-projection.v1: PASS")
+
+# Fixed dispatch is an independently governed child operation. Projection
+# visibility may require a direct-call seal, but cannot poison the base
+# dispatcher path for the same Ability.
+for marker in [
+    "governed_child_permit_matches( $name, $input )",
+    "with_governed_child( $ability_name, $params, $execute_target, 'fixed_dispatch' )",
+]:
+    if marker not in (FENCE + ABILITIES):
+        raise SystemExit("fixed-dispatch/projection isolation guard missing: " + marker)

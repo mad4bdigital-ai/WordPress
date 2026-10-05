@@ -1,5 +1,6 @@
 """Prove behavioral CI rejects representative regressions, not just marker loss."""
 from pathlib import Path
+import runpy
 import shutil
 import subprocess
 import tempfile
@@ -27,9 +28,9 @@ mutations = [
     ('write execution observation cleanup removed', 'class-mad4b-scp-abilities.php', "MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );", '/* execution observation cleanup removed */', 'gateway-regression-runtime.php'),
     ('context receipt byte budget removed', 'class-mad4b-scp-abilities.php', "strlen( $receipt_json ) > $receipt_budget", 'false', 'gateway-regression-runtime.php'),
     ('context receipt issuer budget removed', 'class-mad4b-scp-context-preflight.php', "strlen( $encoded_receipt ) > self::MAX_RECEIPT_TRANSPORT_BYTES", 'false', 'context-preflight-runtime.php'),
-    ('context receipt HMAC verification removed', 'class-mad4b-scp-context-preflight.php', "! hash_equals( self::receipt_signature( $expected_digest ), $signature )", 'false', 'context-preflight-runtime.php'),
+    ('context receipt purpose-bound signature verification removed', 'class-mad4b-scp-context-preflight.php', "MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose( $signature, $expected_digest, self::RECEIPT_CRYPTO_PURPOSE )", "array( 'valid'=>true )", 'context-preflight-runtime.php'),
     ('classification canonical ordering removed', 'class-mad4b-scp-ability-contract-inspector.php', "sort( $keys, SORT_STRING );", '/* canonical ordering removed */', 'ability-contract-inspector-runtime.php'),
-    ('receipt signature ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( hash_hmac( 'sha256', $parts[1], self::key() ), $parts[2] )", 'false', 'preparation-receipt-runtime.php'),
+    ('preparation receipt purpose-bound signature verification removed', 'class-mad4b-scp-preparation-receipt.php', "MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose( $signature, $digest, self::CRYPTO_PURPOSE )", "array( 'valid'=>true )", 'preparation-receipt-runtime.php'),
     ('receipt expiry ignored', 'class-mad4b-scp-preparation-receipt.php', "$p['expires_at'] <= $now", 'false', 'preparation-receipt-runtime.php'),
     ('receipt nonce requirement removed', 'class-mad4b-scp-preparation-receipt.php', "! isset( $p['nonce'] ) || ! is_string( $p['nonce'] ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $p['nonce'] )", 'false', 'preparation-receipt-runtime.php'),
     ('receipt subject ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $p['authority_scope_sha256'] )", 'false', 'preparation-receipt-runtime.php'),
@@ -44,11 +45,18 @@ mutations = [
     ('not-started execution-entry proof ignored', 'class-mad4b-scp-execution-state-view.php', "'not_started' === $mutation_state && $target_execution_known && false === $target_execution_entered", "'not_started' === $mutation_state", 'execution-state-view-runtime.php'),
     ('cron cleanup omitted', 'class-mad4b-scp-catalog-lifecycle.php', "wp_clear_scheduled_hook( 'mad4b_catalog_gc' );", '/* omitted */', 'catalog-lifecycle-runtime.php'),
 ]
-files = ['class-mad4b-scp-execution-state-view.php', 'class-mad4b-scp-identifiers.php', 'class-mad4b-scp-identity-context.php', 'class-mad4b-scp-context-preflight.php', 'class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-mcp-adapter-compatibility.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
+files = ['class-mad4b-scp-execution-state-view.php', 'class-mad4b-scp-identifiers.php', 'class-mad4b-scp-identity-context.php', 'class-mad4b-scp-context-preflight.php', 'class-mad4b-scp-semantic-content-field-contracts.php', 'class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-canonicalization.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-entropy.php', 'class-mad4b-scp-crypto-profile.php', 'class-mad4b-scp-time-policy.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-projection-hotset-recommender.php', 'class-mad4b-scp-mcp-adapter-compatibility.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
 with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
     target = Path(tmp)
     (target / 'includes').mkdir()
     (target / 'tests').mkdir()
+    (target / 'config').mkdir()
+    for config_name in (
+        'semantic-content-field-contracts.json',
+        'crypto-profiles.json',
+        'time-policy.json',
+    ):
+        shutil.copy2(root / 'config' / config_name, target / 'config' / config_name)
     for test in {m[4] for m in mutations}:
         shutil.copy2(root / 'tests' / test, target / 'tests' / test)
     for name in files:
@@ -75,3 +83,24 @@ with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
         assert 'syntax error' not in result.stderr.lower(), f'Mutation only caused syntax failure: {label}'
         print(f'KILLED {label}')
 print(f'PASS {len(mutations)} representative regression mutations rejected')
+runpy.run_path(str(root / 'tests' / 'capability-fabric-bulk-hardening-contract.py'), run_name='__main__')
+
+
+# Runtime compatibility is intentionally exercised without changing the
+# baseline-owned workflow. These fixtures run in isolated PHP processes so
+# WP_CLI and DOING_CRON constants can be proven independently.
+for compatibility_fixture in (
+    'runtime-compatibility-profile-runtime.php',
+    'runtime-compatibility-profile-cron.php',
+):
+    result = subprocess.run(
+        ['php', str(root / 'tests' / compatibility_fixture)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, (
+        f'Runtime compatibility fixture failed: {compatibility_fixture}: '
+        f'{result.stdout}\n{result.stderr}'
+    )
+    print(result.stdout.strip())

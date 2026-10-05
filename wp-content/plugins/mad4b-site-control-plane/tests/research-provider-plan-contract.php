@@ -15,6 +15,22 @@ class WP_Error{
 }
 
 $GLOBALS['research_governance_mode']='ok';
+final class MAD4B_SCP_Provider_Execution_Binding {
+ public static function bind($input=array()){
+  if(empty($input['capability_id'])) return new WP_Error('mad4b_provider_binding_capability_invalid','missing capability');
+  return array(
+   'contract'=>'mad4b.provider-execution-binding.v1',
+   'provider_id'=>$input['provider_id'],
+   'capability_id'=>$input['capability_id'],
+   'provider_profile_fingerprint'=>str_repeat('d',64),
+   'capability_certification_fingerprint'=>str_repeat('e',64),
+   'descriptor_generation_sha256'=>str_repeat('1',64),
+   'provider_release_ring'=>isset($input['release_ring'])?$input['release_ring']:'shadow',
+   'binding_sha256'=>str_repeat('2',64),
+   'authorizing'=>false,'mutation_performed'=>false,
+  );
+ }
+}
 final class MAD4B_SCP_Data_Governance {
  public static function validate_decision_artifact($job,$artifact,$provider,$allowed=array('ALLOW','REDACT_THEN_ALLOW')){
   $mode=$GLOBALS['research_governance_mode'];
@@ -44,16 +60,26 @@ $input=array(
  'request_sha256'=>str_repeat('f',64),
  'data_governance_artifact_id'=>'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
  'purpose'=>'research',
+ 'capability_id'=>'search.observe',
+ 'release_ring'=>'shadow',
 );
 $plan=MAD4B_SCP_Research_Intelligence::provider_plan($input);
 $check(is_array($plan),'valid governance-bound research plan failed');
 $check('mad4b.research-provider-plan.v1'===$plan['contract'],'plan contract mismatch');
 $check(true===$plan['execution_ready'],'valid plan not execution ready');
+$check('search.observe'===$plan['capability_id'],'capability identity not bound');
+$check(str_repeat('2',64)===$plan['provider_binding_sha256'],'provider capability/certification binding not committed');
 $check(str_repeat('a',64)===$plan['data_governance_fingerprint'],'decision fingerprint not bound');
 $check(str_repeat('b',64)===$plan['rights_summary_fingerprint'],'rights fingerprint not bound');
 $check(str_repeat('c',64)===$plan['processor_profile_fingerprint'],'processor fingerprint not bound');
 $check(false===$plan['provider_execution_performed'] && false===$plan['authorizing'],'plan executed/authorized provider');
 $check(1===preg_match('/^[a-f0-9]{64}$/',$plan['plan_sha256']),'plan digest invalid');
+
+$unbound=$input;
+unset($unbound['capability_id']);
+$unbound_plan=MAD4B_SCP_Research_Intelligence::provider_plan($unbound);
+$check(is_array($unbound_plan) && false===$unbound_plan['execution_ready'],'unbound provider plan became execution ready');
+$check(in_array('provider_capability_binding_required',$unbound_plan['blockers'],true),'missing provider binding blocker absent');
 
 $GLOBALS['research_governance_mode']='provider_mismatch';
 $r=MAD4B_SCP_Research_Intelligence::provider_plan($input);

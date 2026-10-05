@@ -27,6 +27,30 @@ class MAD4B_SCP_Schema {
 	public static function tables() { return array( 'approvals' => 'wp_mad4b_approvals' ); }
 	public static function critical_ready() { return true; }
 }
+class MAD4B_SCP_Database_Topology {
+	public static function assert_write_ready( $refresh = true ) {
+		return array(
+			'contract' => 'mad4b.database-topology.v1',
+			'ready' => true,
+			'read_your_writes' => true,
+			'server_fingerprint' => str_repeat( 'c', 64 ),
+			'connection_fingerprint' => str_repeat( 'b', 64 ),
+		);
+	}
+	public static function assert_same_writer( array $expected ) {
+		$current = self::assert_write_ready( true );
+		return isset( $expected['connection_fingerprint'] )
+			&& hash_equals( (string) $expected['connection_fingerprint'], (string) $current['connection_fingerprint'] )
+			? $current
+			: new WP_Error( 'mad4b_database_topology_writer_changed', 'Fixture writer changed.' );
+	}
+}
+class MAD4B_SCP_Database_Failure_Semantics {
+	public static function error( $code, $message, $phase, $db_error = '', $rollback_verified = null, array $extra = array() ) {
+		return new WP_Error( $code, $message, $extra );
+	}
+}
+
 class MAD4B_SCP_Audit {
 	public static $events = array();
 	public static function record( $ability, $summary, $status = 'ok' ) {

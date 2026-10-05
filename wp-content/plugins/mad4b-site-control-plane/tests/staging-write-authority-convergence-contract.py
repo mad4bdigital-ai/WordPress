@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
@@ -110,13 +111,15 @@ for marker in [
 assert "class-mad4b-scp-staging-write-authority-convergence.php" in main
 assert "MAD4B_SCP_Staging_Write_Authority_Convergence::boot();" in main
 
-for marker in [
-    "Version: 0.4.0-rc.91",
-    "MAD4B_SCP_VERSION', '0.4.0-rc.91'",
-]:
-    assert marker in main, marker
-assert "release=0.4.0-rc.91" in runtime_build
-assert "Current plugin version: **0.4.0-rc.91**." in readme
+header = re.search(r"^ \* Version: (0\.4\.0-rc\.[0-9]+)$", main, re.MULTILINE)
+constant = re.search(r"MAD4B_SCP_VERSION', '(0\.4\.0-rc\.[0-9]+)'", main)
+runtime = re.search(r"^release=(0\.4\.0-rc\.[0-9]+)$", runtime_build, re.MULTILINE)
+current = re.search(r"Current plugin version: \*\*(0\.4\.0-rc\.[0-9]+)\*\*\.", readme)
+assert header and constant and runtime and current, "runtime version evidence missing"
+versions = {header.group(1), constant.group(1), runtime.group(1), current.group(1)}
+assert len(versions) == 1, f"runtime version evidence drift: {sorted(versions)}"
+rc = int(next(iter(versions)).rsplit(".", 1)[1])
+assert rc >= 91, "write-only authority convergence requires rc.91 or newer runtime line"
 assert "rc.91 decoupled Staging Write authority" in readme
 
 print("staging write authority convergence contract: PASS")

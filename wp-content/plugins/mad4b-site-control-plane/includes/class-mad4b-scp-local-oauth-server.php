@@ -525,36 +525,71 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 
 	public static function consent_grant_projection() {
-		$plan = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
-			? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()
-			: array();
-		$rows = isset( $plan['rows'] ) && is_array( $plan['rows'] ) ? $plan['rows'] : array();
-		$grants = array();
-		$plan_runtime = array();
-		foreach ( $rows as $row ) {
-			if ( ! is_array( $row ) ) continue;
-			$ability = isset( $row['ability'] ) ? trim( (string) $row['ability'] ) : '';
-			$provider = isset( $row['provider'] ) ? trim( (string) $row['provider'] ) : '';
-			if ( '' !== $ability && ! empty( $row['mounted'] ) ) $plan_runtime[] = $ability;
-			if ( '' === $ability || '' === $provider || empty( $row['mounted'] ) || empty( $row['exact_grant_present'] ) ) continue;
-			$grants[] = array( 'ability' => $ability, 'provider' => $provider );
-		}
-		usort( $grants, static function ( $a, $b ) {
-			return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] );
-		} );
+		// WordPress and provider adapters can finish bounded, request-local Ability
+		// registration lazily while the first authority projection is assembled.
+		// Materialize the catalog first, then compare one exact read-only plan
+		// snapshot with the runtime inventory. If that first snapshot observes a
+		// transient registration boundary, rebuild it once. A persistent mismatch
+		// still remains fail-closed below.
+		$catalog_snapshot = static function () {
+			$catalog = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::external_write_tools() : array();
+			$runtime = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
+			$blocked = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
+			$governance_gated = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'governance_gated_write_tools' )
+				? MAD4B_SCP_Servers::governance_gated_write_tools()
+				: array();
+			$catalog = array_values( array_unique( array_map( 'strval', is_array( $catalog ) ? $catalog : array() ) ) );
+			$runtime = array_values( array_unique( array_map( 'strval', is_array( $runtime ) ? $runtime : array() ) ) );
+			sort( $catalog, SORT_STRING );
+			sort( $runtime, SORT_STRING );
+			return array(
+				'catalog' => $catalog,
+				'runtime' => $runtime,
+				'blocked' => is_array( $blocked ) ? $blocked : array(),
+				'governance_gated' => is_array( $governance_gated ) ? $governance_gated : array(),
+			);
+		};
+		$plan_snapshot = static function () {
+			$plan = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
+				? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()
+				: array();
+			$rows = isset( $plan['rows'] ) && is_array( $plan['rows'] ) ? $plan['rows'] : array();
+			$grants = array();
+			$plan_runtime = array();
+			foreach ( $rows as $row ) {
+				if ( ! is_array( $row ) ) continue;
+				$ability = isset( $row['ability'] ) ? trim( (string) $row['ability'] ) : '';
+				$provider = isset( $row['provider'] ) ? trim( (string) $row['provider'] ) : '';
+				if ( '' !== $ability && ! empty( $row['mounted'] ) ) $plan_runtime[] = $ability;
+				if ( '' === $ability || '' === $provider || empty( $row['mounted'] ) || empty( $row['exact_grant_present'] ) ) continue;
+				$grants[] = array( 'ability' => $ability, 'provider' => $provider );
+			}
+			usort( $grants, static function ( $a, $b ) {
+				return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] );
+			} );
+			$plan_runtime = array_values( array_unique( array_map( 'strval', $plan_runtime ) ) );
+			sort( $plan_runtime, SORT_STRING );
+			return array( 'plan' => $plan, 'rows' => $rows, 'grants' => $grants, 'plan_runtime' => $plan_runtime );
+		};
 
-		$catalog = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::external_write_tools() : array();
-		$runtime = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
-		$blocked = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
-		$governance_gated = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'governance_gated_write_tools' )
-			? MAD4B_SCP_Servers::governance_gated_write_tools()
-			: array();
-		$catalog = array_values( array_unique( array_map( 'strval', is_array( $catalog ) ? $catalog : array() ) ) );
-		$runtime = array_values( array_unique( array_map( 'strval', is_array( $runtime ) ? $runtime : array() ) ) );
-		$plan_runtime = array_values( array_unique( array_map( 'strval', $plan_runtime ) ) );
-		sort( $catalog, SORT_STRING );
-		sort( $runtime, SORT_STRING );
-		sort( $plan_runtime, SORT_STRING );
+		// First call is an intentional request-local materialization pass.
+		$catalog_snapshot();
+		$planned = $plan_snapshot();
+		$observed = $catalog_snapshot();
+		$initial_count = isset( $planned['plan']['write_tool_count'] ) ? (int) $planned['plan']['write_tool_count'] : count( $observed['runtime'] );
+		if ( $initial_count !== count( $observed['runtime'] ) || $planned['plan_runtime'] !== $observed['runtime'] ) {
+			$planned = $plan_snapshot();
+			$observed = $catalog_snapshot();
+		}
+
+		$plan = $planned['plan'];
+		$rows = $planned['rows'];
+		$grants = $planned['grants'];
+		$plan_runtime = $planned['plan_runtime'];
+		$catalog = $observed['catalog'];
+		$runtime = $observed['runtime'];
+		$blocked = $observed['blocked'];
+		$governance_gated = $observed['governance_gated'];
 
 		$blocked_rows = array_values( is_array( $blocked ) ? $blocked : array() );
 		$blocked_abilities = array();

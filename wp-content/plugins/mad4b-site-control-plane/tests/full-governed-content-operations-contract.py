@@ -9,8 +9,16 @@ translation = adapters / "class-mad4b-scp-translation-bridge-adapter.php"
 provider = adapters / "class-mad4b-scp-native-provider-bridge-adapter.php"
 jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
+semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
+experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
+experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
+experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
+descriptor = root / "includes" / "class-mad4b-scp-capability-descriptor-registry.php"
+experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.php"
+reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
+plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, servers):
+for path in (base, full, translation, provider, jetengine_client, servers, semantic, experience, experience_governance, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -19,6 +27,14 @@ translation_src = translation.read_text(encoding="utf-8")
 provider_src = provider.read_text(encoding="utf-8")
 jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
+semantic_src = semantic.read_text(encoding="utf-8")
+experience_src = experience.read_text(encoding="utf-8")
+experience_governance_src = experience_governance.read_text(encoding="utf-8")
+experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
+descriptor_src = descriptor.read_text(encoding="utf-8")
+experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
+reversible_src = reversible.read_text(encoding="utf-8")
+plugin_src = plugin.read_text(encoding="utf-8")
 
 for filename, class_name in (
     ("class-mad4b-scp-full-content-operations-adapter.php", "MAD4B_SCP_Full_Content_Operations_Adapter"),
@@ -71,6 +87,192 @@ assert "expected_sha256" in full_src
 assert "expected_object_ids" in full_src
 assert "mad4b_content_sensitive_meta_denied" in full_src
 assert "mad4b_scp_allow_protected_content_meta_write" in full_src
+
+# Content experiences are configuration-driven. A profile created after install
+# materializes a bounded create/update/publish/verify Ability family without
+# adding business-specific PHP branches.
+for token in (
+    "MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' )",
+    "MAD4B_SCP_Content_Experience_Profiles::ability_names( 'content' )",
+    "MAD4B_SCP_Content_Experience_Profiles::ability_definitions()",
+    "MAD4B_SCP_Content_Experience_Profiles::high_impact_abilities()",
+    "MAD4B_SCP_Content_Experience_Profiles::owns_ability",
+    "MAD4B_SCP_Content_Experience_Profiles::capture_reversible_state",
+    "MAD4B_SCP_Content_Experience_Profiles::restore_reversible_state",
+):
+    assert token in full_src, f"dynamic experience adapter integration missing: {token}"
+
+for token in (
+    "mad4b.content-experience-profiles.v1",
+    "content-experience-profile-plan",
+    "content-experience-profile-apply",
+    "create-plan",
+    "create-apply",
+    "update-plan",
+    "update-apply",
+    "publish-plan",
+    "publish-apply",
+    "'verify'",
+    "'helpers'",
+    "profile_routes",
+    "helper_catalog_sha256",
+    "mad4b_scp_content_experience_helper_catalog",
+    "dynamic_routes_are_configuration_driven",
+    "hardcoded_business_content_types",
+    "taxonomy_mode",
+    "authority_sha256",
+    "post_type_immutable",
+    "content-experience-profile-clone-plan",
+    "content-experience-profile-delete-plan",
+    "PROFILE_CLONE_APPLY_ABILITY",
+    "PROFILE_DELETE_APPLY_ABILITY",
+    "high_impact_abilities",
+    "publish_apply",
+    "executor_generation",
+    "migration_required",
+    "helper_bindings",
+    "binding_sha256",
+):
+    assert token in experience_src, f"dynamic content experience registry contract missing: {token}"
+
+for token in (
+    "mad4b.content-experience-operation-plan.v1",
+    "mad4b.content-experience-verify.v1",
+    "mad4b_scp_content_experience_plan_helper",
+    "mad4b_scp_content_experience_apply_helper",
+    "mad4b_scp_content_experience_capture_helper_state",
+    "mad4b_scp_content_experience_restore_helper_state",
+    "mad4b_scp_content_experience_verify_helpers",
+    "wp_insert_post(",
+    "wp_update_post(",
+    "wp_set_object_terms(",
+    "set_post_thumbnail(",
+    "plan_sha256",
+    "creation_binding",
+    "idempotent_replay",
+    "live_update_requires_draft",
+    "sensitive_meta_denied",
+    "protected_meta_denied",
+    "profile_snapshot",
+    "profile_authority_sha256",
+    "AUTHORITY_META",
+    "compensated_error",
+    "mad4b_content_experience_compensation_failed",
+    "mad4b_content_experience_locked_plan_drift",
+    "featured_media_read_denied",
+    "parent_read_denied",
+    "authority_match",
+    "mad4b_content_experience_helper_restore_contract_drift",
+):
+    assert token in experience_runtime_src, f"dynamic content experience execution contract missing: {token}"
+
+for src, label in (
+    (experience_src, "experience-registry"),
+    (experience_governance_src, "experience-governance"),
+    (experience_runtime_src, "experience-runtime"),
+):
+    assert "tours-and-activities" not in src.lower(), f"{label} must not hardcode the ETG tour CPT"
+    assert "mad4b/tour-" not in src.lower(), f"{label} must not hardcode tour routes"
+    assert len(src.splitlines()) <= 900, f"{label} exceeds the new domain-service 900-line budget"
+
+assert "MAX_PROFILES = 64" in experience_src
+assert "MAX_HELPERS = 32" in experience_src
+
+# Profile semantics are immutable authority: descriptor generation + revision-bound
+# executor names prevent an existing grant from silently widening after reconfiguration.
+for token in (
+    "authority_payload",
+    "authority_sha256",
+    "validate_snapshot",
+    "current_guard",
+    "descriptor_roots",
+    "acquire_lock",
+    "mad4b_content_experience_target_busy",
+    "helper_binding_guard",
+    "mad4b_content_experience_helper_binding_drift",
+):
+    assert token in experience_governance_src, f"content-experience governance hardening missing: {token}"
+assert "mad4b_scp_capability_descriptor_generation_roots" in descriptor_src
+assert "extension_roots" in descriptor_src
+assert "'r' . $generation . '-'" in experience_src
+assert "profile_routes( $slug, $revision = 0 )" in experience_src
+assert "'safe_defaults' => array( 'meta_mode' => 'allowlist', 'taxonomy_mode' => 'allowlist'" in experience_src
+
+# Apply annotations are exact: only create replay is idempotent. Update/publish and
+# profile lifecycle mutations require new state/revision after a successful apply.
+assert "$idempotent = $readonly || ( 'apply' === $phase && 'create' === $operation )" in experience_src
+assert experience_src.count("'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false") >= 3
+
+# Real disposable WordPress/MySQL proof is chained into Runtime Integration.
+for token in (
+    "register_post_type( 'mad4b_ci_trip'",
+    "mad4b_content_experience_target_busy",
+    "mad4b_compensation",
+    "post_type_immutable",
+    "-r2-update-apply",
+    "profile_clone_plan",
+    "profile_delete_plan",
+    "authority_match",
+    "MAD4B_SCP_Capability_Descriptor_Registry::binding",
+    "content_experience_profile",
+    "annotations']['idempotent",
+):
+    assert token in experience_runtime_smoke_src, f"content-experience runtime E2E proof missing: {token}"
+assert "runtime-content-experience-smoke.php" in (root / "tests" / "runtime-reversible-mutation-smoke.php").read_text(encoding="utf-8")
+
+# Publish status transition must follow helper execution, not precede it.
+helper_pos = experience_runtime_src.index("apply_helpers( $profile, $operation")
+publish_transition_pos = experience_runtime_src.index("wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] )", helper_pos)
+assert helper_pos < publish_transition_pos, "publish transition must occur after helper success"
+
+# Dynamic routes participate in Brand Context semantics without static route names.
+for token in (
+    "brand_bearing_mutation_abilities",
+    "semantic_contract_for_ability",
+    "dynamic_profile_contract",
+):
+    assert token in experience_src, f"dynamic semantic binding missing: {token}"
+for token in (
+    "MAD4B_SCP_Content_Experience_Profiles::brand_bearing_mutation_abilities()",
+    "MAD4B_SCP_Content_Experience_Profiles::semantic_contract_for_ability",
+):
+    assert token in semantic_src, f"semantic registry dynamic profile support missing: {token}"
+
+# Any provider adapter may add helper options, but external helpers must bind to
+# one exact certified provider Ability and implement the reversible helper lifecycle.
+for token in (
+    "content_experience_helpers",
+    "plan_content_experience_helper",
+    "apply_content_experience_helper",
+    "capture_content_experience_helper_state",
+    "restore_content_experience_helper_state",
+    "verify_content_experience_helper",
+):
+    assert token in base_src, f"adapter content-experience helper contract missing: {token}"
+for token in (
+    "MAD4B_SCP_Adapter_Registry::instance()",
+    "certification_ability",
+    "helper_adapter_required",
+    "helper_certification_required",
+):
+    assert token in experience_src, f"experience helper registry hardening missing: {token}"
+for token in (
+    "helper_mutation_guard",
+    "MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard",
+    "MAD4B_SCP_Provider_Contracts::mutation_guard",
+):
+    assert token in experience_runtime_src, f"experience helper provider certification missing: {token}"
+
+assert "class-mad4b-scp-content-experience-profiles.php" in plugin_src
+assert "class-mad4b-scp-content-experience-runtime.php" in plugin_src
+
+# Dynamic callbacks remain inside the same durable reversible envelope. The
+# callback itself is never persisted; only the ability name and rollback state are.
+assert "is_string( $method ) ? array( $this, $method ) : $method" in base_src
+assert "is_string( $method ) ? array( $adapter, $method ) : $method" in reversible_src
+assert "is_callable( $execute_callback )" in base_src
+assert "is_callable( $callable )" in reversible_src
+assert "call_user_func( $callable, $input )" in reversible_src
 
 for ability in (
     "mad4b/translation-status",
@@ -202,6 +404,10 @@ for src, label in (
     (translation_src, "translation"),
     (provider_src, "provider-bridge"),
     (jetengine_client_src, "jetengine-mcp-client"),
+    (experience_src, "content-experience-registry"),
+    (experience_governance_src, "content-experience-governance"),
+    (experience_runtime_src, "content-experience-runtime"),
+    (descriptor_src, "capability-descriptor"),
 ):
     assert "$wpdb" not in src, f"{label} must not use direct SQL"
     assert "database-raw-query" not in src, f"{label} must not expose raw SQL"

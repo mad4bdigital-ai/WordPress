@@ -1,0 +1,166 @@
+{
+  "contract": "mad4b.production-readiness-policy.v2",
+  "authorizing": false,
+  "ready_is_not_authorized": true,
+  "documentation_cannot_self_authorize": true,
+  "production_auto_apply": false,
+  "certification_environment": "staging",
+  "target_environment": "production",
+  "required_blocking_priorities": [
+    "KERNEL_BLOCKER",
+    "LIVE_PRECONDITION"
+  ],
+  "non_blocking_maturity_priorities": [
+    "MATURITY_REQUIRED",
+    "DEFERRED_MATURITY"
+  ],
+  "required_repository_workflows": [
+    "Feature 007 Spec Quality CI",
+    "Feature 007 Critical Kernel",
+    "Feature 007 Pre-Staging Hybrid Audit",
+    "MAD4B Provider Compatibility Engine",
+    "MAD4B MCP Client Compatibility",
+    "MAD4B Dynamic Skills",
+    "MAD4B Local OAuth Standalone",
+    "MAD4B Runtime Release Set",
+    "MAD4B Rollback Retention Receipt",
+    "MAD4B Release Verdict"
+  ],
+  "required_live_evidence": [
+    {
+      "gate": "etg_exact_runtime_release_deployed",
+      "source": ".github/workflows/mad4b-etg-deployment-readiness.yml",
+      "contract": "mad4b.etg-deployment-readiness.v1",
+      "mutation_performed": false
+    },
+    {
+      "gate": "protected_backup_recovery_ready",
+      "source": "tools/mad4b_recovery_plane.py",
+      "contracts": [
+        "mad4b.protected-backup-receipt.v1",
+        "mad4b.protected-backup-restore-receipt.v1"
+      ],
+      "environment": "staging"
+    },
+    {
+      "gate": "recovery_live_verified",
+      "source": "tools/mad4b_recovery_plane.py",
+      "environment": "staging"
+    },
+    {
+      "gate": "critical_kernel_vertical_slice_verified",
+      "source": "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+      "environment": "staging"
+    }
+  ],
+  "safety_invariants": {
+    "production_authorized_before_promotion": false,
+    "breakglass_widened": false,
+    "generic_shell_authorized": false,
+    "generic_raw_sql_authorized": false,
+    "exact_runtime_identity_required": true,
+    "rollback_retention_required": true,
+    "owner_attestation_required": true,
+    "one_time_production_approval_required": true,
+    "stale_on_descendant": true,
+    "caller_supplied_readiness_not_authoritative": true,
+    "exact_producer_contract_required": true,
+    "fresh_evidence_attestation_required": true,
+    "runtime_recompute_for_local_evidence": true,
+    "structural_prevalidation_never_authoritative": true
+  },
+  "promotion": {
+    "mode": "explicit_governed_promotion_only",
+    "source_of_readiness": "exact_head_repository_and_live_evidence",
+    "fresh_evidence_required": true,
+    "production_mutation_during_readiness": false,
+    "activation_requires_separate_authorization": true,
+    "evidence_trust_contract": "mad4b.production-evidence-trust.v1",
+    "evidence_attestation_contract": "mad4b.production-evidence-attestation.v1",
+    "evidence_crypto_purpose": "production_evidence",
+    "evidence_signer_role": "production_evidence_attestor",
+    "canonical_runtime_verdict_required": true,
+    "promotion_attestation_contract": "mad4b.production-promotion-attestation.v1",
+    "promotion_trust_mode": "verified_production_external_chatgpt_session",
+    "one_time_binding": "site_profile_revision_digest_transition",
+    "production_unchanged_receipt_required": true,
+    "site_profile_activation_surface": "mad4b/site-profile-write-enable",
+    "production_repair_via_activation_surface": false,
+    "staging_promotion_proof_contract": "mad4b.staging-readiness-promotion-proof.v1",
+    "staging_promotion_proof_purpose": "production_promotion_staging_readiness",
+    "shared_deployment_binding_required": true,
+    "self_declared_staging_verdict_authoritative": false
+  },
+  "default_profile": "control_plane_core",
+  "profiles": {
+    "control_plane_core": {
+      "contract": "mad4b.production-readiness-profile.v1",
+      "description": "Production readiness for the governed Control Plane runtime. Optional Feature 007 capabilities remain disabled/fail-closed until separately live-certified.",
+      "required_workstream_ids": [
+        "governed_tool_execution",
+        "protected_backup_recovery",
+        "etg_exact_runtime_release_deployment",
+        "runtime_root_trust_readback",
+        "recovery_live_drill",
+        "provider_side_channel",
+        "multi_authority_live",
+        "policy_engine",
+        "authoritative_consistency_fencing",
+        "security_ai_eval_faults",
+        "operator_doctor_dlq",
+        "formal_state_proof",
+        "etg_vertical_slice"
+      ],
+      "optional_workstream_ids": [
+        "bitflows_1_29_exact_certification",
+        "capability_traits",
+        "site_bootstrap",
+        "intent_registry",
+        "content_job_domain",
+        "artifact_registry_store",
+        "context_writer",
+        "research_competitive",
+        "blueprint_draft_qa",
+        "governed_wp_draft",
+        "semantic_publication_verification"
+      ],
+      "optional_capability_policy": "disabled_and_fail_closed_until_live_certified",
+      "optional_workstream_status_does_not_authorize": true,
+      "full_feature_complete_claim": false
+    },
+    "full_feature007": {
+      "contract": "mad4b.production-readiness-profile.v1",
+      "description": "Production readiness for the complete Feature 007 capability set.",
+      "required_blocking_priorities": [
+        "KERNEL_BLOCKER",
+        "LIVE_PRECONDITION"
+      ],
+      "optional_workstream_ids": [],
+      "optional_capability_policy": "none",
+      "full_feature_complete_claim": true
+    }
+  },
+  "required_fail_closed_repository_evidence": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-production-smoke.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-runtime.php"
+  ],
+  "release_closure": {
+    "contract": "mad4b.production-release-closure.v1",
+    "scope_freeze_contract": "mad4b.feature007-release-scope-freeze.v1",
+    "readiness_projection_ref": "specs/007-content-intelligence-workflow-platform/release-closure-readiness.json",
+    "task_ledger_ratio_is_authoritative_readiness": false,
+    "operator_control_center_contract": "mad4b.operator-control-center.v1",
+    "operator_control_center_ability": "mad4b/operator-control-center",
+    "external_machine_diagnostic_policy_ref": "config/external-machine-diagnostic-policy.json",
+    "external_edge_challenge_never_counts_as_acceptance": true,
+    "live_evidence_cannot_be_closed_by_repository_change": true,
+    "new_capability_families_require_separate_pr": true,
+    "authorizing": false,
+    "performance_validation_contract": "mad4b.feature007-performance-validation.v1",
+    "live_etg_performance_evidence_required": true,
+    "repository_performance_evidence_cannot_substitute_live_etg": true,
+    "reviewability_contract": "mad4b.feature007-reviewability.v1",
+    "max_change_slice_files": 35
+  }
+}

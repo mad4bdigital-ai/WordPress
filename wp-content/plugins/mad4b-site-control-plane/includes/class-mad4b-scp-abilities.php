@@ -7,6 +7,21 @@ final class MAD4B_SCP_Abilities {
 	const MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536;
 	private static $write_dispatch_governance_envelope = array();
 	private static $write_dispatch_governance_binding = '';
+	private static function request_scope_admit( $surface ) {
+		if ( ! class_exists( 'MAD4B_SCP_Request_Generation' ) ) return true;
+		return MAD4B_SCP_Request_Generation::admit( $surface );
+	}
+	public static function request_scope_state() {
+		return array(
+			'write_governance_envelope_pending' => ! empty( self::$write_dispatch_governance_envelope ),
+			'write_governance_binding_pending' => '' !== self::$write_dispatch_governance_binding,
+		);
+	}
+	public static function reset_request_cache() {
+		self::$write_dispatch_governance_envelope = array();
+		self::$write_dispatch_governance_binding = '';
+		return true;
+	}
 	public function register_categories() {
 		foreach (
 			array(
@@ -63,6 +78,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'preparation_receipt' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 4096 ),
+				'idempotency_key' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
 				'_mad4b_approval_ticket_id' => array( 'type' => 'string', 'pattern' => MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN ),
 				'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
@@ -351,6 +367,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function tool_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$items = array();
@@ -392,6 +410,10 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function read_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
+		$request_scope = self::request_scope_admit( 'read_execute' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_read_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -406,13 +428,20 @@ final class MAD4B_SCP_Abilities {
 		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
+		$execute_target = static function () use ( $ability, $params ) {
+			return $ability->execute( $params );
+		};
 		$execution = MAD4B_SCP_Connector_Resilience::execute_read(
 			$ability_name,
-			static function () use ( $ability, $params ) {
-				return $ability->execute( $params );
+			static function () use ( $ability_name, $params, $execute_target ) {
+				if ( class_exists( 'MAD4B_SCP_Execution_Fence' ) && MAD4B_SCP_Execution_Fence::has_active_frame() ) {
+					return MAD4B_SCP_Execution_Fence::with_governed_child( $ability_name, $params, $execute_target, 'fixed_dispatch' );
+				}
+				return call_user_func( $execute_target );
 			}
 		);
 		if ( is_wp_error( $execution ) ) return $execution;
+		if ( class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) MAD4B_SCP_Projection_Hotset_Recommender::record_usage( $ability_name, 'fixed_dispatch' );
 		return array(
 			'contract' => 'mad4b.chatgpt-read-execute.v1',
 			'input_schema_sha256' => $actual_schema_sha256,
@@ -443,6 +472,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function can_developer_dispatch( $input = null ) {
+		$request_scope = self::request_scope_admit( 'can_developer_dispatch' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_developer_dispatch_request_invalid', 'Developer dispatch requires an exact target and schema digest.' );
 		$ability = $this->governed_developer_target( $input['ability_name'] );
@@ -458,6 +489,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function developer_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 20, absint( $input['limit'] ) ) ) : 10;
 		$items = array();
@@ -527,6 +560,10 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function developer_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
+		$request_scope = self::request_scope_admit( 'developer_execute' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_developer_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -548,7 +585,8 @@ final class MAD4B_SCP_Abilities {
 			return MAD4B_SCP_Transport_Context::with_developer_dispatch_target(
 				$ability_name,
 				$actual_schema_sha256,
-				static function () use ( $ability, $params ) { return $ability->execute( $params ); }
+				static function () use ( $ability, $params ) { return $ability->execute( $params ); },
+				$params
 			);
 		};
 
@@ -575,7 +613,7 @@ final class MAD4B_SCP_Abilities {
 		$required = array( 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' );
 		foreach ( $required as $key ) {
 			if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] ) || '' === $input[ $key ] ) {
-				return new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepare the target again and supply its exact signed preparation identity.' );
+				return class_exists( 'MAD4B_SCP_Legacy_Dispatch_Migration' ) ? MAD4B_SCP_Legacy_Dispatch_Migration::deny( 'fixed_dispatch', 'missing_prepared_identity', $ability_name ) : new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepare the target again and supply its exact signed preparation identity.' );
 			}
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
@@ -585,7 +623,7 @@ final class MAD4B_SCP_Abilities {
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_classification_sha256'] )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_authority_scope_sha256'] )
 			|| strlen( $input['preparation_receipt'] ) > MAD4B_SCP_Preparation_Receipt::MAX_BYTES ) {
-			return new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepared execution identity is malformed; prepare the target again.' );
+			return class_exists( 'MAD4B_SCP_Legacy_Dispatch_Migration' ) ? MAD4B_SCP_Legacy_Dispatch_Migration::deny( 'fixed_dispatch', 'malformed_prepared_identity', $ability_name ) : new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepared execution identity is malformed; prepare the target again.' );
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
 			|| ! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $input['expected_authority_scope_sha256'] ) ) {
@@ -634,6 +672,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function can_write_dispatch( $input = null ) {
+		$request_scope = self::request_scope_admit( 'can_write_dispatch' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write target and prepared schema identity are required.' );
@@ -653,6 +693,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function write_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$items = array();
@@ -863,6 +905,10 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function write_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
+		$request_scope = self::request_scope_admit( 'write_execute' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -905,6 +951,41 @@ final class MAD4B_SCP_Abilities {
 			if ( is_wp_error( $planner_preflight ) ) return $this->approval_plan_dispatch_preflight_failure( $planner_preflight );
 		}
 
+		if ( ! class_exists( 'MAD4B_SCP_Replay_Policy' ) ) {
+			return new WP_Error( 'mad4b_replay_policy_unavailable', 'Preparation replay policy is unavailable.' );
+		}
+		$replay_provider = class_exists( 'MAD4B_SCP_Servers' )
+			? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability_name )
+			: null;
+		if ( ! is_string( $replay_provider ) || '' === $replay_provider ) {
+			return new WP_Error( 'mad4b_replay_provider_unavailable', 'Canonical provider identity is unavailable for replay classification.' );
+		}
+		$replay_idempotency_key = isset( $input['idempotency_key'] ) && is_string( $input['idempotency_key'] )
+			? trim( $input['idempotency_key'] )
+			: ( is_array( $params ) && isset( $params['idempotency_key'] ) && is_string( $params['idempotency_key'] ) ? trim( $params['idempotency_key'] ) : '' );
+		$replay_admission = MAD4B_SCP_Replay_Policy::begin(
+			(string) $input['preparation_receipt'],
+			$ability_name,
+			$replay_provider,
+			$params,
+			$replay_idempotency_key
+		);
+		if ( is_wp_error( $replay_admission ) ) return $replay_admission;
+		if ( ! empty( $replay_admission['replayed'] ) ) {
+			$recorded = isset( $replay_admission['dispatch_result'] ) ? $replay_admission['dispatch_result'] : null;
+			if ( is_array( $recorded ) ) {
+				$recorded['replay'] = array(
+					'contract'=>MAD4B_SCP_Replay_Policy::CONTRACT,
+					'replayed'=>true,
+					'mode'=>(string)$replay_admission['mode'],
+					'risk_tier'=>(string)$replay_admission['risk_tier'],
+					'policy_sha256'=>(string)$replay_admission['policy_sha256'],
+					'authorizing'=>false,
+				);
+			}
+			return $recorded;
+		}
+
 		$target_entered = false;
 		if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'begin_execution_callback_observation' ) ) {
 			MAD4B_SCP_Authorization::begin_execution_callback_observation( $ability_name );
@@ -925,7 +1006,8 @@ final class MAD4B_SCP_Abilities {
 							? MAD4B_SCP_Authorization::execution_callback_started( $ability_name )
 							: true;
 					}
-				}
+				},
+				$params
 			);
 		};
 
@@ -1022,7 +1104,7 @@ final class MAD4B_SCP_Abilities {
 				return $execution;
 			}
 		}
-		return array(
+		$dispatch_result = array(
 			'contract' => 'mad4b.chatgpt-write-execute.v1',
 			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
 			'ability_name' => $ability_name,
@@ -1032,7 +1114,18 @@ final class MAD4B_SCP_Abilities {
 			'attempts' => 1,
 			'elapsed_ms' => isset( $execution['elapsed_ms'] ) ? (int) $execution['elapsed_ms'] : 0,
 			'automatic_retry_performed' => false,
+			'replay' => array(
+				'contract'=>MAD4B_SCP_Replay_Policy::CONTRACT,
+				'replayed'=>false,
+				'mode'=>(string)$replay_admission['mode'],
+				'risk_tier'=>(string)$replay_admission['risk_tier'],
+				'policy_sha256'=>(string)$replay_admission['policy_sha256'],
+				'authorizing'=>false,
+			),
 		);
+		$replay_completion = MAD4B_SCP_Replay_Policy::complete( $replay_admission, $dispatch_result );
+		if ( is_wp_error( $replay_completion ) ) return $replay_completion;
+		return $dispatch_result;
 	}
 
 	private function governed_enrollment_target( $ability_name ) {
@@ -1057,6 +1150,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function can_enrollment_dispatch( $input = null ) {
+		$request_scope = self::request_scope_admit( 'can_enrollment_dispatch' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
 		$allowed = MAD4B_SCP_Enrollment_Dispatch::can_execute( $input );
 		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
@@ -1068,6 +1163,8 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function enrollment_discover( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'discovery', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Discovery abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
 		return MAD4B_SCP_Enrollment_Dispatch::discover( is_array( $input ) ? $input : array() );
 	}
@@ -1078,6 +1175,10 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function enrollment_execute( $input ) {
+		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
+		if ( is_wp_error( $abuse ) ) return $abuse;
+		$request_scope = self::request_scope_admit( 'enrollment_execute' );
+		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$allowed = $this->can_enrollment_dispatch( $input );

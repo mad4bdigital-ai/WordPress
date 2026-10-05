@@ -1,0 +1,83 @@
+{
+  "contract": "mad4b.feature007-production-readiness.v2",
+  "policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json",
+  "implementation_closure_ref": "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+  "readiness_semantics": {
+    "repository_candidate_requires_all_required_workflows_success": true,
+    "live_candidate_requires_all_blocking_workstreams_done": true,
+    "exact_etg_runtime_identity_required": true,
+    "protected_backup_and_restore_rehearsal_required": true,
+    "recovery_live_drill_required": true,
+    "complete_vertical_slice_required": true,
+    "ready_is_not_authorized": true,
+    "profile_specific_blockers_required": true,
+    "optional_capability_failure_must_not_widen_core_authority": true,
+    "repository_evidence_binding_mode": "ci_runtime_exact_head",
+    "persisted_repository_run_ids_are_historical_only": true,
+    "current_ci_success_is_repository_evidence": true,
+    "documentation_cannot_mark_current_ci_success": true
+  },
+  "promotion_semantics": {
+    "production_authorized_by_this_document": false,
+    "owner_attestation_required": true,
+    "one_time_production_approval_required": true,
+    "automatic_production_apply": false,
+    "breakglass_or_raw_sql_not_required": true,
+    "promotion_attestation_contract": "mad4b.production-promotion-attestation.v1",
+    "staging_readiness_verdict_contract": "mad4b.production-live-evidence-verdict.v1",
+    "staging_source_contract": "mad4b.external-staging-readiness-observer.v1",
+    "production_trust_mode": "verified_production_external_chatgpt_session",
+    "exact_candidate_binding_required": true,
+    "exact_site_profile_revision_digest_binding_required": true,
+    "production_unchanged_receipt_required": true,
+    "one_time_binding": "site_profile_revision_digest_transition",
+    "activation_surface": "mad4b/site-profile-write-enable",
+    "activation_surface_repair_after_enable": false,
+    "caller_boolean_readiness_accepted": false
+  },
+  "baseline_owned_handoff": [
+    ".github/workflows/mad4b-release-verdict.yml",
+    ".github/workflows/mad4b-etg-deployment-readiness.yml",
+    ".github/workflows/mad4b-runtime-release-set.yml",
+    ".github/workflows/mad4b-rollback-retention-receipt.yml"
+  ],
+  "live_execution_note": "Live Staging evidence must be produced through an already-authorized governed deployment/recovery path. Feature documentation and repository CI cannot manufacture live readiness. Production activation consumes a fresh external Promotion Attestation that carries the exact Staging readiness verdict and Production-unchanged evidence; the attestation is evidence, not authority, and the explicit Production activation confirmation remains separate.",
+  "default_profile": "control_plane_core",
+  "readiness_profiles": {
+    "control_plane_core": {
+      "production_scope": "governed_control_plane_runtime",
+      "full_feature007_complete": false,
+      "optional_capabilities_must_remain_disabled_until_certified": [
+        "bitflows_1_29_exact_certification",
+        "capability_traits",
+        "site_bootstrap",
+        "intent_registry",
+        "content_job_domain",
+        "artifact_registry_store",
+        "context_writer",
+        "research_competitive",
+        "blueprint_draft_qa",
+        "governed_wp_draft",
+        "semantic_publication_verification"
+      ]
+    },
+    "full_feature007": {
+      "production_scope": "complete_feature007_capability_set",
+      "full_feature007_complete": true,
+      "optional_capabilities_must_remain_disabled_until_certified": []
+    }
+  },
+  "release_closure_hardening": {
+    "contract": "mad4b.feature007-release-closure-hardening.v1",
+    "scope_freeze_ref": "feature.json#release_closure_scope_freeze",
+    "readiness_projection_ref": "release-closure-readiness.json",
+    "operator_control_center_contract": "mad4b.operator-control-center.v1",
+    "operator_control_center_ability": "mad4b/operator-control-center",
+    "external_machine_diagnostic_policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/external-machine-diagnostic-policy.json",
+    "developer_golden_path_ref": "wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md",
+    "task_ledger_ratio_is_authoritative_readiness": false,
+    "live_evidence_cannot_be_closed_by_repository_change": true,
+    "production_authorized": false,
+    "authorizing": false
+  }
+}

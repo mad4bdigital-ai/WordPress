@@ -123,14 +123,28 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 
 	public static function dispatch( array $input, $transport = 'internal' ) {
+		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
+			$request_scope = MAD4B_SCP_Request_Generation::admit( 'capability_gateway' );
+			if ( is_wp_error( $request_scope ) ) return $request_scope;
+		}
 		$valid = self::validate_input( $input );
 		if ( is_wp_error( $valid ) ) return $valid;
 		$permission = self::can_read_rest();
 		if ( is_wp_error( $permission ) ) return $permission;
 		$action = isset( $input['action'] ) ? sanitize_key( (string) $input['action'] ) : 'negotiate';
 		if ( 'negotiate' === $action ) $result = self::negotiate( $input, $transport );
-		elseif ( 'search' === $action ) $result = self::search( $input, $transport );
-		elseif ( 'prepare' === $action ) $result = self::prepare( $input, $transport );
+		elseif ( 'search' === $action ) {
+			$call = static function() use ( $input, $transport ) { return self::search( $input, $transport ); };
+			$result = class_exists( 'MAD4B_SCP_Observability' )
+				? MAD4B_SCP_Observability::run_stage( 'discovery', $call, '', array( 'transport'=>$transport, 'gateway_action'=>'search' ) )
+				: $call();
+		}
+		elseif ( 'prepare' === $action ) {
+			$call = static function() use ( $input, $transport ) { return self::prepare( $input, $transport ); };
+			$result = class_exists( 'MAD4B_SCP_Observability' )
+				? MAD4B_SCP_Observability::run_stage( 'preparation', $call, '', array( 'transport'=>$transport, 'gateway_action'=>'prepare' ) )
+				: $call();
+		}
 		elseif ( in_array( $action, array( 'schema', 'chunk' ), true ) ) $result = self::schema_transport( $input, $action, $transport );
 		else return new WP_Error( 'mad4b_capability_gateway_action_invalid', 'Unknown capability gateway action.' );
 		if ( is_wp_error( $result ) ) return $result;
@@ -504,9 +518,19 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'execution' => self::execution_descriptor( $row ),
 			);
 			if ( class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
-				$entry['preparation_receipt'] = MAD4B_SCP_Preparation_Receipt::issue( $row );
+				$preparation_receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
 				$entry['descriptor_sha256'] = $row['descriptor_sha256'] ?? '';
 				$entry['generation_roots'] = $row['generation_roots'] ?? array();
+				if ( is_wp_error( $preparation_receipt ) || ! is_string( $preparation_receipt ) || '' === $preparation_receipt ) {
+					$entry['preparation_receipt'] = '';
+					$entry['preparation_receipt_ready'] = false;
+					$entry['preparation_receipt_blocker'] = is_wp_error( $preparation_receipt ) ? sanitize_key( (string) $preparation_receipt->get_error_code() ) : 'preparation_receipt_unavailable';
+					$entry['execution_eligible'] = false;
+				} else {
+					$entry['preparation_receipt'] = $preparation_receipt;
+					$entry['preparation_receipt_ready'] = true;
+					$entry['preparation_receipt_blocker'] = '';
+				}
 			}
 			if ( ! $reusable && 'inline' === $schema_mode && strlen( wp_json_encode( $items ) ) + (int) $item['schema_bytes'] + 4096 < $caps['max_response_bytes'] ) {
 				$schema = MAD4B_SCP_Ability_Catalog_Transport::handle( array( 'transport_action' => 'schema', 'snapshot' => $prepared['snapshot'], 'schema_sha256' => $digest ) );

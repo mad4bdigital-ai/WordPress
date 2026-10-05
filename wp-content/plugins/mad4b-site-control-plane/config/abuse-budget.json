@@ -1,0 +1,42 @@
+{
+  "contract": "mad4b.abuse-budget.v1",
+  "window_seconds": 60,
+  "surfaces": {
+    "discovery": {
+      "requests_per_window": 600,
+      "max_total_bytes": 65536,
+      "max_depth": 8,
+      "max_nodes": 800,
+      "max_string_bytes": 8192,
+      "max_metadata_bytes": 16384,
+      "max_schema_properties": 128,
+      "max_schema_alternatives": 32,
+      "max_search_terms": 32,
+      "max_regex_metacharacters": 24
+    },
+    "prepare": {
+      "requests_per_window": 300,
+      "max_total_bytes": 524288,
+      "max_depth": 14,
+      "max_nodes": 6000,
+      "max_string_bytes": 65536,
+      "max_metadata_bytes": 131072,
+      "max_schema_properties": 1024,
+      "max_schema_alternatives": 128,
+      "max_search_terms": 64,
+      "max_regex_metacharacters": 48
+    },
+    "execute": {
+      "requests_per_window": 240,
+      "max_total_bytes": 1048576,
+      "max_depth": 16,
+      "max_nodes": 10000,
+      "max_string_bytes": 131072,
+      "max_metadata_bytes": 262144,
+      "max_schema_properties": 2048,
+      "max_schema_alternatives": 256,
+      "max_search_terms": 64,
+      "max_regex_metacharacters": 48
+    }
+  }
+}

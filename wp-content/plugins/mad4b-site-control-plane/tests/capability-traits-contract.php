@@ -11,6 +11,29 @@ function sanitize_key( $value ) {
 function sanitize_text_field( $value ) { return trim( (string) $value ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 
+final class MAD4B_SCP_Capability_Descriptor_Registry {
+	const CONTRACT = 'mad4b.capability-descriptor.v2';
+	const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
+	public static $generation = 'generation-a';
+	public static function binding( $name, $consumer ) {
+		$name = (string) $name;
+		$root = hash( 'sha256', self::$generation . ':' . $name );
+		return array(
+			'contract' => self::CONSUMER_BINDING_CONTRACT,
+			'consumer' => (string) $consumer,
+			'descriptor_contract' => self::CONTRACT,
+			'generation_contract' => 'mad4b.capability-generation-roots.v1',
+			'ability_name' => $name,
+			'input_schema_sha256' => hash( 'sha256', 'schema:' . $name ),
+			'classification_sha256' => hash( 'sha256', 'classification:' . $name ),
+			'execution_lane' => false !== strpos( $name, 'list' ) || false !== strpos( $name, 'get' ) || false !== strpos( $name, 'status' ) ? 'read' : 'write',
+			'descriptor_sha256' => $root,
+			'generation_roots' => array( 'contract_root' => $root, 'site_root' => str_repeat( 'a', 64 ) ),
+			'authorizing' => false,
+		);
+	}
+}
+
 final class MAD4B_SCP_Provider_Compatibility_Certification {
 	public static function capability_certification( $input = array() ) {
 		$provider = isset( $input['provider_id'] ) ? (string) $input['provider_id'] : '';
@@ -95,9 +118,18 @@ $check( 'none' === $profile['traits']['cancellation'], 'Bit Flows cancellation d
 $check( 'mad4b_guarded' === $profile['traits']['idempotency_model'], 'Bit Flows idempotency declaration mismatch' );
 $check( 'flow_history_readback' === $profile['traits']['callback_model'], 'Bit Flows callback declaration mismatch' );
 $check( 1 === preg_match( '/^[a-f0-9]{64}$/', $profile['profile_fingerprint'] ), 'profile fingerprint invalid' );
+$check( true === $profile['descriptor_binding_ready'], 'capability trait profile did not bind declared Ability descriptors' );
+$check( 1 === preg_match( '/^[a-f0-9]{64}$/', $profile['descriptor_generation_sha256'] ), 'descriptor generation fingerprint invalid' );
+$check( 'none' === $profile['descriptor_authority_effect'], 'descriptor binding widened trait authority' );
+$descriptor_generation_a = $profile['descriptor_generation_sha256'];
 
 $profile2 = MAD4B_SCP_Capability_Traits::profile( 'bit_pi', 'flow.execute' );
 $check( hash_equals( $profile['profile_fingerprint'], $profile2['profile_fingerprint'] ), 'profile fingerprint is non-deterministic' );
+MAD4B_SCP_Capability_Descriptor_Registry::$generation = 'generation-b';
+$profile_drift = MAD4B_SCP_Capability_Traits::profile( 'bit_pi', 'flow.execute' );
+$check( ! hash_equals( $descriptor_generation_a, $profile_drift['descriptor_generation_sha256'] ), 'descriptor generation drift did not change trait profile identity' );
+$check( ! hash_equals( $profile['profile_fingerprint'], $profile_drift['profile_fingerprint'] ), 'trait profile fingerprint ignored descriptor drift' );
+MAD4B_SCP_Capability_Descriptor_Registry::$generation = 'generation-a';
 
 $eligible = MAD4B_SCP_Capability_Traits::resolve( array(
 	'capability_id' => 'flow.execute',

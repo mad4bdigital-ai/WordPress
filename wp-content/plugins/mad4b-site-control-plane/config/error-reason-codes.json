@@ -1,0 +1,141 @@
+{
+  "contract": "mad4b.error-reason-code-registry.v1",
+  "schema_version": 1,
+  "response_contract": "mad4b.error-response.v1",
+  "message_is_contractual": false,
+  "unknown_code_policy": "preserve_reason_code_and_mark_family_unregistered",
+  "evolution_policy": {
+    "additive_fields_backward_compatible": true,
+    "existing_reason_code_semantics_immutable": true,
+    "removals_require_major_schema_version": true,
+    "retry_semantics_are_machine_readable": true
+  },
+  "exact_codes": {
+    "mad4b_runtime_generation_changed": {
+      "family": "runtime_generation",
+      "retry_class": "reprepare_after_worker_recycle",
+      "client_action": "reprepare_and_reapprove"
+    },
+    "mad4b_runtime_worker_recycle_required": {
+      "family": "runtime_generation",
+      "retry_class": "reprepare_after_worker_recycle",
+      "client_action": "recycle_worker_then_reprepare"
+    },
+    "mad4b_remote_work_reconciliation_required": {
+      "family": "remote_work",
+      "retry_class": "reconcile_before_retry",
+      "client_action": "reconcile_provider_state_before_any_retry"
+    },
+    "mad4b_remote_work_cancel_before_provider_entry": {
+      "family": "remote_work",
+      "retry_class": "no_retry",
+      "client_action": "acknowledge_cancellation_no_effect"
+    },
+    "mad4b_crypto_signature_key_revoked": {
+      "family": "crypto",
+      "retry_class": "reprepare",
+      "client_action": "obtain_fresh_receipt"
+    },
+    "mad4b_capability_gateway_input_invalid": {
+      "family": "capability_gateway",
+      "retry_class": "fix_request",
+      "client_action": "fix_request"
+    },
+    "mad4b_write_dispatch_schema_drift": {
+      "family": "dispatch",
+      "retry_class": "reprepare",
+      "client_action": "rediscover_and_reprepare"
+    },
+    "mad4b_read_dispatch_schema_drift": {
+      "family": "dispatch",
+      "retry_class": "reprepare",
+      "client_action": "rediscover_and_reprepare"
+    }
+  },
+  "families": [
+    {
+      "family": "remote_work",
+      "prefix": "mad4b_remote_work_",
+      "retry_class": "inspect_state",
+      "client_action": "follow_machine_readable_error_contract"
+    },
+    {
+      "family": "runtime_generation",
+      "prefix": "mad4b_runtime_",
+      "retry_class": "inspect_state",
+      "client_action": "follow_machine_readable_error_contract"
+    },
+    {
+      "family": "crypto",
+      "prefix": "mad4b_crypto_",
+      "retry_class": "no_blind_retry",
+      "client_action": "obtain_fresh_security_evidence"
+    },
+    {
+      "family": "restore_recovery",
+      "prefix": "mad4b_restore_",
+      "retry_class": "reconcile_before_retry",
+      "client_action": "reconcile_restore_state"
+    },
+    {
+      "family": "provider",
+      "prefix": "mad4b_provider_",
+      "retry_class": "bounded_or_reconcile",
+      "client_action": "follow_provider_recovery_semantics"
+    },
+    {
+      "family": "dispatch",
+      "prefix": "mad4b_write_dispatch_",
+      "retry_class": "inspect_state",
+      "client_action": "follow_dispatch_error_contract"
+    },
+    {
+      "family": "dispatch",
+      "prefix": "mad4b_read_dispatch_",
+      "retry_class": "inspect_state",
+      "client_action": "follow_dispatch_error_contract"
+    },
+    {
+      "family": "dispatch",
+      "prefix": "mad4b_developer_dispatch_",
+      "retry_class": "inspect_state",
+      "client_action": "follow_dispatch_error_contract"
+    },
+    {
+      "family": "dispatch",
+      "prefix": "mad4b_enrollment_dispatch_",
+      "retry_class": "inspect_state",
+      "client_action": "follow_dispatch_error_contract"
+    },
+    {
+      "family": "capability_gateway",
+      "prefix": "mad4b_capability_gateway_",
+      "retry_class": "fix_or_reprepare",
+      "client_action": "follow_gateway_error_contract"
+    },
+    {
+      "family": "database",
+      "prefix": "mad4b_database_",
+      "retry_class": "reconcile_or_fix",
+      "client_action": "follow_database_failure_semantics"
+    },
+    {
+      "family": "approval",
+      "prefix": "mad4b_approval_",
+      "retry_class": "reprepare_or_reapprove",
+      "client_action": "follow_approval_error_contract"
+    },
+    {
+      "family": "replay",
+      "prefix": "mad4b_replay_",
+      "retry_class": "no_blind_retry",
+      "client_action": "follow_replay_error_contract"
+    },
+    {
+      "family": "generic_mad4b",
+      "prefix": "mad4b_",
+      "retry_class": "inspect_state",
+      "client_action": "follow_machine_readable_error_contract"
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+  "contract": "mad4b.adaptive-search-intelligence-review.v1",
+  "status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
+  "authorizing": false,
+  "assessed_contract": "mad4b.adaptive-search-intelligence.v1",
+  "scores": {
+    "architectural_coverage": 92,
+    "clarity": 90,
+    "provider_neutrality": 93,
+    "security_governance": 96,
+    "evidence_integrity": 92,
+    "scheduling_economics": 84,
+    "measurement_correctness": 78,
+    "indexability_surface_correctness": 85,
+    "testability_objective_gates": 82,
+    "operator_experience": 85,
+    "extensibility": 94,
+    "overall": 88
+  },
+  "summary": {
+    "p0_open": 0,
+    "p1_open": 0,
+    "p2_open": 0,
+    "recommendation": "repository_runtime_review_closed_live_provider_account_certification_not_claimed",
+    "p0_closed": 12,
+    "p1_closed": 6
+  },
+  "findings": [
+    {
+      "id": "ASIR-001",
+      "severity": "P0",
+      "title": "observation-comparability-context",
+      "tasks": [
+        "T3861",
+        "T3862"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3861",
+        "task:T3862",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-002",
+      "severity": "P0",
+      "title": "query-canonicalization-versioning",
+      "tasks": [
+        "T3863"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3863",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-003",
+      "severity": "P0",
+      "title": "owned-url-identity-and-matching",
+      "tasks": [
+        "T3864"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3864",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-004",
+      "severity": "P0",
+      "title": "normalized-rank-semantics",
+      "tasks": [
+        "T3865"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3865",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-005",
+      "severity": "P0",
+      "title": "capture-completeness-and-not-found-semantics",
+      "tasks": [
+        "T3866"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3866",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-006",
+      "severity": "P0",
+      "title": "search-eligibility-envelope",
+      "tasks": [
+        "T3867"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3867",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-007",
+      "severity": "P0",
+      "title": "surface-admission-cardinality",
+      "tasks": [
+        "T3868"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3868",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-008",
+      "severity": "P0",
+      "title": "shared-provider-account-budget-authority",
+      "tasks": [
+        "T3869",
+        "T3870"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3869",
+        "task:T3870",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-009",
+      "severity": "P1",
+      "title": "first-party-search-performance-composition",
+      "tasks": [
+        "T3871"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "fixture:first_party_composition_rejects_malformed_and_live_serp_claims",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance"
+      ]
+    },
+    {
+      "id": "ASIR-010",
+      "severity": "P1",
+      "title": "query-language-transcreation-provenance",
+      "tasks": [
+        "T3872"
+      ],
+      "status": "CLOSED"
+    },
+    {
+      "id": "ASIR-011",
+      "severity": "P0",
+      "title": "provider-evidence-licensing-retention",
+      "tasks": [
+        "T3873"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3873",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-012",
+      "severity": "P0",
+      "title": "deterministic-decision-policy",
+      "tasks": [
+        "T3874"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3874",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-013",
+      "severity": "P1",
+      "title": "adaptive-ux-stability-and-controls",
+      "tasks": [
+        "T3875"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "fixture:operator_mute_fences_direct_capture_and_provider_entry",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance"
+      ]
+    },
+    {
+      "id": "ASIR-014",
+      "severity": "P1",
+      "title": "storage-worker-portability",
+      "tasks": [
+        "T3876"
+      ],
+      "status": "CLOSED"
+    },
+    {
+      "id": "ASIR-015",
+      "severity": "P0",
+      "title": "machine-measurable-gate-criteria",
+      "tasks": [
+        "T3877"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3877",
+        "pre_staging_run:37239748433"
+      ]
+    },
+    {
+      "id": "ASIR-016",
+      "severity": "P1",
+      "title": "open-serp-feature-schema",
+      "tasks": [
+        "T3878"
+      ],
+      "status": "CLOSED"
+    },
+    {
+      "id": "ASIR-017",
+      "severity": "P1",
+      "title": "decision-factor-provenance",
+      "tasks": [
+        "T3879"
+      ],
+      "status": "CLOSED"
+    },
+    {
+      "id": "ASIR-018",
+      "severity": "P0",
+      "title": "composed-cross-fault-acceptance",
+      "tasks": [
+        "T3880"
+      ],
+      "status": "CLOSED",
+      "evidence_refs": [
+        "head:042e49926d909dd11d0925b5b19b19143561b556",
+        "workflow_run:37239748455",
+        "runtime_integration_run:37239748528",
+        "task:T3880",
+        "pre_staging_run:37239748433"
+      ]
+    }
+  ],
+  "no_completion_claim": true,
+  "p0_closure": {
+    "contract": "mad4b.adaptive-search-p0-closure.v1",
+    "exact_head_sha": "042e49926d909dd11d0925b5b19b19143561b556",
+    "workflow_run": 37239748455,
+    "runtime_integration_run": 37239748528,
+    "spec_consistency_run": 37239748494,
+    "evidence_status": "PASS",
+    "closed_at": "2026-10-05",
+    "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
+    "authorizing": false,
+    "pre_staging_run": 37239748433
+  },
+  "p1_closure": {
+    "contract": "mad4b.adaptive-search-p1-closure.v1",
+    "runtime_exact_head_sha": "e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+    "adaptive_search_pre_staging_run": 37249380939,
+    "adaptive_search_php74_job": 111573698940,
+    "adaptive_search_php83_job": 111573699131,
+    "runtime_integration_run": 37249380993,
+    "spec_quality_run": 37249380988,
+    "spec_consistency_run": 37249380873,
+    "repository_governance_run": 37249380860,
+    "catalog_performance_run": 37249380836,
+    "fixture_count": 40,
+    "assertion_count": 938,
+    "emitted_gate_count": 15,
+    "evidence_status": "PASS",
+    "closure_scope": "repository_runtime",
+    "live_provider_account_certification": "NOT_CLAIMED",
+    "production_authorized": false,
+    "authorizing": false
+  }
+}

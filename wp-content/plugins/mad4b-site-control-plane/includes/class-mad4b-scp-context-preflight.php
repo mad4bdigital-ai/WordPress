@@ -22,7 +22,7 @@ final class MAD4B_SCP_Context_Preflight {
 	const MAX_RECEIPT_TRANSPORT_BYTES = 65536; // Receipt metadata only; raw context remains in the envelope.
 	const MAX_RECEIPT_AGE = 1800; // 30 minutes; approval is still one-time and separately short-lived.
 	const MAX_ALLOWED_MUTATION_ABILITIES = 20;
-	const RECEIPT_SIGNATURE_CONTRACT = 'mad4b.content-context-receipt-signature.v1';
+	const RECEIPT_CRYPTO_PURPOSE = 'context_receipt';
 
 	public static function presets() {
 		return array(
@@ -396,19 +396,8 @@ final class MAD4B_SCP_Context_Preflight {
 	}
 
 	public static function brand_bearing_mutation_abilities() {
-		return array(
-			'mad4b/content-create-post',
-			'mad4b/content-update-post',
-			'mad4b/content-import-bundle',
-			'mad4b/taxonomy-create-term',
-			'mad4b/taxonomy-update-term',
-			'seo/update-meta',
-			'woocommerce/update-product',
-			'media/update-metadata',
-			'mad4b/content-set-meta',
-			'jetengine/update-post-meta',
-			'elementor/update-widget-settings',
-		);
+		if ( ! class_exists( 'MAD4B_SCP_Semantic_Content_Field_Contracts' ) ) return array();
+		return MAD4B_SCP_Semantic_Content_Field_Contracts::declared_abilities();
 	}
 
 	private static function normalize_mutation_abilities( $abilities ) {
@@ -457,14 +446,35 @@ final class MAD4B_SCP_Context_Preflight {
 		return $canonical;
 	}
 
-	private static function receipt_signature_key() {
-		return hash_hmac( 'sha256', self::RECEIPT_SIGNATURE_CONTRACT, wp_salt( 'auth' ), true );
+	private static function finalize_receipt_signature( array $receipt ) {
+		unset( $receipt['receipt_sha256'], $receipt['receipt_signature'] );
+		$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) $receipt['receipt_sha256'] ) ) {
+			return self::crypto_blocked_receipt( $receipt, 'mad4b_context_receipt_digest_unavailable' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) {
+			return self::crypto_blocked_receipt( $receipt, 'mad4b_context_receipt_crypto_unavailable' );
+		}
+		$signature = MAD4B_SCP_Crypto_Profile::sign_digest_for_purpose( self::RECEIPT_CRYPTO_PURPOSE, $receipt['receipt_sha256'] );
+		if ( is_wp_error( $signature ) ) {
+			return self::crypto_blocked_receipt( $receipt, sanitize_key( (string) $signature->get_error_code() ) );
+		}
+		$receipt['receipt_signature'] = $signature;
+		return $receipt;
 	}
 
-	private static function receipt_signature( $receipt_sha256 ) {
-		$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $receipt_sha256 ) ) return '';
-		return hash_hmac( 'sha256', $receipt_sha256, self::receipt_signature_key() );
+	private static function crypto_blocked_receipt( array $receipt, $reason_code ) {
+		$receipt['ready'] = false;
+		$receipt['persistence_state'] = 'crypto_blocked';
+		$receipt['crypto_blocker_reason'] = sanitize_key( (string) $reason_code );
+		$receipt['blockers'] = array_values( array_unique( array_merge(
+			isset( $receipt['blockers'] ) && is_array( $receipt['blockers'] ) ? $receipt['blockers'] : array(),
+			array( 'context_receipt_crypto_unavailable' )
+		) ) );
+		unset( $receipt['receipt_sha256'], $receipt['receipt_signature'] );
+		$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+		$receipt['receipt_signature'] = array();
+		return $receipt;
 	}
 
 	private static function receipt( $logical_id, $skill_sha, array $policy, $policy_digest, array $assets, array $missing_sets, array $blockers, $site_uuid, $revision, $fingerprint, $observed_at, $task_scope, $brand_id = '', $authority_manifest_fingerprint = '', $registry_revision = 0, $intended_ability = '' ) {
@@ -498,8 +508,7 @@ final class MAD4B_SCP_Context_Preflight {
 			'ready' => empty( $blockers ),
 			'observed_at' => (string) $observed_at,
 		);
-		$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
-		$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
+		$receipt = self::finalize_receipt_signature( $receipt );
 		$encoded_receipt = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $encoded_receipt ) || strlen( $encoded_receipt ) > self::MAX_RECEIPT_TRANSPORT_BYTES ) {
 			// The full Context Envelope already carries selected asset detail/content.
@@ -513,8 +522,7 @@ final class MAD4B_SCP_Context_Preflight {
 				isset( $receipt['blockers'] ) && is_array( $receipt['blockers'] ) ? $receipt['blockers'] : array(),
 				array( 'context_receipt_transport_budget_exceeded' )
 			) ) );
-			$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
-			$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
+			$receipt = self::finalize_receipt_signature( $receipt );
 			$compacted_json = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			if ( ! is_string( $compacted_json ) || strlen( $compacted_json ) > self::MAX_RECEIPT_TRANSPORT_BYTES ) {
 				// Pathological metadata must not create an untransportable receipt
@@ -528,8 +536,7 @@ final class MAD4B_SCP_Context_Preflight {
 					'blockers' => array( 'context_receipt_transport_budget_exceeded' ),
 					'observed_at' => gmdate( 'c' ),
 				);
-				$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
-				$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
+				$receipt = self::finalize_receipt_signature( $receipt );
 			}
 		}
 		return $receipt;
@@ -539,6 +546,19 @@ final class MAD4B_SCP_Context_Preflight {
 		$ability_name = (string) $ability_name;
 		$input = is_array( $input ) ? $input : array();
 		$requirement = self::content_mutation_requirement( $ability_name, $input );
+		if ( is_wp_error( $requirement ) ) return $requirement;
+		if ( ! empty( $requirement['review_required'] ) ) {
+			return new WP_Error(
+				'mad4b_content_field_classification_required',
+				'Potentially brand-bearing provider fields are not covered by the current semantic field contract and require explicit classification before mutation.',
+				array(
+					'ability' => $ability_name,
+					'fallback_evidence_fields' => isset( $requirement['fallback_evidence_fields'] ) ? $requirement['fallback_evidence_fields'] : array(),
+					'classification_sha256' => isset( $requirement['classification_sha256'] ) ? (string) $requirement['classification_sha256'] : '',
+					'fallback_evidence_authorizing' => false,
+				)
+			);
+		}
 		$requires_receipt = ! empty( $requirement['required'] );
 
 		$receipt = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
@@ -567,72 +587,10 @@ final class MAD4B_SCP_Context_Preflight {
 	}
 
 	public static function content_mutation_requirement( $ability_name, $input ) {
-		$ability_name = (string) $ability_name;
-		$input = is_array( $input ) ? $input : array();
-		$matched = array();
-
-		if ( in_array( $ability_name, array( 'mad4b/content-create-post', 'mad4b/content-update-post' ), true ) ) {
-			foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
-			return self::content_requirement_result( $matched, 'post_text_fields' );
+		if ( ! class_exists( 'MAD4B_SCP_Semantic_Content_Field_Contracts' ) ) {
+			return new WP_Error( 'mad4b_semantic_content_field_registry_unavailable', 'Semantic content-field classification registry is unavailable; content mutation fails closed.' );
 		}
-
-		if ( 'mad4b/content-import-bundle' === $ability_name ) {
-			$posts = isset( $input['bundle']['posts'] ) && is_array( $input['bundle']['posts'] ) ? $input['bundle']['posts'] : array();
-			foreach ( $posts as $index => $post ) {
-				if ( ! is_array( $post ) ) continue;
-				foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) {
-					if ( array_key_exists( $field, $post ) && '' !== trim( (string) $post[ $field ] ) ) $matched[] = 'bundle.posts.' . (int) $index . '.' . $field;
-				}
-			}
-			return self::content_requirement_result( $matched, 'content_bundle_text' );
-		}
-
-		if ( in_array( $ability_name, array( 'mad4b/taxonomy-create-term', 'mad4b/taxonomy-update-term' ), true ) ) {
-			foreach ( array( 'name', 'description' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
-			return self::content_requirement_result( $matched, 'taxonomy_text_fields' );
-		}
-
-		if ( 'seo/update-meta' === $ability_name ) {
-			$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
-			foreach ( array( 'title', 'description', 'focus_keyword' ) as $field ) if ( array_key_exists( $field, $fields ) ) $matched[] = 'fields.' . $field;
-			return self::content_requirement_result( $matched, 'seo_text_fields' );
-		}
-
-		if ( 'woocommerce/update-product' === $ability_name ) {
-			$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
-			foreach ( array( 'name', 'description', 'short_description' ) as $field ) if ( array_key_exists( $field, $fields ) ) $matched[] = 'fields.' . $field;
-			return self::content_requirement_result( $matched, 'product_text_fields' );
-		}
-
-		if ( 'media/update-metadata' === $ability_name ) {
-			foreach ( array( 'title', 'caption', 'description', 'alt' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
-			return self::content_requirement_result( $matched, 'media_text_metadata' );
-		}
-
-		if ( 'mad4b/content-set-meta' === $ability_name ) {
-			$key = isset( $input['key'] ) ? (string) $input['key'] : '';
-			if ( self::content_field_name( $key ) || self::value_looks_like_content( isset( $input['value'] ) ? $input['value'] : null ) ) $matched[] = 'key:' . $key;
-			return self::content_requirement_result( $matched, 'post_meta_text' );
-		}
-
-		if ( 'jetengine/update-post-meta' === $ability_name ) {
-			$field = isset( $input['field'] ) ? (string) $input['field'] : '';
-			if ( self::content_field_name( $field ) || self::value_looks_like_content( isset( $input['value'] ) ? $input['value'] : null ) ) $matched[] = 'field:' . $field;
-			return self::content_requirement_result( $matched, 'jetengine_text_meta' );
-		}
-
-		if ( 'elementor/update-widget-settings' === $ability_name ) {
-			$settings = isset( $input['settings'] ) && is_array( $input['settings'] ) ? $input['settings'] : array();
-			$matched = self::content_paths_in_value( $settings, 'settings', 0 );
-			return self::content_requirement_result( $matched, 'elementor_text_settings' );
-		}
-
-		return array(
-			'contract' => 'mad4b.content-context-requirement.v1',
-			'required' => false,
-			'reason' => 'not_content_bearing',
-			'matched_fields' => array(),
-		);
+		return MAD4B_SCP_Semantic_Content_Field_Contracts::classify( $ability_name, $input );
 	}
 
 	private static function content_requirement_result( array $matched, $reason ) {
@@ -681,12 +639,22 @@ final class MAD4B_SCP_Context_Preflight {
 		if ( ! is_array( $receipt ) || self::RECEIPT_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) return new WP_Error( 'mad4b_context_receipt_invalid', 'Context Receipt contract is missing or invalid.' );
 		if ( empty( $receipt['ready'] ) || ! empty( $receipt['blockers'] ) ) return new WP_Error( 'mad4b_context_receipt_not_ready', 'Context Receipt was not issued from a ready governed preflight.' );
 		$expected_digest = isset( $receipt['receipt_sha256'] ) ? strtolower( trim( (string) $receipt['receipt_sha256'] ) ) : '';
-		$signature = isset( $receipt['receipt_signature'] ) ? strtolower( trim( (string) $receipt['receipt_signature'] ) ) : '';
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $signature ) || ! hash_equals( self::receipt_signature( $expected_digest ), $signature ) ) {
-			return new WP_Error( 'mad4b_context_receipt_signature_invalid', 'Context Receipt was not issued by the current trusted runtime or its signing key changed.' );
+		$signature = isset( $receipt['receipt_signature'] ) && is_array( $receipt['receipt_signature'] ) ? $receipt['receipt_signature'] : array();
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_digest ) || empty( $signature ) || ! class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) {
+			return new WP_Error( 'mad4b_context_receipt_signature_invalid', 'Context Receipt is missing its certified versioned cryptographic signature.' );
+		}
+		$signature_verification = MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose( $signature, $expected_digest, self::RECEIPT_CRYPTO_PURPOSE );
+		if ( is_wp_error( $signature_verification ) ) {
+			return new WP_Error( 'mad4b_context_receipt_signature_invalid', 'Context Receipt cryptographic signature is invalid, revoked, expired from overlap, or bound to another receipt purpose.', array( 'crypto_reason_code'=>sanitize_key((string)$signature_verification->get_error_code()) ) );
 		}
 		$observed_at = isset( $receipt['observed_at'] ) ? strtotime( (string) $receipt['observed_at'] ) : false;
-		if ( false === $observed_at || $observed_at > time() + 60 || ( time() - $observed_at ) > self::MAX_RECEIPT_AGE ) return new WP_Error( 'mad4b_context_receipt_expired', 'Context Receipt is outside the certified freshness window; rerun the Skill Context Preflight.' );
+		if ( false === $observed_at ) return new WP_Error( 'mad4b_context_receipt_expired', 'Context Receipt observed_at is invalid; rerun the Skill Context Preflight.' );
+		if ( class_exists( 'MAD4B_SCP_Time_Policy' ) ) {
+			$time_check = MAD4B_SCP_Time_Policy::assert_timestamp( 'context_receipt', (int) $observed_at, self::MAX_RECEIPT_AGE );
+			if ( is_wp_error( $time_check ) ) return new WP_Error( 'mad4b_context_receipt_expired', 'Context Receipt is outside the certified freshness/skew window; rerun the Skill Context Preflight.', array( 'time_reason_code'=>sanitize_key((string)$time_check->get_error_code()) ) );
+		} elseif ( $observed_at > time() + 60 || ( time() - $observed_at ) > self::MAX_RECEIPT_AGE ) {
+			return new WP_Error( 'mad4b_context_receipt_expired', 'Context Receipt is outside the certified freshness window; rerun the Skill Context Preflight.' );
+		}
 		$observed_digest = self::canonical_receipt_digest( $receipt );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) || ! hash_equals( $expected_digest, $observed_digest ) ) return new WP_Error( 'mad4b_context_receipt_integrity_failed', 'Context Receipt digest does not match its canonical evidence.' );
 
@@ -733,6 +701,8 @@ final class MAD4B_SCP_Context_Preflight {
 			'authority_manifest_fingerprint' => $current_authority_fingerprint,
 			'skill_logical_id' => $logical_id,
 			'intended_ability' => $intended_ability,
+			'signature_profile' => isset( $signature['profile_id'] ) ? (string) $signature['profile_id'] : '',
+			'signature_kid' => isset( $signature['kid'] ) ? (string) $signature['kid'] : '',
 		);
 	}
 

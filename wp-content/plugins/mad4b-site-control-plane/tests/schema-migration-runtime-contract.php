@@ -99,6 +99,16 @@ final class MAD4B_Test_Schema_WPDB {
 			'pipeline_settings_sha256', 'policy_sha256', 'environment', 'plan_json', 'generated_at',
 			'verified_at', 'closed_at', 'bucket_key', 'metric_name', 'bucket_start',
 			'count_value', 'sum_value', 'min_value', 'max_value',
+			'object_sha256', 'object_kind', 'wire_generation', 'payload_blob', 'payload_bytes', 'retain_until',
+			'id', 'generation_id', 'storage_scope_sha256', 'object_key_sha256', 'object_expires_at', 'directory_sha256',
+			'fencing_token', 'previous_generation_id', 'published_at',
+			'network_operation_id', 'origin_site_uuid', 'origin_blog_id', 'authority_scope_sha256',
+			'preparation_sha256', 'target_set_sha256', 'paused', 'revision', 'latest_event_sha256', 'target_blog_id',
+			'target_site_uuid', 'origin_sha256', 'catalog_sha256', 'approval_ticket_id', 'context_sha256',
+			'credential_binding_sha256', 'target_binding_sha256', 'claim_epoch', 'worker_id', 'claim_expires_at', 'evidence_ref',
+			'receipt_sha256', 'receipt_binding_sha256', 'last_error_code', 'safe_metadata_json', 'previous_event_sha256',
+			'breaker_key_sha256', 'certification_generation_sha256', 'failure_count', 'open_count', 'open_until',
+			'probe_token_sha256', 'probe_expires_at', 'from_state', 'to_state', 'failure_class',
 		);
 	}
 	public function get_results( $query, $output = null ) {
@@ -109,6 +119,9 @@ final class MAD4B_Test_Schema_WPDB {
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
 			'relation_revision', 'current_relation_key', 'owner_scope_key',
 			'operation_sequence', 'event_sha256', 'operation_plan',
+			'kind_expiry', 'expires_at', 'retain_until', 'generation_object_key', 'scope_generation', 'object_sha256', 'generation_expiry', 'generation_id',
+			'origin_idempotency', 'state_updated', 'operation_target', 'target_idempotency', 'target_state', 'claim_expiry', 'binding_sha256', 'target_event',
+			'provider_site_generation', 'state_open_until', 'provider_updated', 'breaker_sequence', 'breaker_created',
 		) as $name ) {
 			$rows[] = array( 'Key_name' => $name, 'Non_unique' => 0 );
 		}

@@ -6,15 +6,33 @@ $GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b' 
 $GLOBALS['mad4b_projection_global_wildcards'] = 0;
 $GLOBALS['mad4b_projection_current_agent_wildcards'] = 0;
 $GLOBALS['mad4b_projection_broad_environment'] = 0;
+$GLOBALS['mad4b_projection_transient_plan_once'] = false;
+$GLOBALS['mad4b_projection_transient_plan_consumed'] = false;
 
 final class MAD4B_SCP_Staging_Write_Authority {
 	public static function reconciliation_plan() {
+		$tool_count = (int) $GLOBALS['mad4b_projection_write_tool_count'];
+		$runtime_rows = $GLOBALS['mad4b_projection_runtime'];
+		if ( ! empty( $GLOBALS['mad4b_projection_transient_plan_once'] ) && empty( $GLOBALS['mad4b_projection_transient_plan_consumed'] ) ) {
+			$GLOBALS['mad4b_projection_transient_plan_consumed'] = true;
+			$tool_count = max( 0, $tool_count - 1 );
+			$runtime_rows = array_slice( $runtime_rows, 0, $tool_count );
+		}
+		$rows = array();
+		foreach ( $runtime_rows as $ability ) {
+			$rows[] = array(
+				'ability' => (string) $ability,
+				'provider' => 'core/update-a' === $ability ? 'core' : 'media',
+				'mounted' => true,
+				'exact_grant_present' => true,
+			);
+		}
 		return array(
 			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v2',
 			'eligible' => true,
 			'current_ready' => false,
 			'environment' => 'staging',
-			'write_tool_count' => (int) $GLOBALS['mad4b_projection_write_tool_count'],
+			'write_tool_count' => $tool_count,
 			'exact_grants_missing_count' => 0,
 			'exact_grants_missing' => array(),
 			'stale_allow_grants_count' => 0,
@@ -35,10 +53,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				'stored_build_fingerprint' => str_repeat( 'c', 64 ),
 				'current_build_fingerprint' => str_repeat( 'd', 64 ),
 			),
-			'rows' => array(
-				array( 'ability' => 'core/update-a', 'provider' => 'core', 'mounted' => true, 'exact_grant_present' => true ),
-				array( 'ability' => 'media/update-b', 'provider' => 'media', 'mounted' => true, 'exact_grant_present' => true ),
-			),
+			'rows' => $rows,
 		);
 	}
 }
@@ -106,7 +121,16 @@ mad4b_projection_assert( 2 === count( $p['blocked_catalog_abilities'] ), 'provid
 mad4b_projection_assert( 2 === count( $p['provider_gated_catalog_abilities'] ) && 1 === count( $p['governance_gated_catalog_abilities'] ), 'provider and authority gates were conflated', $p );
 mad4b_projection_assert( ! empty( $p['read_only'] ) && empty( $p['mutation_performed'] ) && empty( $p['oauth_scope_changed'] ) && empty( $p['write_authority_granted_by_consent'] ), 'projection must remain observation-only', $p );
 
-// Case 2: a transient mismatch between the plan snapshot and the independent
+// Case 2: one transient lazy-registration boundary is stabilized by one
+// read-only resnapshot. This must not weaken the persistent mismatch guard.
+$GLOBALS['mad4b_projection_transient_plan_once'] = true;
+$GLOBALS['mad4b_projection_transient_plan_consumed'] = false;
+$settled = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
+mad4b_projection_assert( ! empty( $settled['projection_consistent'] ) && empty( $settled['consistency_violations'] ), 'transient plan/runtime drift did not stabilize after one bounded resnapshot', $settled );
+$GLOBALS['mad4b_projection_transient_plan_once'] = false;
+$GLOBALS['mad4b_projection_transient_plan_consumed'] = false;
+
+// Case 3: a persistent mismatch between the plan snapshot and the independent
 // runtime inventory must never be presented as a misleading ratio.
 $GLOBALS['mad4b_projection_write_tool_count'] = 3;
 $inconsistent = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
@@ -115,7 +139,7 @@ mad4b_projection_assert( 'projection_inconsistent' === $inconsistent['state'], '
 mad4b_projection_assert( 'authority_projection_inconsistent' === $inconsistent['blocking_conditions'][0]['code'], 'inconsistent projection blocker missing', $inconsistent );
 mad4b_projection_assert( in_array( 'plan_runtime_count_mismatch', $inconsistent['consistency_violations'], true ), 'count mismatch violation missing', $inconsistent );
 
-// Case 3: global wildcard authority outside the current agent is a separate
+// Case 4: global wildcard authority outside the current agent is a separate
 // registry security invariant, not a fake missing exact grant for this agent.
 $GLOBALS['mad4b_projection_write_tool_count'] = 2;
 $GLOBALS['mad4b_projection_global_wildcards'] = 2;
@@ -125,7 +149,7 @@ $codes = array_map( static function ( $item ) { return isset( $item['code'] ) ? 
 mad4b_projection_assert( in_array( 'global_registry_wildcard_grants', $codes, true ), 'global wildcard security invariant missing', $wildcard );
 mad4b_projection_assert( 0 === (int) $wildcard['current_agent_wildcard_grants'] && 2 === (int) $wildcard['global_registry_wildcard_grants'], 'agent/global wildcard scopes were conflated', $wildcard );
 
-// Case 5: broad environment authority is distinct from stale runtime drift.
+// Case 6: broad environment authority is distinct from stale runtime drift.
 $GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b' );
 $GLOBALS['mad4b_projection_write_tool_count'] = 2;
 $GLOBALS['mad4b_projection_broad_environment'] = 1;
@@ -135,7 +159,7 @@ mad4b_projection_assert( in_array( 'broad_environment_grants', $broad_codes, tru
 mad4b_projection_assert( 0 === (int) $broad['stale_allow_grants_count'], 'broad environment grant must not be double-counted as stale', $broad );
 $GLOBALS['mad4b_projection_broad_environment'] = 0;
 
-// Case 4: a provider-gated ability may never leak into runtime eligibility.
+// Case 5: a provider-gated ability may never leak into runtime eligibility.
 $GLOBALS['mad4b_projection_global_wildcards'] = 0;
 $GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b', 'elementor/gated-c' );
 $GLOBALS['mad4b_projection_write_tool_count'] = 3;
@@ -143,7 +167,7 @@ $overlap = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
 mad4b_projection_assert( in_array( 'provider_gated_runtime_overlap', $overlap['consistency_violations'], true ), 'provider-gated/runtime overlap was not detected', $overlap );
 mad4b_projection_assert( 'projection_inconsistent' === $overlap['state'], 'provider-gated/runtime overlap must fail closed', $overlap );
 
-// Case 6: an governance-gated core ability may never leak into runtime eligibility.
+// Case 7: a governance-gated core ability may never leak into runtime eligibility.
 $GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b', 'mad4b/context-ai-review' );
 $GLOBALS['mad4b_projection_write_tool_count'] = 3;
 $authority_overlap = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
