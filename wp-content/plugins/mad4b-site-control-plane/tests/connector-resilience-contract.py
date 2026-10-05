@@ -212,7 +212,7 @@ for marker in [
     "'database_topology' => static function ()",
     "MAD4B_SCP_Database_Topology::status( false )",
     "mad4b.session-safe-performance-observation.v1",
-    "private static function performance_observation( array $metrics, $budget_ms, $runtime_generation )",
+    "private static function performance_observation( array $metrics, $budget_ms, $runtime_generation, $diagnostic_elapsed_ms )",
     "'comparison_baseline_scope' => 'previous_exact_staging_release'",
     "'fixed_universal_db_query_threshold_applied' => false",
     "'regression_policy' => 'compare_exact_release_baseline_then_review_material_regression'",
