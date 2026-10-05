@@ -12,6 +12,7 @@ required = [
     "MAD4B_SCP_Servers::blocked_write_tools()",
     "MAD4B_SCP_Staging_Write_Authority::status()",
     "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()",
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()",
     "MAD4B_SCP_Provider_Compatibility_Certification::inventory()",
     "MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan",
     "'authorizing' => false",
@@ -31,6 +32,20 @@ required = [
 for marker in required:
     if marker not in matrix:
         raise SystemExit(f'missing provider closure matrix invariant: {marker}')
+
+for marker in [
+    "'write_authority_ready_semantics' => 'checkpoint_plus_current_exact_grants_plus_current_candidate_binding'",
+    "'write_authority_checkpoint_ready' => $checkpoint_ready",
+    "'write_authority_current_grant_snapshot_ready' => $current_grants_ready",
+    "'write_authority_blockers' => $write_authority_blockers",
+    "'write_authority_reconciliation_required' => ! $write_authority_ready",
+    "'write_authority_recovery_action' => ! $write_authority_ready ? 'reconcile_exact_staging_write_authority_then_refresh_provider_closure_matrix' : ''",
+    "$write_authority_ready = $checkpoint_ready && $current_grants_ready && $candidate_binding_match;",
+]:
+    if marker not in matrix:
+        raise SystemExit(f'provider closure matrix current-authority semantics missing: {marker}')
+if "'write_authority_ready' => isset( $authority_status['ready'] ) ? (bool) $authority_status['ready'] : false" in matrix:
+    raise SystemExit('provider closure matrix regressed to checkpoint-only write readiness')
 
 for forbidden in [
     'MAD4B_SCP_Local_OAuth_Server::consent_grant_projection',
