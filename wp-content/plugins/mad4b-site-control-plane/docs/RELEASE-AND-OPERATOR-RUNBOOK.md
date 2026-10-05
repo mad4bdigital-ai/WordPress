@@ -306,3 +306,18 @@ Product-complete additionally requires:
 - current provider capability certification for every remotely projected write
 
 Unsupported upstream operations may remain explicitly unavailable; they do not need unsafe emulation to qualify as a completed product.
+
+
+## Release-closure operating model
+
+PR #236 is frozen for release closure. New capability families move to a separate PR. Allowed changes are defect fixes, test hardening, evidence binding, Staging certification, release-readiness work, documentation accuracy and maintainability decomposition.
+
+Operator state is reduced to four non-authorizing states: `HEALTHY`, `DEGRADED`, `BLOCKED`, and `RECOVERY_REQUIRED`. The canonical read-only surface is `mad4b/operator-control-center`. Missing external evidence is never projected as success.
+
+Production readiness is profile-specific. Do not use the aggregate Feature 007 task-ledger DONE/total ratio as a readiness percentage. Use `release-closure-readiness.json` for separate Control Plane Core, optional fail-closed, full Feature 007 blocking, and long-term maturity views.
+
+External machine diagnostics follow `config/external-machine-diagnostic-policy.json`. A CDN/hosting 403 challenge is `INCONCLUSIVE_FAIL_CLOSED`; do not bypass it by disabling site protection or by unrestricted IP/User-Agent rules. Prefer a rule scoped to a machine identity and the bounded read-only diagnostic endpoint classes.
+
+Future capabilities follow `CAPABILITY-GOLDEN-PATH.md`: Define → Register → Certify → Plan → Execute → Evidence → Reconcile.
+
+Protected backup, restore rehearsal, recovery drill, exact-runtime deployment/root-trust readback and request → receipt → rollback remain live gates. Repository metadata cannot mark them DONE.
