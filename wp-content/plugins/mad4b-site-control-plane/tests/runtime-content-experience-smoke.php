@@ -147,9 +147,17 @@ try {
 		'label' => 'CI Trip',
 		'post_type' => 'mad4b_ci_trip',
 		'meta_mode' => 'allowlist',
-		'meta_keys' => array( 'ci_price', 'ci_gallery', 'ci_gallery_csv', 'ci_attachments' ),
+		'meta_keys' => array( 'ci_price', 'ci_gallery', 'ci_gallery_usage', 'ci_gallery_csv', 'ci_attachments' ),
 		'media_meta_fields' => array(
 			'ci_gallery' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => 12 ),
+			'ci_gallery_usage' => array(
+				'kind' => 'image_gallery_usage',
+				'storage' => 'items',
+				'references_field' => 'ci_gallery',
+				'max_items' => 12,
+				'usage_fields' => array( 'role', 'alt_override', 'caption_override', 'credit', 'copyright', 'license', 'source_url', 'focal_point' ),
+				'roles' => array( 'hero', 'gallery', 'card' ),
+			),
 			'ci_gallery_csv' => array( 'kind' => 'image_gallery', 'storage' => 'csv_ids', 'max_items' => 12 ),
 			'ci_attachments' => array( 'kind' => 'attachment_gallery', 'storage' => 'ids', 'max_items' => 8 ),
 		),
@@ -182,6 +190,29 @@ try {
 		'meta' => array(
 			'ci_price' => '100',
 			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array(
+					'attachment_id' => $image_two,
+					'role' => 'gallery',
+					'alt_override' => 'Contextual gallery alt for the second trip image',
+					'caption_override' => 'Contextual caption used only inside this trip gallery.',
+					'credit' => 'All Royal Egypt',
+					'copyright' => 'All Royal Egypt',
+					'license' => 'owned',
+					'source_url' => 'https://example.invalid/media-source-two',
+					'focal_point' => array( 'x' => 0.35, 'y' => 0.45 ),
+				),
+				array(
+					'attachment_id' => $image_one,
+					'role' => 'hero',
+					'alt_override' => 'Trip-specific hero alt distinct from the attachment global alt',
+					'caption_override' => 'Trip-specific hero caption.',
+					'credit' => 'All Royal Egypt',
+					'license' => 'owned',
+					'source_url' => 'https://example.invalid/media-source-one',
+					'focal_point' => array( 'x' => 0.5, 'y' => 0.4 ),
+				),
+			),
 			'ci_gallery_csv' => array( $image_two, $image_one ),
 			'ci_attachments' => array( $brochure ),
 		),
@@ -198,6 +229,14 @@ try {
 	$check( '100' === get_post_meta( $post_id, 'ci_price', true ), 'Create meta readback mismatch.' );
 
 	$check( array( $image_two, $image_one ) === get_post_meta( $post_id, 'ci_gallery', true ), 'Image gallery order/readback mismatch.' );
+	$usage_readback = get_post_meta( $post_id, 'ci_gallery_usage', true );
+	$check( is_array( $usage_readback ) && 2 === count( $usage_readback ), 'Contextual gallery usage metadata readback is incomplete.' );
+	$check( $image_two === (int) $usage_readback[0]['attachment_id'] && $image_one === (int) $usage_readback[1]['attachment_id'], 'Contextual gallery usage order drifted from gallery IDs.' );
+	$check( 'gallery' === $usage_readback[0]['role'] && 'hero' === $usage_readback[1]['role'], 'Contextual gallery roles readback mismatch.' );
+	$check( 'Trip-specific hero alt distinct from the attachment global alt' === $usage_readback[1]['alt_override'], 'Contextual hero alt override readback mismatch.' );
+	$check( array( 'x' => 0.5, 'y' => 0.4 ) === $usage_readback[1]['focal_point'], 'Contextual focal point readback mismatch.' );
+	$check( 'Cairo Nile journey in Egypt' === get_post_meta( $image_one, '_wp_attachment_image_alt', true ), 'Contextual ALT override polluted the global attachment ALT.' );
+	$check( 'Cairo and Nile journey gallery image' === get_post( $image_one )->post_excerpt, 'Contextual caption override polluted the global attachment caption.' );
 	$check( $image_two . ',' . $image_one === get_post_meta( $post_id, 'ci_gallery_csv', true ), 'CSV image gallery storage/readback mismatch.' );
 	$check( array( $brochure ) === get_post_meta( $post_id, 'ci_attachments', true ), 'Attachment gallery readback mismatch.' );
 	$check( $image_one === (int) get_post_thumbnail_id( $post_id ), 'Featured image readback mismatch.' );
@@ -218,6 +257,57 @@ try {
 		'meta' => array( 'ci_gallery' => array( $image_one, $image_one ) ),
 	) );
 	$check( is_wp_error( $duplicate_gallery_plan ) && 'mad4b_content_experience_media_gallery_duplicate' === $duplicate_gallery_plan->get_error_code(), 'Image gallery accepted duplicate attachment IDs.' );
+
+	$usage_without_reference = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_two, 'role' => 'gallery', 'alt_override' => 'Updated contextual alt' ),
+				array( 'attachment_id' => $image_one, 'role' => 'hero', 'alt_override' => 'Updated contextual hero alt' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $usage_without_reference ) && 'mad4b_content_experience_media_usage_reference_required' === $usage_without_reference->get_error_code(), 'Contextual usage mutation escaped atomic gallery binding.' );
+
+	$usage_order_drift = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_one, 'role' => 'hero' ),
+				array( 'attachment_id' => $image_two, 'role' => 'gallery' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $usage_order_drift ) && 'mad4b_content_experience_media_usage_reference_drift' === $usage_order_drift->get_error_code(), 'Contextual usage order drifted independently from gallery IDs.' );
+
+	$usage_property_denied = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_two, 'role' => 'gallery', 'arbitrary_json' => 'denied' ),
+				array( 'attachment_id' => $image_one, 'role' => 'hero' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $usage_property_denied ) && 'mad4b_content_experience_media_usage_property_denied' === $usage_property_denied->get_error_code(), 'Contextual media usage accepted an unapproved arbitrary property.' );
+
+	$usage_role_denied = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_two, 'role' => 'unreviewed-role' ),
+				array( 'attachment_id' => $image_one, 'role' => 'hero' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $usage_role_denied ) && 'mad4b_content_experience_media_usage_role_denied' === $usage_role_denied->get_error_code(), 'Contextual media usage accepted a role outside the profile allowlist.' );
 
 	$replay = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $create_input, array( 'plan_sha256' => $create_plan['plan_sha256'] ) ) );
 	$check( ! is_wp_error( $replay ) && ! empty( $replay['idempotent_replay'] ) && $post_id === (int) $replay['post_id'], 'Create idempotent replay did not resolve exact prior result.' );
