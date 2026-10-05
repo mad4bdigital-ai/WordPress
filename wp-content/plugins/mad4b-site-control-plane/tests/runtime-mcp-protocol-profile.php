@@ -9,7 +9,7 @@ $check = static function ( $condition, $message, $context = null ) use ( $fail )
 	if ( ! $condition ) $fail( $message, $context );
 };
 
-$expected = array( '2025-11-25', '2025-06-18', '2024-11-05' );
+$expected = array( '2026-07-28', '2025-11-25', '2025-06-18', '2024-11-05' );
 $status = MAD4B_SCP_MCP_Protocol_Profile::status();
 $check( ! empty( $status['ready'] ) && ! empty( $status['adapter_version_match'] ), 'Exact Adapter version is not protocol-certified.', $status );
 $check( $expected === $status['certified_protocol_versions'], 'Certified protocol version order/content drifted.', $status );
@@ -28,7 +28,9 @@ foreach ( $expected as $version ) {
 	$check( 'none' === $negotiated['authority_effect'] && empty( $negotiated['authorizing'] ), 'Protocol compatibility created authority.', $negotiated );
 }
 
-$future = MAD4B_SCP_MCP_Protocol_Profile::negotiate( '2026-07-28' );
+$modern = MAD4B_SCP_MCP_Protocol_Profile::negotiate( '2026-07-28' );
+$check( ! is_wp_error( $modern ) && 'per_request_revision' === $modern['lifecycle'], 'Modern 2026 per-request revision did not negotiate exactly.', $modern );
+$future = MAD4B_SCP_MCP_Protocol_Profile::negotiate( '2027-01-01' );
 $check( is_wp_error( $future ) && 'mad4b_mcp_protocol_version_uncertified' === $future->get_error_code(), 'Unknown/newer protocol did not fail closed.', $future );
 $unknown_feature = MAD4B_SCP_MCP_Protocol_Profile::negotiate( '2025-11-25', array( 'future_magic' => true ) );
 $check( is_wp_error( $unknown_feature ) && 'mad4b_mcp_protocol_feature_uncertified' === $unknown_feature->get_error_code(), 'Unknown protocol feature did not fail closed.', $unknown_feature );
