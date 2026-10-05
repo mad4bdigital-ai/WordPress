@@ -23,6 +23,7 @@ class MAD4B_Fake_Topology_DB {
 	public $connection_id=41;
 	public $read_only=0;
 	public $probe_ok=true;
+	public $counts=array();
 	public function suppress_errors($value=null){ return false; }
 	public function db_version(){ return '8.0-fixture'; }
 	public function get_row($sql,$format){
@@ -30,7 +31,32 @@ class MAD4B_Fake_Topology_DB {
 		if(!$this->probe_ok){$this->last_error='Lost connection to MySQL server during query';return null;}
 		return array('connection_id'=>$this->connection_id,'database_name'=>$this->dbname,'server_hostname'=>'db-writer','server_port'=>3306,'server_read_only'=>$this->read_only);
 	}
+	public function prepare($q,...$args){
+		foreach($args as $arg){$v=is_int($arg)?(string)$arg:"'".str_replace("'","''",(string)$arg)."'";$q=preg_replace('/%[sd]/',$v,$q,1);}
+		return $q;
+	}
+	public function query($sql){
+		if(preg_match("/VALUES \\('([a-f0-9]{64})','[^']+'/",$sql,$m)){
+			if(!isset($this->counts[$m[1]]))$this->counts[$m[1]]=0;
+			$this->counts[$m[1]]++;
+			return 1;
+		}
+		return 1;
+	}
+	public function get_var($sql){
+		if(preg_match("/bucket_key=BINARY '([a-f0-9]{64})'/",$sql,$m)) return isset($this->counts[$m[1]])?$this->counts[$m[1]]:null;
+		return null;
+	}
 }
+function get_current_blog_id(){return 7;}
+function home_url($p='/'){return 'https://fixture.test'.$p;}
+function get_current_user_id(){return 42;}
+final class MAD4B_SCP_Identity_Context{public static function current(){return array('subject_fingerprint'=>str_repeat('a',64),'client_fingerprint'=>str_repeat('b',64),'wp_user_id'=>42,'session_fingerprint'=>'','origin'=>'mcp');}}
+final class MAD4B_SCP_Site_Profile{public static function site_uuid(){return '11111111-1111-4111-8111-111111111111';}}
+final class MAD4B_SCP_Transport_Context{public static function current_server_id(){return 'mad4b-chatgpt';}}
+final class MAD4B_SCP_Schema{public static function tables(){return array('metric_buckets'=>'wp_metric_buckets');}}
+final class MAD4B_SCP_Time_Policy{public static function now_epoch(){return 2000000042;}}
+
 $GLOBALS['wpdb']=new MAD4B_Fake_Topology_DB();
 
 class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
@@ -45,6 +71,7 @@ class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 
 require dirname(__DIR__).'/includes/class-mad4b-scp-database-topology.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-database-failure-semantics.php';
+require dirname(__DIR__).'/includes/class-mad4b-scp-abuse-budget.php';
 
 $fail=static function($m){fwrite(STDERR,"FAIL database-topology-runtime: {$m}\n");@unlink(WP_CONTENT_DIR.'/db.php');@rmdir(WP_CONTENT_DIR);exit(1);};
 $check=static function($c,$m)use($fail){if(!$c)$fail($m);};
@@ -68,19 +95,27 @@ file_put_contents(WP_CONTENT_DIR.'/db.php',"<?php\n");
 $router=MAD4B_SCP_Database_Topology::assert_write_ready(true);
 $check('mad4b_database_topology_not_write_safe'===$code($router),'uncertified db.php router was admitted');
 
-MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status=array(
-	'dropin_exists'=>true,
-	'dropin_owned_by_query_monitor'=>true,
-	'dropin_conflict'=>false,
-	'dropin_ownership'=>'mad4b_bounded_loader',
-);
-$observer=MAD4B_SCP_Database_Topology::assert_write_ready(true);
-$check(is_array($observer)&&!empty($observer['ready'])&&!empty($observer['read_your_writes'])&&!empty($observer['observer_dropin_certified']),'certified observer db.php was not admitted');
-$check('mad4b_bounded_loader'===$observer['database_dropin_ownership'],'certified observer ownership was not projected');
+foreach(array('mad4b_bounded_loader','query_monitor_exact_copy','query_monitor_symlink') as $trusted_ownership){
+	MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status=array(
+		'dropin_exists'=>true,
+		'dropin_owned_by_query_monitor'=>true,
+		'dropin_conflict'=>false,
+		'dropin_ownership'=>$trusted_ownership,
+	);
+	$observer=MAD4B_SCP_Database_Topology::assert_write_ready(true);
+	$check(is_array($observer)&&!empty($observer['ready'])&&!empty($observer['read_your_writes'])&&!empty($observer['observer_dropin_certified']),'certified observer db.php was not admitted: '.$trusted_ownership);
+	$check($trusted_ownership===$observer['database_dropin_ownership'],'certified observer ownership was not projected: '.$trusted_ownership);
+	$admitted=MAD4B_SCP_Abuse_Budget::admit('discovery',array('query'=>'site profile'));
+	$check(is_array($admitted)&&isset($admitted['rate']['count'])&&!empty($admitted['rate']['count']),'trusted observer broke Abuse Budget discovery admission: '.$trusted_ownership);
+}
+$check(3===array_sum($GLOBALS['wpdb']->counts),'trusted observer discovery did not commit exactly three rate buckets', $GLOBALS['wpdb']->counts);
 
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status['dropin_ownership']='query_monitor_native_dropin';
 $legacy_marker=MAD4B_SCP_Database_Topology::assert_write_ready(true);
 $check('mad4b_database_topology_not_write_safe'===$code($legacy_marker),'marker-only legacy Query Monitor drop-in escaped exact ownership certification');
+$abuse_blocked=MAD4B_SCP_Abuse_Budget::admit('discovery',array('query'=>'site profile'));
+$check('mad4b_abuse_rate_storage_unavailable'===$code($abuse_blocked),'untrusted db.php did not fail closed at the live Abuse Budget symptom boundary');
+$check(3===array_sum($GLOBALS['wpdb']->counts),'untrusted db.php mutated the rate bucket after topology denial', $GLOBALS['wpdb']->counts);
 
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status=array(
 	'dropin_exists'=>false,
