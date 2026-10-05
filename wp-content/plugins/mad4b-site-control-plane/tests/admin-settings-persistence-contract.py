@@ -158,7 +158,11 @@ for marker in [
     "wp_cache_delete( 'notoptions', 'options' )",
     "wp_cache_delete( 'alloptions', 'options' )",
     "wp_cache_flush_group( 'options' )",
-    "self::option_values_equal( get_option( $name, false ), $value )",
+    "$missing = '__mad4b_missing_option__' . hash( 'sha256', $name );",
+    "$current = get_option( $name, $missing );",
+    "$readback = get_option( $name, $missing );",
+    "$missing !== $current && self::option_values_equal( $current, $value )",
+    "$missing !== $readback && self::option_values_equal( $readback, $value )",
 ]:
     assert marker in context, marker
 
