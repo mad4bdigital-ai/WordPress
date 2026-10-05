@@ -37,9 +37,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	public static $presence = array();
 	public static $binding = array();
 	public static $effective = false;
+	public static $current_readiness = array( 'ready'=>false, 'blockers'=>array( 'fixture_not_ready' ) );
 	public static function persistence_checkpoint() { return self::$checkpoint; }
 	public static function authority_presence_status() { return self::$presence; }
 	public static function candidate_binding_status() { return self::$binding; }
+	public static function current_execution_readiness( $ability_name = '', $input = null ) { return self::$current_readiness; }
 	public static function effective() { return self::$effective; }
 }
 
@@ -158,10 +160,20 @@ MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
 );
 MAD4B_SCP_Staging_Write_Authority::$binding = array( 'required' => true, 'match' => true );
 MAD4B_SCP_Staging_Write_Authority::$effective = true;
+MAD4B_SCP_Staging_Write_Authority::$current_readiness = array( 'ready'=>true, 'blockers'=>array() );
 $carry = classify();
 check( ! is_wp_error( $carry ), 'effective prior authority must be classifiable' );
 check( ! empty( $carry['required'] ), 'effective prior authority must require continuation' );
 check( 'carry_forward_effective_authority' === $carry['mode'], 'carry-forward mode mismatch' );
+MAD4B_SCP_Staging_Write_Authority::$current_readiness = array(
+	'ready'=>false,
+	'blockers'=>array( 'exact_write_grants_missing' ),
+);
+$live_drift = classify();
+check( is_wp_error( $live_drift ) && 'mad4b_self_update_continuation_prior_authority_drift' === $live_drift->get_error_code(), 'live grant drift must block before continuation prepare' );
+check( false === $live_drift->get_error_data()['current_authority_ready'], 'live drift evidence must expose current authority state' );
+check( in_array( 'exact_write_grants_missing', $live_drift->get_error_data()['current_authority_blockers'], true ), 'live drift blockers missing from update gate' );
+MAD4B_SCP_Staging_Write_Authority::$current_readiness = array( 'ready'=>true, 'blockers'=>array() );
 foreach ( array( null, array(), array( 'required' => true ), array( 'required' => 'false', 'match' => true ), array( 'required' => true, 'match' => 1 ) ) as $bad_binding ) {
 	MAD4B_SCP_Staging_Write_Authority::$binding = $bad_binding;
 	$invalid = classify();
