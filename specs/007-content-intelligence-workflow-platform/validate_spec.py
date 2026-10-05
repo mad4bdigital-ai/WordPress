@@ -236,12 +236,17 @@ if closure_path.exists() and feature_path.exists():
             errors.append(f"closure:missing_gate:{row.get('id')}")
         if row.get("status") == "DONE" and not row.get("evidence"):
             errors.append(f"closure:done_without_evidence:{row.get('id')}")
-        if row.get("status") == "PARTIAL":
+        if row.get("status") in {"PARTIAL","EXTERNAL_PENDING"}:
             if not row.get("evidence"):
-                errors.append(f"closure:partial_without_evidence:{row.get('id')}")
+                errors.append(f"closure:non_done_without_evidence:{row.get('id')}:{row.get('status')}")
             remainder = row.get("remainder")
             if not isinstance(remainder, list) or not remainder:
-                errors.append(f"closure:partial_without_remainder:{row.get('id')}")
+                errors.append(f"closure:non_done_without_remainder:{row.get('id')}:{row.get('status')}")
+        if row.get("status") == "EXTERNAL_PENDING":
+            if row.get("external_pending_contract") != "mad4b.feature007-workstream-certification-policy.v1":
+                errors.append(f"closure:external_pending_contract_missing:{row.get('id')}")
+            if row.get("external_pending_reason") != "repository_implementation_present_live_or_external_evidence_required":
+                errors.append(f"closure:external_pending_reason_invalid:{row.get('id')}")
 
 if closure_path.exists():
     observed = closure.get("observed_live_etg_state")
