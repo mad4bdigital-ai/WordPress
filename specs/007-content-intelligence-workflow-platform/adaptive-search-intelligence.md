@@ -974,3 +974,18 @@ Phase 38 is complete only when:
 15. exact-head CI and evidence link the implementation.
 
 No documentation-only completion is allowed.
+
+
+## 47. Current repository-runtime closure
+
+Phase 38 is **80/80 DONE at repository-runtime scope**.
+
+Evidence anchor:
+- Search runtime exact head: `e8791ae6253b5667f1ffffdcf1693bd1d08a641a`;
+- feature-owned Adaptive Search conformance: PHP 7.4 + PHP 8.3 PASS;
+- 40 fixtures;
+- 938 assertions;
+- 15 emitted gates;
+- WordPress/runtime integration, Spec Quality, Spec Consistency, Repository Governance and ChatGPT catalog performance PASS on the runtime anchor.
+
+This closure remains non-authorizing. Live provider/account certification is `NOT_CLAIMED`; Production authority is false; repository fixtures do not substitute for live provider or environment-specific certification.
