@@ -52,7 +52,8 @@ namespace {
 		public static function site_urls_match_enrollment() { return ! isset( $GLOBALS['mad4b_test_urls_match'] ) || ! empty( $GLOBALS['mad4b_test_urls_match'] ); }
 	}
 	class MAD4B_SCP_Servers {
-		public static function chatgpt_tools() { return array( 'mad4b/site-info', 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ); }
+		public static $projected = array();
+		public static function chatgpt_tools() { return array_merge( array( 'mad4b/site-info', 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ), self::$projected ); }
 		public static function external_write_tools() { return array( 'mad4b/content-update-post', 'elementor/update-widget-settings' ); }
 		public static function write_tools() { return array( 'mad4b/content-update-post' ); }
 		public static function blocked_write_tools() { return array( array( 'ability' => 'elementor/update-widget-settings' ) ); }
@@ -60,6 +61,10 @@ namespace {
 	}
 	class MAD4B_SCP_Skill_Snapshot_Identity {
 		public static function build() { return array( 'identity_token' => 'sha256:' . str_repeat( 'a', 64 ), 'skill_count' => 6, 'app_id' => 'plugin_asdk_app_test', 'ready' => true ); }
+	}
+	class MAD4B_SCP_ChatGPT_Tool_Projection {
+		public static $governed = array();
+		public static function governed_write_projection_names() { return self::$governed; }
 	}
 
 	require dirname( __DIR__ ) . '/includes/class-mad4b-scp-live-acceptance-observer.php';
@@ -122,6 +127,15 @@ namespace {
 	mad4b_assert( ! empty( $direct_write_leak['direct_write_schema_leaks'] ), 'Direct underlying write schema exposure must be detected.' );
 	mad4b_assert( in_array( 'mad4b-content-update-post', $direct_write_leak['direct_write_schema_leaks'], true ), 'Leaked underlying write tool must be named.' );
 	mad4b_assert( empty( $direct_write_leak['write_inventory_fingerprint_match'] ), 'Direct write schema leakage must fail logical write transport acceptance.' );
+	MAD4B_SCP_Servers::$projected = MAD4B_SCP_ChatGPT_Tool_Projection::$governed = array( 'mad4b/content-update-post' );
+	$projected_inventory = array_merge( $stable_inventory, array( 'mad4b-content-update-post' ) );
+	$governed_projection = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( $projected_inventory, str_repeat( '0', 64 ) );
+	mad4b_assert( ! empty( $governed_projection['inventory_match'] ) && ! empty( $governed_projection['write_inventory_fingerprint_match'] ) && empty( $governed_projection['direct_write_schema_leaks'] ), 'A governed projection poisoned the transport acceptance reducer.' );
+	mad4b_assert( array( 'mad4b-content-update-post' ) === $governed_projection['governed_projected_write_tools'] && empty( $governed_projection['verified'] ), 'Exposure evidence invented a real external session.' );
+	MAD4B_SCP_ChatGPT_Tool_Projection::$governed = array();
+	$unfenced_projection = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( $projected_inventory, str_repeat( '0', 64 ) );
+	mad4b_assert( ! empty( $unfenced_projection['inventory_match'] ) && ! empty( $unfenced_projection['direct_write_schema_leaks'] ) && empty( $unfenced_projection['write_inventory_fingerprint_match'] ), 'Same catalog names without current projection proof passed acceptance.' );
+	MAD4B_SCP_Servers::$projected = array();
 
 	$missing_write_transport = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-execute' ), str_repeat( '0', 64 ) );
 	mad4b_assert( empty( $missing_write_transport['write_transport_ready'] ), 'Incomplete write transport must fail closed.' );

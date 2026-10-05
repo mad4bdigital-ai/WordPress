@@ -396,6 +396,8 @@ final class MAD4B_SCP_Live_Truth {
 		// there is no separate remote mount inventory to populate.
 		$missing_remote_mounts = array();
 		$direct_write_schema_leaks = array();
+		$governed_write_projections = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && method_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', 'governed_write_projection_names' )
+			? MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() : array();
 		$write_transport_tools = array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' );
 		$missing_write_transport = array();
 		foreach ( $write_transport_tools as $transport_ability ) {
@@ -406,7 +408,7 @@ final class MAD4B_SCP_Live_Truth {
 		foreach ( $tools as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
 			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $missing_write_mounts[] = $ability_name;
-			if ( class_exists( 'MAD4B_SCP_Servers' ) && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $direct_write_schema_leaks[] = $ability_name;
+			if ( class_exists( 'MAD4B_SCP_Servers' ) && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) && ! in_array( $ability_name, $governed_write_projections, true ) ) $direct_write_schema_leaks[] = $ability_name;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) { $metadata_mismatch[] = $ability_name; continue; }
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) { $metadata_mismatch[] = $ability_name; continue; }
@@ -424,6 +426,8 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
 		$checks['all_write_tools_mounted_on_authority'] = empty( $missing_write_mounts );
 		$checks['write_dispatch_transport_available'] = empty( $missing_write_transport );
+		// The compatibility field excludes only independently fenced, pinned
+		// hot-set proxies. Unreviewed direct schema exposure still fails closed.
 		$checks['direct_write_schemas_hidden_from_chatgpt'] = empty( $direct_write_schema_leaks );
 		// Compatibility alias: "same plugin transport" now means the logical
 		// write inventory is reachable through the exact-target dispatcher on the
@@ -498,6 +502,7 @@ final class MAD4B_SCP_Live_Truth {
 			'missing_write_mounts' => $missing_write_mounts,
 			'missing_write_transport' => $missing_write_transport,
 			'direct_write_schema_leaks' => $direct_write_schema_leaks,
+			'governed_projected_write_tools' => array_values( array_intersect( $tools, $governed_write_projections ) ),
 			'metadata_mismatch' => $metadata_mismatch,
 			'breakglass' => $breakglass,
 			'local_rest_isolation' => $rest,
@@ -532,6 +537,8 @@ final class MAD4B_SCP_Live_Truth {
 			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
 			'missing_remote_mounts' => $missing_remote_mounts,
+			'direct_write_schema_leaks' => $direct_write_schema_leaks,
+			'governed_projected_write_tools' => array_values( array_intersect( $tools, $governed_write_projections ) ),
 			'metadata_mismatch' => $metadata_mismatch,
 			'authority' => $authority,
 			'approval_planner' => $planner,

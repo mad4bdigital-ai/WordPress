@@ -232,6 +232,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$tools = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::write_tools() : array();
 		$missing_write_mounts = array();
 		$direct_write_schema_leaks = array();
+		$governed_write_projections = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && method_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', 'governed_write_projection_names' )
+			? MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() : array();
 		$write_transport_tools = array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' );
 		$missing_write_transport = array();
 		foreach ( $write_transport_tools as $transport_ability ) {
@@ -244,7 +246,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		foreach ( $tools as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $missing_write_mounts[] = $ability_name;
-			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $direct_write_schema_leaks[] = $ability_name;
+			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) && ! in_array( $ability_name, $governed_write_projections, true ) ) $direct_write_schema_leaks[] = $ability_name;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
 				$metadata_mismatch[] = $ability_name;
 				continue;
@@ -275,6 +277,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
 		$checks['all_write_tools_mounted_on_authority'] = empty( $missing_write_mounts );
 		$checks['write_dispatch_transport_available'] = empty( $missing_write_transport );
+		// Schema-pinned hot-set tools are proxy surfaces with the original lane's
+		// Authorization wrapper and a final call seal; ungoverned direct schemas
+		// remain leaks. Exposure proof is never invocation authority.
 		$checks['direct_write_schemas_hidden_from_chatgpt'] = empty( $direct_write_schema_leaks );
 		// Backward-compatible field: "same plugin transport" now means every
 		// logical write is reachable through the exact-target dispatcher on the
@@ -390,6 +395,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'missing_write_mounts' => $missing_write_mounts,
 			'missing_write_transport' => $missing_write_transport,
 			'direct_write_schema_leaks' => $direct_write_schema_leaks,
+			'governed_projected_write_tools' => array_values( array_intersect( $tools, $governed_write_projections ) ),
 			'metadata_mismatch' => $metadata_mismatch,
 			'missing_execution_boundaries' => $missing_execution_boundaries,
 			'missing_governed_write_authority' => $missing_governed_write_authority,
@@ -407,6 +413,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'checks' => $checks,
 			'write_tool_count' => count( $tools ),
 			'write_tools' => $tools,
+			'direct_write_schema_leaks' => $direct_write_schema_leaks,
+			'governed_projected_write_tools' => array_values( array_intersect( $tools, $governed_write_projections ) ),
 			'provider_blocked_write_tool_count' => count( $provider_blocked_write_tools ),
 			'provider_blocked_write_tools' => $provider_blocked_write_tools,
 			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,

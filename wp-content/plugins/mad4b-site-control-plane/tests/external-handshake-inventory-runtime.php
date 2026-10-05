@@ -59,6 +59,10 @@ final class MAD4B_SCP_Servers {
 	public static function blocked_write_tools() { return self::$blocked_write_tools; }
 	public static function core_tools( $server_id ) { return 'mad4b-breakglass' === $server_id ? array( 'mad4b/database-raw-query' ) : array(); }
 }
+final class MAD4B_SCP_ChatGPT_Tool_Projection {
+	public static $governed = array();
+	public static function governed_write_projection_names() { return self::$governed; }
+}
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 function mad4b_fail( $message ) { fwrite( STDERR, 'FAIL: ' . $message . "\n" ); exit( 1 ); }
 function mad4b_assert( $condition, $message ) { if ( ! $condition ) mad4b_fail( $message ); }
@@ -158,6 +162,14 @@ $direct_write = $exact_external; $direct_write[] = mad4b_tool_name( 'mad4b/conte
 mad4b_assert( empty( mad4b_capture_scenario( 'session-direct-write-leak', $direct_write ) ), 'direct underlying write schema must reject handshake evidence' );
 $unexpected = $exact_external; $unexpected[] = 'foreign-unexpected-tool';
 mad4b_assert( empty( mad4b_capture_scenario( 'session-unexpected', $unexpected ) ), 'unexpected foreign tool must reject handshake evidence' );
+
+MAD4B_SCP_Servers::$chatgpt_tools[] = 'mad4b/content-update-post';
+$projected_external = mad4b_external_names( MAD4B_SCP_Servers::$chatgpt_tools );
+MAD4B_SCP_ChatGPT_Tool_Projection::$governed = array( 'mad4b/content-update-post' );
+mad4b_assert( ! empty( mad4b_capture_scenario( 'session-governed-hotset', $projected_external ) ), 'Real initialize/tools-list did not accept current fenced projection evidence' );
+MAD4B_SCP_ChatGPT_Tool_Projection::$governed = array();
+mad4b_assert( empty( mad4b_capture_scenario( 'session-unfenced-hotset', $projected_external ) ), 'Same tool names without current projection proof persisted handshake evidence' );
+MAD4B_SCP_Servers::$chatgpt_tools = array_merge( $reads, $write_transport );
 
 echo "mad4b.external-handshake-inventory.v4: PASS\n";
 }
