@@ -35,8 +35,9 @@ final class MAD4B_SCP_Content_Experience_Media {
 		$reference_kinds = array( 'image_id', 'attachment_id', 'image_gallery', 'attachment_gallery' );
 		$usage_kinds = array( 'image_gallery_usage', 'attachment_gallery_usage' );
 		$allowed_usage_fields = array(
-			'role', 'alt_override', 'caption_override', 'title_override',
-			'credit', 'copyright', 'license', 'source_url', 'focal_point',
+			'role', 'alt_override', 'caption_override', 'title_override', 'description_override',
+			'credit', 'copyright', 'license', 'license_expires_on', 'source_url',
+			'focal_point', 'aria_label', 'decorative', 'link_url', 'link_target',
 		);
 
 		foreach ( $raw as $key => $spec ) {
@@ -87,9 +88,14 @@ final class MAD4B_SCP_Content_Experience_Media {
 				if ( in_array( 'role', $usage_fields, true ) && empty( $roles ) ) {
 					return new WP_Error( 'mad4b_content_experience_media_usage_roles_required', 'Media usage role is enabled but no exact role allowlist is configured.', array( 'key' => $key ) );
 				}
+				$licenses = self::normalize_string_list( isset( $spec['licenses'] ) ? $spec['licenses'] : array(), 32, '/^[a-z0-9][a-z0-9._-]*$/' );
+				if ( in_array( 'license', $usage_fields, true ) && empty( $licenses ) ) {
+					return new WP_Error( 'mad4b_content_experience_media_usage_licenses_required', 'Media usage license is enabled but no exact license allowlist is configured.', array( 'key' => $key ) );
+				}
 				$row['references_field'] = $reference;
 				$row['usage_fields'] = $usage_fields;
 				$row['roles'] = $roles;
+				$row['licenses'] = $licenses;
 			}
 			$result[ $key ] = $row;
 		}
@@ -118,6 +124,19 @@ final class MAD4B_SCP_Content_Experience_Media {
 			return new WP_Error( 'mad4b_content_experience_media_usage_url_invalid', 'Media usage source_url must be an absolute HTTP(S) URL.' );
 		}
 		return $url;
+	}
+
+	private static function normalize_iso_date( $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value ) return '';
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ) {
+			return new WP_Error( 'mad4b_content_experience_media_usage_date_invalid', 'Media rights expiry must use YYYY-MM-DD.' );
+		}
+		$parts = array_map( 'intval', explode( '-', $value ) );
+		if ( 3 !== count( $parts ) || ! checkdate( $parts[1], $parts[2], $parts[0] ) ) {
+			return new WP_Error( 'mad4b_content_experience_media_usage_date_invalid', 'Media rights expiry is not a valid calendar date.' );
+		}
+		return $value;
 	}
 
 	private static function normalize_usage_item( $key, $item, array $spec, $image_only ) {
@@ -156,10 +175,35 @@ final class MAD4B_SCP_Content_Experience_Media {
 					if ( strlen( $value ) > self::MAX_USAGE_TEXT_BYTES ) return new WP_Error( 'mad4b_content_experience_media_usage_text_too_large', 'Media usage caption exceeds the bounded size.', array( 'key' => $key ) );
 					$out[ $field ] = $value;
 					break;
+				case 'description_override':
+					$value = wp_kses_post( (string) $item[ $field ] );
+					if ( strlen( $value ) > self::MAX_USAGE_TEXT_BYTES ) return new WP_Error( 'mad4b_content_experience_media_usage_text_too_large', 'Media usage description exceeds the bounded size.', array( 'key' => $key ) );
+					$out[ $field ] = $value;
+					break;
 				case 'source_url':
+				case 'link_url':
 					$value = self::normalize_url( $item[ $field ] );
 					if ( is_wp_error( $value ) ) return $value;
 					$out[ $field ] = $value;
+					break;
+				case 'license':
+					$value = sanitize_key( (string) $item[ $field ] );
+					if ( '' === $value || ! in_array( $value, (array) $spec['licenses'], true ) ) return new WP_Error( 'mad4b_content_experience_media_usage_license_denied', 'Media usage license is outside the profile license allowlist.', array( 'key' => $key, 'license' => $value ) );
+					$out[ $field ] = $value;
+					break;
+				case 'license_expires_on':
+					$value = self::normalize_iso_date( $item[ $field ] );
+					if ( is_wp_error( $value ) ) return $value;
+					$out[ $field ] = $value;
+					break;
+				case 'link_target':
+					$value = (string) $item[ $field ];
+					if ( ! in_array( $value, array( '_self', '_blank' ), true ) ) return new WP_Error( 'mad4b_content_experience_media_usage_link_target_invalid', 'Media usage link_target must be _self or _blank.', array( 'key' => $key ) );
+					$out[ $field ] = $value;
+					break;
+				case 'decorative':
+					if ( ! is_bool( $item[ $field ] ) ) return new WP_Error( 'mad4b_content_experience_media_usage_decorative_invalid', 'Media usage decorative must be a boolean.', array( 'key' => $key ) );
+					$out[ $field ] = (bool) $item[ $field ];
 					break;
 				case 'focal_point':
 					$point = $item[ $field ];
@@ -176,6 +220,17 @@ final class MAD4B_SCP_Content_Experience_Media {
 					$out[ $field ] = $value;
 					break;
 			}
+		}
+		if ( ! empty( $out['decorative'] ) ) {
+			if ( isset( $out['alt_override'] ) && '' !== trim( (string) $out['alt_override'] ) ) {
+				return new WP_Error( 'mad4b_content_experience_media_usage_decorative_alt_conflict', 'Decorative media must not carry a non-empty contextual ALT.', array( 'key' => $key ) );
+			}
+			if ( isset( $out['aria_label'] ) && '' !== trim( (string) $out['aria_label'] ) ) {
+				return new WP_Error( 'mad4b_content_experience_media_usage_decorative_aria_conflict', 'Decorative media must not carry an ARIA label.', array( 'key' => $key ) );
+			}
+		}
+		if ( isset( $out['link_target'] ) && ! isset( $out['link_url'] ) ) {
+			return new WP_Error( 'mad4b_content_experience_media_usage_link_target_without_url', 'Media usage link_target requires link_url in the same item.', array( 'key' => $key ) );
 		}
 		return $out;
 	}
