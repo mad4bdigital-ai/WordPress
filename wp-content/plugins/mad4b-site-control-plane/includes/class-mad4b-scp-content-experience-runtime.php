@@ -300,6 +300,20 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		);
 		if ( is_wp_error( $effective_media_state ) ) return $effective_media_state;
 		$effective_media_state_sha256 = MAD4B_SCP_Content_Experience_Media::effective_state_sha256( $effective_media_state );
+		$media_publish_rights = null;
+		if ( 'publish' === $operation ) {
+			$rights_enforced = false;
+			foreach ( $media_fields as $media_spec ) {
+				if ( is_array( $media_spec ) && 'require_valid' === ( isset( $media_spec['publish_rights_policy'] ) ? (string) $media_spec['publish_rights_policy'] : 'none' ) ) {
+					$rights_enforced = true;
+					break;
+				}
+			}
+			if ( $rights_enforced ) {
+				$media_publish_rights = MAD4B_SCP_Content_Experience_Media_Rights::publish_guard( $media_fields, $effective_media_state );
+				if ( is_wp_error( $media_publish_rights ) ) return $media_publish_rights;
+			}
+		}
 		$taxonomies = self::normalize_taxonomy_payload( $profile, isset( $input['taxonomies'] ) ? $input['taxonomies'] : array() );
 		if ( is_wp_error( $taxonomies ) ) return $taxonomies;
 		$helpers = self::normalize_helper_payloads( $profile, $operation, isset( $input['helpers'] ) ? $input['helpers'] : array() );
@@ -358,6 +372,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'post_type' => (string) $profile['post_type'],
 			'current_state_sha256' => $current_state_sha256,
 			'effective_media_state_sha256' => $effective_media_state_sha256,
+			'media_publish_rights' => $media_publish_rights,
 			'normalized_input' => $normalized,
 			'mutation_performed' => false,
 		);
