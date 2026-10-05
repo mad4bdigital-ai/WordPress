@@ -4,7 +4,16 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.93**.
+Current plugin version: **0.4.0-rc.94**.
+
+### rc.94 Adaptive runtime convergence
+
+- Adds a Staging-only adaptive convergence observer for Control Plane and provider lifecycle drift.
+- Treats provider version drift as capability-scoped evidence: structurally compatible reads remain available while uncertified writes stay fail-closed.
+- Reuses the existing safe Runtime Convergence lifecycle for schema, MCP runtime and Managed Skills; no Production authority or implicit write authority expansion is created.
+- Classifies reversible bounded-write drift for governed behavioral recertification, while high-risk/artifact-authority changes remain owner-gated.
+- Marks external MCP evidence for refresh on the next authenticated initialize + tools/list cycle after an exact-build change.
+- Adds a compatibility redirect for historical direct MAD4B wp-admin slugs so old bookmarks resolve to canonical admin.php?page= routes instead of theme 404 pages.
 
 ### rc.92 WordPress-native governed update UX
 
