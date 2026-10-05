@@ -320,6 +320,21 @@ mad4b_assert_true( ! empty( $guidance['resume_after_reconnect_requires_generatio
 
 $read_consistency_reflection = new ReflectionClass( 'MAD4B_SCP_Read_Consistency' );
 
+$next_step_method = $read_consistency_reflection->getMethod( 'session_safe_next_step' );
+$next_step_method->setAccessible( true );
+$write_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ) );
+mad4b_assert_true( 'request_full_staging_authority_handshake' === $write_next['action'], 'session-safe write recovery route drifted' );
+mad4b_assert_true( 'mad4b/full-staging-authority-handshake' === $write_next['ability'], 'session-safe write recovery ability drifted' );
+mad4b_assert_true( ! empty( $write_next['read_only'] ) && empty( $write_next['automatic_apply_allowed'] ), 'session-safe write recovery must remain read-only and non-automatic' );
+
+$skills_next = $next_step_method->invoke( null, false, array( 'skills_runtime_not_effective' ) );
+mad4b_assert_true( 'mad4b/reconcile-managed-skills' === $skills_next['ability'], 'session-safe skills recovery ability drifted' );
+mad4b_assert_true( ! empty( $skills_next['explicit_authority_required'] ) && empty( $skills_next['automatic_apply_allowed'] ), 'skills recovery must require explicit authority and never auto-apply' );
+
+$partial_next = $next_step_method->invoke( null, true, array() );
+mad4b_assert_true( 'inspect_partial_report_then_retry_missing_scope' === $partial_next['action'], 'partial session-safe recovery route drifted' );
+mad4b_assert_true( '' === $partial_next['ability'] && ! empty( $partial_next['read_only'] ), 'partial session-safe recovery must not invent a mutation target' );
+
 $performance_method = $read_consistency_reflection->getMethod( 'performance_observation' );
 $performance_method->setAccessible( true );
 $performance = $performance_method->invoke( null, array(
