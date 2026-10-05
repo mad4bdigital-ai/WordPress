@@ -91,15 +91,16 @@ if feature_path.exists():
         "adaptive_search_intelligence_document": "adaptive-search-intelligence.md",
         "adaptive_search_intelligence_runtime_contract_document": "contracts/adaptive-search-intelligence-runtime.md",
         "adaptive_search_intelligence_ledger": "adaptive-search-intelligence.json",
-        "adaptive_search_intelligence_status": "OPEN_MATURITY_EXTENSION_NON_AUTHORIZING",
+        "adaptive_search_intelligence_status": "REPOSITORY_RUNTIME_VALIDATED_NON_AUTHORIZING",
         "adaptive_search_intelligence_review_document": "adaptive-search-intelligence-review.md",
         "adaptive_search_intelligence_review_ledger": "adaptive-search-intelligence-review.json",
         "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
-        "adaptive_search_intelligence_review_status": "APPROVED_P0_CLOSED_P1_OPEN",
+        "adaptive_search_intelligence_review_status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
         "adaptive_search_intelligence_review_score": 88,
         "adaptive_search_intelligence_review_p0_open": 0,
         "adaptive_search_intelligence_review_p0_closed": 12,
-        "adaptive_search_intelligence_review_p1_open": 6,
+        "adaptive_search_intelligence_review_p1_open": 0,
+        "adaptive_search_intelligence_review_p1_closed": 6,
     }
     for k, v in adaptive_search_expected.items():
         if data.get(k) != v:
@@ -346,7 +347,7 @@ if adaptive_search_path.exists():
         errors.append("adaptive_search:contract_mismatch")
     if adaptive_search.get("phase") != 38:
         errors.append("adaptive_search:phase_mismatch")
-    if adaptive_search.get("status") != "OPEN":
+    if adaptive_search.get("status") != "REPOSITORY_RUNTIME_VALIDATED":
         errors.append("adaptive_search:status_mismatch")
     if adaptive_search.get("authorizing") is not False:
         errors.append("adaptive_search:must_be_non_authorizing")
@@ -369,6 +370,12 @@ if adaptive_search_path.exists():
     }
     if not required_search_gates.issubset(set(adaptive_search.get("required_gates", []))):
         errors.append("adaptive_search:required_gate_set_incomplete")
+    workstreams=adaptive_search.get("workstreams", [])
+    if len(workstreams) != 15 or any(not isinstance(row,dict) or row.get("status")!="DONE" for row in workstreams):
+        errors.append("adaptive_search:workstreams_not_repository_runtime_closed")
+    repo_closure=adaptive_search.get("repository_runtime_closure")
+    if not isinstance(repo_closure,dict) or repo_closure.get("status")!="DONE" or int(repo_closure.get("done_task_count") or 0)!=80 or repo_closure.get("live_provider_account_certification")!="NOT_CLAIMED" or repo_closure.get("authorizing") is not False:
+        errors.append("adaptive_search:repository_runtime_closure_invalid")
     boundaries=set(adaptive_search.get("hard_boundaries", []))
     for boundary in [
         "no_production_authority",
@@ -425,7 +432,7 @@ if adaptive_search_review_path.exists():
     adaptive_search_review = json.loads(adaptive_search_review_path.read_text(encoding="utf-8"))
     if adaptive_search_review.get("contract") != "mad4b.adaptive-search-intelligence-review.v1":
         errors.append("adaptive_search_review:contract_mismatch")
-    if adaptive_search_review.get("status") != "APPROVED_P0_CLOSED_P1_OPEN":
+    if adaptive_search_review.get("status") != "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED":
         errors.append("adaptive_search_review:status_mismatch")
     if adaptive_search_review.get("authorizing") is not False:
         errors.append("adaptive_search_review:must_be_non_authorizing")
@@ -433,7 +440,7 @@ if adaptive_search_review_path.exists():
     if int(scores.get("overall") or -1) != 88:
         errors.append("adaptive_search_review:overall_score_mismatch")
     summary=adaptive_search_review.get("summary", {})
-    if int(summary.get("p0_open") if summary.get("p0_open") is not None else -1) != 0 or int(summary.get("p0_closed") or -1) != 12 or int(summary.get("p1_open") or -1) != 6:
+    if int(summary.get("p0_open") if summary.get("p0_open") is not None else -1) != 0 or int(summary.get("p0_closed") or -1) != 12 or int(summary.get("p1_open") if summary.get("p1_open") is not None else -1) != 0 or int(summary.get("p1_closed") or -1) != 6:
         errors.append("adaptive_search_review:open_gap_counts_mismatch")
     findings=adaptive_search_review.get("findings", [])
     ids=[row.get("id") for row in findings if isinstance(row, dict)]
@@ -454,12 +461,15 @@ if adaptive_search_review_path.exists():
             errors.append("adaptive_search_review:p0_closure_run_invalid")
         if p0_closure.get("evidence_status") != "PASS":
             errors.append("adaptive_search_review:p0_closure_not_pass")
+    p1_closure=adaptive_search_review.get("p1_closure")
+    if not isinstance(p1_closure,dict) or p1_closure.get("evidence_status")!="PASS" or p1_closure.get("closure_scope")!="repository_runtime" or p1_closure.get("live_provider_account_certification")!="NOT_CLAIMED" or p1_closure.get("authorizing") is not False:
+        errors.append("adaptive_search_review:p1_closure_invalid")
     for row in findings:
         if not isinstance(row,dict):
             continue
         if row.get("severity")=="P0" and row.get("status")!="CLOSED":
             errors.append(f"adaptive_search_review:p0_not_closed:{row.get('id')}")
-        if row.get("severity")=="P1" and row.get("status") not in {"OPEN","PARTIAL"}:
+        if row.get("severity")=="P1" and row.get("status")!="CLOSED":
             errors.append(f"adaptive_search_review:p1_status_invalid:{row.get('id')}")
 
 quality = require_file("quality-model.md")
