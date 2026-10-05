@@ -83,6 +83,7 @@ class FakeAdapter extends MAD4B_SCP_Adapter_Base {
 	public function provider_key() { return 'jetsmartfilters'; }
 	public function reversible_contract_for( $ability ) { return 'mad4b.rollback.jetsmartfilters-filter-meta.v1'; }
 	public function capture_reversible_state( $ability, array $input ) {
+		if ( ! MAD4B_SCP_Provider_Behavioral_Recertification::probe_context_allows( 'jetsmartfilters', $ability, $input ) ) return new WP_Error( 'fixture_probe_context_missing', 'Exact probe context is required.' );
 		return array(
 			'target_type' => 'jetsmartfilters-filter-meta',
 			'target_id' => '7:_query_var',
@@ -91,8 +92,12 @@ class FakeAdapter extends MAD4B_SCP_Adapter_Base {
 		);
 	}
 	public function read_reversible_state( $ability, array $target ) { return array( 'exists' => true, 'value' => $GLOBALS['provider_state']['value'] ); }
-	public function restore_reversible_state( $ability, array $target, array $state, array $record ) { $GLOBALS['provider_state']['value'] = (string) $state['value']; return true; }
+	public function restore_reversible_state( $ability, array $target, array $state, array $record ) {
+		if ( ! MAD4B_SCP_Provider_Behavioral_Recertification::probe_context_allows( 'jetsmartfilters', $ability ) ) return new WP_Error( 'fixture_probe_context_missing', 'Exact probe context is required for rollback.' );
+		$GLOBALS['provider_state']['value'] = (string) $state['value']; return true;
+	}
 	public function update_filter_meta( array $input ) {
+		if ( ! MAD4B_SCP_Provider_Behavioral_Recertification::probe_context_allows( 'jetsmartfilters', 'jetsmartfilters/update-filter-meta', $input ) ) return new WP_Error( 'fixture_probe_context_missing', 'Exact probe context is required for provider write.' );
 		$GLOBALS['provider_state']['value'] = (string) $input['value'];
 		if ( 'fail_after_side_effect' === $GLOBALS['probe_mode'] ) return new WP_Error( 'provider_failed_after_side_effect', 'fixture failure' );
 		return array( 'updated' => true, 'sha256' => hash( 'sha256', (string) $input['value'] ) );
@@ -165,6 +170,7 @@ expect_same( true, $result['behavioral_passed'], 'behavioral probe passes' );
 expect_same( true, $result['rollback_verified'], 'rollback is verified' );
 expect_same( 'before_value', $GLOBALS['provider_state']['value'], 'successful probe restores exact before-state' );
 expect_same( true, $result['receipt_pending_approval_finalization'], 'receipt remains pending before central finalizer' );
+expect_same( false, MAD4B_SCP_Provider_Behavioral_Recertification::probe_context_allows( 'jetsmartfilters', 'jetsmartfilters/update-filter-meta', $input['target_input'] ), 'probe context is cleared after successful rollback' );
 $before = MAD4B_SCP_Provider_Behavioral_Recertification::provide_receipts( array(), $context );
 expect_same( 0, count( $before ), 'executing ticket cannot surface receipt' );
 
@@ -211,6 +217,7 @@ $failed = MAD4B_SCP_Provider_Behavioral_Recertification::run( $input );
 expect_true( is_wp_error( $failed ), 'provider failure after side effect remains failed' );
 expect_same( 'provider_failed_after_side_effect', $failed->get_error_code(), 'original provider error survives successful recovery rollback' );
 expect_same( 'before_failure', $GLOBALS['provider_state']['value'], 'recovery rollback restores exact state after provider failure' );
+expect_same( false, MAD4B_SCP_Provider_Behavioral_Recertification::probe_context_allows( 'jetsmartfilters', 'jetsmartfilters/update-filter-meta', $input['target_input'] ), 'probe context is cleared after failed provider execution' );
 $GLOBALS['ticket_status'] = 'used';
 $failed_receipts = MAD4B_SCP_Provider_Behavioral_Recertification::provide_receipts( array(), $context );
 expect_same( 0, count( $failed_receipts ), 'failed probe cannot manufacture behavioral receipt' );
