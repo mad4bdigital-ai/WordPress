@@ -243,7 +243,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 						$row['ready'] = $row['path_match'] && $identity_match;
 						if ( ! $row['path_match'] ) $row['reason'] = 'runtime_class_source_mismatch';
 						elseif ( $uses_blob_identity && ! $row['blob_match'] ) $row['reason'] = 'runtime_symbol_blob_mismatch';
-						elseif ( ! $row['sha256_match'] ) $row['reason'] = 'runtime_class_sha256_mismatch';
+						elseif ( ! $uses_blob_identity && ! $row['sha256_match'] ) $row['reason'] = 'runtime_class_sha256_mismatch';
 					}
 				} catch ( Throwable $error ) {
 					$row['reason'] = 'runtime_class_reflection_failed';
