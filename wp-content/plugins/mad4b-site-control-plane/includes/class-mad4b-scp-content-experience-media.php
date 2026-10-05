@@ -101,9 +101,12 @@ final class MAD4B_SCP_Content_Experience_Media {
 				if ( array_diff( $expiry_required_licenses, $licenses ) ) {
 					return new WP_Error( 'mad4b_content_experience_media_rights_license_unknown', 'Expiry-required licenses must be a subset of the exact license allowlist.', array( 'key' => $key ) );
 				}
+				if ( 'require_valid' === $publish_rights_policy && ! in_array( 'license', $usage_fields, true ) ) {
+					return new WP_Error( 'mad4b_content_experience_media_rights_fields_required', 'Publish rights enforcement requires the license usage field.', array( 'key' => $key ) );
+				}
 				if ( 'require_valid' === $publish_rights_policy && ! empty( $expiry_required_licenses )
-					&& ( ! in_array( 'license', $usage_fields, true ) || ! in_array( 'license_expires_on', $usage_fields, true ) ) ) {
-					return new WP_Error( 'mad4b_content_experience_media_rights_fields_required', 'Publish rights enforcement requires license and license_expires_on usage fields.', array( 'key' => $key ) );
+					&& ! in_array( 'license_expires_on', $usage_fields, true ) ) {
+					return new WP_Error( 'mad4b_content_experience_media_rights_fields_required', 'Expiry-enforced licenses require the license_expires_on usage field.', array( 'key' => $key ) );
 				}
 				$row['references_field'] = $reference;
 				$row['usage_fields'] = $usage_fields;
