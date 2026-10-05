@@ -121,6 +121,66 @@ mad4b_assert_true( empty( $rate['automatic_retry_allowed'] ), 'rate limit must r
 mad4b_assert_true( 'backoff_then_retry' === $rate['client_action'], 'rate-limit client action drifted' );
 mad4b_assert_true( 7 === (int) $rate['retry_after_seconds'], 'retry-after hint must be preserved safely' );
 
+$rate_storage_attempts = 0;
+$rate_storage = MAD4B_SCP_Connector_Resilience::safe_read(
+	'rate_storage',
+	static function () use ( &$rate_storage_attempts ) {
+		$rate_storage_attempts++;
+		return new WP_Error(
+			'mad4b_abuse_rate_storage_unavailable',
+			'Rate-limit writer topology is unavailable.',
+			array(
+				'cause_code' => 'mad4b_database_topology_not_write_safe',
+				'topology_blockers' => array( 'uncertified_database_router_dropin', 'database_topology_probe_error' ),
+				'blind_retry_allowed' => false,
+				'authorizing' => false,
+				'recovery_read_ability' => 'mad4b/session-safe-diagnostics',
+				'bounded_repair_ability' => 'mad4b/query-monitor-db-attribution-bootstrap',
+				'recheck_action' => 'retry_original_operation_after_topology_repair',
+				'surface' => 'discovery',
+				'secret_untrusted_detail' => 'SECRET-MUST-NOT-LEAK',
+			)
+		);
+	}
+);
+mad4b_assert_true( empty( $rate_storage['ok'] ), 'rate storage failure must remain failed' );
+mad4b_assert_true( 1 === $rate_storage_attempts, 'rate storage failure must not auto retry' );
+mad4b_assert_true( 'rate_storage' === $rate_storage['category'], 'rate storage category drifted' );
+mad4b_assert_true( ! empty( $rate_storage['retryable'] ) && empty( $rate_storage['automatic_retry_allowed'] ), 'rate storage must be repairable later without immediate replay' );
+mad4b_assert_true( 'repair_rate_storage_then_retry' === $rate_storage['client_action'], 'rate storage client action drifted' );
+mad4b_assert_true( isset( $rate_storage['recovery'] ) && is_array( $rate_storage['recovery'] ), 'rate storage recovery metadata missing' );
+mad4b_assert_true( 'mad4b_database_topology_not_write_safe' === $rate_storage['recovery']['cause_code'], 'rate storage cause code lost' );
+mad4b_assert_true( in_array( 'uncertified_database_router_dropin', $rate_storage['recovery']['topology_blockers'], true ), 'rate storage topology blocker lost' );
+mad4b_assert_true( 'mad4b/session-safe-diagnostics' === $rate_storage['recovery']['recovery_read_ability'], 'rate storage read recovery ability lost' );
+mad4b_assert_true( 'mad4b/query-monitor-db-attribution-bootstrap' === $rate_storage['recovery']['bounded_repair_ability'], 'rate storage bounded repair ability lost' );
+mad4b_assert_true( empty( $rate_storage['recovery']['blind_retry_allowed'] ), 'rate storage recovery must forbid blind retry' );
+mad4b_assert_true( ! array_key_exists( 'secret_untrusted_detail', $rate_storage['recovery'] ), 'untrusted rate storage error data leaked through recovery whitelist' );
+
+$rate_storage_dispatch = MAD4B_SCP_Connector_Resilience::execute_read(
+	'mad4b/example-rate-storage-read',
+	static function () {
+		return new WP_Error(
+			'mad4b_abuse_rate_storage_unavailable',
+			'Rate-limit writer topology is unavailable.',
+			array(
+				'cause_code' => 'mad4b_database_topology_not_write_safe',
+				'topology_blockers' => array( 'uncertified_database_router_dropin' ),
+				'blind_retry_allowed' => false,
+				'authorizing' => false,
+				'recovery_read_ability' => 'mad4b/session-safe-diagnostics',
+				'bounded_repair_ability' => 'mad4b/query-monitor-db-attribution-bootstrap',
+				'recheck_action' => 'retry_original_operation_after_topology_repair',
+			)
+		);
+	}
+);
+mad4b_assert_true( is_wp_error( $rate_storage_dispatch ), 'governed read dispatcher must preserve rate storage failure' );
+$rate_storage_dispatch_data = $rate_storage_dispatch->get_error_data();
+mad4b_assert_true( 'rate_storage' === $rate_storage_dispatch_data['category'], 'governed read dispatcher lost rate storage category' );
+mad4b_assert_true( 'repair_rate_storage_then_retry' === $rate_storage_dispatch_data['client_action'], 'governed read dispatcher lost rate storage recovery action' );
+mad4b_assert_true( 'mad4b/query-monitor-db-attribution-bootstrap' === $rate_storage_dispatch_data['recovery']['bounded_repair_ability'], 'governed read dispatcher lost bounded rate storage repair metadata' );
+mad4b_assert_true( empty( $rate_storage_dispatch_data['blind_retry_allowed'] ), 'governed read dispatcher must deny blind retry for rate storage failure' );
+
 $error_code_probe = MAD4B_SCP_Connector_Resilience::safe_read(
 	'provider_error_code_sanitization',
 	static function () {
