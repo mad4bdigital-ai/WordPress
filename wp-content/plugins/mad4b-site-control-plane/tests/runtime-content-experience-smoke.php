@@ -165,8 +165,9 @@ try {
 				'storage' => 'items',
 				'references_field' => 'ci_gallery',
 				'max_items' => 12,
-				'usage_fields' => array( 'role', 'alt_override', 'caption_override', 'credit', 'copyright', 'license', 'source_url', 'focal_point' ),
+				'usage_fields' => array( 'role', 'alt_override', 'caption_override', 'title_override', 'description_override', 'credit', 'copyright', 'license', 'license_expires_on', 'source_url', 'focal_point', 'aria_label', 'decorative', 'link_url', 'link_target' ),
 				'roles' => array( 'hero', 'gallery', 'card' ),
+				'licenses' => array( 'owned', 'licensed', 'editorial', 'public-domain' ),
 			),
 			'ci_gallery_csv' => array( 'kind' => 'image_gallery', 'storage' => 'csv_ids', 'max_items' => 12 ),
 			'ci_attachments' => array( 'kind' => 'attachment_gallery', 'storage' => 'ids', 'max_items' => 8 ),
@@ -206,11 +207,18 @@ try {
 					'role' => 'gallery',
 					'alt_override' => 'Contextual gallery alt for the second trip image',
 					'caption_override' => 'Contextual caption used only inside this trip gallery.',
+					'title_override' => 'Cairo gallery context title',
+					'description_override' => '<p>Trip-specific contextual image description.</p>',
 					'credit' => 'All Royal Egypt',
 					'copyright' => 'All Royal Egypt',
-					'license' => 'owned',
+					'license' => 'licensed',
+					'license_expires_on' => '2028-12-31',
 					'source_url' => 'https://example.invalid/media-source-two',
 					'focal_point' => array( 'x' => 0.35, 'y' => 0.45 ),
+					'aria_label' => 'Open Cairo gallery image details',
+					'decorative' => false,
+					'link_url' => 'https://example.invalid/trips/cairo',
+					'link_target' => '_blank',
 				),
 				array(
 					'attachment_id' => $image_one,
@@ -219,8 +227,10 @@ try {
 					'caption_override' => 'Trip-specific hero caption.',
 					'credit' => 'All Royal Egypt',
 					'license' => 'owned',
+					'license_expires_on' => '',
 					'source_url' => 'https://example.invalid/media-source-one',
 					'focal_point' => array( 'x' => 0.5, 'y' => 0.4 ),
+					'decorative' => false,
 				),
 			),
 			'ci_gallery_csv' => array( $image_two, $image_one ),
@@ -245,6 +255,10 @@ try {
 	$check( 'gallery' === $usage_readback[0]['role'] && 'hero' === $usage_readback[1]['role'], 'Contextual gallery roles readback mismatch.' );
 	$check( 'Trip-specific hero alt distinct from the attachment global alt' === $usage_readback[1]['alt_override'], 'Contextual hero alt override readback mismatch.' );
 	$check( array( 'x' => 0.5, 'y' => 0.4 ) === $usage_readback[1]['focal_point'], 'Contextual focal point readback mismatch.' );
+	$check( 'licensed' === $usage_readback[0]['license'] && '2028-12-31' === $usage_readback[0]['license_expires_on'], 'Contextual media rights metadata readback mismatch.' );
+	$check( false === $usage_readback[0]['decorative'] && '_blank' === $usage_readback[0]['link_target'], 'Contextual accessibility/link semantics readback mismatch.' );
+	$check( 'Open Cairo gallery image details' === $usage_readback[0]['aria_label'], 'Contextual ARIA label readback mismatch.' );
+	$check( '<p>Trip-specific contextual image description.</p>' === $usage_readback[0]['description_override'], 'Contextual description override readback mismatch.' );
 	$check( 'Cairo Nile journey in Egypt' === get_post_meta( $image_one, '_wp_attachment_image_alt', true ), 'Contextual ALT override polluted the global attachment ALT.' );
 	$check( 'Cairo and Nile journey gallery image' === get_post( $image_one )->post_excerpt, 'Contextual caption override polluted the global attachment caption.' );
 	$check( $image_two . ',' . $image_one === get_post_meta( $post_id, 'ci_gallery_csv', true ), 'CSV image gallery storage/readback mismatch.' );
@@ -337,6 +351,58 @@ try {
 		),
 	) );
 	$check( is_wp_error( $usage_role_denied ) && 'mad4b_content_experience_media_usage_role_denied' === $usage_role_denied->get_error_code(), 'Contextual media usage accepted a role outside the profile allowlist.' );
+
+	$usage_license_denied = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_two, 'role' => 'gallery', 'license' => 'unknown-license' ),
+				array( 'attachment_id' => $image_one, 'role' => 'hero', 'license' => 'owned' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $usage_license_denied ) && 'mad4b_content_experience_media_usage_license_denied' === $usage_license_denied->get_error_code(), 'Contextual media usage accepted a license outside the profile allowlist.' );
+
+	$decorative_alt_conflict = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_two, 'role' => 'gallery', 'decorative' => true, 'alt_override' => 'must be empty' ),
+				array( 'attachment_id' => $image_one, 'role' => 'hero' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $decorative_alt_conflict ) && 'mad4b_content_experience_media_usage_decorative_alt_conflict' === $decorative_alt_conflict->get_error_code(), 'Decorative media accepted a non-empty contextual ALT.' );
+
+	$link_target_without_url = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_two, 'role' => 'gallery', 'link_target' => '_blank' ),
+				array( 'attachment_id' => $image_one, 'role' => 'hero' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $link_target_without_url ) && 'mad4b_content_experience_media_usage_link_target_without_url' === $link_target_without_url->get_error_code(), 'Contextual media usage accepted link_target without link_url.' );
+
+	$invalid_rights_date = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+		'post_id' => $post_id,
+		'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+		'meta' => array(
+			'ci_gallery' => array( $image_two, $image_one ),
+			'ci_gallery_usage' => array(
+				array( 'attachment_id' => $image_two, 'role' => 'gallery', 'license' => 'licensed', 'license_expires_on' => '2028-02-31' ),
+				array( 'attachment_id' => $image_one, 'role' => 'hero', 'license' => 'owned' ),
+			),
+		),
+	) );
+	$check( is_wp_error( $invalid_rights_date ) && 'mad4b_content_experience_media_usage_date_invalid' === $invalid_rights_date->get_error_code(), 'Contextual media usage accepted an invalid rights-expiry date.' );
 
 	$replay = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $create_input, array( 'plan_sha256' => $create_plan['plan_sha256'] ) ) );
 	$check( ! is_wp_error( $replay ) && ! empty( $replay['idempotent_replay'] ) && $post_id === (int) $replay['post_id'], 'Create idempotent replay did not resolve exact prior result.' );
