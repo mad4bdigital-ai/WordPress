@@ -152,6 +152,46 @@ require(protocol_recovery.get("fallback_protocol_negotiation_allowed") is False,
 catalog_recovery = recovery.get("catalog_refresh") or {}
 require(catalog_recovery.get("visibility_change_never_changes_execution_authority") is True, "catalog refresh must not widen authority")
 
+performance = operational.get("performance") or {}
+require(
+    performance.get("contract") == "mad4b.staging-operational-performance-comparison.v1",
+    "post-deploy comparative performance contract missing",
+)
+require(
+    performance.get("source") == "mad4b/session-safe-diagnostics.performance_observation",
+    "post-deploy performance source drift",
+)
+require(performance.get("exact_runtime_generation_required") is True, "performance comparison must bind exact runtime generation")
+require(performance.get("exact_site_profile_required") is True, "performance comparison must bind exact Site Profile")
+require(performance.get("comparison_required") is True, "performance comparison must remain mandatory for acceptance")
+require(performance.get("baseline_scope") == "previous_exact_staging_release", "performance baseline scope drift")
+require(
+    performance.get("metrics") == [
+        "request_elapsed_ms",
+        "db_query_count",
+        "included_file_count",
+        "memory_usage_bytes",
+        "peak_memory_bytes",
+    ],
+    "post-deploy performance metric set drift",
+)
+require(performance.get("explicit_request_budget_is_hard_boundary") is True, "explicit request budget must remain a hard boundary")
+for key in (
+    "universal_db_query_threshold",
+    "universal_included_file_threshold",
+    "universal_memory_threshold",
+    "automatic_tuning_allowed",
+    "automatic_index_ddl_allowed",
+    "automatic_cache_authority_allowed",
+    "authorizing",
+    "production_mutation_allowed",
+):
+    require(performance.get(key) is False, f"post-deploy performance policy widened unsafe automation or invented a universal threshold: {key}")
+require(performance.get("material_regression_requires_review") is True, "material performance regression must require review")
+require(performance.get("missing_baseline_state") == "baseline_required_not_failure", "missing performance baseline semantics drift")
+require(performance.get("regression_state") == "review_required", "performance regression state drift")
+require(performance.get("no_regression_state") == "accepted_comparative_observation", "no-regression performance state drift")
+
 acceptance = operational.get("acceptance") or {}
 for key in (
     "operational_ready_requires_all_requested_lanes_ready",
