@@ -244,10 +244,14 @@ $profile_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static f
 mad4b_atomic_assert( 1 === count( $profile_events ), 'Healthy Brand Context Profile save must append exactly one governed audit event.', $profile_events );
 mad4b_atomic_assert( 2 === (int) $profile_events[0]['summary']['revision'] && empty( $profile_events[0]['summary']['created'] ), 'Profile save audit must bind exact revision and update/create state.', $profile_events[0] );
 
-echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v3: PASS\n";
-
 $write_scalar = new ReflectionMethod( 'MAD4B_SCP_Context_Authority', 'write_option' );
+mad4b_atomic_assert( $write_scalar->isPrivate(), 'Context option persistence helper must remain private.' );
+// PHP 7.4 requires an explicit accessibility override for test-only invocation
+// of a private ReflectionMethod. This does not widen the runtime API surface.
+$write_scalar->setAccessible( true );
 $GLOBALS['mad4b_fail_option'] = 'scalar_failure';
 foreach ( array( false, '', null ) as $scalar ) if ( $write_scalar->invoke( null, 'scalar_failure', $scalar ) ) throw new RuntimeException( 'Missing option falsely verified as an empty scalar' );
 $GLOBALS['mad4b_fail_option'] = '';
 if ( ! $write_scalar->invoke( null, 'scalar_revision', 7 ) ) throw new RuntimeException( 'Cold string revision did not match the persisted integer' );
+
+echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v3: PASS\n";
