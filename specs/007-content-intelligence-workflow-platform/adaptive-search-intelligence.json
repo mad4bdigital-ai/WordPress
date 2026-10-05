@@ -179,18 +179,26 @@
     "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
     "evidence_binding": "clean_ci_head_and_source_manifest_digest",
     "local_evidence": {
-      "fixtures": 40,
-      "assertions": 938,
-      "gates_emitted": 15,
-      "evidence_class": "exact_head_ci_hermetic_runtime+disposable_wordpress_mysql",
-      "head_binding": "supplied_by_exact_head_ci",
+      "fixtures": 42,
+      "assertions": 981,
+      "gates_emitted": 0,
+      "evidence_class": "hermetic_runtime_with_process_shared_cas",
+      "head_binding": "local_review_requires_exact_head_ci_recertification",
       "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance"
     },
     "remaining_evidence": [
       "separate_live_provider_account_certification_and_site_rendered_evidence"
     ],
     "production_authority": false,
-    "authorizing": false
+    "authorizing": false,
+    "recertification": {
+      "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+      "head_binding": "supplied_by_exact_head_ci",
+      "required_fixtures": 42,
+      "required_assertions": 981,
+      "pass_gate_emission": "clean_exact_head_ci_and_disposable_wordpress_required",
+      "authorizing": false
+    }
   },
   "review_status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
   "review_score": 88,

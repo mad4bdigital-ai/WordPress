@@ -3,6 +3,20 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Deterministic bounded baseline: no opaque model or business-specific weights. */
 final class MAD4B_SCP_Search_Decisions {
+	/** Performance evidence can inform priority, but cannot claim a live SERP receipt. */
+	public static function performance_factors( $evidence ) {
+		if ( array() === $evidence ) return array();
+		$class = 'first_party_search_performance';
+		if ( ! is_array( $evidence ) || ! MAD4B_SCP_Search_Contracts::bounded( $evidence ) || ! isset( $evidence['source_class'], $evidence['factors'] ) || $class !== $evidence['source_class'] || ! is_array( $evidence['factors'] ) || ! empty( $evidence['live_provider_receipt'] ) ) return MAD4B_SCP_Search_Contracts::error( 'performance_evidence_invalid' );
+		$out = array();
+		$fields = array_flip( array( 'value', 'source', 'observed_at', 'expires_at', 'confidence', 'normalization_version', 'market', 'language', 'evidence_refs' ) );
+		foreach ( $evidence['factors'] as $name => $factor ) {
+			if ( ! is_string( $name ) || ! is_array( $factor ) || ( isset( $factor['source_class'] ) && $class !== $factor['source_class'] ) || ! empty( $factor['live_provider_receipt'] ) ) return MAD4B_SCP_Search_Contracts::error( 'performance_evidence_invalid' );
+			$out[ $name ] = array_merge( array_intersect_key( $factor, $fields ), array( 'source_class' => $class, 'live_provider_receipt' => false, 'authorizing' => false ) );
+		}
+		return $out;
+	}
+
 	public static function score( array $target, array $policy, array $factors, array $history, $now ) {
 		$values = array(); $provenance = array(); $score = 1.0; $reasons = array();
 		foreach ( $policy['weights'] as $name => $weight ) {

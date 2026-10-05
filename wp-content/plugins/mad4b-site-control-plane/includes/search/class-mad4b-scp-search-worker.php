@@ -23,6 +23,7 @@ final class MAD4B_SCP_Search_Worker {
 		if ( empty( $profile['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_paused' );
 		$row = MAD4B_SCP_Search_Store::read( 'target', $input['target_id'] );
 		if ( ! is_array( $row ) || empty( $row['target'] ) ) return MAD4B_SCP_Search_Contracts::error( 'target_missing' );
+		if ( ! empty( $row['muted'] ) ) return MAD4B_SCP_Search_Contracts::error( 'target_muted' );
 		$t = $row['target'];
 		$facts = MAD4B_SCP_Search_Runtime::facts( $profile, $t['surface_refs'] ); if ( is_wp_error( $facts ) ) return $facts;
 		$context = MAD4B_SCP_Search_Context::compile( $profile, $facts, array( 'market' => $t['market'], 'language' => $t['language'] ) ); if ( is_wp_error( $context ) ) return $context;

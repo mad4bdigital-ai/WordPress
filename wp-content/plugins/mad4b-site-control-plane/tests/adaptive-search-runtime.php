@@ -451,6 +451,64 @@ scenario( 'portable_storage_site_isolation_and_operator_due_controls', static fu
 	$GLOBALS['fixture_site'] = '22222222-2222-4222-8222-222222222222'; denied( MAD4B_SCP_Search_Context::profile( 'fixture.search' ), 'missing', 'same profile ID isolated across sites' );
 } );
 
+scenario( 'operator_mute_fences_direct_capture_and_provider_entry', static function () {
+	$input = asi_seed(); $plan = ok( MAD4B_SCP_Search_Worker::plan( $input ), 'pre-mute capture plan' );
+	ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $input['profile_id'], 'target_id' => $input['target_id'], 'control' => 'mute' ) ), 'mute target' );
+	denied( MAD4B_SCP_Search_Worker::plan( $input ), 'target_muted', 'direct capture planning respects operator mute' );
+	denied( MAD4B_SCP_Search_Worker::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'target_muted', 'pre-mute plan cannot capture muted target' );
+	$batch = ok( MAD4B_SCP_Search_Runtime::cohort( array( 'profile_id' => $input['profile_id'] ) ), 'muted cohort' );
+	check( ! $batch['selected'] && 'muted' === $batch['excluded'][0]['reason'], 'cohort and direct worker agree' );
+	check( ! $GLOBALS['fixture_providers'][0]->calls && ! $GLOBALS['fixture_providers'][1]->calls && null === MAD4B_SCP_Search_Store::read( 'job', $plan['job_id'] ), 'muted capture has no provider or job effect' );
+	ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $input['profile_id'], 'target_id' => $input['target_id'], 'control' => 'unmute' ) ), 'unmute target' );
+	list( $result ) = capture( $input ); check( 'COMPLETE' === $result['state'], 'fresh plan can capture after unmute' );
+
+	asi_reset(); $input = asi_seed(); $plan = ok( MAD4B_SCP_Search_Worker::plan( $input ), 'provider-entry plan' );
+	$GLOBALS['fixture_cas_failure'] = static function ( $key, $old, $next ) use ( $input ) {
+		if ( isset( $next['state'] ) && 'PROVIDER_PREPARED' === $next['state'] ) {
+			$GLOBALS['fixture_cas_failure'] = null;
+			ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $input['profile_id'], 'target_id' => $input['target_id'], 'control' => 'mute' ) ), 'concurrent operator mute' );
+		}
+		return false;
+	};
+	denied( MAD4B_SCP_Search_Worker::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'provider_entry_fenced', 'mute before provider entry fences prepared work' );
+	$job = MAD4B_SCP_Search_Store::read( 'job', $plan['job_id'] );
+	check( 'CANCELLED_NO_EFFECT' === $job['state'] && ! $GLOBALS['fixture_providers'][0]->calls && ! $GLOBALS['fixture_providers'][1]->calls, 'concurrent mute spends no provider request' );
+	$budget = MAD4B_SCP_Search_Budgets::status( $job['account_id'] );
+	check( 'released' === $budget['reservations'][ $plan['job_id'] ]['state'], 'prepared reservation released after mute' );
+} );
+scenario( 'first_party_composition_rejects_malformed_and_live_serp_claims', static function () {
+	$input = asi_seed(); $now = time();
+	$factor = array( 'value' => 0.4, 'source' => 'keyword_registry', 'observed_at' => $now - 1, 'expires_at' => $now + 3600, 'confidence' => 0.8, 'normalization_version' => 'performance-test.v1', 'market' => 'metro', 'language' => 'en' );
+	add_filter( 'mad4b_scp_search_decision_factors', static function () use ( $factor ) { return array( 'business_value' => $factor ); } );
+	$first_party = array( 'source_class' => 'first_party_search_performance', 'factors' => array( 'business_value' => array_merge( $factor, array( 'value' => 0.9, 'source' => 'search_performance_provider' ) ) ) );
+	$evidence = $first_party;
+	add_filter( 'mad4b_scp_search_performance_evidence', static function () use ( &$evidence ) { return $evidence; } );
+	$cohort = ok( MAD4B_SCP_Search_Runtime::cohort( array( 'profile_id' => $input['profile_id'] ) ), 'first-party decision' );
+	$decision = $cohort['selected'][0]['decision']; $provenance = $decision['factor_provenance']['business_value'];
+	check( 0.9 === $provenance['value'] && 'search_performance_provider' === $provenance['source'], 'first-party source and value retained' );
+	check( 'first_party_search_performance' === $provenance['source_class'] && false === $provenance['live_provider_receipt'] && false === $provenance['authorizing'], 'first-party factor retains distinct non-authorizing evidence class' );
+	$invalid = array(
+		array( 'source_class' => 'first_party_search_performance', 'factors' => 'malformed' ),
+		array_merge( $first_party, array( 'source_class' => 'live_serp' ) ),
+		array_merge( $first_party, array( 'live_provider_receipt' => true ) ),
+		array( 'source_class' => 'first_party_search_performance', 'factors' => array( 'business_value' => false ) ),
+		array( 'source_class' => 'first_party_search_performance', 'factors' => array( 'business_value' => array_merge( $factor, array( 'source_class' => 'live_serp' ) ) ) ),
+		array( 'source_class' => 'first_party_search_performance', 'factors' => array( 'business_value' => array_merge( $factor, array( 'live_provider_receipt' => true ) ) ) ),
+		array( 'source_class' => 'first_party_search_performance', 'factors' => array( 'business_value' => array_merge( $factor, array( 'value' => INF ) ) ) ),
+	);
+	foreach ( $invalid as $evidence ) {
+		$cohort = ok( MAD4B_SCP_Search_Runtime::cohort( array( 'profile_id' => $input['profile_id'] ) ), 'malformed performance evidence cannot crash cohort' );
+		$decision = $cohort['selected'][0]['decision'];
+		check( 'keyword_registry' === $decision['factor_provenance']['business_value']['source'] && 0.4 === $decision['factor_provenance']['business_value']['value'], 'rejected performance evidence cannot override existing factors' );
+		check( 'REJECTED' === $decision['performance_evidence']['state'] && false === $decision['performance_evidence']['live_provider_receipt'], 'performance rejection is explainable without a live SERP receipt' );
+	}
+	$evidence = array();
+	add_filter( 'mad4b_scp_search_decision_factors', static function () { return 'malformed'; }, 20 );
+	$cohort = ok( MAD4B_SCP_Search_Runtime::cohort( array( 'profile_id' => $input['profile_id'] ) ), 'malformed generic factors cannot crash cohort' );
+	check( 'policy_missing_value' === $cohort['selected'][0]['decision']['factor_provenance']['business_value']['source'], 'missing-value policy remains available after malformed adapter evidence' );
+	check( ! $GLOBALS['fixture_providers'][0]->calls && ! $GLOBALS['fixture_providers'][1]->calls, 'performance composition never invokes paid SERP provider' );
+} );
+
 foreach ( $cases as $name => $callback ) {
 	asi_reset(); $start = $assertions;
 	try { $callback(); $results[] = array( 'fixture' => $name, 'status' => 'PASS', 'assertions' => $assertions - $start ); }

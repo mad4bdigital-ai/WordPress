@@ -11,8 +11,8 @@
     "disposable_wordpress_mysql"
   ],
   "thresholds": {
-    "min_total_fixtures": 40,
-    "min_total_assertions": 938,
+    "min_total_fixtures": 42,
+    "min_total_assertions": 981,
     "min_disposable_assertions": 80,
     "disposable_cas_workers": 8,
     "disposable_cas_winners": 1,
@@ -166,7 +166,8 @@
         "decision_policy_provenance_monotonicity_and_refresh",
         "fairness_aging_and_minimum_coverage_no_starvation",
         "cache_equivalence_depth_retention_and_unknown_context",
-        "billing_window_pacing_and_bounded_burst_admission"
+        "billing_window_pacing_and_bounded_burst_admission",
+        "first_party_composition_rejects_malformed_and_live_serp_claims"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
@@ -174,14 +175,17 @@
           "decision_policy_provenance_monotonicity_and_refresh": 5,
           "fairness_aging_and_minimum_coverage_no_starvation": 4,
           "cache_equivalence_depth_retention_and_unknown_context": 8,
-          "billing_window_pacing_and_bounded_burst_admission": 13
+          "billing_window_pacing_and_bounded_burst_admission": 13,
+          "first_party_composition_rejects_malformed_and_live_serp_claims": 27
         },
         "failed_assertions": 0
       },
       "denial_cases": [
         "expired or out-of-scope decision factor",
         "negative cost or unknown pacing",
-        "incomparable cache reuse"
+        "incomparable cache reuse",
+        "malformed first-party evidence overriding valid decision factors",
+        "first-party performance claiming a live SERP receipt"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",
@@ -192,21 +196,27 @@
       "fixtures": [
         "fairness_aging_and_minimum_coverage_no_starvation",
         "shared_account_race_across_processes_and_sites",
-        "portable_storage_site_isolation_and_operator_due_controls"
+        "portable_storage_site_isolation_and_operator_due_controls",
+        "operator_mute_fences_direct_capture_and_provider_entry",
+        "first_party_composition_rejects_malformed_and_live_serp_claims"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
         "minimum_assertions_per_fixture": {
           "fairness_aging_and_minimum_coverage_no_starvation": 4,
           "shared_account_race_across_processes_and_sites": 305,
-          "portable_storage_site_isolation_and_operator_due_controls": 7
+          "portable_storage_site_isolation_and_operator_due_controls": 7,
+          "operator_mute_fences_direct_capture_and_provider_entry": 16,
+          "first_party_composition_rejects_malformed_and_live_serp_claims": 27
         },
         "failed_assertions": 0
       },
       "denial_cases": [
         "noisy neighbor starvation",
         "duplicate shared account allowance",
-        "muted target selection"
+        "muted target selection",
+        "muted targets admitted through a direct capture route",
+        "malformed decision adapters crashing the observation cohort"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",
@@ -383,14 +393,16 @@
       "fixtures": [
         "adaptive_experience_outage_cache_states_stable_sections_and_controls",
         "registered_operation_and_private_ability_boundaries",
-        "portable_storage_site_isolation_and_operator_due_controls"
+        "portable_storage_site_isolation_and_operator_due_controls",
+        "operator_mute_fences_direct_capture_and_provider_entry"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
         "minimum_assertions_per_fixture": {
           "adaptive_experience_outage_cache_states_stable_sections_and_controls": 10,
           "registered_operation_and_private_ability_boundaries": 27,
-          "portable_storage_site_isolation_and_operator_due_controls": 7
+          "portable_storage_site_isolation_and_operator_due_controls": 7,
+          "operator_mute_fences_direct_capture_and_provider_entry": 16
         },
         "failed_assertions": 0
       },
@@ -398,7 +410,9 @@
         "outage erasing valid licensed history",
         "unstable section identifiers",
         "secret/debug leakage",
-        "configuration creating spend authority"
+        "configuration creating spend authority",
+        "direct capture of an operator-muted target",
+        "mute arriving between provider preparation and entry"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",
@@ -470,7 +484,9 @@
         "bounded_half_open_probes_do_not_purchase_search",
         "transport_timeout_oversize_and_upstream_secret_error",
         "certification_and_credential_fail_closed",
-        "live_archive_home_blog_and_public_registration_drift"
+        "live_archive_home_blog_and_public_registration_drift",
+        "operator_mute_fences_direct_capture_and_provider_entry",
+        "first_party_composition_rejects_malformed_and_live_serp_claims"
       ],
       "assertions": "Each named executable fixture must pass every positive and denial assertion.",
       "thresholds": {
@@ -514,7 +530,9 @@
           "bounded_half_open_probes_do_not_purchase_search": 6,
           "transport_timeout_oversize_and_upstream_secret_error": 8,
           "certification_and_credential_fail_closed": 1,
-          "live_archive_home_blog_and_public_registration_drift": 17
+          "live_archive_home_blog_and_public_registration_drift": 17,
+          "operator_mute_fences_direct_capture_and_provider_entry": 16,
+          "first_party_composition_rejects_malformed_and_live_serp_claims": 27
         },
         "failed_assertions": 0
       },
@@ -523,7 +541,9 @@
         "hardcoded CPT/language/market",
         "sequential fake race evidence",
         "dirty or non-CI PASS gate",
-        "live CPT/taxonomy/archive visibility or blog/front-page route drift"
+        "live CPT/taxonomy/archive visibility or blog/front-page route drift",
+        "operator mute bypassed outside the cohort",
+        "malformed or misclassified first-party performance evidence"
       ],
       "required_evidence_classes": [
         "exact_head_ci_hermetic_runtime",

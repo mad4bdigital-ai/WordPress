@@ -119,4 +119,10 @@ Required scenarios:
 
 ## Completion
 
+### Operator mute and performance evidence
+
+An operator-muted target MUST be denied by both cohort selection and direct capture planning. A plan created before mute MUST NOT enter a provider after mute; the provider-entry revalidation releases any unused reservation. Completed observations and reconciliation of existing effects remain available.
+
+First-party performance composition MUST validate a bounded factor map before merging it. Every accepted factor retains `source_class=first_party_search_performance`, its actual source, market/language scope, freshness, confidence and normalization version, with `live_provider_receipt=false` and `authorizing=false`. Malformed envelopes and conflicting live-SERP claims MUST be rejected without overriding existing factors or stopping cohort evaluation. The decision exposes the rejection reason; missing factors use the versioned missing-value policy.
+
 The contract is complete only with executable conformance/fault tests and exact-head evidence. Static documentation is insufficient.

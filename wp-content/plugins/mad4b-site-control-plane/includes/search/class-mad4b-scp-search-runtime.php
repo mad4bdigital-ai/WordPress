@@ -88,9 +88,11 @@ final class MAD4B_SCP_Search_Runtime {
 		foreach ( $rows['items'] as $row ) {
 			$t = $row['target']; if ( empty( $t['profile_id'] ) || $t['profile_id'] !== $p['profile_id'] ) continue;
 			$factors = apply_filters( 'mad4b_scp_search_decision_factors', array(), $t );
+			if ( ! is_array( $factors ) || ! MAD4B_SCP_Search_Contracts::bounded( $factors ) ) $factors = array();
 			// First-party evidence is tagged separately and can reduce paid observation urgency.
 			$first_party = apply_filters( 'mad4b_scp_search_performance_evidence', array(), $t );
-			if ( is_array( $first_party ) && isset( $first_party['source_class'] ) && 'first_party_search_performance' === $first_party['source_class'] && isset( $first_party['factors'] ) ) $factors = array_merge( $factors, $first_party['factors'] );
+			$performance = MAD4B_SCP_Search_Decisions::performance_factors( $first_party );
+			if ( ! is_wp_error( $performance ) ) $factors = array_merge( $factors, $performance );
 			$view = MAD4B_SCP_Search_Store::read( 'current', $t['target_id'] ); $history = array( 'queued_at' => isset( $row['_event']['at'] ) ? $row['_event']['at'] : time(), 'last_observed' => is_array( $view ) ? $view['captured_at'] : 0 );
 			$decision = MAD4B_SCP_Search_Decisions::score( $t, $p['priority_policy'], $factors, $history, time() ); if ( is_wp_error( $decision ) ) continue;
 			$seconds = MAD4B_SCP_Search_Decisions::refresh( $p['refresh_policy'], array( 'confidence' => is_array( $view ) ? 0.5 : 0, 'fingerprint_changed' => is_array( $view ) && MAD4B_SCP_Search_Context::drift( $view['context_dependencies'], $ctx['dependencies'], array( 'LANGUAGE', 'SURFACE', 'SEO_PROVIDER' ) ) ), $decision['factor_provenance'] );
@@ -98,6 +100,7 @@ final class MAD4B_SCP_Search_Runtime {
 			$plan = MAD4B_SCP_Search_Worker::plan( array( 'profile_id' => $p['profile_id'], 'target_id' => $t['target_id'], 'observation_epoch' => time() ) );
 			if ( ! is_wp_error( $plan ) ) { $history['estimated_cost_micro'] = isset( $plan['budget_estimate']['max_cost_micro'] ) ? $plan['budget_estimate']['max_cost_micro'] : 0; $decision = MAD4B_SCP_Search_Decisions::score( $t, $p['priority_policy'], $factors, $history, time() ); }
 			$decision['refresh_seconds'] = $seconds; $decision['next_due_at'] = $history['last_observed'] + $seconds;
+			$decision['performance_evidence'] = array( 'source_class' => 'first_party_search_performance', 'state' => is_wp_error( $performance ) ? 'REJECTED' : ( $performance ? 'COMPOSED' : 'NOT_OBSERVED' ), 'rejection_reason' => is_wp_error( $performance ) ? $performance->get_error_code() : '', 'live_provider_receipt' => false, 'authorizing' => false );
 			$decision['routing'] = is_wp_error( $plan ) ? array( 'excluded' => array( $plan->get_error_code() ) ) : ( isset( $plan['routing'] ) ? $plan['routing'] : array( 'selected' => 'CACHE_REUSE' ) );
 			if ( ! empty( $row['pinned'] ) ) $decision['effective_priority'] += 1;
 			if ( ! is_wp_error( $plan ) && isset( $plan['routing']['selected']['provider_id'] ) ) $t['provider_id'] = $plan['routing']['selected']['provider_id'];

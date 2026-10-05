@@ -165,7 +165,14 @@
       "tasks": [
         "T3871"
       ],
-      "status": "CLOSED"
+      "status": "CLOSED",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "fixture:first_party_composition_rejects_malformed_and_live_serp_claims",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance"
+      ]
     },
     {
       "id": "ASIR-010",
@@ -215,7 +222,14 @@
       "tasks": [
         "T3875"
       ],
-      "status": "CLOSED"
+      "status": "CLOSED",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
+        "fixture:operator_mute_fences_direct_capture_and_provider_entry",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance"
+      ]
     },
     {
       "id": "ASIR-014",
