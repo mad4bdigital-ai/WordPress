@@ -83,6 +83,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-error-contract-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-evidence-policy.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identity-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
@@ -267,6 +268,7 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-live-authority-projection-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/observability-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/persisted-contract-compatibility-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-network-scope-runtime.php",
