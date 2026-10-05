@@ -181,6 +181,20 @@ mad4b_assert_true( 'repair_rate_storage_then_retry' === $rate_storage_dispatch_d
 mad4b_assert_true( 'mad4b/query-monitor-db-attribution-bootstrap' === $rate_storage_dispatch_data['recovery']['bounded_repair_ability'], 'governed read dispatcher lost bounded rate storage repair metadata' );
 mad4b_assert_true( empty( $rate_storage_dispatch_data['blind_retry_allowed'] ), 'governed read dispatcher must deny blind retry for rate storage failure' );
 
+$wrapped_rate_storage_attempts = 0;
+$wrapped_rate_storage = MAD4B_SCP_Connector_Resilience::safe_read(
+	'wrapped_rate_storage',
+	static function () use ( &$wrapped_rate_storage_attempts ) {
+		$wrapped_rate_storage_attempts++;
+		throw new RuntimeException( 'RuntimeException: Error calling MCP tool: Rate-limit writer topology is unavailable.' );
+	}
+);
+mad4b_assert_true( empty( $wrapped_rate_storage['ok'] ), 'wrapped rate storage exception must remain failed' );
+mad4b_assert_true( 1 === $wrapped_rate_storage_attempts, 'wrapped rate storage exception must not auto retry' );
+mad4b_assert_true( 'rate_storage' === $wrapped_rate_storage['category'], 'wrapped rate storage exception category drifted' );
+mad4b_assert_true( 'repair_rate_storage_then_retry' === $wrapped_rate_storage['client_action'], 'wrapped rate storage exception recovery action drifted' );
+mad4b_assert_true( empty( $wrapped_rate_storage['automatic_retry_allowed'] ), 'wrapped rate storage exception must not blind retry' );
+
 $error_code_probe = MAD4B_SCP_Connector_Resilience::safe_read(
 	'provider_error_code_sanitization',
 	static function () {
