@@ -1236,6 +1236,12 @@
       "exact_live_candidate_identity_required": true,
       "all_plan_stages_required": true,
       "rollback_retention_is_content_addressed_stage": true
-    }
+    },
+    "promotion_attestation_contract": "mad4b.production-promotion-attestation.v1",
+    "promotion_trust_mode": "verified_production_external_chatgpt_session",
+    "one_time_binding": "site_profile_revision_digest_transition",
+    "production_unchanged_receipt_required": true,
+    "activation_surface": "mad4b/site-profile-write-enable",
+    "activation_surface_repair_after_enable": false
   }
 }

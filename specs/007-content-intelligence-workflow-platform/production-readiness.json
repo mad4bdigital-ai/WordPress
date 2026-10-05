@@ -22,7 +22,18 @@
     "owner_attestation_required": true,
     "one_time_production_approval_required": true,
     "automatic_production_apply": false,
-    "breakglass_or_raw_sql_not_required": true
+    "breakglass_or_raw_sql_not_required": true,
+    "promotion_attestation_contract": "mad4b.production-promotion-attestation.v1",
+    "staging_readiness_verdict_contract": "mad4b.production-live-evidence-verdict.v1",
+    "staging_source_contract": "mad4b.external-staging-readiness-observer.v1",
+    "production_trust_mode": "verified_production_external_chatgpt_session",
+    "exact_candidate_binding_required": true,
+    "exact_site_profile_revision_digest_binding_required": true,
+    "production_unchanged_receipt_required": true,
+    "one_time_binding": "site_profile_revision_digest_transition",
+    "activation_surface": "mad4b/site-profile-write-enable",
+    "activation_surface_repair_after_enable": false,
+    "caller_boolean_readiness_accepted": false
   },
   "baseline_owned_handoff": [
     ".github/workflows/mad4b-release-verdict.yml",
@@ -30,7 +41,7 @@
     ".github/workflows/mad4b-runtime-release-set.yml",
     ".github/workflows/mad4b-rollback-retention-receipt.yml"
   ],
-  "live_execution_note": "Live Staging evidence must be produced through an already-authorized governed deployment/recovery path. Feature documentation and repository CI cannot manufacture live readiness.",
+  "live_execution_note": "Live Staging evidence must be produced through an already-authorized governed deployment/recovery path. Feature documentation and repository CI cannot manufacture live readiness. Production activation consumes a fresh external Promotion Attestation that carries the exact Staging readiness verdict and Production-unchanged evidence; the attestation is evidence, not authority, and the explicit Production activation confirmation remains separate.",
   "default_profile": "control_plane_core",
   "readiness_profiles": {
     "control_plane_core": {
