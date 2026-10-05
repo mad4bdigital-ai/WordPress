@@ -264,6 +264,64 @@ final class MAD4B_SCP_Content_Experience_Media {
 		return true;
 	}
 
+	public static function verify_post_meta( $post_id, array $field_specs ) {
+		$post_id = absint( $post_id );
+		if ( $post_id < 1 || ! get_post( $post_id ) ) return new WP_Error( 'mad4b_content_experience_media_verify_post_missing', 'Media metadata verification target is missing.' );
+		$normalized = array();
+		$summary = array();
+		foreach ( $field_specs as $key => $spec ) {
+			$key = (string) $key;
+			$exists = metadata_exists( 'post', $post_id, $key );
+			if ( ! $exists ) {
+				$summary[ $key ] = array( 'exists' => false, 'kind' => (string) $spec['kind'], 'count' => 0, 'value_sha256' => hash( 'sha256', 'null' ) );
+				continue;
+			}
+			$stored = get_post_meta( $post_id, $key, true );
+			$input = $stored;
+			if ( 'csv_ids' === ( isset( $spec['storage'] ) ? (string) $spec['storage'] : '' ) ) {
+				$input = '' === (string) $stored ? array() : array_values( array_filter( array_map( 'absint', explode( ',', (string) $stored ) ) ) );
+			}
+			$value = self::normalize_meta_value( $key, $input, $spec );
+			if ( is_wp_error( $value ) ) return new WP_Error(
+				'mad4b_content_experience_media_verify_invalid',
+				'Stored media metadata no longer satisfies the profile contract.',
+				array( 'key' => $key, 'cause' => $value->get_error_code() )
+			);
+			if ( $value !== $stored ) return new WP_Error(
+				'mad4b_content_experience_media_verify_normalization_drift',
+				'Stored media metadata is not in the canonical profile representation.',
+				array( 'key' => $key )
+			);
+			$normalized[ $key ] = $value;
+			$count = 0;
+			if ( is_array( $value ) ) $count = count( $value );
+			elseif ( 'csv_ids' === (string) $spec['storage'] && '' !== (string) $value ) $count = count( explode( ',', (string) $value ) );
+			elseif ( is_numeric( $value ) && (int) $value > 0 ) $count = 1;
+			$encoded = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$summary[ $key ] = array(
+				'exists' => true,
+				'kind' => (string) $spec['kind'],
+				'count' => $count,
+				'value_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
+			);
+		}
+		$usage_guard = self::validate_usage_bindings( $field_specs, $normalized );
+		if ( is_wp_error( $usage_guard ) ) return new WP_Error(
+			'mad4b_content_experience_media_verify_usage_drift',
+			'Stored media usage metadata is no longer bound to its referenced gallery.',
+			array( 'cause' => $usage_guard->get_error_code() )
+		);
+		ksort( $summary, SORT_STRING );
+		$encoded = wp_json_encode( $summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return array(
+			'contract' => 'mad4b.content-experience-media-state.v1',
+			'field_count' => count( $summary ),
+			'fields' => $summary,
+			'media_state_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
+			'valid' => true,
+		);
+	}
+
 	public static function value_within_budget( $value ) {
 		$encoded = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return false !== $encoded && strlen( $encoded ) <= self::MAX_META_VALUE_BYTES;
