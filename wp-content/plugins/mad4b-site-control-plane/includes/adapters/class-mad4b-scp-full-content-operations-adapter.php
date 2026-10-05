@@ -58,7 +58,6 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 			'mad4b/content-set-meta',
 			'mad4b/content-delete-meta',
 			'mad4b/taxonomy-update-term',
-			'mad4b/taxonomy-delete-term',
 			'mad4b/content-import-bundle',
 		);
 		if ( class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
@@ -131,12 +130,8 @@ final class MAD4B_SCP_Full_Content_Operations_Adapter extends MAD4B_SCP_Adapter_
 			'description' => array( 'type' => 'string', 'maxLength' => 65535 ),
 			'parent' => array( 'type' => 'integer', 'minimum' => 0 ),
 		), array( 'taxonomy', 'term_id', 'expected_sha256' ) ), 'content', false, true, true );
-		$this->add_ability( 'mad4b/taxonomy-delete-term', 'Delete Taxonomy Term', 'taxonomy_delete_term', array( $this, 'can_manage_term' ), $this->schema( array(
-			'taxonomy' => $this->slug_schema(),
-			'term_id' => array( 'type' => 'integer', 'minimum' => 1 ),
-			'expected_sha256' => $this->sha_schema(),
-			'expected_object_ids' => array( 'type' => 'array', 'maxItems' => 500, 'uniqueItems' => true, 'items' => array( 'type' => 'integer', 'minimum' => 1 ) ),
-		), array( 'taxonomy', 'term_id', 'expected_sha256', 'expected_object_ids' ) ), 'content', false, true, false );
+		// Taxonomy deletion is intentionally not registered on the normal content surface: WordPress cannot restore the exact deleted term identity safely.
+
 		$this->add_ability( 'mad4b/content-import-bundle', 'Import Content Bundle', 'content_import_bundle', array( 'MAD4B_SCP_Policy', 'can_admin' ), $this->schema( array(
 			'bundle' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'force_status' => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'private' ), 'default' => 'draft' ),
