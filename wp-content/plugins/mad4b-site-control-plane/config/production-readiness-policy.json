@@ -144,5 +144,18 @@
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-production-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-runtime.php"
-  ]
+  ],
+  "release_closure": {
+    "contract": "mad4b.production-release-closure.v1",
+    "scope_freeze_contract": "mad4b.feature007-release-scope-freeze.v1",
+    "readiness_projection_ref": "specs/007-content-intelligence-workflow-platform/release-closure-readiness.json",
+    "task_ledger_ratio_is_authoritative_readiness": false,
+    "operator_control_center_contract": "mad4b.operator-control-center.v1",
+    "operator_control_center_ability": "mad4b/operator-control-center",
+    "external_machine_diagnostic_policy_ref": "config/external-machine-diagnostic-policy.json",
+    "external_edge_challenge_never_counts_as_acceptance": true,
+    "live_evidence_cannot_be_closed_by_repository_change": true,
+    "new_capability_families_require_separate_pr": true,
+    "authorizing": false
+  }
 }
