@@ -326,6 +326,10 @@
     "future_capability_work_requires_new_pr": true,
     "task_ledger_ratio_is_readiness_metric": false,
     "live_evidence_cannot_be_closed_by_repository_metadata": true,
-    "authorizing": false
+    "authorizing": false,
+    "frozen_task_count": 837,
+    "frozen_workstream_count": 34,
+    "frozen_phase38_task_count": 80,
+    "max_change_slice_files": 35
   }
 }
