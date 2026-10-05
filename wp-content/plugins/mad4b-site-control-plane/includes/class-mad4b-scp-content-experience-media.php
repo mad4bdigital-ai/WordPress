@@ -292,7 +292,32 @@ final class MAD4B_SCP_Content_Experience_Media {
 	private static function reference_ids( $value ) {
 		if ( is_array( $value ) ) return array_values( array_map( 'absint', $value ) );
 		if ( is_string( $value ) && '' !== $value ) return array_values( array_filter( array_map( 'absint', explode( ',', $value ) ) ) );
+		if ( is_numeric( $value ) && (int) $value > 0 ) return array( (int) $value );
 		return array();
+	}
+
+	private static function verification_projection( $value, array $spec ) {
+		$result = array(
+			'storage' => isset( $spec['storage'] ) ? (string) $spec['storage'] : '',
+			'max_items' => isset( $spec['max_items'] ) ? (int) $spec['max_items'] : 1,
+		);
+		$is_usage = false !== strpos( isset( $spec['kind'] ) ? (string) $spec['kind'] : '', '_usage' );
+		if ( ! $is_usage ) {
+			$result['attachment_ids'] = self::reference_ids( $value );
+			return $result;
+		}
+		$items = is_array( $value ) ? $value : array();
+		$result['attachment_ids'] = array_values( array_map( 'absint', array_column( $items, 'attachment_id' ) ) );
+		$result['roles'] = array_values( array_filter( array_map( static function ( $item ) { return isset( $item['role'] ) ? (string) $item['role'] : ''; }, $items ) ) );
+		$result['licenses'] = array_values( array_filter( array_map( static function ( $item ) { return isset( $item['license'] ) ? (string) $item['license'] : ''; }, $items ) ) );
+		$result['license_expiries'] = array_values( array_filter( array_map( static function ( $item ) { return isset( $item['license_expires_on'] ) ? (string) $item['license_expires_on'] : ''; }, $items ) ) );
+		$result['decorative_count'] = count( array_filter( $items, static function ( $item ) { return ! empty( $item['decorative'] ); } ) );
+		$result['linked_count'] = count( array_filter( $items, static function ( $item ) { return ! empty( $item['link_url'] ); } ) );
+		$result['focal_point_count'] = count( array_filter( $items, static function ( $item ) { return isset( $item['focal_point'] ) && is_array( $item['focal_point'] ); } ) );
+		foreach ( array( 'alt_override', 'caption_override', 'title_override', 'description_override', 'aria_label', 'credit', 'copyright', 'source_url' ) as $field ) {
+			$result[ $field . '_count' ] = count( array_filter( $items, static function ( $item ) use ( $field ) { return array_key_exists( $field, $item ) && '' !== trim( (string) $item[ $field ] ); } ) );
+		}
+		return $result;
 	}
 
 	public static function validate_usage_bindings( array $field_specs, array $normalized_meta ) {
@@ -328,7 +353,10 @@ final class MAD4B_SCP_Content_Experience_Media {
 			$key = (string) $key;
 			$exists = metadata_exists( 'post', $post_id, $key );
 			if ( ! $exists ) {
-				$summary[ $key ] = array( 'exists' => false, 'kind' => (string) $spec['kind'], 'count' => 0, 'value_sha256' => hash( 'sha256', 'null' ) );
+				$summary[ $key ] = array_merge(
+					array( 'exists' => false, 'kind' => (string) $spec['kind'], 'count' => 0, 'value_sha256' => hash( 'sha256', 'null' ) ),
+					self::verification_projection( array(), $spec )
+				);
 				continue;
 			}
 			$stored = get_post_meta( $post_id, $key, true );
@@ -353,11 +381,14 @@ final class MAD4B_SCP_Content_Experience_Media {
 			elseif ( 'csv_ids' === (string) $spec['storage'] && '' !== (string) $value ) $count = count( explode( ',', (string) $value ) );
 			elseif ( is_numeric( $value ) && (int) $value > 0 ) $count = 1;
 			$encoded = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-			$summary[ $key ] = array(
-				'exists' => true,
-				'kind' => (string) $spec['kind'],
-				'count' => $count,
-				'value_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
+			$summary[ $key ] = array_merge(
+				array(
+					'exists' => true,
+					'kind' => (string) $spec['kind'],
+					'count' => $count,
+					'value_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
+				),
+				self::verification_projection( $value, $spec )
 			);
 		}
 		$usage_guard = self::validate_usage_bindings( $field_specs, $normalized );
