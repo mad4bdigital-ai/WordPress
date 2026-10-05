@@ -56,7 +56,11 @@ unset( MAD4B_SCP_Servers::$row['descriptor_evidence'] );
 check( null === MAD4B_SCP_Connection_Status::endpoint_diagnostic( 'mad4b-chatgpt' )['capability_descriptor_ready'], 'Unobserved descriptor evidence fabricated' );
 echo "Connection catalog readiness runtime: PASS\n";
 
-class MAD4B_SCP_Policy { static $allow = true; static function can_mutate() { return self::$allow; } }
+class MAD4B_SCP_Policy {
+ static $allow = true;
+ static function can_mutate() { return self::$allow; }
+ static function can_breakglass() { return false; }
+}
 class MAD4B_SCP_Staging_Write_Authority {
  static $current = false;
  static function effective() { return self::$current; }

@@ -20,6 +20,7 @@ function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 }
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-route-registry.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-ui.php';
 // The real page definitions register without booting menus or the provider runtime.
 require dirname( __DIR__ ) . '/includes/search/class-mad4b-scp-search-experience.php';
 MAD4B_SCP_Search_Experience::boot();

@@ -4,7 +4,9 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.94**.
+Current plugin version: **0.4.0-rc.95**.
+
+rc.95 repairs administrator submenu ordering, verifies refreshed settings against each exact form's persisted values, respects the selected Google connection method, and provides sealed scope-rejection diagnostics without storing rejected tokens. Background convergence can renew an existing healthy authority observation only while its site, actor, grants, transport and write contracts still match. Provider status is paged against an exact registry receipt, and Import/Export versions are attributed to their main plugin files rather than add-ons. Runtime certification and external acceptance still require observed evidence.
 
 ### rc.92 WordPress-native governed update UX
 

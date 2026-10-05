@@ -89,6 +89,7 @@ if ( ! file_exists( $fixture_build_path ) ) {
 	file_put_contents( $fixture_build_path, json_encode( array( 'build_fingerprint' => hash( 'sha256', json_encode( $fixture_manifest ) ), 'fixture_only' => true ) ) );
 	register_shutdown_function( static function () use ( $fixture_build_path, $fixture_owner_pid ) { if ( getmypid() === $fixture_owner_pid && file_exists( $fixture_build_path ) ) unlink( $fixture_build_path ); } );
 }
+require dirname( __DIR__, 2 ) . '/includes/class-mad4b-scp-admin-route-registry.php';
 require dirname( __DIR__, 2 ) . '/includes/class-mad4b-scp-adaptive-search-intelligence.php';
 
 /** SQLite supplies real process-safe CAS, not an in-memory sequential race simulation. */
