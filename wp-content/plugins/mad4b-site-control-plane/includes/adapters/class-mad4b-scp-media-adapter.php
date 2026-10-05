@@ -32,6 +32,10 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				array(
 					'search' => array( 'type' => 'string', 'default' => '' ),
 					'mime_type' => array( 'type' => 'string', 'default' => '' ),
+					'parent_post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+					'unattached_only' => array( 'type' => 'boolean', 'default' => false ),
+					'image_only' => array( 'type' => 'boolean', 'default' => false ),
+					'page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 10000, 'default' => 1 ),
 					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20 ),
 				)
 			)
@@ -143,34 +147,63 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function search( $input ) {
 		$limit = isset( $input['limit'] ) ? max( 1, min( 50, absint( $input['limit'] ) ) ) : 20;
+		$page = isset( $input['page'] ) ? max( 1, min( 10000, absint( $input['page'] ) ) ) : 1;
+		$parent_post_id = isset( $input['parent_post_id'] ) ? absint( $input['parent_post_id'] ) : 0;
+		$unattached_only = ! empty( $input['unattached_only'] );
+		$image_only = ! empty( $input['image_only'] );
+		$mime_type = isset( $input['mime_type'] ) ? sanitize_text_field( (string) $input['mime_type'] ) : '';
+		if ( $parent_post_id > 0 && $unattached_only ) {
+			return new WP_Error( 'mad4b_media_search_parent_conflict', 'parent_post_id and unattached_only cannot be combined.' );
+		}
+		if ( $parent_post_id > 0 && ! get_post( $parent_post_id ) ) {
+			return new WP_Error( 'mad4b_media_search_parent_missing', 'Requested media parent post does not exist.' );
+		}
+		if ( $image_only && '' !== $mime_type && 'image' !== $mime_type && 0 !== strpos( $mime_type, 'image/' ) ) {
+			return new WP_Error( 'mad4b_media_search_mime_conflict', 'image_only cannot be combined with a non-image MIME filter.' );
+		}
+
 		$args = array(
 			'post_type' => 'attachment',
 			'post_status' => 'inherit',
 			'posts_per_page' => $limit,
+			'paged' => $page,
 			'orderby' => 'date',
 			'order' => 'DESC',
 		);
 		if ( ! empty( $input['search'] ) ) $args['s'] = sanitize_text_field( $input['search'] );
-		if ( ! empty( $input['mime_type'] ) ) $args['post_mime_type'] = sanitize_text_field( $input['mime_type'] );
+		if ( $parent_post_id > 0 ) $args['post_parent'] = $parent_post_id;
+		elseif ( $unattached_only ) $args['post_parent'] = 0;
+		if ( '' !== $mime_type ) $args['post_mime_type'] = $mime_type;
+		elseif ( $image_only ) $args['post_mime_type'] = 'image';
+
 		$posts = get_posts( $args );
 		$items = array();
 		foreach ( $posts as $post ) {
-			$payload = $this->media_payload( $post );
+			if ( ! current_user_can( 'read_post', $post->ID ) ) continue;
+			$payload = $this->media_payload( $post, false );
 			$items[] = array(
 				'media' => $payload,
-				'sha256' => $this->hash_value( $this->mutable_payload( $payload ) ),
+				'sha256' => $this->hash_value( $this->mutable_state_from_post( $post ) ),
 			);
 		}
-		return array( 'items' => $items, 'count' => count( $items ) );
+		return array(
+			'items' => $items,
+			'count' => count( $items ),
+			'page' => $page,
+			'limit' => $limit,
+			'has_more_candidate' => count( $posts ) === $limit,
+			'detail_level' => 'summary',
+		);
 	}
 
 	public function get_media( $input ) {
 		$post = get_post( absint( $input['attachment_id'] ) );
 		if ( ! $post || 'attachment' !== $post->post_type ) return new WP_Error( 'mad4b_media_missing', 'Attachment not found.' );
-		$payload = $this->media_payload( $post );
+		$payload = $this->media_payload( $post, true );
 		return array(
 			'media' => $payload,
-			'sha256' => $this->hash_value( $this->mutable_payload( $payload ) ),
+			'sha256' => $this->hash_value( $this->mutable_state_from_post( $post ) ),
+			'detail_level' => 'full',
 		);
 	}
 
@@ -247,8 +280,14 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			return new WP_Error( 'mad4b_media_stale_thumbnail', 'Featured image changed since it was read.', array( 'current_thumbnail_id' => $current ) );
 		}
 		if ( ! wp_attachment_is_image( $attachment_id ) ) return new WP_Error( 'mad4b_media_not_image', 'Attachment is not an image.' );
+		if ( $current === $attachment_id ) {
+			return array( 'post_id' => $post_id, 'attachment_id' => $attachment_id, 'updated' => false, 'verified' => true );
+		}
 		$result = set_post_thumbnail( $post_id, $attachment_id );
 		if ( false === $result ) return new WP_Error( 'mad4b_media_featured_failed', 'Unable to set featured image.' );
+		if ( (int) get_post_thumbnail_id( $post_id ) !== $attachment_id ) {
+			return new WP_Error( 'mad4b_media_featured_readback_mismatch', 'Featured-image write completed but exact readback did not match.' );
+		}
 		MAD4B_SCP_Audit::record(
 			'media/set-featured',
 			array(
@@ -257,7 +296,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'attachment_id' => $attachment_id,
 			)
 		);
-		return array( 'post_id' => $post_id, 'attachment_id' => $attachment_id, 'updated' => true );
+		return array( 'post_id' => $post_id, 'attachment_id' => $attachment_id, 'updated' => true, 'verified' => true );
 	}
 
 	public function set_parent( $input ) {
@@ -277,6 +316,9 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			}
 		}
 
+		if ( $current === $parent_id ) {
+			return array( 'attachment_id' => $id, 'parent_post_id' => $parent_id, 'updated' => false, 'verified' => true );
+		}
 		$result = wp_update_post( array( 'ID' => $id, 'post_parent' => $parent_id ), true );
 		if ( is_wp_error( $result ) ) return $result;
 		$after = get_post( $id );
@@ -291,7 +333,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'parent_post_id' => $parent_id,
 			)
 		);
-		return array( 'attachment_id' => $id, 'parent_post_id' => $parent_id, 'updated' => true );
+		return array( 'attachment_id' => $id, 'parent_post_id' => $parent_id, 'updated' => true, 'verified' => true );
 	}
 
 	public function capture_reversible_state( $ability_name, array $input ) {
@@ -384,6 +426,13 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			);
 			if ( is_wp_error( $result ) ) return $result;
 			update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( (string) $state['alt'] ) );
+			$after = $this->get_media( array( 'attachment_id' => $id ) );
+			if ( is_wp_error( $after ) ) return $after;
+			foreach ( $state as $field => $value ) {
+				if ( ! array_key_exists( $field, $after['media'] ) || (string) $after['media'][ $field ] !== (string) $value ) {
+					return new WP_Error( 'mad4b_media_restore_readback_mismatch', 'Media metadata rollback failed exact readback.', array( 'field' => $field ) );
+				}
+			}
 			return true;
 		}
 
@@ -393,27 +442,34 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( ! array_key_exists( 'thumbnail_id', $state ) ) return new WP_Error( 'mad4b_media_restore_payload_invalid', 'Featured-image rollback state is incomplete.' );
 			$thumbnail_id = absint( $state['thumbnail_id'] );
 			if ( 0 === $thumbnail_id ) {
-				return delete_post_thumbnail( $post_id ) || 0 === (int) get_post_thumbnail_id( $post_id )
+				delete_post_thumbnail( $post_id );
+				return 0 === (int) get_post_thumbnail_id( $post_id )
 					? true
 					: new WP_Error( 'mad4b_media_restore_failed', 'Unable to clear featured image.' );
 			}
-			return false !== set_post_thumbnail( $post_id, $thumbnail_id )
+			set_post_thumbnail( $post_id, $thumbnail_id );
+			return $thumbnail_id === (int) get_post_thumbnail_id( $post_id )
 				? true
-				: new WP_Error( 'mad4b_media_restore_failed', 'Unable to restore featured image.' );
+				: new WP_Error( 'mad4b_media_restore_failed', 'Unable to restore featured image with exact readback.' );
 		}
 
 		if ( 'media/set-parent' === $ability_name ) {
 			$id = isset( $target['attachment_id'] ) ? absint( $target['attachment_id'] ) : 0;
 			if ( ! $id || ! current_user_can( 'edit_post', $id ) ) return new WP_Error( 'mad4b_media_restore_denied', 'Current user cannot restore this attachment parent.' );
 			if ( ! array_key_exists( 'parent_id', $state ) ) return new WP_Error( 'mad4b_media_restore_payload_invalid', 'Media-parent rollback state is incomplete.' );
-			$result = wp_update_post( array( 'ID' => $id, 'post_parent' => absint( $state['parent_id'] ) ), true );
-			return is_wp_error( $result ) ? $result : true;
+			$parent_id = absint( $state['parent_id'] );
+			$result = wp_update_post( array( 'ID' => $id, 'post_parent' => $parent_id ), true );
+			if ( is_wp_error( $result ) ) return $result;
+			$after = get_post( $id );
+			return $after && (int) $after->post_parent === $parent_id
+				? true
+				: new WP_Error( 'mad4b_media_restore_readback_mismatch', 'Media-parent rollback failed exact readback.' );
 		}
 
 		return parent::restore_reversible_state( $ability_name, $target, $state, $record );
 	}
 
-	private function media_payload( $post ) {
+	private function media_payload( $post, $include_details = true ) {
 		$file = get_attached_file( $post->ID, true );
 		$metadata = wp_get_attachment_metadata( $post->ID );
 		$metadata = is_array( $metadata ) ? $metadata : array();
@@ -422,25 +478,48 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			? (int) filesize( $file )
 			: ( isset( $metadata['filesize'] ) ? absint( $metadata['filesize'] ) : 0 );
 
-		return array(
+		$width = isset( $metadata['width'] ) ? absint( $metadata['width'] ) : 0;
+		$height = isset( $metadata['height'] ) ? absint( $metadata['height'] ) : 0;
+		$payload = array(
 			'id' => (int) $post->ID,
 			'parent_id' => (int) $post->post_parent,
+			'author_id' => (int) $post->post_author,
+			'status' => (string) $post->post_status,
+			'date_gmt' => (string) $post->post_date_gmt,
+			'modified_gmt' => (string) $post->post_modified_gmt,
+			'title' => (string) $post->post_title,
+			'caption' => (string) $post->post_excerpt,
+			'alt' => (string) get_post_meta( $post->ID, '_wp_attachment_image_alt', true ),
+			'mime_type' => (string) $post->post_mime_type,
+			'is_image' => (bool) wp_attachment_is_image( $post->ID ),
+			'url' => (string) wp_get_attachment_url( $post->ID ),
+			'file' => $file ? basename( $file ) : '',
+			'file_extension' => $file ? strtolower( (string) pathinfo( $file, PATHINFO_EXTENSION ) ) : '',
+			'filesize' => $filesize,
+			'width' => $width,
+			'height' => $height,
+			'aspect_ratio' => $width > 0 && $height > 0 ? round( $width / $height, 6 ) : 0,
+			'generated_size_count' => isset( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ? count( $metadata['sizes'] ) : 0,
+			'embedded_metadata_present' => ! empty( $metadata['image_meta'] ) && is_array( $metadata['image_meta'] ),
+			'metadata_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
+			'detail_level' => $include_details ? 'full' : 'summary',
+		);
+		if ( $include_details ) {
+			$payload['description'] = (string) $post->post_content;
+			$payload['sizes'] = isset( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ? $metadata['sizes'] : array();
+			$payload['image_meta'] = isset( $metadata['image_meta'] ) && is_array( $metadata['image_meta'] ) ? $metadata['image_meta'] : array();
+			$payload['metadata'] = $metadata;
+		}
+		return $payload;
+	}
+
+	private function mutable_state_from_post( $post ) {
+		return array(
+			'id' => (int) $post->ID,
 			'title' => (string) $post->post_title,
 			'caption' => (string) $post->post_excerpt,
 			'description' => (string) $post->post_content,
 			'alt' => (string) get_post_meta( $post->ID, '_wp_attachment_image_alt', true ),
-			'mime_type' => (string) $post->post_mime_type,
-			'is_image' => (bool) wp_attachment_is_image( $post->ID ),
-			'modified_gmt' => (string) $post->post_modified_gmt,
-			'url' => (string) wp_get_attachment_url( $post->ID ),
-			'file' => $file ? basename( $file ) : '',
-			'filesize' => $filesize,
-			'width' => isset( $metadata['width'] ) ? absint( $metadata['width'] ) : 0,
-			'height' => isset( $metadata['height'] ) ? absint( $metadata['height'] ) : 0,
-			'sizes' => isset( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ? $metadata['sizes'] : array(),
-			'image_meta' => isset( $metadata['image_meta'] ) && is_array( $metadata['image_meta'] ) ? $metadata['image_meta'] : array(),
-			'metadata' => $metadata,
-			'metadata_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
 		);
 	}
 
