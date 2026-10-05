@@ -287,6 +287,16 @@ try {
 	$mime_conflict = $media_adapter->search( array( 'image_only' => true, 'mime_type' => 'application/pdf' ) );
 	$check( is_wp_error( $mime_conflict ) && 'mad4b_media_search_mime_conflict' === $mime_conflict->get_error_code(), 'Media search accepted an image-only/non-image MIME contradiction.' );
 
+	$media_verify = MAD4B_SCP_Content_Experience_Runtime::verify( 'ci-trip', array( 'post_id' => $post_id ) );
+	$check( ! is_wp_error( $media_verify ) && ! empty( $media_verify['media_state_valid'] ), 'Content Experience media verification failed.' );
+	$check( array( $image_two, $image_one ) === $media_verify['media_fields']['ci_gallery']['attachment_ids'], 'Media verify lost canonical gallery attachment order.' );
+	$usage_verify = $media_verify['media_fields']['ci_gallery_usage'];
+	$check( array( $image_two, $image_one ) === $usage_verify['attachment_ids'], 'Media verify usage IDs drifted from canonical gallery order.' );
+	$check( array( 'gallery', 'hero' ) === $usage_verify['roles'], 'Media verify lost contextual media roles.' );
+	$check( array( 'licensed', 'owned' ) === $usage_verify['licenses'], 'Media verify lost contextual media licenses.' );
+	$check( array( '2028-12-31' ) === $usage_verify['license_expiries'], 'Media verify lost bounded rights-expiry evidence.' );
+	$check( 1 === (int) $usage_verify['aria_label_count'] && 1 === (int) $usage_verify['linked_count'] && 2 === (int) $usage_verify['focal_point_count'], 'Media verify accessibility/link/focal summaries are incomplete.' );
+
 	$current_for_media_guard = get_post( $post_id );
 	$bad_gallery_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
 		'post_id' => $post_id,
