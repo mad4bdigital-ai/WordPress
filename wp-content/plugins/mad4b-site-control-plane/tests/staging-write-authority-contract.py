@@ -463,6 +463,39 @@ for required_pair in [
     if required_pair not in allowlist:
         raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
 
+feature007_core_grants = [
+    "mad4b/data-processing-bound-decision-record",
+    "mad4b/data-processing-profile-apply",
+    "mad4b/decommission-finalize-apply",
+    "mad4b/decommission-quiesce-apply",
+    "mad4b/decommission-resume-apply",
+    "mad4b/portability-import-quarantine-apply",
+    "mad4b/rights-record-apply",
+    "mad4b/rights-takedown-apply",
+    "mad4b/scheduler-backlog-claim-next",
+    "mad4b/scheduler-backlog-complete",
+    "mad4b/scheduler-backlog-enqueue",
+    "mad4b/scheduler-backlog-heartbeat",
+    "mad4b/scheduler-backlog-reconcile",
+    "mad4b/search-budget-apply",
+    "mad4b/search-capture-apply",
+    "mad4b/search-compile-apply",
+    "mad4b/search-control",
+    "mad4b/search-import-evidence",
+    "mad4b/search-post-change-apply",
+    "mad4b/search-profile-apply",
+    "mad4b/search-provider-probe",
+    "mad4b/search-recompute",
+    "mad4b/search-reconcile",
+    "mad4b/search-retention",
+]
+for ability_name in feature007_core_grants:
+    exact_pair = f"'{ability_name}' => 'core'"
+    if exact_pair not in allowlist:
+        raise SystemExit(f'Feature 007 governed core write grant is outside exact reconciliation allowlist: {ability_name}')
+if len(feature007_core_grants) != 24:
+    raise SystemExit('Feature 007 exact core grant regression fixture count changed unexpectedly')
+
 if "'elementor/update-widget-settings' => 'elementor'" in allowlist:
     raise SystemExit('historical Elementor grant leaked back into grant-creation allowlist')
 if "'elementor/update-widget-settings'] = 'elementor'" not in retirement_allowlist:
