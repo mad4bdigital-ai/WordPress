@@ -249,6 +249,27 @@ for key in (
 ):
     require(acceptance.get(key) is False, f"operational acceptance widened forbidden authority: {key}")
 
+require(
+    acceptance.get("operational_state_enum") == [
+        "authority_convergence_required",
+        "degraded_host_execution",
+        "operationally_blocked",
+        "operationally_ready",
+    ],
+    "operational acceptance state enum drift",
+)
+require(
+    acceptance.get("provider_write_authority_state_enum") == [
+        "write_authority_reconciliation_required",
+        "write_authority_current",
+    ],
+    "provider write-authority acceptance state enum drift",
+)
+require(
+    acceptance.get("state_is_derived_from_current_truth_not_persisted_checkpoint_only") is True,
+    "operational state must remain bound to current runtime truth",
+)
+
 adapter_profiles = (profiles.get("providers") or {}).get("mcp_adapter") or {}
 p070 = adapter_profiles.get("0.7.0") or {}
 require(p070.get("version") == "0.7.0", "MCP Adapter 0.7.0 exact profile missing")
