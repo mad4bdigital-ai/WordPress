@@ -1291,6 +1291,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$error = isset( $_GET['mad4b_error'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post-action status only.
 		if ( $error ) {
 			echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'Action stopped safely:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $error ) . '</code></p></div>';
+			$actions = array(
+				'mad4b_google_workspace_scope_not_allowed' => __( 'EXTERNAL_ACTION_REQUIRED: Review this app in your Google Account connections, remove obsolete access if needed, then reconnect using the saved Google Workspace grants. The rejected tokens were not stored.', 'mad4b-site-control-plane' ),
+				'mad4b_google_drive_readonly_scope_escalated' => __( 'EXTERNAL_ACTION_REQUIRED: Remove the previous Google app access and reconnect with Read-only, or explicitly save Read + Write grants before connecting.', 'mad4b-site-control-plane' ),
+				'mad4b_google_managed_granted_scope_unproven' => __( 'EXTERNAL_ACTION_REQUIRED: Reconnect through the Managed Google broker after reviewing its current scope projection.', 'mad4b-site-control-plane' ),
+				'mad4b_context_registry_revision_write_failed' => __( 'Brand Context could not be committed. Retry after installing the current persistence repair; no partial profile should be treated as ready.', 'mad4b-site-control-plane' ),
+			);
+			if ( isset( $actions[ $error ] ) ) echo '<div class="notice notice-info"><p>' . esc_html( $actions[ $error ] ) . '</p></div>';
 			return;
 		}
 		$messages = array(
@@ -1540,3 +1547,6 @@ final class MAD4B_SCP_Context_Admin_UI {
 		</style>';
 	}
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Context_Admin_UI::PAGE_SLUG, 'manage_options' );

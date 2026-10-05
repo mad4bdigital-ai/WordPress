@@ -428,3 +428,6 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	private static function yesno( $value ) { return $value ? 'yes' : 'no'; }
 	private static function measurement( $value ) { return is_bool( $value ) ? self::yesno( $value ) : __( 'Not checked', 'mad4b-site-control-plane' ); }
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Connection_Admin_UI::PAGE_SLUG, 'manage_options' );

@@ -34,6 +34,10 @@ function get_option( $name, $default = false ) { return array_key_exists( $name,
 function update_option( $name, $value, $autoload = null ) { $GLOBALS['mad4b_zero_touch_options'][ $name ] = $value; return true; }
 
 class WP_Error {}
+class MAD4B_SCP_Site_Profile {
+	public static function site_urls_match_enrollment() { return 'staging' === $GLOBALS['mad4b_zero_touch_environment']; }
+	public static function skills_enabled() { return true; }
+}
 class MAD4B_SCP_Skill_Registry {
 	public static function levels() { return array( 'site' ); }
 	public static function status() { return array(); }

@@ -3,6 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Stable IDs/order and generic primitives; provider names never select UI code. */
 final class MAD4B_SCP_Search_Experience {
+	const PAGE_SLUG = 'mad4b-search-intelligence';
 	public static function model( $profile, array $providers, array $jobs, array $views, $inventory_ready = true ) {
 		$state = $profile ? ( ! empty( $profile['enabled'] ) ? 'READY' : 'PROFILE_DRAFTED' ) : 'UNCONFIGURED';
 		$blockers = array(); $healthy = 0; $budgeted = 0; $fresh = 0;
@@ -32,7 +33,7 @@ final class MAD4B_SCP_Search_Experience {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_post_mad4b_search_control', array( __CLASS__, 'control_post' ) );
 	}
-	public static function menu() { add_submenu_page( 'mad4b-control-plane', 'Search Intelligence', 'Search Intelligence', 'manage_options', 'mad4b-search-intelligence', array( __CLASS__, 'render' ) ); }
+	public static function menu() { add_submenu_page( 'mad4b-control-plane', 'Search Intelligence', 'Search Intelligence', 'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) ); }
 	public static function render() {
 		if ( ! MAD4B_SCP_Policy::can_read() ) return;
 		$id = isset( $_GET['profile_id'] ) ? (string) wp_unslash( $_GET['profile_id'] ) : '';
@@ -116,3 +117,6 @@ final class MAD4B_SCP_Search_Experience {
 		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-search-intelligence&profile_id=' . rawurlencode( $_POST['profile_id'] ) ) ); exit;
 	}
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Search_Experience::PAGE_SLUG, 'manage_options' );

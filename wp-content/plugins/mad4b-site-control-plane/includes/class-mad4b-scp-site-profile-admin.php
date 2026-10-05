@@ -313,3 +313,6 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		echo '<label style="display:block;margin:.4em 0"><input type="checkbox" name="' . esc_attr( $name ) . '" value="1" ' . checked( $checked, true, false ) . ' /> ' . esc_html( $label ) . '</label>';
 	}
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Site_Profile_Admin::PAGE_SLUG, 'manage_options' );

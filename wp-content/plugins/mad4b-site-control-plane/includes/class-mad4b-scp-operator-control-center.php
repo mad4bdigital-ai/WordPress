@@ -270,6 +270,22 @@ final class MAD4B_SCP_Operator_Control_Center {
 		foreach ( $reasons as $reason ) echo '<li><code>' . esc_html( (string) $reason ) . '</code></li>';
 		echo '</ul><h2>' . esc_html__( 'Next actions', 'mad4b-site-control-plane' ) . '</h2><ol>';
 		foreach ( $actions as $action ) echo '<li><code>' . esc_html( (string) $action ) . '</code></li>';
-		echo '</ol><p><strong>' . esc_html__( 'Production authorized:', 'mad4b-site-control-plane' ) . '</strong> <code>false</code></p></div>';
+		echo '</ol>';
+		if ( class_exists( 'MAD4B_SCP_Adaptive_Runtime_Convergence', false ) ) {
+			$adaptive = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+			echo '<h2>' . esc_html__( 'Automatic runtime observations', 'mad4b-site-control-plane' ) . '</h2>';
+			echo '<p>' . esc_html( $adaptive['state'] ) . ' — ' . esc_html__( 'Capabilities are assessed separately. Stored observations do not grant permission.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Provider', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Capability', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'State', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
+			$shown = 0;
+			foreach ( $adaptive['providers'] as $provider => $observation ) foreach ( $observation['capabilities'] ?? array() as $capability => $row ) {
+				if ( ++$shown > 64 ) break 2;
+				echo '<tr><td>' . esc_html( $provider ) . '</td><td>' . esc_html( $capability ) . '</td><td>' . esc_html( $row['state'] ) . '</td></tr>';
+			}
+			echo '</tbody></table><p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-adapter-coverage' ) ) . '">' . esc_html__( 'Review provider capabilities', 'mad4b-site-control-plane' ) . '</a></p>';
+		}
+		echo '<p><strong>' . esc_html__( 'Production authorized:', 'mad4b-site-control-plane' ) . '</strong> <code>false</code></p></div>';
 	}
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Operator_Control_Center::PAGE_SLUG, 'manage_options' );

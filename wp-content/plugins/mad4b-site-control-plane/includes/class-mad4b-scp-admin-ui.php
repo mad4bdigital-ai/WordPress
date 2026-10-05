@@ -293,3 +293,6 @@ final class MAD4B_SCP_Admin_UI {
 		return strlen( $value ) > 20 ? substr( $value, 0, 16 ) . '…' : $value;
 	}
 }
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Admin_UI::PAGE_SLUG, 'manage_options' );

@@ -988,12 +988,23 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 			$continuation_result = array();
 			$continuation_status = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
+			$observed_continuation = array();
+			$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
+			if ( ! empty( $binding['stored_bound'] ) && empty( $binding['match'] ) && empty( $continuation_status['active'] )
+				&& ! in_array( $continuation_status['state'] ?? '', array( 'blocked', 'owner_gate', 'executing' ), true )
+				&& class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'observed_release_target' )
+				&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'prepare_observed_update' ) ) {
+				$trusted_target = MAD4B_SCP_Self_Update::observed_release_target();
+				$observed_continuation = is_wp_error( $trusted_target ) ? $trusted_target : MAD4B_SCP_Post_Update_Continuation::prepare_observed_update( $trusted_target, $lock );
+				$continuation_status = MAD4B_SCP_Post_Update_Continuation::status();
+			}
 			if ( ! empty( $continuation_status['active'] ) && in_array( isset( $continuation_status['state'] ) ? (string) $continuation_status['state'] : '', array( 'exact_readback_verified', 'pending_convergence' ), true ) ) {
 				$continuation_result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( $lock );
 				if ( is_wp_error( $continuation_result ) ) return $continuation_result;
 				$changed[] = 'post_update_continuation';
 				$changed = array_values( array_unique( $changed ) );
 			}
+			$baseline = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) && method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'capture_ready_baseline' ) ? MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( $lock ) : array();
 
 			$lease_refresh = self::refresh_lock( $lock );
 			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
@@ -1013,6 +1024,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'changed_safe_phases' => $changed,
 				'required_blockers' => isset( $status['required_blockers'] ) ? $status['required_blockers'] : array(),
 				'continuation' => $final_continuation,
+				'observed_continuation' => is_wp_error( $observed_continuation ) ? array( 'state' => 'EXTERNAL_ACTION_REQUIRED', 'error_code' => $observed_continuation->get_error_code() ) : $observed_continuation,
+				'authority_baseline' => is_wp_error( $baseline ) ? array( 'state' => 'NOT_OBSERVED', 'error_code' => $baseline->get_error_code() ) : $baseline,
 				'updated_at' => gmdate( 'c' ),
 				'production_mutation' => false,
 				'candidate_binding_mutation' => is_array( $continuation_result ) && 'completed' === ( isset( $continuation_result['state'] ) ? (string) $continuation_result['state'] : '' ),

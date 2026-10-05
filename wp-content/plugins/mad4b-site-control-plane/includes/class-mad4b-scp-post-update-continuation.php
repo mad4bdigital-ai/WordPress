@@ -11,6 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * delta remains exactly zero.
  */
 final class MAD4B_SCP_Post_Update_Continuation {
+	const BASELINE_OPTION = 'mad4b_scp_staging_authority_baseline_v1';
+	const BASELINE_CONTRACT = 'mad4b.staging-authority-baseline.v1';
+	const BASELINE_TTL = 604800;
 	const CONTRACT = 'mad4b.post-update-continuation.v1';
 	const OPTION = 'mad4b_scp_post_update_continuation_v1';
 	const TTL = 900;
@@ -166,6 +169,108 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		) );
 	}
 
+	/** Observe existing exact authority. This creates no permission or update intent. */
+	public static function capture_ready_baseline( $lease_token = '', $lease_owner = 'runtime_convergence' ) {
+		if ( '' !== $lease_token ) {
+			$fence = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner );
+			if ( is_wp_error( $fence ) ) return $fence;
+		} elseif ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) {
+			return new WP_Error( 'mad4b_authority_baseline_observation_context_required', 'An existing governed lifecycle lease or verified OAuth request is required.' );
+		}
+		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() || self::breakglass_enabled()
+			|| ! MAD4B_SCP_Site_Profile::write_enabled() || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_authority_baseline_profile_ineligible', 'Only exact enrolled Staging authority can be observed.' );
+		$plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+		$snapshot = self::write_snapshot( is_array( $plan ) ? $plan : array() );
+		if ( empty( $plan['eligible'] ) || empty( $plan['current_ready'] ) || empty( $binding['match'] ) || ! self::snapshot_clean( $snapshot )
+			|| ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_authority_baseline_current_authority_required', 'A healthy exact candidate and unchanged grant inventory are required.' );
+		$actor = self::capture_actor();
+		$transport = self::transport_snapshot();
+		if ( empty( $actor['oauth_attribution_complete'] ) ) {
+			$completed = self::read_permit();
+			// The transaction persists "consumed"; "completed" is the public result.
+			if ( is_array( $completed ) && self::integrity_valid( $completed ) && 'consumed' === ( $completed['state'] ?? '' )
+				&& ! empty( $completed['consumed'] ) && self::identity_matches( $completed['target_identity'], self::bounded_binding( $binding ) )
+				&& ( $completed['site']['profile_digest'] ?? '' ) === MAD4B_SCP_Site_Profile::profile_digest()
+				&& ( $completed['site']['profile_revision'] ?? -1 ) === MAD4B_SCP_Site_Profile::revision()
+				&& ( $completed['transport_snapshot']['fingerprint'] ?? '' ) === ( $transport['fingerprint'] ?? '' )
+				&& self::digest( $completed['write_snapshot'] ?? array() ) === self::digest( $snapshot ) ) $actor = $completed['actor'];
+		}
+		if ( empty( $actor['oauth_attribution_complete'] ) ) return new WP_Error( 'mad4b_authority_baseline_actor_missing', 'Previously verified OAuth attribution is required; it cannot be inferred from an admin login.' );
+		$actor_user = get_userdata( (int) $actor['wp_user_id'] );
+		if ( ! $actor_user || ! user_can( $actor_user, 'manage_options' ) || ! MAD4B_SCP_Site_Profile::user_is_enrolled( (int) $actor['wp_user_id'] ) ) return new WP_Error( 'mad4b_authority_baseline_actor_revoked', 'The observed actor must still have enrolled administrator authority.' );
+		$contracts = self::write_contract_fingerprint();
+		if ( empty( $transport['inventory_ready'] ) || '' === $contracts ) return new WP_Error( 'mad4b_authority_baseline_contract_unavailable', 'Exact transport and write contracts must be available.' );
+		$baseline = array( 'contract' => self::BASELINE_CONTRACT,
+			'site' => array( 'site_uuid' => strtolower( MAD4B_SCP_Site_Profile::site_uuid() ), 'origin' => untrailingslashit( MAD4B_SCP_Site_Profile::current_origin() ), 'environment' => 'staging', 'profile_revision' => MAD4B_SCP_Site_Profile::revision(), 'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest() ),
+			'actor' => $actor, 'previous_binding' => self::bounded_binding( $binding ), 'write_snapshot' => $snapshot, 'transport_snapshot' => $transport,
+			'write_contract_fingerprint' => $contracts, 'captured_at' => time(), 'expires_at' => time() + self::BASELINE_TTL, 'authorizing' => false );
+		$baseline['seal'] = self::baseline_seal( $baseline );
+		$audit = self::audit( 'baseline-observed', array(), array( 'baseline_digest' => self::digest( $baseline ), 'previous_binding' => $baseline['previous_binding'], 'authorizing' => false ) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		update_option( self::BASELINE_OPTION, $baseline, false );
+		if ( function_exists( 'wp_cache_delete' ) ) { wp_cache_delete( self::BASELINE_OPTION, 'options' ); wp_cache_delete( 'notoptions', 'options' ); }
+		$stored = get_option( self::BASELINE_OPTION, array() );
+		if ( ! self::baseline_valid( $stored ) || ! hash_equals( $baseline['seal'], $stored['seal'] ) ) return new WP_Error( 'mad4b_authority_baseline_readback_failed', 'Authority observation was not persisted exactly.' );
+		return array( 'state' => 'OBSERVED', 'expires_at' => $baseline['expires_at'], 'authorizing' => false );
+	}
+
+	/** Recover a manual replacement only from a pre-existing sealed healthy observation. */
+	public static function prepare_observed_update( array $trusted_target, $lease_token = '' ) {
+		$fence = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, 'runtime_convergence' );
+		if ( is_wp_error( $fence ) ) return $fence;
+		$target = self::target_identity( $trusted_target ); $release = self::release_identity( $trusted_target );
+		if ( is_wp_error( $target ) ) return $target;
+		if ( is_wp_error( $release ) ) return $release;
+		if ( ! self::identity_matches( $target, self::current_identity() ) ) return new WP_Error( 'mad4b_observed_update_target_mismatch', 'The trusted release must match the actual installed package.' );
+		$physical = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( empty( $physical['runtime_manifest_match'] ) || ! self::identity_matches( $target, $physical ) ) return new WP_Error( 'mad4b_observed_update_package_integrity_required', 'Full actual-package verification is required before carrying previous authority.' );
+		$baseline = get_option( self::BASELINE_OPTION, array() );
+		if ( ! self::baseline_valid( $baseline ) ) return new WP_Error( 'mad4b_observed_update_baseline_required', 'EXTERNAL_ACTION_REQUIRED: no current sealed previous-authority observation is available.' );
+		$current = self::read_permit();
+		if ( self::permit_active( $current, true ) || is_array( $current ) && 'executing' === ( $current['state'] ?? '' ) ) return new WP_Error( 'mad4b_post_update_continuation_active_permit_exists', 'Another continuation is already active.' );
+		$permit = array( 'contract' => self::CONTRACT, 'permit_id' => wp_generate_uuid4(), 'generation' => (int) ( $current['generation'] ?? 0 ) + 1,
+			'state' => 'pending_convergence', 'classification' => self::CLASS_ZERO, 'classification_reasons' => array(), 'channel' => 'observed_manual_replacement',
+			'target_identity' => $target, 'release' => $release, 'site' => $baseline['site'], 'actor' => $baseline['actor'],
+			'previous_binding' => $baseline['previous_binding'], 'write_snapshot' => $baseline['write_snapshot'], 'transport_snapshot' => $baseline['transport_snapshot'],
+			'write_contract_fingerprint' => $baseline['write_contract_fingerprint'], 'baseline_digest' => self::digest( $baseline ),
+			'authority_delta' => 'zero_required', 'mutation_class' => 'candidate_binding_only', 'production_allowed' => false, 'breakglass_allowed' => false,
+			'one_time' => true, 'consumed' => false, 'claimed' => false, 'created_at' => gmdate( 'c' ), 'expires_at' => time() + self::TTL, 'ttl_seconds' => self::TTL );
+		$permit['update_plan_sha256'] = self::digest( array( 'target' => $target, 'baseline_digest' => $permit['baseline_digest'] ) );
+		$delta = self::classify_current_delta( $permit );
+		if ( self::CLASS_ZERO !== $delta['classification'] ) return new WP_Error( 'mad4b_observed_update_authority_delta', 'Automatic carry-forward requires identical contracts, grants, actor and Site Profile.', array( 'classification' => $delta['classification'], 'reasons' => $delta['reasons'], 'operation_state' => 'EXTERNAL_ACTION_REQUIRED' ) );
+		$permit['permit_digest'] = self::permit_digest( $permit ); $permit['permit_seal'] = self::permit_seal( $permit );
+		$audit = self::audit( 'observed-update-authorized', $permit );
+		if ( is_wp_error( $audit ) ) return $audit;
+		if ( ! self::replace_permit( $current, $permit ) ) return new WP_Error( 'mad4b_observed_update_permit_raced', 'Continuation changed before the observed update could be claimed.' );
+		return self::status();
+	}
+
+	private static function baseline_seal( array $baseline ) { unset( $baseline['seal'] ); return hash_hmac( 'sha256', self::digest( $baseline ), wp_salt( 'auth' ) ); }
+	private static function baseline_valid( $baseline ) {
+		return is_array( $baseline ) && self::BASELINE_CONTRACT === ( $baseline['contract'] ?? '' ) && is_string( $baseline['seal'] ?? null ) && preg_match( '/^[a-f0-9]{64}$/D', $baseline['seal'] )
+			&& is_int( $baseline['captured_at'] ?? null ) && is_int( $baseline['expires_at'] ?? null ) && $baseline['captured_at'] <= time() && $baseline['expires_at'] > time()
+			&& $baseline['expires_at'] - $baseline['captured_at'] <= self::BASELINE_TTL && hash_equals( self::baseline_seal( $baseline ), (string) $baseline['seal'] );
+	}
+
+	private static function write_contract_fingerprint() {
+		if ( ! function_exists( 'wp_get_ability' ) || ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'write_tools' ) ) return '';
+		$contracts = array();
+		foreach ( MAD4B_SCP_Staging_Write_Authority::write_tools() as $name ) {
+			$ability = wp_get_ability( $name );
+			foreach ( array( 'get_meta', 'get_input_schema', 'get_output_schema' ) as $method ) if ( ! is_object( $ability ) || ! is_callable( array( $ability, $method ) ) ) return '';
+			try {
+				$meta = $ability->get_meta();
+				if ( ! is_array( $meta ) ) return '';
+				$mcp = is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
+				// Custom MAD4B metadata also carries authority and execution contracts.
+				unset( $mcp['label'], $mcp['description'] );
+				$contracts[ $name ] = array( 'input' => $ability->get_input_schema(), 'output' => $ability->get_output_schema(), 'annotations' => $meta['annotations'] ?? array(), 'governance' => $mcp );
+			} catch ( Throwable $error ) { return ''; }
+		}
+		return empty( $contracts ) ? '' : self::digest( $contracts );
+	}
+
 	public static function evaluate_and_rebind( $lease_token = '' ) {
 		$fence = class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ? MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, 'runtime_convergence' ) : new WP_Error( 'mad4b_post_update_continuation_lease_required', 'Convergence maintenance lease is required.' );
 		if ( is_wp_error( $fence ) ) return $fence;
@@ -299,6 +404,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$review = array();
 		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : '' ) ) $hard[] = 'production_or_environment_changed';
 		if ( self::breakglass_enabled() ) $hard[] = 'breakglass_excluded';
+		if ( isset( $permit['write_contract_fingerprint'] ) && ( '' === self::write_contract_fingerprint()
+			|| ! hash_equals( (string) $permit['write_contract_fingerprint'], self::write_contract_fingerprint() ) ) ) $review[] = 'write_contract_changed';
 
 		$current_identity_result = self::current_identity();
 		$current_identity = is_wp_error( $current_identity_result ) ? array( 'available' => false ) : $current_identity_result;
@@ -675,4 +782,3 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		return $value;
 	}
 }
-

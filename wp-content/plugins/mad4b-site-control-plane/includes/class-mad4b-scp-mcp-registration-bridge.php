@@ -67,6 +67,16 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			if ( class_exists( $catalog, false ) ) add_action( 'wp_abilities_api_init', array( $catalog, 'register_abilities' ), 34 );
 		}
 		if ( class_exists( 'MAD4B_SCP_Read_Consistency', false ) ) add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Read_Consistency', 'register_session_safe_report' ), 27 );
+		// Enrollment diagnostics can enter through the passive AJAX bootstrap.
+		// Bind the read-only definitions even when the full authority lifecycle is
+		// deferred. Never boot reconciliation, bind a candidate, or invoke a tool.
+		foreach ( array(
+			array( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan', 'register_ability', 10 ),
+			array( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'register_audit_ability', 13 ),
+			array( 'MAD4B_SCP_Multi_Authority_Registry', 'register_ability', 34 ),
+		) as $definition ) {
+			if ( class_exists( $definition[0], false ) ) add_action( 'wp_abilities_api_init', array( $definition[0], $definition[1] ), $definition[2] );
+		}
 		add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 );
 
 

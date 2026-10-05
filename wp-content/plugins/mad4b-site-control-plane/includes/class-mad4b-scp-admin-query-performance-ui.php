@@ -3,6 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Admin_Query_Performance_UI {
+	const PAGE_SLUG = 'mad4b-control-plane-performance';
 	public static function boot() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 31 );
 	}
@@ -13,7 +14,7 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 			__( 'MAD4B Performance', 'mad4b-site-control-plane' ),
 			__( 'Performance', 'mad4b-site-control-plane' ),
 			'manage_options',
-			'mad4b-control-plane-performance',
+			self::PAGE_SLUG,
 			array( __CLASS__, 'render_page' )
 		);
 	}
@@ -60,3 +61,6 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 }
 
 MAD4B_SCP_Admin_Query_Performance_UI::boot();
+
+// Routes are declared without booting menus or provider lifecycle on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Admin_Query_Performance_UI::PAGE_SLUG, 'manage_options' );

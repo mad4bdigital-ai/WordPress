@@ -567,6 +567,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				&& hash_equals( (string) $plan['grant_rows_fingerprint'], (string) $after_plan['grant_rows_fingerprint'] )
 				&& MAD4B_SCP_Staging_Write_Authority::effective();
 			if ( ! $post_ok ) return new WP_Error( 'mad4b_candidate_bind_wrapper_postcondition_failed', 'Binding primitive returned without a fully effective exact four-part candidate identity.' );
+			$baseline = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) && method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'capture_ready_baseline' ) ? MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline() : array();
 
 			return array_merge( $result, array(
 				'reviewed_previous_binding' => $operation_context['reviewed_previous_binding'],
@@ -577,6 +578,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				'write_inventory_fingerprint' => (string) $after_plan['write_inventory_fingerprint'],
 				'grant_rows_fingerprint' => (string) $after_plan['grant_rows_fingerprint'],
 				'effective' => true,
+				'authority_baseline' => is_wp_error( $baseline ) ? array( 'state' => 'NOT_OBSERVED', 'error_code' => $baseline->get_error_code() ) : $baseline,
 			) );
 		} finally {
 			self::$running = false;

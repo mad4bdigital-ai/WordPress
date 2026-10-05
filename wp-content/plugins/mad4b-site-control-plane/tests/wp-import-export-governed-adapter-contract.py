@@ -24,8 +24,10 @@ required = [
     'provider_readonly_autoload_blocker',
     'provider_readonly_autoload_exact_artifact_required',
     'provider_readonly_autoload_class_allowlist',
-    "MAD4B_SCP_Provider_Contracts::runtime_status('wp-import-export',true)",
-    "'exact_import_artifact_not_certified'",
+    "MAD4B_SCP_Provider_Contracts::get('wp-import-export')",
+    "'provider_readonly_autoload_source_provenance_required'=>true",
+    "'provider_bootstrap_source_mismatch'",
+    "'provider_readonly_model_source_mismatch'",
     "'PMXI_Model'",
     "'PMXI_Model_Record'",
     "'PMXI_Model_List'",
@@ -132,7 +134,7 @@ assert "'content' => array(), 'admin' => array()" in src
 assert "protected function mutation_requires_certification() { return false; }" not in src
 assert "protected function provider_certification( $available ) { return null; }" not in src
 
-# Exact-artifact runtime bootstrap may only call the provider-owned autoloader for a fixed class allowlist.
+# Provenance-bound read-only runtime bootstrap may only call the provider-owned autoloader for a fixed class allowlist.
 assert "WP_PLUGIN_DIR . '/wp-all-import-pro" not in src
 assert 'require_once WP_PLUGIN_DIR' not in src
 assert 'glob(' not in src

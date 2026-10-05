@@ -3032,7 +3032,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 					if ( ! in_array( $granted_item, $broker_allowed, true ) ) return new WP_Error( 'mad4b_google_managed_granted_scope_unproven', 'Google returned a scope that is not proven by the Managed broker scope projection.' );
 				}
 			} elseif ( ! self::workspace_scope_is_allowed( $scope ) ) {
-				return new WP_Error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog.' );
+				return new WP_Error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog. Review the Google app access and reconnect with the saved Workspace grants.', array(
+					'operation_state' => 'EXTERNAL_ACTION_REQUIRED',
+					'next_action' => 'review_google_app_access_then_reconnect',
+					'unsupported_scope_count' => count( array_diff( $granted_items, self::allowed_scope_items() ) ),
+					'tokens_persisted' => false,
+				) );
 			}
 		} elseif ( ! self::scope_is_allowed( $scope ) ) {
 			return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );

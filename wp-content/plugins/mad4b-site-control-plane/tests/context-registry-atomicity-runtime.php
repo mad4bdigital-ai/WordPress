@@ -19,7 +19,13 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
-function get_option( $name, $default = false ) { return array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ? $GLOBALS['mad4b_context_options'][ $name ] : $default; }
+// A cold Options API read returns scalar database values as strings. Arrays
+// retain their serialized types; an in-memory-only stub hid revision failures.
+function get_option( $name, $default = false ) {
+	if ( ! array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ) return $default;
+	$value = $GLOBALS['mad4b_context_options'][ $name ];
+	return is_scalar( $value ) || null === $value ? (string) $value : $value;
+}
 function add_option( $name, $value ) {
 	if ( $GLOBALS['mad4b_fail_option'] === $name ) return false;
 	if ( array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ) return false;
@@ -239,3 +245,9 @@ mad4b_atomic_assert( 1 === count( $profile_events ), 'Healthy Brand Context Prof
 mad4b_atomic_assert( 2 === (int) $profile_events[0]['summary']['revision'] && empty( $profile_events[0]['summary']['created'] ), 'Profile save audit must bind exact revision and update/create state.', $profile_events[0] );
 
 echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v3: PASS\n";
+
+$write_scalar = new ReflectionMethod( 'MAD4B_SCP_Context_Authority', 'write_option' );
+$GLOBALS['mad4b_fail_option'] = 'scalar_failure';
+foreach ( array( false, '', null ) as $scalar ) if ( $write_scalar->invoke( null, 'scalar_failure', $scalar ) ) throw new RuntimeException( 'Missing option falsely verified as an empty scalar' );
+$GLOBALS['mad4b_fail_option'] = '';
+if ( ! $write_scalar->invoke( null, 'scalar_revision', 7 ) ) throw new RuntimeException( 'Cold string revision did not match the persisted integer' );
