@@ -72,6 +72,25 @@ require(
     p070.get("package_url") == "https://github.com/WordPress/mcp-adapter/releases/download/v0.7.0/mcp-adapter.zip",
     "MCP Adapter 0.7.0 release URL drift",
 )
+
+pre_staging_workflow = (REPO / ".github/workflows/feature-007-pre-staging-hybrid-audit.yml").read_text(encoding="utf-8")
+certified_materializer = (ROOT / "tests/materialize-certified-mcp-adapter.py").read_text(encoding="utf-8")
+require(
+    pre_staging_workflow.count("materialize-certified-mcp-adapter.py") >= 2,
+    "Pre-Staging runtime jobs must materialize the certified Adapter release",
+)
+require(
+    "--archive wp-content/plugins/mcp-adapter.zip" not in pre_staging_workflow,
+    "Pre-Staging runtime regressed to the stale repository Adapter fixture",
+)
+for marker in (
+    "runtime-release-policy.json",
+    "certified-provider-profiles.json",
+    "archive_sha256",
+    "archive_bytes",
+    "ALLOWED_INITIAL_PREFIX",
+):
+    require(marker in certified_materializer, "certified Adapter materializer invariant missing: " + marker)
 runtime_surface = p070.get("runtime_surface") or {}
 runtime_symbols = p070.get("runtime_symbols") or []
 require(runtime_surface.get("contract") == "mad4b.mcp-runtime-surface.v1", "MCP Adapter 0.7.0 runtime surface contract missing")
