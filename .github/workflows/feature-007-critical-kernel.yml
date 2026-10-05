@@ -203,6 +203,26 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php
 
+      - name: Verify Feature 007 closure foundations and workstream certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-execution-binding.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-provider-plan.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-callback-order.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-governance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workstream-certification.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-execution-binding-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/governed-provider-plan-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-callback-order-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/data-governance-registry-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/research-provider-plan-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/decommission-governance-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/workstream-certification-contract.php
+
       - name: Verify durable schema dbDelta contract
         shell: bash
         run: |
