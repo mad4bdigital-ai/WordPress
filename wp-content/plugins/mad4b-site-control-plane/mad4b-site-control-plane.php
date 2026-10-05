@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.93
+ * Version: 0.4.0-rc.94
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.93' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.94' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
@@ -300,6 +300,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-work-queue.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-convergence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media-rights.php';
@@ -353,6 +354,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-route-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-settings-persistence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-content-pipeline-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
@@ -406,6 +408,8 @@ MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
 MAD4B_SCP_Production_Certification::boot();
 MAD4B_SCP_Production_Readiness_Evaluator::boot();
 MAD4B_SCP_Operator_Control_Center::boot();
+MAD4B_SCP_Adaptive_Runtime_Convergence::boot();
+MAD4B_SCP_Admin_Route_Guard::boot();
 
 $mad4b_passive_admin_read = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 	&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
