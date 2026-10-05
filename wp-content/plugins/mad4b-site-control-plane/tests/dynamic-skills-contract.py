@@ -42,6 +42,7 @@ main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 enrollment_dispatch = (wp / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 remote_parity = (wp / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
+managed_skills_lease = (wp / 'includes' / 'class-mad4b-scp-managed-skills-lease.php').read_text(encoding='utf-8')
 runtime_certification = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
 
 for marker in [
@@ -85,9 +86,21 @@ for marker in [
     "$current_serialized = maybe_serialize( $current );",
     "$next_serialized = maybe_serialize( $next );",
     "mad4b_remote_skill_lock_heartbeat_raced",
+    "mad4b_remote_skill_lock_fenced",
+    "mad4b_remote_skill_lock_expired",
+]:
+    if marker not in managed_skills_lease:
+        raise SystemExit(f'missing extracted managed Skills lease invariant: {marker}')
+for marker in [
+    "class-mad4b-scp-managed-skills-lease.php",
+    "MAD4B_SCP_Managed_Skills_Lease::refresh",
+    "MAD4B_SCP_Managed_Skills_Lease::acquire",
+    "MAD4B_SCP_Managed_Skills_Lease::release",
 ]:
     if marker not in remote_parity:
-        raise SystemExit(f'missing managed Skills heartbeat no-op/fencing invariant: {marker}')
+        raise SystemExit(f'missing managed Skills lease delegation invariant: {marker}')
+if "private static function compare_and_swap_option" in remote_parity:
+    raise SystemExit('managed Skills lease CAS responsibility was reabsorbed into Remote Operation Parity')
 subprocess.run(['php', str(heartbeat_runtime_test)], check=True)
 
 for marker in [
