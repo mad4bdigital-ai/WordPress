@@ -704,7 +704,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				self::$import_readonly_autoload_blocker='provider_autoload_unavailable';
 				return false;
 			}
-			$loader_source=new ReflectionMethod($plugin,$loader);
+			$loader_source=new ReflectionMethod(get_class($plugin),$loader);
 			if(realpath((string)$loader_source->getFileName())!==$main){
 				self::$import_readonly_autoload_blocker='provider_autoload_source_mismatch';
 				return false;
