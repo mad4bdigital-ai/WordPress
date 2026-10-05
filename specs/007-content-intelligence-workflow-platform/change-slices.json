@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 348,
+  "changed_file_count": 347,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -11,7 +11,6 @@
       "revert_boundary": "Revert feature metadata/workflow contract slice without reverting runtime implementation.",
       "certification": "exact_head",
       "path_globs": [
-        ".github/workflows/feature-007-critical-kernel.yml",
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         ".github/workflows/feature-007-spec-ci.yml",
         "specs/007-content-intelligence-workflow-platform/adaptive-search-intelligence-review.json",
@@ -490,6 +489,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "730409b68002747388a2af4f08d3c6f3c61a608ba4375cb8ffe5a670d1266d09",
+  "changed_paths_sha256": "063bf0e0ee8a13d6a498c3c0137643b4197dce2958da7cfa2a10af4a9a158355",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
