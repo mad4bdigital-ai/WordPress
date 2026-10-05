@@ -137,6 +137,29 @@ require("database_topology_write_safe" in (degraded.get("governed_write_lane_req
 require("process_backend_ready" in (degraded.get("developer_lane_requires") or []), "Developer lane lost process backend gate")
 require("normal_no_network_execution_ready" in (degraded.get("developer_lane_requires") or []), "Developer lane lost network-isolation gate")
 
+developer_host_recovery = degraded.get("developer_host_recovery") or {}
+require(developer_host_recovery.get("truth_source") == "mad4b/full-staging-authority-handshake.developer_execution.host_recovery", "Developer host recovery truth source drift")
+require(developer_host_recovery.get("owner") == "host_platform_operator", "Developer host recovery ownership drift")
+require(developer_host_recovery.get("accepted_resource_limiter") == "prlimit", "Developer resource limiter certification drift")
+require(developer_host_recovery.get("resource_limiter_config_constant") == "MAD4B_MCP_DEVELOPER_PRLIMIT_BIN", "Developer resource limiter override drift")
+require(developer_host_recovery.get("accepted_network_isolation_backends") == ["bubblewrap", "unshare-net"], "Developer network sandbox certification drift")
+require(developer_host_recovery.get("network_sandbox_config_constant") == "MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN", "Developer network sandbox override drift")
+for key in (
+    "proc_open_required",
+    "non_root_worker_required",
+    "php_binary_required_for_lint",
+    "developer_lane_remains_blocked_until_reverified",
+    "governed_write_sibling_lane_may_remain_available",
+):
+    require(developer_host_recovery.get(key) is True, f"Developer host recovery required invariant missing: {key}")
+for key in (
+    "wordpress_self_repair_allowed",
+    "automatic_install_allowed",
+    "weaker_unsandboxed_fallback_allowed",
+    "production_mutation_allowed",
+):
+    require(developer_host_recovery.get(key) is False, f"Developer host recovery widened unsafe fallback: {key}")
+
 recovery = operational.get("recovery") or {}
 rate_recovery = recovery.get("rate_limit_topology_failure") or {}
 require(rate_recovery.get("read_first") == "mad4b/session-safe-diagnostics", "rate-limit recovery must start with session-safe diagnostics")
