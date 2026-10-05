@@ -247,6 +247,35 @@
         "automatic_authority_mutation_allowed": false,
         "production_mutation_allowed": false,
         "generic_raw_sql_breakglass_included": false
+      },
+      "performance": {
+        "contract": "mad4b.staging-operational-performance-comparison.v1",
+        "source": "mad4b/session-safe-diagnostics.performance_observation",
+        "exact_runtime_generation_required": true,
+        "exact_site_profile_required": true,
+        "comparison_required": true,
+        "baseline_scope": "previous_exact_staging_release",
+        "workload_profile": "same_site_same_session_safe_bundle_order",
+        "metrics": [
+          "request_elapsed_ms",
+          "db_query_count",
+          "included_file_count",
+          "memory_usage_bytes",
+          "peak_memory_bytes"
+        ],
+        "explicit_request_budget_is_hard_boundary": true,
+        "universal_db_query_threshold": false,
+        "universal_included_file_threshold": false,
+        "universal_memory_threshold": false,
+        "material_regression_requires_review": true,
+        "missing_baseline_state": "baseline_required_not_failure",
+        "regression_state": "review_required",
+        "no_regression_state": "accepted_comparative_observation",
+        "automatic_tuning_allowed": false,
+        "automatic_index_ddl_allowed": false,
+        "automatic_cache_authority_allowed": false,
+        "authorizing": false,
+        "production_mutation_allowed": false
       }
     }
   },
