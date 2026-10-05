@@ -212,6 +212,8 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-execution-binding-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/data-governance-registry-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/research-provider-plan-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php
 
       - name: Verify durable schema dbDelta contract
         shell: bash
