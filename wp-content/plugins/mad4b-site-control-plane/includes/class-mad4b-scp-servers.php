@@ -56,7 +56,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/export-bundle-build', 'mad4b/import-bundle-validate',
 				'mad4b/scheduler-admission-evaluate',
 				'mad4b/scheduler-fair-rank', 'mad4b/scheduler-backlog-status',
-				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/feature-007-workstream-certification-status', 'mad4b/production-readiness-evaluate',
+				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status ),
@@ -71,7 +71,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-apply',
 				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
-				'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/feature-007-workstream-certification-status', 'mad4b/production-readiness-evaluate',
+				'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'direct' ) : array(), $governed_status ),
 			'mad4b-enrollment' => array_values( array_unique( array_merge(
 				array(
