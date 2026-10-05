@@ -175,7 +175,7 @@ def main() -> int:
     parser.add_argument("--output-zip", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--source-sha", required=True)
-    parser.add_argument("--adapter-version", default="0.6.1")
+    parser.add_argument("--adapter-version", required=True)
     parser.add_argument("--adapter-sha", required=True)
     parser.add_argument("--wrapper", default="mad4b-site-control-plane")
     parser.add_argument("--provenance-output", type=Path)

@@ -19,6 +19,7 @@ def require(condition: bool, message: str) -> None:
 
 policy = json.loads((CONFIG / "runtime-release-policy.json").read_text(encoding="utf-8"))
 profiles = json.loads((CONFIG / "certified-provider-profiles.json").read_text(encoding="utf-8"))
+handoff = json.loads((CONFIG / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
 
 require(policy.get("contract") == "mad4b.runtime-release-policy.v1", "runtime release policy contract mismatch")
 require(policy.get("target_adapter_version") == "0.7.0", "runtime release policy target must be MCP Adapter 0.7.0")
@@ -27,6 +28,18 @@ require(policy.get("pair_certification_required") is True, "exact pair certifica
 require(policy.get("exact_provider_profile_required") is True, "exact provider profile must remain required")
 require(policy.get("authority", {}).get("production_auto_apply") is False, "Production auto apply must remain disabled")
 require(policy.get("authority", {}).get("breakglass_required") is False, "Breakglass must not be required")
+
+require(handoff.get("contract") == "mad4b.wordpress-deployment-handoff.v2", "staging deployment handoff contract mismatch")
+handoff_adapter = ((handoff.get("target") or {}).get("mcp_adapter") or {})
+target_adapter_version = str(policy.get("target_adapter_version") or "")
+require(
+    handoff_adapter.get("required_version_source") == "runtime_release_policy.target_adapter_version",
+    "staging deployment handoff must declare runtime release policy as the Adapter version source",
+)
+require(
+    handoff_adapter.get("required_version") == target_adapter_version,
+    "staging deployment handoff Adapter version drifted from runtime release policy",
+)
 
 adapter_profiles = (profiles.get("providers") or {}).get("mcp_adapter") or {}
 p070 = adapter_profiles.get("0.7.0") or {}
