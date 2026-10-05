@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.adaptive-search-intelligence-review.v1",
-  "status": "APPROVED_P0_CLOSED_P1_OPEN",
+  "status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
   "authorizing": false,
   "assessed_contract": "mad4b.adaptive-search-intelligence.v1",
   "scores": {
@@ -19,10 +19,11 @@
   },
   "summary": {
     "p0_open": 0,
-    "p1_open": 6,
+    "p1_open": 0,
     "p2_open": 0,
-    "recommendation": "p0_semantics_closed_continue_phase38_p1_and_provider_execution_work",
-    "p0_closed": 12
+    "recommendation": "repository_runtime_review_closed_live_provider_account_certification_not_claimed",
+    "p0_closed": 12,
+    "p1_closed": 6
   },
   "findings": [
     {
@@ -164,7 +165,7 @@
       "tasks": [
         "T3871"
       ],
-      "status": "OPEN"
+      "status": "CLOSED"
     },
     {
       "id": "ASIR-010",
@@ -173,7 +174,7 @@
       "tasks": [
         "T3872"
       ],
-      "status": "OPEN"
+      "status": "CLOSED"
     },
     {
       "id": "ASIR-011",
@@ -214,7 +215,7 @@
       "tasks": [
         "T3875"
       ],
-      "status": "OPEN"
+      "status": "CLOSED"
     },
     {
       "id": "ASIR-014",
@@ -223,7 +224,7 @@
       "tasks": [
         "T3876"
       ],
-      "status": "OPEN"
+      "status": "CLOSED"
     },
     {
       "id": "ASIR-015",
@@ -248,7 +249,7 @@
       "tasks": [
         "T3878"
       ],
-      "status": "OPEN"
+      "status": "CLOSED"
     },
     {
       "id": "ASIR-017",
@@ -257,7 +258,7 @@
       "tasks": [
         "T3879"
       ],
-      "status": "OPEN"
+      "status": "CLOSED"
     },
     {
       "id": "ASIR-018",
@@ -288,5 +289,25 @@
     "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
     "authorizing": false,
     "pre_staging_run": 37239748433
+  },
+  "p1_closure": {
+    "contract": "mad4b.adaptive-search-p1-closure.v1",
+    "runtime_exact_head_sha": "e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+    "adaptive_search_pre_staging_run": 37249380939,
+    "adaptive_search_php74_job": 111573698940,
+    "adaptive_search_php83_job": 111573699131,
+    "runtime_integration_run": 37249380993,
+    "spec_quality_run": 37249380988,
+    "spec_consistency_run": 37249380873,
+    "repository_governance_run": 37249380860,
+    "catalog_performance_run": 37249380836,
+    "fixture_count": 40,
+    "assertion_count": 938,
+    "emitted_gate_count": 15,
+    "evidence_status": "PASS",
+    "closure_scope": "repository_runtime",
+    "live_provider_account_certification": "NOT_CLAIMED",
+    "production_authorized": false,
+    "authorizing": false
   }
 }
