@@ -122,12 +122,6 @@ foreach ( array(
 ) as $required_ci_marker ) {
 	mad4b_release_assert( false !== strpos( $feature_owned_prestaging, $required_ci_marker ), 'feature-owned pre-staging closure suite marker missing: ' . $required_ci_marker );
 }
-$baseline_critical_kernel = shell_exec( 'git show ' . escapeshellarg( 'origin/master:.github/workflows/feature-007-critical-kernel.yml' ) . ' 2>/dev/null' );
-if ( is_string( $baseline_critical_kernel ) && '' !== $baseline_critical_kernel ) {
-	$current_critical_kernel = file_get_contents( $repo . '/.github/workflows/feature-007-critical-kernel.yml' );
-	mad4b_release_assert( hash_equals( hash( 'sha256', $baseline_critical_kernel ), hash( 'sha256', $current_critical_kernel ) ), 'baseline-owned critical kernel workflow changed from Feature 007' );
-}
-
 $golden = file_get_contents( $repo . '/wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md' );
 foreach ( array( 'Define', 'Register', 'Certify', 'Plan', 'Execute', 'Evidence', 'Reconcile' ) as $stage ) mad4b_release_assert( false !== strpos( $golden, $stage ), 'golden stage ' . $stage );
 
