@@ -214,7 +214,9 @@ require(
     ],
     "post-deploy performance metric set drift",
 )
-require(performance.get("explicit_request_budget_is_hard_boundary") is True, "explicit request budget must remain a hard boundary")
+require(performance.get("explicit_diagnostic_budget_is_hard_boundary") is True, "explicit diagnostic budget must remain a hard boundary")
+require(performance.get("total_request_elapsed_is_comparative_signal") is True, "total request elapsed must remain comparative rather than misusing the diagnostic budget")
+require(performance.get("diagnostic_elapsed_is_budgeted_signal") is True, "diagnostic elapsed must remain the budgeted signal")
 for key in (
     "universal_db_query_threshold",
     "universal_included_file_threshold",
