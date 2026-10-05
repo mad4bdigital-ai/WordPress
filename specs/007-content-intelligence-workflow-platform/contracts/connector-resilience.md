@@ -234,6 +234,27 @@ read allowlist centered on `mad4b/session-safe-diagnostics`, discovery/info and
 single-target dispatch. Deep follow-up uses `mad4b-read` or exactly one
 generation-bound `read-execute` target at a time.
 
+### Deterministic recovery routing
+
+A session-safe report that is coherent but not operationally ready MUST expose
+exactly one recommended next step for the highest-priority current blocker.
+This recommendation is orchestration guidance only and never grants authority.
+
+Current routing rules are:
+
+- partial report -> inspect the bounded partial report and retry only the missing
+  scope; do not invent a mutation target;
+- ineffective current Write Authority -> request the read-only
+  `mad4b/full-staging-authority-handshake` as the next single call;
+- ineffective managed Skills runtime -> direct the operator to
+  `mad4b/reconcile-managed-skills`, but mark explicit authority required and
+  `automatic_apply_allowed=false`;
+- ready subject -> continue with one target operation.
+
+The recommendation must survive payload reduction in compact form. It never
+authorizes blind retries, parallel diagnostic fan-out, implicit Write/Developer
+enablement, or Production mutation.
+
 ### Session-safe comparative performance observation
 
 Routine session-safe diagnostics expose a comparative performance observation
