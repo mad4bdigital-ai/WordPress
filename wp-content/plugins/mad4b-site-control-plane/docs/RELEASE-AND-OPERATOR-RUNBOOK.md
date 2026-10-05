@@ -264,6 +264,8 @@ After the exact-candidate Production-readiness verdict is green:
 
 Any candidate change, evidence identity mismatch, failed live gate, missing rollback proof, or optional-capability drift invalidates readiness and requires re-certification. Production readiness never self-authorizes mutation.
 
+After the final Feature-owned change, treat every earlier CI run and owner attestation as historical only. Re-run the complete exact-head repository certification on the new SHA, then obtain a fresh exact-head owner attestation before merge or any Staging/Production promotion evidence is considered current.
+
 ## Production safety
 
 Production remains fail-closed unless a separately reviewed Production authority flow exists.
