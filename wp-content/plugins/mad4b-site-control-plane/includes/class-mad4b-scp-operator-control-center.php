@@ -137,6 +137,17 @@ final class MAD4B_SCP_Operator_Control_Center {
 				'database_dropin_ownership' => isset( $database_topology['database_dropin_ownership'] ) ? sanitize_key( (string) $database_topology['database_dropin_ownership'] ) : '',
 				'blockers' => isset( $database_topology['blockers'] ) && is_array( $database_topology['blockers'] ) ? array_values( array_slice( array_unique( array_map( 'sanitize_key', $database_topology['blockers'] ) ), 0, 12 ) ) : array(),
 			),
+			'database_recovery' => array(
+				'scope' => 'external_provider_disaster_recovery',
+				'control_plane_core_blocking' => false,
+				'disaster_recovery_operability_required' => true,
+				'current_provider_evaluated' => false,
+				'host_runner_database_access' => false,
+				'generic_raw_sql_allowed' => false,
+				'production_authorized' => false,
+				'state' => 'external_provider_certification_required',
+				'next_action' => 'certify_external_database_recovery_provider_and_rehearse_restore',
+			),
 		);
 		$snapshot['evidence_binding'] = array(
 			'repository' => 'EXTERNAL_EXACT_HEAD_EVIDENCE_REQUIRED',
