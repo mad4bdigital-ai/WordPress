@@ -213,6 +213,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance-registry.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-governance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-portability-import.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workstream-certification.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-execution-binding-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/governed-provider-plan-contract.php
@@ -221,6 +222,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/research-provider-plan-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/decommission-governance-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/portability-import-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/workstream-certification-contract.php
 
       - name: Verify durable schema dbDelta contract
