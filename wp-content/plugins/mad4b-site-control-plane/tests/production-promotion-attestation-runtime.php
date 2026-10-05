@@ -1,6 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
-$GLOBALS['now']=2000000000;$GLOBALS['trusted']=true;$GLOBALS['unchanged_ready']=true;
+$GLOBALS['now']=time();$GLOBALS['trusted']=true;$GLOBALS['unchanged_ready']=true;
 $GLOBALS['identity']=array('identity_ready'=>true,'source_commit_sha'=>str_repeat('a',40),'build_fingerprint'=>str_repeat('b',64),'package_manifest_digest'=>str_repeat('c',64),'artifact_identity'=>'mad4b-site-control-plane@'.str_repeat('a',40));
 class WP_Error{private $c,$m,$d;function __construct($c,$m='',$d=null){$this->c=$c;$this->m=$m;$this->d=$d;}function get_error_code(){return $this->c;}function get_error_data(){return $this->d;}}
 function is_wp_error($v){return $v instanceof WP_Error;}function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v));}function absint($v){return abs((int)$v);}function wp_json_encode($v,$f=0){return json_encode($v,$f);}
