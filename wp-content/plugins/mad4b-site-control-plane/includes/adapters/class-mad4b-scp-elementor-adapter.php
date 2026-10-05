@@ -287,7 +287,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	public function update_widget_settings( $input ) {
-		if ( ! $this->exact_provider_certified() ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The exact installed Elementor package is not certified for governed document mutation.' );
+		if ( ! $this->exact_provider_certified( 'elementor/update-widget-settings' ) ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The installed Elementor package is not certified for governed document mutation or the exact bounded recertification probe.' );
 		$id = absint( $input['post_id'] );
 		$document = $this->load_document( $id ); if ( is_wp_error( $document ) ) return $document;
 		$expected = strtolower( trim( (string) $input['expected_sha256'] ) );
@@ -448,7 +448,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function capture_reversible_state( $ability_name, array $input ) {
 		if ( in_array( $ability_name, array( 'elementor/clone-subtree', 'elementor/move-element', 'elementor/delete-element', 'elementor/set-dynamic-tag', 'elementor/set-etg-dynamic-tag' ), true ) ) return $this->capture_structural_state( $ability_name, $input );
 		if ( 'elementor/update-widget-settings' !== $ability_name ) return parent::capture_reversible_state( $ability_name, $input );
-		if ( ! $this->exact_provider_certified() ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The exact installed Elementor package is not certified for reversible mutation.' );
+		if ( ! $this->exact_provider_certified( 'elementor/update-widget-settings' ) ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The installed Elementor package is not certified for reversible mutation or the exact bounded recertification probe.' );
 		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
 		$document = $this->load_document( $id ); if ( is_wp_error( $document ) ) return $document;
 		$expected = isset( $input['expected_sha256'] ) ? strtolower( trim( (string) $input['expected_sha256'] ) ) : '';
@@ -484,7 +484,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) {
 		if ( in_array( $ability_name, array( 'elementor/clone-subtree', 'elementor/move-element', 'elementor/delete-element', 'elementor/set-dynamic-tag', 'elementor/set-etg-dynamic-tag' ), true ) ) return $this->restore_structural_state( $ability_name, $target, $state );
 		if ( 'elementor/update-widget-settings' !== $ability_name ) return parent::restore_reversible_state( $ability_name, $target, $state, $record );
-		if ( ! $this->exact_provider_certified() ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The exact installed Elementor package is not certified for restore.' );
+		if ( ! $this->exact_provider_certified( 'elementor/update-widget-settings' ) ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The installed Elementor package is not certified for restore or the exact bounded recertification probe.' );
 		$id = isset( $target['post_id'] ) ? absint( $target['post_id'] ) : 0;
 		$widget_id = isset( $target['widget_id'] ) ? (string) $target['widget_id'] : '';
 		if ( ! $id || ! current_user_can( 'edit_post', $id ) || ! isset( $state['settings'] ) || ! is_array( $state['settings'] ) ) return new WP_Error( 'mad4b_elementor_restore_payload_invalid', 'Elementor rollback target/state is invalid.' );
@@ -817,10 +817,15 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $matches;
 	}
 
-	private function exact_provider_certified() {
-		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return false;
-		$guard = MAD4B_SCP_Provider_Contracts::mutation_guard( 'elementor', (bool) $this->is_available() );
-		return true === $guard;
+	private function exact_provider_certified( $ability_name = '' ) {
+		if ( class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+			$guard = MAD4B_SCP_Provider_Contracts::mutation_guard( 'elementor', (bool) $this->is_available() );
+			if ( true === $guard ) return true;
+		}
+		$ability_name = (string) $ability_name;
+		return '' !== $ability_name
+			&& class_exists( 'MAD4B_SCP_Provider_Behavioral_Recertification' )
+			&& MAD4B_SCP_Provider_Behavioral_Recertification::probe_authorized_for( 'elementor', $ability_name );
 	}
 
 	private function allowed_settings_for_widget( $widget_type ) {
