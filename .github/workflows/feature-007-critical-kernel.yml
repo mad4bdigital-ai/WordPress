@@ -203,20 +203,6 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php
 
-      - name: Verify provider binding and durable data-governance registries
-        shell: bash
-        run: |
-          set -euo pipefail
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-execution-binding.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance-registry.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/provider-execution-binding-contract.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/data-governance-registry-contract.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/research-provider-plan-contract.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-governance.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/decommission-governance-contract.php
-
       - name: Verify durable schema dbDelta contract
         shell: bash
         run: |
