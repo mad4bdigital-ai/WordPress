@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 restore = (root / "includes/class-mad4b-scp-restore-epoch.php").read_text(encoding="utf-8")
 durable = (root / "includes/class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
+db_boundary = (root / "includes/class-mad4b-scp-durable-db-boundary.php").read_text(encoding="utf-8")
 
 restore_markers = (
     "restore_epoch_site_identity_mismatch",
@@ -40,11 +41,23 @@ for surface in durable_surfaces:
 
 for marker in (
     "private static function restore_epoch_preflight",
-    "MAD4B_SCP_Restore_Epoch::ensure_bound()",
-    "mad4b_durable_restore_epoch_quarantined",
-    "'blind_retry_allowed' => false",
+    "MAD4B_SCP_Durable_DB_Boundary::restore_epoch_preflight( $surface )",
+    "class-mad4b-scp-durable-db-boundary.php",
 ):
     if marker not in durable:
+        raise SystemExit("RESTORE_DURABLE_DELEGATION_MISSING:" + marker)
+
+for marker in (
+    "public static function restore_epoch_preflight",
+    "MAD4B_SCP_Restore_Epoch::ensure_bound()",
+    "mad4b_durable_restore_epoch_quarantined",
+    "'reconciliation_required' => true",
+    "'blind_retry_allowed' => false",
+):
+    if marker not in db_boundary:
         raise SystemExit("RESTORE_DURABLE_FAIL_CLOSED_MISSING:" + marker)
+
+if "MAD4B_SCP_Restore_Epoch::ensure_bound()" in durable:
+    raise SystemExit("RESTORE_DURABLE_BOUNDARY_REABSORBED")
 
 print("mad4b.restore-replay-quarantine.contract.v1: PASS")
