@@ -319,6 +319,36 @@ mad4b_assert_true( 'mad4b/read-metadata-envelope' === $guidance['metadata_envelo
 mad4b_assert_true( ! empty( $guidance['resume_after_reconnect_requires_generation_match'] ), 'resume after reconnect must require runtime generation match' );
 
 $read_consistency_reflection = new ReflectionClass( 'MAD4B_SCP_Read_Consistency' );
+
+$performance_method = $read_consistency_reflection->getMethod( 'performance_observation' );
+$performance_method->setAccessible( true );
+$performance = $performance_method->invoke( null, array(
+	'request_elapsed_ms' => 1087,
+	'db_query_count' => 425,
+	'included_file_count' => 6040,
+	'memory_usage_bytes' => 48234496,
+	'peak_memory_bytes' => 48234496,
+), 20000, str_repeat( 'd', 64 ) );
+mad4b_assert_true( 'mad4b.session-safe-performance-observation.v1' === $performance['contract'], 'session-safe performance observation contract drifted' );
+mad4b_assert_true( 'observed_within_request_budget' === $performance['classification'], 'session-safe request budget classification drifted' );
+mad4b_assert_true( 18913 === (int) $performance['request_budget_headroom_ms'], 'session-safe request budget headroom drifted' );
+mad4b_assert_true( 425 === (int) $performance['db_query_count'], 'session-safe comparative DB query signal lost' );
+mad4b_assert_true( 6040 === (int) $performance['included_file_count'], 'session-safe comparative include-count signal lost' );
+mad4b_assert_true( ! empty( $performance['comparison_required'] ), 'session-safe performance must require exact-release comparison' );
+mad4b_assert_true( 'previous_exact_staging_release' === $performance['comparison_baseline_scope'], 'session-safe performance baseline scope drifted' );
+mad4b_assert_true( empty( $performance['fixed_universal_db_query_threshold_applied'] ), 'session-safe performance must not invent a universal DB-query threshold' );
+mad4b_assert_true( empty( $performance['authorizing'] ) && ! empty( $performance['read_only'] ) && empty( $performance['mutation_performed'] ), 'session-safe performance observation widened authority or mutation' );
+
+$over_budget = $performance_method->invoke( null, array(
+	'request_elapsed_ms' => 2500,
+	'db_query_count' => 1,
+	'included_file_count' => 1,
+	'memory_usage_bytes' => 1,
+	'peak_memory_bytes' => 1,
+), 1000, str_repeat( 'e', 64 ) );
+mad4b_assert_true( 'request_budget_exceeded' === $over_budget['classification'], 'session-safe performance must classify explicit request budget exhaustion' );
+mad4b_assert_true( 0 === (int) $over_budget['request_budget_headroom_ms'], 'over-budget session-safe request must expose zero headroom' );
+
 $compact_method = $read_consistency_reflection->getMethod( 'compact_status_data' );
 $compact_method->setAccessible( true );
 $oversized_blockers = array();
