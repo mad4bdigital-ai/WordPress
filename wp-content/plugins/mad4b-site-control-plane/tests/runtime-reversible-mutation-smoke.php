@@ -286,5 +286,6 @@ $check( is_array( $failed_ticket ) && 'failed' === $failed_ticket['status'], 'Re
 wp_delete_post( $post_id, true );
 
 require __DIR__ . '/runtime-content-experience-smoke.php';
+require __DIR__ . '/runtime-content-publishing-season-acceptance.php';
 
 echo "mad4b.site-control-plane.runtime-reversible-mutation.v3: PASS\n";
