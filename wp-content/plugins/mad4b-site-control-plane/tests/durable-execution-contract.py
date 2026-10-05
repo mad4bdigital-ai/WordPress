@@ -6,6 +6,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 DURABLE = (ROOT / "includes/class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
+DB_BOUNDARY = (ROOT / "includes/class-mad4b-scp-durable-db-boundary.php").read_text(encoding="utf-8")
 STATE_VIEW = (ROOT / "includes/class-mad4b-scp-execution-state-view.php").read_text(encoding="utf-8")
 SCHEMA = (ROOT / "includes/class-mad4b-scp-schema.php").read_text(encoding="utf-8")
 MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -263,6 +264,10 @@ for forbidden in (
 ):
     if forbidden in DURABLE:
         raise SystemExit(f"raw transaction ownership bypass remains: {forbidden}")
+# Database ownership/failure semantics are implemented by the extracted
+# Durable DB Boundary service. The legacy Durable Execution class must retain
+# only stable delegation wrappers so callers keep the same API without
+# reabsorbing database-boundary responsibility.
 for marker in (
     "MAD4B_SCP_Database_Transaction_Guard::begin",
     "MAD4B_SCP_Database_Transaction_Guard::commit",
@@ -271,8 +276,38 @@ for marker in (
     "mad4b_durable_persistence_uncertain",
     "blind_retry_allowed",
 ):
+    if marker not in DB_BOUNDARY:
+        raise SystemExit(f"durable DB boundary ownership contract missing: {marker}")
+
+for marker in (
+    "MAD4B_SCP_Durable_DB_Boundary::restore_epoch_preflight",
+    "MAD4B_SCP_Durable_DB_Boundary::write_topology_preflight",
+    "MAD4B_SCP_Durable_DB_Boundary::same_writer_after_write",
+    "MAD4B_SCP_Durable_DB_Boundary::database_write_failure",
+    "MAD4B_SCP_Durable_DB_Boundary::authoritative_read_failure",
+    "MAD4B_SCP_Durable_DB_Boundary::begin_owned_transaction",
+    "MAD4B_SCP_Durable_DB_Boundary::commit_owned_transaction",
+    "MAD4B_SCP_Durable_DB_Boundary::rollback_owned_transaction",
+    "MAD4B_SCP_Durable_DB_Boundary::transaction_failure",
+    "class-mad4b-scp-durable-db-boundary.php",
+):
     if marker not in DURABLE:
-        raise SystemExit(f"durable database failure/ownership contract missing: {marker}")
+        raise SystemExit(f"durable DB boundary delegation missing: {marker}")
+
+# The extracted service must not introduce a raw SQL transaction bypass or a
+# provider/network execution path.
+for forbidden in (
+    "$wpdb->query( 'START TRANSACTION' );",
+    "$wpdb->query( 'COMMIT' );",
+    "$wpdb->query( 'ROLLBACK' );",
+    "wp_remote_get(",
+    "wp_remote_post(",
+    "wp_remote_request(",
+    "curl_exec(",
+    "call_user_func(",
+):
+    if forbidden in DB_BOUNDARY:
+        raise SystemExit(f"durable DB boundary contains forbidden side-effect path: {forbidden}")
 
 # Durable persistence primitives must not become an alternate provider/network
 # execution surface.
