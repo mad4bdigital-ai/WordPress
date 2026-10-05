@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 bridge = (ROOT / 'includes/class-mad4b-scp-mcp-registration-bridge.php').read_text('utf-8')
+registry = (ROOT / 'includes/class-mad4b-scp-adapter-registry.php').read_text('utf-8')
 diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
