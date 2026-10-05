@@ -17,7 +17,8 @@ final class MAD4B_SCP_Adapter_Registry {
 		if ( self::$ability_hooks_bound ) return;
 		self::$ability_hooks_bound = true;
 		$registry = self::instance();
-		$registry->register_defaults();
+		// Bind only. Provider Adapter objects are materialized lazily when the
+		// canonical WordPress Abilities lifecycle actually requests definitions.
 		add_action( 'wp_abilities_api_categories_init', array( $registry, 'register_categories' ), 20 );
 		add_action( 'wp_abilities_api_init', array( $registry, 'register_abilities' ), 20 );
 	}
@@ -32,10 +33,12 @@ final class MAD4B_SCP_Adapter_Registry {
 	public function get( $id ) { return isset( $this->adapters[ $id ] ) ? $this->adapters[ $id ] : null; }
 	public function all() { return $this->adapters; }
 	public function register_categories() {
+		$this->register_defaults();
 		wp_register_ability_category( 'mad4b-adapters', array( 'label' => 'MAD4B Adapters', 'description' => 'Adapter discovery, support requirements and runtime contract status.' ) );
 		foreach ( $this->adapters as $adapter ) $adapter->register_category();
 	}
 	public function register_abilities() {
+		$this->register_defaults();
 		$this->register_registry_ability( 'mad4b/adapters-inventory', 'Adapters Inventory', 'inventory', 'List registered MAD4B adapters and their runtime availability/reversible contracts.' );
 		$this->register_registry_ability( 'mad4b/plugin-adapter-coverage', 'Plugin Adapter Coverage', 'plugin_coverage', 'Discover installed plugins and classify their governed adapter coverage without installing, enabling or generating code.' );
 		$this->register_registry_ability( 'mad4b/adapter-support-requests', 'Adapter Support Requests', 'adapter_support_requests', 'Return deterministic read-only support requirements for plugins that need an adapter, provider certification, reversible certification, or side-channel isolation.' );
