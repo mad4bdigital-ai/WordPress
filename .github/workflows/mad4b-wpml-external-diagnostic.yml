@@ -417,11 +417,20 @@ jobs:
               p = root / name
               if p.is_file():
                   bodies.append(p.read_text(encoding='utf-8', errors='replace'))
-          challenged = (
+          wpml_challenged = (
               not d.get('accepted')
               and (d.get('wpml_http_status') == 403 or d.get('rest_index_http_status') == 403)
               and any('/hcdn-cgi/jschallenge' in body or 'Checking your browser before accessing' in body for body in bodies)
           )
+          hotpath_challenged = False
+          hotpath_path = root / 'mcp-hotpath' / 'diagnostic.json'
+          if hotpath_path.is_file():
+              hotpath = json.loads(hotpath_path.read_text(encoding='utf-8'))
+              hotpath_challenged = any(
+                  isinstance(row, dict) and row.get('hcdn_challenge') is True
+                  for row in (hotpath.get('targets') or {}).values()
+              )
+          challenged = wpml_challenged or hotpath_challenged
           print('1' if challenged else '0')
           PY
           )"
@@ -434,24 +443,47 @@ jobs:
           npm install --prefix "$out" --no-save --no-package-lock playwright@1.55.0
           "$out/node_modules/.bin/playwright" install --with-deps chromium
 
+          if [ -d "$out/mcp-hotpath" ] && [ ! -e "$out/mcp-hotpath-raw" ]; then
+            cp -a "$out/mcp-hotpath" "$out/mcp-hotpath-raw"
+          fi
+
           cat > "$out/browser-fallback.mjs" <<'JS'
           import fs from 'node:fs';
           import path from 'node:path';
           import { chromium } from 'playwright';
 
           const out = '/tmp/mad4b-wpml-external';
+          const hotpathOut = path.join(out, 'mcp-hotpath');
           const sourceSha = String(process.env.SOURCE_SHA || '');
+          const origin = 'https://staging.egypttourgates.com';
           const wpmlUrl = String(process.env.WPML_URL_BASE || '') + '&mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser';
           const restUrl = String(process.env.REST_INDEX_URL || '') + '?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser';
+          const hotpathTargets = {
+            'runtime-build': origin + '/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser',
+            'build-provenance': origin + '/wp-content/plugins/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser',
+            'rest-index': origin + '/wp-json/?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser',
+            'rest-core-types': origin + '/wp-json/wp/v2/types/post?context=view&mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser',
+            'rest-wpml': origin + '/wp-json/wpml/v1/rest/status?test_get_parameter=1&mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_hotpath=1&mad4b_transport=browser',
+            'mcp-chatgpt': origin + '/wp-json/mcp/mad4b-chatgpt?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser',
+            'oauth-protected-resource': origin + '/wp-json/mad4b/v1/oauth-protected-resource?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser',
+            'oauth-authorization-server': origin + '/.well-known/oauth-authorization-server/oauth/mcp?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser',
+            'oauth-jwks': origin + '/oauth/mcp/jwks?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser'
+          };
 
-          if (!/^https:\/\/staging\.egypttourgates\.com\//.test(wpmlUrl) || !/^https:\/\/staging\.egypttourgates\.com\//.test(restUrl)) {
+          const allUrls = [wpmlUrl, restUrl, ...Object.values(hotpathTargets)];
+          if (allUrls.some(url => {
+            try { return new URL(url).origin !== origin; } catch { return true; }
+          })) {
             throw new Error('browser_fallback_target_outside_fixed_staging_origin');
           }
+
+          fs.mkdirSync(hotpathOut, { recursive: true });
 
           const browser = await chromium.launch({ headless: true });
           const context = await browser.newContext({
             userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
             extraHTTPHeaders: {
+              'Accept': 'application/json,text/plain,*/*',
               'Accept-Language': 'en-US,en;q=0.9',
               'Cache-Control': 'no-cache, no-store, max-age=0',
               'Pragma': 'no-cache'
@@ -460,8 +492,9 @@ jobs:
 
           const challengeRe = /\/hcdn-cgi\/jschallenge|Checking your browser before accessing/i;
 
-          async function capture(name, url) {
+          async function capture(outputDir, name, url) {
             const page = await context.newPage();
+            const started = Date.now();
             let response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
             let challengeObserved = false;
 
@@ -482,22 +515,41 @@ jobs:
             const text = await page.locator('body').innerText({ timeout: 10000 }).catch(() => '');
             const status = response ? response.status() : 0;
             const headers = response ? await response.allHeaders() : {};
-            fs.writeFileSync(path.join(out, name + '.body'), text, 'utf8');
+            const totalSeconds = Math.max(0.001, (Date.now() - started) / 1000);
+            fs.writeFileSync(path.join(outputDir, name + '.body'), text, 'utf8');
             fs.writeFileSync(
-              path.join(out, name + '.headers'),
+              path.join(outputDir, name + '.headers'),
               Object.entries(headers).map(([k,v]) => k + ': ' + v).join('\n') + '\n',
               'utf8'
             );
-            fs.writeFileSync(path.join(out, name + '.http-status'), String(status) + '\n', 'utf8');
-            fs.writeFileSync(path.join(out, name + '.curl-exit'), '0\n', 'utf8');
-            fs.writeFileSync(path.join(out, name + '.stderr'), '', 'utf8');
+            fs.writeFileSync(path.join(outputDir, name + '.http-status'), String(status) + '\n', 'utf8');
+            fs.writeFileSync(path.join(outputDir, name + '.curl-exit'), '0\n', 'utf8');
+            fs.writeFileSync(path.join(outputDir, name + '.stderr'), '', 'utf8');
+            fs.writeFileSync(
+              path.join(outputDir, name + '.metrics'),
+              [status, 0, 0, totalSeconds.toFixed(6), totalSeconds.toFixed(6), Buffer.byteLength(text, 'utf8')].join('\t') + '\n',
+              'utf8'
+            );
             await page.close();
-            return { status, text, challengeObserved };
+            return { status, text, headers, challengeObserved, totalSeconds };
+          }
+
+          function jsonObject(text) {
+            try {
+              const parsed = JSON.parse(text);
+              return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+            } catch {
+              return null;
+            }
           }
 
           try {
-            const wpmlCapture = await capture('wpml', wpmlUrl);
-            const restCapture = await capture('rest-index', restUrl);
+            // Establish one shared browser session against the fixed Staging origin.
+            // Once hCDN admits the browser, use the same bounded context for every
+            // read-only runtime/MCP/OAuth hotpath so the diagnostic can distinguish
+            // edge challenge from application health without weakening validation.
+            const wpmlCapture = await capture(out, 'wpml', wpmlUrl);
+            const restCapture = await capture(out, 'rest-index', restUrl);
 
             let namespacePresent = false;
             let routePresent = false;
@@ -540,7 +592,7 @@ jobs:
               && compatible
             );
 
-            const evidence = {
+            const wpmlEvidence = {
               contract: 'mad4b.wpml-external-http-diagnostic.v4',
               source_sha: sourceSha,
               attempt: 'browser_fallback',
@@ -569,7 +621,50 @@ jobs:
               acceptance_authorized: false,
               authority_granted: false
             };
-            fs.writeFileSync(path.join(out, 'diagnostic.json'), JSON.stringify(evidence, null, 2) + '\n', 'utf8');
+            fs.writeFileSync(path.join(out, 'diagnostic.json'), JSON.stringify(wpmlEvidence, null, 2) + '\n', 'utf8');
+
+            const rows = {};
+            for (const [name, url] of Object.entries(hotpathTargets)) {
+              const captured = await capture(hotpathOut, name, url);
+              const payload = jsonObject(captured.text);
+              const headers = captured.headers || {};
+              let upstreamSeconds = null;
+              if (Object.prototype.hasOwnProperty.call(headers, 'x-hcdn-upstream-rt')) {
+                const parsed = Number(headers['x-hcdn-upstream-rt']);
+                upstreamSeconds = Number.isFinite(parsed) ? parsed : null;
+              }
+              rows[name] = {
+                url: url.replace(/([?&])mad4b_probe=[^&]+&?/,'$1').replace(/[?&]mad4b_transport=browser(?:&|$)/,'').replace(/[?&]$/,''),
+                curl_exit: 0,
+                http_status: captured.status,
+                dns_seconds: 0,
+                connect_seconds: 0,
+                ttfb_seconds: captured.totalSeconds,
+                total_seconds: captured.totalSeconds,
+                origin_upstream_seconds: upstreamSeconds,
+                size_download: Buffer.byteLength(captured.text, 'utf8'),
+                hcdn_challenge: false,
+                browser_challenge_observed: captured.challengeObserved,
+                www_authenticate: String(headers['www-authenticate'] || ''),
+                json_payload: payload,
+                json_parse_error: captured.text.trim() && payload === null ? 'browser_payload_not_json_object' : '',
+                stderr: ''
+              };
+            }
+
+            const hotpathEvidence = {
+              contract: 'mad4b.external-mcp-hotpath-diagnostic.v1',
+              source_sha: sourceSha,
+              origin,
+              capture_mode: 'headless_browser_after_hcdn_challenge',
+              browser_challenge_observed: Object.values(rows).some(row => row.browser_challenge_observed),
+              read_only: true,
+              mutation_performed: false,
+              authority_granted: false,
+              acceptance_authorized: false,
+              targets: rows
+            };
+            fs.writeFileSync(path.join(hotpathOut, 'diagnostic.json'), JSON.stringify(hotpathEvidence, null, 2) + '\n', 'utf8');
           } finally {
             await context.close();
             await browser.close();
