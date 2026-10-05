@@ -23,6 +23,7 @@ main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 portable = json.loads((repo / 'plugins' / 'mad4b-wordpress' / 'plugin.json').read_text(encoding='utf-8'))
 deployment = json.loads((wp / 'config' / 'staging-deployment-handoff.json').read_text(encoding='utf-8'))
+runtime_release_policy = json.loads((wp / 'config' / 'runtime-release-policy.json').read_text(encoding='utf-8'))
 
 # A previous stacked patch accidentally appended a second authority implementation
 # after the class closing brace. Lock the file to one canonical lifecycle.
@@ -1171,9 +1172,13 @@ if any(key in target for key in ('environment', 'origin', 'host')):
     raise SystemExit('generic deployment handoff must not embed a tenant environment/origin/host')
 if target.get('plugin_slug') != 'mad4b-site-control-plane':
     raise SystemExit('deployment handoff plugin slug mismatch')
+expected_adapter_version = str(runtime_release_policy.get('target_adapter_version') or '')
+if not expected_adapter_version:
+    raise SystemExit('runtime release policy target Adapter version is missing')
 if target.get('mcp_adapter') != {
     'slug': 'mcp-adapter',
-    'required_version': '0.6.1',
+    'required_version': expected_adapter_version,
+    'required_version_source': 'runtime_release_policy.target_adapter_version',
     'deployment_mode': 'require_exact_preinstalled_or_verified_bundled',
 }:
     raise SystemExit('deployment handoff MCP Adapter dependency contract drift')
