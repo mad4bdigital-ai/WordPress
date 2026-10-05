@@ -92,10 +92,31 @@ final class MAD4B_SCP_Research_Intelligence {
 		}
 		$governance = MAD4B_SCP_Data_Governance::validate_decision_artifact( $job_id, $governance_id, $provider_id );
 		if ( is_wp_error( $governance ) ) return $governance;
+		$capability_id = isset( $input['capability_id'] ) ? trim( (string) $input['capability_id'] ) : '';
+		$provider_binding = null;
+		$blockers = array();
+		if ( '' === $capability_id ) {
+			$blockers[] = 'provider_capability_binding_required';
+		} elseif ( ! class_exists( 'MAD4B_SCP_Provider_Execution_Binding' ) ) {
+			$blockers[] = 'provider_execution_binding_unavailable';
+		} else {
+			$provider_binding = MAD4B_SCP_Provider_Execution_Binding::bind(
+				array(
+					'plan_family' => 'research_provider',
+					'provider_id' => $provider_id,
+					'capability_id' => $capability_id,
+					'required_traits' => isset( $input['required_traits'] ) && is_array( $input['required_traits'] ) ? $input['required_traits'] : array(),
+					'release_ring' => isset( $input['release_ring'] ) ? $input['release_ring'] : 'shadow',
+					'require_certified' => ! array_key_exists( 'require_certified', $input ) || ! empty( $input['require_certified'] ),
+				)
+			);
+			if ( is_wp_error( $provider_binding ) ) return $provider_binding;
+		}
 		$plan = array(
 			'contract' => 'mad4b.research-provider-plan.v1',
 			'job_id' => $job_id,
 			'provider_id' => $provider_id,
+			'capability_id' => $capability_id,
 			'purpose' => $purpose,
 			'request_sha256' => $request_sha,
 			'data_governance_artifact_id' => (string) $governance['artifact_id'],
@@ -104,7 +125,10 @@ final class MAD4B_SCP_Research_Intelligence {
 			'rights_summary_fingerprint' => (string) $governance['rights_summary_fingerprint'],
 			'processor_profile_fingerprint' => (string) $governance['processor_profile_fingerprint'],
 			'policy_revision' => (string) $governance['policy_revision'],
-			'execution_ready' => true,
+			'provider_binding' => $provider_binding,
+			'provider_binding_sha256' => is_array( $provider_binding ) && isset( $provider_binding['binding_sha256'] ) ? (string) $provider_binding['binding_sha256'] : '',
+			'blockers' => $blockers,
+			'execution_ready' => empty( $blockers ) && is_array( $provider_binding ),
 			'provider_execution_performed' => false,
 			'authorizing' => false,
 			'mutation_performed' => false,
