@@ -37,7 +37,7 @@ for marker in [
     "current_runtime_authority_required_for_execution",
     "'structural_classification_only'",
     "private static function discovery_query_matches",
-    "preg_split( '/[^\\p{L}\\p{N}]+/u'",
+    "preg_split( '/[^\\\\p{L}\\\\p{N}]+/u'",
     "self::discovery_query_matches( $haystack, $query )",
 ]:
     require(marker in PROJECTION, f"all-site Ability discovery invariant missing: {marker}")
