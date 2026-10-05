@@ -66,5 +66,18 @@
       "full_feature007_complete": true,
       "optional_capabilities_must_remain_disabled_until_certified": []
     }
+  },
+  "release_closure_hardening": {
+    "contract": "mad4b.feature007-release-closure-hardening.v1",
+    "scope_freeze_ref": "feature.json#release_closure_scope_freeze",
+    "readiness_projection_ref": "release-closure-readiness.json",
+    "operator_control_center_contract": "mad4b.operator-control-center.v1",
+    "operator_control_center_ability": "mad4b/operator-control-center",
+    "external_machine_diagnostic_policy_ref": "wp-content/plugins/mad4b-site-control-plane/config/external-machine-diagnostic-policy.json",
+    "developer_golden_path_ref": "wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md",
+    "task_ledger_ratio_is_authoritative_readiness": false,
+    "live_evidence_cannot_be_closed_by_repository_change": true,
+    "production_authorized": false,
+    "authorizing": false
   }
 }
