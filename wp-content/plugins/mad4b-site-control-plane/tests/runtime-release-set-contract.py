@@ -175,6 +175,22 @@ require(protocol_recovery.get("fallback_protocol_negotiation_allowed") is False,
 catalog_recovery = recovery.get("catalog_refresh") or {}
 require(catalog_recovery.get("visibility_change_never_changes_execution_authority") is True, "catalog refresh must not widen authority")
 
+router = recovery.get("deterministic_router") or {}
+require(router.get("source") == "mad4b/session-safe-diagnostics.recommended_next_step", "deterministic recovery router source drift")
+require(router.get("one_next_step_only") is True, "deterministic recovery router must expose one next step only")
+require(router.get("parallel_diagnostic_fanout_allowed") is False, "deterministic recovery router must deny parallel diagnostic fan-out")
+write_route = router.get("write_authority_not_effective") or {}
+require(write_route.get("action") == "request_full_staging_authority_handshake", "write recovery route drift")
+require(write_route.get("ability") == "mad4b/full-staging-authority-handshake", "write recovery ability drift")
+require(write_route.get("read_only") is True and write_route.get("automatic_apply_allowed") is False, "write recovery route must remain read-only and non-automatic")
+skills_route = router.get("skills_runtime_not_effective") or {}
+require(skills_route.get("ability") == "mad4b/reconcile-managed-skills", "skills recovery ability drift")
+require(skills_route.get("explicit_authority_required") is True and skills_route.get("automatic_apply_allowed") is False, "skills recovery must require explicit authority")
+partial_route = router.get("partial_report") or {}
+require(partial_route.get("mutation_target") == "" and partial_route.get("automatic_apply_allowed") is False, "partial report recovery must not invent a mutation target")
+ready_route = router.get("ready_subject") or {}
+require(ready_route.get("action") == "continue_with_single_target_operation", "ready subject routing drift")
+
 performance = operational.get("performance") or {}
 require(
     performance.get("contract") == "mad4b.staging-operational-performance-comparison.v1",
