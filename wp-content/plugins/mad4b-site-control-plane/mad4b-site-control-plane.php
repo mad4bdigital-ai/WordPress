@@ -231,6 +231,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-commit-guard.ph
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy-resolution.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-readiness-evaluator.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-control-center.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-error-contract-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
@@ -393,6 +394,7 @@ MAD4B_SCP_Dependency_Manager::boot();
 MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
 MAD4B_SCP_Production_Certification::boot();
 MAD4B_SCP_Production_Readiness_Evaluator::boot();
+MAD4B_SCP_Operator_Control_Center::boot();
 
 $mad4b_passive_admin_read = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 	&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
