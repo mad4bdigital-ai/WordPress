@@ -71,6 +71,8 @@ def main():
     reversible = text(ROOT / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php")
     overrides = text(ROOT / "includes" / "class-mad4b-scp-governed-ability-overrides.php")
     admin_ui = text(ROOT / "includes" / "class-mad4b-scp-adapter-coverage-admin-ui.php")
+    full_content = text(ROOT / "includes" / "adapters" / "class-mad4b-scp-full-content-operations-adapter.php")
+    translation = text(ROOT / "includes" / "adapters" / "class-mad4b-scp-translation-bridge-adapter.php")
 
     for marker in [
         "get_plugins()",
@@ -106,6 +108,17 @@ def main():
     ]:
         require(marker in registry, f"adapter ability lifecycle marker missing: {marker}")
     require("MAD4B_SCP_Adapter_Registry::boot_ability_registration();" in entrypoint, "entrypoint does not bind adapter abilities before protocol hotpath")
+    for marker in (
+        "class-mad4b-scp-full-content-operations-adapter.php",
+        "class-mad4b-scp-translation-bridge-adapter.php",
+        "MAD4B_SCP_Full_Content_Operations_Adapter::boot();",
+        "MAD4B_SCP_Translation_Bridge_Adapter::boot();",
+    ):
+        require(marker in entrypoint, f"full content lifecycle wiring missing: {marker}")
+    require("'mad4b/taxonomy-delete-term'," not in full_content.split("public function ability_names()", 1)[1].split("public function reversible_contracts()", 1)[0], "irreversible taxonomy delete leaked into default ability surface")
+    require("Taxonomy deletion is intentionally not registered on the normal content surface" in full_content, "taxonomy delete fail-closed rationale missing")
+    for marker in ("mad4b/translation-set-post-language", "mad4b/translation-link-posts", "mad4b.rollback.translation-post-language.v1", "mad4b.rollback.translation-post-link.v1"):
+        require(marker in translation, f"translation reversible contract marker missing: {marker}")
 
     for marker in [
         "public function reversible_contracts()",
