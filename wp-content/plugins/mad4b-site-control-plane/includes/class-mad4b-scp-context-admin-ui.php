@@ -26,7 +26,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_page' ), 45 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_page' ), 45 );
 		foreach ( array(
 			self::ACTION_SAVE_PROFILE => 'handle_save_profile',
 			self::ACTION_SAVE_GOOGLE => 'handle_save_google',
@@ -74,6 +74,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 			wp_send_json_success( array(
 				'message' => __( 'Brand Context saved and verified by persisted readback.', 'mad4b-site-control-plane' ),
 				'persistence_verified' => true,
+				'view_readback' => MAD4B_SCP_Admin_Settings_Persistence::view_readback( 'context-brand-profile', array(
+					'brand_name' => (string) $profile['brand_name'], 'revision' => (int) ( $profile['revision'] ?? 0 ),
+				) ),
 				'readback' => array(
 					'brand_name' => (string) $profile['brand_name'],
 					'revision' => isset( $profile['revision'] ) ? (int) $profile['revision'] : 0,
@@ -218,6 +221,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 			wp_send_json_success( array(
 				'message' => __( 'Source policy saved and verified by persisted readback.', 'mad4b-site-control-plane' ),
 				'persistence_verified' => true,
+				'view_readback' => MAD4B_SCP_Admin_Settings_Persistence::view_readback( 'context-source-policy-' . $source_id, array(
+					'source_id' => $source_id, 'write_policy' => (string) $readback['write_policy'],
+				) ),
 				'readback' => array( 'source_id' => $source_id, 'write_policy' => (string) $readback['write_policy'] ),
 			) );
 		}
@@ -273,6 +279,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 						? __( 'Human + AI Agent approval mode saved and verified. Exact write authority/grant reconciliation remains explicit.', 'mad4b-site-control-plane' )
 						: __( 'Human-only approval mode saved and verified.', 'mad4b-site-control-plane' ),
 					'persistence_verified' => true,
+					'view_readback' => MAD4B_SCP_Admin_Settings_Persistence::view_readback( 'context-review-policy', array(
+						'revision' => (int) ( $context_profile['revision'] ?? 0 ),
+						'mode' => (string) $policy['mode'], 'ai_agent_public_id' => (string) $policy['ai_agent_public_id'],
+					) ),
 					'readback' => array(
 						'mode' => (string) $policy['mode'],
 						'ai_agent_public_id' => (string) $policy['ai_agent_public_id'],
@@ -389,7 +399,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 		echo '<div id="mad4b-context-brand-profile" class="mad4b-scp-panel"><h2>' . esc_html__( 'Brand Context Profile', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Use a short brand name. This profile is bound to the current Site Profile UUID, not to a global WordPress setting.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-brand-profile" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-brand-profile"' . MAD4B_SCP_Admin_Settings_Persistence::view_attributes( 'context-brand-profile', array(
+			'brand_name' => (string) ( $profile['brand_name'] ?? get_bloginfo( 'name' ) ), 'revision' => (int) ( $profile['revision'] ?? 0 ),
+		) ) . ' method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SAVE_PROFILE );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_PROFILE ) . '">';
 		echo '<label for="mad4b-brand-name"><strong>' . esc_html__( 'Brand name', 'mad4b-site-control-plane' ) . '</strong></label><br>';
@@ -458,11 +470,19 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$managed_ready = ! empty( $auth_mode_status['managed_google']['configured'] );
 		$dedicated_ready = ! empty( $auth_mode_status['dedicated_google']['configured'] );
 		$dedicated_origin_ready = ! empty( $auth_mode_status['dedicated_google']['redirect_uri'] );
+		$selected_connection_ready = MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode ? $managed_ready :
+			( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $auth_mode ? $dedicated_ready && $dedicated_origin_ready : ! empty( $credentials['configured'] ) );
 		$grants = MAD4B_SCP_Google_Drive_Context::workspace_grants_status();
 		$grant_catalog = isset( $grants['catalog'] ) && is_array( $grants['catalog'] ) ? $grants['catalog'] : array();
 		$grant_selection = isset( $grants['selection'] ) && is_array( $grants['selection'] ) ? $grants['selection'] : array();
 		$full_suite = MAD4B_SCP_Google_Drive_Context::full_suite_grant_selection();
 		echo '<div id="mad4b-google-ajax-feedback" class="mad4b-google-ajax-feedback" aria-live="polite"></div>';
+		$scope_diagnostic = isset( $connection['scope_diagnostic'] ) && is_array( $connection['scope_diagnostic'] ) ? $connection['scope_diagnostic'] : array();
+		if ( ! empty( $scope_diagnostic['unsupported_scopes'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google returned unsupported permissions.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Review this app in your Google Account connections, remove obsolete access, then reconnect with the saved grants. Rejected tokens were not stored.', 'mad4b-site-control-plane' ) . '</p><ul>';
+			foreach ( $scope_diagnostic['unsupported_scopes'] as $scope_label ) echo '<li><code>' . esc_html( $scope_label ) . '</code></li>';
+			echo '</ul></div>';
+		}
 
 		$drive_grant = isset( $grant_selection['drive'] ) ? (string) $grant_selection['drive'] : 'read';
 		$managed_access_mode = 'full' === $drive_grant ? 'read_write' : 'read_only';
@@ -488,22 +508,26 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( ! empty( $grants['scope_reduction_requires_revoke'] ) ) {
 				echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'A narrower Google scope selection needs revoke first.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Google grants cannot be proven reduced in place. Disconnect & Revoke, then reconnect with the narrower selection.', 'mad4b-site-control-plane' ) . '</p></div>';
 			}
-		} elseif ( $managed_ready ) {
-			echo '<p>' . esc_html__( 'Use your Google account. MAD4B handles the OAuth application centrally, so this WordPress site does not need a Google Client ID or Client Secret.', 'mad4b-site-control-plane' ) . '</p>';
+		} elseif ( $selected_connection_ready ) {
+			echo '<p>' . esc_html( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode
+				? __( 'Use your Google account. MAD4B handles the OAuth application centrally, so this WordPress site does not need a Google Client ID or Client Secret.', 'mad4b-site-control-plane' )
+				: __( 'Connect using the saved OAuth application for the selected connection method. Consent uses the saved Google Workspace grants.', 'mad4b-site-control-plane' ) ) . '</p>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-primary-signin-form">';
 			wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '">';
-			echo '<input type="hidden" name="managed_signin" value="1">';
+			if ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode ) echo '<input type="hidden" name="managed_signin" value="1">';
 			echo '<input type="hidden" name="access_mode" value="' . esc_attr( $managed_access_mode ) . '">';
 			echo '<button type="submit" class="button mad4b-google-signin-button">' . esc_html__( 'Sign in with Google', 'mad4b-site-control-plane' ) . '</button>';
 			echo '</form>';
 			echo '<p class="description">' . esc_html( sprintf( __( '%1$d Google OAuth scopes selected. Drive access: %2$s. You can change app access under Advanced Google settings.', 'mad4b-site-control-plane' ), isset( $grants['scope_count'] ) ? (int) $grants['scope_count'] : 0, 'full' === $drive_grant ? 'Full' : 'Read-only' ) ) . '</p>';
-		} else {
+		} elseif ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Sign in with Google needs one-time server enrollment.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'No Google Client ID or Client Secret is required on this WordPress site. The MAD4B broker site binding must be configured server-side first.', 'mad4b-site-control-plane' ) . '</p></div>';
+		} else {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Configure the selected OAuth application and its Site Profile callback below, then connect using the saved Workspace grants.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 		echo '</div>';
 
-		echo '<details class="mad4b-google-advanced"' . ( $managed_ready ? '' : ' open' ) . '><summary><strong>' . esc_html__( 'Advanced Google settings', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( ' Grants, Dedicated OAuth and Custom OAuth', 'mad4b-site-control-plane' ) . '</span></summary>';
+		echo '<details class="mad4b-google-advanced"' . ( $selected_connection_ready ? '' : ' open' ) . '><summary><strong>' . esc_html__( 'Advanced Google settings', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( ' Grants, Dedicated OAuth and Custom OAuth', 'mad4b-site-control-plane' ) . '</span></summary>';
 
 		echo '<div class="mad4b-scp-panel" id="mad4b-google-connection-method"><h2>' . esc_html__( 'Authentication method', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( ! empty( $connection['connected'] ) || ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ) {
@@ -521,7 +545,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED, $auth_mode, false ) . ( $dedicated_origin_ready ? '' : ' disabled' ) . '> <strong>' . esc_html__( 'Dedicated Google OAuth — Site Domain', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Uses a Google OAuth app dedicated to this site. Callback and token lifecycle stay on the Site Profile primary domain with no auth.mad4b.com dependency.', 'mad4b-site-control-plane' ) . '</span></label>';
 			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM, $auth_mode, false ) . '> <strong>' . esc_html__( 'Custom Google OAuth App — Advanced', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Use your own Google Cloud OAuth Web application and the existing custom credential path.', 'mad4b-site-control-plane' ) . '</span></label>';
 			echo '</div>';
-			if ( ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is waiting for the server-side MAD4B broker site binding. This is an operator configuration; no Google Client ID or Client Secret is required here.', 'mad4b-site-control-plane' ) . '</p></div>';
+			if ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode && ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is waiting for the server-side MAD4B broker site binding. This is an operator configuration; no Google Client ID or Client Secret is required here.', 'mad4b-site-control-plane' ) . '</p></div>';
 			if ( ! $dedicated_origin_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Dedicated Site OAuth requires an enrolled Site Profile whose canonical origin matches the current WordPress Home URL and Site URL.', 'mad4b-site-control-plane' ) . '</p></div>';
 			echo '<p class="description mad4b-context-autosave-note">' . esc_html__( 'Changes save automatically when you choose a connection method.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '</form>';
@@ -601,8 +625,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</details>';
 
 		echo '<div class="mad4b-scp-panel" id="mad4b-google-connect"><h2>' . esc_html__( 'Google connection status', 'mad4b-site-control-plane' ) . '</h2>';
-		if ( empty( $credentials['configured'] ) && ! $managed_ready ) {
-			echo '<p>' . esc_html__( 'Managed Sign-In is not enrolled yet. Open Advanced Google settings only if you intentionally want Dedicated or Custom OAuth.', 'mad4b-site-control-plane' ) . '</p></div>';
+		if ( ! $selected_connection_ready ) {
+			echo '<p>' . esc_html__( 'Complete the selected connection method under Advanced Google settings, then reconnect.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
 		if ( ! empty( $connection['token_unreadable'] ) ) {
@@ -737,10 +761,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 				foreach ( $context_grant_blockers as $blocker ) echo '<li><code>' . esc_html( $blocker ) . '</code></li>';
 				echo '</ul>';
 			}
-			if ( ! $runtime_reconciled ) echo '<p><code>runtime_authority_not_reconciled</code></p>';
+			if ( ! $authority_checkpoint_ready ) echo '<p><code>runtime_authority_not_reconciled</code></p>';
 			echo '</div>';
-		} elseif ( $context_authority_ready ) {
-			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Governed Drive writes are ready.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Each mutation still requires its own exact one-time approval.', 'mad4b-site-control-plane' ) . '</p></div>';
+		} elseif ( $context_checkpoint_ready ) {
+			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Governed Drive write checkpoint is current.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Each mutation still requires current exact grant checks and its own one-time approval.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 		echo '</div>';
 	}
@@ -807,7 +831,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$sources = MAD4B_SCP_Context_Authority::sources();
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
-		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Source Folders', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<div id="mad4b-context-source-registry" class="mad4b-scp-panel"><h2>' . esc_html__( 'Source Folders', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Governed folders participate in Context Authority. Task-only folders are isolated to their task scope and do not change the Brand Context fingerprint.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( ! empty( $review_queue['items'] ) ) echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Human review is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Source scanning discovers content; human decisions are made per exact asset in the Human Review Queue.', 'mad4b-site-control-plane' ) . ' <a class="button button-small" href="' . esc_url( self::tab_url( 'assets', array( 'review_filter' => 'needs_review' ) ) ) . '">' . esc_html__( 'Open Human Review Queue', 'mad4b-site-control-plane' ) . '</a></p></div>';
 		if ( empty( $sources ) ) {
@@ -820,7 +844,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		foreach ( $sources as $source ) {
 			echo '<tr><td><strong>' . esc_html( $source['label'] ) . '</strong><br><code>' . esc_html( $source['external_root_id'] ) . '</code></td>';
 			echo '<td><span class="mad4b-context-badge">' . esc_html( $source['mode'] ) . '</span></td>';
-			echo '<td><form class="mad4b-context-policy-form mad4b-settings-ajax-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<td><form class="mad4b-context-policy-form mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-source-registry"' . MAD4B_SCP_Admin_Settings_Persistence::view_attributes( 'context-source-policy-' . $source['source_id'], array(
+				'source_id' => (string) $source['source_id'], 'write_policy' => (string) $source['write_policy'],
+			) ) . ' method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_UPDATE_SOURCE_POLICY );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_UPDATE_SOURCE_POLICY ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
 			if ( 'task_attachment' === $source['mode'] ) {
@@ -871,6 +897,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	private static function render_review_policy_panel() {
+		$context_profile = MAD4B_SCP_Context_Authority::profile();
 		$policy = MAD4B_SCP_Context_Authority::review_policy();
 		$status = MAD4B_SCP_Context_Authority::ai_review_policy_status();
 		$agents = self::review_agent_options();
@@ -880,7 +907,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$cataloged = class_exists( 'MAD4B_SCP_Servers' ) && in_array( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY, MAD4B_SCP_Servers::external_write_tools(), true );
 
 		echo '<div id="mad4b-context-review-policy" class="mad4b-scp-panel mad4b-context-review-policy"><div class="mad4b-context-review-policy-head"><div><h2>' . esc_html__( 'Approval Mode', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Human approval always remains available. AI Agent approval is an optional additive Staging delegation for exact-bound review decisions only.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-badge">' . esc_html( 'human_and_ai' === $mode ? 'Human + AI' : 'Human only' ) . '</span></div>';
-		echo '<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-review-policy" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-review-policy"' . MAD4B_SCP_Admin_Settings_Persistence::view_attributes( 'context-review-policy', array(
+			'revision' => (int) ( $context_profile['revision'] ?? 0 ), 'mode' => $mode, 'ai_agent_public_id' => $configured_agent,
+		) ) . ' method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SAVE_REVIEW_POLICY );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_REVIEW_POLICY ) . '">';
 		echo '<div class="mad4b-context-approval-mode-grid">';

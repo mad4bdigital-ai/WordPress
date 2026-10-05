@@ -15,7 +15,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'admin_init', array( __CLASS__, 'intercept_export' ), 1 );
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 30 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 30 );
 	}
 
 	public static function register_menu() {

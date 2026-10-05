@@ -506,6 +506,9 @@ final class MAD4B_SCP_Connection_Status {
 			if ( isset( $candidate['server_id'] ) && 'mad4b-write' === $candidate['server_id'] ) { $server = $candidate; break; }
 		}
 		$tools = ( ! $protocol_hotpath && class_exists( 'MAD4B_SCP_Servers' ) ) ? MAD4B_SCP_Servers::write_tools() : array();
+		$policy_ready = class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_mutate();
+		$checkpoint_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' )
+			? (bool) MAD4B_SCP_Staging_Write_Authority::effective() : null;
 		return array(
 			'server_id' => 'mad4b-write',
 			'registered' => array_key_exists( 'registered', $server ) ? $server['registered'] : null,
@@ -515,7 +518,11 @@ final class MAD4B_SCP_Connection_Status {
 			'mounted_write_tool_count' => $protocol_hotpath ? null : ( is_array( $tools ) ? count( $tools ) : 0 ),
 			'write_catalog_deferred' => (bool) $protocol_hotpath,
 			'mutation_global_enabled' => defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED,
-			'mutation_effective_for_current_request' => class_exists( 'MAD4B_SCP_Policy' ) ? (bool) MAD4B_SCP_Policy::can_mutate() : false,
+			'mutation_policy_allows_current_request' => (bool) $policy_ready,
+			'candidate_bound_write_checkpoint_ready' => $checkpoint_ready,
+			// A general policy gate is not an exact ability/transport/grant verdict.
+			'mutation_effective_for_current_request' => ! $policy_ready || false === $checkpoint_ready ? false : null,
+			'live_write_grant_validation_deferred' => true,
 			'exact_transport_grant_required' => true,
 			'generic_dispatcher_exposed' => false,
 		);

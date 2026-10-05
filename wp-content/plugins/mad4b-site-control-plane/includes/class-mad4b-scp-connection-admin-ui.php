@@ -11,7 +11,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 20 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 20 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		MAD4B_SCP_Endpoint_Diagnostic::boot();
 	}
@@ -300,7 +300,9 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'Permission binding exact' => self::measurement( $write['permission_callback_match'] ?? null ),
 			'Mounted write tools' => isset( $write['mounted_write_tool_count'] ) ? (int) $write['mounted_write_tool_count'] : __( 'Not checked', 'mad4b-site-control-plane' ),
 			'Global mutation configured' => ! empty( $write['mutation_global_enabled'] ),
-			'Mutation effective for current request' => ! empty( $write['mutation_effective_for_current_request'] ),
+			'Mutation policy gate' => ! empty( $write['mutation_policy_allows_current_request'] ),
+			'Candidate-bound Write checkpoint' => self::measurement( $write['candidate_bound_write_checkpoint_ready'] ?? null ),
+			'Exact Write execution verdict' => self::measurement( $write['mutation_effective_for_current_request'] ?? null ),
 			'Exact transport grant required' => ! empty( $write['exact_transport_grant_required'] ),
 			'Generic dispatcher exposed' => ! empty( $write['generic_dispatcher_exposed'] ),
 		), array( 'Registered' => 'registered', 'REST route registered' => 'route_registered', 'Permission binding exact' => 'permission_callback_match', 'Mounted write tools' => 'tool_count' ) );

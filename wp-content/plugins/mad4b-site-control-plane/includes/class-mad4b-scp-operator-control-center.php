@@ -19,7 +19,7 @@ final class MAD4B_SCP_Operator_Control_Center {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 39 );
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 32 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 32 );
 	}
 
 	public static function register_ability() {
@@ -272,7 +272,7 @@ final class MAD4B_SCP_Operator_Control_Center {
 		foreach ( $actions as $action ) echo '<li><code>' . esc_html( (string) $action ) . '</code></li>';
 		echo '</ol>';
 		if ( class_exists( 'MAD4B_SCP_Adaptive_Runtime_Convergence', false ) ) {
-			$adaptive = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+			$adaptive = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) );
 			echo '<h2>' . esc_html__( 'Automatic runtime observations', 'mad4b-site-control-plane' ) . '</h2>';
 			echo '<p>' . esc_html( $adaptive['state'] ) . ' — ' . esc_html__( 'Capabilities are assessed separately. Stored observations do not grant permission.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Provider', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Capability', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'State', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
@@ -282,6 +282,7 @@ final class MAD4B_SCP_Operator_Control_Center {
 				echo '<tr><td>' . esc_html( $provider ) . '</td><td>' . esc_html( $capability ) . '</td><td>' . esc_html( $row['state'] ) . '</td></tr>';
 			}
 			echo '</tbody></table><p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-adapter-coverage' ) ) . '">' . esc_html__( 'Review provider capabilities', 'mad4b-site-control-plane' ) . '</a></p>';
+			if ( ! empty( $adaptive['page']['has_more'] ) || $shown > 64 ) echo '<p class="description">' . esc_html__( 'This overview shows a bounded sample. Open provider coverage for the remaining capabilities.', 'mad4b-site-control-plane' ) . '</p>';
 		}
 		echo '<p><strong>' . esc_html__( 'Production authorized:', 'mad4b-site-control-plane' ) . '</strong> <code>false</code></p></div>';
 	}

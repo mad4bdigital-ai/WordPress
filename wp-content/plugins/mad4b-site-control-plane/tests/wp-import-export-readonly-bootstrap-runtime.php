@@ -38,8 +38,9 @@ PROVIDER;
 file_put_contents( $plugin . '/wp-all-import-pro.php', $provider );
 require $plugin . '/wp-all-import-pro.php';
 abstract class MAD4B_SCP_Adapter_Base {}
+function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 class MAD4B_SCP_Provider_Contracts {
- static function get( $provider ) { return array( 'components' => array( 'import' => array( 'plugin_file' => 'wp-all-import-pro/wp-all-import-pro.php', 'version' => '5.0.8' ) ) ); }
+ static function get( $provider ) { return array( 'components' => array( 'import' => array( 'plugin_file' => 'wp-all-import-pro/wp-all-import-pro.php', 'version' => '5.0.8' ), 'export' => array( 'plugin_file' => 'wp-all-export-pro/wp-all-export-pro.php', 'version' => '1.9.15' ) ) ); }
  static function runtime_status( ...$args ) { throw new RuntimeException( 'Read bootstrap must not depend on a baseline version' ); }
 }
 if ( 'missing' === $case ) unlink( $plugin . '/models/import/list.php' );
@@ -49,6 +50,19 @@ if ( 'oversized_model' === $case ) file_put_contents( $plugin . '/models/import/
 if ( 'oversized_plugin' === $case ) file_put_contents( $plugin . '/wp-all-import-pro.php', $provider . str_repeat( ' ', 2097153 ) );
 require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-wp-import-export-adapter.php';
 $adapter = new MAD4B_SCP_WP_Import_Export_Adapter(); $available = $adapter->is_available();
+$versions = new ReflectionMethod( 'MAD4B_SCP_WP_Import_Export_Adapter', 'component_versions' );
+$versions->setAccessible( true );
+$core_rows = array(
+ array( 'plugin_file' => 'wp-all-import-pro/wp-all-import-pro.php', 'version' => '5.1.0' ),
+ array( 'plugin_file' => 'wp-all-export-pro/wp-all-export-pro.php', 'version' => '1.9.15' ),
+ array( 'plugin_file' => 'wpae-acf-add-on/wpae-acf-add-on.php', 'version' => '2.0.0' ),
+ array( 'plugin_file' => 'wp-all-import-helper/helper.php', 'version' => '9.9.9' ),
+);
+check( array( 'import' => '5.1.0', 'export' => '1.9.15' ) === $versions->invoke( null, $core_rows ), 'Add-on version overwrote a core component' );
+check( $versions->invoke( null, $core_rows ) === $versions->invoke( null, array_reverse( $core_rows ) ), 'Component identity depended on catalog order' );
+check( array() === $versions->invoke( null, array_slice( $core_rows, 2 ) ), 'Add-on alone impersonated an unavailable core component' );
+$core_rows[] = $core_rows[1];
+check( ! isset( $versions->invoke( null, $core_rows )['export'] ), 'Ambiguous core component identity was silently accepted' );
 $blocker_property = new ReflectionProperty( 'MAD4B_SCP_WP_Import_Export_Adapter', 'import_readonly_autoload_blocker' );
 $blocker_property->setAccessible( true );
 $autoload_blocker = (string) $blocker_property->getValue();

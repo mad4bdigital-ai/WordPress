@@ -8,7 +8,7 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 
 	public static function boot(){
 		if(self::$booted)return;self::$booted=true;
-		add_action('admin_menu',array(__CLASS__,'menu'));
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'));
 		add_action('admin_post_'.self::ACTION,array(__CLASS__,'save'));
 	}
 

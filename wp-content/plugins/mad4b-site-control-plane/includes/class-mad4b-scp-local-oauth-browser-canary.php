@@ -23,7 +23,7 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 40 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 40 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 	}
 

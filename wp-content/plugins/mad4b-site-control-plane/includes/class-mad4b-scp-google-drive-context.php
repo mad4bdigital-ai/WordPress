@@ -18,6 +18,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const CONFIG_OPTION = 'mad4b_scp_google_drive_oauth_config_v1';
 	const DEDICATED_CONFIG_OPTION = 'mad4b_scp_google_drive_dedicated_oauth_config_v1';
 	const TOKEN_OPTION = 'mad4b_scp_google_drive_oauth_token_v1';
+	const SCOPE_DIAGNOSTIC_OPTION = 'mad4b_scp_google_scope_diagnostic_v1';
+	const SCOPE_DIAGNOSTIC_CONTRACT = 'mad4b.google-scope-rejection.v1';
 	const AUTH_MODE_OPTION = 'mad4b_scp_google_drive_auth_mode_v1';
 	const AUTH_MODE_CONTRACT = 'mad4b.google-drive-auth-mode.v1';
 	const WORKSPACE_GRANTS_OPTION = 'mad4b_scp_google_workspace_grants_v1';
@@ -566,6 +568,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'last_verified_at' => $connected && isset( $token['last_verified_at'] ) ? sanitize_text_field( (string) $token['last_verified_at'] ) : '',
 			'blockers' => $blockers,
 			'write_blockers' => array_values( array_unique( $write_blockers ) ),
+			'scope_diagnostic' => self::scope_diagnostic_status(),
 		);
 	}
 
@@ -603,6 +606,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'last_verified_at' => isset( $status['last_verified_at'] ) ? (string) $status['last_verified_at'] : '',
 			'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( $status['blockers'] ) : array(),
 			'write_blockers' => isset( $status['write_blockers'] ) && is_array( $status['write_blockers'] ) ? array_values( $status['write_blockers'] ) : array(),
+			'scope_diagnostic' => isset( $status['scope_diagnostic'] ) && is_array( $status['scope_diagnostic'] ) ? $status['scope_diagnostic'] : array(),
 		);
 		return $public;
 	}
@@ -778,7 +782,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			self::auth_mode(),
 			isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : ''
 		);
-		if ( is_wp_error( $record ) ) return $record;
+		if ( is_wp_error( $record ) ) {
+			self::record_scope_rejection( $record );
+			return $record;
+		}
 		$about = self::about();
 		if ( ! is_wp_error( $about ) && isset( $about['user'] ) && is_array( $about['user'] ) ) {
 			$record = self::token_record();
@@ -928,7 +935,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'previously_granted_scopes' => $broker_previous_scopes,
 			)
 		);
-		if ( is_wp_error( $record ) ) return $record;
+		if ( is_wp_error( $record ) ) {
+			self::record_scope_rejection( $record );
+			return $record;
+		}
 		self::refresh_account_identity();
 		return self::connection_status();
 	}
@@ -3032,12 +3042,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 					if ( ! in_array( $granted_item, $broker_allowed, true ) ) return new WP_Error( 'mad4b_google_managed_granted_scope_unproven', 'Google returned a scope that is not proven by the Managed broker scope projection.' );
 				}
 			} elseif ( ! self::workspace_scope_is_allowed( $scope ) ) {
-				return new WP_Error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog. Review the Google app access and reconnect with the saved Workspace grants.', array(
-					'operation_state' => 'EXTERNAL_ACTION_REQUIRED',
-					'next_action' => 'review_google_app_access_then_reconnect',
-					'unsupported_scope_count' => count( array_diff( $granted_items, self::allowed_scope_items() ) ),
-					'tokens_persisted' => false,
-				) );
+				return self::scope_rejection_error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog. Review the Google app access and reconnect with the saved Workspace grants.', $requested_items, $granted_items, self::allowed_scope_items(), $auth_mode );
 			}
 		} elseif ( ! self::scope_is_allowed( $scope ) ) {
 			return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
@@ -3078,7 +3083,66 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$sealed = self::seal_token_record( $record );
 		if ( is_wp_error( $sealed ) ) return $sealed;
 		if ( ! self::write_option( self::TOKEN_OPTION, $sealed ) ) return new WP_Error( 'mad4b_google_drive_token_persist_failed', 'Google OAuth token could not be persisted securely.' );
+		self::delete_option_verified( self::SCOPE_DIAGNOSTIC_OPTION );
 		return $record;
+	}
+
+	/** Scope names are public API identifiers; arbitrary provider strings are hashed. */
+	private static function scope_diagnostic_labels( array $scopes ) {
+		$labels = array();
+		foreach ( array_slice( $scopes, 0, 16 ) as $scope ) {
+			$scope = (string) $scope;
+			$labels[] = strlen( $scope ) <= 180 && ( preg_match( '#^https://www\.googleapis\.com/auth/[a-zA-Z0-9_.-]+$#D', $scope ) || in_array( $scope, array( 'openid', 'email', 'profile' ), true ) )
+				? $scope : 'unknown_scope_sha256:' . hash( 'sha256', $scope );
+		}
+		return $labels;
+	}
+
+	private static function scope_rejection_error( $code, $message, array $requested, array $granted, array $allowed, $auth_mode ) {
+		$unexpected = array_values( array_diff( $granted, $allowed ) );
+		return new WP_Error( $code, $message, array(
+			'contract' => self::SCOPE_DIAGNOSTIC_CONTRACT,
+			'operation_state' => 'EXTERNAL_ACTION_REQUIRED',
+			'next_action' => 'review_google_app_access_then_reconnect',
+			'auth_mode' => $auth_mode,
+			'requested_scope_count' => count( $requested ),
+			'granted_scope_count' => count( $granted ),
+			'unsupported_scope_count' => count( $unexpected ),
+			'requested_scopes' => self::scope_diagnostic_labels( $requested ),
+			'unsupported_scopes' => self::scope_diagnostic_labels( $unexpected ),
+			'labels_truncated' => count( $requested ) > 16 || count( $unexpected ) > 16,
+			'tokens_persisted' => false,
+			'authorizing' => false,
+		) );
+	}
+
+	/** Called only after the site/user/state/PKCE-bound OAuth exchange was validated. */
+	private static function record_scope_rejection( $error ) {
+		$data = $error->get_error_data();
+		if ( ! is_array( $data ) || self::SCOPE_DIAGNOSTIC_CONTRACT !== ( $data['contract'] ?? '' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return;
+		$grants = self::workspace_grants_status();
+		$data['site_uuid'] = MAD4B_SCP_Site_Profile::site_uuid();
+		$data['grant_sha256'] = $grants['grant_sha256'];
+		$data['observed_at'] = time();
+		$data['expires_at'] = time() + 86400;
+		$data['error_code'] = sanitize_key( $error->get_error_code() );
+		$data['seal'] = hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) );
+		self::write_option( self::SCOPE_DIAGNOSTIC_OPTION, $data );
+	}
+
+	/** Read-only evidence, scoped to the active site, method and saved grant selection. */
+	public static function scope_diagnostic_status() {
+		$data = get_option( self::SCOPE_DIAGNOSTIC_OPTION, array() );
+		if ( ! is_array( $data ) || self::SCOPE_DIAGNOSTIC_CONTRACT !== ( $data['contract'] ?? '' ) || ! is_string( $data['seal'] ?? null ) || ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return array();
+		$seal = $data['seal']; unset( $data['seal'] );
+		$grants = self::workspace_grants_status();
+		if ( ! hash_equals( hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) ), $seal )
+			|| ( $data['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid()
+			|| ( $data['auth_mode'] ?? '' ) !== self::auth_mode()
+			|| ( $data['grant_sha256'] ?? '' ) !== $grants['grant_sha256']
+			|| ! is_int( $data['expires_at'] ?? null ) || $data['expires_at'] <= time() ) return array();
+		unset( $data['site_uuid'], $data['grant_sha256'] );
+		return $data;
 	}
 
 	private static function token_record() {

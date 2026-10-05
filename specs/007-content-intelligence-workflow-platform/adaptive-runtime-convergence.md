@@ -1,6 +1,19 @@
-# Adaptive Runtime Convergence — rc.94
+# Adaptive Runtime Convergence — rc.95 operational recovery
 
-Scope: recovery above master `a2208930c675e9a5889fa0ac73a4cd964b63569b` after PR #253 merged. This is runtime implementation; it does not certify the live site or close unobserved tasks.
+Scope: recovery above master `b43a90bab987c609792c8e410d57080b3dc4a2ae` after PR #254 merged. This extends the rc.94 runtime implementation; it does not certify unobserved operations or close documentation-only tasks.
+
+## Operational recovery in rc.95
+
+- All submenu boot callbacks use a central scheduler after the parent menu. This prevents WordPress from deriving a different page hook for Content Pipeline or future pages loaded earlier than the parent. Route capabilities, canonical URLs, alias security and WordPress authentication remain authoritative.
+- Settings refresh now verifies a typed form identity and persisted values. Brand Profile, source policy and review policy supply matching server-rendered and AJAX view proofs; no Site Profile CAS fields are assumed for unrelated forms. Ambiguous, missing, mistyped or stale views cannot report success or repeat the mutation blindly. Administrator and nonce admission remain required.
+- Primary Google connection uses the selected Managed, Dedicated or Custom method. Configuration of a different method no longer hides the active method's setup needs or switches its primary action. Public unsupported Google scope identifiers are exposed in a bounded, signed, site/method/grant-bound diagnostic from a validated OAuth exchange. Arbitrary provider strings are hashed; rejected tokens and credential material are never stored in diagnostics. A successful connection clears stale rejection evidence. Google consent itself remains external.
+- Context write readiness renders the candidate-bound checkpoint using defined variables. Connection readiness separates the policy gate, candidate checkpoint and deferred exact grant verdict. Cheap status cannot fabricate execution authority or scan grants on protocol/admin hot paths.
+- Import/Export component versions resolve the provider contract's exact main plugin file. Add-ons cannot impersonate or overwrite a core component, catalog order is irrelevant, and duplicate identities are unmeasured. This is independent of patch-version certification.
+- Periodic Staging observations may refresh attribution from an unexpired sealed baseline only after rechecking the complete site, profile, actor, package binding, grants, schemas/risk and transport. Missing/expired/tampered evidence cannot be revived by Cron. Native update permits now also pin write contracts before package replacement. Observation creates no grants, update intent or authority.
+- Adaptive status defaults to a bounded provider summary with capability-state counts. Explicit provider details and stable, receipt-bound paging remain available. A changed receipt requires a fresh first page; pages cannot be merged across generations. The admin overview declares its bounded sample. Reads never execute the observer.
+- Core convergence reports a real owner/external gate when safe phases are complete; a historical pending checkpoint cannot turn an external prerequisite into endless automatic work.
+
+Regressions are wired to CI: `admin-route-registry-runtime.php`, `admin-settings-persistence-runtime.mjs`, `context-admin-recovery-runtime.php`, `context-oauth-lifecycle-runtime.php`, `connection-catalog-readiness-runtime.php`, `wp-import-export-readonly-bootstrap-runtime.php`, `post-update-continuation-guards-runtime.php` and `adaptive-runtime-convergence-runtime.php`.
 
 ## Implemented behavior
 
@@ -25,6 +38,8 @@ The external MCP initialize/tools-list observer and passive frontend sampling al
 
 ## Live installation and acceptance
 
-The observed installation remains rc.93 until a trusted rc.94 artifact is installed through the governed release process. After installation, verify all nine MCP endpoints, Brand Profile creation, canonical and legacy admin paths, three frontend samples and real external browser acceptance. Do not turn disabled Content Pipeline validators on before their source/SEO/browser prerequisites are evidenced.
+The live installation observed on 2026-10-05 is rc.94, exact source `b43a90bab987c609792c8e410d57080b3dc4a2ae`. Its stale rc.93 authority binding was repaired through the exact Staging plan and read back: session state HEALTHY, current candidate matched, 66/66 Write grants, unchanged Write inventory fingerprint, no new grants/subjects/agents in the binding primitive, no Production mutation and no generic raw-SQL Breakglass. A healthy authority baseline was captured. This does not claim that rc.95 source changes are already installed, or that all external/provider acceptance gates passed.
+
+After the trusted rc.95 release is installed, verify all nine MCP endpoints, Brand Profile creation, canonical and legacy admin paths, three frontend samples and real external browser acceptance. Do not turn disabled Content Pipeline validators on before their source/SEO/browser prerequisites are evidenced. Developer host sandbox prerequisites, Google consent, first Brand Core/source selection, actual provider canaries and external MCP/browser evidence remain concrete external or governed operations, not synthetic readiness records.
 
 The WPML taxonomy notice and Elementor Pro domain-license notice are external provider operations, not evidence that the MAD4B core failed. Taxonomy hierarchy repair requires the actual affected parent/translation evidence; license repair requires the owner's legitimate Elementor connection. No notice is suppressed and no production mutation is authorized.

@@ -18,7 +18,7 @@ final class MAD4B_SCP_Admin_UI {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), MAD4B_SCP_Admin_Route_Registry::PARENT_MENU_PRIORITY );
 	}
 
 	public static function register_menu() {

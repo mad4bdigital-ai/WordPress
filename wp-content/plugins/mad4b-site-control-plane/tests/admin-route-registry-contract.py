@@ -19,6 +19,11 @@ for path in (root / 'includes').rglob('*.php'):
         raise SystemExit(f'FAIL direct constant admin URL: {path.name}')
     if not re.search(r'add_(?:sub)?menu_page\(', source):
         continue
+    if 'add_submenu_page(' in source and (
+        'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
+        or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
+    ):
+        raise SystemExit(f'FAIL submenu bypasses parent-order contract: {path.name}')
     checked += 1
     owner = re.search(r'final class (\w+)', source).group(1)
     slug = re.search(r"const (PAGE_SLUG|PAGE)\s*=\s*['\"](mad4b-[^'\"]+)['\"]", source)

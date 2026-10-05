@@ -12,7 +12,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_page' ), 25 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_page' ), 25 );
 		add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'wp_ajax_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'admin_post_' . self::ACTION_DISABLE, array( __CLASS__, 'handle_disable' ) );

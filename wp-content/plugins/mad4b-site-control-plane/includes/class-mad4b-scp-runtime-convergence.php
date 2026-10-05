@@ -339,6 +339,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		elseif ( ! $graph_valid || 'blocked' === $checkpoint_state ) $autopilot_state = 'blocked';
 		elseif ( $manual_resume_gate ) $autopilot_state = 'gated';
 		elseif ( $auto_pending && 'plugin_activation' === $checkpoint_source ) $autopilot_state = 'bootstrapping';
+		elseif ( ! $auto_pending && $gated_pending ) $autopilot_state = 'gated';
 		elseif ( $auto_pending || in_array( $checkpoint_state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true ) ) $autopilot_state = 'converging';
 		elseif ( $gated_pending ) $autopilot_state = 'gated';
 		else $autopilot_state = 'blocked';
@@ -398,7 +399,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$actions[] = self::action( 'managed_skills', 'reconcile_managed_skills', self::APPLY_ABILITY, true, false );
 		}
 		if ( isset( $phases['authority_binding'] ) && 'ready' !== $phases['authority_binding']['state'] ) {
-			$gated[] = self::action( 'authority_binding', 'owner_rebind_exact_candidate', 'mad4b/full-staging-authority-handshake', false, true );
+			$gated[] = self::action( 'authority_binding', 'owner_rebind_exact_candidate', 'mad4b/staging-write-authority-convergence-handshake', false, true );
 		}
 		if ( isset( $phases['external_acceptance'] ) && 'ready' !== $phases['external_acceptance']['state'] ) {
 			$gated[] = self::action( 'external_acceptance', 'refresh_external_acceptance_evidence', 'mad4b/rest-compatibility-status', false, false );

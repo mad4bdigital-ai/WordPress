@@ -12,8 +12,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Admin_Settings_Persistence {
 	const HANDLE = 'mad4b-admin-settings-persistence';
+	const VIEW_CONTRACT = 'mad4b.admin-settings-view-readback.v1';
 
 	private static $booted = false;
+
+	/** Public persisted values only. This proves a refreshed view, not authority. */
+	public static function view_readback( $form_id, array $fields ) {
+		return array( 'contract' => self::VIEW_CONTRACT, 'form_id' => (string) $form_id, 'fields' => $fields );
+	}
+
+	public static function view_attributes( $form_id, array $fields ) {
+		return ' data-mad4b-settings-view="' . esc_attr( wp_json_encode( self::view_readback( $form_id, $fields ) ) ) . '"';
+	}
 
 	public static function boot() {
 		if ( self::$booted ) return;

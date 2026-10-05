@@ -82,6 +82,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$transport = self::transport_snapshot();
 		if ( empty( $transport['inventory_ready'] ) ) return new WP_Error( 'mad4b_post_update_continuation_transport_unavailable', 'Verified live transport inventory is required before update continuation.' );
 		$write_snapshot = self::write_snapshot( $plan );
+		$write_contracts = self::write_contract_fingerprint();
+		if ( '' === $write_contracts ) return new WP_Error( 'mad4b_post_update_continuation_contract_unavailable', 'Exact write contracts must be observed before preparing update continuation.' );
 		$update_plan_sha256 = strtolower( trim( (string) $update_plan_sha256 ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $update_plan_sha256 ) ) {
 			$update_plan_sha256 = self::digest( array(
@@ -134,6 +136,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			),
 			'actor' => $actor,
 			'write_snapshot' => $write_snapshot,
+			'write_contract_fingerprint' => $write_contracts,
 			'transport_snapshot' => $transport,
 			'previous_binding' => $previous_binding,
 			'authority_delta' => 'zero_required',
@@ -186,6 +189,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			|| ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_authority_baseline_current_authority_required', 'A healthy exact candidate and unchanged grant inventory are required.' );
 		$actor = self::capture_actor();
 		$transport = self::transport_snapshot();
+		$contracts = self::write_contract_fingerprint();
+		if ( empty( $transport['inventory_ready'] ) || '' === $contracts ) return new WP_Error( 'mad4b_authority_baseline_contract_unavailable', 'Exact transport and write contracts must be available.' );
 		if ( empty( $actor['oauth_attribution_complete'] ) ) {
 			$completed = self::read_permit();
 			// The transaction persists "consumed"; "completed" is the public result.
@@ -193,14 +198,30 @@ final class MAD4B_SCP_Post_Update_Continuation {
 				&& ! empty( $completed['consumed'] ) && self::identity_matches( $completed['target_identity'], self::bounded_binding( $binding ) )
 				&& ( $completed['site']['profile_digest'] ?? '' ) === MAD4B_SCP_Site_Profile::profile_digest()
 				&& ( $completed['site']['profile_revision'] ?? -1 ) === MAD4B_SCP_Site_Profile::revision()
+				&& ( $completed['site']['site_uuid'] ?? '' ) === strtolower( MAD4B_SCP_Site_Profile::site_uuid() )
+				&& ( $completed['site']['origin'] ?? '' ) === untrailingslashit( MAD4B_SCP_Site_Profile::current_origin() )
 				&& ( $completed['transport_snapshot']['fingerprint'] ?? '' ) === ( $transport['fingerprint'] ?? '' )
+				&& ( $completed['write_contract_fingerprint'] ?? '' ) === $contracts
 				&& self::digest( $completed['write_snapshot'] ?? array() ) === self::digest( $snapshot ) ) $actor = $completed['actor'];
+		}
+		if ( empty( $actor['oauth_attribution_complete'] ) ) {
+			$observed = get_option( self::BASELINE_OPTION, array() );
+			// Refresh an unexpired sealed observation only while its complete authority
+			// remains identical. Cron cannot create an actor or revive expired evidence.
+			if ( self::baseline_valid( $observed )
+				&& ( $observed['site']['site_uuid'] ?? '' ) === strtolower( MAD4B_SCP_Site_Profile::site_uuid() )
+				&& ( $observed['site']['origin'] ?? '' ) === untrailingslashit( MAD4B_SCP_Site_Profile::current_origin() )
+				&& ( $observed['site']['environment'] ?? '' ) === 'staging'
+				&& ( $observed['site']['profile_digest'] ?? '' ) === MAD4B_SCP_Site_Profile::profile_digest()
+				&& ( $observed['site']['profile_revision'] ?? -1 ) === MAD4B_SCP_Site_Profile::revision()
+				&& self::identity_matches( $observed['previous_binding'], self::bounded_binding( $binding ) )
+				&& ( $observed['transport_snapshot']['fingerprint'] ?? '' ) === ( $transport['fingerprint'] ?? '' )
+				&& ( $observed['write_contract_fingerprint'] ?? '' ) === $contracts
+				&& self::digest( $observed['write_snapshot'] ?? array() ) === self::digest( $snapshot ) ) $actor = $observed['actor'];
 		}
 		if ( empty( $actor['oauth_attribution_complete'] ) ) return new WP_Error( 'mad4b_authority_baseline_actor_missing', 'Previously verified OAuth attribution is required; it cannot be inferred from an admin login.' );
 		$actor_user = get_userdata( (int) $actor['wp_user_id'] );
 		if ( ! $actor_user || ! user_can( $actor_user, 'manage_options' ) || ! MAD4B_SCP_Site_Profile::user_is_enrolled( (int) $actor['wp_user_id'] ) ) return new WP_Error( 'mad4b_authority_baseline_actor_revoked', 'The observed actor must still have enrolled administrator authority.' );
-		$contracts = self::write_contract_fingerprint();
-		if ( empty( $transport['inventory_ready'] ) || '' === $contracts ) return new WP_Error( 'mad4b_authority_baseline_contract_unavailable', 'Exact transport and write contracts must be available.' );
 		$baseline = array( 'contract' => self::BASELINE_CONTRACT,
 			'site' => array( 'site_uuid' => strtolower( MAD4B_SCP_Site_Profile::site_uuid() ), 'origin' => untrailingslashit( MAD4B_SCP_Site_Profile::current_origin() ), 'environment' => 'staging', 'profile_revision' => MAD4B_SCP_Site_Profile::revision(), 'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest() ),
 			'actor' => $actor, 'previous_binding' => self::bounded_binding( $binding ), 'write_snapshot' => $snapshot, 'transport_snapshot' => $transport,

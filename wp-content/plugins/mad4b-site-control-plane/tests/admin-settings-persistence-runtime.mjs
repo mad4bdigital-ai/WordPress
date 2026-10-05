@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/admin-settings-persistence.js', import.meta.url), 'utf8');
 
-async function fixture(responseKind = 'success', profile = false, refreshMode = '') {
+async function fixture(responseKind = 'success', profile = false, refreshMode = '', viewCase = '') {
   const listeners = new Map();
   const controls = [
     { name: 'action', value: 'mad4b_site_profile_save', disabled: false },
@@ -40,17 +40,33 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
   const currentWorkspace = { replaceWith(node) { replacedWith = node; } };
   const nextRevision = refreshMode === 'stale' ? '999' : '3';
   const nextDigest = refreshMode === 'stale' ? 'wrong-digest' : 'after-digest';
+  const view = viewCase ? {
+    contract: 'mad4b.admin-settings-view-readback.v1',
+    form_id: viewCase.startsWith('source') ? 'context-source-policy-target' : 'context-brand-profile',
+    fields: viewCase.startsWith('source') ? { source_id: 'target', write_policy: 'read_only' } : { revision: 3, brand_name: 'All Royal Egypt' },
+  } : null;
+  const actualView = view ? JSON.parse(JSON.stringify(view)) : null;
+  if (viewCase === 'brand-stale') actualView.fields.revision = 2;
+  if (viewCase === 'brand-type-mismatch') actualView.fields.revision = '3';
+  if (viewCase === 'brand-wrong-form') actualView.form_id = 'context-review-policy';
+  if (viewCase === 'brand-invalid-contract') actualView.contract = 'unverified';
   const nextForm = {
     matches: value => value === '.mad4b-settings-ajax-form',
+    getAttribute: value => value === 'data-mad4b-settings-view' && actualView && viewCase !== 'brand-missing-marker' ? JSON.stringify(actualView) : '',
     querySelector: value => {
+      if (viewCase) return null; // Actual Context forms have no Site Profile CAS fields.
       if (value.includes('expected_revision')) return { value: nextRevision };
       if (value.includes('expected_profile_digest')) return { value: nextDigest };
       return null;
     },
   };
+  const unrelatedForm = {
+    getAttribute: () => JSON.stringify({ ...view, form_id: 'context-source-policy-other', fields: { source_id: 'other', write_policy: 'read_only' } }),
+  };
   const nextWorkspace = {
     matches: () => false,
     querySelector: value => value === '.mad4b-settings-ajax-form' ? nextForm : null,
+    querySelectorAll: () => viewCase === 'source-duplicate' ? [nextForm, nextForm] : viewCase.startsWith('source') ? [unrelatedForm, nextForm] : [nextForm],
   };
 
   let calls = 0, fallback = 0, postBody = null;
@@ -122,7 +138,8 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
                     data: {
                       persistence_verified: true,
                       message: 'Saved and verified.',
-                      readback: { revision: 3, profile_digest: 'after-digest' }
+                      readback: { revision: 3, profile_digest: 'after-digest' },
+                      ...(view ? { view_readback: view } : {})
                     }
                   }
             );
@@ -179,7 +196,7 @@ async function fixture(responseKind = 'success', profile = false, refreshMode = 
     assert.equal(calls, 1);
   } else {
     assert.equal(calls, 2);
-    if (refreshMode === 'ok') {
+    if (refreshMode === 'ok' && (!viewCase || viewCase === 'brand-ok' || viewCase === 'source-ok')) {
       assert.equal(form.dataset.mad4bViewStale, undefined);
       assert.equal(replacedWith, nextWorkspace);
     } else {
@@ -198,5 +215,8 @@ await fixture('success', true);
 await fixture('success', true, 'ok');
 await fixture('success', true, 'missing');
 await fixture('success', true, 'stale');
+for (const viewCase of ['brand-ok', 'brand-stale', 'brand-type-mismatch', 'brand-wrong-form', 'brand-invalid-contract', 'brand-missing-marker', 'source-ok', 'source-duplicate']) {
+  await fixture('success', false, 'ok', viewCase);
+}
 
-console.log('mad4b.admin-settings-persistence-runtime.v2: 8/8 PASS');
+console.log('mad4b.admin-settings-persistence-runtime.v3: 16/16 PASS');

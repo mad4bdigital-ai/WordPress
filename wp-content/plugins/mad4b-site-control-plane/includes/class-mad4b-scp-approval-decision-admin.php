@@ -20,7 +20,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
 		add_action( 'admin_init', array( __CLASS__, 'protect_read_model_hot_path' ), 0 );
-		add_action( 'admin_menu', array( __CLASS__, 'register_page' ), 90 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_page' ), 90 );
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_admin_post' ) );
 	}
 

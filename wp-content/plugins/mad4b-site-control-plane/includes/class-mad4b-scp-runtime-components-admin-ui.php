@@ -10,7 +10,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 31 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 31 );
 	}
 
 	public static function register_menu() {

@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
-  "reviewed_base_sha": "a2208930c675e9a5889fa0ac73a4cd964b63569b",
-  "changed_file_count": 56,
+  "reviewed_base_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
+  "changed_file_count": 40,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -210,12 +210,14 @@
       "revert_boundary": "Revert operational control/runtime coordination services independently from Content Experience and Adaptive Search domain services.",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/assets/admin-settings-persistence.js",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-coverage-admin-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-route-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-settings-persistence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php",
@@ -281,7 +283,7 @@
     },
     {
       "id": "tests-authority-security-01",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 1",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 1",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -323,7 +325,7 @@
     },
     {
       "id": "tests-authority-security-02",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 2",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 2",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -363,7 +365,7 @@
     },
     {
       "id": "tests-authority-security-03",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 3",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 3",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -488,9 +490,11 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-runtime.mjs",
         "wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-experience-media-validation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/release-closure-hardening-contract.php",

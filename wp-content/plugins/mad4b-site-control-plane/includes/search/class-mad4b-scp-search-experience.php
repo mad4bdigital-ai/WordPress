@@ -35,7 +35,7 @@ final class MAD4B_SCP_Search_Experience {
 		// this submenu first can make WordPress derive a different plugin-page hook
 		// before the parent exists, causing admin.php?page=... to fail with the
 		// generic core "not allowed" screen even for an authorized administrator.
-		add_action( 'admin_menu', array( __CLASS__, 'menu' ), self::MENU_PRIORITY );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), self::MENU_PRIORITY );
 		add_action( 'admin_post_mad4b_search_control', array( __CLASS__, 'control_post' ) );
 	}
 	public static function menu() { add_submenu_page( 'mad4b-control-plane', 'Search Intelligence', 'Search Intelligence', 'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) ); }

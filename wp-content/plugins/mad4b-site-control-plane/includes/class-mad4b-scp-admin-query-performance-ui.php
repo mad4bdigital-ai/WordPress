@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Admin_Query_Performance_UI {
 	const PAGE_SLUG = 'mad4b-control-plane-performance';
 	public static function boot() {
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 31 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 31 );
 	}
 
 	public static function register_menu() {
