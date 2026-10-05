@@ -280,14 +280,14 @@
       "gate": "kernel_quality_verified",
       "repository_paths": [
         "tests/security-ai-eval-faults-contract.py",
-        "includes/class-mad4b-scp-data-governance-registry.php"
+        "includes/class-mad4b-scp-data-governance-registry.php",
+        "includes/class-mad4b-scp-governed-provider-plan.php",
+        "tests/governed-provider-plan-contract.php"
       ],
       "live_evidence": {
         "required": true,
         "production_certification_stage": "security_fault_canary",
-        "additional_requirements": [
-          "ai_provider_model_eval_fixture"
-        ]
+        "additional_requirements": []
       }
     },
     {
