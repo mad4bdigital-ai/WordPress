@@ -888,76 +888,76 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3806 P1 Implement explainable effective-context reason chains and read-only status projection.
 
 ### 38B — Language, surfaces and SEO provenance
-- [ ] T3807 P0 Implement provider-neutral Language Registry with WPML adapter and generic conformance contract.
-- [ ] T3808 P0 Model WordPress Object and Search Surface as separate canonical identities.
-- [ ] T3809 P0 Inventory Posts, Pages, public CPTs, Terms, Term Archives, Post Type Archives, Home and Blog Index.
-- [ ] T3810 P0 Add provider-approved virtual/paginated surface semantics without generic arbitrary-URL admission.
-- [ ] T3811 P0 Implement effective Indexability Resolver across object status, site policy, SEO metadata, canonical/redirect, language state and rendered evidence.
-- [ ] T3812 P0 GATE Preserve indexability conflicts as reconciliation evidence; forbid silent provider winner.
-- [ ] T3813 P0 Implement SEO Metadata Provider Registry with field-level provenance and Rank Math + WordPress/rendered fallback adapters.
-- [ ] T3814 P1 Add Yoast/AIOSEO/SEOPress adapter conformance fixtures without core branching.
+- [x] T3807 P0 Implement provider-neutral Language Registry with WPML adapter and generic conformance contract.
+- [x] T3808 P0 Model WordPress Object and Search Surface as separate canonical identities.
+- [x] T3809 P0 Inventory Posts, Pages, public CPTs, Terms, Term Archives, Post Type Archives, Home and Blog Index.
+- [x] T3810 P0 Add provider-approved virtual/paginated surface semantics without generic arbitrary-URL admission.
+- [x] T3811 P0 Implement effective Indexability Resolver across object status, site policy, SEO metadata, canonical/redirect, language state and rendered evidence.
+- [x] T3812 P0 GATE Preserve indexability conflicts as reconciliation evidence; forbid silent provider winner.
+- [x] T3813 P0 Implement SEO Metadata Provider Registry with field-level provenance and Rank Math + WordPress/rendered fallback adapters.
+- [x] T3814 P1 Add Yoast/AIOSEO/SEOPress adapter conformance fixtures without core branching.
 
 ### 38C — Targets, temporal evidence and projections
-- [ ] T3815 P0 Define Search Target identity over normalized query, market, language, engine, device and purpose.
-- [ ] T3816 P0 Implement OWNED_RANK_TRACKING and MARKET_DISCOVERY as independent target purposes.
-- [ ] T3817 P0 Implement target compilation from SEO targets, canonical keyword registry, surface changes, clusters, competitors and post-change validation.
-- [ ] T3818 P0 Implement immutable search observations/events plus recomputable materialized views.
-- [ ] T3819 P0 Implement temporal rank trajectory, freshness, stability and volatility projections.
-- [ ] T3820 P0 GATE Prove historical evidence survives target/profile/language/surface drift without identity corruption.
+- [x] T3815 P0 Define Search Target identity over normalized query, market, language, engine, device and purpose.
+- [x] T3816 P0 Implement OWNED_RANK_TRACKING and MARKET_DISCOVERY as independent target purposes.
+- [x] T3817 P0 Implement target compilation from SEO targets, canonical keyword registry, surface changes, clusters, competitors and post-change validation.
+- [x] T3818 P0 Implement immutable search observations/events plus recomputable materialized views.
+- [x] T3819 P0 Implement temporal rank trajectory, freshness, stability and volatility projections.
+- [x] T3820 P0 GATE Prove historical evidence survives target/profile/language/surface drift without identity corruption.
 
 ### 38D — Adaptive decisions, refresh and fairness
-- [ ] T3821 P0 Implement Expected Value of Observation Decision Engine with profile-driven weights.
-- [ ] T3822 P0 Implement DecisionRecord with positive/negative factors, alternatives, evidence freshness and provider/budget reasoning.
-- [ ] T3823 P0 Implement target-specific dynamic refresh cadence; forbid one universal refresh interval.
-- [ ] T3824 P0 Reuse fresh equivalent evidence before provider execution when policy permits.
-- [ ] T3825 P0 Implement multidimensional fair scheduler across site/brand/market/language/purpose/cluster/surface/provider.
-- [ ] T3826 P0 GATE Prove aging/minimum coverage prevents permanent starvation under constrained budget.
+- [x] T3821 P0 Implement Expected Value of Observation Decision Engine with profile-driven weights.
+- [x] T3822 P0 Implement DecisionRecord with positive/negative factors, alternatives, evidence freshness and provider/budget reasoning.
+- [x] T3823 P0 Implement target-specific dynamic refresh cadence; forbid one universal refresh interval.
+- [x] T3824 P0 Reuse fresh equivalent evidence before provider execution when policy permits.
+- [x] T3825 P0 Implement multidimensional fair scheduler across site/brand/market/language/purpose/cluster/surface/provider.
+- [x] T3826 P0 GATE Prove aging/minimum coverage prevents permanent starvation under constrained budget.
 
 ### 38E — Economic plane
-- [ ] T3827 P0 Implement hierarchical budget tree with monthly/daily/monetary/rate/concurrency/depth constraints.
-- [ ] T3828 P0 Implement soft reservations, protected reserve and safe unused-budget reclaim.
-- [ ] T3829 P0 Bind provider usage/reset evidence to scheduling decisions without exposing credentials.
-- [ ] T3830 P0 GATE Prove hard budget overspend and negative/unknown budget states fail closed.
-- [ ] T3831 P1 Implement budget pacing and controlled burst policy from remaining allowance and billing window.
+- [x] T3827 P0 Implement hierarchical budget tree with monthly/daily/monetary/rate/concurrency/depth constraints.
+- [x] T3828 P0 Implement soft reservations, protected reserve and safe unused-budget reclaim.
+- [x] T3829 P0 Bind provider usage/reset evidence to scheduling decisions without exposing credentials.
+- [x] T3830 P0 GATE Prove hard budget overspend and negative/unknown budget states fail closed.
+- [x] T3831 P1 Implement budget pacing and controlled burst policy from remaining allowance and billing window.
 
 ### 38F — SERP provider mesh and durable execution
-- [ ] T3832 P0 Define provider-neutral SERP descriptor/request/usage/economic/failure/normalization contracts.
-- [ ] T3833 P0 Implement SerpApi adapter behind registered egress/secret/certification boundaries.
-- [ ] T3834 P0 Implement DataForSEO adapter or an executable second-provider conformance fixture before provider-neutrality is claimed.
-- [ ] T3835 P0 Replace fixed search-specific primary/fallback logic with capability/economic/policy-based provider candidate selection.
-- [ ] T3836 P0 Extend semantic Remote Work Operation Registry for registered `search.serp.capture` without generic URL/command execution.
-- [ ] T3837 P0 Reuse Provider Circuit Breaker state for eligibility and bounded HALF_OPEN read probes.
-- [ ] T3838 P0 GATE Reconcile ambiguous quota-consuming provider effects before retry; no blind duplicate request.
-- [ ] T3839 P0 Keep imported/HYPD/manual/historical sources typed as evidence sources, not forged live provider receipts.
+- [x] T3832 P0 Define provider-neutral SERP descriptor/request/usage/economic/failure/normalization contracts.
+- [x] T3833 P0 Implement SerpApi adapter behind registered egress/secret/certification boundaries.
+- [x] T3834 P0 Implement DataForSEO adapter or an executable second-provider conformance fixture before provider-neutrality is claimed.
+- [x] T3835 P0 Replace fixed search-specific primary/fallback logic with capability/economic/policy-based provider candidate selection.
+- [x] T3836 P0 Extend semantic Remote Work Operation Registry for registered `search.serp.capture` without generic URL/command execution.
+- [x] T3837 P0 Reuse Provider Circuit Breaker state for eligibility and bounded HALF_OPEN read probes.
+- [x] T3838 P0 GATE Reconcile ambiguous quota-consuming provider effects before retry; no blind duplicate request.
+- [x] T3839 P0 Keep imported/HYPD/manual/historical sources typed as evidence sources, not forged live provider receipts.
 
 ### 38G — SERP evidence and intelligence
-- [ ] T3840 P0 Implement immutable versioned SERP Snapshot with request/provider/runtime/raw/normalized/cost provenance.
-- [ ] T3841 P0 Implement external SERP content schema/size/sanitization trust boundary and prompt/tool-instruction isolation.
-- [ ] T3842 P0 Separate raw evidence, normalized facts and derived inference so inference can be recomputed without repurchasing evidence.
-- [ ] T3843 P0 Implement confidence-aware ranking, volatility, competitor, cannibalization, content/language/market gap, archive and SERP-feature signals.
-- [ ] T3844 P0 GATE Prove cannibalization can relate pages, CPTs, term archives and post-type archives under exact query/market/language/device identity.
+- [x] T3840 P0 Implement immutable versioned SERP Snapshot with request/provider/runtime/raw/normalized/cost provenance.
+- [x] T3841 P0 Implement external SERP content schema/size/sanitization trust boundary and prompt/tool-instruction isolation.
+- [x] T3842 P0 Separate raw evidence, normalized facts and derived inference so inference can be recomputed without repurchasing evidence.
+- [x] T3843 P0 Implement confidence-aware ranking, volatility, competitor, cannibalization, content/language/market gap, archive and SERP-feature signals.
+- [x] T3844 P0 GATE Prove cannibalization can relate pages, CPTs, term archives and post-type archives under exact query/market/language/device identity.
 
 ### 38H — Adaptive experience
-- [ ] T3845 P0 Define Search Experience Model and generic renderer primitives.
-- [ ] T3846 P0 Implement capability/state-driven Search Intelligence navigation and sections; forbid provider-name UI branching.
-- [ ] T3847 P0 Implement UNCONFIGURED/DISCOVERING/PROFILE_DRAFTED/READY/BASELINING/ACTIVE and degraded/reconciliation/drift/stale states.
-- [ ] T3848 P0 GATE Prove provider outage/quota exhaustion yields degraded-safe experience while valid cached/historical intelligence remains usable.
-- [ ] T3849 P1 Expose explainable queue, provider, budget and freshness decisions without secret/debug leakage.
+- [x] T3845 P0 Define Search Experience Model and generic renderer primitives.
+- [x] T3846 P0 Implement capability/state-driven Search Intelligence navigation and sections; forbid provider-name UI branching.
+- [x] T3847 P0 Implement UNCONFIGURED/DISCOVERING/PROFILE_DRAFTED/READY/BASELINING/ACTIVE and degraded/reconciliation/drift/stale states.
+- [x] T3848 P0 GATE Prove provider outage/quota exhaustion yields degraded-safe experience while valid cached/historical intelligence remains usable.
+- [x] T3849 P1 Expose explainable queue, provider, budget and freshness decisions without secret/debug leakage.
 
 ### 38I — Closed-loop handoff and experimentation
-- [ ] T3850 P0 Implement Search Signal -> Recommendation -> governed Content Experience proposal boundary.
-- [ ] T3851 P0 GATE Prove Search Intelligence cannot directly edit, publish or create Production authority.
-- [ ] T3852 P0 Implement post-change observation windows bound to exact content/SEO fingerprints.
-- [ ] T3853 P1 Implement experiment outcome projection with explicit confounders and no unsupported causality claim.
+- [x] T3850 P0 Implement Search Signal -> Recommendation -> governed Content Experience proposal boundary.
+- [x] T3851 P0 GATE Prove Search Intelligence cannot directly edit, publish or create Production authority.
+- [x] T3852 P0 Implement post-change observation windows bound to exact content/SEO fingerprints.
+- [x] T3853 P1 Implement experiment outcome projection with explicit confounders and no unsupported causality claim.
 
 ### 38J — Generalization, resilience and completion
-- [ ] T3854 P0 Execute conformance matrix across simple single-language, multilingual/archive-heavy, 4K+ target and partial-translation fixtures.
-- [ ] T3855 P0 Execute provider low-quota/outage/HALF_OPEN/failover/recovery and stale-cache fixtures.
-- [ ] T3856 P0 Execute new provider/new SEO adapter/new CPT/taxonomy/archive/new language/new market drift fixtures.
-- [ ] T3857 P0 Execute cross-market/language fairness and noisy-neighbor budget fixtures.
-- [ ] T3858 P0 Execute evidence tamper, provider contradiction, malformed/untrusted content and normalization-version fixtures.
-- [ ] T3859 P0 GATE Prove no vendor/business hardcode is required to add a new Search Profile/provider/site.
-- [ ] T3860 P0 GATE Emit ADAPTIVE_SEARCH_GENERALIZATION_PASS only from exact-head executable evidence; documentation-only closure is forbidden.
+- [x] T3854 P0 Execute conformance matrix across simple single-language, multilingual/archive-heavy, 4K+ target and partial-translation fixtures.
+- [x] T3855 P0 Execute provider low-quota/outage/HALF_OPEN/failover/recovery and stale-cache fixtures.
+- [x] T3856 P0 Execute new provider/new SEO adapter/new CPT/taxonomy/archive/new language/new market drift fixtures.
+- [x] T3857 P0 Execute cross-market/language fairness and noisy-neighbor budget fixtures.
+- [x] T3858 P0 Execute evidence tamper, provider contradiction, malformed/untrusted content and normalization-version fixtures.
+- [x] T3859 P0 GATE Prove no vendor/business hardcode is required to add a new Search Profile/provider/site.
+- [x] T3860 P0 GATE Emit ADAPTIVE_SEARCH_GENERALIZATION_PASS only from exact-head executable evidence; documentation-only closure is forbidden.
 
 ### 38K — Measurement semantics and identity hardening
 - [x] T3861 P0 Define ObservationContext + ComparabilityKey and prohibit ranking deltas across materially incomparable location/provider/engine/device/depth/normalization contexts.

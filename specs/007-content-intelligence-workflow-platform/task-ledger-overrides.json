@@ -476,7 +476,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
       ],
-      "reason": "Authoritative v11 Intent Registry plus explicit read-only Bootstrap\u2192Intent reconciliation planning are implemented; exact live reconciliation remains open."
+      "reason": "Authoritative v11 Intent Registry plus explicit read-only Bootstrap→Intent reconciliation planning are implemented; exact live reconciliation remains open."
     },
     "T2413": {
       "status": "PARTIAL",
@@ -485,7 +485,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
       ],
-      "reason": "Bootstrap snapshot and Bootstrap\u2192Intent planning explicitly report no mutation, no IntentClaim creation and no Artifact creation; exact-head/live proof remains open."
+      "reason": "Bootstrap snapshot and Bootstrap→Intent planning explicitly report no mutation, no IntentClaim creation and no Artifact creation; exact-head/live proof remains open."
     },
     "T1101": {
       "status": "DONE",
@@ -739,7 +739,7 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py"
       ],
-      "reason": "WP-CLI\u2194Host Runner normalized parity is proven; MCP\u2194WP-CLI parity is still open."
+      "reason": "WP-CLI↔Host Runner normalized parity is proven; MCP↔WP-CLI parity is still open."
     },
     "T1110": {
       "status": "PARTIAL",
@@ -2246,723 +2246,814 @@
       "reason": "Effective context emits deterministic reason chains and a read-only non-authorizing status projection."
     },
     "T3807": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-context.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Revisioned profiles, policy composition and provenance-bound live language resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3808": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-context.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Revisioned profiles, policy composition and provenance-bound live language resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3809": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3810": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3811": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3812": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3813": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3814": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-surfaces.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Typed object/surface identity, bounded WordPress/archive discovery and field-level SEO conflict resolution. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3815": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Purpose-specific normalized query/market/language/device compilation with 4201-target fixture. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3816": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Purpose-specific normalized query/market/language/device compilation with 4201-target fixture. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3817": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Purpose-specific normalized query/market/language/device compilation with 4201-target fixture. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3818": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable licensed observations, temporal projections and frozen target/surface recomputation across drift. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3819": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable licensed observations, temporal projections and frozen target/surface recomputation across drift. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3820": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable licensed observations, temporal projections and frozen target/surface recomputation across drift. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3821": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3822": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3823": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3824": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3825": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3826": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Provenance-scoped EVO, dynamic refresh, exact cache reuse and multidimensional aging/coverage fairness. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3827": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3828": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3829": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3830": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3831": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "One fenced account aggregate enforces hierarchy, reserve, rate/depth/concurrency, billing-cycle and pacing/burst constraints. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3832": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3833": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3834": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3835": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3836": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3837": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3838": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3839": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-work-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Registered SerpApi/DataForSEO adapters, economic routing, bounded probes, semantic operation and reconciliation-before-retry. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3840": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3841": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3842": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3843": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3844": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Immutable schema-bounded SERP normalization, licensed retention, rank semantics and confidence/cannibalization signals. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3845": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3846": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3847": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3848": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3849": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Stable capability/state-driven wp-admin sections, decisions, degraded historical views and audited operator controls. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3850": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3851": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3852": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3853": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Governed non-authorizing Content Experience proposals and exact-fingerprint observation/experiment windows. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3854": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3855": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3856": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3857": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3858": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3859": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3860": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-worker.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-budgets.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "workflow:.github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance",
+        "artifact:adaptive-search-exact-head-php-7.4",
+        "artifact:adaptive-search-exact-head-php-8.3"
       ],
-      "reason": "Executable composed fault, 4K+, multilingual/archive, provider conformance, race and generalization fixtures. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Implemented and accepted by the feature-owned exact-head Adaptive Search conformance workflow: 40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof. Live provider account/site certification remains separate and is not claimed."
     },
     "T3871": {
       "status": "PARTIAL",

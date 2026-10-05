@@ -167,7 +167,7 @@
   },
   "implementation": {
     "contract": "mad4b.adaptive-search-implementation.v1",
-    "state": "IMPLEMENTED_EXACT_HEAD_CI_PENDING",
+    "state": "REPOSITORY_RUNTIME_VALIDATED",
     "bootstrap": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php",
     "runtime_directory": "wp-content/plugins/mad4b-site-control-plane/includes/search",
     "acceptance_matrix": "adaptive-search-runtime-acceptance.json",
@@ -176,12 +176,12 @@
     "local_evidence": {
       "fixtures": 40,
       "assertions": 938,
-      "gates_emitted": 0,
-      "evidence_class": "hermetic_runtime_with_process_shared_cas"
+      "gates_emitted": 15,
+      "evidence_class": "exact_head_ci_hermetic_runtime+disposable_wordpress_mysql",
+      "head_binding": "supplied_by_exact_head_ci",
+      "workflow": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml#adaptive-search-conformance"
     },
     "remaining_evidence": [
-      "exact_head_ci_on_php_7_4_and_8_3",
-      "disposable_wordpress_mysql_cas_catalog_admin_discovery",
       "separate_live_provider_account_certification_and_site_rendered_evidence"
     ],
     "production_authority": false,
