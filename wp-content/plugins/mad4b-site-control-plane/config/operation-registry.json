@@ -184,7 +184,8 @@
       "required_runtime": false,
       "side_effect_class": "external_cost",
       "retry_semantics": "reconciliation_first",
-      "production_policy": "deny"
+      "production_policy": "deny",
+      "pipeline_profile": "governed_mutation_v1"
     }
   ],
   "aliases": {
