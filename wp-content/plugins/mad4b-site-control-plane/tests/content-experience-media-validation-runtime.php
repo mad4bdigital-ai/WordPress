@@ -15,6 +15,7 @@ class WP_Error {
  function get_error_code() { return $this->code; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
+require $repo . '/wp-includes/compat.php';
 require $repo . '/wp-includes/formatting.php';
 require $repo . '/wp-includes/kses.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-content-experience-profiles.php';
