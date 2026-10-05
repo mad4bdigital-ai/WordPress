@@ -133,7 +133,7 @@ No class grants authority. Production, Breakglass, host execution and public pub
 | Governed Tool Execution / CLI / Recovery Runner | LIVE_PRECONDITION | semantic operations, exact executor, no generic shell, terminal-independent Runner bootstrap/enrollment, recovery independence |
 | Cron semantic provider | MATURITY_REQUIRED | read/health/run then governed schedule/unschedule |
 | Provider backlog | MATURITY_REQUIRED | WP Import/Export, JetSmartFilters, SEO providers via same certification contracts |
-| Adaptive Search Intelligence Fabric | MATURITY_REQUIRED | Phase 38 meta-model/context/surface/target/decision/budget/provider/evidence/experience conformance; explicitly non-authorizing |
+| Adaptive Search Intelligence Fabric | REPOSITORY_RUNTIME_VALIDATED | Phase 38 is 80/80 DONE at repository-runtime scope; explicitly non-authorizing; live provider/account certification remains NOT_CLAIMED |
 | Growth loop | DEFERRED_MATURITY | performance/index/decay/cannibalization/refresh observations |
 | Fair scheduling/local autonomy/localization/a11y/link graph | DEFERRED_MATURITY | quality and isolation evidence |
 | Eval ops/alerts/experiments/usage ledger | DEFERRED_MATURITY | governed operational/economic evidence |
@@ -200,7 +200,7 @@ This closes the repository-side alternative to manual hosting-terminal deploymen
 
 ## Phase 38 maturity extension — Adaptive Search Intelligence
 
-Phase 38 is now an explicit MATURITY_REQUIRED extension documented by `adaptive-search-intelligence.md`, `contracts/adaptive-search-intelligence-runtime.md` and `adaptive-search-intelligence.json`. It generalizes the Phase 6 SERPProvider and Phase 14 Growth concepts into an adaptive, provider-neutral Search Intelligence runtime with live surface/language/SEO discovery, target compilation, fair economic scheduling, immutable SERP evidence, confidence-aware signals and a capability/state-driven operator experience.
+Phase 38 is repository-runtime validated and documented by `adaptive-search-intelligence.md`, `contracts/adaptive-search-intelligence-runtime.md` and `adaptive-search-intelligence.json`. It generalizes the Phase 6 SERPProvider and Phase 14 Growth concepts into an adaptive, provider-neutral Search Intelligence runtime with live surface/language/SEO discovery, target compilation, fair economic scheduling, immutable SERP evidence, confidence-aware signals and a capability/state-driven operator experience.
 
 This extension is deliberately outside the current Critical Kernel terminal proof unless a concrete runtime dependency is later admitted through the normal Architecture Freeze process. It creates no Production authority, no Breakglass widening, no generic HTTP surface and no direct search-signal-to-content mutation path.
 
