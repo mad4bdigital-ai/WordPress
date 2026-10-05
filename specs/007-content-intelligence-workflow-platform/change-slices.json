@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 320,
+  "changed_file_count": 321,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -369,6 +369,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/catalog-transport-failures.mjs",
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-dynamic-tool-projection-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/projection-hotset-abilities.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py",
@@ -462,6 +463,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "ec9240964d19565b6b2924dcde3e66822807669c3bd8bd203cf88a00d9349eff",
+  "changed_paths_sha256": "acda2aef0fa809b48754783b390dd9b1a61d12aa9aff670a540c68d0215b9f32",
   "changed_paths_sha256_mode": "sha256_sorted_exact_changed_paths_newline_terminated"
 }
