@@ -540,8 +540,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'write_catalog_runtime_rebuild',
 		);
 
+		$diagnostic_elapsed_ms = max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) );
 		$request_metrics = self::request_metrics();
-		$performance_observation = self::performance_observation( $request_metrics, $budget_ms, $runtime_generation );
+		$performance_observation = self::performance_observation( $request_metrics, $budget_ms, $runtime_generation, $diagnostic_elapsed_ms );
 		$report = array(
 			'contract' => 'mad4b.session-safe-diagnostics.v1',
 			'state' => $partial ? 'partial' : ( $valid_for_session_evidence_merge ? 'ready' : 'subject_not_ready' ),
@@ -563,7 +564,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'subject_live_validation_deferred' => array( 'skills_runtime' ),
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
-			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
+			'elapsed_ms' => $diagnostic_elapsed_ms,
 			'budget_ms' => $budget_ms,
 			'request_metrics' => $request_metrics,
 			'performance_observation' => $performance_observation,
@@ -840,7 +841,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'performance_observation' => isset( $report['performance_observation'] ) && is_array( $report['performance_observation'] ) ? array(
 				'contract' => isset( $report['performance_observation']['contract'] ) ? (string) $report['performance_observation']['contract'] : '',
 				'classification' => isset( $report['performance_observation']['classification'] ) ? (string) $report['performance_observation']['classification'] : '',
-				'request_budget_ratio' => isset( $report['performance_observation']['request_budget_ratio'] ) ? (float) $report['performance_observation']['request_budget_ratio'] : 0,
+				'diagnostic_budget_ratio' => isset( $report['performance_observation']['diagnostic_budget_ratio'] ) ? (float) $report['performance_observation']['diagnostic_budget_ratio'] : 0,
 				'comparison_required' => ! empty( $report['performance_observation']['comparison_required'] ),
 				'comparison_baseline_scope' => isset( $report['performance_observation']['comparison_baseline_scope'] ) ? (string) $report['performance_observation']['comparison_baseline_scope'] : '',
 				'client_action' => isset( $report['performance_observation']['client_action'] ) ? (string) $report['performance_observation']['client_action'] : '',
@@ -1485,18 +1486,21 @@ final class MAD4B_SCP_Read_Consistency {
 		);
 	}
 
-	private static function performance_observation( array $metrics, $budget_ms, $runtime_generation ) {
+	private static function performance_observation( array $metrics, $budget_ms, $runtime_generation, $diagnostic_elapsed_ms ) {
 		$budget_ms = max( 1, (int) $budget_ms );
+		$diagnostic_elapsed_ms = max( 0, (int) $diagnostic_elapsed_ms );
 		$request_elapsed_ms = isset( $metrics['request_elapsed_ms'] ) ? max( 0, (int) $metrics['request_elapsed_ms'] ) : 0;
-		$headroom_ms = max( 0, $budget_ms - $request_elapsed_ms );
-		$budget_ratio = $budget_ms > 0 ? min( 10, round( $request_elapsed_ms / $budget_ms, 4 ) ) : 0;
+		$headroom_ms = max( 0, $budget_ms - $diagnostic_elapsed_ms );
+		$budget_ratio = $budget_ms > 0 ? min( 10, round( $diagnostic_elapsed_ms / $budget_ms, 4 ) ) : 0;
 		return array(
 			'contract' => 'mad4b.session-safe-performance-observation.v1',
-			'classification' => $request_elapsed_ms > $budget_ms ? 'request_budget_exceeded' : 'observed_within_request_budget',
-			'request_budget_ms' => $budget_ms,
+			'classification' => $diagnostic_elapsed_ms > $budget_ms ? 'diagnostic_budget_exceeded' : 'observed_within_diagnostic_budget',
+			'diagnostic_budget_ms' => $budget_ms,
+			'diagnostic_elapsed_ms' => $diagnostic_elapsed_ms,
+			'diagnostic_budget_headroom_ms' => $headroom_ms,
+			'diagnostic_budget_ratio' => $budget_ratio,
 			'request_elapsed_ms' => $request_elapsed_ms,
-			'request_budget_headroom_ms' => $headroom_ms,
-			'request_budget_ratio' => $budget_ratio,
+			'request_overhead_ms' => max( 0, $request_elapsed_ms - $diagnostic_elapsed_ms ),
 			'db_query_count' => isset( $metrics['db_query_count'] ) ? max( 0, (int) $metrics['db_query_count'] ) : 0,
 			'included_file_count' => isset( $metrics['included_file_count'] ) ? max( 0, (int) $metrics['included_file_count'] ) : 0,
 			'memory_usage_bytes' => isset( $metrics['memory_usage_bytes'] ) ? max( 0, (int) $metrics['memory_usage_bytes'] ) : 0,
