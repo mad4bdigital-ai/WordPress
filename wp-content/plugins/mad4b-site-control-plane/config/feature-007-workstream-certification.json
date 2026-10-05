@@ -1,0 +1,373 @@
+{
+  "contract": "mad4b.feature007-workstream-certification-policy.v1",
+  "policy_version": 1,
+  "rules": {
+    "exact_candidate_identity_required": true,
+    "caller_live_evidence_accepted": false,
+    "repository_structure_is_not_live_certification": true,
+    "unknown_live_evidence_fails_closed": true,
+    "production_ready_implied": false,
+    "production_authorized_implied": false
+  },
+  "workstreams": [
+    {
+      "id": "governed_tool_execution",
+      "gate": "recovery_tooling_available",
+      "repository_paths": [
+        "includes/class-mad4b-scp-host-bridge.php",
+        "tests/host-bridge-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_host_runner_bootstrap",
+          "live_executor_authority_parity",
+          "live_reversible_write"
+        ]
+      }
+    },
+    {
+      "id": "protected_backup_recovery",
+      "gate": "protected_backup_recovery_ready",
+      "repository_paths": [
+        "tests/host-runner-kernel-contract.py"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_protected_backup_root",
+          "live_backup_receipt",
+          "live_restore_rehearsal"
+        ]
+      }
+    },
+    {
+      "id": "recovery_live_drill",
+      "gate": "recovery_live_verified",
+      "repository_paths": [
+        "tests/host-runner-kernel-contract.py"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_out_of_band_recovery_drill",
+          "exact_runtime_identity_binding"
+        ]
+      }
+    },
+    {
+      "id": "provider_side_channel",
+      "gate": "provider_side_channel_safe",
+      "repository_paths": [
+        "includes/class-mad4b-scp-mcp-provider-isolation.php",
+        "tests/mcp-side-channel-governance-contract.py"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": "provider_side_channel_inventory",
+        "additional_requirements": []
+      }
+    },
+    {
+      "id": "capability_traits",
+      "gate": "capability_traits_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-capability-traits.php",
+        "includes/class-mad4b-scp-provider-execution-binding.php",
+        "tests/provider-execution-binding-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "trusted_runtime_limits_measured",
+          "live_provider_trait_evidence"
+        ]
+      }
+    },
+    {
+      "id": "multi_authority_live",
+      "gate": "multi_authority_live",
+      "repository_paths": [
+        "includes/class-mad4b-scp-multi-authority-registry.php",
+        "tests/multi-authority-registry-contract.py"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": "multi_authority_canary",
+        "additional_requirements": []
+      }
+    },
+    {
+      "id": "policy_engine",
+      "gate": "policy_engine_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-policy-resolution.php",
+        "tests/policy-resolution-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": "policy_resolution_canary",
+        "additional_requirements": [
+          "live_plan_policy_binding"
+        ]
+      }
+    },
+    {
+      "id": "site_bootstrap",
+      "gate": "site_bootstrap_reconciled",
+      "repository_paths": [
+        "includes/class-mad4b-scp-site-bootstrap.php",
+        "tests/site-bootstrap-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_bootstrap_inventory",
+          "live_governed_intent_reconcile"
+        ]
+      }
+    },
+    {
+      "id": "intent_registry",
+      "gate": "intent_registry_reconciled",
+      "repository_paths": [
+        "includes/class-mad4b-scp-intent-registry.php",
+        "tests/intent-registry-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_intent_resolution_matrix"
+        ]
+      }
+    },
+    {
+      "id": "content_job_domain",
+      "gate": "content_job_domain_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-content-jobs.php",
+        "tests/content-job-domain-contract.py"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "exact_deployed_candidate_readback"
+        ]
+      }
+    },
+    {
+      "id": "artifact_registry_store",
+      "gate": "artifact_lineage_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-artifacts.php",
+        "tests/artifact-registry-runtime.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "exact_deployed_lineage_readback"
+        ]
+      }
+    },
+    {
+      "id": "context_writer",
+      "gate": "context_writer_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-context-pack.php",
+        "tests/context-pack-runtime.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_context_authority_dispatch",
+          "live_writer_profile_binding"
+        ]
+      }
+    },
+    {
+      "id": "research_competitive",
+      "gate": "research_intelligence_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-research-intelligence.php",
+        "includes/class-mad4b-scp-provider-execution-binding.php",
+        "tests/research-provider-plan-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_certified_research_provider",
+          "live_timeout_rate_limit_budget_retry"
+        ]
+      }
+    },
+    {
+      "id": "blueprint_draft_qa",
+      "gate": "blueprint_draft_qa_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "tests/content-intelligence-pipeline-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_model_provider_lineage",
+          "live_writer_profile_staleness"
+        ]
+      }
+    },
+    {
+      "id": "governed_wp_draft",
+      "gate": "governed_wp_draft_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-governed-draft.php",
+        "tests/governed-draft-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_governed_draft_write",
+          "live_draft_audit_readback"
+        ]
+      }
+    },
+    {
+      "id": "semantic_publication_verification",
+      "gate": "semantic_publication_verification_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-publication-verification.php",
+        "tests/publication-verification-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_origin_public_edge_observation",
+          "live_semantic_dimension_proof",
+          "live_propagation_timeout_proof"
+        ]
+      }
+    },
+    {
+      "id": "authoritative_consistency_fencing",
+      "gate": "authoritative_execution_verified",
+      "repository_paths": [
+        "includes/class-mad4b-scp-execution-commit-guard.php",
+        "includes/class-mad4b-scp-execution-fence.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "ordered_callback_revision_reconciliation_fixture",
+          "live_consistency_fault_canaries"
+        ]
+      }
+    },
+    {
+      "id": "security_ai_eval_faults",
+      "gate": "kernel_quality_verified",
+      "repository_paths": [
+        "tests/security-ai-eval-faults-contract.py",
+        "includes/class-mad4b-scp-data-governance-registry.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": "security_fault_canary",
+        "additional_requirements": [
+          "ai_provider_model_eval_fixture"
+        ]
+      }
+    },
+    {
+      "id": "operator_doctor_dlq",
+      "gate": "operator_recovery_review_ready",
+      "repository_paths": [
+        "tests/operator-doctor-runtime.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": "operator_doctor",
+        "additional_requirements": []
+      }
+    },
+    {
+      "id": "provider_resolver_rings_dynamic_cert",
+      "gate": "provider_resolver_dynamic_cert_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-capability-traits.php",
+        "includes/class-mad4b-scp-provider-execution-binding.php",
+        "tests/provider-execution-binding-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_release_ring_promotion_rollback"
+        ]
+      }
+    },
+    {
+      "id": "rights_ai_data",
+      "gate": "rights_ai_data_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-data-governance.php",
+        "includes/class-mad4b-scp-data-governance-registry.php",
+        "tests/data-governance-registry-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_fallback_policy_equivalence",
+          "data_subject_tenant_retention_proof"
+        ]
+      }
+    },
+    {
+      "id": "cron_provider_backlog",
+      "gate": "scheduler_backlog_semantics_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-scheduler-admission.php",
+        "includes/class-mad4b-scp-scheduler-backlog.php",
+        "tests/scheduler-backlog-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "live_scheduler_adapter_binding",
+          "live_noisy_neighbor_load"
+        ]
+      }
+    },
+    {
+      "id": "decommission_portability",
+      "gate": "decommission_portability_ready",
+      "repository_paths": [
+        "includes/class-mad4b-scp-decommission-portability.php",
+        "includes/class-mad4b-scp-decommission-governance.php",
+        "tests/decommission-governance-contract.php"
+      ],
+      "live_evidence": {
+        "required": true,
+        "production_certification_stage": null,
+        "additional_requirements": [
+          "governed_import_execution_protocol",
+          "live_decommission_rehearsal"
+        ]
+      }
+    }
+  ]
+}
