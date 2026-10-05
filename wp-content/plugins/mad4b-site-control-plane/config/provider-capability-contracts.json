@@ -701,6 +701,126 @@
           }
         }
       }
+    },
+    "elementor": {
+      "adapter_id": "elementor",
+      "capabilities": {
+        "document.read": {
+          "risk": "read",
+          "abilities": [
+            "elementor/status",
+            "elementor/get-document",
+            "elementor/list-widgets",
+            "elementor/get-dynamic-tags",
+            "elementor/validate-document",
+            "elementor/compare-documents"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "Elementor\\Plugin"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "widget_settings.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "elementor/update-widget-settings"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.elementor-widget-settings.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "Elementor\\Plugin"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_readback_and_rollback_required"
+          }
+        },
+        "document_structure.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "elementor/clone-subtree",
+            "elementor/move-element",
+            "elementor/delete-element",
+            "elementor/set-dynamic-tag",
+            "elementor/set-etg-dynamic-tag"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.elementor-structural-document.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "Elementor\\Plugin"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_canary_and_owner_promotion_required"
+          }
+        }
+      }
     }
   }
 }
