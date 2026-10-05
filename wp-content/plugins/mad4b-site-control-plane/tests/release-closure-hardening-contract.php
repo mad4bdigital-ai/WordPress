@@ -17,7 +17,7 @@ function mad4b_release_counts( array $rows ) {
 	return $out;
 }
 function mad4b_release_count_equal( array $expected, array $actual, $label ) {
-	foreach ( array( 'total', 'DONE', 'PARTIAL', 'EXTERNAL_PENDING', 'OPEN', 'DEFERRED' ) as $key ) mad4b_release_assert( (int) $expected[ $key ] === (int) $actual[ $key ], $label . ':' . $key );
+	foreach ( array( 'total', 'DONE', 'PARTIAL', 'EXTERNAL_PENDING', 'OPEN', 'DEFERRED' ) as $key ) mad4b_release_assert( (int) ( isset( $expected[ $key ] ) ? $expected[ $key ] : 0 ) === (int) ( isset( $actual[ $key ] ) ? $actual[ $key ] : 0 ), $label . ':' . $key );
 }
 
 $feature = mad4b_release_json( $repo . '/specs/007-content-intelligence-workflow-platform/feature.json' );
