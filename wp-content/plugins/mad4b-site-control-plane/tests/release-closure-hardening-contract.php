@@ -108,6 +108,20 @@ mad4b_release_count_equal( $projection['profiles']['control_plane_core_optional_
 mad4b_release_count_equal( $projection['profiles']['full_feature007_blocking']['counts'], mad4b_release_counts( $blocking ), 'full feature' );
 mad4b_release_count_equal( $projection['profiles']['long_term_maturity']['counts'], mad4b_release_counts( $maturity ), 'maturity' );
 
+$critical_kernel = file_get_contents( $repo . '/.github/workflows/feature-007-critical-kernel.yml' );
+foreach ( array(
+	'Verify Feature 007 closure foundations and workstream certification',
+	'provider-execution-binding-contract.php',
+	'governed-provider-plan-contract.php',
+	'provider-callback-order-contract.php',
+	'data-governance-registry-contract.php',
+	'scheduler-backlog-contract.php',
+	'decommission-governance-contract.php',
+	'workstream-certification-contract.php',
+) as $required_ci_marker ) {
+	mad4b_release_assert( false !== strpos( $critical_kernel, $required_ci_marker ), 'critical kernel closure suite marker missing: ' . $required_ci_marker );
+}
+
 $golden = file_get_contents( $repo . '/wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md' );
 foreach ( array( 'Define', 'Register', 'Certify', 'Plan', 'Execute', 'Evidence', 'Reconcile' ) as $stage ) mad4b_release_assert( false !== strpos( $golden, $stage ), 'golden stage ' . $stage );
 
