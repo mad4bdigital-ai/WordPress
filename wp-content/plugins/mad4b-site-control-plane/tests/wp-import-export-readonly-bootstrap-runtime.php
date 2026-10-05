@@ -4,12 +4,15 @@ define( 'ABSPATH', __DIR__ . '/' );
 $case = $argv[1] ?? '';
 if ( '' === $case ) {
  foreach ( array( 'drift', 'baseline', 'missing', 'escaped', 'foreign', 'oversized_model', 'oversized_plugin' ) as $scenario ) {
-  passthru( escapeshellarg( PHP_BINARY ) . ' -n ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $scenario ), $exit );
+  // A fresh process isolates class state; retain required ini-loaded extensions
+  // (JSON is a shared module on some supported PHP 7.4 installations).
+  passthru( escapeshellarg( PHP_BINARY ) . ' -d auto_prepend_file= -d auto_append_file= ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $scenario ), $exit );
   if ( $exit ) exit( $exit );
  }
  echo "mad4b.wp-import-export-readonly-bootstrap.runtime.v2: PASS\n"; exit;
 }
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
+check( function_exists( 'json_encode' ) && function_exists( 'hash_file' ), 'Required WordPress JSON/hash extensions are unavailable' );
 $root = sys_get_temp_dir() . '/mad4b-import-' . bin2hex( random_bytes( 8 ) );
 define( 'WP_PLUGIN_DIR', $root . '/plugins' );
 $plugin = WP_PLUGIN_DIR . '/wp-all-import-pro';
