@@ -108,14 +108,14 @@ foreach(array('mad4b_bounded_loader','query_monitor_exact_copy','query_monitor_s
 	$admitted=MAD4B_SCP_Abuse_Budget::admit('discovery',array('query'=>'site profile'));
 	$check(is_array($admitted)&&isset($admitted['rate']['count'])&&!empty($admitted['rate']['count']),'trusted observer broke Abuse Budget discovery admission: '.$trusted_ownership);
 }
-$check(3===array_sum($GLOBALS['wpdb']->counts),'trusted observer discovery did not commit exactly three rate buckets', $GLOBALS['wpdb']->counts);
+$check(3===array_sum($GLOBALS['wpdb']->counts),'trusted observer discovery did not commit exactly three rate buckets');
 
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status['dropin_ownership']='query_monitor_native_dropin';
 $legacy_marker=MAD4B_SCP_Database_Topology::assert_write_ready(true);
 $check('mad4b_database_topology_not_write_safe'===$code($legacy_marker),'marker-only legacy Query Monitor drop-in escaped exact ownership certification');
 $abuse_blocked=MAD4B_SCP_Abuse_Budget::admit('discovery',array('query'=>'site profile'));
 $check('mad4b_abuse_rate_storage_unavailable'===$code($abuse_blocked),'untrusted db.php did not fail closed at the live Abuse Budget symptom boundary');
-$check(3===array_sum($GLOBALS['wpdb']->counts),'untrusted db.php mutated the rate bucket after topology denial', $GLOBALS['wpdb']->counts);
+$check(3===array_sum($GLOBALS['wpdb']->counts),'untrusted db.php mutated the rate bucket after topology denial');
 
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status=array(
 	'dropin_exists'=>false,
