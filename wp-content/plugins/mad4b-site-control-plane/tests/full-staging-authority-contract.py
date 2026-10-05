@@ -166,6 +166,10 @@ for marker in (
     "$operational = self::operational_readiness( $write_ready, $normal_ready, $breakglass_ready, $write_blockers, $developer_execution );",
     "'ready_to_apply_semantics' => 'authority_convergence_only'",
     "'operational_ready' => ! empty( $operational['ready'] )",
+    "'lane_readiness' => isset( $operational['lane_readiness'] ) ? $operational['lane_readiness'] : array()",
+    "'available_lanes' => isset( $operational['available_lanes'] ) ? $operational['available_lanes'] : array()",
+    "'blocked_lanes' => isset( $operational['blocked_lanes'] ) ? $operational['blocked_lanes'] : array()",
+    "'degraded_mode' => ! empty( $operational['degraded_mode'] )",
 ):
     assert marker in handshake_body, marker
 assert "public static function chatgpt_step_up_tools()" in full
@@ -205,6 +209,8 @@ for marker in (
     "'ready_semantics' => 'authority_ready_legacy_compatibility'",
     "'authority_ready' => $authority_ready",
     "'operational_ready' => ! empty( $operational['ready'] )",
+    "'lane_readiness' => isset( $operational['lane_readiness'] ) ? $operational['lane_readiness'] : array()",
+    "'degraded_mode' => ! empty( $operational['degraded_mode'] )",
 ):
     assert marker in status_body, marker
 
@@ -216,6 +222,14 @@ for marker in (
     "'developer_execution_not_ready'",
     "'resolve_developer_host_execution_prerequisites'",
     "'converge_authority_before_operational_use'",
+    "'lane_readiness' => $lane_readiness",
+    "'available_lanes' => $available_lanes",
+    "'blocked_lanes' => $blocked_lanes",
+    "'degraded_mode' => $degraded_mode",
+    "'degraded_mode_semantics' => 'unavailable_lanes_fail_closed_available_lanes_remain_usable'",
+    "'governed_write' => (bool) $write_ready",
+    "'developer' => (bool) $normal_ready && $developer_execution_ready",
+    "'developer_breakglass' => (bool) $breakglass_ready && $developer_execution_ready",
     "'authorizing' => false",
     "'mutation_performed' => false",
 ):
