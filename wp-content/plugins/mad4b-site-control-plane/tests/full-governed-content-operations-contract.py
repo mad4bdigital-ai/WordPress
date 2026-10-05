@@ -14,13 +14,14 @@ semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
 experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
 experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
+experience_media_rights = root / "includes" / "class-mad4b-scp-content-experience-media-rights.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
 descriptor = root / "includes" / "class-mad4b-scp-capability-descriptor-registry.php"
 experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_media, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_media, experience_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -34,6 +35,7 @@ semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
 experience_governance_src = experience_governance.read_text(encoding="utf-8")
 experience_media_src = experience_media.read_text(encoding="utf-8")
+experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
 descriptor_src = descriptor.read_text(encoding="utf-8")
 experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
@@ -193,6 +195,10 @@ for token in (
     "link_url",
     "link_target",
     "licenses",
+    "publish_rights_policy",
+    "expiry_required_licenses",
+    "effective_meta_state",
+    "effective_state_sha256",
 ):
     assert token in experience_media_src, f"content experience media contract missing: {token}"
 
@@ -222,6 +228,9 @@ for token in (
     "mad4b_content_experience_locked_plan_drift",
     "featured_media_read_denied",
     "parent_read_denied",
+    "effective_media_state_sha256",
+    "media_publish_rights",
+    "MAD4B_SCP_Content_Experience_Media_Rights::publish_guard",
     "authority_match",
     "mad4b_content_experience_helper_restore_contract_drift",
 ):
@@ -248,6 +257,23 @@ assert "$wpdb" not in experience_media_src
 assert "database-raw-query" not in experience_media_src
 assert "BREAKGLASS" not in experience_media_src.upper()
 assert len(experience_media_src.splitlines()) <= 500, "content-experience-media exceeds the focused 500-line domain-service budget"
+
+for token in (
+    "mad4b.content-experience-media-publish-rights.v1",
+    "publish_guard",
+    "mad4b_content_experience_media_rights_usage_required",
+    "mad4b_content_experience_media_rights_license_required",
+    "mad4b_content_experience_media_rights_expiry_required",
+    "mad4b_content_experience_media_rights_expired",
+    "checked_item_count",
+    "nearest_expiry",
+):
+    assert token in experience_media_rights_src, f"content-experience media rights contract missing: {token}"
+assert "$wpdb" not in experience_media_rights_src
+assert "database-raw-query" not in experience_media_rights_src
+assert "BREAKGLASS" not in experience_media_rights_src.upper()
+assert len(experience_media_rights_src.splitlines()) <= 180, "content-experience-media-rights exceeds the focused 180-line domain-service budget"
+assert "class-mad4b-scp-content-experience-media-rights.php" in plugin_src
 assert len(media_src.splitlines()) <= 550, "media adapter exceeds the focused 550-line adapter budget"
 
 for src, label in (
