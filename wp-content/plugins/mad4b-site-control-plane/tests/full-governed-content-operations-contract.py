@@ -178,6 +178,21 @@ for token in (
     "csv_ids",
     "image_gallery_usage",
     "attachment_gallery_usage",
+    "alt_override",
+    "caption_override",
+    "title_override",
+    "description_override",
+    "credit",
+    "copyright",
+    "license",
+    "license_expires_on",
+    "source_url",
+    "focal_point",
+    "aria_label",
+    "decorative",
+    "link_url",
+    "link_target",
+    "licenses",
 ):
     assert token in experience_media_src, f"content experience media contract missing: {token}"
 
@@ -217,14 +232,23 @@ for token in (
     "mad4b_content_experience_media_gallery_duplicate",
     "mad4b_content_experience_media_image_required",
     "mad4b_content_experience_media_attachment_missing",
+    "mad4b_content_experience_media_usage_license_denied",
+    "mad4b_content_experience_media_usage_decorative_alt_conflict",
+    "mad4b_content_experience_media_usage_decorative_aria_conflict",
+    "mad4b_content_experience_media_usage_link_target_without_url",
+    "mad4b_content_experience_media_usage_date_invalid",
     "MAX_META_VALUE_BYTES",
     "normalize_meta_value",
+    "validate_usage_bindings",
+    "verify_post_meta",
     "value_within_budget",
 ):
     assert token in experience_media_src, f"content-experience media contract missing: {token}"
 assert "$wpdb" not in experience_media_src
 assert "database-raw-query" not in experience_media_src
 assert "BREAKGLASS" not in experience_media_src.upper()
+assert len(experience_media_src.splitlines()) <= 500, "content-experience-media exceeds the focused 500-line domain-service budget"
+assert len(media_src.splitlines()) <= 550, "media adapter exceeds the focused 550-line adapter budget"
 
 for src, label in (
     (experience_src, "experience-registry"),
