@@ -454,7 +454,6 @@ final class MAD4B_SCP_Self_Update {
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
-			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) ) {
 			$blockers[] = 'write_authority_runtime_unavailable';
 		} else {
