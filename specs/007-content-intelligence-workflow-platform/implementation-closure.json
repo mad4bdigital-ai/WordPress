@@ -346,11 +346,15 @@
           "max_runtime_seconds",
           "max_payload_bytes"
         ],
-        "catalog_trait_conformance_test": "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+        "catalog_trait_conformance_test": "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
+        "generic_provider_execution_binding": "mad4b.provider-execution-binding.v1",
+        "provider_execution_binding_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-execution-binding.php",
+        "provider_execution_binding_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/provider-execution-binding-contract.php",
+        "non_workflow_plan_family_binding_available": true,
+        "exact_profile_certification_descriptor_generation_bound": true
       },
       "remainder": [
         "measure and bind max_runtime_seconds/max_payload_bytes from trusted provider/runtime evidence instead of unknown placeholders",
-        "extend selected CapabilityProfile fingerprint binding to non-workflow provider plan families as they are admitted",
         "prove exact live provider trait evidence before eligibility on ETG Staging"
       ]
     },
@@ -959,10 +963,15 @@
         "explicit_preferred_provider_contract": true,
         "raw_ambiguity_reported": true,
         "ineligible_preference_no_fallback": true,
-        "implicit_tie_breaking": false
+        "implicit_tie_breaking": false,
+        "generic_provider_execution_binding": "mad4b.provider-execution-binding.v1",
+        "generic_plan_family_binding_available": true,
+        "provider_profile_fingerprint_revalidated_before_execution": true,
+        "certification_fingerprint_revalidated_before_execution": true,
+        "descriptor_generation_revalidated_before_execution": true,
+        "research_provider_plan_generic_binding_integrated": true
       },
       "remainder": [
-        "extend the same profile/certification fingerprint binding to every future governed provider execution plan family, not only workflow-plan",
         "prove shadow→canary→active promotion and rollback against exact ETG Staging provider identities"
       ]
     },
@@ -1010,13 +1019,21 @@
         "research_plan_decision_fingerprint_bound": true,
         "research_plan_rights_fingerprint_bound": true,
         "research_plan_processor_fingerprint_bound": true,
-        "research_plan_provider_execution_performed": false
+        "research_plan_provider_execution_performed": false,
+        "registry_contract": "mad4b.data-governance-registry.v1",
+        "registry_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance-registry.php",
+        "registry_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-registry-contract.php",
+        "durable_rights_record_artifact": true,
+        "durable_data_processing_profile_artifact": true,
+        "provider_execution_binding_in_processing_profile": true,
+        "registry_bound_data_governance_decision": true,
+        "rights_takedown_lineage_invalidation": true,
+        "public_content_delete_performed_by_takedown": false
       },
       "remainder": [
-        "bind durable RightsRecord and provider processing profile registries to exact source/provider identities rather than decision snapshots alone",
         "extend the same data-governance decision consumption to future AI/model execution plan families before any external call",
         "prove live ETG provider/model fallback independently satisfies the same or stricter policy",
-        "exercise takedown/deletion propagation and data-subject/tenant retention obligations where applicable"
+        "exercise data-subject/tenant retention obligations where applicable"
       ]
     },
     {
@@ -1050,10 +1067,19 @@
         "weighted_aging_ranker": true,
         "anti_starvation": true,
         "fair_rank_authority_bypass": false,
-        "fair_rank_quota_bypass": false
+        "fair_rank_quota_bypass": false,
+        "backlog_contract": "mad4b.scheduler-backlog.v1",
+        "backlog_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php",
+        "backlog_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php",
+        "durable_multi_worker_leases": true,
+        "monotonic_lease_generation_fencing": true,
+        "late_worker_reconciliation_required": true,
+        "adapter_desired_expected_state_binding": true,
+        "budget_fingerprint_binding": true,
+        "authority_fingerprint_binding": true,
+        "scheduler_backlog_dispatch_performed": false
       },
       "remainder": [
-        "implement durable multi-worker provider-neutral queue ownership/leases around the read-only admission/ranking model",
         "bind actual WordPress/Host/external cron adapters to exact desired/expected state and budgets",
         "prove noisy-neighbor, anti-starvation and provider-backlog behavior under disposable/live ETG load"
       ]
@@ -1093,11 +1119,20 @@
         "missing_external_ref_validation": true,
         "forbidden_authority_material_fail_closed": true,
         "export_build_mutation_performed": false,
-        "import_validation_mutation_performed": false
+        "import_validation_mutation_performed": false,
+        "governance_contract": "mad4b.decommission-governance.v1",
+        "governance_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-governance.php",
+        "governance_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/decommission-governance-contract.php",
+        "commit_time_quiesce_kill_switch": true,
+        "caller_inventory_authoritative": false,
+        "unknown_inventory_dimensions_fail_closed": true,
+        "safe_drain_allowlist": true,
+        "resume_requires_fresh_governed_plan": true,
+        "finalization_requires_external_revocation_and_export_receipts": true
       },
       "remainder": [
-        "bind export-bundle builder to live governed provider/site inventory readers instead of caller-supplied snapshots",
-        "implement governed quiesce/drain/revoke/remove and actual import actions behind explicit authority and rollback/recovery policy",
+        "bind export-bundle builder payload sections to certified live governed provider/site inventory producers instead of caller-supplied snapshots",
+        "implement certified revoke/remove adapters and governed import execution protocol behind explicit authority and rollback/recovery policy",
         "prove complete ETG Staging provider/site decommission rehearsal including late callbacks and central registry cleanup"
       ]
     }
