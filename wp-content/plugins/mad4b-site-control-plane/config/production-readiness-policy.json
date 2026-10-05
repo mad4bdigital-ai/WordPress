@@ -156,6 +156,11 @@
     "external_edge_challenge_never_counts_as_acceptance": true,
     "live_evidence_cannot_be_closed_by_repository_change": true,
     "new_capability_families_require_separate_pr": true,
-    "authorizing": false
+    "authorizing": false,
+    "performance_validation_contract": "mad4b.feature007-performance-validation.v1",
+    "live_etg_performance_evidence_required": true,
+    "repository_performance_evidence_cannot_substitute_live_etg": true,
+    "reviewability_contract": "mad4b.feature007-reviewability.v1",
+    "max_change_slice_files": 35
   }
 }
