@@ -99,6 +99,11 @@ try {
 	$check( ! is_wp_error( $image_one ) && ! is_wp_error( $image_two ) && ! is_wp_error( $brochure ), 'Unable to create media fixtures.' );
 	$image_one = (int) $image_one; $image_two = (int) $image_two; $brochure = (int) $brochure;
 	$post_ids[] = $image_one; $post_ids[] = $image_two; $post_ids[] = $brochure;
+	// WordPress image-type checks require a real attachment-file binding, not
+	// only an image/* MIME value. Keep the disposable fixture file-less on disk,
+	// but model Media Library identity through the canonical attachment API.
+	$check( update_attached_file( $image_one, 'ci-trip-main.jpg' ), 'Unable to bind main image attachment file identity.' );
+	$check( update_attached_file( $image_two, 'ci-trip-gallery.jpg' ), 'Unable to bind gallery image attachment file identity.' );
 	update_post_meta( $image_one, '_wp_attachment_image_alt', 'Initial alt' );
 	wp_update_attachment_metadata( $image_one, array(
 		'width' => 1600, 'height' => 900, 'file' => 'ci-trip-main.jpg', 'filesize' => 12345,
@@ -126,7 +131,12 @@ try {
 		'description' => '<p>Editorial description for the trip image.</p>',
 		'alt' => 'Cairo Nile journey in Egypt',
 	) );
-	$check( ! is_wp_error( $media_after ), 'Governed media metadata update failed.' );
+	$check(
+		! is_wp_error( $media_after ),
+		'Governed media metadata update failed'
+			. ( is_wp_error( $media_after ) ? ': ' . $media_after->get_error_code() . ' — ' . $media_after->get_error_message() : '' )
+			. '.'
+	);
 	$check( 'Cairo Nile Experience' === $media_after['media']['title'], 'Media title readback mismatch.' );
 	$check( 'Cairo and Nile journey gallery image' === $media_after['media']['caption'], 'Media caption readback mismatch.' );
 	$check( 'Cairo Nile journey in Egypt' === $media_after['media']['alt'], 'Media alt readback mismatch.' );
@@ -345,7 +355,9 @@ try {
 	// Force a post-core failure and prove automatic compensation restores the title.
 	$attachment_id = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI image', 'post_mime_type' => 'image/png' ), true );
 	$check( ! is_wp_error( $attachment_id ), 'Unable to create attachment fixture.' );
-	$post_ids[] = (int) $attachment_id;
+	$attachment_id = (int) $attachment_id;
+	$post_ids[] = $attachment_id;
+	$check( update_attached_file( $attachment_id, 'ci-compensation.png' ), 'Unable to bind compensation image attachment file identity.' );
 	$image_filter = static function ( $html, $attachment, $size, $icon, $attr ) use ( $attachment_id ) {
 		return (int) $attachment === (int) $attachment_id ? '<img src="ci.png" alt="" />' : $html;
 	};
