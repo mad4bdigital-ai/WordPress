@@ -24,6 +24,7 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 	const MAX_STATE_BYTES = 262144;
 
 	private static $booted = false;
+	private static $active_probe = array();
 
 	public static function boot_early() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
@@ -33,6 +34,15 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 			add_filter( 'mad4b_provider_behavioral_evidence_receipts', array( __CLASS__, 'provide_receipts' ), 20, 2 );
 			add_filter( 'mad4b_provider_behavioral_evidence_verifiers', array( __CLASS__, 'provide_verifiers' ), 20, 2 );
 		}
+	}
+
+	public static function probe_authorized_for( $provider, $ability_name ) {
+		$provider = sanitize_key( (string) $provider );
+		$ability_name = (string) $ability_name;
+		return ! empty( self::$active_probe )
+			&& isset( self::$active_probe['provider_id'], self::$active_probe['target_ability'] )
+			&& hash_equals( (string) self::$active_probe['provider_id'], $provider )
+			&& hash_equals( (string) self::$active_probe['target_ability'], $ability_name );
 	}
 
 	public static function register_ability() {
@@ -196,7 +206,18 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 		$attempt = MAD4B_SCP_Audit::record( 'mad4b/provider-behavioral-recertification-attempt', $audit_base, 'ok' );
 		if ( is_wp_error( $attempt ) ) return $attempt;
 
-		$probe = self::probe_and_restore( $context );
+		self::$active_probe = array(
+			'provider_id' => (string) $context['provider_id'],
+			'capability_id' => (string) $context['capability_id'],
+			'target_ability' => (string) $context['target_ability'],
+			'artifact_fingerprint' => (string) $context['artifact_fingerprint'],
+			'capability_contract_digest' => (string) $context['capability_contract_digest'],
+		);
+		try {
+			$probe = self::probe_and_restore( $context );
+		} finally {
+			self::$active_probe = array();
+		}
 		if ( is_wp_error( $probe ) ) {
 			$failure = $audit_base;
 			$failure['reason_code'] = $probe->get_error_code();
