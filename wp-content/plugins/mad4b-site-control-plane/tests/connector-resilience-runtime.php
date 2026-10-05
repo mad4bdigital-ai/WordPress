@@ -503,6 +503,10 @@ mad4b_assert_true( in_array( 'repair_query_monitor_db_attribution_then_retry', $
 mad4b_assert_true( false === $operator_summary['signals']['adapter_lifecycle_ready'], 'session-safe operator summary must expose adapter lifecycle readiness' );
 mad4b_assert_true( in_array( 'adapter_ability_lifecycle_incomplete', $operator_summary['reasons'], true ), 'session-safe operator summary must retain adapter lifecycle blocker' );
 mad4b_assert_true( in_array( 'repair_adapter_ability_lifecycle_registration', $operator_summary['next_actions'], true ), 'session-safe operator summary must route adapter lifecycle repair' );
+mad4b_assert_true( 4 === count( $operator_summary['signals']['adapter_lifecycle_missing_abilities'] ), 'session-safe operator summary must preserve bounded missing adapter ability detail' );
+foreach ( $operator_summary['reasons'] as $operator_reason ) {
+	mad4b_assert_true( 0 !== strpos( (string) $operator_reason, 'missing_adapter_ability:' ), 'session-safe operator summary must not flood reasons with one entry per missing adapter ability' );
+}
 mad4b_assert_true( false === $operator_summary['signals']['database_topology_ready'], 'session-safe operator summary must expose topology readiness' );
 mad4b_assert_true( false === $operator_summary['signals']['mcp_protocol_profile_ready'], 'session-safe operator summary must expose MCP protocol readiness' );
 mad4b_assert_true( in_array( 'adapter_version_uncertified', $operator_summary['reasons'], true ), 'session-safe operator summary must retain exact protocol blocker' );
