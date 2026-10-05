@@ -17,6 +17,7 @@ final class MAD4B_SCP_Read_Consistency {
 	const BUNDLE_ABILITY = 'mad4b/read-diagnostic-bundle';
 	const METADATA_ABILITY = 'mad4b/read-metadata-envelope';
 	const SESSION_SAFE_REPORT_ABILITY = 'mad4b/session-safe-diagnostics';
+	const SESSION_SAFE_OPERATOR_SUMMARY_CONTRACT = 'mad4b.session-safe-operator-summary.v1';
 	const MAX_SESSION_SAFE_REPORT_BYTES = 16384;
 	const DEFAULT_SESSION_SAFE_BUDGET_MS = 12000;
 	const MAX_SESSION_SAFE_BUDGET_MS = 20000;
@@ -527,6 +528,7 @@ final class MAD4B_SCP_Read_Consistency {
 			if ( empty( $summary[ $effective_key ] ) ) $subject_blockers[] = $check_name . '_not_effective';
 		}
 		$subject_blockers = array_values( array_unique( $subject_blockers ) );
+		$operator_summary = self::session_safe_operator_summary( $sections, $partial, $subject_blockers, $after );
 		$valid_for_session_evidence_merge = ! $partial && empty( $subject_blockers );
 		$deep_checks_deferred = array(
 			'full_runtime_provenance_hash',
@@ -557,6 +559,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'merge_scope' => 'session_safe_subject_evidence_only',
 			'deep_acceptance_required' => true,
 			'subject_blockers' => $subject_blockers,
+			'operator_summary' => $operator_summary,
 			'subject_live_validation_deferred' => array( 'skills_runtime' ),
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
@@ -584,6 +587,81 @@ final class MAD4B_SCP_Read_Consistency {
 			'production_mutation_performed' => false,
 		);
 		return self::bound_session_safe_report( $report );
+	}
+
+	private static function session_safe_operator_summary( array $sections, $partial, array $subject_blockers, array $snapshot ) {
+		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
+		$write = isset( $runtime_checks['write_authority']['summary'] ) && is_array( $runtime_checks['write_authority']['summary'] ) ? $runtime_checks['write_authority']['summary'] : array();
+		$skills = isset( $runtime_checks['skills_runtime']['summary'] ) && is_array( $runtime_checks['skills_runtime']['summary'] ) ? $runtime_checks['skills_runtime']['summary'] : array();
+		$topology = isset( $runtime_checks['database_topology']['summary'] ) && is_array( $runtime_checks['database_topology']['summary'] ) ? $runtime_checks['database_topology']['summary'] : array();
+
+		$write_ready = array_key_exists( 'effective_authority_ready', $write ) ? (bool) $write['effective_authority_ready'] : null;
+		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) ? (bool) $write['candidate_binding_match'] : null;
+		$grant_snapshot_ready = array_key_exists( 'current_grant_snapshot_ready', $write ) ? (bool) $write['current_grant_snapshot_ready'] : null;
+		$skills_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready'] ? (bool) $skills['effective_skill_ready'] : null;
+		$topology_ready = array_key_exists( 'ready', $topology ) && null !== $topology['ready'] ? (bool) $topology['ready'] : null;
+		$read_your_writes = array_key_exists( 'read_your_writes', $topology ) && null !== $topology['read_your_writes'] ? (bool) $topology['read_your_writes'] : null;
+
+		$reasons = self::bounded_scalar_list( $subject_blockers, 12 );
+		$actions = array();
+		$blocking = false;
+		if ( false === $write_ready ) {
+			$reasons[] = 'write_authority_not_current';
+			$actions[] = 'reconcile_exact_staging_write_authority';
+			$blocking = true;
+		}
+		if ( false === $candidate_match ) {
+			$reasons[] = 'runtime_authority_candidate_not_reconciled';
+			$actions[] = 'reconcile_exact_staging_write_authority';
+			$blocking = true;
+		}
+		if ( false === $grant_snapshot_ready ) {
+			$reasons[] = 'exact_write_grants_not_current';
+			$actions[] = 'reconcile_exact_staging_write_authority';
+			$blocking = true;
+		}
+		foreach ( isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? $write['current_readiness_blockers'] : array() as $reason ) {
+			$reason = sanitize_key( (string) $reason );
+			if ( '' !== $reason ) $reasons[] = $reason;
+		}
+		if ( false === $topology_ready || false === $read_your_writes ) {
+			$reasons[] = 'database_topology_not_write_safe';
+			$actions[] = 'repair_query_monitor_db_attribution_then_retry';
+			$blocking = true;
+		}
+		foreach ( isset( $topology['blockers'] ) && is_array( $topology['blockers'] ) ? $topology['blockers'] : array() as $reason ) {
+			$reason = sanitize_key( (string) $reason );
+			if ( '' !== $reason ) $reasons[] = $reason;
+		}
+		if ( false === $skills_ready ) {
+			$reasons[] = 'skills_runtime_not_ready';
+			$actions[] = 'reconcile_managed_skills';
+		}
+		if ( $partial ) {
+			$reasons[] = 'diagnostics_partial';
+			$actions[] = 'query_one_generation_bound_bundle';
+		}
+		$reasons = array_values( array_unique( self::bounded_scalar_list( $reasons, 16 ) ) );
+		$actions = array_values( array_unique( self::bounded_scalar_list( $actions, 8 ) ) );
+		$state = $blocking ? 'BLOCKED' : ( ! empty( $reasons ) ? 'DEGRADED' : 'HEALTHY' );
+		return array(
+			'contract' => self::SESSION_SAFE_OPERATOR_SUMMARY_CONTRACT,
+			'state' => $state,
+			'effective_environment' => isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '',
+			'reasons' => $reasons,
+			'next_actions' => $actions,
+			'signals' => array(
+				'write_authority_ready' => $write_ready,
+				'candidate_binding_match' => $candidate_match,
+				'current_grant_snapshot_ready' => $grant_snapshot_ready,
+				'database_topology_ready' => $topology_ready,
+				'read_your_writes' => $read_your_writes,
+				'skills_runtime_ready' => $skills_ready,
+			),
+			'read_only' => true,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 	}
 
 	private static function compact_bundle_result( $bundle, array $result ) {
@@ -644,6 +722,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'live_skill_evaluation_deferred', 'runtime_catalog_rebuild_deferred',
 			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'effective_skill_ready_scope', 'candidate_identity_bound_ready', 'live_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
 			'persisted_authority_ready', 'effective_authority_ready',
+			'read_your_writes', 'database_dropin_present', 'database_dropin_observer_certified', 'database_dropin_ownership', 'observer_dropin_certified',
 			'current_grant_snapshot_performed', 'current_grant_snapshot_ready',
 			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
 			'deep_oauth_validation_deferred', 'provider_runtime_hash_validation_deferred',
@@ -755,6 +834,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'merge_scope' => 'session_safe_subject_evidence_only',
 			'deep_acceptance_required' => true,
 			'subject_blockers' => isset( $report['subject_blockers'] ) && is_array( $report['subject_blockers'] ) ? array_values( array_slice( $report['subject_blockers'], 0, 8 ) ) : array(),
+			'operator_summary' => isset( $report['operator_summary'] ) && is_array( $report['operator_summary'] ) ? $report['operator_summary'] : array(),
 			'release_acceptance_deferred_checks' => isset( $report['release_acceptance_deferred_checks'] ) && is_array( $report['release_acceptance_deferred_checks'] ) ? array_values( array_slice( $report['release_acceptance_deferred_checks'], 0, 12 ) ) : array(),
 			'performance_observation' => isset( $report['performance_observation'] ) && is_array( $report['performance_observation'] ) ? array(
 				'contract' => isset( $report['performance_observation']['contract'] ) ? (string) $report['performance_observation']['contract'] : '',
@@ -837,6 +917,11 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( 'runtime' === $bundle ) {
 			return array(
 				'write_authority' => static function () { return self::session_safe_write_authority_projection(); },
+				'database_topology' => static function () {
+					return class_exists( 'MAD4B_SCP_Database_Topology' ) && method_exists( 'MAD4B_SCP_Database_Topology', 'status' )
+						? MAD4B_SCP_Database_Topology::status( false )
+						: array( 'ready' => null, 'state' => 'unavailable', 'blockers' => array( 'database_topology_unavailable' ), 'read_only' => true, 'mutation_performed' => false );
+				},
 				'skills_runtime' => static function () { return self::skills_projection(); },
 				'update_state' => static function () { return self::update_projection(); },
 			);
