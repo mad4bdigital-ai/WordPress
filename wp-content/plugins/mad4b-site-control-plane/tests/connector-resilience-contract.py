@@ -205,6 +205,12 @@ for marker in [
     "'merge_scope' => 'session_safe_subject_evidence_only'",
     "'deep_acceptance_required' => true",
     "'release_acceptance_deferred_checks'",
+    "mad4b.session-safe-performance-observation.v1",
+    "private static function performance_observation( array $metrics, $budget_ms, $runtime_generation )",
+    "'comparison_baseline_scope' => 'previous_exact_staging_release'",
+    "'fixed_universal_db_query_threshold_applied' => false",
+    "'regression_policy' => 'compare_exact_release_baseline_then_review_material_regression'",
+    "'client_action' => 'compare_against_previous_exact_staging_release_before_performance_acceptance'",
 ]:
     require(read_consistency, marker, "session-safe diagnostic invariant")
 
@@ -231,6 +237,7 @@ for marker in (
     "'deep_acceptance_required' => true",
     "'subject_blockers'",
     "'release_acceptance_deferred_checks'",
+    "'performance_observation'",
 ):
     require(reduced_report, marker, "reduced session-safe merge-scope invariant")
 generation_envelope = read_consistency.split("private static function generation_changed_envelope(", 1)[1].split("private static function request_metrics()", 1)[0]
@@ -294,6 +301,8 @@ for marker in [
     "Full Staging Authority session-safe handshake",
     "mad4b/full-staging-authority-handshake",
     "8 KiB response budget",
+    "comparative performance observation",
+    "previous exact Staging release",
 ]:
     require(contract, marker, "normative resilience contract")
 
