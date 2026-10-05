@@ -268,14 +268,14 @@
   "adaptive_search_intelligence_document": "adaptive-search-intelligence.md",
   "adaptive_search_intelligence_runtime_contract_document": "contracts/adaptive-search-intelligence-runtime.md",
   "adaptive_search_intelligence_ledger": "adaptive-search-intelligence.json",
-  "adaptive_search_intelligence_status": "OPEN_MATURITY_EXTENSION_NON_AUTHORIZING",
+  "adaptive_search_intelligence_status": "REPOSITORY_RUNTIME_VALIDATED_NON_AUTHORIZING",
   "adaptive_search_intelligence_review_document": "adaptive-search-intelligence-review.md",
   "adaptive_search_intelligence_review_ledger": "adaptive-search-intelligence-review.json",
   "adaptive_search_intelligence_review_contract": "mad4b.adaptive-search-intelligence-review.v1",
-  "adaptive_search_intelligence_review_status": "APPROVED_P0_CLOSED_P1_OPEN",
+  "adaptive_search_intelligence_review_status": "APPROVED_P0_P1_CLOSED_REPOSITORY_RUNTIME_VALIDATED",
   "adaptive_search_intelligence_review_score": 88,
   "adaptive_search_intelligence_review_p0_open": 0,
-  "adaptive_search_intelligence_review_p1_open": 6,
+  "adaptive_search_intelligence_review_p1_open": 0,
   "adaptive_search_intelligence_review_p0_closed": 12,
   "adaptive_search_intelligence_p0_closure": {
     "contract": "mad4b.adaptive-search-p0-closure.v1",
@@ -287,5 +287,23 @@
     "hardening_revision": "certified_cross_provider_comparability+bounded_virtual_cardinality+url_pagination_guard+stable_global_account_identity",
     "authorizing": false,
     "pre_staging_run": 37239748433
+  },
+  "adaptive_search_intelligence_review_p1_closed": 6,
+  "adaptive_search_intelligence_repository_runtime_closure": {
+    "contract": "mad4b.adaptive-search-repository-runtime-closure.v1",
+    "status": "DONE",
+    "phase": 38,
+    "task_count": 80,
+    "done_task_count": 80,
+    "runtime_exact_head_sha": "e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+    "adaptive_search_pre_staging_run": 37249380939,
+    "php74_job": 111573698940,
+    "php83_job": 111573699131,
+    "fixture_count": 40,
+    "assertion_count": 938,
+    "emitted_gate_count": 15,
+    "live_provider_account_certification": "NOT_CLAIMED",
+    "production_authorized": false,
+    "authorizing": false
   }
 }
