@@ -70,6 +70,7 @@ for marker in required:
 
 for marker in (
     "private static function developer_execution_projection( array $developer_status )",
+    "private static function operational_readiness( $write_ready, $normal_ready, $breakglass_ready, array $write_blockers, array $developer_execution )",
     "'authority_ready' => $normal_ready",
     "'ready_semantics' => 'authority_and_runtime_flags_only'",
     "'process_backend_ready' => $process_ready",
@@ -78,6 +79,11 @@ for marker in (
     "'developer_authority_ready' => $normal_ready",
     "'developer_breakglass_authority_ready' => $breakglass_ready",
     "'developer_execution' => $developer_execution",
+    "'ready_semantics' => 'authority_ready_legacy_compatibility'",
+    "'authority_ready' => $authority_ready",
+    "'operational_ready' => ! empty( $operational['ready'] )",
+    "'operational_blockers' => isset( $operational['blockers'] ) ? $operational['blockers'] : array()",
+    "'operational_client_action' => isset( $operational['client_action'] ) ? $operational['client_action'] : ''",
 ):
     assert marker in full, marker
 developer_projection = full.split("private static function developer_execution_projection", 1)[1].split("private static function compact_string_list", 1)[0]
@@ -135,6 +141,11 @@ for marker in [
     "'deep_reads_available_via_governed_dispatch' => true",
     "'exact_apply' => array(",
     "'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake'",
+    "'ready_to_apply_semantics' => 'authority_convergence_only'",
+    "'authority_ready' => $authority_ready",
+    "'operational_ready' => ! empty( $operational['ready'] )",
+    "'operational_blockers' => isset( $operational['blockers'] ) ? $operational['blockers'] : array()",
+    "'operational_client_action' => isset( $operational['client_action'] ) ? $operational['client_action'] : ''",
 ]:
     assert marker in full, marker
 handshake_body = full.split("public static function handshake()", 1)[1].split("private static function compact_string_list", 1)[0]
@@ -151,6 +162,12 @@ for marker in (
 ):
     assert marker in handshake_body, marker
 assert "MAD4B_SCP_Staging_Write_Authority::effective()" not in handshake_body, "compact handshake must consume the reviewed write-plan snapshot instead of recomputing checkpoint-only readiness"
+for marker in (
+    "$operational = self::operational_readiness( $write_ready, $normal_ready, $breakglass_ready, $write_blockers, $developer_execution );",
+    "'ready_to_apply_semantics' => 'authority_convergence_only'",
+    "'operational_ready' => ! empty( $operational['ready'] )",
+):
+    assert marker in handshake_body, marker
 assert "public static function chatgpt_step_up_tools()" in full
 step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
 for marker in [
@@ -183,6 +200,27 @@ for marker in [
     assert marker in status_body, marker
 assert "$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();" not in status_body
 
+for marker in (
+    "$operational = self::operational_readiness(",
+    "'ready_semantics' => 'authority_ready_legacy_compatibility'",
+    "'authority_ready' => $authority_ready",
+    "'operational_ready' => ! empty( $operational['ready'] )",
+):
+    assert marker in status_body, marker
+
+operational_body = full.split("private static function operational_readiness", 1)[1].split("private static function compact_string_list", 1)[0]
+for marker in (
+    "'write_authority_not_current'",
+    "'developer_authority_not_ready'",
+    "'developer_breakglass_authority_not_ready'",
+    "'developer_execution_not_ready'",
+    "'resolve_developer_host_execution_prerequisites'",
+    "'converge_authority_before_operational_use'",
+    "'authorizing' => false",
+    "'mutation_performed' => false",
+):
+    assert marker in operational_body, marker
+
 for marker in [
     "$missing_rows = isset( $write_plan['exact_grants_missing'] )",
     "'explicit_deny'",
@@ -206,6 +244,9 @@ for marker in [
     "$plan = self::plan();",
     "empty( $plan['ready_to_apply'] )",
     "self::match_expected_plan( $plan, $input )",
+    "$post_apply_execution = self::developer_execution_projection",
+    "$post_apply_operational = self::operational_readiness( true, true, true, array(), $post_apply_execution )",
+    "'operational_ready' => ! empty( $post_apply_operational['ready'] )",
 ]:
     assert marker in apply_body, marker
 for marker in (
