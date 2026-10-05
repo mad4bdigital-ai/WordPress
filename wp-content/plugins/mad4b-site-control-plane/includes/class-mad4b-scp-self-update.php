@@ -454,6 +454,7 @@ final class MAD4B_SCP_Self_Update {
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) ) {
 			$blockers[] = 'write_authority_runtime_unavailable';
 		} else {
@@ -1435,6 +1436,7 @@ final class MAD4B_SCP_Self_Update {
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'authority_presence_status' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) ) {
 			return new WP_Error(
 				'mad4b_self_update_continuation_authority_state_unavailable',
@@ -1495,12 +1497,21 @@ final class MAD4B_SCP_Self_Update {
 		}
 		$out['prior_authority_effective'] = (bool) $effective;
 		$out['candidate_binding_match'] = is_array( $binding ) && ! empty( $binding['match'] );
-		if ( ! $effective || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {
+		$current_readiness = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
+		$current_ready = is_array( $current_readiness ) && ! empty( $current_readiness['ready'] );
+		$current_blockers = is_array( $current_readiness ) && isset( $current_readiness['blockers'] ) && is_array( $current_readiness['blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $current_readiness['blockers'] ) ) )
+			: array( 'write_current_readiness_unavailable' );
+		$out['current_authority_ready'] = $current_ready;
+		$out['current_authority_blockers'] = $current_blockers;
+		if ( ! $effective || ! $current_ready || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {
 			return new WP_Error(
 				'mad4b_self_update_continuation_prior_authority_drift',
-				'Existing governed-write authority is stale or candidate-bound to a different build; reconcile it before updating.',
+				'Existing governed-write authority is stale, grant-drifted, or candidate-bound to a different build; reconcile it before updating.',
 				array(
 					'prior_authority_effective' => (bool) $effective,
+					'current_authority_ready' => $current_ready,
+					'current_authority_blockers' => $current_blockers,
 					'candidate_binding_required' => is_array( $binding ) && ! empty( $binding['required'] ),
 					'candidate_binding_match' => is_array( $binding ) && ! empty( $binding['match'] ),
 					'operator_action' => 'reconcile_staging_write_authority',
