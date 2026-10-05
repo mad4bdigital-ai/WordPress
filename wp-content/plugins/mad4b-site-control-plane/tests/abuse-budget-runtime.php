@@ -8,7 +8,13 @@ function get_current_blog_id(){return 7;} function home_url($p='/'){return 'http
 final class MAD4B_SCP_Identity_Context{public static function current(){return array('subject_fingerprint'=>str_repeat('a',64),'client_fingerprint'=>str_repeat('b',64),'wp_user_id'=>42,'session_fingerprint'=>'','origin'=>'mcp');}}
 final class MAD4B_SCP_Site_Profile{public static function site_uuid(){return '11111111-1111-4111-8111-111111111111';}}
 final class MAD4B_SCP_Transport_Context{public static function current_server_id(){return 'mad4b-chatgpt';}}
-final class MAD4B_SCP_Database_Topology{public static function assert_write_ready($refresh=false){return array('ready'=>true);}}
+final class MAD4B_SCP_Database_Topology{
+ public static $error=false;
+ public static function assert_write_ready($refresh=false){
+  if(self::$error)return new WP_Error('mad4b_database_topology_not_write_safe','not safe',array('blockers'=>array('uncertified_database_router_dropin','database_topology_probe_error')));
+  return array('ready'=>true);
+ }
+}
 final class MAD4B_SCP_Schema{public static function tables(){return array('metric_buckets'=>'wp_metric_buckets');}}
 final class MAD4B_SCP_Time_Policy{public static function now_epoch(){return 2000000042;}}
 class FakeWPDB{
@@ -39,4 +45,18 @@ $oversized_string=array('payload'=>str_repeat('x',9000));
 $check('mad4b_abuse_string_bytes_exceeded'===$code(MAD4B_SCP_Abuse_Budget::admit('discovery',$oversized_string)),'oversized non-metadata string escaped its byte budget');
 $second=MAD4B_SCP_Abuse_Budget::admit('discovery',array('query'=>'safe'));
 $check(is_array($second)&&2===$second['rate']['count'],'atomic per-identity bucket did not increment',$second);
+
+MAD4B_SCP_Database_Topology::$error=true;
+$storage_error=MAD4B_SCP_Abuse_Budget::admit('discovery',array('query'=>'recover'));
+$check('mad4b_abuse_rate_storage_unavailable'===$code($storage_error),'unsafe topology did not fail closed',$storage_error);
+$storage_data=is_wp_error($storage_error)?$storage_error->get_error_data():array();
+$check(is_array($storage_data)&&false===$storage_data['blind_retry_allowed'],'topology failure did not forbid blind retry',$storage_data);
+$check('mad4b_database_topology_not_write_safe'===$storage_data['cause_code'],'topology cause code missing',$storage_data);
+$check(in_array('uncertified_database_router_dropin',$storage_data['topology_blockers'],true),'topology blockers missing',$storage_data);
+$check('mad4b/session-safe-diagnostics'===$storage_data['recovery_read_ability'],'session-safe recovery surface missing',$storage_data);
+$check('mad4b/query-monitor-db-attribution-bootstrap'===$storage_data['bounded_repair_ability'],'bounded Query Monitor repair surface missing',$storage_data);
+$check('retry_original_operation_after_topology_repair'===$storage_data['recheck_action'],'topology recheck action missing',$storage_data);
+$check(false===$storage_data['authorizing'],'recovery metadata must remain non-authorizing',$storage_data);
+MAD4B_SCP_Database_Topology::$error=false;
+
 echo "mad4b.abuse-budget.runtime.v1: PASS\n";
