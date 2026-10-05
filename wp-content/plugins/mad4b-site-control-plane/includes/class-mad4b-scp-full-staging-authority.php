@@ -493,8 +493,12 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		}
 		$ready = $authority_ready && $developer_execution_ready;
 		$degraded_mode = ! $ready && ! empty( $available_lanes );
+		$state = $ready
+			? 'operationally_ready'
+			: ( ! $authority_ready ? 'authority_convergence_required' : ( $degraded_mode ? 'degraded_host_execution' : 'operationally_blocked' ) );
 		return array(
 			'ready' => $ready,
+			'state' => $state,
 			'authority_ready' => $authority_ready,
 			'lane_readiness' => $lane_readiness,
 			'available_lanes' => $available_lanes,
