@@ -157,8 +157,10 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-circuit-breaker.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-eligibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-health-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-traits.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-execution-binding.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-addon-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-data-governance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-data-governance-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-decommission-portability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-scheduler-admission.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-impact-policy.php';
