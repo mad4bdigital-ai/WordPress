@@ -172,6 +172,7 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'items' => $items,
 			'candidate_binding_match' => $candidate_binding_match,
 			'write_authority_ready' => $write_authority_ready,
+			'write_authority_state' => $write_authority_ready ? 'write_authority_current' : 'write_authority_reconciliation_required',
 			'write_authority_ready_semantics' => 'checkpoint_plus_current_exact_grants_plus_current_candidate_binding',
 			'write_authority_checkpoint_ready' => $checkpoint_ready,
 			'write_authority_current_grant_snapshot_ready' => $current_grants_ready,
