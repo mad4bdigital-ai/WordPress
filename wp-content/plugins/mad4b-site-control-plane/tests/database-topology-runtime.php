@@ -33,6 +33,16 @@ class MAD4B_Fake_Topology_DB {
 }
 $GLOBALS['wpdb']=new MAD4B_Fake_Topology_DB();
 
+class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
+	public static $status = array(
+		'dropin_exists'=>false,
+		'dropin_owned_by_query_monitor'=>false,
+		'dropin_conflict'=>false,
+		'dropin_ownership'=>'none',
+	);
+	public static function db_attribution_status(){ return self::$status; }
+}
+
 require dirname(__DIR__).'/includes/class-mad4b-scp-database-topology.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-database-failure-semantics.php';
 
@@ -57,6 +67,27 @@ $GLOBALS['wpdb']->read_only=0;
 file_put_contents(WP_CONTENT_DIR.'/db.php',"<?php\n");
 $router=MAD4B_SCP_Database_Topology::assert_write_ready(true);
 $check('mad4b_database_topology_not_write_safe'===$code($router),'uncertified db.php router was admitted');
+
+MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status=array(
+	'dropin_exists'=>true,
+	'dropin_owned_by_query_monitor'=>true,
+	'dropin_conflict'=>false,
+	'dropin_ownership'=>'mad4b_bounded_loader',
+);
+$observer=MAD4B_SCP_Database_Topology::assert_write_ready(true);
+$check(is_array($observer)&&!empty($observer['ready'])&&!empty($observer['read_your_writes'])&&!empty($observer['observer_dropin_certified']),'certified observer db.php was not admitted');
+$check('mad4b_bounded_loader'===$observer['database_dropin_ownership'],'certified observer ownership was not projected');
+
+MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status['dropin_ownership']='query_monitor_native_dropin';
+$legacy_marker=MAD4B_SCP_Database_Topology::assert_write_ready(true);
+$check('mad4b_database_topology_not_write_safe'===$code($legacy_marker),'marker-only legacy Query Monitor drop-in escaped exact ownership certification');
+
+MAD4B_SCP_Query_Monitor_Evidence_Bridge::$status=array(
+	'dropin_exists'=>false,
+	'dropin_owned_by_query_monitor'=>false,
+	'dropin_conflict'=>false,
+	'dropin_ownership'=>'none',
+);
 unlink(WP_CONTENT_DIR.'/db.php');
 
 $deadlock=MAD4B_SCP_Database_Failure_Semantics::classify('fixture','Deadlock found when trying to get lock; try restarting transaction',true);
@@ -67,4 +98,4 @@ $lost=MAD4B_SCP_Database_Failure_Semantics::classify('fixture','Lost connection 
 $check('connection_loss'===$lost['failure_class']&&!empty($lost['reconciliation_required'])&&'unknown'===$lost['persistence_state'],'connection-loss semantics invalid');
 
 @rmdir(WP_CONTENT_DIR);
-echo "mad4b.database-topology.runtime.v1: PASS\n";
+echo "mad4b.database-topology.runtime.v2: PASS\n";
