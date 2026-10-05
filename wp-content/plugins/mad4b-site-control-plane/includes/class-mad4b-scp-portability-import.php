@@ -210,20 +210,36 @@ final class MAD4B_SCP_Portability_Import {
 		return is_array( $ledger ) ? $ledger : array();
 	}
 
+	private static function delete_option_if_unchanged( $name, $expected ) {
+		global $wpdb;
+		if ( isset( $wpdb ) && is_object( $wpdb ) && isset( $wpdb->options ) && method_exists( $wpdb, 'delete' ) ) {
+			$serialized = function_exists( 'maybe_serialize' ) ? maybe_serialize( $expected ) : serialize( $expected );
+			$deleted = $wpdb->delete( $wpdb->options, array( 'option_name' => (string) $name, 'option_value' => $serialized ), array( '%s', '%s' ) );
+			if ( 1 === (int) $deleted ) {
+				if ( function_exists( 'wp_cache_delete' ) ) wp_cache_delete( (string) $name, 'options' );
+				return true;
+			}
+			return false;
+		}
+		$current = get_option( $name, null );
+		if ( self::digest( $current ) !== self::digest( $expected ) ) return false;
+		return delete_option( $name );
+	}
+
 	private static function with_lock( $operation, $callback ) {
 		$owner = strtolower( wp_generate_uuid4() );
 		$record = array( 'owner' => $owner, 'operation' => sanitize_key( (string) $operation ), 'expires_at_epoch' => time() + self::LOCK_TTL );
 		if ( ! add_option( self::LOCK_OPTION, $record, '', false ) ) {
 			$current = get_option( self::LOCK_OPTION, array() );
 			if ( ! is_array( $current ) || time() <= (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) return new WP_Error( 'mad4b_portability_import_busy', 'Portability import quarantine is locked by another operation.' );
-			delete_option( self::LOCK_OPTION );
+			if ( ! self::delete_option_if_unchanged( self::LOCK_OPTION, $current ) ) return new WP_Error( 'mad4b_portability_import_lock_reclaim_raced', 'Portability import lock changed while reclaiming an expired lock.' );
 			if ( ! add_option( self::LOCK_OPTION, $record, '', false ) ) return new WP_Error( 'mad4b_portability_import_busy', 'Portability import quarantine lock could not be reclaimed.' );
 		}
 		try {
 			return call_user_func( $callback );
 		} finally {
 			$current = get_option( self::LOCK_OPTION, array() );
-			if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( $owner, (string) $current['owner'] ) ) delete_option( self::LOCK_OPTION );
+			if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( $owner, (string) $current['owner'] ) ) self::delete_option_if_unchanged( self::LOCK_OPTION, $current );
 		}
 	}
 
