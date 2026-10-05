@@ -292,6 +292,14 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 
 		$meta = self::validate_meta_payload( $profile, isset( $input['meta'] ) ? $input['meta'] : array() );
 		if ( is_wp_error( $meta ) ) return $meta;
+		$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+		$effective_media_state = MAD4B_SCP_Content_Experience_Media::effective_meta_state(
+			$post ? (int) $post->ID : 0,
+			$media_fields,
+			$meta
+		);
+		if ( is_wp_error( $effective_media_state ) ) return $effective_media_state;
+		$effective_media_state_sha256 = MAD4B_SCP_Content_Experience_Media::effective_state_sha256( $effective_media_state );
 		$taxonomies = self::normalize_taxonomy_payload( $profile, isset( $input['taxonomies'] ) ? $input['taxonomies'] : array() );
 		if ( is_wp_error( $taxonomies ) ) return $taxonomies;
 		$helpers = self::normalize_helper_payloads( $profile, $operation, isset( $input['helpers'] ) ? $input['helpers'] : array() );
@@ -349,6 +357,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'operation' => $operation,
 			'post_type' => (string) $profile['post_type'],
 			'current_state_sha256' => $current_state_sha256,
+			'effective_media_state_sha256' => $effective_media_state_sha256,
 			'normalized_input' => $normalized,
 			'mutation_performed' => false,
 		);
