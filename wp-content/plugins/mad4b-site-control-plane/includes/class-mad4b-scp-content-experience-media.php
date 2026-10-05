@@ -354,6 +354,43 @@ final class MAD4B_SCP_Content_Experience_Media {
 		return true;
 	}
 
+	public static function effective_meta_state( $post_id, array $field_specs, array $overrides = array() ) {
+		$post_id = absint( $post_id );
+		$effective = array();
+		foreach ( $field_specs as $key => $spec ) {
+			$key = (string) $key;
+			if ( array_key_exists( $key, $overrides ) ) {
+				$effective[ $key ] = $overrides[ $key ];
+				continue;
+			}
+			if ( $post_id < 1 || ! metadata_exists( 'post', $post_id, $key ) ) continue;
+			$stored = get_post_meta( $post_id, $key, true );
+			$input = $stored;
+			if ( 'csv_ids' === ( isset( $spec['storage'] ) ? (string) $spec['storage'] : '' ) ) {
+				$input = '' === (string) $stored ? array() : array_values( array_filter( array_map( 'absint', explode( ',', (string) $stored ) ) ) );
+			}
+			$value = self::normalize_meta_value( $key, $input, $spec );
+			if ( is_wp_error( $value ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_media_effective_state_invalid',
+					'Stored media metadata cannot participate in a governed content plan.',
+					array( 'key' => $key, 'cause' => $value->get_error_code() )
+				);
+			}
+			$effective[ $key ] = $value;
+		}
+		$usage_guard = self::validate_usage_bindings( $field_specs, $effective );
+		if ( is_wp_error( $usage_guard ) ) return $usage_guard;
+		ksort( $effective, SORT_STRING );
+		return $effective;
+	}
+
+	public static function effective_state_sha256( array $effective ) {
+		ksort( $effective, SORT_STRING );
+		$encoded = wp_json_encode( $effective, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return hash( 'sha256', false === $encoded ? '' : $encoded );
+	}
+
 	public static function verify_post_meta( $post_id, array $field_specs ) {
 		$post_id = absint( $post_id );
 		if ( $post_id < 1 || ! get_post( $post_id ) ) return new WP_Error( 'mad4b_content_experience_media_verify_post_missing', 'Media metadata verification target is missing.' );
