@@ -49,6 +49,7 @@ final class MAD4B_SCP_Content_Experience_Governance {
 			'meta_mode' => isset( $profile['meta_mode'] ) ? (string) $profile['meta_mode'] : 'allowlist',
 			'meta_keys' => array_values( isset( $profile['meta_keys'] ) ? (array) $profile['meta_keys'] : array() ),
 			'protected_meta_keys' => array_values( isset( $profile['protected_meta_keys'] ) ? (array) $profile['protected_meta_keys'] : array() ),
+			'media_meta_fields' => isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array(),
 			'taxonomy_mode' => isset( $profile['taxonomy_mode'] ) ? (string) $profile['taxonomy_mode'] : 'allowlist',
 			'taxonomies' => array_values( isset( $profile['taxonomies'] ) ? (array) $profile['taxonomies'] : array() ),
 			'featured_media' => ! empty( $profile['featured_media'] ),
