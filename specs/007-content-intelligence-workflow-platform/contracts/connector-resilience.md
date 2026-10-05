@@ -262,7 +262,8 @@ without inventing one universal DB-query, include-count, or memory threshold.
 
 The observation is bound to the same runtime generation and records:
 
-- request elapsed milliseconds and request-budget headroom;
+- diagnostic elapsed milliseconds and diagnostic-budget headroom;
+- total request elapsed milliseconds as a separate comparative signal;
 - database query count;
 - included-file count;
 - current and peak memory usage.
@@ -271,7 +272,8 @@ These values are operational signals, not authorization gates. Performance
 acceptance compares them with the **previous exact Staging release** for the same
 site/workload profile. Material release-to-release regression requires review;
 one large absolute number alone does not prove a defect unless it violates an
-existing explicit request/payload/time budget.
+existing explicit diagnostic/payload/time budget. The diagnostic budget MUST
+be compared with diagnostic elapsed time, not total request latency.
 
 The observation must therefore declare:
 
