@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "1a784fca5ce3f9a0abc25687233b8692c329fd13",
-  "override_git_blob_sha": "e294fc64f4ec43a35f05bd73b96cc60dd2d9d0d6",
+  "source_tasks_git_blob_sha": "da679f1b60e29849e952635189884e9620e4d36b",
+  "override_git_blob_sha": "46b8df967f41d0ac64f595b4f2103d631f0eb218",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,9 +10,9 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 208,
+    "DONE": 214,
     "OPEN": 553,
-    "PARTIAL": 74
+    "PARTIAL": 68
   },
   "counts_by_priority": {
     "P0": {
@@ -23,9 +23,9 @@
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 42,
+      "DONE": 48,
       "OPEN": 85,
-      "PARTIAL": 30
+      "PARTIAL": 24
     },
     "P2": {
       "DEFERRED": 2,
@@ -9933,8 +9933,8 @@
       "phase": 38,
       "priority": "P1",
       "summary": "Compose first-party SearchPerformanceProvider evidence into opportunity/decline/refresh decisions without relabeling it as live SERP evidence.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
@@ -9943,17 +9943,26 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
       ],
-      "reason": "Typed first-party performance and query-language provenance remain separate from live SERP and page translation. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "First-party SearchPerformance evidence is typed separately from live SERP evidence, composes into decision factor provenance, and is covered by exact-head PHP 7.4/8.3 repository runtime acceptance. Live account certification is not claimed."
     },
     {
       "task_id": "T3872",
       "phase": 38,
       "priority": "P1",
       "summary": "Define QueryLanguageProvenance for translation/transcreation, market evidence, semantic cluster relation, confidence and approval independently from page translation state.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-targets.php",
@@ -9962,9 +9971,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
       ],
-      "reason": "Typed first-party performance and query-language provenance remain separate from live SERP and page translation. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "QueryLanguageProvenance v1 validates translation/transcreation source language, target language, market evidence, semantic relation, confidence and approval while explicitly denying page-translation-as-query-translation. Exact-head PHP 7.4/8.3 acceptance passed."
     },
     {
       "task_id": "T3873",
@@ -10009,8 +10027,8 @@
       "phase": 38,
       "priority": "P1",
       "summary": "Define adaptive UX stability and operator controls: stable section IDs/order/deep links plus audited pause/resume profile, disable provider, freeze spend, pin/mute target and request-refresh controls.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
@@ -10019,17 +10037,26 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
       ],
-      "reason": "Stable operator controls and registered portable storage/worker contracts preserve canonical identities. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Adaptive operator controls expose stable pin/mute/pause/resume/refresh behavior through capability/state-driven experience contracts and pass exact-head dual-PHP runtime acceptance."
     },
     {
       "task_id": "T3876",
       "phase": 38,
       "priority": "P1",
       "summary": "Define portable Search Intelligence execution/storage profiles for WordPress-local, external worker and external evidence/blob store while preserving canonical identities/evidence semantics.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
@@ -10038,9 +10065,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
       ],
-      "reason": "Stable operator controls and registered portable storage/worker contracts preserve canonical identities. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Execution/storage portability is explicit through registered external worker/store profiles, canonical IDs and bounded CAS semantics without generic worker commands; exact-head dual-PHP runtime acceptance passed."
     },
     {
       "task_id": "T3877",
@@ -10066,8 +10102,8 @@
       "phase": 38,
       "priority": "P1",
       "summary": "Define open/versioned SERP feature schema preserving known normalized family plus provider-native unknown/pass-through evidence.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
@@ -10075,17 +10111,26 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
       ],
-      "reason": "Versioned known/unknown feature evidence and bounded source/scope/freshness/confidence decision factors. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "SERP feature evidence is open and versioned through mad4b.serp-feature.v1, preserves provider-native types, normalizes known aliases, preserves unknown future features and keeps external evidence inert; exact-head dual-PHP runtime acceptance passed."
     },
     {
       "task_id": "T3879",
       "phase": 38,
       "priority": "P1",
       "summary": "Bind every DecisionPolicy factor, including commercial value/search volume, to source, market/language scope, freshness, confidence and normalization version.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-decisions.php",
@@ -10093,9 +10138,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
-        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json"
+        "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
+        "head:e8791ae6253b5667f1ffffdcf1693bd1d08a641a",
+        "workflow_run:37249380939",
+        "workflow_job:111573698940",
+        "workflow_job:111573699131",
+        "workflow_run:37249380993",
+        "workflow_run:37249380988",
+        "workflow_run:37249380873",
+        "workflow_run:37249380860",
+        "workflow_run:37249380836"
       ],
-      "reason": "Versioned known/unknown feature evidence and bounded source/scope/freshness/confidence decision factors. Repository runtime is implemented and locally verified; exact-head CI/disposable acceptance remains pending. Live account/site certification is not claimed."
+      "reason": "Decision factors carry bounded source/scope/freshness/confidence/normalization provenance and first-party performance composition, with deterministic scoring and exact-head dual-PHP runtime acceptance."
     },
     {
       "task_id": "T3880",
