@@ -611,6 +611,15 @@ final class MAD4B_SCP_Read_Consistency {
 		$reasons = self::bounded_scalar_list( $subject_blockers, 12 );
 		$actions = array();
 		$blocking = false;
+		if ( false === $adapter_lifecycle_ready ) {
+			$reasons[] = 'adapter_ability_lifecycle_incomplete';
+			foreach ( isset( $adapter_lifecycle['missing_abilities'] ) && is_array( $adapter_lifecycle['missing_abilities'] ) ? $adapter_lifecycle['missing_abilities'] : array() as $missing_ability ) {
+				$missing_ability = sanitize_text_field( (string) $missing_ability );
+				if ( '' !== $missing_ability ) $reasons[] = 'missing_adapter_ability:' . $missing_ability;
+			}
+			$actions[] = 'repair_adapter_ability_lifecycle_registration';
+			$blocking = true;
+		}
 		if ( false === $write_ready ) {
 			$reasons[] = 'write_authority_not_current';
 			$actions[] = 'reconcile_exact_staging_write_authority';
