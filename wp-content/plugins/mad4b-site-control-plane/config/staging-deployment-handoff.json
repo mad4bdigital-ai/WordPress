@@ -308,7 +308,6 @@
           "memory_usage_bytes",
           "peak_memory_bytes"
         ],
-        "explicit_request_budget_is_hard_boundary": true,
         "universal_db_query_threshold": false,
         "universal_included_file_threshold": false,
         "universal_memory_threshold": false,
@@ -320,7 +319,10 @@
         "automatic_index_ddl_allowed": false,
         "automatic_cache_authority_allowed": false,
         "authorizing": false,
-        "production_mutation_allowed": false
+        "production_mutation_allowed": false,
+        "explicit_diagnostic_budget_is_hard_boundary": true,
+        "total_request_elapsed_is_comparative_signal": true,
+        "diagnostic_elapsed_is_budgeted_signal": true
       }
     }
   },
