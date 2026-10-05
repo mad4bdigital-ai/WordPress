@@ -1,7 +1,7 @@
 <?php
 define( 'ABSPATH', __DIR__ . '/' );
 function add_action($h,$c,$p=10){}
-function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',str_replace('.','_',trim((string)$v))));}
+function sanitize_key($v){return preg_replace('/[^a-z0-9_\-]/','',str_replace('.','_',strtolower(trim((string)$v))));}
 function sanitize_text_field($v){return trim((string)$v);}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function is_wp_error($v){return $v instanceof WP_Error;}
