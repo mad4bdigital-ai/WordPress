@@ -827,6 +827,11 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		}
 		$filtered_verification = apply_filters( 'mad4b_scp_content_experience_verify_helpers', $helper_verification, $helper_context );
 		if ( is_array( $filtered_verification ) ) $helper_verification = $filtered_verification;
+		$media_state = MAD4B_SCP_Content_Experience_Media::verify_post_meta(
+			$post_id,
+			isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array()
+		);
+		if ( is_wp_error( $media_state ) ) return $media_state;
 		$current_authority = isset( $profile['authority_sha256'] ) ? strtolower( trim( (string) $profile['authority_sha256'] ) ) : '';
 		$stored_authority = strtolower( trim( $stored_authority ) );
 		$authority_match = 1 === preg_match( '/^[a-f0-9]{64}$/', $current_authority )
@@ -848,6 +853,10 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'authority_match' => $authority_match,
 			'core_state_sha256' => self::post_state_hash( $post ),
 			'featured_media_id' => (int) get_post_thumbnail_id( $post_id ),
+			'media_state_sha256' => (string) $media_state['media_state_sha256'],
+			'media_field_count' => (int) $media_state['field_count'],
+			'media_fields' => $media_state['fields'],
+			'media_state_valid' => ! empty( $media_state['valid'] ),
 			'helper_verification' => $helper_verification,
 			'mutation_performed' => false,
 		);
