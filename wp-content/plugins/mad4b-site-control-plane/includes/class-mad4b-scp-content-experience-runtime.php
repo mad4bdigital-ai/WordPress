@@ -91,6 +91,9 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			}
 			$result[ $key ] = $value;
 		}
+		$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+		$usage_guard = MAD4B_SCP_Content_Experience_Media::validate_usage_bindings( $media_fields, $result );
+		if ( is_wp_error( $usage_guard ) ) return $usage_guard;
 		ksort( $result, SORT_STRING );
 		return $result;
 	}
