@@ -50,7 +50,7 @@
     }
   },
   "successor_certification": {
-    "state": "certified_exact",
+    "state": "not_certified",
     "auto_adopt": false,
     "dual_protocol_regression_required": true,
     "required_surfaces": [
