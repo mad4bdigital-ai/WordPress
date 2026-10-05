@@ -54,13 +54,11 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$registry = MAD4B_SCP_Adapter_Registry::instance();
 		self::$servers = new MAD4B_SCP_Servers();
 
-		// Preserve registration ordering: core first (10), certified adapters
-		// second (20). All actual ability/server creation remains on canonical
-		// WordPress/MCP actions.
+		// Preserve registration ordering: core definitions stay on the bridge at
+		// priority 10. Adapter definitions are bound once by Adapter_Registry at
+		// priority 20; duplicating those hooks here would double-register Abilities.
 		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 );
-		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 );
 		// Bind catalog definitions independently from update/resource lifecycle boot.
 		// Passive AJAX jobs skip those writers; their authorized catalog still needs
 		// every declared planner and the compact session diagnostic. Registration
