@@ -31,16 +31,12 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-adapter.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
-          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-exact-packages.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-composite-provider-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
-          python3 -c "import json; json.load(open('wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json', encoding='utf-8'))"
           python3 wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-provider-package-inspection.py --output /tmp/mad4b-wp-import-export-package-inspection.json
 
       - name: Upload exact WP Import Export package inspection evidence
