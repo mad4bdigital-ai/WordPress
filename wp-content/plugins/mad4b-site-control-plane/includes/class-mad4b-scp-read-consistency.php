@@ -538,6 +538,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'write_catalog_runtime_rebuild',
 		);
 
+		$request_metrics = self::request_metrics();
+		$performance_observation = self::performance_observation( $request_metrics, $budget_ms, $runtime_generation );
 		$report = array(
 			'contract' => 'mad4b.session-safe-diagnostics.v1',
 			'state' => $partial ? 'partial' : ( $valid_for_session_evidence_merge ? 'ready' : 'subject_not_ready' ),
@@ -560,7 +562,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
 			'budget_ms' => $budget_ms,
-			'request_metrics' => self::request_metrics(),
+			'request_metrics' => $request_metrics,
+			'performance_observation' => $performance_observation,
 			'deep_checks_deferred' => $deep_checks_deferred,
 			'release_acceptance_deferred_checks' => $deep_checks_deferred,
 			'fixed_bundle_order' => self::bundle_names(),
@@ -753,6 +756,14 @@ final class MAD4B_SCP_Read_Consistency {
 			'deep_acceptance_required' => true,
 			'subject_blockers' => isset( $report['subject_blockers'] ) && is_array( $report['subject_blockers'] ) ? array_values( array_slice( $report['subject_blockers'], 0, 8 ) ) : array(),
 			'release_acceptance_deferred_checks' => isset( $report['release_acceptance_deferred_checks'] ) && is_array( $report['release_acceptance_deferred_checks'] ) ? array_values( array_slice( $report['release_acceptance_deferred_checks'], 0, 12 ) ) : array(),
+			'performance_observation' => isset( $report['performance_observation'] ) && is_array( $report['performance_observation'] ) ? array(
+				'contract' => isset( $report['performance_observation']['contract'] ) ? (string) $report['performance_observation']['contract'] : '',
+				'classification' => isset( $report['performance_observation']['classification'] ) ? (string) $report['performance_observation']['classification'] : '',
+				'request_budget_ratio' => isset( $report['performance_observation']['request_budget_ratio'] ) ? (float) $report['performance_observation']['request_budget_ratio'] : 0,
+				'comparison_required' => ! empty( $report['performance_observation']['comparison_required'] ),
+				'comparison_baseline_scope' => isset( $report['performance_observation']['comparison_baseline_scope'] ) ? (string) $report['performance_observation']['comparison_baseline_scope'] : '',
+				'client_action' => isset( $report['performance_observation']['client_action'] ) ? (string) $report['performance_observation']['client_action'] : '',
+			) : array(),
 			'section_digests' => array(),
 			'session_termination_count' => isset( $report['session_termination_count'] ) ? max( 0, (int) $report['session_termination_count'] ) : 0,
 			'payload_reduced' => true,
@@ -1338,6 +1349,37 @@ final class MAD4B_SCP_Read_Consistency {
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
+		);
+	}
+
+	private static function performance_observation( array $metrics, $budget_ms, $runtime_generation ) {
+		$budget_ms = max( 1, (int) $budget_ms );
+		$request_elapsed_ms = isset( $metrics['request_elapsed_ms'] ) ? max( 0, (int) $metrics['request_elapsed_ms'] ) : 0;
+		$headroom_ms = max( 0, $budget_ms - $request_elapsed_ms );
+		$budget_ratio = $budget_ms > 0 ? min( 10, round( $request_elapsed_ms / $budget_ms, 4 ) ) : 0;
+		return array(
+			'contract' => 'mad4b.session-safe-performance-observation.v1',
+			'classification' => $request_elapsed_ms > $budget_ms ? 'request_budget_exceeded' : 'observed_within_request_budget',
+			'request_budget_ms' => $budget_ms,
+			'request_elapsed_ms' => $request_elapsed_ms,
+			'request_budget_headroom_ms' => $headroom_ms,
+			'request_budget_ratio' => $budget_ratio,
+			'db_query_count' => isset( $metrics['db_query_count'] ) ? max( 0, (int) $metrics['db_query_count'] ) : 0,
+			'included_file_count' => isset( $metrics['included_file_count'] ) ? max( 0, (int) $metrics['included_file_count'] ) : 0,
+			'memory_usage_bytes' => isset( $metrics['memory_usage_bytes'] ) ? max( 0, (int) $metrics['memory_usage_bytes'] ) : 0,
+			'peak_memory_bytes' => isset( $metrics['peak_memory_bytes'] ) ? max( 0, (int) $metrics['peak_memory_bytes'] ) : 0,
+			'runtime_generation' => preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $runtime_generation ) ) ? strtolower( (string) $runtime_generation ) : '',
+			'comparison_required' => true,
+			'comparison_baseline_scope' => 'previous_exact_staging_release',
+			'comparison_metrics' => array( 'request_elapsed_ms', 'db_query_count', 'included_file_count', 'memory_usage_bytes', 'peak_memory_bytes' ),
+			'fixed_universal_db_query_threshold_applied' => false,
+			'fixed_universal_included_file_threshold_applied' => false,
+			'fixed_universal_memory_threshold_applied' => false,
+			'regression_policy' => 'compare_exact_release_baseline_then_review_material_regression',
+			'client_action' => 'compare_against_previous_exact_staging_release_before_performance_acceptance',
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
 		);
 	}
 
