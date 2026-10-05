@@ -829,11 +829,16 @@
         "pre_staging_workflow_run_id": 37214537248,
         "repository_exact_head_proven": true,
         "prior_exact_head_sha": "8effd8067005b43f1d1d38f6b98a1acaee5a69b3",
-        "repository_recertification_required": true
+        "repository_recertification_required": true,
+        "generic_ai_provider_plan_contract": "mad4b.governed-provider-plan.v1",
+        "generic_ai_provider_plan_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-provider-plan.php",
+        "generic_ai_provider_plan_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/governed-provider-plan-contract.php",
+        "ai_provider_model_eval_fixture_repository_proven": true,
+        "data_governance_drift_fails_closed": true,
+        "provider_certification_drift_fails_closed": true
       },
       "remainder": [
-        "execute live ETG fault canaries for the repository-proven fault classes",
-        "add AI data-processing/rights/provider-model eval fixtures when those live provider adapters are enabled"
+        "execute live ETG fault canaries for the repository-proven fault classes"
       ]
     },
     {
@@ -1028,10 +1033,13 @@
         "provider_execution_binding_in_processing_profile": true,
         "registry_bound_data_governance_decision": true,
         "rights_takedown_lineage_invalidation": true,
-        "public_content_delete_performed_by_takedown": false
+        "public_content_delete_performed_by_takedown": false,
+        "generic_governed_provider_plan_contract": "mad4b.governed-provider-plan.v1",
+        "future_provider_plan_family_reuse_available": true,
+        "governance_revalidation_before_execution": true,
+        "provider_binding_revalidation_before_execution": true
       },
       "remainder": [
-        "extend the same data-governance decision consumption to future AI/model execution plan families before any external call",
         "prove live ETG provider/model fallback independently satisfies the same or stricter policy",
         "exercise data-subject/tenant retention obligations where applicable"
       ]
