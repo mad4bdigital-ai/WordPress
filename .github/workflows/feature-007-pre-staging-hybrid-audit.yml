@@ -106,6 +106,16 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
           php wp-content/plugins/mad4b-site-control-plane/tests/release-closure-hardening-contract.php
 
+      - name: Operating flow regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/content-experience-media-validation-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-heartbeat-runtime.php
+
       - name: Feature 007 closure foundations and workstream certification
         shell: bash
         run: |

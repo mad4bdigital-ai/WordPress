@@ -600,9 +600,9 @@ final class MAD4B_SCP_Read_Consistency {
 		$protocol = isset( $runtime_checks['mcp_protocol_profile']['summary'] ) && is_array( $runtime_checks['mcp_protocol_profile']['summary'] ) ? $runtime_checks['mcp_protocol_profile']['summary'] : array();
 
 		$adapter_lifecycle_ready = array_key_exists( 'ready', $adapter_lifecycle ) && null !== $adapter_lifecycle['ready'] ? (bool) $adapter_lifecycle['ready'] : null;
-		$write_ready = array_key_exists( 'effective_authority_ready', $write ) ? (bool) $write['effective_authority_ready'] : null;
-		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) ? (bool) $write['candidate_binding_match'] : null;
-		$grant_snapshot_ready = array_key_exists( 'current_grant_snapshot_ready', $write ) ? (bool) $write['current_grant_snapshot_ready'] : null;
+		$write_ready = array_key_exists( 'effective_authority_ready', $write ) && null !== $write['effective_authority_ready'] ? (bool) $write['effective_authority_ready'] : null;
+		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) && null !== $write['candidate_binding_match'] ? (bool) $write['candidate_binding_match'] : null;
+		$grant_snapshot_ready = array_key_exists( 'current_grant_snapshot_ready', $write ) && null !== $write['current_grant_snapshot_ready'] ? (bool) $write['current_grant_snapshot_ready'] : null;
 		$skills_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready'] ? (bool) $skills['effective_skill_ready'] : null;
 		$topology_ready = array_key_exists( 'ready', $topology ) && null !== $topology['ready'] ? (bool) $topology['ready'] : null;
 		$read_your_writes = array_key_exists( 'read_your_writes', $topology ) && null !== $topology['read_your_writes'] ? (bool) $topology['read_your_writes'] : null;
@@ -637,7 +637,7 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 		if ( false === $topology_ready || false === $read_your_writes ) {
 			$reasons[] = 'database_topology_not_write_safe';
-			$actions[] = 'repair_query_monitor_db_attribution_then_retry';
+			$actions[] = 'inspect_database_writer_topology';
 			$blocking = true;
 		}
 		foreach ( isset( $topology['blockers'] ) && is_array( $topology['blockers'] ) ? $topology['blockers'] : array() as $reason ) {
@@ -653,6 +653,19 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( false === $skills_ready ) {
 			$reasons[] = 'skills_runtime_not_ready';
 			$actions[] = 'reconcile_managed_skills';
+		}
+		foreach ( array(
+			'adapter_lifecycle_ready' => $adapter_lifecycle_ready,
+			'write_authority_ready' => $write_ready,
+			'candidate_binding_match' => $candidate_match,
+			'current_grant_snapshot_ready' => $grant_snapshot_ready,
+			'database_topology_ready' => $topology_ready,
+			'read_your_writes' => $read_your_writes,
+			'mcp_protocol_profile_ready' => $protocol_ready,
+		) as $signal => $ready ) {
+			if ( null !== $ready ) continue;
+			$reasons[] = $signal . '_unknown';
+			$actions[] = 'inspect_operational_readiness';
 		}
 		if ( $partial ) {
 			$reasons[] = 'diagnostics_partial';
@@ -1526,6 +1539,17 @@ final class MAD4B_SCP_Read_Consistency {
 		$operator_actions = isset( $operator_summary['next_actions'] ) && is_array( $operator_summary['next_actions'] )
 			? self::bounded_scalar_list( $operator_summary['next_actions'], 8 )
 			: array();
+		// Dependency order is independent of the order blockers were collected.
+		// Never ask for grant convergence while its runtime or writer is blocked.
+		$operator_actions = array_values( array_intersect( array(
+			'deploy_exact_certified_runtime_release',
+			'inspect_database_writer_topology',
+			'repair_query_monitor_db_attribution_then_retry',
+			'inspect_operational_readiness',
+			'repair_adapter_ability_lifecycle_registration',
+			'reconcile_exact_staging_write_authority',
+			'reconcile_managed_skills',
+		), $operator_actions ) );
 		foreach ( $operator_actions as $action ) {
 			$action = sanitize_key( (string) $action );
 			if ( 'repair_adapter_ability_lifecycle_registration' === $action ) {
@@ -1550,20 +1574,20 @@ final class MAD4B_SCP_Read_Consistency {
 					'automatic_apply_allowed' => false,
 				);
 			}
-			if ( 'repair_query_monitor_db_attribution_then_retry' === $action ) {
+			if ( 'inspect_database_writer_topology' === $action || 'repair_query_monitor_db_attribution_then_retry' === $action || 'inspect_operational_readiness' === $action ) {
 				return array(
-					'action' => $action,
-					'ability' => 'mad4b/query-monitor-db-attribution-bootstrap',
-					'why' => 'database_topology_is_not_write_safe_for_abuse_budget_or_governed_writes',
-					'read_only' => false,
-					'explicit_authority_required' => true,
+					'action' => 'inspect_operational_readiness' === $action ? $action : 'inspect_database_writer_topology',
+					'ability' => 'mad4b/session-safe-diagnostics',
+					'why' => 'inspect_exact_operational_blockers_before_selecting_a_bounded_repair',
+					'read_only' => true,
+					'explicit_authority_required' => false,
 					'automatic_apply_allowed' => false,
 				);
 			}
 			if ( 'reconcile_exact_staging_write_authority' === $action ) {
 				return array(
-					'action' => 'request_full_staging_authority_handshake',
-					'ability' => 'mad4b/full-staging-authority-handshake',
+					'action' => 'request_staging_write_authority_handshake',
+					'ability' => 'mad4b/staging-write-authority-convergence-handshake',
 					'why' => 'current_write_authority_or_candidate_binding_requires_reconciliation',
 					'read_only' => true,
 					'explicit_authority_required' => false,
@@ -1586,8 +1610,8 @@ final class MAD4B_SCP_Read_Consistency {
 		// without the richer operator summary.
 		if ( in_array( 'write_authority_not_effective', $subject_blockers, true ) ) {
 			return array(
-				'action' => 'request_full_staging_authority_handshake',
-				'ability' => 'mad4b/full-staging-authority-handshake',
+				'action' => 'request_staging_write_authority_handshake',
+				'ability' => 'mad4b/staging-write-authority-convergence-handshake',
 				'why' => 'current_write_authority_or_candidate_binding_requires_reconciliation',
 				'read_only' => true,
 				'explicit_authority_required' => false,

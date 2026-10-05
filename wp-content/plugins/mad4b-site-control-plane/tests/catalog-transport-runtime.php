@@ -5,7 +5,14 @@ class WP_Error { public $code; function __construct( $code, $message ) { $this->
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['allowed']; } }
 class MAD4B_SCP_Ability_Contract_Inspector { static function site_binding() { return array( 'origin' => 'https://ci.test', 'revision' => $GLOBALS['binding'] ); } }
-class MAD4B_SCP_Capability_Descriptor_Registry { static function describe( $name ) { return array( 'lane' => 'read', 'readonly' => true, 'execution_eligible' => true, 'input_schema_sha256' => str_repeat( 'a', 64 ), 'classification_sha256' => str_repeat( 'b', 64 ) ); } }
+class MAD4B_SCP_Capability_Descriptor_Registry {
+ static function describe( $name ) {
+  $GLOBALS['descriptor_calls'][] = $name;
+  if ( $name === ( $GLOBALS['descriptor_failure'] ?? '' ) ) throw new RuntimeException( 'PRIVATE-INSPECTION-DETAIL' );
+  $eligible = $GLOBALS['descriptor_eligible'] ?? true;
+  return array( 'lane' => 'read', 'readonly' => true, 'execution_eligible' => $eligible, 'execution_blocker' => $eligible ? '' : 'original_lane_not_mounted', 'input_schema_sha256' => str_repeat( 'a', 64 ), 'classification_sha256' => str_repeat( 'b', 64 ) );
+ }
+}
 function wp_json_encode( $v ) { return json_encode( $v ); }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\\-]/i', '', (string) $value ) ); }
 function get_current_user_id() { return $GLOBALS['user']; }
@@ -25,7 +32,7 @@ function delete_option( $key ) { unset( $GLOBALS['options'][$key] ); }
 function wp_cache_delete( $key, $group ) { return true; }
 function maybe_serialize( $v ) { return serialize( $v ); }
 class FakeDB {
- public $options = 'options'; public $race = false; public $locked = false; public $measurements = 0;
+ public $options = 'options'; public $dbname = ''; public $race = false; public $locked = false; public $measurements = 0;
  function esc_like( $value ) { return $value; }
  function get_col( $args ) { $names = array_values( array_filter( array_keys( $GLOBALS['options'] ), static function( $key ) use ( $args ) { return 0 === strpos( $key, 'mad4b_ct2_' ) && $key > $args[1]; } ) ); sort( $names, SORT_STRING ); return array_slice( $names, 0, 500 ); }
  function get_var( $args ) { if ( ($args[0] ?? '') === '__lock' ) { if ( $this->locked ) return 0; $this->locked = true; return 1; } if ( ($args[0] ?? '') === '__unlock' ) { $this->locked = false; return 1; } if ( ($args[0] ?? '') === '__owns' ) return $this->locked ? 1 : 0; ++$this->measurements; $bytes = 0; foreach ( $GLOBALS['options'] as $name => $value ) if ( 0 === strpos( $name, 'mad4b_ct2_' ) ) $bytes += strlen( serialize( $value ) ); return $bytes; }
@@ -206,6 +213,52 @@ check( 'mad4b.catalog-object-envelope.v1' === ( $current_after['contract'] ?? ''
 
 echo "PASS catalog transport: large schema, chunks, frozen pages, delta, tampering, generation envelopes, user and site isolation\n";
 
+// A full mirror must not classify the entire provider universe to return a
+// bounded page. Frozen schema pages must still observe current classification.
+$saved_abilities = $GLOBALS['abilities'];
+$GLOBALS['abilities'] = array();
+for ( $i = 0; $i < 400; $i++ ) $GLOBALS['abilities'][ 'page/' . str_pad( (string) $i, 4, '0', STR_PAD_LEFT ) ] = new FixtureAbility( 'bounded' );
+$GLOBALS['descriptor_calls'] = array();
+$paged = request( array( 'limit' => 2 ) );
+check( ! is_wp_error( $paged ) && 2 === count( $paged['items'] ), 'Bounded manifest page failed' );
+check( 2 === count( $GLOBALS['descriptor_calls'] ), 'Manifest classified capabilities outside its returned page' );
+$directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
+$page_key = hash( 'sha256', MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope() . ':snapshot:' . $paged['snapshot'] );
+$page_payload = $GLOBALS['options'][$directory[$page_key]['option']]['payload'];
+foreach ( $page_payload['items'] as $item ) check( ! isset( $item['execution'] ), 'Persistent definition snapshot cached an execution decision' );
+$GLOBALS['descriptor_calls'] = array();
+$GLOBALS['descriptor_eligible'] = false;
+$paged_tail = request( array( 'cursor' => $paged['next_cursor'] ) );
+check( $paged_tail['snapshot'] === $paged['snapshot'] && 2 === count( $GLOBALS['descriptor_calls'] ), 'Continuation lost frozen definitions or inspected outside its page' );
+check( false === $paged_tail['items'][0]['execution']['execution_eligible'], 'Frozen page advertised stale execution classification' );
+$GLOBALS['descriptor_calls'] = array();
+$refreshed_page = request( array( 'query' => 'page/0000' ) );
+check( 1 === count( $GLOBALS['descriptor_calls'] ) && false === $refreshed_page['items'][0]['execution']['execution_eligible'], 'Cached manifest reused stale classification or inspected unrelated capabilities' );
+check( $refreshed_page['snapshot'] === $paged['snapshot'] && 0 === $refreshed_page['storage_metrics']['writes'], 'Live classification forced immutable definition rewrites' );
+$GLOBALS['descriptor_calls'] = array();
+$no_definition_delta = request( array( 'known_snapshot' => $paged['snapshot'] ) );
+check( array() === $no_definition_delta['items'] && array() === $GLOBALS['descriptor_calls'], 'Mutable execution classification polluted definition deltas' );
+$GLOBALS['descriptor_eligible'] = true;
+$original_page_ability = $GLOBALS['abilities']['page/0002'];
+$GLOBALS['abilities']['page/0002'] = new FixtureAbility( 'changed contract after cursor issuance' );
+$drifted_page = request( array( 'cursor' => $paged['next_cursor'] ) );
+check( $drifted_page['snapshot'] === $paged['snapshot'] && false === $drifted_page['items'][0]['execution']['execution_eligible'], 'Frozen schema drift was advertised as executable' );
+check( 'catalog_definition_changed_prepare_current_ability' === $drifted_page['items'][0]['execution']['execution_blocker'], 'Frozen schema drift did not require selected-target preparation' );
+$GLOBALS['abilities']['page/0002'] = $original_page_ability;
+// Even an older snapshot carrying a positive execution decision must be
+// reclassified live; keep its schema lease resumable after the upgrade.
+$GLOBALS['options'][$directory[$page_key]['option']]['payload']['items'][2]['execution'] = array( 'execution_eligible' => true );
+$GLOBALS['descriptor_eligible'] = false;
+$legacy_page = request( array( 'cursor' => $paged['next_cursor'] ) );
+check( false === $legacy_page['items'][0]['execution']['execution_eligible'], 'Legacy persisted execution decision was reused' );
+$GLOBALS['descriptor_failure'] = 'page/0000';
+$failed_page = request( array( 'limit' => 2 ) );
+check( ! is_wp_error( $failed_page ) && false === $failed_page['items'][0]['execution']['execution_eligible'], 'One failed classification collapsed the complete metadata page or became eligible' );
+check( false === strpos( json_encode( $failed_page ), 'PRIVATE-INSPECTION-DETAIL' ), 'Classification exception details leaked' );
+unset( $GLOBALS['descriptor_failure'], $GLOBALS['descriptor_eligible'] );
+$GLOBALS['abilities'] = $saved_abilities;
+echo "PASS catalog page: bounded inspection, fresh classification, immutable deltas and isolated failure\n";
+
 // The reader holds the old directory while another publisher replaces its value.
 $writer = new MAD4B_SCP_Catalog_Object_Store(); $writer->put( 'reader-race', 'old', 3600 ); $writer->flush();
 $old_option = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['reader-race']['option'];
@@ -279,6 +332,13 @@ $GLOBALS['abilities'] = array( 'nested' => new ReentrantAbility( 'single-flight'
 $single = request( array() );
 check( ! is_wp_error( $single ) && is_wp_error( $GLOBALS['concurrent_build_result'] ) && 'mad4b_catalog_build_in_progress' === $GLOBALS['concurrent_build_result']->code, 'Parallel full build was admitted' );
 check( ! $GLOBALS['wpdb']->locked, 'Successful build leaked mutex' );
+$GLOBALS['abilities'] = array( 'a' => new FixtureAbility( 'first page' ), 'nested' => new ReentrantAbility( 'cursor inspection' ) );
+$reentrant_page = request( array( 'limit' => 1 ) );
+unset( $GLOBALS['concurrent_build_result'] );
+$reentrant_tail = request( array( 'cursor' => $reentrant_page['next_cursor'] ) );
+check( ! is_wp_error( $reentrant_tail ) && 'nested' === $reentrant_tail['items'][0]['ability_name'], 'Reentrant cursor inspection discarded frozen metadata' );
+check( is_wp_error( $GLOBALS['concurrent_build_result'] ) && 'mad4b_catalog_build_in_progress' === $GLOBALS['concurrent_build_result']->code, 'Page inspection recursively admitted a full manifest build' );
+check( ! $GLOBALS['wpdb']->locked && ! is_wp_error( request( array( 'query' => 'a' ) ) ), 'Page inspection leaked its mutex or request-local fence' );
 class SlowAbility extends FixtureAbility { function get_input_schema() { usleep( 5000 ); return parent::get_input_schema(); } }
 $GLOBALS['abilities'] = array( 'slow' => new SlowAbility( 'time-budget' ) );
 $GLOBALS['filters']['mad4b_scp_catalog_build_seconds'] = 0.001;
@@ -324,4 +384,3 @@ foreach ( $mad4b_child_tests as $mad4b_child_test ) {
 	passthru( $mad4b_command, $mad4b_exit );
 	check( 0 === $mad4b_exit, 'Standalone hardening fixture failed: ' . $mad4b_child_test );
 }
-

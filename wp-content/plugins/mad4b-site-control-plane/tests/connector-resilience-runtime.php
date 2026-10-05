@@ -397,8 +397,8 @@ $read_consistency_reflection = new ReflectionClass( 'MAD4B_SCP_Read_Consistency'
 $next_step_method = $read_consistency_reflection->getMethod( 'session_safe_next_step' );
 $next_step_method->setAccessible( true );
 $write_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ) );
-mad4b_assert_true( 'request_full_staging_authority_handshake' === $write_next['action'], 'session-safe write recovery route drifted' );
-mad4b_assert_true( 'mad4b/full-staging-authority-handshake' === $write_next['ability'], 'session-safe write recovery ability drifted' );
+mad4b_assert_true( 'request_staging_write_authority_handshake' === $write_next['action'], 'session-safe write recovery route drifted' );
+mad4b_assert_true( 'mad4b/staging-write-authority-convergence-handshake' === $write_next['ability'], 'session-safe write recovery must exclude Developer and Breakglass convergence' );
 mad4b_assert_true( ! empty( $write_next['read_only'] ) && empty( $write_next['automatic_apply_allowed'] ), 'session-safe write recovery must remain read-only and non-automatic' );
 
 $skills_next = $next_step_method->invoke( null, false, array( 'skills_runtime_not_effective' ) );
@@ -511,7 +511,6 @@ $operator_summary = $operator_method->invoke( null, $operator_sections, false, a
 mad4b_assert_true( 'BLOCKED' === $operator_summary['state'], 'session-safe operator summary must classify current authority/topology drift as BLOCKED' );
 mad4b_assert_true( 'staging' === $operator_summary['effective_environment'], 'session-safe operator summary must preserve effective Site Profile environment' );
 mad4b_assert_true( in_array( 'reconcile_exact_staging_write_authority', $operator_summary['next_actions'], true ), 'session-safe operator summary must route authority drift to exact reconciliation' );
-mad4b_assert_true( in_array( 'repair_query_monitor_db_attribution_then_retry', $operator_summary['next_actions'], true ), 'session-safe operator summary must route topology drift to bounded Query Monitor repair' );
 mad4b_assert_true( false === $operator_summary['signals']['adapter_lifecycle_ready'], 'session-safe operator summary must expose adapter lifecycle readiness' );
 mad4b_assert_true( in_array( 'adapter_ability_lifecycle_incomplete', $operator_summary['reasons'], true ), 'session-safe operator summary must retain adapter lifecycle blocker' );
 mad4b_assert_true( in_array( 'repair_adapter_ability_lifecycle_registration', $operator_summary['next_actions'], true ), 'session-safe operator summary must route adapter lifecycle repair' );
@@ -519,11 +518,33 @@ mad4b_assert_true( 4 === count( $operator_summary['signals']['adapter_lifecycle_
 foreach ( $operator_summary['reasons'] as $operator_reason ) {
 	mad4b_assert_true( 0 !== strpos( (string) $operator_reason, 'missing_adapter_ability:' ), 'session-safe operator summary must not flood reasons with one entry per missing adapter ability' );
 }
+mad4b_assert_true( in_array( 'inspect_database_writer_topology', $operator_summary['next_actions'], true ), 'session-safe operator summary must distinguish writer faults from observer bootstrap' );
 mad4b_assert_true( false === $operator_summary['signals']['database_topology_ready'], 'session-safe operator summary must expose topology readiness' );
 mad4b_assert_true( false === $operator_summary['signals']['mcp_protocol_profile_ready'], 'session-safe operator summary must expose MCP protocol readiness' );
 mad4b_assert_true( in_array( 'adapter_version_uncertified', $operator_summary['reasons'], true ), 'session-safe operator summary must retain exact protocol blocker' );
 mad4b_assert_true( in_array( 'deploy_exact_certified_runtime_release', $operator_summary['next_actions'], true ), 'session-safe operator summary must route protocol drift to exact certified runtime deployment' );
 mad4b_assert_true( empty( $operator_summary['authorizing'] ) && empty( $operator_summary['mutation_performed'] ), 'session-safe operator summary must remain non-authorizing/read-only' );
+
+$combined_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ), $operator_summary );
+mad4b_assert_true( 'mad4b/control-plane-native-plan' === $combined_next['ability'], 'Runtime certification must be inspected before topology repair or authority convergence' );
+$adapter_only_summary = $operator_summary;
+$adapter_only_summary['next_actions'] = array( 'reconcile_exact_staging_write_authority', 'repair_adapter_ability_lifecycle_registration' );
+$adapter_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ), $adapter_only_summary );
+mad4b_assert_true( 'materialize_governed_read_adapter_lifecycle_then_retry' === $adapter_next['action'] && 'mad4b/read-execute' === $adapter_next['ability'], 'Canonical registration repair must precede grant convergence' );
+mad4b_assert_true( ! empty( $adapter_next['read_only'] ) && empty( $adapter_next['automatic_apply_allowed'] ), 'Registration repair recommendation must remain non-authorizing' );
+$topology_only_summary = $operator_summary;
+$topology_only_summary['next_actions'] = array( 'reconcile_exact_staging_write_authority', 'repair_query_monitor_db_attribution_then_retry' );
+$topology_next = $next_step_method->invoke( null, false, array( 'write_authority_not_effective' ), $topology_only_summary );
+mad4b_assert_true( 'inspect_database_writer_topology' === $topology_next['action'] && ! empty( $topology_next['read_only'] ), 'Topology failure must precede grant reconciliation and must not recommend a blind observer write' );
+$topology_only_summary['next_actions'][] = 'repair_adapter_ability_lifecycle_registration';
+$writer_before_adapter = $next_step_method->invoke( null, false, array(), $topology_only_summary );
+mad4b_assert_true( 'inspect_database_writer_topology' === $writer_before_adapter['action'], 'Writer readiness must precede a governed read that needs preparation storage' );
+$unknown_operator = $operator_method->invoke( null, array(), false, array(), array( 'environment' => 'staging' ) );
+mad4b_assert_true( 'DEGRADED' === $unknown_operator['state'], 'Missing operational readiness must not be projected as HEALTHY' );
+mad4b_assert_true( in_array( 'database_topology_ready_unknown', $unknown_operator['reasons'], true ), 'Unknown topology evidence must remain explicit' );
+$null_write_sections = array( 'runtime' => array( 'checks' => array( 'write_authority' => array( 'summary' => array( 'effective_authority_ready' => null, 'candidate_binding_match' => null, 'current_grant_snapshot_ready' => null ) ) ) ) );
+$null_operator = $operator_method->invoke( null, $null_write_sections, false, array(), array() );
+mad4b_assert_true( null === $null_operator['signals']['write_authority_ready'] && in_array( 'write_authority_ready_unknown', $null_operator['reasons'], true ), 'Unknown write readiness was coerced into a negative observation' );
 
 $bound_method = $read_consistency_reflection->getMethod( 'bound_session_safe_report' );
 $bound_method->setAccessible( true );

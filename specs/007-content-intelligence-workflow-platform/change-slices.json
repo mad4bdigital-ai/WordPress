@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
-  "reviewed_base_sha": "deb28052ab6e89b87f6154557e2d0f78f2b122c6",
-  "changed_file_count": 347,
+  "reviewed_base_sha": "a3ef595a5a8e6f8e41566c6c59073cc43d07affb",
+  "changed_file_count": 68,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -35,7 +35,8 @@
         "specs/007-content-intelligence-workflow-platform/tasks.md",
         "specs/007-content-intelligence-workflow-platform/traceability.md",
         "specs/007-content-intelligence-workflow-platform/validate_spec.py",
-        "specs/007-content-intelligence-workflow-platform/release-closure-readiness.json"
+        "specs/007-content-intelligence-workflow-platform/release-closure-readiness.json",
+        "specs/007-content-intelligence-workflow-platform/contracts/connector-resilience.md"
       ]
     },
     {
@@ -64,7 +65,8 @@
         "wp-content/plugins/mad4b-site-control-plane/config/time-policy.json",
         "wp-content/plugins/mad4b-site-control-plane/config/wordpress-lifecycle-migration-profile.json",
         "wp-content/plugins/mad4b-site-control-plane/config/external-machine-diagnostic-policy.json",
-        "wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json"
+        "wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json"
       ]
     },
     {
@@ -101,7 +103,9 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-time-policy.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php"
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php"
       ]
     },
     {
@@ -154,7 +158,9 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-registration-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php"
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-lifecycle-migration-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-class-provenance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
       ]
     },
     {
@@ -178,7 +184,9 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-measurement.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-search-runtime-context.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php"
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
       ]
     },
     {
@@ -219,7 +227,10 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-structural-redaction.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-capability-gateway.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workstream-certification.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/wp-admin/includes/plugin.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/wp-admin/includes/plugin.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php"
       ]
     },
     {
@@ -237,12 +248,13 @@
         "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-release-set-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md"
+        "wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-GOLDEN-PATH.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/ability-catalog-transport.md"
       ]
     },
     {
       "id": "tests-authority-security-01",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 1",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 1",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -276,12 +288,14 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/identifier-policy-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
       ]
     },
     {
       "id": "tests-authority-security-02",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 2",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 2",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -321,7 +335,7 @@
     },
     {
       "id": "tests-authority-security-03",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 3",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 3",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -408,7 +422,15 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-lifecycle-migration-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-refresh-hotpath-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/materialize-certified-mcp-adapter.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-class-provenance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-class-provenance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-registration-bridge-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-core-rest-isolation.php"
       ]
     },
     {
@@ -428,7 +450,12 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-backlog-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/security-ai-eval-faults-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/workstream-certification-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/workstream-certification-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adapter-discovery-reversibility-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-experience-media-validation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-publishing-season-acceptance.php"
       ]
     },
     {
@@ -444,7 +471,10 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/legacy-dispatch-migration-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/network-operation-journal-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/portability-import-contract.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-continuation-policy-runtime.php"
       ]
     },
     {
@@ -489,6 +519,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "063bf0e0ee8a13d6a498c3c0137643b4197dce2958da7cfa2a10af4a9a158355",
+  "changed_paths_sha256": "7e514a3531fe33eb140c277aa718f4924682f462376be712c9beefe782f8db3a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

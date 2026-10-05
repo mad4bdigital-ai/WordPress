@@ -400,6 +400,26 @@ try {
 		),
 	) );
 	$check( is_wp_error( $link_target_without_url ) && 'mad4b_content_experience_media_usage_link_target_without_url' === $link_target_without_url->get_error_code(), 'Contextual media usage accepted link_target without link_url.' );
+	foreach ( array(
+		array( 'source_url' => '/relative-source' ),
+		array( 'link_url' => '//example.invalid/gallery' ),
+		array( 'source_url' => 'https://user:password@example.invalid/gallery' ),
+		array( 'link_url' => '', 'link_target' => '_blank' ),
+	) as $invalid_contextual_url ) {
+		$invalid_usage_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
+			'post_id' => $post_id,
+			'expected_modified_gmt' => $current_for_media_guard->post_modified_gmt,
+			'meta' => array(
+				'ci_gallery' => array( $image_two, $image_one ),
+				'ci_gallery_usage' => array(
+					array( 'attachment_id' => $image_two, 'role' => 'gallery' ) + $invalid_contextual_url,
+					array( 'attachment_id' => $image_one, 'role' => 'hero' ),
+				),
+			),
+		) );
+		$check( is_wp_error( $invalid_usage_plan ), 'Contextual URL validation did not fence the generated update planner.' );
+	}
+	$check( $usage_readback === get_post_meta( $post_id, 'ci_gallery_usage', true ), 'Rejected contextual URL plans changed stored gallery usage.' );
 
 	$invalid_rights_date = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'update', array(
 		'post_id' => $post_id,

@@ -72,6 +72,14 @@ The preferred connector entry point is `mad4b/connector-preflight`, which:
 - identifies failed, retryable, and request-budget-skipped checks;
 - never mutates state.
 
+Session-safe operator guidance must order dependencies before authority recovery:
+inspect the exact certified runtime release, inspect the database writer blockers,
+resolve unknown operational evidence, then request the governed Write-only
+convergence handshake. Unknown writer/protocol evidence cannot produce a
+`HEALTHY` operator summary. A database topology error alone does not prove that
+Query Monitor's observer bootstrap is the correct repair. Write-only recovery
+must not default to Full Staging Developer or Breakglass convergence.
+
 ### Request budget
 
 Composite diagnostics have a bounded request budget. Once the budget is

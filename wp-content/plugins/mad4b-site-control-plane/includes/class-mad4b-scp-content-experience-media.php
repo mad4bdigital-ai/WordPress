@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Content_Experience_Media {
 	const MAX_META_VALUE_BYTES = 262144;
 	const MAX_USAGE_TEXT_BYTES = 65535;
+	const MAX_USAGE_URL_BYTES = 8192;
 
 	private static function normalize_string_list( $items, $limit, $pattern = '/^[A-Za-z0-9_.:-]+$/' ) {
 		$out = array();
@@ -119,9 +120,18 @@ final class MAD4B_SCP_Content_Experience_Media {
 	}
 
 	private static function normalize_url( $value ) {
-		$url = esc_url_raw( (string) $value, array( 'http', 'https' ) );
-		if ( '' === $url && '' !== trim( (string) $value ) ) {
-			return new WP_Error( 'mad4b_content_experience_media_usage_url_invalid', 'Media usage source_url must be an absolute HTTP(S) URL.' );
+		$error = new WP_Error( 'mad4b_content_experience_media_usage_url_invalid', 'Media usage URLs must be bounded, explicit absolute HTTP(S) URLs without credentials.' );
+		if ( ! is_string( $value ) || strlen( $value ) > self::MAX_USAGE_URL_BYTES ) return $error;
+		$value = trim( $value );
+		if ( '' === $value ) return '';
+		// esc_url_raw() preserves relative references and may infer http:// for
+		// bare domains. Neither is a portable, exact contextual source/link URL.
+		if ( ! preg_match( '#^https?://#i', $value ) ) return $error;
+		$parts = parse_url( $value );
+		if ( ! is_array( $parts ) || empty( $parts['host'] ) || isset( $parts['user'] ) || isset( $parts['pass'] ) ) return $error;
+		$url = esc_url_raw( $value, array( 'http', 'https' ) );
+		if ( '' === $url ) {
+			return $error;
 		}
 		return $url;
 	}
@@ -211,7 +221,7 @@ final class MAD4B_SCP_Content_Experience_Media {
 						return new WP_Error( 'mad4b_content_experience_media_usage_focal_point_invalid', 'Media usage focal_point requires numeric x/y values.', array( 'key' => $key ) );
 					}
 					$x = (float) $point['x']; $y = (float) $point['y'];
-					if ( $x < 0 || $x > 1 || $y < 0 || $y > 1 ) return new WP_Error( 'mad4b_content_experience_media_usage_focal_point_invalid', 'Media usage focal_point coordinates must be between 0 and 1.', array( 'key' => $key ) );
+					if ( ! is_finite( $x ) || ! is_finite( $y ) || $x < 0 || $x > 1 || $y < 0 || $y > 1 ) return new WP_Error( 'mad4b_content_experience_media_usage_focal_point_invalid', 'Media usage focal_point coordinates must be finite and between 0 and 1.', array( 'key' => $key ) );
 					$out[ $field ] = array( 'x' => $x, 'y' => $y );
 					break;
 				default:
@@ -229,7 +239,7 @@ final class MAD4B_SCP_Content_Experience_Media {
 				return new WP_Error( 'mad4b_content_experience_media_usage_decorative_aria_conflict', 'Decorative media must not carry an ARIA label.', array( 'key' => $key ) );
 			}
 		}
-		if ( isset( $out['link_target'] ) && ! isset( $out['link_url'] ) ) {
+		if ( isset( $out['link_target'] ) && empty( $out['link_url'] ) ) {
 			return new WP_Error( 'mad4b_content_experience_media_usage_link_target_without_url', 'Media usage link_target requires link_url in the same item.', array( 'key' => $key ) );
 		}
 		return $out;

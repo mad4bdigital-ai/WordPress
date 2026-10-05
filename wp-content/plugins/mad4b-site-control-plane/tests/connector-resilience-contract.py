@@ -236,8 +236,8 @@ for marker in [
     "'client_action' => 'compare_against_previous_exact_staging_release_before_performance_acceptance'",
     "private static function session_safe_next_step( $partial, array $subject_blockers, array $operator_summary = array() )",
     "'recommended_next_step' => self::session_safe_next_step( $partial, $subject_blockers, $operator_summary )",
-    "'request_full_staging_authority_handshake'",
-    "'mad4b/full-staging-authority-handshake'",
+    "'request_staging_write_authority_handshake'",
+    "'mad4b/staging-write-authority-convergence-handshake'",
     "'inspect_then_explicitly_reconcile_managed_skills'",
     "'automatic_apply_allowed' => false",
 ]:

@@ -5,7 +5,9 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	const CONTRACT = 'mad4b.ability-catalog-transport.v2';
 	const OBJECT_CONTRACT = 'mad4b.catalog-object-envelope.v1';
 	const OBJECT_VERSION = 1;
+	const SNAPSHOT_FORMAT = 'mad4b.catalog-definitions-only.v1';
 	const BLOCK_BYTES = 32768;
+	private static $manifest_active = false;
 	public static function boot() {
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
 		add_filter( 'rest_pre_serve_request', array( __CLASS__, 'serve_binary' ), 10, 4 );
@@ -160,7 +162,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 			}
 		}
 		$generation = self::wire_generation();
-		$fingerprint = hash( 'sha256', self::encode( array( $definitions, $generation ) ) ); $current_key = self::key( $scope, 'current', '' ); $current = self::unwrap_object( $store->get( $current_key ), 'current' );
+		$fingerprint = hash( 'sha256', self::encode( array( $definitions, $generation, self::SNAPSHOT_FORMAT ) ) ); $current_key = self::key( $scope, 'current', '' ); $current = self::unwrap_object( $store->get( $current_key ), 'current' );
 		$force_interval = max( 1, min( 300, (int) apply_filters( 'mad4b_scp_catalog_force_refresh_interval', 30 ) ) );
 		if ( is_array( $current ) && (int) ( $current['built_at'] ?? 0 ) > time() - $force_interval ) $force = false;
 		if ( ! $force && is_array( $current ) && $current['fingerprint'] === $fingerprint && $current['retain_until'] > time() + self::ttl() ) $items = $current['items'];
@@ -190,11 +192,8 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 							$row['wire_unavailable'] = true;
 						}
 					} catch ( Throwable $e ) { $row['wire_unavailable'] = true; }
-					$classification = MAD4B_SCP_Capability_Descriptor_Registry::describe( $name );
-					if ( ! is_wp_error( $classification ) ) {
-						$row['execution'] = array_intersect_key( $classification, array_flip( array( 'lane', 'readonly', 'execution_eligible', 'execution_blocker', 'input_schema_sha256', 'classification_sha256' ) ) );
-						if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) ) $row['execution'] += MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $classification );
-					}
+					// Persist definitions only. Provider/lane inspection is live and may
+					// build provider catalogs; do it only for the returned page below.
 					$items[] = $row;
 				} catch ( Throwable $e ) { $items[] = array( 'ability_name' => $name, 'unavailable' => true, 'reason' => 'schema_serialization_failed' ); }
 			}
@@ -245,7 +244,15 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		try {
 			$action = $input['transport_action'] ?? 'manifest';
 			if ( 'capabilities' === $action ) return self::capabilities();
-			if ( 'manifest' === $action ) $result = self::manifest( $input, $scope, $store );
+			if ( 'manifest' === $action ) {
+				// Ability getters and lane inspection may request discovery again.
+				// Fence the entire page, including inspection after the DB mutex is
+				// released. Publication still requires its connection-owned lock.
+				if ( self::$manifest_active ) return self::error( 'mad4b_catalog_build_in_progress', 409 );
+				self::$manifest_active = true;
+				try { $result = self::manifest( $input, $scope, $store ); }
+				finally { self::$manifest_active = false; }
+			}
 			elseif ( in_array( $action, array( 'schema', 'chunk' ), true ) ) $result = self::schema( $input, $scope, $store, $binary );
 			else return self::error( 'mad4b_catalog_action_invalid' );
 			if ( ! is_wp_error( $result ) ) $result['storage_metrics'] = $store->metrics();
@@ -269,7 +276,40 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		$events = array(); foreach ( $before as $name => $item ) if ( ! isset( $after[ $name ] ) ) $events[ $name ] = array( 'removed' => $name );
 		foreach ( $after as $name => $item ) if ( ! isset( $before[ $name ] ) || $before[ $name ] !== $item ) $events[ $name ] = array( 'item' => $item );
 		ksort( $events, SORT_STRING ); $page = array_slice( array_values( $events ), $p['offset'], $p['limit'] ); $p['offset'] += count( $page );
-		return array( 'contract' => self::CONTRACT, 'authority_scope_sha256' => $scope, 'snapshot' => $id, 'expires_at' => $p['expires'], 'items' => array_values( array_column( $page, 'item' ) ), 'removed' => array_values( array_column( $page, 'removed' ) ), 'total' => count( $events ), 'delta' => $delta, 'next_cursor' => $p['offset'] < count( $events ) ? self::cursor( $p ) : null, 'read_only' => true, 'authority_effect' => 'none' );
+		$items = self::describe_page_execution( array_values( array_column( $page, 'item' ) ) );
+		return array( 'contract' => self::CONTRACT, 'authority_scope_sha256' => $scope, 'snapshot' => $id, 'expires_at' => $p['expires'], 'items' => $items, 'removed' => array_values( array_column( $page, 'removed' ) ), 'total' => count( $events ), 'delta' => $delta, 'next_cursor' => $p['offset'] < count( $events ) ? self::cursor( $p ) : null, 'snapshot_semantics' => self::SNAPSHOT_FORMAT, 'execution_observation' => 'current_page_non_authorizing', 'read_only' => true, 'authority_effect' => 'none' );
+	}
+	private static function describe_page_execution( array $items ) {
+		$deadline = microtime( true ) + max( 0.001, min( 30, (float) apply_filters( 'mad4b_scp_catalog_build_seconds', 10 ) ) );
+		foreach ( $items as &$item ) {
+			// Old, still-leased snapshots may contain cached execution fields.
+			// Their definitions remain resumable; their decisions are never reused.
+			unset( $item['execution'] );
+			$item['execution'] = array( 'execution_eligible' => false, 'execution_blocker' => 'ability_inspection_unavailable' );
+			if ( ! empty( $item['unavailable'] ) ) continue;
+			if ( microtime( true ) >= $deadline ) {
+				$item['execution']['execution_blocker'] = 'catalog_page_inspection_budget';
+				continue;
+			}
+			try {
+				$classification = MAD4B_SCP_Capability_Descriptor_Registry::describe( $item['ability_name'] );
+				if ( is_wp_error( $classification ) || ! is_array( $classification ) ) continue;
+				$ability = wp_get_ability( $item['ability_name'] );
+				if ( ! is_object( $ability ) ) continue;
+				$definition = array( $ability->get_input_schema(), $ability->get_output_schema(), $ability->get_meta(), $ability->get_category(), $ability->get_label() );
+				if ( ! isset( $item['classification_sha256'] ) || ! hash_equals( (string) $item['classification_sha256'], hash( 'sha256', self::encode( $definition ) ) ) ) {
+					$item['execution']['execution_blocker'] = 'catalog_definition_changed_prepare_current_ability';
+					continue;
+				}
+				$execution = array_intersect_key( $classification, array_flip( array( 'lane', 'readonly', 'execution_eligible', 'execution_blocker', 'input_schema_sha256', 'classification_sha256' ) ) );
+				if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) ) $execution += MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $classification );
+				$item['execution'] = $execution;
+			} catch ( Throwable $e ) {
+				// Keep this row fail-closed without discarding sibling definitions.
+			}
+		}
+		unset( $item );
+		return $items;
 	}
 	private static function schema( $input, $scope, $store, $binary ) {
 		$id = $input['snapshot'] ?? ''; $digest = $input['schema_sha256'] ?? ''; $format = $input['schema_format'] ?? 'source';

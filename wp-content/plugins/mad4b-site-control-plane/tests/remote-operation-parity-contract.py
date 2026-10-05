@@ -2,6 +2,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
+skills_lease = (root / 'includes' / 'class-mad4b-scp-managed-skills-lease.php').read_text(encoding='utf-8')
 dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
@@ -129,7 +130,9 @@ required_parity_markers = [
     "'pending_external_executor'",
     "'manual_interaction_required' => false",
     "const SKILLS_LOCK_TTL = 900;",
-    "compare_and_swap_option",
+    "MAD4B_SCP_Managed_Skills_Lease::acquire(",
+    "MAD4B_SCP_Managed_Skills_Lease::refresh(",
+    "MAD4B_SCP_Managed_Skills_Lease::release(",
     "refresh_skills_lock",
     "private static function block_skills_job",
     "public static function managed_skills_reconciliation_status()",
@@ -139,8 +142,6 @@ required_parity_markers = [
     "'blind_retry_allowed' => false",
     "'next_action'",
     "'mad4b_scp_remote_operation_reconciliation_status'",
-    "mad4b_remote_skill_lock_reclaim_raced",
-    "mad4b_remote_skill_lock_heartbeat_raced",
     "did_action( 'wp_abilities_api_init' ) > 0",
     "foreach ( self::catalog() as $row )",
     "'mad4b-enrollment' !==",
@@ -193,7 +194,17 @@ for marker in (
 if "&& $checkpoint_identity_current;" not in managed_skills_status:
     raise SystemExit("completed Skills checkpoint must not be ready unless it matches the current build")
 
-if "delete_option( self::SKILLS_LOCK_OPTION" in parity:
+for marker in (
+    'private static function compare_and_swap_option(',
+    "'option_value' => maybe_serialize( $expected )",
+    'self::compare_and_swap_option( $option_name, $current, $next )',
+    'self::compare_and_swap_option( $option_name, $current, null )',
+    'mad4b_remote_skill_lock_heartbeat_raced',
+    'mad4b_remote_skill_lock_reclaim_raced',
+):
+    if marker not in skills_lease:
+        raise SystemExit('managed Skills lease lost atomic owner fencing: ' + marker)
+if "delete_option( self::SKILLS_LOCK_OPTION" in parity or 'delete_option(' in skills_lease:
     raise SystemExit("direct delete_option Skills lock reclamation is ABA-unsafe; CAS option fencing is required")
 
 for forbidden in [

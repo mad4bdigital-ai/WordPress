@@ -37,6 +37,49 @@ The package workflow additionally emits a CycloneDX SBOM and a GitHub Artifact R
 
 Do not reuse a previous ZIP after the source commit changes.
 
+## All Royal Egypt operating audit — 2026-10-05
+
+Read-only observations from 10:51–11:16 UTC were fenced to runtime generation
+`a24cdee69036dfd3b09907832cd41c2eb6ab844fe5dbacc550a204838cba1dd3`.
+The installed candidate was `a3ef595a5a8e6f8e41566c6c59073cc43d07affb`,
+Control Plane `0.4.0-rc.92`, Adapter `0.7.0`. These observations precede PR #253
+deployment and cannot certify its repaired runtime.
+
+| Operating path | Live observation | Required closure |
+|---|---|---|
+| Connection and profile | Registered transport; exact-bound Staging profile. WordPress separately reports its default `production` environment. | Preserve exact profile binding; evaluate effective environment separately from WordPress's default. |
+| Task search | 372 registered definitions searchable through the unified gateway. | Search visibility does not prove preparation or execution. |
+| Traditional read/write discovery | `Rate-limit writer topology is unavailable`. | Deploy the certified observer/topology fix; recheck durable rate storage. |
+| Selected read preparation | No preparation receipt; `mad4b_abuse_rate_storage_unavailable` for valid content, context, Skills and Search targets. | Obtain a fresh receipt after writer readiness; do not bypass its dispatcher binding. |
+| Full catalog mirror | `mad4b_catalog_build_time_budget` (503). | Page-bounded live classification; verify cold and warm mirrors after deployment. |
+| Adapter definitions | `media/search`, `media/get`, adapter inventory and Content Experience targets unavailable on this connection. | Verify canonical ChatGPT definition registration independently from provider-server materialization. |
+| Write grant plan | 44 expected abilities; 24 missing outside the installed reviewed allowlist; three missing dispatch grants. | Deploy the reviewed exact grant policy, then inspect the new complete provider universe and converge only its reviewed pairs. |
+| Candidate binding | Stored authority bound to `deb28052ab6e89b87f6154557e2d0f78f2b122c6`; current candidate differs. | Exact Write-only candidate convergence after runtime prerequisites pass. |
+| Provider closure summary | Returned `write_authority_ready=true` while candidate binding was false. | Use checkpoint plus current exact grants plus current candidate binding; never accept the old summary alone. |
+| Developer execution | Authority flags enabled; process execution blocked by unavailable resource limiter and network isolation. | Keep host execution unavailable until a certified backend supplies both capabilities. |
+| External acceptance | Browser/sampling/queue operations registered, but external executor waiting. | Register and certify the actual executor; registration alone is insufficient. |
+| Skills | Candidate checkpoint matches; live filesystem evaluation explicitly deferred. | Deep managed-Skills certification remains separate live evidence. |
+| Update channel | Session diagnostic reports no cached manifest. | Read an exact native package plan explicitly; absence of cached evidence is not a failed download. |
+
+The bounded report made no outbound requests or deep integrity scans. Its total
+request time was 1.136–1.156 seconds, with 425 database queries, 6,040 included
+files and a 48 MiB peak. Compare these measurements against an exact deployed
+release baseline before making a performance acceptance claim.
+
+Repository regression coverage includes a 400-capability mirror with two-item
+pages, immutable deltas, fresh page classification and isolated classification
+failures; dependency-ordered recovery and unknown readiness; real WordPress URL
+sanitization for contextual media; generated Content Experience plan denials;
+and managed-Skills lease ownership/CAS fencing. Contextual source/link URLs must
+be explicit absolute HTTP(S), credential-free and at most 8 KiB. A link target
+requires a non-empty URL and focal coordinates must be finite within `[0,1]`.
+
+After deploying the exact reviewed PR package, obtain a fresh generation-fenced
+report, prepare and execute one bounded read per content, media, taxonomy,
+context, Skills, Search and provider family, then perform separately authorized
+reversible canaries with readback/rollback. No live publishing, provider spend,
+authority widening, deployment or mutation was performed by this audit.
+
 ## Enrollment and governed write enablement
 
 Site enrollment and write authority are separate.
