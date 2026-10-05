@@ -8,6 +8,7 @@ full = adapters / "class-mad4b-scp-full-content-operations-adapter.php"
 translation = adapters / "class-mad4b-scp-translation-bridge-adapter.php"
 provider = adapters / "class-mad4b-scp-native-provider-bridge-adapter.php"
 jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
+media = adapters / "class-mad4b-scp-media-adapter.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
@@ -18,7 +19,7 @@ experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.ph
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, servers, semantic, experience, experience_governance, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -26,6 +27,7 @@ full_src = full.read_text(encoding="utf-8")
 translation_src = translation.read_text(encoding="utf-8")
 provider_src = provider.read_text(encoding="utf-8")
 jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
+media_src = media.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
@@ -43,6 +45,25 @@ for filename, class_name in (
 ):
     assert filename in base_src, f"adapter base does not load {filename}"
     assert f"{class_name}::boot();" in base_src, f"adapter base does not boot {class_name}"
+
+for token in (
+    "media/update-metadata",
+    "media/set-featured",
+    "media/set-parent",
+    "mad4b.rollback.media-metadata.v1",
+    "mad4b.rollback.featured-image.v1",
+    "mad4b.rollback.media-parent.v1",
+    "metadata_sha256",
+    "parent_id",
+    "wp_attachment_is_image(",
+    "mad4b_media_metadata_readback_mismatch",
+    "mad4b_media_parent_readback_mismatch",
+):
+    assert token in media_src, f"media governance contract missing: {token}"
+
+assert "$wpdb" not in media_src
+assert "database-raw-query" not in media_src
+assert "BREAKGLASS" not in media_src.upper()
 
 for ability in (
     "mad4b/content-modeling-context",
