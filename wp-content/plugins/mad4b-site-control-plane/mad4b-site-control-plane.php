@@ -326,6 +326,7 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-form-provider-ad
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-wp-import-export-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-family-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
+MAD4B_SCP_Adapter_Registry::boot_ability_registration();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';
