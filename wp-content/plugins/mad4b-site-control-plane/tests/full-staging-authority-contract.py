@@ -70,6 +70,7 @@ for marker in required:
 
 for marker in (
     "private static function developer_execution_projection( array $developer_status )",
+    "private static function developer_host_recovery( array $blockers )",
     "private static function operational_readiness( $write_ready, $normal_ready, $breakglass_ready, array $write_blockers, array $developer_execution )",
     "'authority_ready' => $normal_ready",
     "'ready_semantics' => 'authority_and_runtime_flags_only'",
@@ -214,6 +215,29 @@ for marker in (
 ):
     assert marker in status_body, marker
 
+host_recovery_body = full.split("private static function developer_host_recovery", 1)[1].split("private static function operational_readiness", 1)[0]
+for marker in (
+    "'resource_limiter_unavailable'",
+    "'install_or_configure_prlimit'",
+    "'network_isolation_unavailable'",
+    "'install_or_configure_bwrap_or_unshare'",
+    "'network_isolation_backend_uncertified'",
+    "'replace_uncertified_network_sandbox'",
+    "'proc_open_unavailable'",
+    "'enable_proc_open_in_host_php_policy'",
+    "'root_execution_denied'",
+    "'run_php_worker_as_non_root'",
+    "'accepted_resource_limiter' => 'prlimit'",
+    "'MAD4B_MCP_DEVELOPER_PRLIMIT_BIN'",
+    "'accepted_network_isolation_backends' => array( 'bubblewrap', 'unshare-net' )",
+    "'MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN'",
+    "'wordpress_self_repair_allowed' => false",
+    "'automatic_install_allowed' => false",
+    "'weaker_unsandboxed_fallback_allowed' => false",
+    "'production_mutation_allowed' => false",
+):
+    assert marker in host_recovery_body, marker
+
 operational_body = full.split("private static function operational_readiness", 1)[1].split("private static function compact_string_list", 1)[0]
 for marker in (
     "'write_authority_not_current'",
@@ -221,6 +245,7 @@ for marker in (
     "'developer_breakglass_authority_not_ready'",
     "'developer_execution_not_ready'",
     "'resolve_developer_host_execution_prerequisites'",
+    "'host_recovery' => self::developer_host_recovery( $blockers )",
     "'converge_authority_before_operational_use'",
     "'lane_readiness' => $lane_readiness",
     "'available_lanes' => $available_lanes",
