@@ -9,14 +9,35 @@ function add_query_arg( $args, $value, $url = null ) {
 	if ( isset( $parts['query'] ) ) parse_str( $parts['query'], $query );
 	return strtok( $url, '?' ) . '?' . http_build_query( array_merge( $query, $args ) );
 }
-function add_action( ...$args ) {}
+$GLOBALS['fixture_actions'] = array();
+function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
+	$GLOBALS['fixture_actions'][] = array(
+		'hook' => (string) $hook,
+		'callback' => $callback,
+		'priority' => (int) $priority,
+		'accepted_args' => (int) $accepted_args,
+	);
+}
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-route-registry.php';
 // The real page definitions register without booting menus or the provider runtime.
 require dirname( __DIR__ ) . '/includes/search/class-mad4b-scp-search-experience.php';
+MAD4B_SCP_Search_Experience::boot();
+$search_admin_menu = array_values( array_filter(
+	$GLOBALS['fixture_actions'],
+	static function ( $row ) {
+		return 'admin_menu' === $row['hook']
+			&& is_array( $row['callback'] )
+			&& 'MAD4B_SCP_Search_Experience' === $row['callback'][0]
+			&& 'menu' === $row['callback'][1];
+	}
+) );
+check( 1 === count( $search_admin_menu ), 'Search Intelligence admin menu registration is not deterministic' );
+check( 20 === $search_admin_menu[0]['priority'], 'Search Intelligence submenu must register after the MAD4B parent menu' );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-dynamic-content-pipeline-admin.php';
 $expected = 'https://fixture.test/wp-admin/admin.php?page=mad4b-search-intelligence';
 check( $expected === MAD4B_SCP_Admin_Route_Registry::resolve( '/wp-admin/mad4b-search-intelligence', 'GET' ), 'Legacy Search URL was not recovered' );
+check( 'manage_options' === MAD4B_SCP_Admin_Route_Registry::routes()['mad4b-search-intelligence']['required_capability'], 'Search Intelligence route permission was weakened while repairing menu order' );
 check( 'https://fixture.test/wp-admin/admin.php?page=mad4b-control-plane-content-pipeline' === MAD4B_SCP_Admin_Route_Registry::resolve( '/wp-admin/mad4b-control-plane-content-pipeline/', 'HEAD' ), 'Pipeline URL was not recovered' );
 check( MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-future-page', 'edit_posts', array( 'mad4b-old-future-page' ) ), 'Future page declaration rejected' );
 check( ! MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-future-page', 'read' ), 'Duplicate definition weakened permission' );
