@@ -264,13 +264,14 @@
       "gate": "authoritative_execution_verified",
       "repository_paths": [
         "includes/class-mad4b-scp-execution-commit-guard.php",
-        "includes/class-mad4b-scp-execution-fence.php"
+        "includes/class-mad4b-scp-execution-fence.php",
+        "includes/class-mad4b-scp-provider-callback-order.php",
+        "tests/provider-callback-order-contract.php"
       ],
       "live_evidence": {
         "required": true,
         "production_certification_stage": null,
         "additional_requirements": [
-          "ordered_callback_revision_reconciliation_fixture",
           "live_consistency_fault_canaries"
         ]
       }
