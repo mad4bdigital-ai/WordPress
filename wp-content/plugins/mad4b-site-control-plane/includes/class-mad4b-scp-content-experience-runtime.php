@@ -305,6 +305,14 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$manifest_normalized = $media_manifest_guard['normalized'];
 		$remote_media_provenance_rights = $media_planning['remote_media_provenance_rights'];
 
+		// Taxonomy and helper payloads are independent governed mutation inputs.
+		// Keep their normalization in the planning phase so omitted values become
+		// exact empty plans while invalid values fail closed before any mutation.
+		$taxonomies = self::normalize_taxonomy_payload( $profile, isset( $input['taxonomies'] ) ? $input['taxonomies'] : array() );
+		if ( is_wp_error( $taxonomies ) ) return $taxonomies;
+		$helpers = self::normalize_helper_payloads( $profile, $operation, isset( $input['helpers'] ) ? $input['helpers'] : array() );
+		if ( is_wp_error( $helpers ) ) return $helpers;
+
 		$post_parent = array_key_exists( 'post_parent', $input ) ? absint( $input['post_parent'] ) : null;
 		if ( null !== $post_parent ) {
 			if ( empty( $profile['hierarchy'] ) ) return new WP_Error( 'mad4b_content_experience_hierarchy_disabled', 'Hierarchy is disabled for this experience profile.' );
