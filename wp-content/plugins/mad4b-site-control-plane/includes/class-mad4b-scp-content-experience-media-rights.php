@@ -11,13 +11,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Content_Experience_Media_Rights {
 	const CONTRACT = 'mad4b.content-experience-media-publish-rights.v1';
 
-	private static function reference_ids( $value ) {
-		if ( is_array( $value ) ) return array_values( array_map( 'absint', $value ) );
-		if ( is_string( $value ) && '' !== $value ) return array_values( array_filter( array_map( 'absint', explode( ',', $value ) ) ) );
-		if ( is_numeric( $value ) && (int) $value > 0 ) return array( (int) $value );
-		return array();
-	}
-
 	private static function evaluation_date( $today = '' ) {
 		$today = trim( (string) $today );
 		if ( '' === $today ) $today = wp_date( 'Y-m-d' );
@@ -45,7 +38,7 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 			++$checked_fields;
 
 			$reference = isset( $spec['references_field'] ) ? (string) $spec['references_field'] : '';
-			$reference_ids = isset( $effective_meta[ $reference ] ) ? self::reference_ids( $effective_meta[ $reference ] ) : array();
+			$reference_ids = isset( $effective_meta[ $reference ], $field_specs[ $reference ] ) ? MAD4B_SCP_Content_Experience_Media_Storage::reference_ids( $effective_meta[ $reference ], $field_specs[ $reference ] ) : array();
 			$items = isset( $effective_meta[ $key ] ) && is_array( $effective_meta[ $key ] ) ? $effective_meta[ $key ] : array();
 
 			if ( ! empty( $reference_ids ) && empty( $items ) ) {

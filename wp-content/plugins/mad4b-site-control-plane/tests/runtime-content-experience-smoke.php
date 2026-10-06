@@ -292,6 +292,10 @@ try {
 		'license_expires_on' => '2099-12-31',
 		'content_sha256' => $remote_content_hash,
 	), false );
+	$remote_state_one = MAD4B_SCP_Remote_Media_Rights::state_evidence( $remote_rights_attachment, array(), array() );
+	$check( ! is_wp_error( $remote_state_one ) && 1 === (int) $remote_state_one['remote_attachment_count'] && 64 === strlen( (string) $remote_state_one['remote_state_sha256'] ), 'Remote media state evidence did not bind the exact attachment/provenance identity.' );
+	$remote_state_two = MAD4B_SCP_Remote_Media_Rights::state_evidence( $remote_rights_attachment, array(), array() );
+	$check( ! is_wp_error( $remote_state_two ) && hash_equals( (string) $remote_state_one['remote_state_sha256'], (string) $remote_state_two['remote_state_sha256'] ), 'Remote media state evidence is not deterministic.' );
 
 	$profile_input = array(
 		'slug' => 'ci-trip',
@@ -404,6 +408,7 @@ try {
 	);
 	$create_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'create', $create_input );
 	$check( ! is_wp_error( $create_plan ) && ! empty( $create_plan['profile_snapshot']['authority_sha256'] ), 'Create plan lacks historical profile snapshot.' );
+	$check( isset( $create_plan['remote_media_state']['remote_state_sha256'] ) && 64 === strlen( (string) $create_plan['remote_media_state']['remote_state_sha256'] ), 'Create plan is not bound to remote media state evidence.' );
 	$create = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $create_input, array( 'plan_sha256' => $create_plan['plan_sha256'] ) ) );
 	$check( ! is_wp_error( $create ) && ! empty( $create['verified'] ) && ! empty( $create['post_id'] ), 'Dynamic create apply failed.' );
 	$post_id = (int) $create['post_id'];
