@@ -45,6 +45,8 @@ req(
     "impact_trustworthy",
     "observed_count",
     "emitted_count",
+    "source_incomplete",
+    "source_trustworthy_for_absence",
     "trustworthy_for_absence",
     "uncertain_added",
     "uncertain_removed",
