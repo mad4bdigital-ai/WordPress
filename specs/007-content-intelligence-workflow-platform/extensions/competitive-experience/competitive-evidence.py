@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reproducible Competitive Experience evidence snapshot, history and packaged projection."""
 from __future__ import annotations
-import base64, hashlib, json, re
+import base64, hashlib, json, re, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -176,11 +176,12 @@ def render_php_summary(summary):
         "return json_decode( $payload, true );\n"
     )
 
-def history_entry(snapshot, summary, revision, previous_generation=""):
-    return {
+def history_entry(snapshot, summary, revision, previous_generation="", previous_entry_sha256=""):
+    row = {
         "revision": int(revision),
         "generation_sha256": snapshot["generation_sha256"],
         "previous_generation_sha256": previous_generation,
+        "previous_entry_sha256": previous_entry_sha256,
         "source_generation": snapshot["source_generation"],
         "task_generation": snapshot["task_generation"],
         "matrix_source_sha": snapshot["matrix_source_sha"],
@@ -188,6 +189,8 @@ def history_entry(snapshot, summary, revision, previous_generation=""):
         "package_fingerprints": {p["id"]: p["sha256"] for p in snapshot["packages"]},
         "authorizing": False,
     }
+    row["entry_sha256"] = sha(row)
+    return row
 
 def verify_history(snapshot, summary, history_path: Path = HISTORY):
     history = load(history_path)
@@ -197,19 +200,26 @@ def verify_history(snapshot, summary, history_path: Path = HISTORY):
     if not isinstance(entries, list) or not entries:
         raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_EMPTY")
     seen = set()
-    previous = ""
+    previous_generation = ""
+    previous_entry = ""
     for index, row in enumerate(entries, start=1):
         if row.get("revision") != index:
             raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_REVISION_INVALID")
         generation = row.get("generation_sha256", "")
         if not re.fullmatch(r"[a-f0-9]{64}", generation) or generation in seen:
             raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_GENERATION_INVALID")
-        if row.get("previous_generation_sha256", "") != previous or row.get("authorizing") is not False:
+        if row.get("previous_generation_sha256", "") != previous_generation or row.get("previous_entry_sha256", "") != previous_entry or row.get("authorizing") is not False:
             raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_CHAIN_INVALID")
+        claimed_entry = row.get("entry_sha256", "")
+        basis = dict(row)
+        basis.pop("entry_sha256", None)
+        if not re.fullmatch(r"[a-f0-9]{64}", claimed_entry) or claimed_entry != sha(basis):
+            raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_ENTRY_DIGEST_INVALID")
         seen.add(generation)
-        previous = generation
+        previous_generation = generation
+        previous_entry = claimed_entry
     current = entries[-1]
-    if history.get("current_generation_sha256") != snapshot["generation_sha256"]:
+    if history.get("current_generation_sha256") != snapshot["generation_sha256"] or history.get("current_entry_sha256") != previous_entry:
         raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_CURRENT_INVALID")
     if current.get("generation_sha256") != snapshot["generation_sha256"] or current.get("summary_sha256") != summary["summary_sha256"]:
         raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_STALE")
