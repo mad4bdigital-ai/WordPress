@@ -44,16 +44,22 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return is_array( $routes ) ? $routes : array();
 	}
 
-	private static function isolated_transport_status() {
+	private static function isolated_transport_status( $materialize = false ) {
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) || ! method_exists( 'MAD4B_SCP_MCP_Provider_Isolation', 'internal_provider_transport_status' ) ) {
 			return array( 'registry_available' => false, 'run_available' => false, 'retained_route_count' => 0, 'raw_routes_exposed' => false );
 		}
 		$status = MAD4B_SCP_MCP_Provider_Isolation::internal_provider_transport_status( 'jetengine' );
+		$ready = is_array( $status ) && ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
+		if ( ! $ready && $materialize && ! empty( $status['isolation_effective'] ) && self::initialized_rest_server()
+			&& method_exists( 'MAD4B_SCP_MCP_Provider_Isolation', 'ensure_internal_provider_transport' ) ) {
+			$ensured = MAD4B_SCP_MCP_Provider_Isolation::ensure_internal_provider_transport( 'jetengine' );
+			if ( is_array( $ensured ) ) $status = $ensured;
+		}
 		return is_array( $status ) ? $status : array( 'registry_available' => false, 'run_available' => false, 'retained_route_count' => 0, 'raw_routes_exposed' => false );
 	}
 
-	private static function isolated_rest_tools_available() {
-		$status = self::isolated_transport_status();
+	private static function isolated_rest_tools_available( $materialize = false ) {
+		$status = self::isolated_transport_status( $materialize );
 		return ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
 	}
 
@@ -170,6 +176,10 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 	}
 
 	public static function available() {
+		// Availability is an active discovery question. Once REST is initialized,
+		// allow the reviewed isolated provider callback to materialize request-local
+		// registry/run definitions before declaring the transport unavailable.
+		if ( self::isolated_rest_tools_available( true ) ) return true;
 		$status = self::transport_status();
 		return ! empty( $status['available'] );
 	}
@@ -390,7 +400,7 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
 			if ( is_wp_error( $tools ) ) $errors['native_rest_tools'] = $tools->get_error_code();
 		}
-		if ( self::isolated_rest_tools_available() ) {
+		if ( self::isolated_rest_tools_available( true ) ) {
 			$tools = self::rest_registry_tools( true );
 			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
 			if ( is_wp_error( $tools ) ) $errors['isolated_native_rest_tools'] = $tools->get_error_code();
