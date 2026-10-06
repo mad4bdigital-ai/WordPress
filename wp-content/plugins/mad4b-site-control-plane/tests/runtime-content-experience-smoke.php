@@ -260,12 +260,12 @@ try {
 		'license_expires_on' => '2099-12-31',
 		'content_sha256' => $remote_content_hash,
 	), false );
-	$remote_publish_guard = MAD4B_SCP_Content_Experience_Media_Rights::remote_provenance_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
+	$remote_publish_guard = MAD4B_SCP_Remote_Media_Rights::publish_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
 	$check( ! is_wp_error( $remote_publish_guard ) && 1 === (int) $remote_publish_guard['remote_attachment_count'], 'Remote media publish provenance guard rejected a valid fixture.' );
 	$expired_provenance = get_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, true );
 	$expired_provenance['license_expires_on'] = '2020-01-01';
 	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, $expired_provenance, false );
-	$expired_guard = MAD4B_SCP_Content_Experience_Media_Rights::remote_provenance_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
+	$expired_guard = MAD4B_SCP_Remote_Media_Rights::publish_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
 	$check( is_wp_error( $expired_guard ) && 'mad4b_remote_media_publish_rights_expired' === $expired_guard->get_error_code(), 'Expired remote-media rights did not block publish.' );
 	delete_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META );
 	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, array(

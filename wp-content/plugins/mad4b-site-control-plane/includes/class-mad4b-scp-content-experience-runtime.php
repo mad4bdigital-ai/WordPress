@@ -333,7 +333,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$remote_media_provenance_rights = null;
 		if ( 'publish' === $operation ) {
 			$effective_featured_media_id = null !== $featured_media_id ? (int) $featured_media_id : ( $post ? (int) get_post_thumbnail_id( $post->ID ) : 0 );
-			$remote_media_provenance_rights = MAD4B_SCP_Content_Experience_Media_Rights::remote_provenance_guard(
+			$remote_media_provenance_rights = MAD4B_SCP_Remote_Media_Rights::publish_guard(
 				$effective_featured_media_id,
 				$media_fields,
 				$effective_media_state

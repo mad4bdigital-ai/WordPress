@@ -15,13 +15,14 @@ experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.ph
 experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
 experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
 experience_media_rights = root / "includes" / "class-mad4b-scp-content-experience-media-rights.php"
+remote_media_rights = root / "includes" / "class-mad4b-scp-remote-media-rights.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
 descriptor = root / "includes" / "class-mad4b-scp-capability-descriptor-registry.php"
 experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_media, experience_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_media, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -36,6 +37,7 @@ experience_src = experience.read_text(encoding="utf-8")
 experience_governance_src = experience_governance.read_text(encoding="utf-8")
 experience_media_src = experience_media.read_text(encoding="utf-8")
 experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
+remote_media_rights_src = remote_media_rights.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
 descriptor_src = descriptor.read_text(encoding="utf-8")
 experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
@@ -274,6 +276,23 @@ assert "database-raw-query" not in experience_media_rights_src
 assert "BREAKGLASS" not in experience_media_rights_src.upper()
 assert len(experience_media_rights_src.splitlines()) <= 180, "content-experience-media-rights exceeds the focused 180-line domain-service budget"
 assert "class-mad4b-scp-content-experience-media-rights.php" in plugin_src
+
+for token in (
+    "mad4b.remote-media-publish-provenance.v1",
+    "publish_guard",
+    "mad4b_remote_media_publish_content_identity_missing",
+    "mad4b_remote_media_publish_provenance_missing",
+    "mad4b_remote_media_publish_rights_unproven",
+    "mad4b_remote_media_publish_rights_expired",
+    "checkdate",
+):
+    assert token in remote_media_rights_src, f"remote media rights contract missing: {token}"
+assert "$wpdb" not in remote_media_rights_src
+assert "database-raw-query" not in remote_media_rights_src
+assert "BREAKGLASS" not in remote_media_rights_src.upper()
+assert len(remote_media_rights_src.splitlines()) <= 180, "remote-media-rights exceeds the focused 180-line domain-service budget"
+assert "class-mad4b-scp-remote-media-rights.php" in plugin_src
+assert "MAD4B_SCP_Remote_Media_Rights::publish_guard(" in experience_runtime_src
 assert len(media_src.splitlines()) <= 550, "media adapter exceeds the focused 550-line adapter budget"
 
 for src, label in (

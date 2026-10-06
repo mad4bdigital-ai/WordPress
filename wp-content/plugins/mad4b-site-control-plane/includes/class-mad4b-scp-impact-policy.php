@@ -165,7 +165,8 @@ final class MAD4B_SCP_Impact_Policy {
 	}
 
 	public static function requires_approval( $ability_name, $provider = 'core', $input = null ) {
-		if ( in_array( (string) $ability_name, array( 'mad4b/developer-workspace-apply', 'media/remote-import-apply' ), true ) ) return true;
+		if ( 'mad4b/developer-workspace-apply' === (string) $ability_name ) return true;
+		if ( 'media/remote-import-apply' === (string) $ability_name ) return true;
 		$impact = self::impact_for( $ability_name, $provider, $input );
 		if ( in_array( $impact, array( 'high', 'exceptional' ), true ) ) return true;
 		return (bool) apply_filters( 'mad4b_scp_low_impact_requires_approval', false, $ability_name, $provider, $input );
