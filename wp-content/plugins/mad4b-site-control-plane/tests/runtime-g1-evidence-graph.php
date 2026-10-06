@@ -49,7 +49,11 @@ class FakeAbility {
  public function get_meta(){
    return array(
      'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true),
-     'mcp'=>array('surface'=>'read','public'=>false,'mad4b_reversible_contract'=>'none_required'),
+     'mcp'=>array(
+       'surface'=>'read','public'=>false,'mad4b_reversible_contract'=>'none_required',
+       'required_capability'=>'read','resource_schema_version'=>'v1',
+       'resource_constraints'=>array('post_type'=>'post'),
+     ),
    );
  }
  public function get_input_schema(){ return array('type'=>'object','properties'=>array('id'=>array('type'=>'integer')),'additionalProperties'=>false); }
@@ -172,6 +176,10 @@ check(count($one['nodes']['components'])===1,'component graph node missing');
 check($one['nodes']['providers'][0]['authority_inferred']===false,'provider identity inferred authority');
 check($one['nodes']['components'][0]['code_executed']===false,'component discovery executed code');
 check(count($one['nodes']['schemas'])===1,'ability schema graph node missing');
+check($one['nodes']['abilities'][0]['required_capability']==='read','declared capability evidence missing');
+check($one['nodes']['abilities'][0]['resource_schema_version']==='v1','resource schema version evidence missing');
+check(strlen($one['nodes']['abilities'][0]['resource_constraints_sha256'])===64,'resource constraints digest missing');
+check($one['nodes']['abilities'][0]['resource_values_exposed']===false && $one['nodes']['abilities'][0]['privilege_inferred_from_resources']===false,'resource evidence exposed values or inferred privilege');
 check($one['nodes']['schemas'][0]['values_read']===false && $one['nodes']['schemas'][0]['privilege_inferred']===false,'schema node read values or inferred privilege');
 check(count($one['nodes']['operations'])===1,'operation registry rows were not captured');
 check($one['nodes']['operations'][0]['preconditions']['descriptor_binding_ready']===true,'operation descriptor precondition missing');
@@ -247,6 +255,9 @@ $proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>
 check(!is_wp_error($proposals) && count($proposals['proposals'])===1,'runtime policy proposal missing');
 $proposal=$proposals['proposals'][0];
 check($proposal['auto_classification_eligible']===true,'actual conformance did not admit the zero-effect read candidate');
+check($proposal['features']['declared_capability']==='read','classifier capability feature missing');
+check($proposal['features']['resource_schema_version']==='v1','classifier resource schema feature missing');
+check(strlen($proposal['features']['resource_constraints_sha256'])===64,'classifier resource constraint digest missing');
 $status=MAD4B_SCP_Runtime_Policy_Classifier::review_status();
 check($status['revision']===0 && $status['review_count']===0,'review ledger did not start empty');
 
