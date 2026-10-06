@@ -35,6 +35,18 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 	public static function status() {
 		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) return self::unavailable( 'mcp_adapter_unavailable' );
 		if ( ! class_exists( '\\WP\\MCP\\Abilities\\McpAbilityExposure' ) ) return self::unavailable( 'mcp_exposure_resolver_unavailable' );
+
+		// On non-REST requests (notably wp-admin/admin-post.php self-update),
+		// the official Adapter may exist before its rest_api_init lifecycle has
+		// materialized MAD4B servers. If we snapshot get_servers() first and only
+		// later call rest_get_server() while checking foreign transports, the
+		// routes registered by that very call are falsely classified as foreign.
+		// After wp_loaded it is safe to initialize WordPress' canonical lazy REST
+		// server once; this executes the normal rest_api_init callbacks, performs
+		// no persistent mutation, and gives both inventories one lifecycle epoch.
+		$rest_sync = self::synchronize_rest_inventory_lifecycle();
+		if ( is_wp_error( $rest_sync ) ) return self::unavailable( $rest_sync->get_error_code() );
+
 		try {
 			$adapter = \WP\MCP\Core\McpAdapter::instance();
 			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'get_servers' ) ) return self::unavailable( 'mcp_server_registry_unavailable' );
@@ -89,7 +101,50 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		}
 		if ( ! empty( $status['write_side_channel_detected'] ) ) $status['blockers'][] = 'mcp_write_side_channel_detected';
 		$status['blockers'] = array_values( array_unique( $status['blockers'] ) );
+		$status['inventory_lifecycle_state'] = is_array( $rest_sync ) && isset( $rest_sync['state'] )
+			? sanitize_key( (string) $rest_sync['state'] )
+			: 'unknown';
+		$status['inventory_lifecycle_read_only'] = true;
+		$status['inventory_lifecycle_mutation_performed'] = false;
 		return $status;
+	}
+
+	private static function synchronize_rest_inventory_lifecycle() {
+		global $wp_rest_server;
+
+		if ( is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' ) ) {
+			return array(
+				'state' => 'already_initialized',
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+
+		// Isolated contract fixtures intentionally omit the WordPress REST lifecycle.
+		// Preserve pure server-bound tests without inventing a fake bootstrap.
+		if ( ! function_exists( 'did_action' ) || ! function_exists( 'rest_get_server' ) ) {
+			return array(
+				'state' => 'lifecycle_api_unavailable',
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+
+		if ( did_action( 'wp_loaded' ) < 1 || ( function_exists( 'doing_action' ) && doing_action( 'wp_loaded' ) ) ) {
+			return new WP_Error(
+				'rest_bootstrap_incomplete',
+				'MCP peer inventory is deferred until WordPress bootstrap is complete.'
+			);
+		}
+
+		$server = self::rest_server_for_foreign_inventory();
+		if ( is_wp_error( $server ) ) return $server;
+
+		return array(
+			'state' => 'canonical_rest_initialized',
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
 	}
 
 	public static function analyze_servers( array $servers ) {
