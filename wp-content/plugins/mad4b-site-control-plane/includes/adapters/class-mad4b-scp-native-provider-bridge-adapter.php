@@ -287,19 +287,60 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 
 	public function jetengine_inventory() {
 		$ops = array( 'get_configuration','get_website_config','get_macros','create_cpt','create_taxonomy','create_meta_box','create_cct','create_query','create_glossary','create_listing','manage_modules','import_configuration','export_configuration' );
+		$transport_status = class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) ? MAD4B_SCP_JetEngine_MCP_Client::transport_status() : array(
+			'available' => false,
+			'preferred_transport' => 'unavailable',
+			'blockers' => array( 'jetengine_mcp_client_unavailable' ),
+			'next_action' => 'restore_jetengine_native_client',
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 		$items = array();
+		$available_count = 0;
 		foreach ( $ops as $op ) {
 			$resolved = $this->resolve_operation( $op );
-			$items[] = is_wp_error( $resolved )
-				? array( 'operation' => $op, 'available' => false, 'error' => $resolved->get_error_code(), 'matches' => (array) $resolved->get_error_data() )
-				: array_merge( array( 'operation' => $op, 'available' => true, 'transport' => $resolved['transport'] ), $resolved['row'] );
+			$reviewed_name = $this->exact_operation_native_name( $op );
+			if ( is_wp_error( $resolved ) ) {
+				$data = $resolved->get_error_data();
+				$data = is_array( $data ) ? $data : array();
+				$next_action = ! empty( $transport_status['available'] )
+					? ( '' !== $reviewed_name ? 'review_provider_native_name_or_schema_drift' : 'inspect_discovered_native_tool_semantics' )
+					: ( isset( $transport_status['next_action'] ) ? (string) $transport_status['next_action'] : 'restore_provider_native_transport' );
+				$items[] = array(
+					'operation' => $op,
+					'available' => false,
+					'error' => $resolved->get_error_code(),
+					'reviewed_native_name' => $reviewed_name,
+					'candidate_matches' => isset( $data['matches'] ) && is_array( $data['matches'] ) ? array_values( $data['matches'] ) : array(),
+					'next_action' => $next_action,
+					'transport_available' => ! empty( $transport_status['available'] ),
+				);
+				continue;
+			}
+			$available_count++;
+			$items[] = array_merge(
+				array(
+					'operation' => $op,
+					'available' => true,
+					'transport' => $resolved['transport'],
+					'reviewed_native_name' => $reviewed_name,
+					'next_action' => 'bind_exact_native_name_and_schema_then_execute_governed_surface',
+				),
+				$resolved['row']
+			);
 		}
 		return array(
 			'contract' => self::CONTRACT,
+			'resolution_contract' => 'mad4b.jetengine-native-operation-resolution.v1',
 			'jetengine_available' => function_exists( 'jet_engine' ) || class_exists( 'Jet_Engine' ) || ( class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) && MAD4B_SCP_JetEngine_MCP_Client::available() ),
 			'jetengine_mcp_endpoint' => class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) ? MAD4B_SCP_JetEngine_MCP_Client::endpoint() : '',
+			'transport_status' => $transport_status,
 			'operations' => $items,
 			'count' => count( $items ),
+			'available_count' => $available_count,
+			'unavailable_count' => count( $items ) - $available_count,
+			'authorizing' => false,
+			'mutation_performed' => false,
 		);
 	}
 
