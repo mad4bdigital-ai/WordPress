@@ -130,6 +130,19 @@ class MAD4B_SCP_Provider_Contracts {
    );
  }
 }
+class MAD4B_SCP_Provider_Compatibility_Certification {
+ public static function ability_status($provider,$ability_name,$adapter=null){
+   if('demo'!==sanitize_key((string)$provider) || 'mad4b/example-read'!==(string)$ability_name) return array();
+   return array(
+     'capability_id'=>'demo-read',
+     'capability_contract_digest'=>str_repeat('9',64),
+     'risk'=>'read',
+     'read_eligible'=>true,
+     'surface_exposed'=>true,
+     'artifact'=>array('runtime_artifact_fingerprint'=>str_repeat('8',64)),
+   );
+ }
+}
 class MAD4B_SCP_Operation_Registry {
  public static function status(){
    return array('operations'=>array(array(
@@ -159,7 +172,12 @@ class G1ConformanceVerifier {
      && isset($receipt['signature'])
      && 'fixture-signature'===(string)$receipt['signature']
      && isset($receipt['evidence_sha256'])
-     && preg_match('/^[a-f0-9]{64}$/D',(string)$receipt['evidence_sha256']);
+     && preg_match('/^[a-f0-9]{64}$/D',(string)$receipt['evidence_sha256'])
+     && isset($context['capability_id'],$context['artifact_fingerprint'],$context['capability_contract_digest'])
+     && isset($receipt['capability_id'],$receipt['artifact_fingerprint'],$receipt['capability_contract_digest'])
+     && hash_equals((string)$context['capability_id'],(string)$receipt['capability_id'])
+     && hash_equals((string)$context['artifact_fingerprint'],(string)$receipt['artifact_fingerprint'])
+     && hash_equals((string)$context['capability_contract_digest'],(string)$receipt['capability_contract_digest']);
    return array(
      'verified'=>(bool)$ok,
      'evidence_sha256'=>$ok?(string)$receipt['evidence_sha256']:'',
@@ -311,6 +329,9 @@ $receipt=array(
  'input_schema_sha256'=>$node['input_schema_sha256'],
  'output_schema_sha256'=>$node['output_schema_sha256'],
  'provider_contract_sha256'=>$provider_sha,
+ 'capability_id'=>'demo-read',
+ 'artifact_fingerprint'=>str_repeat('8',64),
+ 'capability_contract_digest'=>str_repeat('9',64),
  'result'=>'zero_effect_read_verified',
  'observed_writes'=>0,
  'observed_external_effects'=>0,
@@ -376,6 +397,16 @@ $GLOBALS['g1_conformance_receipt']=$untrusted_verifier;
 $untrusted_proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
 check($untrusted_proposals['proposals'][0]['auto_classification_eligible']===false,'untrusted verifier enabled auto classification');
 check($untrusted_proposals['proposals'][0]['conformance']['reason']==='conformance_verifier_untrusted','untrusted verifier denial reason missing');
+$GLOBALS['g1_conformance_receipt']=$receipt;
+
+$artifact_drift=$receipt;
+$artifact_drift['artifact_fingerprint']=str_repeat('7',64);
+unset($artifact_drift['receipt_sha256']);
+$artifact_drift['receipt_sha256']=MAD4B_SCP_Ability_Contract_Inspector::digest(MAD4B_SCP_Runtime_Policy_Classifier::CONFORMANCE_CONTRACT,$artifact_drift);
+$GLOBALS['g1_conformance_receipt']=$artifact_drift;
+$artifact_drift_proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
+check($artifact_drift_proposals['proposals'][0]['auto_classification_eligible']===false,'stale artifact conformance enabled auto classification');
+check($artifact_drift_proposals['proposals'][0]['conformance']['reason']==='conformance_artifact_fingerprint_binding_mismatch','artifact conformance drift denial reason missing');
 $GLOBALS['g1_conformance_receipt']=$receipt;
 
 $proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
