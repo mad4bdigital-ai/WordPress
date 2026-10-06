@@ -1293,6 +1293,275 @@
           }
         }
       }
+    },
+    "google_drive_context": {
+      "adapter_id": "context",
+      "capabilities": {
+        "context.read": {
+          "risk": "read",
+          "abilities": [
+            "context/status",
+            "context/assets",
+            "context/review-queue",
+            "context/review-audit",
+            "context/brand-core-coverage",
+            "context/brand-core-convergence-plan",
+            "context/google-drive-status",
+            "context/runtime-readiness",
+            "context/conflicts",
+            "context/reference-profile",
+            "context/retrieve",
+            "context/compliance-check",
+            "context/brand-gap-plan",
+            "context/brand-draft-preflight",
+            "context/source-scan-plan",
+            "context/provider-capabilities"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "local_context.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/brand-draft-append",
+            "context/brand-draft-create",
+            "context/source-scan-apply"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": false,
+            "evidence_strength": "bounded_behavioral_readback_required"
+          }
+        },
+        "drive_asset.create.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "context/create-drive-asset"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "behavioral_readback_required"
+          }
+        },
+        "drive_asset.update.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/update-drive-asset"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.google-drive-context-update.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_readback_and_rollback_required"
+          }
+        },
+        "drive_asset.recreate.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/recreate-drive-asset"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.google-drive-context-recreate.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_readback_and_rollback_required"
+          }
+        },
+        "brand_materialization.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "context/materialize-brand-draft",
+            "context/reconcile-brand-materialization"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "behavioral_readback_required"
+          }
+        },
+        "brand_materialization.rollback.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/rollback-materialized-brand-draft"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": false,
+            "evidence_strength": "bounded_behavioral_readback_required"
+          }
+        }
+      }
     }
   }
 }
