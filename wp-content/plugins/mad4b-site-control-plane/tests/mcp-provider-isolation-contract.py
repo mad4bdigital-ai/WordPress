@@ -18,6 +18,85 @@ PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v4'
 LEGACY_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3'
 
 
+def php_executable_text(text):
+    """Return PHP lexical code with comments and quoted literals blanked."""
+    out = []
+    i = 0
+    state = 'code'
+    quote = ''
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ''
+        if state == 'code':
+            if ch == '/' and nxt == '*':
+                out.extend((' ', ' '))
+                i += 2
+                state = 'block_comment'
+                continue
+            if ch == '/' and nxt == '/':
+                out.extend((' ', ' '))
+                i += 2
+                state = 'line_comment'
+                continue
+            if ch == '#':
+                out.append(' ')
+                i += 1
+                state = 'line_comment'
+                continue
+            if ch in ("'", '"', chr(96)):
+                quote = ch
+                out.append(' ')
+                i += 1
+                state = 'string'
+                continue
+            out.append(ch)
+            i += 1
+            continue
+        if state == 'block_comment':
+            if ch == '*' and nxt == '/':
+                out.extend((' ', ' '))
+                i += 2
+                state = 'code'
+            else:
+                out.append('\n' if ch == '\n' else ' ')
+                i += 1
+            continue
+        if state == 'line_comment':
+            if ch == '\n':
+                out.append('\n')
+                state = 'code'
+            else:
+                out.append(' ')
+            i += 1
+            continue
+        if state == 'string':
+            if ch == '\\' and i + 1 < len(text):
+                out.extend((' ', ' '))
+                i += 2
+                continue
+            if ch == quote:
+                out.append(' ')
+                i += 1
+                state = 'code'
+                quote = ''
+                continue
+            out.append('\n' if ch == '\n' else ' ')
+            i += 1
+    return ''.join(out)
+
+
+def forbid_executable_php(text, needle, label):
+    if needle in php_executable_text(text):
+        raise SystemExit(f'FAIL {label}: forbidden executable {needle!r}')
+
+
+_lexer_comment_fixture = "<?php /* rest_get_server( */ // rest_get_server(\n# rest_get_server(\n$x = 'rest_get_server(';"
+_lexer_code_fixture = "<?php rest_get_server();"
+if 'rest_get_server(' in php_executable_text(_lexer_comment_fixture):
+    raise SystemExit('FAIL executable-php-lexer: comment/string false positive')
+if 'rest_get_server(' not in php_executable_text(_lexer_code_fixture):
+    raise SystemExit('FAIL executable-php-lexer: real call escaped detection')
+
 def require(text, needle, label):
     if needle not in text:
         raise SystemExit(f'FAIL {label}: missing {needle!r}')
@@ -107,7 +186,7 @@ require(isolation, "'mcp_execution_surface' === (string) $descriptor['class']", 
 require(client, "'isolated-native-rest-tools'", 'native-bridge-isolated-transport')
 require(client, "MAD4B_SCP_MCP_Provider_Isolation::ensure_internal_provider_transport( 'jetengine' )", 'native-bridge-discovery-materialization')
 require(client, "MAD4B_SCP_MCP_Provider_Isolation::dispatch_internal_provider_request( 'jetengine', $request )", 'native-bridge-governed-isolation-handoff')
-forbid(client, 'rest_get_server(', 'native-client-never-consumes-rest-lifecycle')
+forbid_executable_php(client, 'rest_get_server(', 'native-client-never-consumes-rest-lifecycle')
 require(client, "'raw_provider_routes_exposed' => false", 'native-client-no-raw-route-exposure')
 require(client, "'blockers' => array_values( array_unique( $blockers ) )", 'native-client-actionable-transport-blockers')
 require(client, "'next_action' => $next_action", 'native-client-actionable-next-step')
@@ -135,7 +214,7 @@ for forbidden in (
 ):
     retained_start = isolation.index('public static function dispatch_internal_provider_request')
     retained_end = isolation.index('public static function descriptors()', retained_start)
-    forbid(isolation[retained_start:retained_end], forbidden, 'internal-handoff-no-route-registration-or-rest-replay')
+    forbid_executable_php(isolation[retained_start:retained_end], forbidden, 'internal-handoff-no-route-registration-or-rest-replay')
 
 require(isolation, "MAD4B_SCP_Provider_Transport_Registry::route_descriptors()", 'declarative-route-registry-consumption')
 require(isolation, "MAD4B_SCP_Provider_Transport_Registry::server_callback_descriptors()", 'declarative-server-registry-consumption')
