@@ -76,7 +76,7 @@ function setup_fixture() {
 	MAD4B_SCP_Staging_Write_Authority::$plan = $plan;
 	$old = array( 'source_commit_sha' => str_repeat( '1', 40 ), 'build_fingerprint' => str_repeat( '2', 64 ), 'package_manifest_digest' => str_repeat( '3', 64 ), 'artifact_identity' => 'old-artifact' );
 	MAD4B_SCP_Live_Acceptance_Observer::$identity = $old;
-	$binding = array( 'match' => true ); foreach ( $old as $key => $value ) { $binding['stored_' . $key] = $value; $binding['current_' . $key] = $value; } MAD4B_SCP_Staging_Write_Authority::$binding = $binding;
+	$binding = array( 'required' => true, 'stored_bound' => true, 'identity_completeness' => 'complete', 'match' => true ); foreach ( $old as $key => $value ) { $binding['stored_' . $key] = $value; $binding['current_' . $key] = $value; } MAD4B_SCP_Staging_Write_Authority::$binding = $binding;
 	return array( 'version' => '0.4.0-rc.88', 'source_commit_sha' => str_repeat( '4', 40 ), 'build_fingerprint' => str_repeat( '5', 64 ), 'package_manifest_digest' => str_repeat( '6', 64 ), 'artifact_identity' => 'new-artifact', 'archive_sha256' => str_repeat( '7', 64 ), 'release_verdict_success' => true, 'release_root_trust_verified' => true, 'published_from_master' => true, 'release_verdict_run_id' => 1 );
 }
 function prepare_fixture( array $target ) { return MAD4B_SCP_Post_Update_Continuation::prepare( $target, 'governed_native_release_pull', str_repeat( '8', 64 ), 'lease' ); }
