@@ -89,32 +89,27 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		$started = microtime( true );
 		$memory_before = function_exists( 'memory_get_usage' ) ? memory_get_usage( true ) : 0;
 
-		$ability_nodes = self::abilities();
-		$nodes = array(
-			'providers'=>self::providers(),
-			'components'=>self::components(),
-			'abilities'=>$ability_nodes,
-			'schemas'=>self::schemas($ability_nodes),
-			'operations'=>self::operations(),
-			'plugins'=>self::plugins(),
-			'rest_routes'=>self::rest_routes(),
-			'post_types'=>self::post_types(),
-			'taxonomies'=>self::taxonomies(),
-			'meta_keys'=>self::meta_keys(),
-			'hooks'=>self::hooks(),
-			'cron_hooks'=>self::cron_hooks(),
-			'admin_routes'=>self::admin_routes(),
-			'mcp_descriptors'=>self::mcp_descriptors($ability_nodes),
-			'symbols'=>self::symbols(),
-			'database_tables'=>self::database_tables(),
-		);
+		$registry = self::collector_contracts();
+		$nodes = array();
 		$collection_status = array();
-		foreach ( $nodes as $kind => $rows ) {
+		foreach ( $registry as $kind => $collector ) {
+			$method = isset( $collector['method'] ) ? (string) $collector['method'] : '';
+			$source = isset( $collector['source'] ) ? (string) $collector['source'] : '';
+			if ( '' === $method || ! method_exists( __CLASS__, $method ) ) {
+				$rows = array();
+			} elseif ( '' !== $source ) {
+				$source_rows = isset( $nodes[ $source ] ) && is_array( $nodes[ $source ] ) ? $nodes[ $source ] : array();
+				$rows = self::$method( $source_rows );
+			} else {
+				$rows = self::$method();
+			}
+			$rows = is_array( $rows ) ? $rows : array();
 			usort( $rows, static function( $a, $b ) {
 				return strcmp( isset($a['id'])?(string)$a['id']:'', isset($b['id'])?(string)$b['id']:'' );
 			} );
+			$observed = self::collector_observed_count( $kind, $rows, $nodes );
 			$nodes[ $kind ] = array_slice( $rows, 0, self::MAX_ITEMS_PER_KIND );
-			$collection_status[ $kind ] = self::collection_status( $kind, count( $nodes[ $kind ] ) );
+			$collection_status[ $kind ] = self::collection_status( $kind, count( $nodes[ $kind ] ), $observed );
 		}
 		$site = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
 			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
@@ -248,12 +243,26 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 
 	private static function collector_contracts() {
 		return array(
-			'providers','components','abilities','schemas','operations','plugins','rest_routes','post_types',
-			'taxonomies','meta_keys','hooks','cron_hooks','admin_routes','mcp_descriptors','symbols','database_tables',
+			'providers'=>array('method'=>'providers'),
+			'components'=>array('method'=>'components'),
+			'abilities'=>array('method'=>'abilities'),
+			'schemas'=>array('method'=>'schemas','source'=>'abilities'),
+			'operations'=>array('method'=>'operations'),
+			'plugins'=>array('method'=>'plugins'),
+			'rest_routes'=>array('method'=>'rest_routes'),
+			'post_types'=>array('method'=>'post_types'),
+			'taxonomies'=>array('method'=>'taxonomies'),
+			'meta_keys'=>array('method'=>'meta_keys'),
+			'hooks'=>array('method'=>'hooks'),
+			'cron_hooks'=>array('method'=>'cron_hooks'),
+			'admin_routes'=>array('method'=>'admin_routes'),
+			'mcp_descriptors'=>array('method'=>'mcp_descriptors','source'=>'abilities'),
+			'symbols'=>array('method'=>'symbols'),
+			'database_tables'=>array('method'=>'database_tables'),
 		);
 	}
 
-	private static function collection_status( $kind, $emitted_count ) {
+	private static function collection_status( $kind, $emitted_count, $observed_count ) {
 		$lifecycle='ready';
 		if('rest_routes'===$kind && (!function_exists('did_action') || did_action('rest_api_init')<=0)) $lifecycle='not_initialized';
 		elseif('providers'===$kind && !class_exists('MAD4B_SCP_Provider_Contracts')) $lifecycle='unavailable';
@@ -261,17 +270,87 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		elseif('meta_keys'===$kind && !function_exists('get_registered_meta_keys')) $lifecycle='unavailable';
 		elseif('admin_routes'===$kind && !class_exists('MAD4B_SCP_Admin_Route_Registry')) $lifecycle='unavailable';
 
-		$possible_truncation=(int)$emitted_count>=self::MAX_ITEMS_PER_KIND;
+		$observed_count=max(0,(int)$observed_count);
+		$emitted_count=max(0,(int)$emitted_count);
+		$truncated=$observed_count>$emitted_count;
 		return array(
 			'kind'=>(string)$kind,
-			'observed_count'=>$possible_truncation ? null : (int)$emitted_count,
-			'emitted_count'=>(int)$emitted_count,
+			'observed_count'=>$observed_count,
+			'emitted_count'=>$emitted_count,
 			'max_items'=>self::MAX_ITEMS_PER_KIND,
 			'lifecycle'=>$lifecycle,
-			'truncated'=>$possible_truncation,
-			'count_observation_complete'=>!$possible_truncation,
-			'trustworthy_for_absence'=>'ready'===$lifecycle && !$possible_truncation,
+			'truncated'=>$truncated,
+			'count_observation_complete'=>true,
+			'trustworthy_for_absence'=>'ready'===$lifecycle && !$truncated,
 		);
+	}
+
+	private static function collector_observed_count( $kind, array $rows, array $nodes ) {
+		switch ( $kind ) {
+			case 'abilities':
+				return count( self::ability_names() );
+			case 'schemas':
+				return 2 * count( isset($nodes['abilities'])&&is_array($nodes['abilities'])?$nodes['abilities']:array() );
+			case 'operations':
+				$status=class_exists('MAD4B_SCP_Operation_Registry')&&method_exists('MAD4B_SCP_Operation_Registry','status')?MAD4B_SCP_Operation_Registry::status():array();
+				return is_array($status)&&isset($status['operations'])&&is_array($status['operations'])?count($status['operations']):count($rows);
+			case 'providers':
+				$contracts=class_exists('MAD4B_SCP_Provider_Contracts')&&method_exists('MAD4B_SCP_Provider_Contracts','all')?MAD4B_SCP_Provider_Contracts::all():array();
+				return is_array($contracts)?count($contracts):count($rows);
+			case 'components':
+				$contracts=class_exists('MAD4B_SCP_Provider_Contracts')&&method_exists('MAD4B_SCP_Provider_Contracts','all')?MAD4B_SCP_Provider_Contracts::all():array();
+				$count=0;
+				foreach(is_array($contracts)?$contracts:array() as $contract) $count+=is_array($contract)&&!empty($contract['components'])&&is_array($contract['components'])?count($contract['components']):1;
+				return $count;
+			case 'plugins':
+				if(!function_exists('get_plugins')) require_once ABSPATH.'wp-admin/includes/plugin.php';
+				$plugins=get_plugins();
+				return is_array($plugins)?count($plugins):count($rows);
+			case 'rest_routes':
+				if(!function_exists('did_action')||did_action('rest_api_init')<=0||!function_exists('rest_get_server')) return 0;
+				$routes=rest_get_server()->get_routes();
+				return is_array($routes)?count($routes):count($rows);
+			case 'post_types':
+				global $wp_post_types;
+				return is_array($wp_post_types)?count($wp_post_types):count($rows);
+			case 'taxonomies':
+				global $wp_taxonomies;
+				return is_array($wp_taxonomies)?count($wp_taxonomies):count($rows);
+			case 'meta_keys':
+				if(!function_exists('get_registered_meta_keys')) return 0;
+				$count=0;
+				foreach(array('post','term','user','comment') as $type){$registered=get_registered_meta_keys($type);if(is_array($registered))$count+=count($registered);}
+				return $count;
+			case 'hooks':
+				global $wp_filter;
+				return is_array($wp_filter)?count($wp_filter):count($rows);
+			case 'cron_hooks':
+				if(!function_exists('_get_cron_array')) return 0;
+				$cron=_get_cron_array(); $names=array();
+				foreach(is_array($cron)?$cron:array() as $entries) foreach(is_array($entries)?$entries:array() as $hook=>$instances) $names[(string)$hook]=true;
+				return count($names);
+			case 'admin_routes':
+				$routes=class_exists('MAD4B_SCP_Admin_Route_Registry')?MAD4B_SCP_Admin_Route_Registry::routes():array();
+				return is_array($routes)?count($routes):count($rows);
+			case 'mcp_descriptors':
+				$count=0;
+				foreach(isset($nodes['abilities'])&&is_array($nodes['abilities'])?$nodes['abilities']:array() as $row) if(is_array($row)&&!empty($row['mcp_surface'])) $count++;
+				return $count;
+			case 'symbols':
+				$count=0;
+				foreach(get_declared_classes() as $name) if(0===strpos($name,'MAD4B_')) $count++;
+				$functions=get_defined_functions();
+				foreach(isset($functions['user'])&&is_array($functions['user'])?$functions['user']:array() as $name) if(0===strpos($name,'mad4b_')) $count++;
+				return $count;
+			case 'database_tables':
+				global $wpdb;
+				$names=array();
+				if(is_object($wpdb)&&method_exists($wpdb,'tables')) $names=array_merge($names,(array)$wpdb->tables('all'));
+				if(class_exists('MAD4B_SCP_Schema')) $names=array_merge($names,array_values((array)MAD4B_SCP_Schema::tables()));
+				return count(array_unique(array_filter(array_map('strval',$names))));
+			default:
+				return count($rows);
+		}
 	}
 
 	private static function kind_trustworthy_for_absence( array $snapshot, $kind ) {
@@ -293,7 +372,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			return new WP_Error('mad4b_runtime_graph_before_shape_invalid','Before snapshot graph shape is invalid.');
 		}
 		if(count($snapshot['edges'])>self::MAX_EDGES) return new WP_Error('mad4b_runtime_graph_before_edges_unbounded','Before snapshot contains too many graph edges.');
-		$allowed=self::collector_contracts();
+		$allowed=array_keys(self::collector_contracts());
 		foreach($snapshot['nodes'] as $kind=>$rows) {
 			if(!in_array((string)$kind,$allowed,true)||!is_array($rows)||count($rows)>self::MAX_ITEMS_PER_KIND) {
 				return new WP_Error('mad4b_runtime_graph_before_nodes_unbounded','Before snapshot node inventory is invalid or unbounded.');
@@ -388,7 +467,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		return isset($map[$kind])?$map[$kind]:'';
 	}
 
-	private static function abilities() {
+	private static function ability_names() {
 		$names=array();
 		if(function_exists('wp_get_abilities')){
 			$registered=wp_get_abilities();
@@ -396,16 +475,29 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		}
 		if(class_exists('MAD4B_SCP_Servers')){
 			foreach(array('mad4b-read','mad4b-chatgpt','mad4b-content','mad4b-write','mad4b-admin','mad4b-enrollment','mad4b-developer','mad4b-developer-breakglass','mad4b-breakglass') as $server){
-				$names=array_merge($names,MAD4B_SCP_Servers::core_tools($server));
+				$server_names=MAD4B_SCP_Servers::core_tools($server);
+				if(is_array($server_names)) $names=array_merge($names,$server_names);
 			}
-			if(method_exists('MAD4B_SCP_Servers','chatgpt_full_catalog_candidates')) $names=array_merge($names,MAD4B_SCP_Servers::chatgpt_full_catalog_candidates());
+			if(method_exists('MAD4B_SCP_Servers','chatgpt_full_catalog_candidates')){
+				$candidates=MAD4B_SCP_Servers::chatgpt_full_catalog_candidates();
+				if(is_array($candidates)) $names=array_merge($names,$candidates);
+			}
 		}
 		if(class_exists('MAD4B_SCP_Adapter_Registry')){
 			$registry=MAD4B_SCP_Adapter_Registry::instance();
-			foreach(array('read','content','admin','write') as $surface) $names=array_merge($names,$registry->ability_names($surface));
+			foreach(array('read','content','admin','write') as $surface){
+				$surface_names=$registry->ability_names($surface);
+				if(is_array($surface_names)) $names=array_merge($names,$surface_names);
+			}
 		}
 		$names=array_values(array_unique(array_filter(array_map('strval',$names))));
-		sort($names,SORT_STRING); $out=array();
+		sort($names,SORT_STRING);
+		return $names;
+	}
+
+	private static function abilities() {
+		$names=self::ability_names();
+		$out=array();
 		foreach(array_slice($names,0,self::MAX_ITEMS_PER_KIND) as $name){
 			if(!function_exists('wp_has_ability')||!wp_has_ability($name)) continue;
 			$descriptor=class_exists('MAD4B_SCP_Capability_Descriptor_Registry')?MAD4B_SCP_Capability_Descriptor_Registry::describe($name):null;
