@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
-  "changed_file_count": 79,
+  "changed_file_count": 85,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -149,6 +149,8 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-mcp-client.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-wp-import-export-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-catalog-transport.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-backend-controller.php",
@@ -162,6 +164,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-compatibility.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-profile-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-registration-bridge.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-registration-rescue-v1.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
@@ -459,6 +462,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-class-provenance-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-class-provenance-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-provider-isolation-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-registration-bridge-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py",
@@ -476,6 +480,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-callback-order-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-execution-binding-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-health-view-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-contract.py",
@@ -587,6 +592,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "9568abb5224bad3c4b3524b16ded2c6e24a4f2a6d80c0d24c80d6047b0f19ea8",
+  "changed_paths_sha256": "bff9ca060c0acb8d754ba0ec42687ee9fb2bce5397bec0e6e7090c4021e82ef1",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
