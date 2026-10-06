@@ -243,11 +243,7 @@ for token in (
     "compensated_error",
     "mad4b_content_experience_compensation_failed",
     "mad4b_content_experience_locked_plan_drift",
-    "featured_media_read_denied",
     "parent_read_denied",
-    "effective_media_state_sha256",
-    "media_publish_rights",
-    "MAD4B_SCP_Content_Experience_Media_Rights::publish_guard",
     "authority_match",
     "mad4b_content_experience_helper_restore_contract_drift",
 ):
@@ -657,6 +653,9 @@ for token in (
     assert token in experience_media_manifest_src or token in experience_runtime_src, f"content media manifest contract missing: {token}"
 for token in (
     "mad4b.content-experience-media-planning.v1",
+    "mad4b_content_experience_featured_media_read_denied",
+    "effective_media_state_sha256",
+    "MAD4B_SCP_Content_Experience_Media_Rights::publish_guard",
     "remote_media_state",
     "media_publish_rights",
     "remote_media_provenance_rights",
