@@ -48,6 +48,7 @@ No external fonts, runtime libraries or design-skill code are shipped.
   overflow, JavaScript-disabled navigation and zero network requests.
 - `tests/admin-pages-wordpress.php`: existing real disposable WordPress full-page
   matrix plus exact workspace coverage and forged provider-success denial.
+- `tests/adaptive-search-provider-enrollment-runtime.php`: hermetic provider-enrollment UI compatibility, blank secrets and read-only render coverage.
 - Exact-head feature-owned CI executes these suites and publishes visual fixtures
   and screenshots. Disposable fixtures are not live Staging browser acceptance.
 
