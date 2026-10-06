@@ -100,10 +100,13 @@ final class MAD4B_SCP_Content_Experience_Media_Binding {
 		}
 		$usage_guard = MAD4B_SCP_Content_Experience_Media::validate_usage_bindings( $specs, $storage_projection );
 		if ( is_wp_error( $usage_guard ) ) return $usage_guard;
+		$remote_state = MAD4B_SCP_Remote_Media_Rights::state_evidence( $featured_id, $specs, $storage_projection );
+		if ( is_wp_error( $remote_state ) ) return $remote_state;
 
 		$fragment = array();
 		if ( $featured_id > 0 ) $fragment['featured_media_id'] = $featured_id;
 		if ( $meta ) $fragment['meta'] = $meta;
+		$fragment['expected_remote_media_state_sha256'] = (string) $remote_state['remote_state_sha256'];
 		$result = array(
 			'contract' => self::CONTRACT,
 			'profile_slug' => (string) $profile['slug'],
@@ -112,6 +115,7 @@ final class MAD4B_SCP_Content_Experience_Media_Binding {
 			'resolved_items' => $resolved,
 			'content_input_fragment' => $fragment,
 			'storage_projection' => $storage_projection,
+			'remote_media_state' => $remote_state,
 			'item_count' => count( $resolved ),
 			'featured_attachment_id' => $featured_id,
 			'mutation_performed' => false,

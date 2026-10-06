@@ -179,7 +179,7 @@ try {
 	$check( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY === $bootstrap['profile_apply_ability'], 'Bootstrap plan did not hand off to the governed profile apply Ability.' );
 	$check( 'mad4b.content-experience-ingestion-workflow.v1' === $bootstrap['workflow_blueprint']['contract'], 'Bootstrap did not emit the versioned ingestion workflow blueprint.' );
 	$check( 'profile_apply_then_next_request' === $bootstrap['workflow_blueprint']['activation_barrier'], 'Proposed profile workflow omitted its next-request activation barrier.' );
-	$check( 'inspect_selected_media' === $bootstrap['workflow_blueprint']['steps'][1]['id'] && 'apply_media_import' === $bootstrap['workflow_blueprint']['steps'][3]['id'], 'Remote media workflow ordering drifted.' );
+	$check( 'inspect_selected_media' === $bootstrap['workflow_blueprint']['steps'][1]['id'] && 'plan_media_manifest' === $bootstrap['workflow_blueprint']['steps'][3]['id'] && 'apply_media_import' === $bootstrap['workflow_blueprint']['steps'][4]['id'], 'Remote media workflow ordering drifted.' );
 	$check( ! empty( $bootstrap['workflow_blueprint']['failure_semantics']['publish_is_never_implicit'] ), 'Workflow blueprint lost explicit publish separation.' );
 	foreach ( array( 'remote_media_library_first', 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ) as $scenario ) {
 		$check( ! empty( $bootstrap['scenarios'][ $scenario ]['supported'] ), 'Bootstrap scenario missing: ' . $scenario );
@@ -356,6 +356,7 @@ try {
 	$check( array( $image_two, $image_one ) === $binding_plan['content_input_fragment']['meta']['ci_gallery'], 'Media binding planner lost gallery ordering.' );
 	$check( array( $image_two, $image_one ) === array_column( $binding_plan['content_input_fragment']['meta']['ci_gallery_usage'], 'attachment_id' ), 'Media binding planner lost contextual usage ordering.' );
 	$check( ! empty( $binding_plan['binding_plan_sha256'] ) && empty( $binding_plan['mutation_performed'] ), 'Media binding plan lacks exact read-only identity.' );
+	$check( 64 === strlen( (string) $binding_plan['content_input_fragment']['expected_remote_media_state_sha256'] ) && hash_equals( (string) $binding_plan['remote_media_state']['remote_state_sha256'], (string) $binding_plan['content_input_fragment']['expected_remote_media_state_sha256'] ), 'Media binding planner did not hand off exact remote media state identity.' );
 	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::MEDIA_BINDING_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Media binding planner is not on the fixed read surface.' );
 
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
@@ -406,6 +407,9 @@ try {
 		'taxonomies' => array( 'mad4b_ci_region' => array( 'cairo' ) ),
 		'featured_media_id' => $image_one,
 	);
+	$expected_create_remote_state = MAD4B_SCP_Remote_Media_Rights::state_evidence( $image_one, $profile_v1['media_meta_fields'], $create_input['meta'] );
+	$check( ! is_wp_error( $expected_create_remote_state ), 'Unable to derive expected create remote-media state.' );
+	$create_input['expected_remote_media_state_sha256'] = (string) $expected_create_remote_state['remote_state_sha256'];
 	$create_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'create', $create_input );
 	$check( ! is_wp_error( $create_plan ) && ! empty( $create_plan['profile_snapshot']['authority_sha256'] ), 'Create plan lacks historical profile snapshot.' );
 	$check( isset( $create_plan['remote_media_state']['remote_state_sha256'] ) && 64 === strlen( (string) $create_plan['remote_media_state']['remote_state_sha256'] ), 'Create plan is not bound to remote media state evidence.' );

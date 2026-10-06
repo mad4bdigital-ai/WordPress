@@ -326,6 +326,7 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 				'discover' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_DISCOVER_ABILITY,
 				'inspect' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_INSPECT_ABILITY,
 				'import_plan' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY,
+				'manifest_plan' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_MANIFEST_PLAN_ABILITY,
 				'import_apply' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY,
 				'binding_plan' => MAD4B_SCP_Content_Experience_Profiles::MEDIA_BINDING_PLAN_ABILITY,
 			)
@@ -333,6 +334,7 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 				'discover' => 'media/remote-source-discover',
 				'inspect' => 'media/remote-image-inspect',
 				'import_plan' => 'media/remote-import-plan',
+				'manifest_plan' => 'media/remote-import-manifest-plan',
 				'import_apply' => 'media/remote-import-apply',
 				'binding_plan' => 'mad4b/content-experience-media-binding-plan',
 			);
@@ -346,6 +348,7 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 				array( 'id' => 'discover_source_media', 'ability' => $media['discover'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_source_page' ),
 				array( 'id' => 'inspect_selected_media', 'ability' => $media['inspect'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_selected_candidate', 'produces' => array( 'expected_content_sha256', 'expected_content_bytes', 'expected_mime_type', 'expected_width', 'expected_height' ) ),
 				array( 'id' => 'plan_media_import', 'ability' => $media['import_plan'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_selected_candidate', 'requires' => array( 'rights_basis', 'exact_content_evidence_or_existing_library_identity' ) ),
+				array( 'id' => 'plan_media_manifest', 'ability' => $media['manifest_plan'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_ordered_media_set', 'produces' => array( 'manifest_sha256', 'ordered_item_plans' ), 'authorizing' => false ),
 				array( 'id' => 'apply_media_import', 'ability' => $media['import_apply'], 'surface' => 'content', 'optional' => true, 'repeat' => 'per_selected_candidate', 'produces' => array( 'attachment_id' ), 'ordering' => 'before_post_media_binding' ),
 				array( 'id' => 'plan_post_media_binding', 'ability' => $media['binding_plan'], 'surface' => 'read', 'optional' => true, 'consumes' => array( 'verified_attachment_ids', 'binding_roles', 'target_media_fields' ), 'produces' => array( 'featured_media_id', 'meta_fragment', 'storage_projection' ) ),
 				array( 'id' => 'plan_content_create', 'ability' => $routes['create_plan'], 'surface' => 'read', 'optional' => false ),
@@ -377,6 +380,7 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 				'supported' => true,
 				'discover' => class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_DISCOVER_ABILITY : 'media/remote-source-discover',
 				'import_plan' => class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY : 'media/remote-import-plan',
+				'manifest_plan' => class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_MANIFEST_PLAN_ABILITY : 'media/remote-import-manifest-plan',
 				'import_apply' => class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY : 'media/remote-import-apply',
 				'bind_after_import' => array( 'featured_media_id', 'configured media_meta_fields' ),
 				'rights_confirmation_required_before_import' => true,

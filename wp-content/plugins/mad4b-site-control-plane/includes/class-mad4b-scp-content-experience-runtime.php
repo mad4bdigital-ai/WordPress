@@ -333,6 +333,14 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$effective_featured_media_id = null !== $featured_media_id ? (int) $featured_media_id : ( $post ? (int) get_post_thumbnail_id( $post->ID ) : 0 );
 		$remote_media_state = MAD4B_SCP_Remote_Media_Rights::state_evidence( $effective_featured_media_id, $media_fields, $effective_media_state );
 		if ( is_wp_error( $remote_media_state ) ) return $remote_media_state;
+		$expected_remote_media_state = isset( $input['expected_remote_media_state_sha256'] ) ? strtolower( trim( (string) $input['expected_remote_media_state_sha256'] ) ) : '';
+		if ( '' !== $expected_remote_media_state && ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_remote_media_state ) || ! hash_equals( (string) $remote_media_state['remote_state_sha256'], $expected_remote_media_state ) ) ) {
+			return new WP_Error(
+				'mad4b_content_experience_remote_media_state_drift',
+				'Remote media attachment/provenance state changed after the reviewed Media Library binding plan.',
+				array( 'current_remote_media_state_sha256' => (string) $remote_media_state['remote_state_sha256'] )
+			);
+		}
 		$remote_media_provenance_rights = null;
 		if ( 'publish' === $operation ) {
 			$remote_media_provenance_rights = MAD4B_SCP_Remote_Media_Rights::publish_guard( $effective_featured_media_id, $media_fields, $effective_media_state );
@@ -360,6 +368,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'post_parent' => $post_parent,
 			'menu_order' => array_key_exists( 'menu_order', $input ) ? (int) $input['menu_order'] : null,
 			'featured_media_id' => $featured_media_id,
+			'expected_remote_media_state_sha256' => $expected_remote_media_state,
 			'meta' => $meta,
 			'taxonomies' => $taxonomies,
 			'helpers' => $helpers,
