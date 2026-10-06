@@ -7,13 +7,18 @@ classifier = (ROOT / "includes/class-mad4b-scp-runtime-policy-classifier.php").r
 competitive = (ROOT / "includes/class-mad4b-scp-competitive-evidence.php").read_text(encoding="utf-8")
 plugin = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
+def normalized(text):
+    return "".join(text.split())
+
 def req(text, *needles):
+    haystack = normalized(text)
     for needle in needles:
-        assert needle in text, f"missing marker: {needle}"
+        assert normalized(needle) in haystack, f"missing marker: {needle}"
 
 def deny(text, *needles):
+    haystack = normalized(text)
     for needle in needles:
-        assert needle not in text, f"forbidden marker: {needle}"
+        assert normalized(needle) not in haystack, f"forbidden marker: {needle}"
 
 req(graph,
     "mad4b.runtime-evidence-graph.v1",
@@ -67,7 +72,16 @@ req(competitive,
     "mad4b.competitive-evidence-summary.v1",
     "Static or marketed evidence never proves runtime parity or creates access.",
     "snapshot_generation_sha256", "task_ids", "evidence_ids",
+    "summary_sha256",
+    "mad4b_competitive_evidence_digest_mismatch",
+    "mad4b_competitive_evidence_static_runtime_claim",
+    "evidence_sources",
+    "mad4b_foundation_paths",
+    "acceptance_requirements",
+    "runtime_parity_claimed",
+    "authority_created",
 )
+deny(competitive, "wp_remote_", "grant_ability(", "$wpdb->")
 req(plugin,
     "class-mad4b-scp-runtime-evidence-graph.php",
     "class-mad4b-scp-runtime-policy-classifier.php",
