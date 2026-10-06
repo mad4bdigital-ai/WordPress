@@ -49,7 +49,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
-      "sha256": "e580688bd524d1630f7da9080eba0f53813ece5c8458deba5d479dbc57c9403b"
+      "sha256": "c14eca223021417fe628e6c829c34d7db4755e855b10381f185d1221aca86009"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
