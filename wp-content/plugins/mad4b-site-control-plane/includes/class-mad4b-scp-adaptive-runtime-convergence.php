@@ -180,7 +180,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
 				$continuation = class_exists( 'MAD4B_SCP_Post_Update_Continuation', false ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
-				$maintenance = MAD4B_SCP_Runtime_Maintenance_Lease::status();
+				$maintenance = method_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease', 'status' ) ? MAD4B_SCP_Runtime_Maintenance_Lease::status() : array( 'active' => false, 'owner' => '' );
 				$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false ) ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
 				$source = isset( $event['source'] ) ? sanitize_key( (string) $event['source'] ) : 'runtime_change';
 				if ( 'self_update' === sanitize_key( (string) ( $checkpoint['source'] ?? '' ) ) ) $source = 'self_update';
