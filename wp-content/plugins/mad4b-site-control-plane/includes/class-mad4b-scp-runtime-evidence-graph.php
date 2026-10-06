@@ -112,7 +112,12 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			} );
 			$observed = self::collector_observed_count( $kind, $rows, $nodes );
 			$nodes[ $kind ] = array_slice( $rows, 0, self::MAX_ITEMS_PER_KIND );
-			$collection_status[ $kind ] = self::collection_status( $kind, count( $nodes[ $kind ] ), $observed );
+			$source_incomplete = false;
+			if ( ! empty( $collector['source'] ) ) {
+				$source_kind = (string) $collector['source'];
+				$source_incomplete = empty( $collection_status[ $source_kind ]['trustworthy_for_absence'] );
+			}
+			$collection_status[ $kind ] = self::collection_status( $kind, count( $nodes[ $kind ] ), $observed, $source_incomplete );
 			if ( '' !== $source ) {
 				$source_complete = ! empty( $collection_status[ $source ]['trustworthy_for_absence'] );
 				$collection_status[ $kind ]['source_kind'] = $source;
@@ -292,7 +297,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		);
 	}
 
-	private static function collection_status( $kind, $emitted_count, $observed_count ) {
+	private static function collection_status( $kind, $emitted_count, $observed_count, $source_incomplete = false ) {
 		$lifecycle='ready';
 		if('rest_routes'===$kind && (!function_exists('did_action') || did_action('rest_api_init')<=0)) $lifecycle='not_initialized';
 		elseif('providers'===$kind && !class_exists('MAD4B_SCP_Provider_Contracts')) $lifecycle='unavailable';
@@ -310,8 +315,9 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			'max_items'=>self::MAX_ITEMS_PER_KIND,
 			'lifecycle'=>$lifecycle,
 			'truncated'=>$truncated,
-			'count_observation_complete'=>true,
-			'trustworthy_for_absence'=>'ready'===$lifecycle && !$truncated,
+			'source_incomplete'=>(bool)$source_incomplete,
+			'count_observation_complete'=>!$source_incomplete,
+			'trustworthy_for_absence'=>'ready'===$lifecycle && !$truncated && !$source_incomplete,
 		);
 	}
 
