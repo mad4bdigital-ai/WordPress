@@ -21,6 +21,21 @@ final class MAD4B_SCP_Runtime_Reconciliation_Scenarios {
 
 	public static function registry( array $context = array() ) {
 		$rows = array(
+			'untrusted_package' => array(
+				'priority' => 320,
+				'all_of' => array( 'untrusted_package' ),
+				'description' => 'Installed package identity cannot be proven against a trusted release source.',
+			),
+			'authority_contract_drift' => array(
+				'priority' => 310,
+				'any_of' => array( 'grant_inventory_drift', 'write_contract_drift', 'site_profile_drift', 'actor_identity_drift', 'transport_contract_drift', 'baseline_expired' ),
+				'description' => 'Authority-affecting evidence changed and requires explicit review.',
+			),
+			'concurrent_reconciliation' => array(
+				'priority' => 300,
+				'any_of' => array( 'continuation_conflict', 'maintenance_busy', 'concurrent_permit' ),
+				'description' => 'Another governed continuation or maintenance lease owns reconciliation.',
+			),
 			'same_version_package_replacement' => array(
 				'priority' => 180,
 				'all_of' => array( 'candidate_binding_drift', 'same_version_identity_drift' ),
@@ -122,7 +137,13 @@ final class MAD4B_SCP_Runtime_Reconciliation_Scenarios {
 	private static function central_disposition( array $signals, $environment, $continuation_state, array $binding, $identity_complete ) {
 		if ( 'production' === $environment ) return self::DISPOSITION_HARD_BLOCK;
 		if ( 'staging' !== $environment ) return self::DISPOSITION_REVIEW;
-		if ( in_array( 'breakglass_active', $signals, true ) ) return self::DISPOSITION_HARD_BLOCK;
+		if ( in_array( 'breakglass_active', $signals, true ) || in_array( 'untrusted_package', $signals, true ) ) return self::DISPOSITION_HARD_BLOCK;
+		foreach ( array( 'grant_inventory_drift', 'write_contract_drift', 'site_profile_drift', 'actor_identity_drift', 'transport_contract_drift', 'baseline_expired' ) as $review_signal ) {
+			if ( in_array( $review_signal, $signals, true ) ) return self::DISPOSITION_REVIEW;
+		}
+		foreach ( array( 'continuation_conflict', 'maintenance_busy', 'concurrent_permit' ) as $defer_signal ) {
+			if ( in_array( $defer_signal, $signals, true ) ) return self::DISPOSITION_DEFER;
+		}
 		if ( in_array( $continuation_state, array( 'blocked', 'owner_gate', 'executing' ), true ) ) return self::DISPOSITION_REVIEW;
 		if ( ! $identity_complete ) return self::DISPOSITION_DEFER;
 		if ( in_array( 'candidate_binding_drift', $signals, true ) ) {
