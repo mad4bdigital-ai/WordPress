@@ -341,25 +341,10 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				array( 'current_remote_media_state_sha256' => (string) $remote_media_state['remote_state_sha256'] )
 			);
 		}
-		$expected_media_manifest = isset( $input['expected_media_manifest_sha256'] ) ? strtolower( trim( (string) $input['expected_media_manifest_sha256'] ) ) : '';
-		$expected_media_manifest_item_count = isset( $input['expected_media_manifest_item_count'] ) ? (int) $input['expected_media_manifest_item_count'] : 0;
-		$expected_media_recovery_receipt = isset( $input['expected_media_recovery_receipt_sha256'] ) ? strtolower( trim( (string) $input['expected_media_recovery_receipt_sha256'] ) ) : '';
-		$expected_media_binding_state = isset( $input['expected_media_binding_state_sha256'] ) ? strtolower( trim( (string) $input['expected_media_binding_state_sha256'] ) ) : '';
-		$media_manifest_receipt = null; $media_binding_state_sha256 = '';
-		if ( '' !== $expected_media_manifest ) {
-			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_media_manifest ) || $expected_media_manifest_item_count < 1 || '' === $expected_media_recovery_receipt || '' === $expected_media_binding_state ) return new WP_Error( 'mad4b_content_experience_media_manifest_evidence_incomplete', 'Manifest-bound content requires exact manifest, item-count, recovery-receipt and binding-state identities.' );
-			$media_manifest_receipt = MAD4B_SCP_Remote_Media_Recovery::manifest_receipt( $expected_media_manifest, $expected_media_manifest_item_count );
-			if ( is_wp_error( $media_manifest_receipt ) ) return $media_manifest_receipt;
-			if ( ! hash_equals( (string) $media_manifest_receipt['recovery_receipt_sha256'], $expected_media_recovery_receipt ) ) return new WP_Error( 'mad4b_content_experience_media_recovery_receipt_drift', 'Staged remote media recovery receipt changed after binding review.' );
-			$media_binding_state_sha256 = MAD4B_SCP_Content_Experience_Media_Binding::state_sha256( $profile, $featured_media_id, $meta, $expected_media_manifest );
-			if ( ! hash_equals( $media_binding_state_sha256, $expected_media_binding_state ) ) return new WP_Error( 'mad4b_content_experience_media_binding_state_drift', 'Content media mapping changed after the reviewed manifest binding plan.' );
-			$receipt_ids = array_values( array_unique( array_map( static function ( $row ) { return absint( $row['attachment_id'] ?? 0 ); }, $media_manifest_receipt['items'] ) ) );
-			$binding_ids = MAD4B_SCP_Content_Experience_Media_Binding::attachment_ids_from_state( $featured_media_id, $media_fields, $meta );
-			sort( $receipt_ids, SORT_NUMERIC ); sort( $binding_ids, SORT_NUMERIC );
-			if ( $receipt_ids !== $binding_ids ) return new WP_Error( 'mad4b_content_experience_media_manifest_binding_drift', 'Content media attachments no longer exactly match the staged remote media manifest.' );
-		} elseif ( $expected_media_manifest_item_count > 0 || '' !== $expected_media_recovery_receipt || '' !== $expected_media_binding_state ) {
-			return new WP_Error( 'mad4b_content_experience_media_manifest_identity_missing', 'Manifest-derived evidence cannot be supplied without an exact manifest SHA-256.' );
-		}
+		$media_manifest_guard = MAD4B_SCP_Content_Experience_Media_Manifest::plan_guard( $profile, $featured_media_id, $media_fields, $meta, $input );
+		if ( is_wp_error( $media_manifest_guard ) ) return $media_manifest_guard;
+		$manifest_normalized = $media_manifest_guard['normalized'];
+
 		$remote_media_provenance_rights = null;
 		if ( 'publish' === $operation ) {
 			$remote_media_provenance_rights = MAD4B_SCP_Remote_Media_Rights::publish_guard( $effective_featured_media_id, $media_fields, $effective_media_state );
@@ -388,10 +373,10 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'menu_order' => array_key_exists( 'menu_order', $input ) ? (int) $input['menu_order'] : null,
 			'featured_media_id' => $featured_media_id,
 			'expected_remote_media_state_sha256' => $expected_remote_media_state,
-			'expected_media_manifest_sha256' => $expected_media_manifest,
-			'expected_media_manifest_item_count' => $expected_media_manifest_item_count,
-			'expected_media_recovery_receipt_sha256' => $expected_media_recovery_receipt,
-			'expected_media_binding_state_sha256' => $expected_media_binding_state,
+			'expected_media_manifest_sha256' => $manifest_normalized['expected_media_manifest_sha256'],
+			'expected_media_manifest_item_count' => $manifest_normalized['expected_media_manifest_item_count'],
+			'expected_media_recovery_receipt_sha256' => $manifest_normalized['expected_media_recovery_receipt_sha256'],
+			'expected_media_binding_state_sha256' => $manifest_normalized['expected_media_binding_state_sha256'],
 			'meta' => $meta,
 			'taxonomies' => $taxonomies,
 			'helpers' => $helpers,
@@ -415,8 +400,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'effective_media_state_sha256' => $effective_media_state_sha256,
 			'media_publish_rights' => $media_publish_rights,
 			'remote_media_state' => $remote_media_state,
-			'remote_media_manifest_receipt' => $media_manifest_receipt,
-			'media_binding_state_sha256' => $media_binding_state_sha256,
+			'remote_media_manifest_receipt' => $media_manifest_guard['receipt'],
+			'media_binding_state_sha256' => $media_manifest_guard['binding_state_sha256'],
 			'remote_media_provenance_rights' => $remote_media_provenance_rights,
 			'normalized_input' => $normalized,
 			'mutation_performed' => false,
@@ -517,13 +502,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		if ( (string) get_post_meta( $post_id, self::MARKER_META, true ) !== (string) $profile['slug'] ) {
 			return new WP_Error( 'mad4b_content_experience_marker_readback_mismatch', 'Experience profile marker readback mismatch.' );
 		}
-		if ( ! empty( $input['expected_media_manifest_sha256'] ) ) {
-			$binding_guard = MAD4B_SCP_Remote_Media_Recovery::verify_post_binding(
-				$input['expected_media_manifest_sha256'], $post_id,
-				$input['expected_media_binding_state_sha256'], $input['expected_media_recovery_receipt_sha256']
-			);
-			if ( is_wp_error( $binding_guard ) ) return $binding_guard;
-		}
+		$binding_guard = MAD4B_SCP_Content_Experience_Media_Manifest::verify_post_binding( $input, $post_id );
+		if ( is_wp_error( $binding_guard ) ) return $binding_guard;
 		return true;
 	}
 
@@ -649,15 +629,12 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( is_wp_error( $media_result ) ) return self::compensated_error( $media_result, $before );
 			$helper_results = self::apply_helpers( $profile, $operation, $post_id, $normalized['helpers'] );
 			if ( is_wp_error( $helper_results ) ) return self::compensated_error( $helper_results, $before );
-			$recovery_binding = null;
-			if ( ! empty( $normalized['expected_media_manifest_sha256'] ) ) {
-				$binding_ids = MAD4B_SCP_Content_Experience_Media_Binding::attachment_ids_from_state( $normalized['featured_media_id'], isset( $profile['media_meta_fields'] ) ? (array) $profile['media_meta_fields'] : array(), $normalized['meta'] );
-				$recovery_binding = MAD4B_SCP_Remote_Media_Recovery::bind_post(
-					$normalized['expected_media_manifest_sha256'], $post_id,
-					$normalized['expected_media_binding_state_sha256'], $normalized['expected_media_recovery_receipt_sha256'], $binding_ids
-				);
-				if ( is_wp_error( $recovery_binding ) ) return self::compensated_error( $recovery_binding, $before );
-			}
+			$apply_manifest_guard = MAD4B_SCP_Content_Experience_Media_Manifest::plan_guard(
+				$profile, $normalized['featured_media_id'], isset( $profile['media_meta_fields'] ) ? (array) $profile['media_meta_fields'] : array(), $normalized['meta'], $normalized
+			);
+			if ( is_wp_error( $apply_manifest_guard ) ) return self::compensated_error( $apply_manifest_guard, $before );
+			$recovery_binding = MAD4B_SCP_Content_Experience_Media_Manifest::bind_post( $apply_manifest_guard, $post_id );
+			if ( is_wp_error( $recovery_binding ) ) return self::compensated_error( $recovery_binding, $before );
 
 			// Publish is the final externally visible state transition.
 			if ( 'publish' === $operation ) {
@@ -713,11 +690,10 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				'value' => get_post_meta( $post_id, $key, true ),
 			);
 		}
-		$internal_meta_keys = array( self::MARKER_META, self::REVISION_META, self::AUTHORITY_META, self::CREATION_BINDING_META );
-		if ( class_exists( 'MAD4B_SCP_Remote_Media_Recovery' ) ) {
-			$internal_meta_keys[] = MAD4B_SCP_Remote_Media_Recovery::POST_MANIFEST_META;
-			$internal_meta_keys[] = MAD4B_SCP_Remote_Media_Recovery::POST_BINDING_META;
-		}
+		$internal_meta_keys = array_merge(
+			array( self::MARKER_META, self::REVISION_META, self::AUTHORITY_META, self::CREATION_BINDING_META ),
+			MAD4B_SCP_Content_Experience_Media_Manifest::post_meta_keys()
+		);
 		foreach ( $internal_meta_keys as $key ) {
 			$meta[ $key ] = array(
 				'exists' => metadata_exists( 'post', $post_id, $key ),

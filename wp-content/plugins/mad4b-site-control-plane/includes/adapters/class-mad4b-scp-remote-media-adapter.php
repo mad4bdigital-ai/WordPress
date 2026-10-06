@@ -431,19 +431,6 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			}
 			$readback = $this->media_get( array( 'attachment_id' => $attachment_id ) );
 			if ( is_wp_error( $readback ) ) { wp_delete_attachment( $attachment_id, true ); return $readback; }
-			$recovery_stage = null;
-			if ( '' !== $manifest_sha256 ) {
-				$recovery_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $attachment_id, array(
-					'manifest_sha256' => $manifest_sha256, 'manifest_index' => $manifest_index,
-					'import_plan_sha256' => $plan['plan_sha256'],
-					'provenance_event_sha256' => isset( $bound['provenance_event_sha256'] ) ? $bound['provenance_event_sha256'] : '',
-					'created_for_manifest' => true,
-				) );
-				if ( is_wp_error( $recovery_stage ) ) {
-					$recovery_stage->add_data( array( 'attachment_id' => $attachment_id, 'media_library_asset_preserved' => true, 'blind_retry_allowed' => false ) );
-					return $recovery_stage;
-				}
-			}
 			MAD4B_SCP_Audit::record( self::REMOTE_IMPORT_APPLY_ABILITY, array(
 				'attachment_id' => $attachment_id,
 				'source_url_sha256' => $normalized['source_url_sha256'],
@@ -452,19 +439,13 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'rights_basis' => $normalized['rights_basis'],
 				'dedupe_basis' => 'created',
 			) );
-			return array(
-				'contract' => self::REMOTE_IMPORT_CONTRACT,
-				'attachment_id' => $attachment_id,
-				'created' => true,
-				'reused' => false,
-				'dedupe_basis' => 'created',
-				'verified' => true,
-				'media' => $readback['media'],
-				'provenance_event' => $bound,
-				'recovery_stage' => $recovery_stage,
+			return MAD4B_SCP_Remote_Media_Recovery::stage_import_result( array(
+				'contract' => self::REMOTE_IMPORT_CONTRACT, 'attachment_id' => $attachment_id,
+				'created' => true, 'reused' => false, 'dedupe_basis' => 'created', 'verified' => true,
+				'media' => $readback['media'], 'provenance_event' => $bound,
 				'binding_template' => $this->post_binding_template( $attachment_id, $normalized, $bound ),
 				'plan_sha256' => $plan['plan_sha256'],
-			);
+			), $manifest_sha256, $manifest_index, true );
 		} finally {
 			foreach ( array_reverse( $held_locks ) as $held_lock ) MAD4B_SCP_Distributed_Lock::release( $held_lock );
 		}
@@ -832,16 +813,6 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	private function remote_reuse_result( $attachment_id, array $normalized, array $plan, $basis, array $provenance_event = array(), $manifest_sha256 = '', $manifest_index = -1 ) {
 		$readback = $this->media_get( array( 'attachment_id' => absint( $attachment_id ) ) );
 		if ( is_wp_error( $readback ) ) return $readback;
-		$recovery_stage = null;
-		if ( '' !== (string) $manifest_sha256 ) {
-			$recovery_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( absint( $attachment_id ), array(
-				'manifest_sha256' => $manifest_sha256, 'manifest_index' => (int) $manifest_index,
-				'import_plan_sha256' => $plan['plan_sha256'],
-				'provenance_event_sha256' => isset( $provenance_event['provenance_event_sha256'] ) ? $provenance_event['provenance_event_sha256'] : '',
-				'created_for_manifest' => false,
-			) );
-			if ( is_wp_error( $recovery_stage ) ) return $recovery_stage;
-		}
 		MAD4B_SCP_Audit::record( self::REMOTE_IMPORT_APPLY_ABILITY, array(
 			'attachment_id' => absint( $attachment_id ),
 			'source_url_sha256' => $normalized['source_url_sha256'],
@@ -849,19 +820,13 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'rights_basis' => $normalized['rights_basis'],
 			'dedupe_basis' => sanitize_key( (string) $basis ),
 		) );
-		return array(
-			'contract' => self::REMOTE_IMPORT_CONTRACT,
-			'attachment_id' => absint( $attachment_id ),
-			'created' => false,
-			'reused' => true,
-			'dedupe_basis' => sanitize_key( (string) $basis ),
-			'verified' => true,
-			'media' => $readback['media'],
-			'provenance_event' => $provenance_event,
-			'recovery_stage' => $recovery_stage,
+		return MAD4B_SCP_Remote_Media_Recovery::stage_import_result( array(
+			'contract' => self::REMOTE_IMPORT_CONTRACT, 'attachment_id' => absint( $attachment_id ),
+			'created' => false, 'reused' => true, 'dedupe_basis' => sanitize_key( (string) $basis ), 'verified' => true,
+			'media' => $readback['media'], 'provenance_event' => $provenance_event,
 			'binding_template' => $this->post_binding_template( absint( $attachment_id ), $normalized, $provenance_event ),
 			'plan_sha256' => $plan['plan_sha256'],
-		);
+		), $manifest_sha256, $manifest_index, false );
 	}
 
 	private function download_remote_image( array $normalized, $purpose = 'remote_media_import' ) {

@@ -309,6 +309,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media-storage.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media-binding.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media-manifest.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-media-rights.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-media-rights.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-media-recovery.php';

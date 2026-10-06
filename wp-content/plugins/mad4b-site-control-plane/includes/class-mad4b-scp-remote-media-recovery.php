@@ -76,6 +76,24 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		return $event;
 	}
 
+	public static function stage_import_result( array $result, $manifest_sha256, $manifest_index, $created_for_manifest ) {
+		$manifest_sha256 = strtolower( trim( (string) $manifest_sha256 ) );
+		if ( '' === $manifest_sha256 ) { $result['recovery_stage'] = null; return $result; }
+		$event = isset( $result['provenance_event'] ) && is_array( $result['provenance_event'] ) ? $result['provenance_event'] : array();
+		$stage = self::stage_attachment( isset( $result['attachment_id'] ) ? absint( $result['attachment_id'] ) : 0, array(
+			'manifest_sha256' => $manifest_sha256, 'manifest_index' => (int) $manifest_index,
+			'import_plan_sha256' => isset( $result['plan_sha256'] ) ? $result['plan_sha256'] : '',
+			'provenance_event_sha256' => isset( $event['provenance_event_sha256'] ) ? $event['provenance_event_sha256'] : '',
+			'created_for_manifest' => (bool) $created_for_manifest,
+		) );
+		if ( is_wp_error( $stage ) ) {
+			$stage->add_data( array( 'attachment_id' => isset( $result['attachment_id'] ) ? absint( $result['attachment_id'] ) : 0, 'media_library_asset_preserved' => true, 'blind_retry_allowed' => false ) );
+			return $stage;
+		}
+		$result['recovery_stage'] = $stage;
+		return $result;
+	}
+
 	private static function rows_for_manifest( $manifest ) {
 		$ids = get_posts( array(
 			'post_type' => 'attachment', 'post_status' => 'any', 'posts_per_page' => self::MAX_OVERVIEW_ATTACHMENTS,
