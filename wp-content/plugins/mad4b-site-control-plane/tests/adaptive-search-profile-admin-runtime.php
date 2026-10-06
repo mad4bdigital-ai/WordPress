@@ -6,12 +6,25 @@ function esc_html( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES, 'UTF
 function esc_attr( $v ) { return esc_html( $v ); }
 function esc_url( $v ) { return esc_html( $v ); }
 function esc_textarea( $v ) { return esc_html( $v ); }
+function __( $v, $domain = '' ) { return (string) $v; }
+function esc_html__( $v, $domain = '' ) { return esc_html( __( $v, $domain ) ); }
+function esc_attr__( $v, $domain = '' ) { return esc_attr( __( $v, $domain ) ); }
+function add_query_arg( $key, $value = null, $url = null ) {
+	if ( is_array( $key ) ) { $query = $key; $url = $value; } else $query = array( $key => $value );
+	$url = null === $url ? home_url( '/' ) : $url;
+	$parts = explode( '?', $url, 2 ); $existing = array();
+	if ( isset( $parts[1] ) ) parse_str( $parts[1], $existing );
+	return $parts[0] . '?' . http_build_query( array_merge( $existing, $query ) );
+}
 function wp_nonce_field( $action ) { echo '<input name="_wpnonce" value="' . esc_attr( hash( 'sha256', $action ) ) . '">'; }
 function wp_get_session_token() { return 'hermetic-administrator-session'; }
 function wp_salt( $scheme ) { return 'hermetic-notice-signing-salt'; }
 function check_admin_referer( $action ) { if ( ! isset( $_POST['_wpnonce'] ) || hash( 'sha256', $action ) !== $_POST['_wpnonce'] ) throw new RuntimeException( 'nonce_denied' ); }
 function wp_die( $message, $title = '', $args = array() ) { throw new RuntimeException( 'post_denied' ); }
 function submit_button( $text, $type, $name, $wrap ) { echo '<button>' . esc_html( $text ) . '</button>'; }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-workspace.php';
+MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-search-intelligence', 'manage_options' );
+MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-control-plane-site-profile', 'manage_options' );
 $assertions = 0; $cases = array();
 function profile_check( $ok, $message ) { ++$GLOBALS['assertions']; if ( ! $ok ) throw new RuntimeException( $message ); }
 function profile_case( $id, $callback ) { asi_reset(); $_GET = array(); $_POST = array(); $start = $GLOBALS['assertions']; try { $callback(); $GLOBALS['cases'][] = array( 'fixture' => $id, 'status' => 'PASS', 'assertions' => $GLOBALS['assertions'] - $start ); } catch ( Throwable $e ) { $GLOBALS['cases'][] = array( 'fixture' => $id, 'status' => 'FAIL', 'assertions' => $GLOBALS['assertions'] - $start, 'error' => $e->getMessage(), 'at' => basename( $e->getFile() ) . ':' . $e->getLine() ); } }
@@ -70,6 +83,7 @@ profile_case( 'profile_form_denies_malformed_inputs_role_production_and_bad_nonc
 profile_case( 'profile_navigation_and_action_feedback_are_typed_and_view_bound', static function () {
 	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form() ); $id = $saved['profile']['profile_id']; $sha = $saved['profile']['profile_sha256'];
 	$_GET = array( 'section' => array( 'invalid' ) ); ob_start(); MAD4B_SCP_Search_Experience::render(); $html = ob_get_clean(); profile_check( false !== strpos( $html, 'PROFILE DRAFTED' ), 'saved profile renders after malformed section defaults' );
+	profile_check( false !== strpos( $html, 'Add or manage search API credentials' ) && false !== strpos( $html, 'section=providers' ), 'configured profile retains an actual registered API setup handoff' );
 	$_GET = array( 'profile_id' => array( 'invalid' ) ); profile_check( '' === MAD4B_SCP_Search_Profile_Admin::selected_id(), 'array profile safely rejected' );
 	$_GET = array( 'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( MAD4B_SCP_Search_Experience::PAGE_SLUG, 'profile_saved', $sha ) );
 	profile_check( MAD4B_SCP_Admin_Experience::notice_verified( MAD4B_SCP_Search_Experience::PAGE_SLUG, 'profile_saved', $sha ), 'current view receipt valid' );

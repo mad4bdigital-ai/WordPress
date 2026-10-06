@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
-  "source_tasks_sha256": "b47e2ee7edf5ab86052c288e1e19a15e3e10b5d7d55d10280f63d9f05bac83cf",
-  "status_source_sha256": "4fb4556e96b4698af9e453e6a01a17eb8c32a55861c1638f5e6f6c8e0fa00fbf",
+  "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
+  "status_source_sha256": "a71c6382b072b782c9d900205732a9ba38bb1a30d964d63d497d4fbdb8276256",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 175,
-    "PARTIAL": 0,
+    "OPEN": 170,
+    "PARTIAL": 5,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -62,36 +62,48 @@
       "phase": 1,
       "priority": "P0",
       "summary": "Implement a central all-page operability inventory covering every registered page, tab, field, save/readback, empty state and next action.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ],
+      "reason": "Registered page/section inventory and shared directory implemented; field-level operability receipts remain pending."
     },
     {
       "task_id": "T3907",
       "phase": 1,
       "priority": "P0",
       "summary": "Implement guided connection-to-first-safe-read/draft onboarding with precise effective permissions and one actionable prerequisite at each step.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ],
+      "reason": "Read-only setup path and registered handoffs implemented; adaptive verified first-operation journey remains pending."
     },
     {
       "task_id": "T3908",
       "phase": 1,
       "priority": "P0",
       "summary": "Implement provider-neutral credentials/account/profile enrollment discoverability without arbitrary URLs, secret echo or paid calls during page render.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ],
+      "reason": "Descriptor-driven existing SERP credential setup is prominent with exact persisted feedback; broader analytics/provider enrollment remains pending."
     },
     {
       "task_id": "T3909",
       "phase": 1,
       "priority": "P0",
       "summary": "Implement canonical route/legacy alias parity, accessible Arabic/RTL mobile states, typed error feedback and external license/taxonomy remediation handoffs.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ],
+      "reason": "Canonical workspace links, Arabic translation, RTL/mobile/focus and external notice handoffs implemented; real Staging browser journeys remain pending."
     },
     {
       "task_id": "T3910",
@@ -1276,10 +1288,13 @@
       "task_id": "T4061",
       "phase": 28,
       "priority": "P0",
-      "summary": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ],
+      "reason": "Operator action cards and L0-L5 reference implemented without dispatch or claimed repair; per-plan receipts and autonomy evaluation remain pending."
     },
     {
       "task_id": "T4062",
@@ -1303,7 +1318,7 @@
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
-      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
+      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""

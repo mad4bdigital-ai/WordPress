@@ -76,7 +76,9 @@ class EvidenceDenials(unittest.TestCase):
             subject.validate(self.root, subject.REPO)
 
     def test_supplied_snapshot_passes(self):
-        self.assertEqual(subject.validate(self.root, subject.REPO)["extension_counts"]["OPEN"], 175)
+        counts = subject.validate(self.root, subject.REPO)["extension_counts"]
+        self.assertEqual(counts["OPEN"] + counts["PARTIAL"], 175)
+        self.assertEqual(counts["DONE"], 0)
 
     def test_changed_original_zip(self):
         path = self.root / "artifacts/royal-mcp-1.5.0.zip"
@@ -129,7 +131,20 @@ class EvidenceDenials(unittest.TestCase):
         path.write_text(path.read_text().replace("- [ ] T3901", "- [x] T3901"))
         self.change("task-status.json", lambda d: d["overrides"].update(T3901={"status": "DONE", "reason": "docs", "evidence_refs": ["spec.md"]}))
         (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
-        self.rejects("spec_only_backlog_requires_175_open_tasks")
+        self.rejects("optional_backlog_cannot_claim_runtime_completion")
+
+    def test_ui_cannot_claim_live_acceptance(self):
+        self.change("ui-delivery.json", lambda d: d.update(live_browser_acceptance=True))
+        self.rejects("ui_delivery_boundary_or_progress_invalid")
+
+    def test_ui_source_hashes_are_required(self):
+        self.change("ui-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
+        self.rejects("ui_delivery_source_evidence_drift")
+
+    def test_unrelated_task_cannot_claim_ui_progress(self):
+        self.change("task-status.json", lambda d: d["overrides"].update(T3901={"status":"PARTIAL", "reason":"ui", "evidence_refs":["ui-delivery.json"]}))
+        (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
+        self.rejects("ui_delivery_boundary_or_progress_invalid")
 
     def test_missing_ledger_regeneration(self):
         path = self.root / "tasks.md"

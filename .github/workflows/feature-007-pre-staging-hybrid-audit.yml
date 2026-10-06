@@ -106,6 +106,30 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
           php wp-content/plugins/mad4b-site-control-plane/tests/release-closure-hardening-contract.php
 
+      - name: Admin workspace UI and authority boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py
+          mkdir -p "$RUNNER_TEMP/admin-workspace-fixtures"
+          MAD4B_UI_FIXTURE_DIR="$RUNNER_TEMP/admin-workspace-fixtures" php wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php
+
+      - name: Admin workspace keyboard Arabic RTL and mobile browser fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/mad4b-ui-browser" --no-save --ignore-scripts playwright@1.55.1
+          MAD4B_UI_NODE_MODULES="$RUNNER_TEMP/mad4b-ui-browser/node_modules" \
+          MAD4B_UI_CHROME="$(command -v google-chrome)" \
+          node wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-browser.cjs "$RUNNER_TEMP/admin-workspace-fixtures"
+
+      - name: Upload disposable admin workspace visual fixtures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-workspace-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/admin-workspace-fixtures
+
       - name: Operating flow regression checks
         shell: bash
         run: |
@@ -607,9 +631,12 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH="$RUNNER_TEMP/asi-wordpress"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/admin-pages-${{ matrix.php }}.json"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci
+          # Independent disposable suites all run; any failure still blocks this job.
+          failed=0
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json" || failed=1
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/admin-pages-${{ matrix.php }}.json" || failed=1
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci || failed=1
+          exit "$failed"
 
       - name: Bind Adaptive Search gates to exact head and disposable evidence
         env:

@@ -28,7 +28,7 @@
       "phase": 1,
       "title": "Complete setup and admin journeys",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3906",
         "T3907",
@@ -586,7 +586,7 @@
       "phase": 28,
       "title": "Operator Action Center and Autonomy Evaluation",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4061",
         "T4062",
@@ -810,7 +810,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Reduce setup friction through connection, safe read/draft, reviewed plan, approved execution and eligible undo.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -825,7 +825,8 @@
       ],
       "denial_cases": [
         "Missing consent/Brand authority shown as ready; permissions increased by onboarding."
-      ]
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
     },
     {
       "id": "CE004",
@@ -842,7 +843,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Generalize rc.95 SerpApi/DataForSEO setup to all admitted provider-specific credential and account fields.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -857,7 +858,8 @@
       ],
       "denial_cases": [
         "Secrets reflected in DOM/audit, paid request on render, arbitrary account endpoint."
-      ]
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
     },
     {
       "id": "CE005",
@@ -873,7 +875,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Audit all registered tabs/controls and explain taxonomy/license/host/consent actions with Arabic RTL accessibility.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -888,7 +890,8 @@
       ],
       "denial_cases": [
         "Frontend 404 alias, false save success, stale view, automatic license deactivation or host binary install."
-      ]
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
     },
     {
       "id": "CE006",
@@ -2363,8 +2366,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-health-view.php"
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
-      "delta": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
-      "implementation_status": "OPEN",
+      "delta": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2377,11 +2380,12 @@
       "acceptance": [
         "Dispatch only safe non-authorizing already-policy-admitted remediation; require one explicit review/consent/host action for blocked plans.",
         "Expose cause, scope, evidence, next step, user-owned conflict, attempt/readback/rollback history and capability-local blast radius.",
-        "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness."
+        "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness."
       ],
       "denial_cases": [
         "GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification."
-      ]
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
     },
     {
       "id": "CE054",

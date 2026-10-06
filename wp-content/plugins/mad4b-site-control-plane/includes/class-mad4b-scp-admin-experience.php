@@ -11,6 +11,7 @@ final class MAD4B_SCP_Admin_Experience {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'admin_notices', array( __CLASS__, 'environment_context_notice' ), 1 );
+		MAD4B_SCP_Admin_Workspace::boot();
 	}
 
 	public static function environment_context() {
@@ -143,5 +144,12 @@ final class MAD4B_SCP_Admin_Experience {
 	public static function state_from_bool( $ready, $blocked = false ) {
 		if ( $ready ) return 'complete';
 		return $blocked ? 'blocked' : 'pending';
+	}
+
+	/** Missing observations stay distinct from a failed check. */
+	public static function observed_state( $value ) {
+		if ( true === $value ) return __( 'Ready', 'mad4b-site-control-plane' );
+		if ( false === $value ) return __( 'Needs attention', 'mad4b-site-control-plane' );
+		return __( 'Not checked', 'mad4b-site-control-plane' );
 	}
 }

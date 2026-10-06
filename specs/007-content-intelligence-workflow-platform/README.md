@@ -172,4 +172,4 @@ The first vertical slice cannot close while repository governance is only commit
 
 ## Optional competitive experience extension
 
-[CE01](extensions/competitive-experience/README.md) retains four original competitor ZIPs with source hashes and defines 53 capability requirements, 29 local phases and 145 OPEN implementation tasks. Its independent ledger is outside the frozen release scope.
+[CE01](extensions/competitive-experience/README.md) retains four original competitor ZIPs with source hashes and defines 59 capability requirements, 35 local phases and 175 implementation tasks. Its independent ledger is outside the frozen release scope.

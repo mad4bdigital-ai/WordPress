@@ -5,7 +5,7 @@
   "feature_name": "competitive-experience-and-adaptive-capability-fabric-v2",
   "feature_branch": "spec/007-competitive-experience-20261006",
   "baseline_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
-  "status": "SPEC_BACKLOG_ONLY",
+  "status": "UI_IMPLEMENTATION_IN_PROGRESS",
   "required_phase_count": 35,
   "task_count": 175,
   "capability_count": 59,
@@ -45,5 +45,7 @@
     "restore_never_replays_authority"
   ],
   "adaptive_operations_contract": "mad4b.adaptive-capability-fabric-v2-spec.v1",
-  "architecture_expansion": "architecture-expansion.md"
+  "architecture_expansion": "architecture-expansion.md",
+  "implementation_branch": "feat/007-admin-workspace-ui-20261006",
+  "ui_delivery": "ui-delivery.json"
 }

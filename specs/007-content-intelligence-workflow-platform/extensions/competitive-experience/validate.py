@@ -148,7 +148,7 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     if (feature.get("contract") != "mad4b.competitive-experience-extension.v1"
             or feature.get("authorizing") is not False or feature.get("production_authorized") is not False
             or feature.get("release_closure_included") is not False
-            or feature.get("status") != "SPEC_BACKLOG_ONLY"):
+            or feature.get("status") not in {"SPEC_BACKLOG_ONLY", "UI_IMPLEMENTATION_IN_PROGRESS"}):
         raise ValueError("extension_must_be_optional_spec_backlog_non_authorizing")
     if (feature.get("required_phase_count"), feature.get("task_count"), feature.get("capability_count")) != (35, 175, 59):
         raise ValueError("extension_inventory_metadata_mismatch")
@@ -218,8 +218,36 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     if load(root, "task-ledger.generated.json") != ledger:
         raise ValueError("generated_task_ledger_drift")
     expected_tasks = {f"T39{i:02}" for i in range(1, 81)} | {f"T40{i:02}" for i in range(1, 96)}
-    if {r["task_id"] for r in ledger["tasks"]} != expected_tasks or any(r["status"] != "OPEN" for r in ledger["tasks"]):
-        raise ValueError("spec_only_backlog_requires_175_open_tasks")
+    if {r["task_id"] for r in ledger["tasks"]} != expected_tasks or any(r["status"] not in {"OPEN", "PARTIAL"} for r in ledger["tasks"]):
+        raise ValueError("optional_backlog_cannot_claim_runtime_completion")
+    partial = {r["task_id"] for r in ledger["tasks"] if r["status"] == "PARTIAL"}
+    if partial:
+        if feature.get("status") != "UI_IMPLEMENTATION_IN_PROGRESS":
+            raise ValueError("ui_progress_requires_implementation_state")
+        delivery = load(root, "ui-delivery.json")
+        if (delivery.get("contract") != "mad4b.competitive-admin-ui-delivery.v1"
+                or delivery.get("authorizing") is not False or delivery.get("production_authorized") is not False
+                or delivery.get("live_browser_acceptance") is not False or delivery.get("runtime_parity_claimed") is not False
+                or set(delivery.get("partial_task_ids", [])) != partial
+                or not partial <= {"T3906", "T3907", "T3908", "T3909", "T4061"}
+                or not delivery.get("remaining_acceptance")):
+            raise ValueError("ui_delivery_boundary_or_progress_invalid")
+        for group in ("code_paths", "test_paths"):
+            paths = delivery.get(group, [])
+            if not paths:
+                raise ValueError("ui_delivery_requires_code_and_tests")
+            for entry in paths:
+                path = entry.get("path", "")
+                if not path.startswith("wp-content/plugins/mad4b-site-control-plane/") or ".." in PurePosixPath(path).parts:
+                    raise ValueError("ui_delivery_path_outside_plugin")
+                source = repo / path
+                if source.is_symlink() or not source.is_file() or digest(source.read_bytes()) != entry.get("sha256"):
+                    raise ValueError("ui_delivery_source_evidence_drift")
+        for row in ledger["tasks"]:
+            if row["status"] == "PARTIAL" and "ui-delivery.json" not in row["evidence_refs"]:
+                raise ValueError("ui_partial_task_missing_delivery_binding")
+    elif feature.get("status") != "SPEC_BACKLOG_ONLY":
+        raise ValueError("ui_implementation_state_without_progress")
     phases = set(range(35))
     for name in ("tasks.md", "plan.md"):
         found = {int(x) for x in re.findall(r"^## Phase (\d+)\b", local_file(root, name).read_text(), re.MULTILINE)}
@@ -245,7 +273,8 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     for stream in streams:
         if any(r["phase"] != stream["phase"] for r in ledger["tasks"] if r["task_id"] in stream["task_ids"]):
             raise ValueError("task_workstream_phase_mismatch")
-        if f"| {stream['family']} |" not in trace or stream["status"] != "OPEN":
+        expected_state = "PARTIAL" if partial.intersection(stream["task_ids"]) else "OPEN"
+        if f"| {stream['family']} |" not in trace or stream["status"] != expected_state:
             raise ValueError("workstream_traceability_or_status:" + stream["id"])
         if any(dep not in stream_ids for dep in stream["dependencies"]):
             raise ValueError("unknown_workstream_dependency")
@@ -265,7 +294,8 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     for node in stream_ids:
         visit(node)
     for cap in capabilities:
-        if cap["workstream_id"] not in stream_ids or cap["implementation_status"] != "OPEN" or cap["runtime_parity_claimed"] is not False:
+        expected_state = "PARTIAL" if partial.intersection(cap["task_ids"]) else "OPEN"
+        if cap["workstream_id"] not in stream_ids or cap["implementation_status"] != expected_state or cap["runtime_parity_claimed"] is not False:
             raise ValueError("capability_status_or_owner_invalid")
         owner = next(w for w in streams if w["id"] == cap["workstream_id"])
         if cap["family"] != owner["family"] or cap["risk_class"] not in {"READ_ONLY", "SCOPED_EXTERNAL_READ", "CAPABILITY_LOCAL_MIXED", "HIGH_RISK_EXPLICIT_GATE"}:
