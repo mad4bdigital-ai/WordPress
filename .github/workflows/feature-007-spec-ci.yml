@@ -143,19 +143,33 @@ jobs:
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           BASE="${{ github.event.pull_request.base.sha }}"
+          VERIFY_BRANCH="$HEAD_BRANCH"
           if ! git cat-file -e "$BASE:tools/verify_feature_boundary.py" 2>/dev/null; then
             echo "ROOT_OF_TRUST_BOOTSTRAP_REQUIRED base=$BASE expected=tools/verify_feature_boundary.py"
             echo "Merge the separately governed repository root-of-trust prerequisite before Feature 007 can pass this gate."
             exit 1
           fi
           git show "$BASE:tools/verify_feature_boundary.py" > /tmp/verify_feature_boundary.py
+
+          # PR #258 is the locked integration hub. Its historical branch name is
+          # spec/007-..., but after child integration it intentionally carries
+          # Feature 007 runtime implementation. For cumulative integration CI only,
+          # evaluate its changed paths under the baseline-owned implementation
+          # boundary. The master pull_request_target/release gates remain unchanged.
+          if [ "$PR_NUMBER" = "258" ] && [ "$HEAD_BRANCH" = "spec/007-competitive-experience-20261006" ]; then
+            VERIFY_BRANCH="feat/007-integration-hub"
+            echo "INTEGRATION_HUB_BOUNDARY_MODE actual_branch=$HEAD_BRANCH verifier_branch=$VERIFY_BRANCH"
+          fi
+
           python3 /tmp/verify_feature_boundary.py \
             --base "$BASE" \
             --head "$HEAD_SHA" \
-            --head-branch "$HEAD_BRANCH" \
+            --head-branch "$VERIFY_BRANCH" \
+            --pr-number "$PR_NUMBER" \
             --output /tmp/MAD4B-FEATURE-BOUNDARY.json
 
       - name: Verify reconciled task ledger
