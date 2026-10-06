@@ -45,7 +45,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
-      "sha256": "e9c6631e6beffee95b06f8a25f54a7d4e4414d89cbe4011d7b49c15ee472db91"
+      "sha256": "bb1ac6d3f40f98d43a1c34bc641cdd15a37db1491e8711c7b9dae6f65662fcdd"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
@@ -75,7 +75,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py",
-      "sha256": "ef80be223cd90c3a7c550c6e196403590a87dcf2ecbf3546583bab3984d37c44"
+      "sha256": "988ef31eed4115491026cd4e438c8b84067a83f79836b9ff269ce91cf9c259e7"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php",
@@ -137,7 +137,8 @@
     "competitive_evidence_history_retention_alert_ack_lifecycle",
     "runtime_evidence_collector_contract_metadata",
     "owner_review_revision_fence_cas",
-    "operator_workstream_parity_gap_drilldown"
+    "operator_workstream_parity_gap_drilldown",
+    "runtime_history_full_chain_alert_ack_integrity"
   ],
   "remaining_acceptance": [
     "Every integration candidate must pass the complete exact-head G1 child CI after delivery-manifest and cumulative change-slice binding.",

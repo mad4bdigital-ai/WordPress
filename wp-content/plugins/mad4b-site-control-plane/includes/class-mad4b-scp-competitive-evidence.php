@@ -130,6 +130,11 @@ final class MAD4B_SCP_Competitive_Evidence {
 
 		$history = self::history_status();
 		if ( is_wp_error( $history ) ) return $history;
+		$summary_generation = isset( $data['snapshot_generation_sha256'] ) ? (string) $data['snapshot_generation_sha256'] : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $summary_generation )
+			|| ! hash_equals( $summary_generation, (string) $history['current_generation_sha256'] ) ) {
+			return new WP_Error( 'mad4b_competitive_history_summary_generation_mismatch', 'Competitive evidence history does not match the packaged summary generation.' );
+		}
 		$data['history'] = $history;
 		$data['integrity_verified'] = true;
 		$data['direct_web_resource'] = false;
@@ -152,20 +157,98 @@ final class MAD4B_SCP_Competitive_Evidence {
 		$acks = isset( $data['acknowledgements'] ) && is_array( $data['acknowledgements'] ) ? $data['acknowledgements'] : array();
 		if ( empty( $entries ) || count( $entries ) > self::MAX_HISTORY_ENTRIES || count( $alerts ) > self::MAX_HISTORY_ENTRIES || count( $acks ) > self::MAX_HISTORY_ENTRIES ) return new WP_Error( 'mad4b_competitive_history_unbounded', 'Competitive evidence history or journal exceeds its bounded limit.' );
 		$previous_generation = ''; $previous_entry = '';
+		$seen_generations = array();
+		$known_good = array();
 		foreach ( $entries as $index => $row ) {
 			if ( ! is_array( $row ) || (int) ( isset( $row['revision'] ) ? $row['revision'] : 0 ) !== $index + 1 ) return new WP_Error( 'mad4b_competitive_history_revision_invalid', 'Competitive evidence history revision is invalid.' );
 			$generation = isset( $row['generation_sha256'] ) ? (string) $row['generation_sha256'] : '';
 			$claimed = isset( $row['entry_sha256'] ) ? (string) $row['entry_sha256'] : '';
-			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $generation ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $claimed ) ) return new WP_Error( 'mad4b_competitive_history_digest_invalid', 'Competitive evidence history digest is invalid.' );
-			if ( ! hash_equals( $previous_generation, (string) ( isset( $row['previous_generation_sha256'] ) ? $row['previous_generation_sha256'] : '' ) ) || ! hash_equals( $previous_entry, (string) ( isset( $row['previous_entry_sha256'] ) ? $row['previous_entry_sha256'] : '' ) ) ) return new WP_Error( 'mad4b_competitive_history_chain_invalid', 'Competitive evidence history chain is invalid.' );
+			$state = isset( $row['state'] ) ? (string) $row['state'] : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $generation )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $claimed )
+				|| isset( $seen_generations[ $generation ] ) ) {
+				return new WP_Error( 'mad4b_competitive_history_digest_invalid', 'Competitive evidence history digest is invalid or duplicated.' );
+			}
+			if ( ! in_array( $state, array( 'known_good', 'drifted' ), true )
+				|| ! isset( $row['drift_flags'] ) || ! is_array( $row['drift_flags'] )
+				|| ! array_key_exists( 'authorizing', $row ) || false !== $row['authorizing'] ) {
+				return new WP_Error( 'mad4b_competitive_history_state_invalid', 'Competitive evidence history state is invalid.' );
+			}
+			if ( ! hash_equals( $previous_generation, (string) ( isset( $row['previous_generation_sha256'] ) ? $row['previous_generation_sha256'] : '' ) )
+				|| ! hash_equals( $previous_entry, (string) ( isset( $row['previous_entry_sha256'] ) ? $row['previous_entry_sha256'] : '' ) ) ) {
+				return new WP_Error( 'mad4b_competitive_history_chain_invalid', 'Competitive evidence history chain is invalid.' );
+			}
 			$basis = $row; unset( $basis['entry_sha256'] );
 			$encoded = wp_json_encode( self::sort_value( $basis ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			$observed = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
 			if ( '' === $observed || ! hash_equals( $claimed, $observed ) ) return new WP_Error( 'mad4b_competitive_history_entry_tampered', 'Competitive evidence history entry integrity failed.' );
+			$seen_generations[ $generation ] = true;
+			if ( 'known_good' === $state ) $known_good[] = $generation;
 			$previous_generation = $generation; $previous_entry = $claimed;
 		}
-		if ( ! hash_equals( $previous_generation, (string) ( isset( $data['current_generation_sha256'] ) ? $data['current_generation_sha256'] : '' ) ) || ! hash_equals( $previous_entry, (string) ( isset( $data['current_entry_sha256'] ) ? $data['current_entry_sha256'] : '' ) ) ) return new WP_Error( 'mad4b_competitive_history_current_invalid', 'Competitive evidence current history pointer is invalid.' );
-		$open = 0; foreach ( $alerts as $alert ) if ( is_array( $alert ) && 'open' === ( isset( $alert['state'] ) ? (string) $alert['state'] : '' ) ) $open++;
+		if ( ! hash_equals( $previous_generation, (string) ( isset( $data['current_generation_sha256'] ) ? $data['current_generation_sha256'] : '' ) )
+			|| ! hash_equals( $previous_entry, (string) ( isset( $data['current_entry_sha256'] ) ? $data['current_entry_sha256'] : '' ) ) ) {
+			return new WP_Error( 'mad4b_competitive_history_current_invalid', 'Competitive evidence current history pointer is invalid.' );
+		}
+
+		$expected_previous_known_good = '';
+		$known_count = count( $known_good );
+		if ( $known_count > 0 ) {
+			$last_known = $known_good[ $known_count - 1 ];
+			if ( hash_equals( $last_known, $previous_generation ) ) {
+				$expected_previous_known_good = $known_count > 1 ? $known_good[ $known_count - 2 ] : '';
+			} else {
+				$expected_previous_known_good = $last_known;
+			}
+		}
+		$claimed_previous_known_good = isset( $data['previous_known_good_generation_sha256'] ) ? (string) $data['previous_known_good_generation_sha256'] : '';
+		if ( ! hash_equals( $expected_previous_known_good, $claimed_previous_known_good ) ) {
+			return new WP_Error( 'mad4b_competitive_history_known_good_invalid', 'Competitive evidence previous-known-good pointer is invalid.' );
+		}
+
+		$ack_ids = array();
+		foreach ( $acks as $ack ) {
+			if ( ! is_array( $ack )
+				|| ! array_key_exists( 'authorizing', $ack ) || false !== $ack['authorizing']
+				|| empty( $ack['alert_id'] ) ) {
+				return new WP_Error( 'mad4b_competitive_history_ack_invalid', 'Competitive evidence acknowledgement is invalid.' );
+			}
+			$claimed_ack = isset( $ack['ack_sha256'] ) ? (string) $ack['ack_sha256'] : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $claimed_ack ) ) return new WP_Error( 'mad4b_competitive_history_ack_invalid', 'Competitive evidence acknowledgement digest is invalid.' );
+			$ack_basis = $ack; unset( $ack_basis['ack_sha256'] );
+			$ack_encoded = wp_json_encode( self::sort_value( $ack_basis ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$ack_observed = is_string( $ack_encoded ) ? hash( 'sha256', $ack_encoded ) : '';
+			if ( '' === $ack_observed || ! hash_equals( $claimed_ack, $ack_observed ) ) return new WP_Error( 'mad4b_competitive_history_ack_tampered', 'Competitive evidence acknowledgement integrity failed.' );
+			$alert_id = (string) $ack['alert_id'];
+			if ( isset( $ack_ids[ $alert_id ] ) ) return new WP_Error( 'mad4b_competitive_history_ack_duplicate', 'Competitive evidence acknowledgement is duplicated.' );
+			$ack_ids[ $alert_id ] = true;
+		}
+
+		$open = 0;
+		$alert_ids = array();
+		foreach ( $alerts as $alert ) {
+			if ( ! is_array( $alert )
+				|| ! array_key_exists( 'authorizing', $alert ) || false !== $alert['authorizing']
+				|| empty( $alert['alert_id'] )
+				|| ! in_array( isset( $alert['state'] ) ? (string) $alert['state'] : '', array( 'open', 'acknowledged' ), true ) ) {
+				return new WP_Error( 'mad4b_competitive_history_alert_invalid', 'Competitive evidence drift alert is invalid.' );
+			}
+			$alert_id = (string) $alert['alert_id'];
+			if ( isset( $alert_ids[ $alert_id ] ) ) return new WP_Error( 'mad4b_competitive_history_alert_duplicate', 'Competitive evidence drift alert is duplicated.' );
+			$claimed_alert = isset( $alert['alert_sha256'] ) ? (string) $alert['alert_sha256'] : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $claimed_alert ) ) return new WP_Error( 'mad4b_competitive_history_alert_invalid', 'Competitive evidence drift alert digest is invalid.' );
+			$alert_basis = $alert; unset( $alert_basis['alert_sha256'] );
+			$alert_encoded = wp_json_encode( self::sort_value( $alert_basis ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$alert_observed = is_string( $alert_encoded ) ? hash( 'sha256', $alert_encoded ) : '';
+			if ( '' === $alert_observed || ! hash_equals( $claimed_alert, $alert_observed ) ) return new WP_Error( 'mad4b_competitive_history_alert_tampered', 'Competitive evidence drift alert integrity failed.' );
+			$state = (string) $alert['state'];
+			if ( 'acknowledged' === $state && ! isset( $ack_ids[ $alert_id ] ) ) return new WP_Error( 'mad4b_competitive_history_ack_missing', 'Competitive evidence acknowledged drift alert has no acknowledgement receipt.' );
+			if ( 'open' === $state ) $open++;
+			$alert_ids[ $alert_id ] = true;
+		}
+		foreach ( $ack_ids as $alert_id => $unused ) {
+			if ( ! isset( $alert_ids[ $alert_id ] ) ) return new WP_Error( 'mad4b_competitive_history_ack_orphaned', 'Competitive evidence acknowledgement references an unknown drift alert.' );
+		}
 		return array(
 			'contract'=>self::HISTORY_CONTRACT,
 			'revision'=>count( $entries ),
