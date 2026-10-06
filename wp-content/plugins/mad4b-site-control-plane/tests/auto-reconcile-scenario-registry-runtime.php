@@ -32,6 +32,14 @@ $base = array(
 	'source' => 'wordpress_upgrader',
 	'breakglass_enabled' => false,
 );
+$self_owned = $base;
+$self_owned['maintenance'] = array( 'active' => true, 'owner' => 'adaptive_runtime_observation' );
+check( 'SCHEDULE_PROBE' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $self_owned )['decision'], 'observer-owned maintenance lease must not self-defer' );
+
+$foreign_owned = $base;
+$foreign_owned['maintenance'] = array( 'active' => true, 'owner' => 'runtime_convergence' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $foreign_owned )['decision'], 'foreign maintenance owner must defer' );
+
 $manual = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $base );
 check( 'SCHEDULE_PROBE' === $manual['decision'], 'manual ZIP drift must schedule a bounded probe' );
 check( empty( $manual['mutation_allowed'] ) && empty( $manual['authority_expansion_allowed'] ), 'probe must never be authorizing' );
