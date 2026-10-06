@@ -43,7 +43,7 @@
     },
     "T3901": {
       "status": "PARTIAL",
-      "reason": "Reproducible archive verification, guarded packaged evidence and tamper-evident snapshot history are implemented; exact-head child CI is required before integration.",
+      "reason": "Reproducible archive verification and immutable packaged evidence snapshot are implemented; exact-head group acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -51,7 +51,7 @@
     },
     "T3902": {
       "status": "PARTIAL",
-      "reason": "Evidence-class/capability comparison separates bundled static, marketed claims, MAD4B foundation and runtime claims; live/runtime acceptance remains separate where applicable.",
+      "reason": "Evidence-class/capability comparison separates bundled static, marketed claims, MAD4B foundation and runtime claims; external/runtime acceptance remains pending where applicable.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -59,7 +59,7 @@
     },
     "T3903": {
       "status": "PARTIAL",
-      "reason": "Generation-bound semantic diff, source drift and tamper-evident snapshot history are implemented; historical live drift acceptance remains separate.",
+      "reason": "Generation-bound snapshot semantic diff and source-drift detection are implemented; historical live drift acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -67,7 +67,7 @@
     },
     "T3904": {
       "status": "PARTIAL",
-      "reason": "Operator evidence projection links capability, task, evidence and foundation identities with bounded filtering; real browser acceptance remains separate.",
+      "reason": "Operator evidence projection links capability, task and evidence identities; real browser acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -75,7 +75,7 @@
     },
     "T3905": {
       "status": "PARTIAL",
-      "reason": "Evidence integrity and denial contracts are implemented and CI-bound; exact-head child CI is required before integration.",
+      "reason": "Evidence integrity and denial contracts are implemented and CI-bound; terminal exact-head group acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -83,7 +83,7 @@
     },
     "T4001": {
       "status": "PARTIAL",
-      "reason": "Provenance-bound Runtime Candidate Graph v2 with immutable generation, completeness metadata, semantic dimensions and edges is implemented; real runtime acceptance remains separate.",
+      "reason": "Provenance-bound Runtime Candidate Graph with immutable generation, semantic dimensions and edges is implemented; real runtime acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -91,7 +91,7 @@
     },
     "T4002": {
       "status": "PARTIAL",
-      "reason": "Bounded structural discovery covers abilities, operations, hooks, REST routes, MCP descriptors, CPTs, taxonomies, meta, cron, admin routes and symbols without callback execution; representative Staging acceptance remains separate.",
+      "reason": "Bounded structural discovery covers abilities, operations, hooks, REST routes, MCP descriptors, CPTs, taxonomies, meta, cron, admin routes and symbols without callback execution; Staging acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -99,7 +99,7 @@
     },
     "T4003": {
       "status": "PARTIAL",
-      "reason": "Unknown-plugin candidate packages and descriptive database/endpoint inventory are implemented without row/schema reads or unknown code execution; representative unknown-provider Staging acceptance remains separate.",
+      "reason": "Unknown-plugin candidate packages and descriptive database/endpoint inventory are implemented without row/schema reads or unknown code execution; unknown-provider Staging acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -107,7 +107,7 @@
     },
     "T4004": {
       "status": "PARTIAL",
-      "reason": "Semantic graph diff validates snapshot provenance, propagates provider/component drift transitively, reuses the dependency-impact foundation and preserves unrelated compatible reads; live drift acceptance remains separate.",
+      "reason": "Semantic graph diff isolates removed/changed abilities, affected operations/workflows and preserves unrelated compatible reads; Staging drift acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -115,7 +115,7 @@
     },
     "T4005": {
       "status": "PARTIAL",
-      "reason": "Fail-closed denial coverage for lifecycle gaps, truncation, secret metadata, unknown code and non-authorizing discovery is implemented; exact-head child CI is required before integration.",
+      "reason": "Fail-closed denial coverage for lazy REST discovery, secret metadata, unknown code and non-authorizing discovery is implemented; terminal exact-head acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -123,7 +123,7 @@
     },
     "T4006": {
       "status": "PARTIAL",
-      "reason": "Deterministic semantic evidence features and versioned Policy Proposal contracts are implemented; exact-head child CI is required before integration.",
+      "reason": "Deterministic semantic evidence features and versioned Policy Proposal contract are implemented; exact-head runtime acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -131,7 +131,7 @@
     },
     "T4007": {
       "status": "PARTIAL",
-      "reason": "Confidence, missing/contradictory evidence, provenance and classifier-version traces are implemented without treating confidence or names as safety proof; live evidence remains separate.",
+      "reason": "Confidence, missing/contradictory evidence, provenance and classifier-version traces are implemented without treating confidence or names as safety proof; Staging evidence remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -139,7 +139,7 @@
     },
     "T4008": {
       "status": "PARTIAL",
-      "reason": "Runtime facts and reviewed policy overlay are separated; only verifier-backed, provider-capability/artifact-bound zero-effect public reads become auto-classification candidates; real conformance-source acceptance remains separate.",
+      "reason": "Runtime facts and reviewed policy overlay are separated; only actual conformance-bound zero-effect non-secret reads become auto-classification candidates; real conformance-source acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -147,7 +147,7 @@
     },
     "T4009": {
       "status": "PARTIAL",
-      "reason": "Owner review ledger is revision-fenced, append-only, audit-required and bound to exact graph/proposal generations while creating no grants, mounts, scopes or certification; admin/browser acceptance remains separate.",
+      "reason": "Owner review ledger is revision-fenced and bound to exact graph/proposal generations with audit/readback while creating no grants, mounts, scopes or certification; admin/browser acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -155,7 +155,7 @@
     },
     "T4010": {
       "status": "PARTIAL",
-      "reason": "Denials cover confidence-only promotion, unsafe GET/name inference, schema disappearance, secret input/output, privileged/sensitive reads, stale provider artifacts and risk downgrade; exact-head child CI is required before integration.",
+      "reason": "Denials for confidence-only promotion, unsafe GET, secret schema and risk downgrade are implemented and CI-bound; terminal exact-head group acceptance remains pending.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
