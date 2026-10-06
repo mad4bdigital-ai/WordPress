@@ -455,6 +455,8 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			'actual_conformance_result' => $actual,
 			'http_method' => isset( $node['http_method'] ) ? (string) $node['http_method'] : '',
 			'declared_capability' => isset( $node['required_capability'] ) ? (string) $node['required_capability'] : '',
+			'resource_schema_version' => isset( $node['resource_schema_version'] ) ? (string) $node['resource_schema_version'] : '',
+			'resource_constraints_sha256' => isset( $node['resource_constraints_sha256'] ) ? (string) $node['resource_constraints_sha256'] : '',
 			'requested_risk' => isset( $node['requested_risk'] ) ? (string) $node['requested_risk'] : '',
 		);
 	}
@@ -602,6 +604,8 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			'actual_conformance_result',
 			'http_method',
 			'declared_capability',
+			'resource_schema_version',
+			'resource_constraints_sha256',
 			'requested_risk',
 		);
 
