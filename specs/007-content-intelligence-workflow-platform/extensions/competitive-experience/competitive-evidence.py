@@ -16,10 +16,22 @@ def build_snapshot(root: Path = ROOT):
     capabilities=[]
     for r in matrix["capabilities"]:
         evidence_ids=sorted(r.get("evidence_ids",[])); task_ids=sorted(r.get("task_ids",[]))
-        capabilities.append({"id":r["id"],"title":r["title"],"workstream_id":r["workstream_id"],"family":r["family"],"evidence_ids":evidence_ids,
-            "evidence_classes":sorted({source_map[e]["kind"] for e in evidence_ids}),"mad4b_foundation_paths":sorted(r.get("mad4b_baseline_paths",[])),
-            "baseline_assessment":r["baseline_assessment"],"implementation_status":r["implementation_status"],"runtime_parity_claimed":bool(r["runtime_parity_claimed"]),
-            "risk_class":r["risk_class"],"task_ids":task_ids,"task_statuses":{t:task_map[t]["status"] for t in task_ids}})
+        evidence_sources=[{
+            "id":e,
+            "kind":source_map[e]["kind"],
+            "package_id":source_map[e].get("package_id"),
+            "path":source_map[e]["path"],
+            "runtime_verified":bool(source_map[e].get("runtime_verified",False)),
+        } for e in evidence_ids]
+        capabilities.append({
+            "id":r["id"],"title":r["title"],"workstream_id":r["workstream_id"],"family":r["family"],
+            "evidence_ids":evidence_ids,"evidence_classes":sorted({source_map[e]["kind"] for e in evidence_ids}),
+            "evidence_sources":evidence_sources,"mad4b_foundation_paths":sorted(r.get("mad4b_baseline_paths",[])),
+            "baseline_assessment":r["baseline_assessment"],"implementation_status":r["implementation_status"],
+            "runtime_parity_claimed":bool(r["runtime_parity_claimed"]),"risk_class":r["risk_class"],
+            "task_ids":task_ids,"task_statuses":{t:task_map[t]["status"] for t in task_ids},
+            "acceptance_requirements":list(r.get("acceptance",[])),"denial_cases":list(r.get("denial_cases",[])),
+        })
     capabilities.sort(key=lambda x:x["id"])
     basis={"contract":"mad4b.competitive-evidence-snapshot.v1","packages":packages,"capabilities":capabilities,"source_generation":sha(sources),"task_generation":sha(ledger),"matrix_source_sha":matrix["baseline_source_sha"]}
     return {**basis,"generation_sha256":sha(basis),"authorizing":False,"runtime_certification_inferred":False,"marketing_claims_promoted":False}
@@ -29,12 +41,33 @@ def semantic_diff(before,after):
     changed=[]
     for key in sorted(set(a)&set(b)):
         if sha(a[key])!=sha(b[key]): changed.append({"id":key,"fields":sorted(k for k in set(a[key])|set(b[key]) if a[key].get(k)!=b[key].get(k)),"before_sha256":sha(b[key]),"after_sha256":sha(a[key])})
-    return {"contract":"mad4b.competitive-evidence-diff.v1","before_generation_sha256":before.get("generation_sha256",""),"after_generation_sha256":after.get("generation_sha256",""),"added":sorted(set(a)-set(b)),"removed":sorted(set(b)-set(a)),"changed":changed,"source_drift":before.get("source_generation")!=after.get("source_generation"),"authorizing":False}
+    bp={r["id"]:r for r in before.get("packages",[])}; ap={r["id"]:r for r in after.get("packages",[])}
+    package_changed=[]
+    for key in sorted(set(ap)&set(bp)):
+        if sha(ap[key])!=sha(bp[key]):
+            package_changed.append({"id":key,"before_sha256":sha(bp[key]),"after_sha256":sha(ap[key])})
+    return {
+        "contract":"mad4b.competitive-evidence-diff.v1",
+        "before_generation_sha256":before.get("generation_sha256",""),
+        "after_generation_sha256":after.get("generation_sha256",""),
+        "added":sorted(set(a)-set(b)),"removed":sorted(set(b)-set(a)),"changed":changed,
+        "package_added":sorted(set(ap)-set(bp)),"package_removed":sorted(set(bp)-set(ap)),"package_changed":package_changed,
+        "source_drift":before.get("source_generation")!=after.get("source_generation"),
+        "task_drift":before.get("task_generation")!=after.get("task_generation"),
+        "matrix_source_drift":before.get("matrix_source_sha")!=after.get("matrix_source_sha"),
+        "authorizing":False,
+    }
 def operator_summary(snapshot):
     counts={}; rows=[]
     for r in snapshot["capabilities"]:
         counts[r["implementation_status"]]=counts.get(r["implementation_status"],0)+1
-        rows.append({"id":r["id"],"title":r["title"],"status":r["implementation_status"],"risk_class":r["risk_class"],"task_ids":r["task_ids"],"evidence_ids":r["evidence_ids"],"evidence_classes":r["evidence_classes"]})
+        rows.append({
+            "id":r["id"],"title":r["title"],"status":r["implementation_status"],"risk_class":r["risk_class"],
+            "task_ids":r["task_ids"],"task_statuses":r["task_statuses"],
+            "evidence_ids":r["evidence_ids"],"evidence_classes":r["evidence_classes"],"evidence_sources":r["evidence_sources"],
+            "mad4b_foundation_paths":r["mad4b_foundation_paths"],"baseline_assessment":r["baseline_assessment"],
+            "runtime_parity_claimed":r["runtime_parity_claimed"],"acceptance_requirements":r["acceptance_requirements"],
+        })
     payload={"contract":"mad4b.competitive-evidence-summary.v1","snapshot_generation_sha256":snapshot["generation_sha256"],"package_count":len(snapshot["packages"]),"capability_count":len(snapshot["capabilities"]),"status_counts":dict(sorted(counts.items())),"packages":snapshot["packages"],"capabilities":rows,"authorizing":False}
     payload["summary_sha256"]=sha(payload); return payload
 def verify(root: Path = ROOT, summary_path: Path = SUMMARY):
