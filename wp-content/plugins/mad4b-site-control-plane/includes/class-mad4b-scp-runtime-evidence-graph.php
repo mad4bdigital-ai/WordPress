@@ -248,44 +248,63 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 	}
 
 	private static function operations() {
-		$catalog=class_exists('MAD4B_SCP_Operation_Registry')&&method_exists('MAD4B_SCP_Operation_Registry','catalog')
-			? MAD4B_SCP_Operation_Registry::catalog() : array();
-		if(is_wp_error($catalog)||!is_array($catalog)) return array();
-		$rows=isset($catalog['operations'])&&is_array($catalog['operations'])?$catalog['operations']:array();
-		$out=array();
-		foreach($rows as $row){
-			if(!is_array($row)) continue;
-			$id=isset($row['id'])?(string)$row['id']:'';
-			if(''===$id) continue;
-			$refs=array();
-			foreach(array('planner','executor','planner_ability','executor_ability','plan_ability','apply_ability','ability_name') as $field) {
-				if(!empty($row[$field])&&is_string($row[$field])&&'exact_executor_from_plan'!==$row[$field]) $refs[]=$row[$field];
+		$status = class_exists( 'MAD4B_SCP_Operation_Registry' ) && method_exists( 'MAD4B_SCP_Operation_Registry', 'status' )
+			? MAD4B_SCP_Operation_Registry::status()
+			: array();
+		if ( is_wp_error( $status ) || ! is_array( $status ) ) return array();
+
+		$rows = isset( $status['operations'] ) && is_array( $status['operations'] )
+			? $status['operations']
+			: array();
+
+		$out = array();
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$id = isset( $row['id'] ) ? (string) $row['id'] : '';
+			if ( '' === $id ) continue;
+
+			$refs = array();
+			foreach ( array( 'planner', 'executor', 'planner_ability', 'executor_ability', 'plan_ability', 'apply_ability', 'ability_name' ) as $field ) {
+				if ( empty( $row[ $field ] ) || ! is_string( $row[ $field ] ) || 'exact_executor_from_plan' === $row[ $field ] ) continue;
+				$refs[] = $row[ $field ];
 			}
-			$refs=array_values(array_unique($refs)); sort($refs,SORT_STRING);
-			$bound=method_exists('MAD4B_SCP_Operation_Registry','operation')?MAD4B_SCP_Operation_Registry::operation($id):array();
-			if(is_wp_error($bound)||!is_array($bound)) $bound=array();
-			$safe=self::safe_row($row);
-			$out[]=array(
-				'id'=>$id,
-				'kind'=>'operation',
-				'ability_refs'=>$refs,
-				'pipeline_profile'=>isset($row['pipeline_profile'])?sanitize_key((string)$row['pipeline_profile']):'',
-				'required_runtime'=>!array_key_exists('required_runtime',$row)||true===$row['required_runtime'],
-				'preconditions'=>array(
-					'planner_registered'=>isset($bound['planner_registered'])?$bound['planner_registered']:null,
-					'executor_registered'=>isset($bound['executor_registered'])?$bound['executor_registered']:null,
-					'descriptor_binding_ready'=>isset($bound['descriptor_binding_ready'])?(bool)$bound['descriptor_binding_ready']:null,
+			$refs = array_values( array_unique( $refs ) );
+			sort( $refs, SORT_STRING );
+
+			$bound = method_exists( 'MAD4B_SCP_Operation_Registry', 'operation' )
+				? MAD4B_SCP_Operation_Registry::operation( $id )
+				: array();
+			if ( is_wp_error( $bound ) || ! is_array( $bound ) ) $bound = array();
+
+			$safe = self::safe_row( $row );
+			$out[] = array(
+				'id' => $id,
+				'kind' => 'operation',
+				'ability_refs' => $refs,
+				'pipeline_profile' => isset( $row['pipeline_profile'] ) ? sanitize_key( (string) $row['pipeline_profile'] ) : '',
+				'required_runtime' => ! array_key_exists( 'required_runtime', $row ) || true === $row['required_runtime'],
+				'preconditions' => array(
+					'planner_registered' => isset( $row['planner_registered'] ) ? $row['planner_registered'] : null,
+					'executor_registered' => isset( $row['executor_registered'] ) ? $row['executor_registered'] : null,
+					'descriptor_binding_ready' => isset( $row['descriptor_binding_ready'] ) ? (bool) $row['descriptor_binding_ready'] : ( isset( $bound['descriptor_binding_ready'] ) ? (bool) $bound['descriptor_binding_ready'] : null ),
 				),
-				'effect'=>array('class'=>'governed_operation_pipeline','authority_inferred'=>false),
-				'reversal'=>array('declared'=>!empty($row['reversible'])||!empty($row['reversal_contract']),'contract'=>isset($row['reversal_contract'])?(string)$row['reversal_contract']:''),
-				'evidence'=>array(
-					'descriptor_sha256'=>self::digest('mad4b.operation-graph-node.v1',$safe),
-					'planner_descriptor_sha256'=>isset($bound['planner_descriptor_sha256'])?(string)$bound['planner_descriptor_sha256']:'',
-					'executor_descriptor_sha256'=>isset($bound['executor_descriptor_sha256'])?(string)$bound['executor_descriptor_sha256']:'',
+				'effect' => array(
+					'class' => 'governed_operation_pipeline',
+					'authority_inferred' => false,
 				),
-				'descriptor_sha256'=>self::digest('mad4b.operation-graph-node.v1',$safe),
+				'reversal' => array(
+					'declared' => ! empty( $row['reversible'] ) || ! empty( $row['reversal_contract'] ),
+					'contract' => isset( $row['reversal_contract'] ) ? (string) $row['reversal_contract'] : '',
+				),
+				'evidence' => array(
+					'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v1', $safe ),
+					'planner_descriptor_sha256' => isset( $bound['planner_descriptor_sha256'] ) ? (string) $bound['planner_descriptor_sha256'] : '',
+					'executor_descriptor_sha256' => isset( $bound['executor_descriptor_sha256'] ) ? (string) $bound['executor_descriptor_sha256'] : '',
+				),
+				'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v1', $safe ),
 			);
-			if(count($out)>=self::MAX_ITEMS_PER_KIND) break;
+
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
 		}
 		return $out;
 	}
