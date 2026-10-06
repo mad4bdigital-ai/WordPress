@@ -349,3 +349,75 @@ Dependencies: update-acceptance, host-capability-registry, external-provider-fra
 5. GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification.
 
 Exit: exact scope-bound verification under the adaptive operations autonomy contract; new authority and unknown side effects remain gated.
+
+## Phase 29 — Release Rings and Fleet/Multisite Promotion
+
+Dependencies: update-acceptance, certification-packs, operator-action-center.
+
+1. Implement exact environment/site/cohort release-ring identities bound to candidate generation, Site Profile and site-local authority; no implicit Production ring.
+2. Implement Multisite/fleet inventory and cohort diff with provider applicability, runtime identity and independent grant/binding truth per site.
+3. Implement pilot-ring promotion plans with health thresholds, bounded cohort size, per-site receipts and explicit partial-failure/rollback state.
+4. Implement distributed rollout fencing, idempotency and lock ownership so duplicate workers cannot promote or rollback the same site generation twice.
+5. GATE Prove stale cohort membership, split brain, cross-site authority bleed, provider mismatch, partial rollback and missing site evidence halt promotion safely.
+
+Exit: exact scope-bound verification under the adaptive resilience contract; no new authority is inferred.
+
+## Phase 30 — Automation SLOs, Error Budgets and Kill Switch
+
+Dependencies: operator-action-center, update-acceptance.
+
+1. Define automation SLOs over an explicit eligible workload: verified repair success, false repair, MTTR, quarantine, rollback failure, intervention and cost.
+2. Implement per-site/provider/capability error and retry budgets with cooldown windows and deterministic exclusion reasons.
+3. Implement backpressure, queue isolation and circuit breaking for repeated self-heal failures without blocking unrelated read diagnostics.
+4. Implement an independently persisted automation kill switch that stops L2–L4 automatic actions while preserving L0–L1 observation and governed manual paths.
+5. GATE Prove flapping drift, metric loss, clock skew, queue storms, exhausted budgets and kill-switch state cannot be bypassed by stale workers or retries.
+
+Exit: exact scope-bound verification under the adaptive resilience contract; no new authority is inferred.
+
+## Phase 31 — Supply-chain Provenance and Trust
+
+Dependencies: runtime-graph-v2, certification-packs.
+
+1. Implement source-channel, immutable hash, signer/revocation and dependency provenance records for runtime/provider/policy artifacts.
+2. Bind supply-chain provenance to exact candidate generations and certification packs without treating source identity as behavioral or authority proof.
+3. Implement downgrade, mirror mismatch, dependency substitution and unexpected package-source detection with capability-local quarantine.
+4. Expose provenance and revocation status in operator/update acceptance views with bounded external remediation and no secret material.
+5. GATE Reject unsigned, revoked, downgraded, foreign or dependency-tampered artifacts and prove valid signatures cannot create grants, mounts or promotion.
+
+Exit: exact scope-bound verification under the adaptive resilience contract; no new authority is inferred.
+
+## Phase 32 — Registry and Policy Schema Migration
+
+Dependencies: certification-packs, supply-chain-trust.
+
+1. Implement versioned registry/policy/manifest migration DAGs with interpreter compatibility declarations and dry-run semantic diffs.
+2. Capture exact pre-migration snapshots and reversible migration receipts with atomic cutover and interruption recovery.
+3. Support declared mixed-generation worker windows without dropping unknown fields, reinterpreting stale evidence or silently changing defaults.
+4. Require governed review for migration steps that lower risk, alter authority semantics or make previously ineligible operations executable.
+5. GATE Inject partial migration, stale workers, unknown fields, downgrade, restored old registries and interrupted cutover; preserve rollback and fail closed.
+
+Exit: exact scope-bound verification under the adaptive resilience contract; no new authority is inferred.
+
+## Phase 33 — Adversarial Compatibility Fuzzing and Chaos Certification
+
+Dependencies: semantic-classifier, declarative-adapters, reversible-canary.
+
+1. Implement deterministic disposable schema/property fuzz cases for boundaries, malformed provider responses, contradictory annotations and hidden-effect indicators.
+2. Implement isolated fault injection for timeout, cancellation, duplicate delivery, concurrency races and provider errors with reproducible seeds.
+3. Implement differential compatibility fuzzing across certified and candidate provider versions without candidate output entering active user responses.
+4. Feed reproducible fuzz findings into policy proposals, canary recipes and quarantine evidence without automated authority changes.
+5. GATE Prove fuzzing never targets Production/shared objects, performs paid/irreversible effects, invokes arbitrary code or converts crashes into blind retries.
+
+Exit: exact scope-bound verification under the adaptive resilience contract; no new authority is inferred.
+
+## Phase 34 — Restore and Disaster-Recovery Convergence
+
+Dependencies: update-acceptance, ownership-reconciliation, certification-packs, release-fleet-promotion.
+
+1. Implement restore-epoch detection across database, files, runtime package, Site Profile and registry generations.
+2. Invalidate stale mutable receipts, leases, candidate bindings and execution assumptions after restore while retaining append-only audit evidence.
+3. Rebuild current artifact/provider/host capability graphs and reconcile exact site-local grants/authority before write eligibility returns.
+4. Implement external-effect reconciliation for actions not rewound by local restore and issue a post-restore acceptance receipt before writes resume.
+5. GATE Test cloned origins, clock rollback, stale grants, partial files/DB restore, revoked external providers and unrewound effects; never replay authority automatically.
+
+Exit: exact scope-bound verification under the adaptive resilience contract; no new authority is inferred.

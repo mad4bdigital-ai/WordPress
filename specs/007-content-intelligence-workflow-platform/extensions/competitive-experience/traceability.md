@@ -1,6 +1,6 @@
 # Traceability — CE01
 
-40 competitor requirements plus 13 Adaptive Capability Fabric v2 requirements; each task has exactly one owner.
+40 competitor requirements plus 13 user-proposal Adaptive Capability Fabric v2 requirements plus 6 architecture-derived resilience requirements; each task has exactly one owner.
 
 | Family | Workstream | Task IDs | Acceptance |
 | --- | --- | --- | --- |
@@ -33,6 +33,12 @@
 | ACFHOST | Host Capability Registry | T4051–T4055 | Exact behavior, UI, denial and evidence contracts |
 | ACFEXT | External Provider Framework | T4056–T4060 | Exact behavior, UI, denial and evidence contracts |
 | ACFACT | Operator Action Center and Autonomy Evaluation | T4061–T4065 | Exact behavior, UI, denial and evidence contracts |
+| ACFROLL | Release Rings and Fleet/Multisite Promotion | T4066–T4070 | Exact resilience, denial and runtime evidence contracts |
+| ACFSLO | Automation SLOs, Error Budgets and Kill Switch | T4071–T4075 | Exact resilience, denial and runtime evidence contracts |
+| ACFSUPPLY | Supply-chain Provenance and Trust | T4076–T4080 | Exact resilience, denial and runtime evidence contracts |
+| ACFMIGRATE | Registry and Policy Schema Migration | T4081–T4085 | Exact resilience, denial and runtime evidence contracts |
+| ACFFUZZ | Adversarial Compatibility Fuzzing and Chaos Certification | T4086–T4090 | Exact resilience, denial and runtime evidence contracts |
+| ACFDR | Restore and Disaster-Recovery Convergence | T4091–T4095 | Exact resilience, denial and runtime evidence contracts |
 
 | Capability | Requirement | Family | Evidence | Tasks |
 | --- | --- | --- | --- | --- |
@@ -89,3 +95,9 @@
 | CE051 | Host Capability Registry | ACFHOST | SRC-AO-11 | T4051–T4055 |
 | CE052 | External Provider Framework | ACFEXT | SRC-AO-12 | T4056–T4060 |
 | CE053 | Operator Action Center and Autonomy Evaluation | ACFACT | SRC-AO-13 | T4061–T4065 |
+| CE054 | Release Rings and Fleet/Multisite Promotion | ACFROLL | SRC-ARCH-01 | T4066–T4070 |
+| CE055 | Automation SLOs, Error Budgets and Kill Switch | ACFSLO | SRC-ARCH-02 | T4071–T4075 |
+| CE056 | Supply-chain Provenance and Trust | ACFSUPPLY | SRC-ARCH-03 | T4076–T4080 |
+| CE057 | Registry and Policy Schema Migration | ACFMIGRATE | SRC-ARCH-04 | T4081–T4085 |
+| CE058 | Adversarial Compatibility Fuzzing and Chaos Certification | ACFFUZZ | SRC-ARCH-05 | T4086–T4090 |
+| CE059 | Restore and Disaster-Recovery Convergence | ACFDR | SRC-ARCH-06 | T4091–T4095 |

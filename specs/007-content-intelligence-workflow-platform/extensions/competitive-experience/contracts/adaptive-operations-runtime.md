@@ -123,3 +123,7 @@ arbitrary manifest binding, missing canary authority, wrong/expired/revoked pack
 human ownership conflict, partial update/rollback, stale workers, changed topology,
 new side channel, external uncertainty and fabricated automation metrics. Runtime
 and exact live/browser/provider evidence remain separate from Spec integrity.
+
+## Resilience extension contracts
+
+Fleet promotion binds exact site/cohort/generation identity and never copies grants or Production authority. Automatic L2–L4 actions consume retry/error budgets and obey an independent durable kill switch. Supply-chain signatures prove provenance only. Registry migrations are versioned, dry-run, reversible and cannot silently lower risk. Fuzzing is deterministic and disposable only. Restore creates a new epoch: stale mutable execution evidence is invalidated and current artifact/provider/host plus site-local authority must be reconciled before governed writes resume.

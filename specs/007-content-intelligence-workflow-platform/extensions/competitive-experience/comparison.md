@@ -81,3 +81,14 @@ The second Arabic attachment is retained verbatim as a future architecture propo
 | CE051 | Host Capability Registry | USER_PROPOSAL_UNVERIFIED; SRC-AO-11 | Implement versioned host observations for filesystem/process/network sandbox/wp-cli/cron/loopback/memory/disk/PHP extensions/database features. | OPEN; future behavior unverified |
 | CE052 | External Provider Framework | USER_PROPOSAL_UNVERIFIED; SRC-AO-12 | Implement generic descriptors for credentials/account/scopes/quota/economics/rate/rights/health/capability/effects/reconciliation behind registered pinned adapters. | OPEN; future behavior unverified |
 | CE053 | Operator Action Center and Autonomy Evaluation | USER_PROPOSAL_UNVERIFIED; SRC-AO-13 | Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED. | OPEN; future behavior unverified |
+
+## Architecture-derived resilience expansion
+
+| Capability | Design gap | Evidence | Required outcome |
+| --- | --- | --- | --- |
+| CE054 | Release rings and fleet/multisite promotion | ARCHITECTURE_DERIVATION | Exact cohort/site promotion with no cross-site authority inference |
+| CE055 | Automation SLOs, error budgets and kill switch | ARCHITECTURE_DERIVATION | Self-healing cannot become an unbounded retry/outage loop |
+| CE056 | Supply-chain provenance and trust | ARCHITECTURE_DERIVATION | Provenance/revocation complement behavior but never create authority |
+| CE057 | Registry and policy schema migration | ARCHITECTURE_DERIVATION | Signed data evolves reversibly without semantic risk downgrade |
+| CE058 | Adversarial compatibility fuzzing | ARCHITECTURE_DERIVATION | Future provider drift is challenged beyond happy-path canaries |
+| CE059 | Restore and DR convergence | ARCHITECTURE_DERIVATION | Time-travel invalidates stale execution truth and requires current rebinding |

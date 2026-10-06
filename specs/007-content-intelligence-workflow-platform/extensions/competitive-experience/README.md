@@ -4,8 +4,8 @@ Optional Spec Kit extension of Feature 007, prepared from the four user-supplied
 competitor archives and two accompanying Arabic comparison/operations proposals. Reviewed baseline:
 `32e32a94ddb1b7864f8924ad22cb0b03199856be`, after PR #255 merged.
 
-This extension contains **53 capability requirements, 29 workstreams and 145 OPEN
-implementation tasks (T3901–T3980 plus T4001–T4065)**. Its phase numbers 0–28 are local to CE01.
+This extension contains **59 capability requirements, 35 workstreams and 175 OPEN
+implementation tasks (T3901–T3980 plus T4001–T4095)**. Its phase numbers 0–34 are local to CE01.
 The parent release remains phases 0–38, 837 tasks and 34 closure workstreams.
 CE01 does not increase the frozen rc.95 release scope or its readiness denominator.
 Future implementation requires separately reviewed, evidence-backed slices.
@@ -55,8 +55,12 @@ python specs/007-content-intelligence-workflow-platform/validate_spec.py
 
 The parent validator invokes the extension validator. CI also runs tamper/path,
 ownership, false-completion and missing-boundary denial tests. The CE01 generated
-ledger is independent from the frozen release ledger. All 145 tasks remain OPEN
+ledger is independent from the frozen release ledger. All 175 tasks remain OPEN
 under the initial `SPEC_BACKLOG_ONLY` contract; a future implementation revision
 must introduce actual closure evidence rather than check boxes in this snapshot.
 
 [Adaptive Operations Fabric v2](adaptive-operations.md) adds runtime graph/classifier, declarative manifests, operation/workflow synthesis, shadow/canary certification, signed packs, ownership-aware reconciliation, update acceptance, host/provider registries and an Operator Action Center. L0–L5 boundaries are machine-validated in `adaptive-operations.json`.
+
+## Architecture-derived resilience addendum
+
+CE054–CE059 add release/fleet rings, automation SLO/backpressure and kill switch, supply-chain trust, registry schema migration, adversarial compatibility fuzzing and restore/DR convergence. Their evidence class is `ARCHITECTURE_DERIVATION`; they are neither competitor claims nor user-proposal quotations. See `architecture-expansion.md`.

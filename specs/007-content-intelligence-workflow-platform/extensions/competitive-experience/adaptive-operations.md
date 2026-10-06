@@ -5,9 +5,9 @@ Source: the second user-supplied Arabic proposal, retained byte-for-byte in
 `source-adaptive-operations-proposal.ar.md`. Its descriptions of current code and
 90–95% automation target are proposals/historical claims, not newly measured facts.
 
-This adds **13 workstreams, CE041–CE053 requirements and 65 OPEN tasks
-(T4001–T4065)** to CE01. The complete optional extension now has 53 requirements,
-29 local phases and 145 OPEN tasks. Current frozen release closure is unchanged.
+This now contains **19 workstreams, CE041–CE059 requirements and 95 OPEN tasks
+(T4001–T4095)**. CE041–CE053 come from the retained user proposal; CE054–CE059 are architecture-derived resilience gaps. The complete optional extension now has 59 requirements,
+35 local phases and 175 OPEN tasks. Current frozen release closure is unchanged.
 
 ## Operating loop
 
@@ -65,6 +65,12 @@ actual authority/risk/behavior conditions are satisfied.
 | ACFHOST | Host capability registry | Measured environment eligibility with precise external remediation |
 | ACFEXT | External provider framework | Shared credential/account/scope/cost/rights/health contracts behind admitted adapters |
 | ACFACT | Operator Action Center | Verified repair, approval, external action and reconciliation states with truthful metrics |
+| ACFROLL | Release rings/fleet promotion | Exact cohort/site rollout with site-local authority and fencing |
+| ACFSLO | Automation SLO/error budgets | Backpressure, retry budgets and independent kill switch |
+| ACFSUPPLY | Supply-chain trust | Provenance without signature-as-authority |
+| ACFMIGRATE | Registry schema migration | Reversible mixed-generation policy/registry evolution |
+| ACFFUZZ | Adversarial compatibility fuzzing | Disposable deterministic schema/fault/concurrency challenges |
+| ACFDR | Restore/DR convergence | Restore epoch and current-truth authority rebinding |
 
 ## Reduce code changes safely
 
@@ -102,3 +108,7 @@ external-action counts and cost. Failed eligible plans remain in the denominator
 duplicates and out-of-scope plans have explicit exclusion reasons. Governance
 decisions are never counted as maintenance success. No observed percentage or
 SELF-CONVERGING claim is emitted by this Spec-only extension.
+
+## Resilience expansion
+
+The additional workstreams address failure modes of a long-lived autonomous control plane: fleet rollout, repair-loop backpressure, supply-chain drift, schema evolution, adversarial provider changes and restore/time-travel. None changes L0–L5 authority semantics.

@@ -42,7 +42,7 @@ host sandbox installation retain their respective owner/external boundaries.
 
 ## Requirement inventory
 
-`capability-matrix.json` is the complete 53-row requirement inventory (40 competitor requirements plus 13 Adaptive Operations requirements). It binds
+`capability-matrix.json` is the complete 59-row requirement inventory (40 competitor requirements plus 13 user-proposal Adaptive Operations requirements plus 6 architecture-derived resilience requirements). It binds
 each CE001–CE053 requirement to a workstream, exact evidence IDs, existing MAD4B
 source paths, implementation delta, five implementation/acceptance tasks,
 acceptance conditions and denial cases. `traceability.md` exposes the same mapping.
@@ -90,4 +90,8 @@ as existing governed capabilities.
 
 ## Adaptive Operations Fabric v2 extension
 
-[adaptive-operations.md](adaptive-operations.md) and [its runtime contract](contracts/adaptive-operations-runtime.md) add 13 linked workstreams and 65 OPEN tasks. The loop uses observed facts, non-authorizing proposals, reviewed autonomy levels, exact read/canary evidence, signed registry packs, field ownership and real verification. No classifier, manifest or pack creates authority. Automation percentages remain aspirational until measured on an explicit eligible workload.
+[adaptive-operations.md](adaptive-operations.md) and [its runtime contract](contracts/adaptive-operations-runtime.md) add 19 linked workstreams and 95 OPEN tasks. CE054–CE059 are architecture-derived in `architecture-expansion.md`. The loop uses observed facts, non-authorizing proposals, reviewed autonomy levels, exact read/canary evidence, signed registry packs, field ownership and real verification. No classifier, manifest or pack creates authority. Automation percentages remain aspirational until measured on an explicit eligible workload.
+
+## Resilience evidence boundary
+
+CE054–CE059 are architecture derivations from long-lived adaptive-operation failure modes. They justify backlog scope only; they are not runtime measurements, competitor evidence, certification, grants or authority.
