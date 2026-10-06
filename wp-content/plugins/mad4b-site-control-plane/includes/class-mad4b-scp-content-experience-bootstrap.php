@@ -338,12 +338,14 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 				'inspect' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_INSPECT_ABILITY,
 				'import_plan' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY,
 				'import_apply' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY,
+				'binding_plan' => MAD4B_SCP_Content_Experience_Profiles::MEDIA_BINDING_PLAN_ABILITY,
 			)
 			: array(
 				'discover' => 'media/remote-source-discover',
 				'inspect' => 'media/remote-image-inspect',
 				'import_plan' => 'media/remote-import-plan',
 				'import_apply' => 'media/remote-import-apply',
+				'binding_plan' => 'mad4b/content-experience-media-binding-plan',
 			);
 		return array(
 			'contract' => 'mad4b.content-experience-ingestion-workflow.v1',
@@ -356,6 +358,7 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 				array( 'id' => 'inspect_selected_media', 'ability' => $media['inspect'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_selected_candidate', 'produces' => array( 'expected_content_sha256', 'expected_content_bytes', 'expected_mime_type', 'expected_width', 'expected_height' ) ),
 				array( 'id' => 'plan_media_import', 'ability' => $media['import_plan'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_selected_candidate', 'requires' => array( 'rights_basis', 'exact_content_evidence_or_existing_library_identity' ) ),
 				array( 'id' => 'apply_media_import', 'ability' => $media['import_apply'], 'surface' => 'content', 'optional' => true, 'repeat' => 'per_selected_candidate', 'produces' => array( 'attachment_id' ), 'ordering' => 'before_post_media_binding' ),
+				array( 'id' => 'plan_post_media_binding', 'ability' => $media['binding_plan'], 'surface' => 'read', 'optional' => true, 'consumes' => array( 'verified_attachment_ids', 'binding_roles', 'target_media_fields' ), 'produces' => array( 'featured_media_id', 'meta_fragment', 'storage_projection' ) ),
 				array( 'id' => 'plan_content_create', 'ability' => $routes['create_plan'], 'surface' => 'read', 'optional' => false ),
 				array( 'id' => 'apply_content_create', 'ability' => $routes['create_apply'], 'surface' => 'content', 'optional' => false, 'consumes' => array( 'attachment_ids_as_featured_media_or_configured_media_meta' ) ),
 				array( 'id' => 'verify_content', 'ability' => $routes['verify'], 'surface' => 'read', 'optional' => false ),

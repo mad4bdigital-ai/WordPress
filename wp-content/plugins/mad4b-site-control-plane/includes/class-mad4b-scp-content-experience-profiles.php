@@ -16,6 +16,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	const PROFILE_CLONE_APPLY_ABILITY = 'mad4b/content-experience-profile-clone-apply';
 	const PROFILE_DELETE_APPLY_ABILITY = 'mad4b/content-experience-profile-delete-apply';
 	const BOOTSTRAP_PLAN_ABILITY = 'mad4b/content-experience-bootstrap-plan';
+	const MEDIA_BINDING_PLAN_ABILITY = 'mad4b/content-experience-media-binding-plan';
 	const BOOTSTRAP_PLAN_CONTRACT = 'mad4b.content-experience-bootstrap-plan.v1';
 	const MAX_PROFILES = 64;
 	const MAX_META_KEYS = 128;
@@ -539,9 +540,13 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		return MAD4B_SCP_Content_Experience_Bootstrap::plan( $input );
 	}
 
+	public static function media_binding_plan( $input = array() ) {
+		return MAD4B_SCP_Content_Experience_Media_Binding::plan( $input );
+	}
+
 	public static function ability_names( $surface ) {
 		$surface = sanitize_key( (string) $surface );
-		$read = array( 'mad4b/content-experience-discover', self::BOOTSTRAP_PLAN_ABILITY, 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
+		$read = array( 'mad4b/content-experience-discover', self::BOOTSTRAP_PLAN_ABILITY, self::MEDIA_BINDING_PLAN_ABILITY, 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
 		$content = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
@@ -627,6 +632,17 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 					'allow_protected_media_meta' => array( 'type' => 'boolean', 'default' => false ),
 					'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
 				), array( 'post_type' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+			),
+			array(
+				'name' => self::MEDIA_BINDING_PLAN_ABILITY, 'label' => 'Plan Content Experience Media Binding', 'callback' => array( __CLASS__, 'media_binding_plan' ), 'permission' => $read,
+				'schema' => self::schema( array(
+					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+					'items' => array(
+						'type' => 'array', 'minItems' => 1, 'maxItems' => self::MAX_MEDIA_GALLERY_ITEMS,
+						'items' => array( 'type' => 'object', 'additionalProperties' => true ),
+					),
+				), array( 'profile_slug', 'items' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
 			),
 			array( 'name' => 'mad4b/content-experience-profile-status', 'label' => 'Content Experience Profile Status', 'callback' => array( __CLASS__, 'profile_status' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
