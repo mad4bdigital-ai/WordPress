@@ -19,6 +19,7 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 	const MAX_REVIEW_HISTORY = 1024;
 	const REVIEW_LOCK_TTL = 120;
 	const REVIEW_MAX_ELAPSED_MS = 10000;
+	const MAX_CONFORMANCE_VERIFIERS = 16;
 
 	public static function boot() {
 		if ( function_exists( 'add_action' ) ) {
@@ -163,6 +164,58 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 		);
 	}
 
+	private static function trusted_conformance_verifiers( $ability_name, array $node, array $graph ) {
+		$raw = function_exists( 'apply_filters' )
+			? apply_filters( 'mad4b_scp_runtime_policy_conformance_verifiers', array(), $ability_name, $node, $graph )
+			: array();
+		$raw = is_array( $raw ) ? array_slice( $raw, 0, self::MAX_CONFORMANCE_VERIFIERS, true ) : array();
+		$out = array();
+		foreach ( $raw as $key => $candidate ) {
+			if ( ! is_array( $candidate ) ) continue;
+			$id = isset( $candidate['verifier_id'] ) ? sanitize_key( (string) $candidate['verifier_id'] ) : sanitize_key( (string) $key );
+			$issuer_contract = isset( $candidate['issuer_contract'] ) ? (string) $candidate['issuer_contract'] : '';
+			$issuer_id = isset( $candidate['issuer_id'] ) ? sanitize_key( (string) $candidate['issuer_id'] ) : '';
+			$scheme = isset( $candidate['signature_scheme'] ) ? substr( trim( (string) $candidate['signature_scheme'] ), 0, 80 ) : '';
+			$callback = isset( $candidate['verify_callback'] ) ? $candidate['verify_callback'] : null;
+			if ( '' === $id || '' === $issuer_contract || '' === $issuer_id || '' === $scheme || ! is_callable( $callback ) ) continue;
+			if ( true !== ( isset( $candidate['trusted'] ) ? $candidate['trusted'] : false ) ) continue;
+			if ( true !== ( isset( $candidate['read_only_verifier'] ) ? $candidate['read_only_verifier'] : false ) ) continue;
+			if ( false !== ( isset( $candidate['authorizing'] ) ? $candidate['authorizing'] : null ) ) continue;
+			if ( ! self::callback_owned_by_control_plane( $callback ) ) continue;
+			$out[ $id ] = array(
+				'verifier_id' => $id,
+				'issuer_contract' => $issuer_contract,
+				'issuer_id' => $issuer_id,
+				'signature_scheme' => $scheme,
+				'verify_callback' => $callback,
+				'verifier_provenance' => 'mad4b_control_plane_source',
+			);
+		}
+		return $out;
+	}
+
+	private static function callback_owned_by_control_plane( $callback ) {
+		try {
+			if ( $callback instanceof Closure ) $reflection = new ReflectionFunction( $callback );
+			elseif ( is_array( $callback ) && 2 === count( $callback ) ) $reflection = new ReflectionMethod( $callback[0], $callback[1] );
+			elseif ( is_string( $callback ) && false !== strpos( $callback, '::' ) ) {
+				list( $class, $method ) = explode( '::', $callback, 2 );
+				$reflection = new ReflectionMethod( $class, $method );
+			} elseif ( is_string( $callback ) ) $reflection = new ReflectionFunction( $callback );
+			elseif ( is_object( $callback ) && method_exists( $callback, '__invoke' ) ) $reflection = new ReflectionMethod( $callback, '__invoke' );
+			else return false;
+			$file = $reflection->getFileName();
+		} catch ( Throwable $error ) {
+			return false;
+		}
+		$root = defined( 'MAD4B_SCP_DIR' ) ? realpath( MAD4B_SCP_DIR ) : false;
+		$file = is_string( $file ) ? realpath( $file ) : false;
+		if ( false === $root || false === $file ) return false;
+		$root = rtrim( str_replace( '\\', '/', $root ), '/' );
+		$file = str_replace( '\\', '/', $file );
+		return $file === $root || 0 === strpos( $file, $root . '/' );
+	}
+
 	private static function verify_conformance_receipt( $receipt, $ability_name, array $node, array $graph ) {
 		$base = array(
 			'verified' => false,
@@ -182,6 +235,23 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 		$issuer = isset( $receipt['issuer_contract'] ) ? (string) $receipt['issuer_contract'] : '';
 		if ( ! in_array( $issuer, $trusted_issuers, true ) ) {
 			$base['reason'] = 'conformance_issuer_untrusted';
+			return $base;
+		}
+		$verifier_id = isset( $receipt['verifier_id'] ) ? sanitize_key( (string) $receipt['verifier_id'] ) : '';
+		$issuer_id = isset( $receipt['issuer_id'] ) ? sanitize_key( (string) $receipt['issuer_id'] ) : '';
+		$signature = isset( $receipt['signature'] ) && is_scalar( $receipt['signature'] ) ? trim( (string) $receipt['signature'] ) : '';
+		$verifiers = self::trusted_conformance_verifiers( $ability_name, $node, $graph );
+		if ( '' === $verifier_id || ! isset( $verifiers[ $verifier_id ] ) ) {
+			$base['reason'] = 'conformance_verifier_untrusted';
+			return $base;
+		}
+		$verifier = $verifiers[ $verifier_id ];
+		if ( ! hash_equals( (string) $verifier['issuer_contract'], $issuer ) || '' === $issuer_id || ! hash_equals( (string) $verifier['issuer_id'], $issuer_id ) ) {
+			$base['reason'] = 'conformance_verifier_issuer_binding_mismatch';
+			return $base;
+		}
+		if ( '' === $signature || strlen( $signature ) > 1024 ) {
+			$base['reason'] = 'conformance_signature_invalid';
 			return $base;
 		}
 
@@ -242,6 +312,29 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			$base['reason'] = 'conformance_receipt_digest_mismatch';
 			return $base;
 		}
+		try {
+			$verification = call_user_func(
+				$verifier['verify_callback'],
+				$receipt,
+				array(
+					'ability_name' => (string) $ability_name,
+					'graph_generation_sha256' => (string) $graph['generation_sha256'],
+					'provider_contract_sha256' => $expected_provider_sha,
+				)
+			);
+		} catch ( Throwable $error ) {
+			$base['reason'] = 'conformance_verifier_exception';
+			return $base;
+		}
+		if ( ! is_array( $verification ) || empty( $verification['verified'] ) ) {
+			$base['reason'] = 'conformance_signature_verification_failed';
+			return $base;
+		}
+		$verified_evidence = isset( $verification['evidence_sha256'] ) ? (string) $verification['evidence_sha256'] : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $verified_evidence ) || ! hash_equals( $evidence_sha, $verified_evidence ) ) {
+			$base['reason'] = 'conformance_verifier_evidence_mismatch';
+			return $base;
+		}
 
 		return array(
 			'verified' => true,
@@ -251,6 +344,10 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			'receipt_sha256' => $claimed,
 			'output_classification' => $output_classification,
 			'issuer_contract' => $issuer,
+			'issuer_id' => $issuer_id,
+			'verifier_id' => $verifier_id,
+			'signature_scheme' => $verifier['signature_scheme'],
+			'verifier_provenance' => $verifier['verifier_provenance'],
 			'provider_contract_sha256' => $expected_provider_sha,
 		);
 	}
