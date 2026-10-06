@@ -104,6 +104,12 @@ final class MAD4B_SCP_Content_Experience_Media_Binding {
 			}
 			$role = isset( $item['binding_role'] ) ? sanitize_key( (string) $item['binding_role'] ) : 'gallery';
 			if ( ! in_array( $role, array( 'featured', 'gallery', 'field' ), true ) ) return new WP_Error( 'mad4b_content_experience_media_binding_role_invalid', 'binding_role must be featured, gallery or field.', array( 'index' => $index ) );
+			if ( is_array( $manifest_receipt ) ) {
+				$planned_role = isset( $receipt_item['manifest_binding_role'] ) ? sanitize_key( (string) $receipt_item['manifest_binding_role'] ) : '';
+				if ( 'content' === $planned_role ) $planned_role = 'field';
+				if ( '' !== $planned_role && 'shared' !== $planned_role && $planned_role !== $role ) return new WP_Error( 'mad4b_content_experience_media_binding_manifest_role_drift', 'Final media binding role no longer matches the reviewed manifest intent.', array( 'manifest_index' => $manifest_index, 'planned_role' => $planned_role, 'binding_role' => $role ) );
+				if ( isset( $item['manifest_item_sha256'] ) && '' !== (string) $item['manifest_item_sha256'] && ! hash_equals( (string) $receipt_item['manifest_item_sha256'], strtolower( trim( (string) $item['manifest_item_sha256'] ) ) ) ) return new WP_Error( 'mad4b_content_experience_media_binding_manifest_item_drift', 'Binding item no longer matches the reviewed manifest item identity.', array( 'manifest_index' => $manifest_index ) );
+			}
 			$target = isset( $item['target_field'] ) ? (string) $item['target_field'] : '';
 
 			if ( 'featured' === $role ) {

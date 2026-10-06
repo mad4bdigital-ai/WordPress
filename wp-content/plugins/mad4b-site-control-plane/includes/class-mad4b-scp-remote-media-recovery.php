@@ -43,6 +43,8 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 			'manifest_sha256' => $manifest,
 			'manifest_index' => $index,
 			'import_plan_sha256' => $plan,
+			'manifest_item_sha256' => isset( $context['manifest_item_sha256'] ) ? strtolower( trim( (string) $context['manifest_item_sha256'] ) ) : '',
+			'manifest_binding_role' => isset( $context['manifest_binding_role'] ) ? sanitize_key( (string) $context['manifest_binding_role'] ) : '',
 			'provenance_event_sha256' => $provenance,
 			'attachment_id' => $attachment_id,
 			'created_for_manifest' => ! empty( $context['created_for_manifest'] ),
@@ -76,13 +78,14 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		return $event;
 	}
 
-	public static function stage_import_result( array $result, $manifest_sha256, $manifest_index, $created_for_manifest ) {
+	public static function stage_import_result( array $result, $manifest_sha256, $manifest_index, $created_for_manifest, $manifest_item_sha256 = '', $manifest_binding_role = '' ) {
 		$manifest_sha256 = strtolower( trim( (string) $manifest_sha256 ) );
 		if ( '' === $manifest_sha256 ) { $result['recovery_stage'] = null; return $result; }
 		$event = isset( $result['provenance_event'] ) && is_array( $result['provenance_event'] ) ? $result['provenance_event'] : array();
 		$stage = self::stage_attachment( isset( $result['attachment_id'] ) ? absint( $result['attachment_id'] ) : 0, array(
 			'manifest_sha256' => $manifest_sha256, 'manifest_index' => (int) $manifest_index,
 			'import_plan_sha256' => isset( $result['plan_sha256'] ) ? $result['plan_sha256'] : '',
+			'manifest_item_sha256' => $manifest_item_sha256, 'manifest_binding_role' => $manifest_binding_role,
 			'provenance_event_sha256' => isset( $event['provenance_event_sha256'] ) ? $event['provenance_event_sha256'] : '',
 			'created_for_manifest' => (bool) $created_for_manifest,
 		) );
@@ -132,6 +135,8 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 				'manifest_index' => $index,
 				'attachment_id' => absint( $row['attachment_id'] ?? 0 ),
 				'import_plan_sha256' => strtolower( (string) ( $row['import_plan_sha256'] ?? '' ) ),
+				'manifest_item_sha256' => strtolower( (string) ( $row['manifest_item_sha256'] ?? '' ) ),
+				'manifest_binding_role' => sanitize_key( (string) ( $row['manifest_binding_role'] ?? '' ) ),
 				'provenance_event_sha256' => strtolower( (string) ( $row['provenance_event_sha256'] ?? '' ) ),
 				'created_for_manifest' => ! empty( $row['created_for_manifest'] ),
 			);

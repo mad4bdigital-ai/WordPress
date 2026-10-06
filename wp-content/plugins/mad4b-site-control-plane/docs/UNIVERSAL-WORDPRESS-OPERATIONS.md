@@ -189,3 +189,11 @@ attachment set, provider-normalized media mapping, and remote provenance state.
 Any TOCTOU drift fails closed before mutation. After a successful content
 mutation, the manifest is bound to the post and verified during readback;
 rollback restores/removes this binding with the post state.
+
+
+Manifest correlation now also carries a per-item SHA and the reviewed binding
+role. The import stage persists both. The post-binding planner rejects role
+drift (for example, a reviewed gallery item silently becoming featured).
+A manifest item may declare `shared` when the same imported asset is
+intentionally reused across multiple final post roles; otherwise the reviewed
+role remains exact.

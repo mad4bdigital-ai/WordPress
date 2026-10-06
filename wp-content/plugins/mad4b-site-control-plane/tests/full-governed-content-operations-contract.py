@@ -632,6 +632,8 @@ for token in (
     "manifest_hash_scope",
     "manifest_sha256",
     "manifest_index",
+    "manifest_item_sha256",
+    "manifest_binding_role",
     "stage_import_result",
 ):
     assert token in remote_media_src or token in remote_media_recovery_src, f"remote media recovery contract missing: {token}"
@@ -677,3 +679,6 @@ assert "Recoverable orphan semantics are not explicit/non-destructive." in exper
 assert "Manifest-bound content create did not finish with verified recovery binding." in experience_runtime_smoke_src
 
 print("MAD4B full governed content operations contract: PASS")
+
+assert "mad4b_content_experience_media_binding_manifest_role_drift" in experience_media_binding_src
+assert "mad4b_content_experience_media_binding_manifest_item_drift" in experience_media_binding_src

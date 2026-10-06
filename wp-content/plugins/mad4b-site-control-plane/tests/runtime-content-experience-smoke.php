@@ -314,6 +314,7 @@ try {
 	) );
 	$check( ! is_wp_error( $remote_manifest ) && ! empty( $remote_manifest['ready'] ) && 64 === strlen( (string) $remote_manifest['manifest_sha256'] ), 'Remote media manifest planning failed.' );
 	$check( $remote_manifest['manifest_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_sha256'] && 0 === (int) $remote_manifest['items'][0]['apply_input']['manifest_index'], 'Manifest execution input lost exact manifest correlation.' );
+	$check( $remote_manifest['items'][0]['item_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_item_sha256'] && 'featured' === $remote_manifest['items'][0]['apply_input']['manifest_binding_role'], 'Manifest execution input lost exact item/role intent.' );
 	$manifest_import = $remote_media_adapter->remote_import_apply( $remote_manifest['items'][0]['apply_input'] );
 	$check( ! is_wp_error( $manifest_import ) && ! empty( $manifest_import['verified'] ) && $remote_rights_attachment === (int) $manifest_import['attachment_id'], 'Manifest-correlated remote media reuse failed.' );
 	$check( isset( $manifest_import['recovery_stage']['manifest_sha256'] ) && hash_equals( (string) $remote_manifest['manifest_sha256'], (string) $manifest_import['recovery_stage']['manifest_sha256'] ), 'Successful import did not create durable recovery stage evidence.' );
@@ -392,6 +393,7 @@ try {
 				'binding_role' => 'featured',
 				'manifest_index' => 0,
 				'import_plan_sha256' => $manifest_import['plan_sha256'],
+				'manifest_item_sha256' => $remote_manifest['items'][0]['item_sha256'],
 			),
 		),
 	) );
