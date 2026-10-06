@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import shutil
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 graph = (ROOT / "includes/class-mad4b-scp-runtime-evidence-graph.php").read_text(encoding="utf-8")
@@ -29,7 +31,13 @@ req(
     "mad4b_runtime_graph_generation_mismatch",
     "mad4b_runtime_graph_cross_site_rejected",
     "mad4b_runtime_graph_before_oversized",
+    "collector_contracts",
+    "collector_observed_count",
+    "'providers'=>array('method'=>'providers')",
+    "'schemas'=>array('method'=>'schemas','source'=>'abilities')",
     "collection_status",
+    "observed_count",
+    "emitted_count",
     "trustworthy_for_absence",
     "uncertain_added",
     "uncertain_removed",
@@ -142,6 +150,12 @@ req(
 deny(competitive, "competitive-evidence-summary.json", "wp_remote_", "grant_ability(", "$wpdb->")
 req(summary_php, "if ( ! defined( 'ABSPATH' ) ) { exit; }", "MAD4B_JSON", "json_decode")
 deny(summary_php, "competitive-evidence-summary.json")
+
+php = shutil.which("php")
+assert php, "php executable is required for direct-resource denial verification"
+direct = subprocess.run([php, str(ROOT / "config/competitive-evidence-summary.php")], capture_output=True, text=True, check=False)
+assert direct.returncode == 0, f"direct evidence resource execution returned {direct.returncode}"
+assert direct.stdout == "" and direct.stderr == "", "direct evidence resource execution disclosed output"
 
 req(
     plugin,
