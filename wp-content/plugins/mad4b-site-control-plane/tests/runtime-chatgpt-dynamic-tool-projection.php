@@ -477,24 +477,6 @@ if ( empty( $status['read_only'] ) || ! empty( $status['mutation_performed'] ) |
 	$fail( 'Projection status changed its non-authorizing read boundary.', $status );
 }
 
-if ( ! empty( $status['abilities'] ) || empty( $status['abilities_pagination']['detail_opt_in_required'] ) ) {
-	$fail( 'Projection status default response is no longer bounded summary mode.', $status );
-}
-$paged_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array(
-	'include_abilities' => true,
-	'abilities_limit' => 1,
-	'abilities_offset' => 0,
-) );
-if ( count( $paged_status['abilities'] ?? array() ) > 1
-	|| empty( $paged_status['abilities_pagination']['detail_requested'] )
-	|| 1 !== (int) ( $paged_status['abilities_pagination']['limit'] ?? 0 ) ) {
-	$fail( 'Projection status ability pagination is not bounded.', $paged_status );
-}
-if ( empty( $status['catalog_preflight']['bounded_summary'] )
-	|| 'bounded_summary_with_opt_in_ability_pagination' !== (string) ( $status['response_shape'] ?? '' ) ) {
-	$fail( 'Projection status did not bound transport-heavy components.', $status );
-}
-
 fwrite(
 	STDOUT,
 	'mad4b.chatgpt-dynamic-tool-projection.v1: PASS ' .

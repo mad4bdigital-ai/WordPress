@@ -97,7 +97,6 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-identity-resol
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-doctor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-environment.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-maintenance-lease.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-post-update-continuation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portable-readonly-connection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-manager.php';

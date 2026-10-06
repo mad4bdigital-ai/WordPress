@@ -58,19 +58,6 @@ for marker in [
     require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
 require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
 
-# Status transport is summary-first and bounded; detailed Ability rows require
-# explicit pagination instead of returning the whole projection in one MCP call.
-for marker in [
-    "'include_abilities'",
-    "'abilities_limit'",
-    "'abilities_offset'",
-    "bounded_catalog_preflight",
-    "bounded_summary_with_opt_in_ability_pagination",
-    "'status_max_ability_page' => 100",
-]:
-    require(marker in PROJECTION, f"bounded projection status transport missing: {marker}")
-
-
 # A pre-tool denial must arm the final callback seal requirement before any
 # same-priority filter can overwrite the returned WP_Error.
 for marker in [

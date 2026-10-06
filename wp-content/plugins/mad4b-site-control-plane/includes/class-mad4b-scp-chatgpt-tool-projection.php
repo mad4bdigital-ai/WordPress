@@ -46,9 +46,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 						'include_recommendations' => array( 'type' => 'boolean', 'default' => false ),
 						'recommendation_quota' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_QUOTA, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA ),
 						'recommendation_hours' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_HOURS, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS ),
-						'include_abilities' => array( 'type' => 'boolean', 'default' => false ),
-						'abilities_limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 25 ),
-						'abilities_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 2147483647, 'default' => 0 ),
 					),
 					'additionalProperties' => false,
 				),
@@ -716,36 +713,6 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		);
 	}
 
-	private static function bounded_catalog_preflight( $preflight ) {
-		$preflight = is_array( $preflight ) ? $preflight : array();
-		$tools = isset( $preflight['tools'] ) && is_array( $preflight['tools'] ) ? $preflight['tools'] : array();
-		$blockers = isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? $preflight['blockers'] : array();
-		$out = array(
-			'ready' => ! empty( $preflight['ready'] ),
-			'tool_count' => count( $tools ),
-			'blocker_count' => count( $blockers ),
-			'blockers' => array_slice( array_values( array_unique( array_map( 'sanitize_key', $blockers ) ) ), 0, 24 ),
-			'bounded_summary' => true,
-		);
-		foreach ( array( 'serialized_tool_bytes', 'max_serialized_tool_bytes', 'max_tools' ) as $field ) {
-			if ( isset( $preflight[ $field ] ) && is_numeric( $preflight[ $field ] ) ) $out[ $field ] = (int) $preflight[ $field ];
-		}
-		return $out;
-	}
-
-	private static function bounded_status_component( $value, array $allow ) {
-		if ( ! is_array( $value ) ) return array();
-		$out = array();
-		foreach ( $allow as $field ) {
-			if ( ! array_key_exists( $field, $value ) ) continue;
-			$item = $value[ $field ];
-			if ( is_scalar( $item ) || null === $item ) $out[ $field ] = $item;
-			elseif ( is_array( $item ) && count( $item ) <= 24 ) $out[ $field ] = $item;
-		}
-		$out['bounded_summary'] = true;
-		return $out;
-	}
-
 	public static function status( $input = null ) {
 		$input = is_array( $input ) ? $input : array();
 		$state = self::raw_state();
@@ -760,80 +727,55 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			);
 			if ( is_wp_error( $recommendations ) ) $recommendations = array( 'error_code' => $recommendations->get_error_code(), 'authorizing' => false );
 		}
-
-		$include_abilities = ! empty( $input['include_abilities'] );
-		$limit = isset( $input['abilities_limit'] ) ? max( 1, min( 100, absint( $input['abilities_limit'] ) ) ) : 25;
-		$offset = isset( $input['abilities_offset'] ) ? max( 0, absint( $input['abilities_offset'] ) ) : 0;
-		$ability_names = array_keys( $state['abilities'] );
-		sort( $ability_names, SORT_STRING );
-		$selected_names = $include_abilities ? array_slice( $ability_names, $offset, $limit ) : array();
 		$stored = array();
-		foreach ( $selected_names as $ability_name ) {
-			$row = isset( $state['abilities'][ $ability_name ] ) && is_array( $state['abilities'][ $ability_name ] ) ? $state['abilities'][ $ability_name ] : array();
+		foreach ( $state['abilities'] as $ability_name => $row ) {
 			$current = self::ability_row( $ability_name );
-			$stale = is_wp_error( $current ) || empty( $row['input_schema_sha256'] ) || ! hash_equals( strtolower( (string) $row['input_schema_sha256'] ), strtolower( is_wp_error( $current ) ? str_repeat( '0', 64 ) : (string) $current['input_schema_sha256'] ) );
+			$stale = is_wp_error( $current ) || ! is_array( $row ) || empty( $row['input_schema_sha256'] ) || ! hash_equals( strtolower( (string) $row['input_schema_sha256'] ), strtolower( is_wp_error( $current ) ? str_repeat( '0', 64 ) : (string) $current['input_schema_sha256'] ) );
 			$stale = $stale || empty( $row['classification_sha256'] ) || ( ! is_wp_error( $current ) && ! hash_equals( (string) $row['classification_sha256'], $current['classification_sha256'] ) );
 			$stored[] = array(
 				'ability_name' => (string) $ability_name,
-				'input_schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
+				'input_schema_sha256' => is_array( $row ) && isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
 				'classification' => ! is_wp_error( $current ) && isset( $current['classification'] ) ? (string) $current['classification'] : 'unavailable',
-				'readonly' => isset( $row['readonly'] ) ? (bool) $row['readonly'] : null,
-				'breakglass' => ! empty( $row['breakglass'] ),
+				'readonly' => is_array( $row ) && isset( $row['readonly'] ) ? (bool) $row['readonly'] : null,
+				'breakglass' => is_array( $row ) && ! empty( $row['breakglass'] ),
 				'projection_eligible' => ! is_wp_error( $current ) && ! empty( $current['projection_eligible'] ),
 				'execution_eligible' => ! is_wp_error( $current ) && ! empty( $current['execution_eligible'] ),
-				'projection_blockers' => ! is_wp_error( $current ) && isset( $current['projection_blockers'] ) && is_array( $current['projection_blockers'] ) ? array_slice( $current['projection_blockers'], 0, 24 ) : array(),
+				'projection_blockers' => ! is_wp_error( $current ) && isset( $current['projection_blockers'] ) && is_array( $current['projection_blockers'] ) ? $current['projection_blockers'] : array(),
 				'effective' => isset( $effective[ $ability_name ] ),
 				'stale' => (bool) $stale,
-				'lane' => isset( $row['lane'] ) ? $row['lane'] : '',
+				'lane' => is_array( $row ) && isset( $row['lane'] ) ? $row['lane'] : '',
 				'inactive_reason' => isset( $effective[ $ability_name ] ) ? '' : ( ! self::binding_matches( $state ) ? 'site_binding_mismatch' : ( $stale ? 'ability_identity_drift' : 'base_tool_or_authority_unavailable' ) ),
-				'catalog_selected' => in_array( $ability_name, isset( $preflight['tools'] ) && is_array( $preflight['tools'] ) ? $preflight['tools'] : array(), true ),
+				'catalog_selected' => in_array( $ability_name, $preflight['tools'] ?? array(), true ),
 			);
 		}
-
-		$universe = function_exists( 'wp_get_abilities' ) ? wp_get_abilities() : array();
-		$protocol = class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ? MAD4B_SCP_MCP_Protocol_Profile::status() : array();
-		$storage = MAD4B_SCP_Catalog_Object_Store::status();
 		return array(
 			'contract' => self::CONTRACT,
 			'revision' => (int) $state['revision'],
 			'stored_count' => count( $state['abilities'] ),
 			'effective_count' => count( $effective ),
-			'universe_count' => is_array( $universe ) ? count( $universe ) : 0,
+			'universe_count' => count( self::all_site_ability_names() ),
 			'binding_match' => self::binding_matches( $state ),
-			'catalog_preflight' => self::bounded_catalog_preflight( $preflight ),
+			'catalog_preflight' => $preflight,
 			'budgets' => array(
 				'max_selected' => self::MAX_SELECTED,
 				'max_tools' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS,
 				'max_serialized_tool_bytes' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES,
 				'schema_size_policy' => 'bounded_direct_projection_with_dispatcher_fallback',
-				'status_default_detail_mode' => 'summary',
-				'status_max_ability_page' => 100,
 			),
 			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
 			'isolation' => self::isolation_contract(),
-			'protocol_profile' => self::bounded_status_component( $protocol, array( 'contract', 'protocol_version', 'profile', 'state', 'ready', 'adapter_version', 'source' ) ),
+			'protocol_profile' => class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ? MAD4B_SCP_MCP_Protocol_Profile::status() : array(),
 			'hotset_recommendation_available' => class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ),
 			'hotset_recommendations' => $recommendations,
 			'primary_execution_mode' => 'fixed_dispatch',
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
-			'storage' => self::bounded_status_component( $storage, array( 'contract', 'driver', 'state', 'ready', 'backend', 'object_count', 'bytes', 'cacheable' ) ),
+			'storage' => MAD4B_SCP_Catalog_Object_Store::status(),
 			'abilities' => $stored,
-			'abilities_pagination' => array(
-				'detail_requested' => $include_abilities,
-				'offset' => $offset,
-				'limit' => $limit,
-				'returned' => count( $stored ),
-				'total' => count( $ability_names ),
-				'has_more' => $include_abilities && ( $offset + count( $stored ) < count( $ability_names ) ),
-				'detail_opt_in_required' => ! $include_abilities,
-			),
-			'response_shape' => 'bounded_summary_with_opt_in_ability_pagination',
 			'projection_changes_authority' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
 	}
-
 }
 MAD4B_SCP_ChatGPT_Tool_Projection::boot();
