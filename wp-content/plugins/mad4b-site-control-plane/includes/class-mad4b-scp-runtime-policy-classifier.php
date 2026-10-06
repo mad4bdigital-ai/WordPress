@@ -22,40 +22,69 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 
 	public static function register_ability() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		if ( ! function_exists('wp_has_ability') || ! wp_has_ability('mad4b/runtime-policy-proposals') ) {
-			wp_register_ability('mad4b/runtime-policy-proposals',array(
-				'label'=>'Runtime Policy Proposals',
-				'description'=>'Deterministic evidence-derived policy proposals. Proposals and confidence are non-authorizing and never alter grants or mounts.',
-				'category'=>'mad4b-read',
-				'execute_callback'=>array(__CLASS__,'proposals'),
-				'permission_callback'=>array('MAD4B_SCP_Policy','can_read'),
-				'input_schema'=>array(
-					'type'=>'object',
-					'properties'=>array(
-						'ability_name'=>array('type'=>'string','maxLength'=>191),
+
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'mad4b/runtime-policy-proposals' ) ) {
+			wp_register_ability(
+				'mad4b/runtime-policy-proposals',
+				array(
+					'label' => 'Runtime Policy Proposals',
+					'description' => 'Deterministic evidence-derived policy proposals. Proposals and confidence are non-authorizing and never alter grants or mounts.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'proposals' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'ability_name' => array( 'type' => 'string', 'maxLength' => 191 ),
+						),
+						'additionalProperties' => false,
 					),
-					'additionalProperties'=>false,
-				),
-				'output_schema'=>array('type'=>'object','additionalProperties'=>true),
-				'meta'=>array(
-					'public'=>false,'show_in_rest'=>false,
-					'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'read'),
-					'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true),
-				),
-			));
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => array(
+						'public' => false,
+						'show_in_rest' => false,
+						'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+						'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+					),
+				)
+			);
 		}
-		if ( ! function_exists('wp_has_ability') || ! wp_has_ability('mad4b/runtime-policy-review-record') ) {
-			wp_register_ability('mad4b/runtime-policy-review-record',array(
-				'label'=>'Record Runtime Policy Review',
-				'description'=>'Record an owner review bound to the exact graph generation and proposal. This evidence-only overlay never creates grants, mounts, scopes or certification.',
-				'category'=>'mad4b-admin',
-				'execute_callback'=>array(__CLASS__,'record_review'),
-				'permission_callback'=>array(__CLASS__,'can_review'),
-				'input_schema'=>array(
-					'type'=>'object',
-					'properties'=>array(
-						'ability_name'=>array('type'=>'string','minLength'=>3,'maxLength'=>191),
-						'graph_generation_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}
+
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'mad4b/runtime-policy-review-record' ) ) {
+			wp_register_ability(
+				'mad4b/runtime-policy-review-record',
+				array(
+					'label' => 'Record Runtime Policy Review',
+					'description' => 'Record an owner review bound to the exact graph generation and proposal. This evidence-only overlay never creates grants, mounts, scopes or certification.',
+					'category' => 'mad4b-admin',
+					'execute_callback' => array( __CLASS__, 'record_review' ),
+					'permission_callback' => array( __CLASS__, 'can_review' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 191 ),
+							'graph_generation_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+							'proposal_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+							'decision' => array( 'type' => 'string', 'enum' => array( 'accept_evidence', 'reject', 'defer' ) ),
+							'requested_scope_change' => array( 'type' => 'boolean', 'default' => false ),
+							'note' => array( 'type' => 'string', 'maxLength' => 500, 'default' => '' ),
+							'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
+						),
+						'required' => array( 'ability_name', 'graph_generation_sha256', 'proposal_sha256', 'decision', 'expected_revision' ),
+						'additionalProperties' => false,
+					),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => array(
+						'public' => false,
+						'show_in_rest' => false,
+						'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'admin' ),
+						'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
+					),
+				)
+			);
+		}
+	}
+
 	public static function proposals( $input = array() ) {
 		$input=is_array($input)?$input:array();
 		if(!class_exists('MAD4B_SCP_Runtime_Evidence_Graph')) return new WP_Error('mad4b_runtime_evidence_graph_unavailable','Runtime evidence graph is unavailable.');
