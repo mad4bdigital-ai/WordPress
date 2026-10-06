@@ -182,7 +182,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 					'candidate_binding' => $binding,
 					'continuation' => $continuation,
 					'maintenance' => $maintenance,
-					'skills_pending' => empty( $skills['ready'] ),
+					'skills_pending' => MAD4B_SCP_Site_Profile::skills_enabled() && empty( $skills['ready'] ),
 					'runtime_identity_complete' => ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] ),
 					'build_changed' => true,
 					'source' => $source,
