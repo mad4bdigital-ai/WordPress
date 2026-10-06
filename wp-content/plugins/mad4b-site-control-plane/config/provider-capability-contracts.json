@@ -1059,15 +1059,6 @@
           "probes": [
             {
               "type": "adapter_available"
-            },
-            {
-              "type": "symbol_any",
-              "classes": [
-                "LiteSpeed_Core"
-              ],
-              "constants": [
-                "LSCWP_V"
-              ]
             }
           ],
           "traits": {
@@ -1097,15 +1088,6 @@
           "probes": [
             {
               "type": "adapter_available"
-            },
-            {
-              "type": "symbol_any",
-              "classes": [
-                "LiteSpeed_Core"
-              ],
-              "constants": [
-                "LSCWP_V"
-              ]
             }
           ],
           "traits": {
@@ -1135,15 +1117,6 @@
           "probes": [
             {
               "type": "adapter_available"
-            },
-            {
-              "type": "symbol_any",
-              "classes": [
-                "LiteSpeed_Core"
-              ],
-              "constants": [
-                "LSCWP_V"
-              ]
             }
           ],
           "traits": {
@@ -1181,7 +1154,7 @@
               "type": "adapter_available"
             },
             {
-              "type": "function_all",
+              "type": "function_any",
               "values": [
                 "pll_get_post_language",
                 "pll_set_post_language"
@@ -1218,7 +1191,7 @@
               "type": "adapter_available"
             },
             {
-              "type": "function_all",
+              "type": "function_any",
               "values": [
                 "pll_get_post_language",
                 "pll_set_post_language"
