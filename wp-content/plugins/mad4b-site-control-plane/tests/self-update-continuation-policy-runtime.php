@@ -258,4 +258,60 @@ $production = classify();
 check( ! is_wp_error( $production ) && empty( $production['required'] ), 'Production must not use Staging continuation policy' );
 check( empty( $production['production_mutation_allowed'] ), 'Production mutation must remain false' );
 
+
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-auto-reconcile-scenarios.php';
+
+$auto = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
+	'environment' => 'staging',
+	'identity_complete' => true,
+	'candidate_binding_drift' => true,
+) );
+check( MAD4B_SCP_Auto_Reconcile_Scenarios::DECISION_AUTO_EVALUATE === $auto['decision'], 'candidate binding drift must wake bounded auto evaluation' );
+check( ! empty( $auto['automatic_worker_allowed'] ), 'candidate binding drift should schedule the existing convergence worker' );
+check( empty( $auto['automatic_candidate_binding_allowed'] ), 'scenario classification must never directly authorize candidate binding' );
+check( ! empty( $auto['zero_delta_required'] ) && ! empty( $auto['trusted_release_required'] ), 'automatic evaluation must retain release + zero-delta gates' );
+
+$authority_drift = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
+	'environment' => 'staging',
+	'identity_complete' => true,
+	'candidate_binding_drift' => true,
+	'authority_drift' => true,
+) );
+check( MAD4B_SCP_Auto_Reconcile_Scenarios::DECISION_REVIEW === $authority_drift['decision'], 'authority-affecting drift must require review' );
+check( empty( $authority_drift['automatic_worker_allowed'] ), 'authority-affecting drift must not auto-run reconciliation' );
+
+$production_auto = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
+	'environment' => 'production',
+	'identity_complete' => true,
+	'candidate_binding_drift' => true,
+) );
+check( MAD4B_SCP_Auto_Reconcile_Scenarios::DECISION_HARD_BLOCK === $production_auto['decision'], 'Production must hard-block auto reconciliation' );
+check( empty( $production_auto['production_mutation_allowed'] ), 'Production mutation must stay disabled' );
+
+$breakglass_auto = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
+	'environment' => 'staging',
+	'identity_complete' => true,
+	'candidate_binding_drift' => true,
+	'breakglass_active' => true,
+) );
+check( MAD4B_SCP_Auto_Reconcile_Scenarios::DECISION_HARD_BLOCK === $breakglass_auto['decision'], 'Breakglass must hard-block auto reconciliation' );
+
+$incomplete_auto = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
+	'environment' => 'staging',
+	'identity_complete' => false,
+	'candidate_binding_drift' => true,
+) );
+check( MAD4B_SCP_Auto_Reconcile_Scenarios::DECISION_DEFER === $incomplete_auto['decision'], 'incomplete exact identity must defer automatic evaluation' );
+
+$registry_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-auto-reconcile-scenarios.php' );
+check( false !== strpos( $registry_source, "mad4b_scp_auto_reconcile_scenarios" ), 'dynamic auto-reconcile registry filter missing' );
+check( false !== strpos( $registry_source, "post_update_zero_delta_only" ), 'central ZERO_DELTA auto-reconcile policy missing' );
+check( false !== strpos( $registry_source, "'authority_expansion_allowed' => false" ), 'registry must prohibit authority expansion' );
+
+$runtime_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-convergence.php' );
+check( false !== strpos( $runtime_source, "candidate_binding_drift" ), 'runtime convergence must detect candidate binding drift' );
+check( false !== strpos( $runtime_source, "AUTO_RECONCILE_PROBE_INTERVAL" ), 'bounded fallback probe missing' );
+check( false !== strpos( $runtime_source, "upgrader_process_complete" ), 'WordPress plugin lifecycle hint hook missing' );
+check( false !== strpos( $runtime_source, "automatic_candidate_binding_allowed' => false" ), 'runtime checkpoint must not directly authorize candidate binding' );
+
 echo "mad4b.self-update-continuation-policy.v1: PASS\n";

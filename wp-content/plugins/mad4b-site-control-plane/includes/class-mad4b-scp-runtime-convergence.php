@@ -23,6 +23,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 	const LOCK_TTL = 300;
 	const MAX_TRANSIENT_RETRIES = 5;
 	const POST_UPDATE_QUIET_SECONDS = 20;
+	const AUTO_RECONCILE_HINT_OPTION = 'mad4b_scp_auto_reconcile_hint_v1';
+	const AUTO_RECONCILE_PROBE_OPTION = 'mad4b_scp_auto_reconcile_probe_v1';
+	const AUTO_RECONCILE_HINT_TTL = 900;
+	const AUTO_RECONCILE_PROBE_INTERVAL = 300;
 
 	private static $booted = false;
 	private static $abilities_registered = false;
@@ -111,6 +115,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 12 );
 		add_action( self::CRON_HOOK, array( __CLASS__, 'resume_safe_phases' ) );
+		add_action( 'upgrader_process_complete', array( __CLASS__, 'observe_plugin_upgrade' ), 90, 2 );
 		add_action( 'init', array( __CLASS__, 'maybe_schedule_pending' ), 40 );
 	}
 
@@ -679,6 +684,81 @@ final class MAD4B_SCP_Runtime_Convergence {
 			: new WP_Error( 'mad4b_runtime_convergence_checkpoint_block_failed', 'Self-update convergence checkpoint could not be quarantined.' );
 	}
 
+	/**
+	 * Record a non-authorizing lifecycle hint after WordPress finishes replacing
+	 * this plugin. The hint only wakes the bounded drift detector; it never
+	 * certifies the package and never permits candidate rebinding by itself.
+	 */
+	public static function observe_plugin_upgrade( $upgrader, $hook_extra ) {
+		unset( $upgrader );
+		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) ) return;
+		$hook_extra = is_array( $hook_extra ) ? $hook_extra : array();
+		if ( 'plugin' !== sanitize_key( isset( $hook_extra['type'] ) ? (string) $hook_extra['type'] : '' ) ) return;
+		$plugins = array();
+		if ( ! empty( $hook_extra['plugin'] ) ) $plugins[] = (string) $hook_extra['plugin'];
+		if ( ! empty( $hook_extra['plugins'] ) && is_array( $hook_extra['plugins'] ) ) $plugins = array_merge( $plugins, $hook_extra['plugins'] );
+		$plugins = array_values( array_unique( array_map( 'strval', $plugins ) ) );
+		$own = function_exists( 'plugin_basename' ) && defined( 'MAD4B_SCP_FILE' ) ? plugin_basename( MAD4B_SCP_FILE ) : 'mad4b-site-control-plane/mad4b-site-control-plane.php';
+		$matched = in_array( $own, $plugins, true );
+		if ( ! $matched ) {
+			foreach ( $plugins as $candidate ) {
+				if ( 0 === strpos( str_replace( '\\', '/', (string) $candidate ), 'mad4b-site-control-plane/' ) ) { $matched = true; break; }
+			}
+		}
+		if ( ! $matched ) return;
+		$identity = self::current_identity();
+		$hint = array(
+			'contract' => 'mad4b.auto-reconcile-lifecycle-hint.v1',
+			'source' => 'wordpress_upgrader_process_complete',
+			'action' => sanitize_key( isset( $hook_extra['action'] ) ? (string) $hook_extra['action'] : 'update' ),
+			'plugin' => $own,
+			'target_identity' => $identity,
+			'created_at' => time(),
+			'expires_at' => time() + self::AUTO_RECONCILE_HINT_TTL,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+		update_option( self::AUTO_RECONCILE_HINT_OPTION, $hint, false );
+	}
+
+	private static function auto_reconcile_hint() {
+		$hint = get_option( self::AUTO_RECONCILE_HINT_OPTION, array() );
+		if ( ! is_array( $hint ) || 'mad4b.auto-reconcile-lifecycle-hint.v1' !== ( isset( $hint['contract'] ) ? (string) $hint['contract'] : '' ) ) return array();
+		if ( empty( $hint['expires_at'] ) || absint( $hint['expires_at'] ) < time() ) {
+			delete_option( self::AUTO_RECONCILE_HINT_OPTION );
+			return array();
+		}
+		return $hint;
+	}
+
+	private static function auto_reconcile_probe_due() {
+		$next = absint( get_option( self::AUTO_RECONCILE_PROBE_OPTION, 0 ) );
+		if ( $next > time() ) return false;
+		update_option( self::AUTO_RECONCILE_PROBE_OPTION, time() + self::AUTO_RECONCILE_PROBE_INTERVAL, false );
+		return true;
+	}
+
+	private static function auto_reconcile_signals( array $detected ) {
+		$continuation = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
+		$reasons = isset( $detected['reasons'] ) && is_array( $detected['reasons'] ) ? $detected['reasons'] : array();
+		return array(
+			'environment' => sanitize_key( (string) $environment ),
+			'breakglass_active' => ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) )
+				|| ( defined( 'MAD4B_SCP_RAW_SQL_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_SCP_RAW_SQL_BREAKGLASS_ENABLED' ) ),
+			'identity_complete' => ! empty( $detected['identity_complete'] ),
+			'continuation_active' => ! empty( $continuation['active'] ),
+			'continuation_state' => isset( $continuation['state'] ) ? sanitize_key( (string) $continuation['state'] ) : '',
+			'candidate_binding_drift' => in_array( 'candidate_binding_drift', $reasons, true ),
+			'plugin_version_drift' => in_array( 'plugin_version_drift', $reasons, true ),
+			'schema_version_drift' => in_array( 'schema_version_drift', $reasons, true ),
+			'authority_drift' => in_array( 'authority_drift', $reasons, true ) || in_array( 'candidate_binding_state_invalid', $reasons, true ),
+			'skills_pending' => false,
+			'maintenance_busy' => false,
+			'lifecycle_hint_present' => ! empty( $detected['lifecycle_hint_present'] ),
+		);
+	}
+
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' );
@@ -727,19 +807,39 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) {
 			$detected = self::detect_lightweight_runtime_drift();
-			if ( ! empty( $detected['detected'] ) && ! empty( $detected['identity_complete'] ) ) {
-				$checkpoint = array(
-					'contract' => self::CONTRACT,
-					'state' => 'pending_safe_phases',
-					'source' => 'lightweight_runtime_drift_detector',
-					'target_identity' => $detected['identity'],
-					'drift_reasons' => $detected['reasons'],
-					'created_at' => gmdate( 'c' ),
-					'updated_at' => gmdate( 'c' ),
-					'production_mutation' => false,
-				);
-				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
-				$state = 'pending_safe_phases';
+			if ( ! empty( $detected['detected'] ) ) {
+				$signals = self::auto_reconcile_signals( $detected );
+				$classification = class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios' )
+					? MAD4B_SCP_Auto_Reconcile_Scenarios::classify( $signals )
+					: array( 'scenario_id' => 'registry_unavailable', 'decision' => 'REVIEW_REQUIRED', 'automatic_worker_allowed' => false, 'reasons' => array( 'registry_unavailable' ) );
+				if ( class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios' ) ) {
+					MAD4B_SCP_Auto_Reconcile_Scenarios::persist( $classification, array(
+						'source' => 'runtime_drift_detector',
+						'target_source_commit_sha' => isset( $detected['identity']['source_commit_sha'] ) ? (string) $detected['identity']['source_commit_sha'] : '',
+					) );
+				}
+				if ( ! empty( $classification['automatic_worker_allowed'] ) && ! empty( $detected['identity_complete'] ) ) {
+					$checkpoint = array(
+						'contract' => self::CONTRACT,
+						'state' => 'pending_safe_phases',
+						'source' => 'auto_reconcile_scenario',
+						'target_identity' => $detected['identity'],
+						'drift_reasons' => $detected['reasons'],
+						'auto_reconcile' => array(
+							'contract' => class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios' ) ? MAD4B_SCP_Auto_Reconcile_Scenarios::CONTRACT : '',
+							'scenario_id' => isset( $classification['scenario_id'] ) ? (string) $classification['scenario_id'] : '',
+							'decision' => isset( $classification['decision'] ) ? (string) $classification['decision'] : '',
+							'automatic_candidate_binding_allowed' => false,
+							'zero_delta_required' => true,
+							'trusted_release_required' => true,
+						),
+						'created_at' => gmdate( 'c' ),
+						'updated_at' => gmdate( 'c' ),
+						'production_mutation' => false,
+					);
+					update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+					$state = 'pending_safe_phases';
+				}
 			}
 		}
 		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) return;
@@ -806,32 +906,48 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( '' !== $current_version && ! hash_equals( $current_version, $stored_version ) ) $reasons[] = 'plugin_version_drift';
 		if ( $expected_schema > 0 && $schema_version < $expected_schema ) $reasons[] = 'schema_version_drift';
 
-		// The common no-drift path is options/constants only: no file read, REST
-		// initialization, provider discovery, schema probe or database repair.
+		$hint = self::auto_reconcile_hint();
+		$probe_due = ! empty( $hint ) || self::auto_reconcile_probe_due();
+		$binding = array();
+		if ( $probe_due && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' ) ) {
+			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+			if ( is_array( $binding ) && ! empty( $binding['stored_bound'] ) && empty( $binding['match'] ) ) {
+				$reasons[] = 'candidate_binding_drift';
+			} elseif ( ! is_array( $binding ) || ! array_key_exists( 'required', $binding ) || ! array_key_exists( 'match', $binding ) ) {
+				$reasons[] = 'candidate_binding_state_invalid';
+			}
+		}
+
+		$reasons = array_values( array_unique( array_map( 'sanitize_key', $reasons ) ) );
 		if ( empty( $reasons ) ) {
+			if ( ! empty( $hint ) ) delete_option( self::AUTO_RECONCILE_HINT_OPTION );
 			return array(
 				'detected' => false,
 				'reasons' => array(),
 				'identity' => array(),
 				'identity_complete' => false,
-				'option_reads_only' => true,
-				'bounded_provenance_file_read' => false,
+				'lifecycle_hint_present' => ! empty( $hint ),
+				'periodic_probe_performed' => $probe_due,
+				'option_reads_only' => ! $probe_due,
+				'bounded_provenance_file_read' => $probe_due,
 				'filesystem_scan_performed' => false,
 				'database_schema_probe_performed' => false,
 			);
 		}
 
-		// Only observed drift justifies one bounded provenance-file read so the
-		// queued convergence job can be exact-build fenced.
 		$identity = self::current_identity();
 		$identity_complete = ! empty( $identity['source_commit_sha'] )
 			&& ! empty( $identity['build_fingerprint'] )
-			&& ! empty( $identity['package_manifest_digest'] );
+			&& ! empty( $identity['package_manifest_digest'] )
+			&& ! empty( $identity['artifact_identity'] );
 		return array(
 			'detected' => true,
 			'reasons' => $reasons,
 			'identity' => $identity,
 			'identity_complete' => $identity_complete,
+			'lifecycle_hint_present' => ! empty( $hint ),
+			'periodic_probe_performed' => $probe_due,
+			'candidate_binding' => $binding,
 			'option_reads_only' => false,
 			'bounded_provenance_file_read' => true,
 			'filesystem_scan_performed' => false,
@@ -997,6 +1113,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 				&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'prepare_observed_update' ) ) {
 				$trusted_target = MAD4B_SCP_Self_Update::observed_release_target();
 				$observed_continuation = is_wp_error( $trusted_target ) ? $trusted_target : MAD4B_SCP_Post_Update_Continuation::prepare_observed_update( $trusted_target, $lock );
+				if ( is_wp_error( $observed_continuation ) && class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios' ) ) {
+					MAD4B_SCP_Auto_Reconcile_Scenarios::record_worker_error( $observed_continuation->get_error_code(), array(
+						'source' => 'post_update_continuation',
+						'target_source_commit_sha' => isset( $current['source_commit_sha'] ) ? (string) $current['source_commit_sha'] : '',
+					) );
+				}
 				$continuation_status = MAD4B_SCP_Post_Update_Continuation::status();
 			}
 			if ( ! empty( $continuation_status['active'] ) && in_array( isset( $continuation_status['state'] ) ? (string) $continuation_status['state'] : '', array( 'exact_readback_verified', 'pending_convergence' ), true ) ) {
@@ -1031,6 +1153,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'production_mutation' => false,
 				'candidate_binding_mutation' => is_array( $continuation_result ) && 'completed' === ( isset( $continuation_result['state'] ) ? (string) $continuation_result['state'] : '' ),
 				'provider_write_certification' => false,
+				'auto_reconcile' => is_array( $existing_checkpoint ) && isset( $existing_checkpoint['auto_reconcile'] ) && is_array( $existing_checkpoint['auto_reconcile'] ) ? $existing_checkpoint['auto_reconcile'] : array(),
 			);
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			if ( defined( 'MAD4B_SCP_VERSION' ) ) update_option( 'mad4b_scp_version', (string) MAD4B_SCP_VERSION, false );
