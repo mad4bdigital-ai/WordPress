@@ -45,19 +45,35 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			$filtered = apply_filters( 'mad4b_scp_auto_reconcile_scenarios', array() );
 			if ( is_array( $filtered ) ) $extensions = array_slice( $filtered, 0, 50 );
 		}
-		$rows = array_merge( $core, $extensions );
 		$core_ids = array();
-		foreach ( $core as $core_row ) if ( is_array( $core_row ) && ! empty( $core_row['id'] ) ) $core_ids[ sanitize_key( (string) $core_row['id'] ) ] = true;
+		$rows = array();
+		foreach ( $core as $core_row ) {
+			if ( ! is_array( $core_row ) || empty( $core_row['id'] ) ) continue;
+			$core_id = sanitize_key( (string) $core_row['id'] );
+			if ( '' === $core_id ) continue;
+			$core_ids[ $core_id ] = true;
+			$core_row['_source'] = 'core';
+			$rows[] = $core_row;
+		}
+		foreach ( $extensions as $extension_row ) {
+			if ( ! is_array( $extension_row ) || empty( $extension_row['id'] ) ) continue;
+			$extension_id = sanitize_key( (string) $extension_row['id'] );
+			if ( '' === $extension_id || isset( $core_ids[ $extension_id ] ) ) continue;
+			$extension_row['_source'] = 'extension';
+			$rows[] = $extension_row;
+		}
 		$out = array();
+		$seen_ids = array();
 		foreach ( array_slice( $rows, 0, 150 ) as $row ) {
 			if ( ! is_array( $row ) ) continue;
 			$id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
-			if ( '' === $id ) continue;
+			if ( '' === $id || isset( $seen_ids[ $id ] ) ) continue;
+			$seen_ids[ $id ] = true;
 			$decision = isset( $row['decision'] ) ? strtoupper( sanitize_text_field( (string) $row['decision'] ) ) : self::DECISION_REVIEW;
 			if ( ! in_array( $decision, array( self::DECISION_NO_OP, self::DECISION_SCHEDULE_PROBE, self::DECISION_DEFER, self::DECISION_REVIEW, self::DECISION_HARD_BLOCK ), true ) ) {
 				$decision = self::DECISION_REVIEW;
 			}
-			$is_core = isset( $core_ids[ $id ] );
+			$is_core = 'core' === ( isset( $row['_source'] ) ? (string) $row['_source'] : '' );
 			$priority = max( -1000, min( $is_core ? 1000 : 850, isset( $row['priority'] ) ? (int) $row['priority'] : 0 ) );
 			$out[] = array(
 				'id' => $id,
