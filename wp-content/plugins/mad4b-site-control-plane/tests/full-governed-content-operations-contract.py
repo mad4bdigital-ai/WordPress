@@ -586,7 +586,7 @@ assert "'mad4b/database-raw-query'" in servers_src
 # a field stores URL or ID+URL projections.
 for token in (
     "mad4b.content-experience-media-storage.v1",
-    "mad4b_content_experience_media_gallery_shape_invalid",
+    "mad4b_content_experience_media_storage_shape_invalid",
     "csv_ids",
     "csv_urls",
     "id_url_items",
