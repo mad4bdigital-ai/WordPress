@@ -213,7 +213,8 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			return new WP_Error( 'mad4b_runtime_policy_review_decision_invalid', 'Runtime policy review decision is invalid.' );
 		}
 
-		$token = self::acquire_review_lock();
+		$expected = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : -1;
+		$token = self::acquire_review_lock( $expected );
 		if ( is_wp_error( $token ) ) return $token;
 
 		$before = self::review_store();
@@ -221,7 +222,6 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			self::release_review_lock( $token );
 			return new WP_Error( 'mad4b_runtime_policy_review_store_tampered', 'Runtime policy review ledger integrity validation failed.' );
 		}
-		$expected = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : -1;
 		if ( $expected !== (int) $before['revision'] ) {
 			self::release_review_lock( $token );
 			return new WP_Error( 'mad4b_runtime_policy_review_stale', 'Runtime policy review ledger changed since it was loaded.' );
@@ -276,7 +276,8 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			'note' => isset( $input['note'] ) ? sanitize_textarea_field( (string) $input['note'] ) : '',
 			'reviewed_by' => function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0,
 			'reviewed_at' => function_exists( 'current_time' ) ? (string) current_time( 'mysql', true ) : gmdate( 'Y-m-d H:i:s' ),
-			'lock_fence_sha256' => hash( 'sha256', (string) $token ),
+			'fence_revision' => $next_revision,
+			'lock_fence_sha256' => hash( 'sha256', (string) $token . ':' . (string) $next_revision ),
 			'audit_required' => true,
 			'authority_effect' => 'none',
 			'creates_grant' => false,
@@ -297,7 +298,12 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			'authorizing' => false,
 		);
 
-		if ( ! self::lock_owned( $token ) ) {
+		$commit_base = self::review_store();
+		if ( empty( $commit_base['integrity_valid'] ) || (int) $commit_base['revision'] !== $expected ) {
+			self::release_review_lock( $token );
+			return new WP_Error( 'mad4b_runtime_policy_review_stale_before_commit', 'Runtime policy review ledger changed before the fenced commit.' );
+		}
+		if ( ! self::lock_owned( $token, $next_revision ) ) {
 			self::release_review_lock( $token );
 			return new WP_Error( 'mad4b_runtime_policy_review_lock_lost', 'Runtime policy review lock ownership was lost before commit.' );
 		}
@@ -315,12 +321,13 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 		if ( empty( $readback['integrity_valid'] )
 			|| (int) $readback['revision'] !== $next_revision
 			|| ! isset( $readback['reviews'][ $name ] )
+			|| (int) ( isset( $readback['reviews'][ $name ]['fence_revision'] ) ? $readback['reviews'][ $name ]['fence_revision'] : 0 ) !== $next_revision
 			|| ! hash_equals( $record['review_sha256'], (string) $readback['reviews'][ $name ]['review_sha256'] ) ) {
 			if ( function_exists( 'update_option' ) ) update_option( self::REVIEW_OPTION, self::persistable_store( $before ), false );
 			self::release_review_lock( $token );
 			return new WP_Error( 'mad4b_runtime_policy_review_readback_failed', 'Runtime policy review readback did not match the committed review.' );
 		}
-		if ( ! self::lock_owned( $token ) ) {
+		if ( ! self::lock_owned( $token, $next_revision ) ) {
 			self::release_review_lock( $token );
 			return new WP_Error( 'mad4b_runtime_policy_review_lock_lost', 'Runtime policy review lock ownership was lost after commit.' );
 		}
@@ -453,11 +460,16 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 		return self::digest(self::REVIEW_CONTRACT,$row);
 	}
 
-	private static function acquire_review_lock() {
+	private static function acquire_review_lock( $expected_revision ) {
 		$token = function_exists( 'wp_generate_uuid4' )
 			? strtolower( wp_generate_uuid4() )
 			: hash( 'sha256', microtime( true ) . ':' . mt_rand() );
-		$record = array( 'token'=>$token, 'expires'=>time()+self::REVIEW_LOCK_TTL );
+		$record = array(
+			'token'=>$token,
+			'fence_revision'=>max( 0, (int) $expected_revision + 1 ),
+			'acquired_at'=>time(),
+			'expires'=>time()+self::REVIEW_LOCK_TTL,
+		);
 		if ( function_exists('add_option') && add_option(self::REVIEW_LOCK_OPTION,$record,'',false) ) return $token;
 		$current = function_exists('get_option') ? get_option(self::REVIEW_LOCK_OPTION,array()) : array();
 		if ( is_array($current) && isset($current['expires']) && (int)$current['expires'] < time() && function_exists('delete_option') ) {
@@ -467,14 +479,15 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 		return new WP_Error('mad4b_runtime_policy_review_busy','Another runtime policy review is currently being committed.');
 	}
 
-	private static function lock_owned( $token ) {
+	private static function lock_owned( $token, $fence_revision = null ) {
 		if ( ! function_exists('get_option') ) return false;
 		$current=get_option(self::REVIEW_LOCK_OPTION,array());
-		return is_array($current)
-			&& isset($current['token'],$current['expires'])
-			&& is_string($current['token'])
-			&& (int)$current['expires'] >= time()
-			&& hash_equals((string)$current['token'],(string)$token);
+		if ( ! is_array($current)
+			|| ! isset($current['token'],$current['expires'],$current['fence_revision'])
+			|| ! is_string($current['token'])
+			|| (int)$current['expires'] < time()
+			|| ! hash_equals((string)$current['token'],(string)$token) ) return false;
+		return null === $fence_revision || (int) $current['fence_revision'] === (int) $fence_revision;
 	}
 
 	private static function release_review_lock( $token ) {

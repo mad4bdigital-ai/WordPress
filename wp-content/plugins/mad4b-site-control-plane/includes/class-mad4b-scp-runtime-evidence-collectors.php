@@ -9,15 +9,15 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * authority.
  */
 final class MAD4B_SCP_Runtime_Evidence_Collectors {
-	public static function contracts() {
-		return array(
+	public static function contracts( $max_items = 256 ) {
+		$contracts = array(
 			'providers'=>array('method'=>'providers'),
 			'components'=>array('method'=>'components'),
 			'abilities'=>array('method'=>'abilities'),
 			'schemas'=>array('method'=>'schemas','source'=>'abilities'),
 			'operations'=>array('method'=>'operations'),
 			'plugins'=>array('method'=>'plugins'),
-			'rest_routes'=>array('method'=>'rest_routes'),
+			'rest_routes'=>array('method'=>'rest_routes','lifecycle_requirements'=>array('rest_api_init')),
 			'post_types'=>array('method'=>'post_types'),
 			'taxonomies'=>array('method'=>'taxonomies'),
 			'meta_keys'=>array('method'=>'meta_keys'),
@@ -28,6 +28,22 @@ final class MAD4B_SCP_Runtime_Evidence_Collectors {
 			'symbols'=>array('method'=>'symbols'),
 			'database_tables'=>array('method'=>'database_tables'),
 		);
+		$max_items = max( 1, min( 256, (int) $max_items ) );
+		foreach ( $contracts as $kind => &$contract ) {
+			$contract['collector_id'] = 'mad4b-core-' . str_replace( '_', '-', (string) $kind );
+			$contract['max_items'] = $max_items;
+			$contract['sensitivity'] = 'structural_metadata_only';
+			$contract['provenance'] = 'mad4b_control_plane_source';
+			$contract['budget'] = array(
+				'max_items' => $max_items,
+				'external_io' => false,
+				'callback_execution' => false,
+			);
+			$contract['completeness_semantics'] = 'observed_emitted_truncation_explicit';
+			if ( ! isset( $contract['lifecycle_requirements'] ) ) $contract['lifecycle_requirements'] = array();
+		}
+		unset( $contract );
+		return $contracts;
 	}
 
 	public static function collection_status( $kind, $emitted_count, $observed_count, $max_items, $source_incomplete = false ) {

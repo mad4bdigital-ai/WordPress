@@ -107,11 +107,12 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				$rows = self::$method();
 			}
 			$rows = is_array( $rows ) ? $rows : array();
+			$limit = isset( $collector['max_items'] ) ? max( 1, min( self::MAX_ITEMS_PER_KIND, (int) $collector['max_items'] ) ) : self::MAX_ITEMS_PER_KIND;
 			usort( $rows, static function( $a, $b ) {
 				return strcmp( isset($a['id'])?(string)$a['id']:'', isset($b['id'])?(string)$b['id']:'' );
 			} );
 			$observed = self::collector_observed_count( $kind, $rows, $nodes );
-			$nodes[ $kind ] = array_slice( $rows, 0, self::MAX_ITEMS_PER_KIND );
+			$nodes[ $kind ] = array_slice( $rows, 0, $limit );
 			$source_complete = true;
 			if ( '' !== $source ) {
 				$source_complete = ! empty( $collection_status[ $source ]['trustworthy_for_absence'] );
@@ -120,7 +121,16 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				$kind,
 				count( $nodes[ $kind ] ),
 				$observed,
-				! $source_complete
+				! $source_complete,
+				$limit
+			);
+			$collection_status[ $kind ]['collector_contract'] = array(
+				'collector_id'=>isset($collector['collector_id'])?(string)$collector['collector_id']:'',
+				'lifecycle_requirements'=>isset($collector['lifecycle_requirements'])&&is_array($collector['lifecycle_requirements'])?array_values($collector['lifecycle_requirements']):array(),
+				'sensitivity'=>isset($collector['sensitivity'])?(string)$collector['sensitivity']:'',
+				'provenance'=>isset($collector['provenance'])?(string)$collector['provenance']:'',
+				'budget'=>isset($collector['budget'])&&is_array($collector['budget'])?$collector['budget']:array(),
+				'completeness_semantics'=>isset($collector['completeness_semantics'])?(string)$collector['completeness_semantics']:'',
 			);
 			if ( '' !== $source ) {
 				$collection_status[ $kind ]['source_kind'] = $source;
@@ -279,15 +289,15 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 	}
 
 	private static function collector_contracts() {
-		return MAD4B_SCP_Runtime_Evidence_Collectors::contracts();
+		return MAD4B_SCP_Runtime_Evidence_Collectors::contracts( self::MAX_ITEMS_PER_KIND );
 	}
 
-	private static function collection_status( $kind, $emitted_count, $observed_count, $source_incomplete = false ) {
+	private static function collection_status( $kind, $emitted_count, $observed_count, $source_incomplete = false, $max_items = self::MAX_ITEMS_PER_KIND ) {
 		return MAD4B_SCP_Runtime_Evidence_Collectors::collection_status(
 			$kind,
 			$emitted_count,
 			$observed_count,
-			self::MAX_ITEMS_PER_KIND,
+			$max_items,
 			$source_incomplete
 		);
 	}

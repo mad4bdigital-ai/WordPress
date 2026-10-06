@@ -46,3 +46,20 @@ Invariant gates before integration:
 5. Integration Hub cumulative CI and post-merge Staging acceptance remain required.
 
 `runtime_parity_claimed=false`. Production and Breakglass remain unauthorized.
+
+
+## Hardening closure after repository review
+
+The G1 repository pass additionally requires and tests:
+
+- provenance-bound before-snapshot validation with same-site/environment rejection;
+- explicit observed/emitted/truncated completeness metadata and lifecycle-aware absence semantics;
+- transitive dependency impact with the existing dependency-impact foundation;
+- output/data/capability sensitivity in read classification;
+- trusted, artifact-bound conformance receipts;
+- append-only review history with mandatory audit, digest verification, bounded commit time, token ownership and revision fencing;
+- guarded competitive evidence summary/history resources with append-only retention and drift acknowledgement lifecycle;
+- collector contracts that declare lifecycle, sensitivity, provenance, budget and completeness semantics;
+- operator filtering by status, evidence class, workstream and runtime-parity claim, plus explicit remaining-task/acceptance drill-down.
+
+Exact-head CI is an integration invariant; its terminal verdict is recorded as external GitHub evidence rather than self-referential in-commit state.

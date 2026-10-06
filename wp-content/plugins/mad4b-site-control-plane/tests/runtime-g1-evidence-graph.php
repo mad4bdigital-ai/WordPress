@@ -256,6 +256,8 @@ check(in_array('bound_to_provider',array_column($one['edges'],'relation'),true),
 check(in_array('declares_schema',array_column($one['edges'],'relation'),true),'ability schema edge missing');
 check(isset($one['metrics']['elapsed_ms'],$one['metrics']['memory_delta_bytes'],$one['metrics']['within_soft_budget']),'graph performance metrics missing');
 check($one['edge_status']['observed_count']===$one['edge_status']['emitted_count'] && $one['edge_status']['trustworthy_for_impact']===true,'complete fixture edges were not trusted for impact');
+check($one['collection_status']['abilities']['collector_contract']['provenance']==='mad4b_control_plane_source','collector provenance contract missing');
+check($one['collection_status']['abilities']['collector_contract']['budget']['callback_execution']===false,'collector contract allowed callback execution');
 
 $encoded=json_encode($one);
 check(false===strpos($encoded,'api_secret'),'sensitive meta key leaked');
@@ -432,6 +434,8 @@ $review=MAD4B_SCP_Runtime_Policy_Classifier::record_review(array(
 ));
 check(!is_wp_error($review),'owner review could not be recorded');
 check($review['revision']===1 && $review['history_count']===1 && $review['authorizing']===false,'append-only review history was not recorded');
+check($review['review']['fence_revision']===1 && strlen($review['review']['lock_fence_sha256'])===64,'review fencing metadata missing');
+check(MAD4B_SCP_Runtime_Policy_Classifier::REVIEW_LOCK_TTL*1000 > MAD4B_SCP_Runtime_Policy_Classifier::REVIEW_MAX_ELAPSED_MS,'review lock TTL does not dominate bounded commit time');
 check(count($GLOBALS['g1_audit_records'])===1,'mandatory review audit record missing');
 
 $after_review=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
