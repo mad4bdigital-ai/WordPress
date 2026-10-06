@@ -138,6 +138,25 @@ def feature_grant(base: str, feature_id: str) -> dict:
     blocked = grant.get("self_certifying_paths_forbidden") or []
     if not isinstance(blocked, list) or any(not isinstance(path, str) or not path for path in blocked):
         fail("FEATURE_BOUNDARY_SELF_CERTIFYING_PATHS_INVALID")
+    integration_hubs = grant.get("integration_hubs") or []
+    if not isinstance(integration_hubs, list):
+        fail("FEATURE_BOUNDARY_INTEGRATION_HUBS_INVALID")
+    seen_hub_branches = set()
+    for row in integration_hubs:
+        if not isinstance(row, dict):
+            fail("FEATURE_BOUNDARY_INTEGRATION_HUB_INVALID")
+        branch = str(row.get("branch") or "")
+        pull_request = row.get("pull_request")
+        mode = str(row.get("mode") or "")
+        if not branch.startswith(f"spec/{feature_id}-"):
+            fail("FEATURE_BOUNDARY_INTEGRATION_HUB_BRANCH_INVALID:" + branch)
+        if branch in seen_hub_branches:
+            fail("FEATURE_BOUNDARY_INTEGRATION_HUB_DUPLICATE:" + branch)
+        seen_hub_branches.add(branch)
+        if not isinstance(pull_request, int) or isinstance(pull_request, bool) or pull_request <= 0:
+            fail("FEATURE_BOUNDARY_INTEGRATION_HUB_PR_INVALID:" + branch)
+        if mode != "implementation":
+            fail("FEATURE_BOUNDARY_INTEGRATION_HUB_MODE_INVALID:" + branch)
     return grant
 
 
@@ -225,6 +244,20 @@ def verify(base: str, head: str, head_branch: str, pr_number: int = 0) -> dict:
     feature_dir = str(feature.get("feature_directory") or "").strip().rstrip("/")
     status = str(feature.get("status") or "").strip()
     grant = feature_grant(base, feature_id)
+    integration_hubs = list(grant.get("integration_hubs") or [])
+    integration_binding = next(
+        (row for row in integration_hubs if str(row.get("branch") or "") == head_branch),
+        None,
+    )
+    if integration_binding is not None and int(pr_number or 0) != int(integration_binding.get("pull_request") or 0):
+        fail(
+            "INTEGRATION_HUB_PR_MISMATCH:"
+            + head_branch
+            + ":expected="
+            + str(integration_binding.get("pull_request"))
+            + ":observed="
+            + str(pr_number or 0)
+        )
     granted_feature_dir = str(grant.get("feature_directory") or "").strip().rstrip("/")
     if not granted_feature_dir or feature_dir != granted_feature_dir:
         fail(f"FEATURE_DIRECTORY_NOT_GRANTED:metadata={feature_dir!r}:grant={granted_feature_dir!r}")
@@ -313,7 +346,18 @@ def verify(base: str, head: str, head_branch: str, pr_number: int = 0) -> dict:
         forbidden = [p for p in changed if not spec_owned(p)]
         mode = "specification"
     elif status == "implementation":
-        if branch_kind in {"feat", "fix"}:
+        if integration_binding is not None:
+            forbidden = [p for p in changed if not feature_owned(p) and p not in granted_cross_set]
+            undeclared = [
+                p for p in changed
+                if p.startswith("specs/")
+                and not p.startswith(feature_dir + "/")
+                and p not in granted_cross_set
+            ]
+            if undeclared:
+                fail("UNDECLARED_CROSS_FEATURE_CHANGE:" + ",".join(sorted(undeclared)))
+            mode = "implementation_integration_hub"
+        elif branch_kind in {"feat", "fix"}:
             forbidden = [p for p in changed if not feature_owned(p) and p not in granted_cross_set]
             undeclared = [
                 p for p in changed
@@ -358,6 +402,8 @@ def verify(base: str, head: str, head_branch: str, pr_number: int = 0) -> dict:
         "pull_request_code_executed": False,
         "repository_governance_files_are_immutable": True,
         "owner_attestation_required": False,
+        "integration_hub": integration_binding is not None,
+        "integration_hub_pr_number": int(integration_binding.get("pull_request") or 0) if integration_binding is not None else 0,
     }
 
 

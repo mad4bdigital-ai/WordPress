@@ -36,7 +36,14 @@
         ".github/workflows/mad4b-control-plane-package.yml",
         ".github/workflows/mad4b-site-control-plane.yml"
       ],
-      "release_critical_workflows_must_be_baseline_owned": true
+      "release_critical_workflows_must_be_baseline_owned": true,
+      "integration_hubs": [
+        {
+          "branch": "spec/007-competitive-experience-20261006",
+          "pull_request": 258,
+          "mode": "implementation"
+        }
+      ]
     },
     "008": {
       "feature_directory": "specs/008-dynamic-content-runtime-hardening",
