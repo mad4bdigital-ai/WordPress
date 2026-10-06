@@ -6,9 +6,9 @@
   "feature_branch": "spec/007-competitive-experience-20261006",
   "baseline_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
   "status": "SPEC_BACKLOG_ONLY",
-  "required_phase_count": 29,
-  "task_count": 145,
-  "capability_count": 53,
+  "required_phase_count": 35,
+  "task_count": 175,
+  "capability_count": 59,
   "authorizing": false,
   "production_authorized": false,
   "release_closure_included": false,
@@ -36,7 +36,14 @@
     "no_arbitrary_symbol_invocation",
     "preserve_human_owned_changes",
     "signed_data_pack_non_authorizing",
-    "canary_requires_existing_staging_authority"
+    "canary_requires_existing_staging_authority",
+    "no_cross_site_authority_inference",
+    "automation_kill_switch_required",
+    "signatures_do_not_equal_authority",
+    "schema_migration_no_risk_downgrade",
+    "fuzzing_disposable_only",
+    "restore_never_replays_authority"
   ],
-  "adaptive_operations_contract": "mad4b.adaptive-capability-fabric-v2-spec.v1"
+  "adaptive_operations_contract": "mad4b.adaptive-capability-fabric-v2-spec.v1",
+  "architecture_expansion": "architecture-expansion.md"
 }

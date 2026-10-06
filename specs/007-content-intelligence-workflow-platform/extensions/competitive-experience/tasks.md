@@ -233,3 +233,57 @@ All new tasks are OPEN. Existing Feature 007 release tasks and closure counts re
 - [ ] T4063 P0 Expose cause, scope, evidence, next step, user-owned conflict, attempt/readback/rollback history and capability-local blast radius.
 - [ ] T4064 P0 Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.
 - [ ] T4065 P0 GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification.
+
+
+## Phase 29 — Release Rings and Fleet/Multisite Promotion
+
+- [ ] T4066 P0 Implement exact site/cohort/generation release-ring identities with site-local authority; no implicit Production ring.
+- [ ] T4067 P0 Implement Multisite/fleet inventory and cohort diff with independent provider/grant/binding truth per site.
+- [ ] T4068 P0 Implement pilot-ring health thresholds, bounded cohorts, per-site receipts and partial rollback state.
+- [ ] T4069 P0 Implement distributed rollout fencing/idempotency so duplicate workers cannot promote or rollback the same site twice.
+- [ ] T4070 P0 GATE stale cohort, split brain, cross-site authority bleed, provider mismatch, partial rollback and missing site evidence.
+
+
+## Phase 30 — Automation SLOs, Error Budgets and Kill Switch
+
+- [ ] T4071 P0 Define automation SLOs over explicit eligible workload: repair success, false repair, MTTR, quarantine, rollback failure, intervention and cost.
+- [ ] T4072 P0 Implement per-site/provider/capability retry/error budgets with cooldown and deterministic exclusion reasons.
+- [ ] T4073 P0 Implement backpressure, queue isolation and circuit breaking for repeated self-heal failures.
+- [ ] T4074 P0 Implement durable kill switch stopping L2-L4 automatic actions while preserving L0-L1 observation and governed manual paths.
+- [ ] T4075 P0 GATE flapping drift, metric loss, queue storms, exhausted budgets and kill-switch bypass.
+
+
+## Phase 31 — Supply-chain Provenance and Trust
+
+- [ ] T4076 P0 Implement source-channel/hash/signer/revocation/dependency provenance for runtime/provider/policy artifacts.
+- [ ] T4077 P0 Bind supply-chain provenance to candidate generations and certification packs without treating provenance as authority.
+- [ ] T4078 P0 Implement downgrade, mirror mismatch, dependency substitution and unexpected source detection with capability-local quarantine.
+- [ ] T4079 P0 Expose provenance/revocation status in operator/update acceptance views with bounded remediation.
+- [ ] T4080 P0 GATE unsigned, revoked, downgraded, foreign or dependency-tampered artifacts; signatures cannot create grants or promotion.
+
+
+## Phase 32 — Registry and Policy Schema Migration
+
+- [ ] T4081 P0 Implement versioned registry/policy/manifest migration DAGs with compatibility declarations and dry-run semantic diffs.
+- [ ] T4082 P0 Capture exact pre-migration snapshots and reversible migration receipts with atomic cutover.
+- [ ] T4083 P0 Support declared mixed-generation worker windows without dropping unknown fields or reinterpreting stale evidence.
+- [ ] T4084 P0 Require governed review for migrations that lower risk, change authority semantics or make prior ineligible capability executable.
+- [ ] T4085 P0 GATE partial migration, stale workers, unknown fields, downgrade, restored old registries and interrupted cutover.
+
+
+## Phase 33 — Adversarial Compatibility Fuzzing and Chaos Certification
+
+- [ ] T4086 P1 Implement deterministic disposable schema/property fuzz cases for boundary, malformed-response, contradictory annotation and hidden-effect conditions.
+- [ ] T4087 P1 Implement isolated timeout/cancellation/duplicate/concurrency/provider-fault injection with reproducible seeds.
+- [ ] T4088 P1 Implement differential compatibility fuzzing across certified and candidate versions without candidate output entering active responses.
+- [ ] T4089 P1 Feed reproducible fuzz findings into policy/canary/quarantine evidence without automatic authority changes.
+- [ ] T4090 P1 GATE fuzzing Production/shared objects, paid/irreversible effects, arbitrary code or blind retries.
+
+
+## Phase 34 — Restore and Disaster-Recovery Convergence
+
+- [ ] T4091 P0 Implement restore-epoch detection across DB, files, runtime package, Site Profile and registry generations.
+- [ ] T4092 P0 Invalidate stale mutable receipts, leases, candidate bindings and execution assumptions while retaining append-only audit evidence.
+- [ ] T4093 P0 Rebuild current artifact/provider/host graphs and reconcile exact site-local grants/authority before writes return.
+- [ ] T4094 P0 Implement external-effect reconciliation for actions not rewound by local restore and issue post-restore acceptance receipt.
+- [ ] T4095 P0 GATE cloned origins, clock rollback, stale grants, partial restore, revoked providers and unrewound effects; never replay authority.

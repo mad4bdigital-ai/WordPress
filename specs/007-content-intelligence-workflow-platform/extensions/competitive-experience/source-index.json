@@ -685,6 +685,72 @@
       "range_sha256": "597d26dbe436773b627c77e8a523c4e7217d59a33c2435853e59607d7ab12b36",
       "finding": "User-proposed future Operator Action Center and Autonomy Evaluation; existing foundation and acceptance remain separate.",
       "runtime_verified": false
+    },
+    {
+      "id": "SRC-ARCH-01",
+      "package_id": null,
+      "path": "architecture-expansion.md",
+      "kind": "ARCHITECTURE_DERIVATION",
+      "line_start": 8,
+      "line_end": 14,
+      "range_sha256": "23bffd4d321ad62a7f6be12ebebfb89c2a9703564f538e1b2d78acbdfc7297c9",
+      "finding": "Exact cohort promotion, site-local authority and per-site rollout receipts.",
+      "runtime_verified": false
+    },
+    {
+      "id": "SRC-ARCH-02",
+      "package_id": null,
+      "path": "architecture-expansion.md",
+      "kind": "ARCHITECTURE_DERIVATION",
+      "line_start": 15,
+      "line_end": 21,
+      "range_sha256": "26dbed0a86cbb336eb22e4f1b106a19010a098d22dc8f3eb4704c0d3828a6224",
+      "finding": "Automation error budgets, backpressure and an independent kill switch.",
+      "runtime_verified": false
+    },
+    {
+      "id": "SRC-ARCH-03",
+      "package_id": null,
+      "path": "architecture-expansion.md",
+      "kind": "ARCHITECTURE_DERIVATION",
+      "line_start": 22,
+      "line_end": 28,
+      "range_sha256": "8374aa34a03e7680b04530e933c8e7cdb4d281b013f3ab7dbfbe81d404e65582",
+      "finding": "Supply-chain provenance; signatures do not imply execution authority.",
+      "runtime_verified": false
+    },
+    {
+      "id": "SRC-ARCH-04",
+      "package_id": null,
+      "path": "architecture-expansion.md",
+      "kind": "ARCHITECTURE_DERIVATION",
+      "line_start": 29,
+      "line_end": 35,
+      "range_sha256": "42a6d296221b978cdde721e81fc3db2b604a63692d14f88fbdb7a1e7bff835a3",
+      "finding": "Reversible schema evolution without risk or authority downgrade.",
+      "runtime_verified": false
+    },
+    {
+      "id": "SRC-ARCH-05",
+      "package_id": null,
+      "path": "architecture-expansion.md",
+      "kind": "ARCHITECTURE_DERIVATION",
+      "line_start": 36,
+      "line_end": 42,
+      "range_sha256": "94021ca6bd16d9d45beec7c5ce3e2fde652256346a81345e6f49c104c372db1f",
+      "finding": "Disposable adversarial compatibility testing beyond happy-path canaries.",
+      "runtime_verified": false
+    },
+    {
+      "id": "SRC-ARCH-06",
+      "package_id": null,
+      "path": "architecture-expansion.md",
+      "kind": "ARCHITECTURE_DERIVATION",
+      "line_start": 43,
+      "line_end": 48,
+      "range_sha256": "58e4ea56c0b8785cb0c85b7345095a52e34c945c4ad6d3b3870153a5b14cbe0b",
+      "finding": "Rebind current authority and external truth after restore.",
+      "runtime_verified": false
     }
   ],
   "observations": [

@@ -602,6 +602,136 @@
       ],
       "release_blocker": false,
       "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "release-fleet-promotion",
+      "family": "ACFROLL",
+      "phase": 29,
+      "title": "Release Rings and Fleet/Multisite Promotion",
+      "priority": "P0",
+      "status": "OPEN",
+      "task_ids": [
+        "T4066",
+        "T4067",
+        "T4068",
+        "T4069",
+        "T4070"
+      ],
+      "dependencies": [
+        "update-acceptance",
+        "certification-packs",
+        "operator-action-center"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "automation-slo-control",
+      "family": "ACFSLO",
+      "phase": 30,
+      "title": "Automation SLOs, Error Budgets and Kill Switch",
+      "priority": "P0",
+      "status": "OPEN",
+      "task_ids": [
+        "T4071",
+        "T4072",
+        "T4073",
+        "T4074",
+        "T4075"
+      ],
+      "dependencies": [
+        "operator-action-center",
+        "update-acceptance"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "supply-chain-trust",
+      "family": "ACFSUPPLY",
+      "phase": 31,
+      "title": "Supply-chain Provenance and Trust",
+      "priority": "P0",
+      "status": "OPEN",
+      "task_ids": [
+        "T4076",
+        "T4077",
+        "T4078",
+        "T4079",
+        "T4080"
+      ],
+      "dependencies": [
+        "runtime-graph-v2",
+        "certification-packs"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "registry-schema-migration",
+      "family": "ACFMIGRATE",
+      "phase": 32,
+      "title": "Registry and Policy Schema Migration",
+      "priority": "P0",
+      "status": "OPEN",
+      "task_ids": [
+        "T4081",
+        "T4082",
+        "T4083",
+        "T4084",
+        "T4085"
+      ],
+      "dependencies": [
+        "certification-packs",
+        "supply-chain-trust"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "compatibility-fuzzing",
+      "family": "ACFFUZZ",
+      "phase": 33,
+      "title": "Adversarial Compatibility Fuzzing and Chaos Certification",
+      "priority": "P1",
+      "status": "OPEN",
+      "task_ids": [
+        "T4086",
+        "T4087",
+        "T4088",
+        "T4089",
+        "T4090"
+      ],
+      "dependencies": [
+        "semantic-classifier",
+        "declarative-adapters",
+        "reversible-canary"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "restore-dr-convergence",
+      "family": "ACFDR",
+      "phase": 34,
+      "title": "Restore and Disaster-Recovery Convergence",
+      "priority": "P0",
+      "status": "OPEN",
+      "task_ids": [
+        "T4091",
+        "T4092",
+        "T4093",
+        "T4094",
+        "T4095"
+      ],
+      "dependencies": [
+        "update-acceptance",
+        "ownership-reconciliation",
+        "certification-packs",
+        "release-fleet-promotion"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
     }
   ],
   "capabilities": [
@@ -2251,6 +2381,198 @@
       ],
       "denial_cases": [
         "GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification."
+      ]
+    },
+    {
+      "id": "CE054",
+      "title": "Release Rings and Fleet/Multisite Promotion",
+      "workstream_id": "release-fleet-promotion",
+      "family": "ACFROLL",
+      "evidence_ids": [
+        "SRC-ARCH-01"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Extend exact update acceptance into site-local release rings and cohort promotion without copying authority across sites.",
+      "implementation_status": "OPEN",
+      "runtime_parity_claimed": false,
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T4066",
+        "T4067",
+        "T4068",
+        "T4069",
+        "T4070"
+      ],
+      "acceptance": [
+        "Implement exact site/cohort/generation release-ring identities with site-local authority; no implicit Production ring.",
+        "Implement pilot-ring health thresholds, bounded cohorts, per-site receipts and partial rollback state.",
+        "Implement distributed rollout fencing/idempotency so duplicate workers cannot promote or rollback the same site twice."
+      ],
+      "denial_cases": [
+        "GATE stale cohort, split brain, cross-site authority bleed, provider mismatch, partial rollback and missing site evidence."
+      ]
+    },
+    {
+      "id": "CE055",
+      "title": "Automation SLOs, Error Budgets and Kill Switch",
+      "workstream_id": "automation-slo-control",
+      "family": "ACFSLO",
+      "evidence_ids": [
+        "SRC-ARCH-02"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-health-view.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Bound self-healing with measured SLOs, retry budgets, cooldowns, backpressure and an independent kill switch.",
+      "implementation_status": "OPEN",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4071",
+        "T4072",
+        "T4073",
+        "T4074",
+        "T4075"
+      ],
+      "acceptance": [
+        "Define automation SLOs over explicit eligible workload: repair success, false repair, MTTR, quarantine, rollback failure, intervention and cost.",
+        "Implement backpressure, queue isolation and circuit breaking for repeated self-heal failures.",
+        "Implement durable kill switch stopping L2-L4 automatic actions while preserving L0-L1 observation and governed manual paths."
+      ],
+      "denial_cases": [
+        "GATE flapping drift, metric loss, queue storms, exhausted budgets and kill-switch bypass."
+      ]
+    },
+    {
+      "id": "CE056",
+      "title": "Supply-chain Provenance and Trust",
+      "workstream_id": "supply-chain-trust",
+      "family": "ACFSUPPLY",
+      "evidence_ids": [
+        "SRC-ARCH-03"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Bind runtime/provider/policy artifacts to source-channel, hash, signer/revocation and dependency provenance without treating provenance as authority.",
+      "implementation_status": "OPEN",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4076",
+        "T4077",
+        "T4078",
+        "T4079",
+        "T4080"
+      ],
+      "acceptance": [
+        "Implement source-channel/hash/signer/revocation/dependency provenance for runtime/provider/policy artifacts.",
+        "Implement downgrade, mirror mismatch, dependency substitution and unexpected source detection with capability-local quarantine.",
+        "Expose provenance/revocation status in operator/update acceptance views with bounded remediation."
+      ],
+      "denial_cases": [
+        "GATE unsigned, revoked, downgraded, foreign or dependency-tampered artifacts; signatures cannot create grants or promotion."
+      ]
+    },
+    {
+      "id": "CE057",
+      "title": "Registry and Policy Schema Migration",
+      "workstream_id": "registry-schema-migration",
+      "family": "ACFMIGRATE",
+      "evidence_ids": [
+        "SRC-ARCH-04"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Evolve signed policy/manifests/registry schemas using explicit reversible migrations and semantic-diff guards.",
+      "implementation_status": "OPEN",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4081",
+        "T4082",
+        "T4083",
+        "T4084",
+        "T4085"
+      ],
+      "acceptance": [
+        "Implement versioned registry/policy/manifest migration DAGs with compatibility declarations and dry-run semantic diffs.",
+        "Support declared mixed-generation worker windows without dropping unknown fields or reinterpreting stale evidence.",
+        "Require governed review for migrations that lower risk, change authority semantics or make prior ineligible capability executable."
+      ],
+      "denial_cases": [
+        "GATE partial migration, stale workers, unknown fields, downgrade, restored old registries and interrupted cutover."
+      ]
+    },
+    {
+      "id": "CE058",
+      "title": "Adversarial Compatibility Fuzzing and Chaos Certification",
+      "workstream_id": "compatibility-fuzzing",
+      "family": "ACFFUZZ",
+      "evidence_ids": [
+        "SRC-ARCH-05"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Add disposable adversarial schema/behavior/concurrency/fault testing around candidate capabilities before broader certification.",
+      "implementation_status": "OPEN",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4086",
+        "T4087",
+        "T4088",
+        "T4089",
+        "T4090"
+      ],
+      "acceptance": [
+        "Implement deterministic disposable schema/property fuzz cases for boundary, malformed-response, contradictory annotation and hidden-effect conditions.",
+        "Implement differential compatibility fuzzing across certified and candidate versions without candidate output entering active responses.",
+        "Feed reproducible fuzz findings into policy/canary/quarantine evidence without automatic authority changes."
+      ],
+      "denial_cases": [
+        "GATE fuzzing Production/shared objects, paid/irreversible effects, arbitrary code or blind retries."
+      ]
+    },
+    {
+      "id": "CE059",
+      "title": "Restore and Disaster-Recovery Convergence",
+      "workstream_id": "restore-dr-convergence",
+      "family": "ACFDR",
+      "evidence_ids": [
+        "SRC-ARCH-06"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Treat restore/time-travel as a new operational epoch requiring rediscovery, authority rebinding and external-effect reconciliation before writes resume.",
+      "implementation_status": "OPEN",
+      "runtime_parity_claimed": false,
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T4091",
+        "T4092",
+        "T4093",
+        "T4094",
+        "T4095"
+      ],
+      "acceptance": [
+        "Implement restore-epoch detection across DB, files, runtime package, Site Profile and registry generations.",
+        "Rebuild current artifact/provider/host graphs and reconcile exact site-local grants/authority before writes return.",
+        "Implement external-effect reconciliation for actions not rewound by local restore and issue post-restore acceptance receipt."
+      ],
+      "denial_cases": [
+        "GATE cloned origins, clock rollback, stale grants, partial restore, revoked providers and unrewound effects; never replay authority."
       ]
     }
   ]
