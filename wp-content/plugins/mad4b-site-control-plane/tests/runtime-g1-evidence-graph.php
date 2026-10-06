@@ -235,6 +235,8 @@ $many_hooks=array();
 for($i=0;$i<300;$i++) $many_hooks['fixture_hook_'.$i]=new FakeHook();
 $GLOBALS['wp_filter']=$many_hooks;
 $truncated=MAD4B_SCP_Runtime_Evidence_Graph::snapshot(array('refresh'=>true));
+check($truncated['collection_status']['hooks']['observed_count']===300,'hook observed count was not preserved before truncation');
+check($truncated['collection_status']['hooks']['emitted_count']===256,'hook emitted count did not respect the bounded collector limit');
 check($truncated['collection_status']['hooks']['truncated']===true,'bounded hook truncation was not declared');
 check($truncated['collection_status']['hooks']['trustworthy_for_absence']===false,'truncated hook collection claimed trustworthy absence');
 $GLOBALS['wp_filter']=array('init'=>new FakeHook());
