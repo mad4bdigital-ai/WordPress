@@ -367,6 +367,22 @@ assert governance_parity_paths.issubset(release_evidence_paths), (
     + repr(sorted(governance_parity_paths - release_evidence_paths))
 )
 
+# The exact PR #260 Integration Hub boundary repair must not wait for runtime
+# package/live-evidence jobs that cannot trigger on this governance-only file set.
+assert "integration_hub_boundary_repair_branch = 'gov/feature-007-integration-hub-boundary-20261006'" in release_verdict_text
+assert "integration_hub_boundary_repair_expected_base = '3b66989d6f29c104e6f5cd4e7018766214ce8c84'" in release_verdict_text
+for path in {
+    ".github/mad4b-feature-boundary-grants.json",
+    ".github/workflows/mad4b-release-verdict.yml",
+    "tools/test_verify_feature_boundary.py",
+    "tools/verify_feature_boundary.py",
+}:
+    assert path in release_verdict_text
+assert "os.environ.get('PR_NUMBER', '').strip() == '260'" in release_verdict_text
+assert "integration_hub_boundary_repair_bootstrap and set(changed) != integration_hub_boundary_repair_expected_paths" in release_verdict_text
+assert "required = ['Repository governance policy', 'Repository feature boundary']" in release_verdict_text
+assert "mode = 'integration_hub_boundary_repair_bootstrap'" in release_verdict_text
+
 # Feature Boundary must pin the current trusted target branch, not the historical
 # pull-request event base SHA. This keeps strict "branch up to date" rules from
 # turning later master commits into false repository-governance scope mixing.
