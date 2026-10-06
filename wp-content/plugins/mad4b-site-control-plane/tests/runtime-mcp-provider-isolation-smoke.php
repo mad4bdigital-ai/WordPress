@@ -187,10 +187,24 @@ foreach ( array( 'import_configuration', 'export_configuration' ) as $operation 
 }
 $query_eligibility = $native_bridge->mutation_ability_runtime_eligibility( 'jetengine/create-query' );
 if ( true !== $query_eligibility ) {
-	mad4b_isolation_fail( 'Resolved JetEngine create-query operation did not become runtime-eligible.', $query_eligibility );
+	mad4b_isolation_fail( 'Resolved JetEngine create-query native operation did not become structurally discoverable.', $query_eligibility );
 }
-if ( $pre_rest_projection_primed && class_exists( 'MAD4B_SCP_Servers' ) && ! in_array( 'jetengine/create-query', MAD4B_SCP_Servers::write_tools(), true ) ) {
-	mad4b_isolation_fail( 'Adapter write projection remained stale after isolated JetEngine discovery became available.' );
+if ( class_exists( 'MAD4B_SCP_Servers' ) && in_array( 'jetengine/create-query', MAD4B_SCP_Servers::write_tools(), true ) ) {
+	mad4b_isolation_fail( 'Discovered high-risk JetEngine create-query bypassed capability certification into the write surface.' );
+}
+$blocked_query = null;
+foreach ( class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array() as $blocked_item ) {
+	if ( is_array( $blocked_item ) && 'jetengine/create-query' === ( isset( $blocked_item['ability'] ) ? (string) $blocked_item['ability'] : '' ) ) {
+		$blocked_query = $blocked_item;
+		break;
+	}
+}
+if ( ! is_array( $blocked_query ) || 'jetengine' !== ( isset( $blocked_query['provider'] ) ? (string) $blocked_query['provider'] : '' ) || 'provider_capability_not_write_eligible' !== ( isset( $blocked_query['reason'] ) ? (string) $blocked_query['reason'] : '' ) ) {
+	mad4b_isolation_fail( 'JetEngine native write was not fail-closed by its exact provider capability gate.', $blocked_query );
+}
+$mutation_guard = MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( 'jetengine', 'jetengine/create-query', true, $native_bridge );
+if ( ! is_wp_error( $mutation_guard ) || 'mad4b_provider_capability_mutation_not_certified' !== $mutation_guard->get_error_code() ) {
+	mad4b_isolation_fail( 'Direct JetEngine native mutation guard did not remain fail-closed after discovery.', $mutation_guard );
 }
 
 $website_row = null;
