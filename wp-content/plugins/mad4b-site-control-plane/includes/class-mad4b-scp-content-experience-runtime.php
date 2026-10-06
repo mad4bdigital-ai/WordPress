@@ -81,7 +81,218 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 					array( 'key' => $key )
 				);
 			}
-			$media_planning = MAD4B_SCP_Content_Experience_Media_Planning::guard( $operation, $post, $profile, $meta, $input );
+			$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+			if ( isset( $media_fields[ $key ] ) && is_array( $media_fields[ $key ] ) ) {
+				$value = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( $key, $value, $media_fields[ $key ] );
+				if ( is_wp_error( $value ) ) return $value;
+			}
+			if ( ! MAD4B_SCP_Content_Experience_Media::value_within_budget( $value ) ) {
+				return new WP_Error( 'mad4b_content_experience_meta_value_too_large', 'Meta value exceeds the bounded content-experience payload size.', array( 'key' => $key ) );
+			}
+			$result[ $key ] = $value;
+		}
+		$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+		$usage_guard = MAD4B_SCP_Content_Experience_Media::validate_usage_bindings( $media_fields, $result );
+		if ( is_wp_error( $usage_guard ) ) return $usage_guard;
+		ksort( $result, SORT_STRING );
+		return $result;
+	}
+
+	private static function allowed_taxonomies( array $profile ) {
+		$attached = array_keys( get_object_taxonomies( $profile['post_type'], 'objects' ) );
+		$configured = isset( $profile['taxonomies'] ) ? (array) $profile['taxonomies'] : array();
+		$mode = isset( $profile['taxonomy_mode'] ) ? (string) $profile['taxonomy_mode'] : 'allowlist';
+		return 'all_attached' === $mode ? $attached : array_values( array_intersect( $attached, $configured ) );
+	}
+
+	private static function normalize_taxonomy_payload( array $profile, $payload ) {
+		$payload = is_array( $payload ) ? $payload : array();
+		if ( count( $payload ) > MAD4B_SCP_Content_Experience_Profiles::MAX_TAXONOMIES ) {
+			return new WP_Error( 'mad4b_content_experience_taxonomy_limit', 'Taxonomy payload exceeds the profile limit.' );
+		}
+		$allowed = self::allowed_taxonomies( $profile );
+		$result = array();
+		foreach ( $payload as $taxonomy => $refs ) {
+			$taxonomy = sanitize_key( (string) $taxonomy );
+			if ( ! in_array( $taxonomy, $allowed, true ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_taxonomy_denied',
+					'Taxonomy is not enabled for this experience profile.',
+					array( 'taxonomy' => $taxonomy )
+				);
+			}
+			$tax = get_taxonomy( $taxonomy );
+			$assign = $tax && isset( $tax->cap->assign_terms ) ? (string) $tax->cap->assign_terms : 'edit_posts';
+			if ( ! $tax || ! current_user_can( $assign ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_taxonomy_capability_denied',
+					'Current user cannot assign one requested taxonomy.',
+					array( 'taxonomy' => $taxonomy )
+				);
+			}
+			$ids = array();
+			foreach ( (array) $refs as $ref ) {
+				$term = null;
+				if ( is_int( $ref ) || ( is_string( $ref ) && ctype_digit( $ref ) ) ) {
+					$term = get_term( absint( $ref ), $taxonomy );
+				} else {
+					$slug = sanitize_title( (string) $ref );
+					if ( '' !== $slug ) $term = get_term_by( 'slug', $slug, $taxonomy );
+				}
+				if ( ! $term || is_wp_error( $term ) ) {
+					return new WP_Error(
+						'mad4b_content_experience_term_missing',
+						'Taxonomy reference does not resolve to an existing term.',
+						array( 'taxonomy' => $taxonomy, 'reference' => $ref )
+					);
+				}
+				$ids[] = (int) $term->term_id;
+			}
+			$ids = array_values( array_unique( $ids ) );
+			sort( $ids, SORT_NUMERIC );
+			$result[ $taxonomy ] = $ids;
+		}
+		ksort( $result, SORT_STRING );
+		return $result;
+	}
+
+	private static function normalize_helper_payloads( array $profile, $operation, $payload ) {
+		$payload = is_array( $payload ) ? $payload : array();
+		if ( count( $payload ) > MAD4B_SCP_Content_Experience_Profiles::MAX_HELPERS ) {
+			return new WP_Error( 'mad4b_content_experience_helper_limit', 'Helper payload exceeds the profile limit.' );
+		}
+		$encoded = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( false === $encoded || strlen( $encoded ) > self::MAX_HELPER_BYTES ) {
+			return new WP_Error( 'mad4b_content_experience_helper_payload_too_large', 'Helper payload exceeds the bounded canonical size.' );
+		}
+		$catalog = MAD4B_SCP_Content_Experience_Profiles::helper_catalog();
+		$result = array();
+		foreach ( $payload as $helper_id => $helper_input ) {
+			$helper_id = strtolower( trim( (string) $helper_id ) );
+			if ( ! in_array( $helper_id, (array) $profile['enabled_helpers'], true ) || ! isset( $catalog[ $helper_id ] ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_helper_not_enabled',
+					'Helper is not enabled for this experience profile.',
+					array( 'helper_id' => $helper_id )
+				);
+			}
+			if ( ! in_array( $operation, (array) $catalog[ $helper_id ]['operations'], true ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_helper_operation_denied',
+					'Helper does not declare support for this operation.',
+					array( 'helper_id' => $helper_id, 'operation' => $operation )
+				);
+			}
+			$guard = self::helper_mutation_guard( $helper_id );
+			if ( is_wp_error( $guard ) || true !== $guard ) return is_wp_error( $guard ) ? $guard : new WP_Error( 'mad4b_content_experience_helper_not_certified', 'External helper is not certified for mutation.' );
+			$adapter = self::helper_adapter( $helper_id );
+			$planned = $adapter
+				? $adapter->plan_content_experience_helper( $helper_id, $helper_input, $profile, $operation )
+				: apply_filters(
+					'mad4b_scp_content_experience_plan_helper',
+					null,
+					$helper_id,
+					$helper_input,
+					$profile,
+					$operation
+				);
+			if ( ! is_array( $planned )
+				|| empty( $planned['ready'] )
+				|| empty( $planned['state_sha256'] )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', (string) $planned['state_sha256'] ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_helper_plan_unavailable',
+					'Enabled helper did not provide an exact reversible plan.',
+					array( 'helper_id' => $helper_id )
+				);
+			}
+			$planned['helper_id'] = $helper_id;
+			$result[ $helper_id ] = $planned;
+		}
+		ksort( $result, SORT_STRING );
+		return $result;
+	}
+
+	private static function post_state_hash( $post ) {
+		if ( ! $post ) return '';
+		return hash( 'sha256', wp_json_encode( array(
+			'ID' => (int) $post->ID,
+			'post_type' => (string) $post->post_type,
+			'post_status' => (string) $post->post_status,
+			'post_title' => (string) $post->post_title,
+			'post_content' => (string) $post->post_content,
+			'post_excerpt' => (string) $post->post_excerpt,
+			'post_name' => (string) $post->post_name,
+			'post_parent' => (int) $post->post_parent,
+			'menu_order' => (int) $post->menu_order,
+			'modified_gmt' => (string) $post->post_modified_gmt,
+		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+	}
+
+	public static function operation_plan( $slug, $operation, $input ) {
+		$input = is_array( $input ) ? $input : array();
+		unset( $input['plan_sha256'], $input['_mad4b_approval_ticket_id'], $input['_mad4b_context_receipt'] );
+		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+		if ( is_wp_error( $profile ) ) return $profile;
+		if ( empty( $profile['enabled'] ) ) return new WP_Error( 'mad4b_content_experience_profile_disabled', 'Experience profile is disabled.' );
+		if ( ! class_exists( 'MAD4B_SCP_Content_Experience_Governance' ) ) return new WP_Error( 'mad4b_content_experience_governance_unavailable', 'Content experience governance service is unavailable.' );
+		$profile_guard = MAD4B_SCP_Content_Experience_Governance::current_guard( $profile );
+		if ( is_wp_error( $profile_guard ) ) return $profile_guard;
+		$object = MAD4B_SCP_Content_Experience_Profiles::post_type_object( $profile['post_type'] );
+		if ( is_wp_error( $object ) ) return $object;
+		if ( ! in_array( $operation, array( 'create', 'update', 'publish' ), true ) ) {
+			return new WP_Error( 'mad4b_content_experience_operation_invalid', 'Unsupported experience operation.' );
+		}
+
+		$post = null;
+		$current_state_sha256 = '';
+		if ( 'create' !== $operation ) {
+			$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+			$post = $id ? get_post( $id ) : null;
+			if ( ! $post || (string) $post->post_type !== (string) $profile['post_type'] ) {
+				return new WP_Error( 'mad4b_content_experience_post_mismatch', 'Target post does not belong to the configured experience post type.' );
+			}
+			if ( ! current_user_can( 'edit_post', $id ) ) return new WP_Error( 'mad4b_content_experience_edit_denied', 'Current user cannot edit the target post.' );
+			$expected_modified = isset( $input['expected_modified_gmt'] ) ? (string) $input['expected_modified_gmt'] : '';
+			if ( '' === $expected_modified || ! hash_equals( (string) $post->post_modified_gmt, $expected_modified ) ) {
+				return new WP_Error(
+					'mad4b_content_experience_post_drift',
+					'Target post changed since it was read.',
+					array( 'current_modified_gmt' => $post->post_modified_gmt )
+				);
+			}
+			$current_state_sha256 = self::post_state_hash( $post );
+		}
+
+		if ( 'create' === $operation ) {
+			if ( ! current_user_can( MAD4B_SCP_Content_Experience_Profiles::post_type_create_cap( $object ) ) ) {
+				return new WP_Error( 'mad4b_content_experience_create_denied', 'Current user cannot create this post type.' );
+			}
+			if ( empty( $input['post_title'] ) || '' === trim( (string) $input['post_title'] ) ) {
+				return new WP_Error( 'mad4b_content_experience_title_required', 'Create requires a non-empty post_title.' );
+			}
+		}
+		if ( 'publish' === $operation
+			&& ! current_user_can( MAD4B_SCP_Content_Experience_Profiles::post_type_publish_cap( $object ) ) ) {
+			return new WP_Error( 'mad4b_content_experience_publish_denied', 'Current user cannot publish this post type.' );
+		}
+		if ( 'update' === $operation
+			&& $post
+			&& in_array( $post->post_status, array( 'publish', 'private' ), true )
+			&& 'draft_first' === $profile['live_update_mode']
+			&& array_intersect(
+				array( 'post_title', 'post_content', 'post_excerpt', 'post_name', 'meta', 'taxonomies', 'featured_media_id', 'helpers' ),
+				array_keys( $input )
+			) ) {
+			return new WP_Error(
+				'mad4b_content_experience_live_update_requires_draft',
+				'This experience profile requires live content to return to draft/pending before content-bearing changes.'
+			);
+		}
+
+		$meta = self::validate_meta_payload( $profile, isset( $input['meta'] ) ? $input['meta'] : array() );
+		if ( is_wp_error( $meta ) ) return $meta;
+		$media_planning = MAD4B_SCP_Content_Experience_Media_Planning::guard( $operation, $post, $profile, $meta, $input );
 		if ( is_wp_error( $media_planning ) ) return $media_planning;
 		$media_fields = $media_planning['media_fields'];
 		$effective_media_state = $media_planning['effective_media_state'];
