@@ -184,6 +184,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		$properties = array(
 			'source_url' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 8192 ),
 			'source_page_url' => array( 'type' => 'string', 'maxLength' => 8192, 'default' => '' ),
+			'source_page_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^(?:|[a-fA-F0-9]{64})$' ),
 			'rights_basis' => array( 'type' => 'string', 'enum' => array( 'unknown', 'owned', 'licensed', 'permission', 'public_domain', 'creative_commons' ), 'default' => 'unknown' ),
 			'rights_note' => array( 'type' => 'string', 'maxLength' => 2000, 'default' => '' ),
 			'rights_reference' => array( 'type' => 'string', 'maxLength' => 8192, 'default' => '' ),
@@ -328,10 +329,16 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( '' === $body || strlen( $body ) > self::MAX_REMOTE_PAGE_BYTES ) return new WP_Error( 'mad4b_remote_media_source_size', 'Remote source page is empty or exceeds the bounded discovery size.' );
 		$candidates = $this->extract_remote_image_candidates( $body, $page_url, $limit, $same_origin_only );
 		if ( is_wp_error( $candidates ) ) return $candidates;
+		$source_page_sha256 = hash( 'sha256', $body );
+		foreach ( $candidates as &$candidate ) {
+			$candidate['source_page_sha256'] = $source_page_sha256;
+			$candidate['candidate_sha256'] = hash( 'sha256', wp_json_encode( $candidate, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		}
+		unset( $candidate );
 		return array(
 			'contract' => 'mad4b.remote-media-discovery.v1',
 			'source_page_url' => $page_url,
-			'source_page_sha256' => hash( 'sha256', $body ),
+			'source_page_sha256' => $source_page_sha256,
 			'candidate_count' => count( $candidates ),
 			'candidates' => $candidates,
 			'import_plan_ability' => self::REMOTE_IMPORT_PLAN_ABILITY,
@@ -408,12 +415,21 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( empty( $plan['ready'] ) ) return new WP_Error( 'mad4b_remote_media_import_blocked', 'Remote media import is blocked until its plan blockers are resolved.', array( 'blockers' => $plan['blockers'] ) );
 
 		$normalized = $plan['normalized_input'];
-		$lock_name = class_exists( 'MAD4B_SCP_Distributed_Lock' )
-			? MAD4B_SCP_Distributed_Lock::catalog_name( 'remote-media-' . $normalized['source_url_sha256'] )
-			: '';
-		if ( '' !== $lock_name ) {
+		$lock_names = array();
+		if ( class_exists( 'MAD4B_SCP_Distributed_Lock' ) ) {
+			$lock_names[] = MAD4B_SCP_Distributed_Lock::catalog_name( 'remote-media-source-' . $normalized['source_url_sha256'] );
+			if ( '' !== $normalized['expected_content_sha256'] ) $lock_names[] = MAD4B_SCP_Distributed_Lock::catalog_name( 'remote-media-content-' . $normalized['expected_content_sha256'] );
+			$lock_names = array_values( array_unique( array_filter( $lock_names ) ) );
+			sort( $lock_names, SORT_STRING );
+		}
+		$held_locks = array();
+		foreach ( $lock_names as $lock_name ) {
 			$locked = MAD4B_SCP_Distributed_Lock::acquire( $lock_name );
-			if ( is_wp_error( $locked ) ) return new WP_Error( 'mad4b_remote_media_import_in_progress', 'This remote media identity is already being imported.', array( 'cause' => $locked->get_error_code() ) );
+			if ( is_wp_error( $locked ) ) {
+				foreach ( array_reverse( $held_locks ) as $held_lock ) MAD4B_SCP_Distributed_Lock::release( $held_lock );
+				return new WP_Error( 'mad4b_remote_media_import_in_progress', 'This remote media source or exact content identity is already being imported.', array( 'cause' => $locked->get_error_code() ) );
+			}
+			$held_locks[] = $lock_name;
 		}
 		try {
 			$source_state = $this->remote_state_for_source_hash( $normalized['source_url_sha256'] );
@@ -501,7 +517,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'plan_sha256' => $plan['plan_sha256'],
 			);
 		} finally {
-			if ( '' !== $lock_name ) MAD4B_SCP_Distributed_Lock::release( $lock_name );
+			foreach ( array_reverse( $held_locks ) as $held_lock ) MAD4B_SCP_Distributed_Lock::release( $held_lock );
 		}
 	}
 
@@ -824,6 +840,8 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			$source_page_url = $this->normalize_https_url( $input['source_page_url'] );
 			if ( is_wp_error( $source_page_url ) ) return $source_page_url;
 		}
+		$source_page_sha256 = isset( $input['source_page_sha256'] ) ? strtolower( trim( (string) $input['source_page_sha256'] ) ) : '';
+		if ( '' !== $source_page_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $source_page_sha256 ) ) return new WP_Error( 'mad4b_remote_media_source_page_hash_invalid', 'Source page SHA-256 is invalid.' );
 		$rights_reference = '';
 		if ( isset( $input['rights_reference'] ) && '' !== trim( (string) $input['rights_reference'] ) ) {
 			$rights_reference = $this->normalize_https_url( $input['rights_reference'] );
@@ -854,6 +872,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'source_url' => $source_url,
 			'source_url_sha256' => hash( 'sha256', $source_url ),
 			'source_page_url' => $source_page_url,
+			'source_page_sha256' => $source_page_sha256,
 			'rights_basis' => $rights_basis,
 			'rights_note' => sanitize_textarea_field( isset( $input['rights_note'] ) ? (string) $input['rights_note'] : '' ),
 			'rights_reference' => $rights_reference,
@@ -921,19 +940,22 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	private function best_srcset_url( $srcset ) {
-		$best = ''; $best_score = -1.0;
-		foreach ( explode( ',', (string) $srcset ) as $candidate ) {
-			$candidate = trim( $candidate );
-			if ( '' === $candidate ) continue;
-			$parts = preg_split( '/\s+/', $candidate );
-			$url = isset( $parts[0] ) ? trim( (string) $parts[0] ) : '';
-			$descriptor = isset( $parts[1] ) ? trim( (string) $parts[1] ) : '';
-			$score = 1.0;
-			if ( preg_match( '/^(\d+(?:\.\d+)?)w$/', $descriptor, $match ) ) $score = (float) $match[1];
-			elseif ( preg_match( '/^(\d+(?:\.\d+)?)x$/', $descriptor, $match ) ) $score = (float) $match[1] * 10000;
-			if ( '' !== $url && $score > $best_score ) { $best = $url; $best_score = $score; }
+		$srcset = trim( (string) $srcset );
+		if ( '' === $srcset ) return '';
+		$best = ''; $best_score = -1.0; $matches = array();
+		// Candidate separators commonly contain optional whitespace, while CDN
+		// transformation URLs such as Cloudinary legitimately contain commas.
+		// Anchor on the required width/density descriptor instead of explode(',').
+		if ( preg_match_all( '/(?:^|,\s*)(\S+)\s+(\d+(?:\.\d+)?)([wx])(?=\s*(?:,|$))/', $srcset, $matches, PREG_SET_ORDER ) ) {
+			foreach ( $matches as $match ) {
+				$score = 'x' === $match[3] ? (float) $match[2] * 100000.0 : (float) $match[2];
+				if ( $score > $best_score ) { $best = (string) $match[1]; $best_score = $score; }
+			}
+			if ( '' !== $best ) return $best;
 		}
-		return $best;
+		// A descriptor-less single candidate is valid; multiple ambiguous
+		// descriptor-less values are intentionally not guessed.
+		return false === strpos( $srcset, ',' ) ? preg_split( '/\s+/', $srcset )[0] : '';
 	}
 
 	private function extract_remote_image_candidates( $html, $page_url, $limit, $same_origin_only ) {
@@ -968,6 +990,19 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			$key = strtolower( trim( (string) ( $node->getAttribute( 'property' ) ?: $node->getAttribute( 'name' ) ) ) );
 			if ( in_array( $key, array( 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src' ), true ) ) $append( $node->getAttribute( 'content' ), str_replace( ':', '_', $key ) );
 		}
+		foreach ( $xpath->query( '//link[@href]' ) as $node ) {
+			$rel = strtolower( trim( (string) $node->getAttribute( 'rel' ) ) );
+			if ( in_array( $rel, array( 'image_src', 'preload' ), true ) && ( 'image_src' === $rel || 'image' === strtolower( trim( (string) $node->getAttribute( 'as' ) ) ) ) ) $append( $node->getAttribute( 'href' ), 'link_' . $rel );
+		}
+		foreach ( $xpath->query( '//script[@type="application/ld+json"]' ) as $node ) {
+			$raw = trim( (string) $node->textContent );
+			if ( '' === $raw || strlen( $raw ) > 524288 ) continue;
+			$decoded = json_decode( $raw, true );
+			if ( ! is_array( $decoded ) ) continue;
+			$json_urls = array(); $json_nodes = 0;
+			$this->collect_jsonld_image_urls( $decoded, $json_urls, 0, $json_nodes );
+			foreach ( array_slice( array_values( array_unique( $json_urls ) ), 0, self::MAX_REMOTE_CANDIDATES ) as $json_url ) $append( $json_url, 'jsonld_image' );
+		}
 		foreach ( $xpath->query( '//img' ) as $node ) {
 			$alt = $node->getAttribute( 'alt' ); $title = $node->getAttribute( 'title' );
 			$width = absint( $node->getAttribute( 'width' ) ); $height = absint( $node->getAttribute( 'height' ) );
@@ -976,6 +1011,29 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		foreach ( $xpath->query( '//source[@srcset]' ) as $node ) $append( $this->best_srcset_url( $node->getAttribute( 'srcset' ) ), 'source_srcset' );
 		return $out;
+	}
+
+	private function collect_jsonld_image_urls( $value, array &$urls, $depth, &$nodes ) {
+		if ( $depth > 8 || $nodes > 2000 || count( $urls ) >= self::MAX_REMOTE_CANDIDATES * 4 ) return;
+		++$nodes;
+		if ( is_string( $value ) ) return;
+		if ( ! is_array( $value ) ) return;
+		foreach ( $value as $key => $child ) {
+			$key_lower = is_string( $key ) ? strtolower( $key ) : '';
+			if ( in_array( $key_lower, array( 'image', 'thumbnailurl', 'contenturl' ), true ) ) {
+				if ( is_string( $child ) ) $urls[] = $child;
+				elseif ( is_array( $child ) ) {
+					foreach ( $child as $nested ) {
+						if ( is_string( $nested ) ) $urls[] = $nested;
+						elseif ( is_array( $nested ) ) {
+							foreach ( array( 'url', 'contentUrl', 'thumbnailUrl' ) as $url_key ) if ( isset( $nested[ $url_key ] ) && is_string( $nested[ $url_key ] ) ) $urls[] = $nested[ $url_key ];
+						}
+					}
+				}
+			}
+			if ( is_array( $child ) ) $this->collect_jsonld_image_urls( $child, $urls, $depth + 1, $nodes );
+			if ( $nodes > 2000 || count( $urls ) >= self::MAX_REMOTE_CANDIDATES * 4 ) break;
+		}
 	}
 
 	private function remote_state_for_source_hash( $source_hash ) {
@@ -1026,14 +1084,15 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		$attachment_id = absint( $attachment_id );
 		if ( $attachment_id < 1 || 'attachment' !== get_post_type( $attachment_id ) ) return new WP_Error( 'mad4b_remote_media_provenance_target_invalid', 'Remote media provenance target is not an attachment.' );
 		$source_hashes = array_values( array_filter( array_map( 'strval', (array) get_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, false ) ) ) );
-		if ( ! in_array( $normalized['source_url_sha256'], $source_hashes, true ) ) add_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, $normalized['source_url_sha256'], false );
 		$history = array_values( array_filter( (array) get_post_meta( $attachment_id, self::REMOTE_PROVENANCE_META, false ), 'is_array' ) );
+		if ( count( $history ) >= self::MAX_REMOTE_PROVENANCE_EVENTS ) return new WP_Error( 'mad4b_remote_media_provenance_history_full', 'Remote media provenance history reached its bounded event limit.' );
+
 		$event = array(
 			'contract' => self::REMOTE_PROVENANCE_CONTRACT,
 			'source_url' => $normalized['source_url'],
 			'source_url_sha256' => $normalized['source_url_sha256'],
 			'source_page_url' => $normalized['source_page_url'],
-			'source_page_url_sha256' => '' !== $normalized['source_page_url'] ? hash( 'sha256', $normalized['source_page_url'] ) : '',
+			'source_page_sha256' => $normalized['source_page_sha256'],
 			'rights_basis' => $normalized['rights_basis'],
 			'rights_note' => $normalized['rights_note'],
 			'rights_reference' => $normalized['rights_reference'],
@@ -1044,13 +1103,23 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'plan_sha256' => (string) $plan_sha256,
 			'state' => sanitize_key( (string) $state ),
 		);
-		if ( count( $history ) >= self::MAX_REMOTE_PROVENANCE_EVENTS ) {
-			return new WP_Error( 'mad4b_remote_media_provenance_history_full', 'Remote media provenance history reached its bounded event limit.' );
+
+		$source_added = false;
+		if ( ! in_array( $normalized['source_url_sha256'], $source_hashes, true ) ) {
+			$source_added = false !== add_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, $normalized['source_url_sha256'], false );
+			if ( ! $source_added ) return new WP_Error( 'mad4b_remote_media_source_alias_failed', 'Remote media source identity could not be persisted.' );
 		}
-		add_post_meta( $attachment_id, self::REMOTE_PROVENANCE_META, $event, false );
+		$event_added = false !== add_post_meta( $attachment_id, self::REMOTE_PROVENANCE_META, $event, false );
+		if ( ! $event_added ) {
+			if ( $source_added ) delete_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, $normalized['source_url_sha256'] );
+			return new WP_Error( 'mad4b_remote_media_provenance_failed', 'Remote media provenance event could not be persisted.' );
+		}
+
 		$source_hashes_after = array_values( array_filter( array_map( 'strval', (array) get_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, false ) ) ) );
 		$history_after = array_values( array_filter( (array) get_post_meta( $attachment_id, self::REMOTE_PROVENANCE_META, false ), 'is_array' ) );
 		if ( ! in_array( $normalized['source_url_sha256'], $source_hashes_after, true ) || count( $history_after ) !== count( $history ) + 1 ) {
+			delete_post_meta( $attachment_id, self::REMOTE_PROVENANCE_META, $event );
+			if ( $source_added ) delete_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, $normalized['source_url_sha256'] );
 			return new WP_Error( 'mad4b_remote_media_provenance_failed', 'Remote media provenance failed exact readback.' );
 		}
 		return $event;
