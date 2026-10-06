@@ -54,7 +54,9 @@ assert summary["capability_count"] == len(s["capabilities"])
 assert all("runtime_parity_claimed" in r and "mad4b_foundation_paths" in r and "evidence_sources" in r for r in summary["capabilities"])
 
 rendered = m.render_php_summary(summary)
-assert rendered.startswith("<?php\nif ( ! defined( 'ABSPATH' ) ) { exit; }")
+assert rendered.startswith("<?php\nif ( ! defined( 'ABSPATH' ) ) {\n")
+assert "http_response_code( 404 )" in rendered
+assert "Direct web execution returns HTTP 404 with no evidence." in rendered
 assert "competitive-evidence-summary.json" not in rendered
 assert "MAD4B_JSON" in rendered
 
