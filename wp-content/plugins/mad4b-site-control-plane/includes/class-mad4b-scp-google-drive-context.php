@@ -61,6 +61,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const GMAIL_SHARING_SCOPE = 'https://www.googleapis.com/auth/gmail.settings.sharing';
 	const CALENDAR_READ_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 	const CALENDAR_FULL_SCOPE = 'https://www.googleapis.com/auth/calendar';
+	const IDENTITY_OPENID_SCOPE = 'openid';
+	const IDENTITY_EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email';
+	const IDENTITY_PROFILE_SCOPE = 'https://www.googleapis.com/auth/userinfo.profile';
 
 	const MAX_SCAN_FILES = 500;
 	const MAX_SCAN_FOLDERS = 120;
@@ -308,7 +311,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$local_missing_scopes = self::uncovered_scopes( $scopes, $granted_scopes );
 		$broker_missing_scopes = self::uncovered_scopes( $broker_requested_scopes, $granted_scopes );
 		$missing_scopes = array_values( array_unique( array_merge( $local_missing_scopes, $broker_missing_scopes ) ) );
-		$extra_granted_scopes = self::uncovered_scopes( $granted_scopes, $governed_requested_scopes );
+		$supplemental_identity_scopes = self::provider_identity_scopes_from( $granted_scopes );
+		$extra_granted_scopes = self::uncovered_scopes( self::capability_scope_items( $granted_scopes ), $governed_requested_scopes );
 		return array(
 			'contract' => self::WORKSPACE_GRANTS_CONTRACT,
 			'configured' => $configured,
@@ -326,6 +330,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'managed_profile_missing_scope_count' => count( $broker_missing_scopes ),
 			'managed_profile_reconsent_required' => ! empty( $granted_scopes ) && ! empty( $broker_missing_scopes ),
 			'extra_granted_scope_count' => count( $extra_granted_scopes ),
+			'supplemental_identity_scope_count' => count( $supplemental_identity_scopes ),
+			'supplemental_identity_scopes' => self::scope_diagnostic_labels( $supplemental_identity_scopes ),
 			'incremental_consent_required' => ! empty( $granted_scopes ) && ! empty( $missing_scopes ),
 			'scope_reduction_requires_revoke' => ! empty( $granted_scopes ) && ! empty( $extra_granted_scopes ),
 			'catalog' => $catalog,
@@ -3039,7 +3045,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			if ( self::AUTH_MODE_MANAGED === $auth_mode && ! empty( $broker_allowed ) ) {
 				if ( ! empty( self::uncovered_scopes( $requested_items, $broker_requested ) ) ) return new WP_Error( 'mad4b_google_managed_scope_projection_invalid', 'Managed Google broker scope projection no longer covers the locally reviewed scope baseline.' );
 				foreach ( $granted_items as $granted_item ) {
-					if ( ! in_array( $granted_item, $broker_allowed, true ) ) return new WP_Error( 'mad4b_google_managed_granted_scope_unproven', 'Google returned a scope that is not proven by the Managed broker scope projection.' );
+					if ( ! in_array( $granted_item, $broker_allowed, true ) && ! in_array( $granted_item, self::provider_identity_scope_items(), true ) ) return new WP_Error( 'mad4b_google_managed_granted_scope_unproven', 'Google returned a capability scope that is not proven by the Managed broker scope projection.' );
 				}
 			} elseif ( ! self::workspace_scope_is_allowed( $scope ) ) {
 				return self::scope_rejection_error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog. Review the Google app access and reconnect with the saved Workspace grants.', $requested_items, $granted_items, self::allowed_scope_items(), $auth_mode );
@@ -3063,7 +3069,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$record['scope'] = implode( ' ', $granted_items );
 		$record['requested_scope'] = '' !== $expected_scope ? implode( ' ', $requested_items ) : $record['scope'];
 		$record['missing_requested_scopes'] = '' !== $expected_scope ? self::uncovered_scopes( $requested_items, $granted_items ) : array();
-		$record['previously_granted_scopes'] = '' !== $expected_scope ? array_values( array_diff( $granted_items, $requested_items ) ) : array();
+		$record['supplemental_identity_scopes'] = self::provider_identity_scopes_from( $granted_items );
+		$record['previously_granted_scopes'] = '' !== $expected_scope ? array_values( array_diff( self::capability_scope_items( $granted_items ), $requested_items ) ) : array();
 		$record['complete_scope_grant'] = empty( $record['missing_requested_scopes'] );
 		if ( self::AUTH_MODE_MANAGED === $auth_mode && ! empty( $broker_allowed ) ) {
 			$record['broker_scope_profile'] = $broker_profile;
@@ -3092,14 +3099,16 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$labels = array();
 		foreach ( array_slice( $scopes, 0, 16 ) as $scope ) {
 			$scope = (string) $scope;
-			$labels[] = strlen( $scope ) <= 180 && ( preg_match( '#^https://www\.googleapis\.com/auth/[a-zA-Z0-9_.-]+$#D', $scope ) || in_array( $scope, array( 'openid', 'email', 'profile' ), true ) )
-				? $scope : 'unknown_scope_sha256:' . hash( 'sha256', $scope );
+			$known_google_scope = preg_match( '#^https://www\.googleapis\.com/auth/[a-zA-Z0-9_.-]+$#D', $scope ) || self::GMAIL_FULL_SCOPE === $scope;
+			$known_identity_scope = in_array( $scope, self::provider_identity_scope_items(), true );
+			$labels[] = strlen( $scope ) <= 180 && ( $known_google_scope || $known_identity_scope ) ? $scope : 'unknown_scope_sha256:' . hash( 'sha256', $scope );
 		}
 		return $labels;
 	}
 
 	private static function scope_rejection_error( $code, $message, array $requested, array $granted, array $allowed, $auth_mode ) {
-		$unexpected = array_values( array_diff( $granted, $allowed ) );
+		$identity = self::provider_identity_scopes_from( $granted );
+		$unexpected = array_values( array_diff( $granted, array_values( array_unique( array_merge( $allowed, self::provider_identity_scope_items() ) ) ) ) );
 		return new WP_Error( $code, $message, array(
 			'contract' => self::SCOPE_DIAGNOSTIC_CONTRACT,
 			'operation_state' => 'EXTERNAL_ACTION_REQUIRED',
@@ -3108,6 +3117,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'requested_scope_count' => count( $requested ),
 			'granted_scope_count' => count( $granted ),
 			'unsupported_scope_count' => count( $unexpected ),
+			'supplemental_identity_scope_count' => count( $identity ),
+			'supplemental_identity_scopes' => self::scope_diagnostic_labels( $identity ),
 			'requested_scopes' => self::scope_diagnostic_labels( $requested ),
 			'unsupported_scopes' => self::scope_diagnostic_labels( $unexpected ),
 			'labels_truncated' => count( $requested ) > 16 || count( $unexpected ) > 16,
@@ -3213,10 +3224,28 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return array_values( array_unique( $allowed ) );
 	}
 
+	private static function provider_identity_scope_items() {
+		return array(
+			self::IDENTITY_OPENID_SCOPE,
+			self::IDENTITY_EMAIL_SCOPE,
+			self::IDENTITY_PROFILE_SCOPE,
+			'email',
+			'profile',
+		);
+	}
+
+	private static function provider_identity_scopes_from( array $items ) {
+		return array_values( array_unique( array_intersect( $items, self::provider_identity_scope_items() ) ) );
+	}
+
+	private static function capability_scope_items( array $items ) {
+		return array_values( array_unique( array_diff( $items, self::provider_identity_scope_items() ) ) );
+	}
+
 	private static function workspace_scope_is_allowed( $scope ) {
 		$items = self::scope_items( $scope );
 		if ( empty( $items ) ) return false;
-		$allowed = self::allowed_scope_items();
+		$allowed = array_values( array_unique( array_merge( self::allowed_scope_items(), self::provider_identity_scope_items() ) ) );
 		foreach ( $items as $item ) if ( ! in_array( (string) $item, $allowed, true ) ) return false;
 		return true;
 	}
