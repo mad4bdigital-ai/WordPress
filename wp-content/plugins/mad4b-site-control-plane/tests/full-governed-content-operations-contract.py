@@ -303,7 +303,7 @@ assert "database-raw-query" not in remote_media_rights_src
 assert "BREAKGLASS" not in remote_media_rights_src.upper()
 assert len(remote_media_rights_src.splitlines()) <= 180, "remote-media-rights exceeds the focused 180-line domain-service budget"
 assert "class-mad4b-scp-remote-media-rights.php" in plugin_src
-assert "MAD4B_SCP_Remote_Media_Rights::publish_guard(" in experience_runtime_src
+assert "MAD4B_SCP_Remote_Media_Rights::publish_guard(" in experience_media_planning_src
 assert len(media_src.splitlines()) <= 550, "media adapter exceeds the focused 550-line adapter budget"
 for token in (
     "media/remote-source-discover",
