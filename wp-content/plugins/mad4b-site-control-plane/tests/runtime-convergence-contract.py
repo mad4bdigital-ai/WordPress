@@ -170,4 +170,27 @@ assert "$_SERVER['REQUEST_URI']" in runtime
 
 assert "rest_get_url_prefix()" in runtime
 
+
+reconciliation_registry = (PLUGIN / "includes/class-mad4b-scp-runtime-reconciliation-scenarios.php").read_text(encoding="utf-8")
+assert "mad4b.runtime-reconciliation-scenarios.v1" in reconciliation_registry
+assert "mad4b_scp_runtime_reconciliation_scenarios" in reconciliation_registry
+assert "same_version_package_replacement" in reconciliation_registry
+assert "forward_package_replacement" in reconciliation_registry
+assert "rollback_or_reinstall" in reconciliation_registry
+assert "candidate_binding_identity_drift" in reconciliation_registry
+assert "'authority_mutation_allowed' => false" in reconciliation_registry
+assert "'grant_mutation_allowed' => false" in reconciliation_registry
+assert "'production_mutation_allowed' => false" in reconciliation_registry
+assert "descriptor_can_override_safety" in reconciliation_registry
+assert "class-mad4b-scp-runtime-reconciliation-scenarios.php" in main
+assert main.index("class-mad4b-scp-runtime-reconciliation-scenarios.php") < main.index("class-mad4b-scp-runtime-convergence.php")
+assert "upgrader_process_complete" in runtime
+assert "observe_upgrader_process_complete" in runtime
+assert "candidate_binding_probe_allowed" in runtime
+assert "candidate_binding_drift" in runtime
+assert "reconciliation_scenario" in runtime
+assert "auto_evaluate_zero_delta" in runtime
+assert "reconciliation_review_required" in runtime
+assert "runtime-reconciliation-scenarios-runtime.php" in [p.name for p in (PLUGIN / "tests").iterdir()]
+
 print("runtime convergence contract: PASS")
