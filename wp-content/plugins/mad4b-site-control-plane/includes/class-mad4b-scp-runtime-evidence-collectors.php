@@ -121,7 +121,7 @@ final class MAD4B_SCP_Runtime_Evidence_Collectors {
 		}
 	}
 
-	private static function ability_names() {
+	public static function ability_names() {
 		$names=array();
 		if(function_exists('wp_get_abilities')){
 			$registered=wp_get_abilities();
