@@ -157,7 +157,7 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'continuation_owner_gate' => 'owner_gate' === $continuation_state,
 			'continuation_executing' => 'executing' === $continuation_state,
 			'skills_pending' => ! empty( $context['skills_pending'] ),
-			'maintenance_busy' => ! empty( $maintenance['active'] ),
+			'maintenance_busy' => ! empty( $maintenance['active'] ) && 'adaptive_runtime_observation' !== sanitize_key( isset( $maintenance['owner'] ) ? (string) $maintenance['owner'] : '' ),
 			'reconcile_needed' => $candidate_drift || $version_drift || $schema_drift || $build_changed || $continuation_pending,
 			'source_wordpress_upgrader' => 'wordpress_upgrader' === $source,
 			'source_build_stamp_drift' => 'build_stamp_drift' === $source,
