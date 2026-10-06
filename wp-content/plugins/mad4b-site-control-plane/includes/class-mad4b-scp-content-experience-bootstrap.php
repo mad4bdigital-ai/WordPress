@@ -109,7 +109,33 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 		$media_field_candidates = self::media_field_candidates( $post_type, true );
 		$requested_media_fields = isset( $input['media_meta_fields'] ) ? $input['media_meta_fields'] : array();
 		if ( ! is_array( $requested_media_fields ) ) return new WP_Error( 'mad4b_content_experience_bootstrap_media_fields_invalid', 'media_meta_fields must be an object keyed by post meta key.' );
+		$media_resolution_strategy = isset( $input['media_resolution_strategy'] ) ? sanitize_key( (string) $input['media_resolution_strategy'] ) : 'manual';
+		if ( ! in_array( $media_resolution_strategy, array( 'manual', 'provider_declared_compatible' ), true ) ) return new WP_Error( 'mad4b_content_experience_bootstrap_media_resolution_invalid', 'media_resolution_strategy must be manual or provider_declared_compatible.' );
 		$allow_protected_media_meta = ! empty( $input['allow_protected_media_meta'] );
+		$auto_resolved_media_fields = array();
+		if ( 'provider_declared_compatible' === $media_resolution_strategy ) {
+			foreach ( $media_field_candidates as $candidate_index => $candidate ) {
+				if ( count( $requested_media_fields ) >= MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_META_FIELDS ) break;
+				if ( ! is_array( $candidate ) || empty( $candidate['key'] ) || ! is_string( $candidate['key'] ) || ! empty( $candidate['protected'] ) || isset( $requested_media_fields[ $candidate['key'] ] ) ) continue;
+				$source = isset( $candidate['source'] ) ? (string) $candidate['source'] : '';
+				$evidence = isset( $candidate['evidence'] ) && is_array( $candidate['evidence'] ) ? $candidate['evidence'] : array();
+				$spec = isset( $candidate['suggested_spec'] ) && is_array( $candidate['suggested_spec'] ) ? $candidate['suggested_spec'] : array();
+				if ( 0 !== strpos( $source, 'provider_' ) || empty( $evidence['provider_declared'] ) || empty( $spec['kind'] ) || empty( $spec['storage'] ) ) continue;
+				$storage_guard = MAD4B_SCP_Content_Experience_Media_Storage::validate_storage( $spec['kind'], $spec['storage'] );
+				if ( is_wp_error( $storage_guard ) ) continue;
+				$compatible = true;
+				foreach ( isset( $candidate['alternative_specs'] ) && is_array( $candidate['alternative_specs'] ) ? $candidate['alternative_specs'] : array() as $alternative ) {
+					$alt = isset( $alternative['spec'] ) && is_array( $alternative['spec'] ) ? $alternative['spec'] : array();
+					if ( empty( $alt ) || (string) ( $alt['kind'] ?? '' ) !== (string) $spec['kind'] || is_wp_error( MAD4B_SCP_Content_Experience_Media_Storage::validate_storage( $alt['kind'], $alt['storage'] ?? '' ) ) ) { $compatible = false; break; }
+				}
+				if ( ! $compatible ) continue;
+				$requested_media_fields[ $candidate['key'] ] = $spec;
+				$auto_resolved_media_fields[ $candidate['key'] ] = array( 'source' => $source, 'selected_spec' => $spec, 'reason' => 'provider_declared_compatible' );
+				$media_field_candidates[ $candidate_index ]['auto_enabled'] = true;
+				$media_field_candidates[ $candidate_index ]['requires_review'] = false;
+				$media_field_candidates[ $candidate_index ]['resolution_state'] = 'provider_declared_compatible';
+			}
+		}
 		$meta_keys = array(); $protected_meta_keys = array();
 		foreach ( array_keys( $requested_media_fields ) as $media_key ) {
 			$media_key = (string) $media_key;
@@ -173,11 +199,14 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 			'supports_featured_media' => $supports_featured_media,
 			'media_field_candidates' => $media_field_candidates,
 			'requested_media_meta_fields' => array_keys( $requested_media_fields ),
+			'media_resolution_strategy' => $media_resolution_strategy,
+			'auto_resolved_media_fields' => $auto_resolved_media_fields,
 			'helper_candidates' => $helper_candidates,
 			'warnings' => $warnings,
 			'safe_defaults' => array(
 				'new_content_is_nonpublic' => true,
 				'meta_allowlist_starts_empty_unless_explicit_media_mapping_is_supplied' => true,
+				'provider_media_conflicts_require_explicit_resolution_strategy' => true,
 				'external_helpers_start_disabled' => true,
 				'taxonomies_are_explicit_allowlist' => true,
 			),

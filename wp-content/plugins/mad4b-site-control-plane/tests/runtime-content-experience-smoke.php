@@ -155,6 +155,8 @@ try {
 	$check( ! empty( $inferred_url['supported'] ) && 'url' === $inferred_url['spec']['storage'], 'Adaptive media schema inference did not recognize a local Media Library URL.' );
 	$inferred_both = MAD4B_SCP_Content_Experience_Media_Storage::infer_spec( $gallery_both_projection );
 	$check( ! empty( $inferred_both['supported'] ) && 'id_url_items' === $inferred_both['spec']['storage'], 'Adaptive media schema inference did not recognize ID+URL gallery storage.' );
+	$legacy_csv_urls = wp_get_attachment_url( $image_one ) . ',' . wp_get_attachment_url( $image_two );
+	$check( array( $image_one, $image_two ) === MAD4B_SCP_Content_Experience_Media_Storage::reference_ids( $legacy_csv_urls, array( 'kind' => 'image_gallery', 'storage' => 'urls' ) ), 'Canonical provider URL gallery storage did not accept legacy CSV URL readback.' );
 
 	// Least-privilege defaults are explicit and empty means empty, never "everything".
 	$default_plan = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array(
@@ -205,6 +207,29 @@ try {
 	$candidate_keys = array_values( array_map( static function ( $row ) { return isset( $row['key'] ) ? (string) $row['key'] : ''; }, $bootstrap_media['media_field_candidates'] ) );
 	$check( in_array( 'ci_registered_gallery', $candidate_keys, true ), 'Registered media-like meta was not discovered.' );
 	$check( in_array( 'ci_sample_gallery', $candidate_keys, true ), 'Existing-content media meta inference did not discover an unregistered image gallery.' );
+
+	$provider_media_candidates = static function ( $rows, $post_type ) {
+		if ( 'mad4b_ci_trip' !== $post_type ) return $rows;
+		$rows[] = array(
+			'key' => 'ci_registered_gallery', 'source' => 'provider_ci',
+			'schema_type' => 'array', 'protected' => false,
+			'suggested_spec' => array( 'kind' => 'image_gallery', 'storage' => 'urls', 'max_items' => 20 ),
+			'evidence' => array( 'provider_declared' => true, 'provider_api' => 'ci.fixture', 'mapping_state' => 'provider_declared' ),
+		);
+		return $rows;
+	};
+	add_filter( 'mad4b_scp_content_experience_media_field_candidates', $provider_media_candidates, 10, 2 );
+	$bootstrap_provider_media = MAD4B_SCP_Content_Experience_Profiles::bootstrap_plan( array(
+		'post_type' => 'mad4b_ci_trip', 'profile_slug' => 'ci-bootstrap-provider-media',
+		'media_resolution_strategy' => 'provider_declared_compatible',
+	) );
+	remove_filter( 'mad4b_scp_content_experience_media_field_candidates', $provider_media_candidates, 10 );
+	$check( ! is_wp_error( $bootstrap_provider_media ), 'Provider-declared compatible media resolution failed.' );
+	$check( 'urls' === $bootstrap_provider_media['profile_plan']['profile']['media_meta_fields']['ci_registered_gallery']['storage'], 'Provider-declared media storage did not become the canonical write shape.' );
+	$check( ! empty( $bootstrap_provider_media['auto_resolved_media_fields']['ci_registered_gallery'] ), 'Provider-declared compatible media field was not surfaced as auto-resolved evidence.' );
+	$provider_candidate = null;
+	foreach ( $bootstrap_provider_media['media_field_candidates'] as $candidate ) if ( 'ci_registered_gallery' === ( $candidate['key'] ?? '' ) ) { $provider_candidate = $candidate; break; }
+	$check( is_array( $provider_candidate ) && ! empty( $provider_candidate['auto_enabled'] ) && empty( $provider_candidate['requires_review'] ), 'Compatible provider media conflict remained manually blocked after explicit resolution strategy.' );
 
 	$remote_plan_unknown = $remote_media_adapter->remote_import_plan( array( 'source_url' => 'https://images.example.invalid/tour.jpg' ) );
 	$check( ! is_wp_error( $remote_plan_unknown ) && empty( $remote_plan_unknown['ready'] ) && in_array( 'rights_confirmation_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not fail closed on unknown rights.' );
