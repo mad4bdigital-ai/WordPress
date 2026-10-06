@@ -52,6 +52,8 @@ No external fonts, runtime libraries or design-skill code are shipped.
   setup links and feedback bound to the current revision, operation and session;
   forged flags and stale receipts cannot manufacture successful feedback.
   Hermetic render coverage also verifies blank secrets and no outbound request.
+- `tests/adaptive-search-profile-admin-runtime.php`: typed profile navigation
+  retains the actual registered API setup handoff after a profile is configured.
 - `tests/admin-pages-wordpress.php`: existing real disposable WordPress full-page
   matrix plus exact workspace coverage and forged provider-success denial.
 - Exact-head feature-owned CI executes these suites and publishes visual fixtures
