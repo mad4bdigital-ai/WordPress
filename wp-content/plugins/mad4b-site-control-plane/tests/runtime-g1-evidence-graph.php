@@ -32,6 +32,18 @@ function get_option($name,$default=array()){
 }
 function apply_filters($name,$value){
  if('mad4b_scp_runtime_policy_conformance'===$name) return $GLOBALS['g1_conformance_receipt'];
+ if('mad4b_scp_runtime_policy_conformance_verifiers'===$name) return array(
+   'fixture-conformance'=>array(
+     'verifier_id'=>'fixture-conformance',
+     'issuer_contract'=>'mad4b.provider-compatibility-certification.v1',
+     'issuer_id'=>'fixture-control-plane',
+     'signature_scheme'=>'fixture-signature-v1',
+     'verify_callback'=>array('G1ConformanceVerifier','verify'),
+     'trusted'=>true,
+     'read_only_verifier'=>true,
+     'authorizing'=>false,
+   ),
+ );
  return $value;
 }
 function get_plugins(){ return array('unknown/unknown.php'=>array('Name'=>'Unknown Plugin','Version'=>'1.2.3','PluginURI'=>'https://example.invalid','Author'=>'Vendor','License'=>'GPLv2')); }
@@ -138,6 +150,19 @@ class MAD4B_SCP_Dependency_Impact_Graph {
      'plugin'=>isset($input['plugin'])?(string)$input['plugin']:'',
      'impact_reasons'=>array('fixture_dependency_revalidation'),
      'mutation_performed'=>false,'authority_created'=>false,
+   );
+ }
+}
+class G1ConformanceVerifier {
+ public static function verify($receipt,$context){
+   $ok=is_array($receipt)
+     && isset($receipt['signature'])
+     && 'fixture-signature'===(string)$receipt['signature']
+     && isset($receipt['evidence_sha256'])
+     && preg_match('/^[a-f0-9]{64}$/D',(string)$receipt['evidence_sha256']);
+   return array(
+     'verified'=>(bool)$ok,
+     'evidence_sha256'=>$ok?(string)$receipt['evidence_sha256']:'',
    );
  }
 }
@@ -258,6 +283,10 @@ $receipt=array(
  'observed_external_effects'=>0,
  'output_classification'=>'public_bounded',
  'issuer_contract'=>'mad4b.provider-compatibility-certification.v1',
+ 'issuer_id'=>'fixture-control-plane',
+ 'verifier_id'=>'fixture-conformance',
+ 'signature_scheme'=>'fixture-signature-v1',
+ 'signature'=>'fixture-signature',
  'evidence_sha256'=>str_repeat('e',64),
 );
 $receipt['receipt_sha256']=MAD4B_SCP_Ability_Contract_Inspector::digest(MAD4B_SCP_Runtime_Policy_Classifier::CONFORMANCE_CONTRACT,$receipt);
@@ -287,6 +316,16 @@ $fake_receipt=$receipt; $fake_receipt['receipt_sha256']=str_repeat('f',64); $GLO
 $fake_proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
 check($fake_proposals['proposals'][0]['auto_classification_eligible']===false,'forged conformance receipt enabled auto classification');
 check($fake_proposals['proposals'][0]['conformance']['verified']===false,'forged conformance receipt was marked verified');
+$GLOBALS['g1_conformance_receipt']=$receipt;
+
+$untrusted_verifier=$receipt;
+$untrusted_verifier['verifier_id']='forged-verifier';
+unset($untrusted_verifier['receipt_sha256']);
+$untrusted_verifier['receipt_sha256']=MAD4B_SCP_Ability_Contract_Inspector::digest(MAD4B_SCP_Runtime_Policy_Classifier::CONFORMANCE_CONTRACT,$untrusted_verifier);
+$GLOBALS['g1_conformance_receipt']=$untrusted_verifier;
+$untrusted_proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
+check($untrusted_proposals['proposals'][0]['auto_classification_eligible']===false,'untrusted verifier enabled auto classification');
+check($untrusted_proposals['proposals'][0]['conformance']['reason']==='conformance_verifier_untrusted','untrusted verifier denial reason missing');
 $GLOBALS['g1_conformance_receipt']=$receipt;
 
 $proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
