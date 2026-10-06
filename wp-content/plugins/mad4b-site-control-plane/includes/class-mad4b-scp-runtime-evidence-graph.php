@@ -111,6 +111,12 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			$observed = self::collector_observed_count( $kind, $rows, $nodes );
 			$nodes[ $kind ] = array_slice( $rows, 0, self::MAX_ITEMS_PER_KIND );
 			$collection_status[ $kind ] = self::collection_status( $kind, count( $nodes[ $kind ] ), $observed );
+			if ( '' !== $source ) {
+				$source_complete = ! empty( $collection_status[ $source ]['trustworthy_for_absence'] );
+				$collection_status[ $kind ]['source_kind'] = $source;
+				$collection_status[ $kind ]['source_trustworthy_for_absence'] = $source_complete;
+				if ( ! $source_complete ) $collection_status[ $kind ]['trustworthy_for_absence'] = false;
+			}
 		}
 		$site = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
 			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
@@ -120,12 +126,19 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			'rest_api_initialized'=>function_exists('did_action') ? did_action('rest_api_init') > 0 : null,
 		);
 		$edges = self::edges( $nodes );
+		$edge_source_kinds=array('providers','components','abilities','schemas','operations','mcp_descriptors');
+		$edge_sources_complete=true;
+		foreach($edge_source_kinds as $edge_source_kind){
+			if(empty($collection_status[$edge_source_kind]['trustworthy_for_absence'])){$edge_sources_complete=false;break;}
+		}
 		$edge_status=array(
 			'observed_count'=>(int)self::$last_edge_observed_count,
 			'emitted_count'=>count($edges),
 			'max_edges'=>self::MAX_EDGES,
 			'truncated'=>(int)self::$last_edge_observed_count>count($edges),
-			'trustworthy_for_impact'=>(int)self::$last_edge_observed_count===count($edges),
+			'source_kinds'=>$edge_source_kinds,
+			'sources_complete'=>$edge_sources_complete,
+			'trustworthy_for_impact'=>(int)self::$last_edge_observed_count===count($edges)&&$edge_sources_complete,
 		);
 		$basis = array(
 			'contract'=>self::GENERATION_CONTRACT,
@@ -425,12 +438,25 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			$declared_emitted=isset($status[$kind]['emitted_count'])?(int)$status[$kind]['emitted_count']:-1;
 			$truncated=!empty($status[$kind]['truncated']);
 			if($declared_emitted!==$emitted||$observed<$emitted||$truncated!==($observed>$emitted)) return new WP_Error('mad4b_runtime_graph_collection_status_mismatch','Before snapshot collection completeness evidence is inconsistent.');
+			if(isset($status[$kind]['source_kind'])){
+				$source_kind=(string)$status[$kind]['source_kind'];
+				$source_complete=!empty($status[$source_kind]['trustworthy_for_absence']);
+				if(!array_key_exists('source_trustworthy_for_absence',$status[$kind])||(bool)$status[$kind]['source_trustworthy_for_absence']!==$source_complete) return new WP_Error('mad4b_runtime_graph_collection_source_status_mismatch','Before snapshot derived collection source completeness is inconsistent.');
+				if(!$source_complete&&!empty($status[$kind]['trustworthy_for_absence'])) return new WP_Error('mad4b_runtime_graph_collection_source_trust_invalid','Before snapshot derived collection cannot be more complete than its source.');
+			}
 		}
 		$edge_emitted=count($snapshot['edges']);
 		$edge_observed=isset($edge_status['observed_count'])?(int)$edge_status['observed_count']:-1;
 		$edge_declared=isset($edge_status['emitted_count'])?(int)$edge_status['emitted_count']:-1;
 		$edge_truncated=!empty($edge_status['truncated']);
 		if($edge_declared!==$edge_emitted||$edge_observed<$edge_emitted||$edge_truncated!==($edge_observed>$edge_emitted)) return new WP_Error('mad4b_runtime_graph_edge_status_mismatch','Before snapshot edge completeness evidence is inconsistent.');
+		$edge_sources_complete=true;
+		foreach(isset($edge_status['source_kinds'])&&is_array($edge_status['source_kinds'])?$edge_status['source_kinds']:array() as $source_kind){
+			if(empty($status[(string)$source_kind]['trustworthy_for_absence'])){$edge_sources_complete=false;break;}
+		}
+		if(!array_key_exists('sources_complete',$edge_status)||(bool)$edge_status['sources_complete']!==$edge_sources_complete) return new WP_Error('mad4b_runtime_graph_edge_source_status_mismatch','Before snapshot edge source completeness is inconsistent.');
+		$expected_edge_trust=!$edge_truncated&&$edge_sources_complete;
+		if(!array_key_exists('trustworthy_for_impact',$edge_status)||(bool)$edge_status['trustworthy_for_impact']!==$expected_edge_trust) return new WP_Error('mad4b_runtime_graph_edge_trust_mismatch','Before snapshot edge impact trust is inconsistent.');
 		return true;
 	}
 
