@@ -420,6 +420,27 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return isset( $registry[ $issuer ]['type'] ) ? (string) $registry[ $issuer ]['type'] : '';
 	}
 
+	public static function authority_identity_for_issuer( $issuer ) {
+		$issuer = rtrim( trim( (string) $issuer ), '/' );
+		if ( '' === $issuer || ! self::is_trusted_issuer( $issuer ) ) return array();
+		$type = self::authority_type_for_issuer( $issuer );
+		$type = in_array( $type, array( 'local', 'external', 'managed', 'custom' ), true ) ? $type : 'custom';
+		return array(
+			'authority_id' => 'oauth-authority:v1:' . substr( hash( 'sha256', $issuer ), 0, 24 ),
+			'authority_type' => $type,
+			'issuer' => $issuer,
+			'issuer_fingerprint' => self::issuer_fingerprint_for_issuer( $issuer ),
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	public static function issuer_fingerprint_for_issuer( $issuer ) {
+		$issuer = rtrim( trim( (string) $issuer ), '/' );
+		if ( '' === $issuer ) return '';
+		return hash( 'sha256', 'oauth-issuer' . "\0" . $issuer );
+	}
+
 	public static function resource_policy_for_issuer( $issuer ) {
 		$issuer = rtrim( trim( (string) $issuer ), '/' );
 		if ( ! self::is_trusted_issuer( $issuer ) ) return array();
@@ -722,7 +743,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'issuer' => $issuer,
 			'subject' => $subject,
 			'scopes' => $scopes,
-			'issuer_fingerprint' => hash( 'sha256', 'oauth-issuer' . "\0" . $issuer ),
+			'issuer_fingerprint' => self::issuer_fingerprint_for_issuer( $issuer ),
 			'client_fingerprint' => '' !== $client_id ? hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id ) : '',
 			'session_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
 		);
