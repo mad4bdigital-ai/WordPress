@@ -222,6 +222,7 @@ for marker in (
     "self::persist_update_attempt( 'verify_error'",
     "self::persist_update_attempt( 'applying'",
     "'apply_error'",
+    "$details['filesystem_replacement_attempted'] = true;",
     "$final_state = $bootstrap_mode ? 'bootstrap_success' : 'success';",
     "self::persist_update_attempt( $final_state",
 ):
@@ -231,6 +232,14 @@ apply_error_persist = local_handler.find("'apply_error',\n\t\t\t\t$manifest,")
 apply_error_redirect = local_handler.find("self::redirect_native_result( 'apply_error'")
 if min(apply_error_persist, apply_error_redirect) < 0 or apply_error_persist >= apply_error_redirect:
     raise SystemExit("apply_error evidence must be persisted before redirecting the operator")
+for marker in (
+    "'manifest_error' => 'manifest'",
+    "'download_error' => 'download'",
+    "'verify_error' => 'verification'",
+    "array_key_exists( 'filesystem_replacement_attempted', $details )",
+):
+    if marker not in self_update:
+        raise SystemExit(f"durable update-attempt phase/replacement semantics missing: {marker}")
 managed_apply_bootstrap = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
 for marker in (
     "$bootstrap_candidate_drift = false",
