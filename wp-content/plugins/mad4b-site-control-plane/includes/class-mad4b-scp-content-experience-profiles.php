@@ -510,6 +510,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'suggested_profile_slug' => trim( substr( preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) $post_type ) ), 0, 48 ), '-' ),
 				'configured_profile_slugs' => $configured_profiles,
 				'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
+				'media_field_candidates' => self::media_field_candidates( (string) $post_type ),
 				'taxonomies' => $taxonomies,
 			);
 		}
@@ -521,7 +522,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'profile_configuration_required_before_routes_exist' => true,
 			'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
-			'supported_scenarios' => array( 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ),
+			'supported_scenarios' => array( 'remote_media_library_first', 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ),
 			'safe_defaults' => array( 'meta_mode' => 'allowlist', 'taxonomy_mode' => 'allowlist', 'live_update_mode' => 'draft_first' ),
 			'mutation_performed' => false,
 		);
@@ -613,6 +614,24 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			return new WP_Error( 'mad4b_content_experience_bootstrap_live_update_mode_invalid', 'live_update_mode must be draft_first or direct.' );
 		}
 
+		$media_field_candidates = self::media_field_candidates( $post_type );
+		$requested_media_fields = isset( $input['media_meta_fields'] ) ? $input['media_meta_fields'] : array();
+		if ( ! is_array( $requested_media_fields ) ) return new WP_Error( 'mad4b_content_experience_bootstrap_media_fields_invalid', 'media_meta_fields must be an object keyed by post meta key.' );
+		$allow_protected_media_meta = ! empty( $input['allow_protected_media_meta'] );
+		$meta_keys = array(); $protected_meta_keys = array();
+		foreach ( array_keys( $requested_media_fields ) as $media_key ) {
+			$media_key = (string) $media_key;
+			if ( '' === $media_key || strlen( $media_key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $media_key ) ) {
+				return new WP_Error( 'mad4b_content_experience_bootstrap_media_key_invalid', 'Requested media meta mapping contains an invalid key.' );
+			}
+			if ( 0 === strpos( $media_key, '_' ) ) {
+				if ( ! $allow_protected_media_meta ) return new WP_Error( 'mad4b_content_experience_bootstrap_protected_media_requires_opt_in', 'Protected media meta requires allow_protected_media_meta=true.' );
+				$protected_meta_keys[] = $media_key;
+			} else $meta_keys[] = $media_key;
+		}
+		$meta_keys = array_values( array_unique( $meta_keys ) );
+		$protected_meta_keys = array_values( array_unique( $protected_meta_keys ) );
+
 		$label = isset( $input['label'] ) ? sanitize_text_field( (string) $input['label'] ) : ( isset( $object->label ) ? (string) $object->label : $post_type );
 		$profile = array(
 			'slug' => $slug,
@@ -622,9 +641,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'creation_status' => $creation_status,
 			'live_update_mode' => $live_update_mode,
 			'meta_mode' => 'allowlist',
-			'meta_keys' => array(),
-			'protected_meta_keys' => array(),
-			'media_meta_fields' => array(),
+			'meta_keys' => $meta_keys,
+			'protected_meta_keys' => $protected_meta_keys,
+			'media_meta_fields' => $requested_media_fields,
 			'taxonomy_mode' => 'allowlist',
 			'taxonomies' => $included_taxonomies,
 			'featured_media' => $featured_media,
@@ -660,11 +679,13 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'included_taxonomies' => $included_taxonomies,
 			'excluded_taxonomies' => $excluded_taxonomies,
 			'supports_featured_media' => $supports_featured_media,
+			'media_field_candidates' => $media_field_candidates,
+			'requested_media_meta_fields' => array_keys( $requested_media_fields ),
 			'helper_candidates' => $helper_candidates,
 			'warnings' => $warnings,
 			'safe_defaults' => array(
 				'new_content_is_nonpublic' => true,
-				'meta_allowlist_starts_empty' => true,
+				'meta_allowlist_starts_empty_unless_explicit_media_mapping_is_supplied' => true,
 				'external_helpers_start_disabled' => true,
 				'taxonomies_are_explicit_allowlist' => true,
 			),
@@ -681,9 +702,61 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		);
 	}
 
+	private static function media_field_candidates( $post_type ) {
+		$post_type = sanitize_key( (string) $post_type );
+		$candidates = array();
+		$registered = function_exists( 'get_registered_meta_keys' ) ? get_registered_meta_keys( 'post', $post_type ) : array();
+		foreach ( is_array( $registered ) ? $registered : array() as $key => $schema ) {
+			$key = (string) $key;
+			if ( '' === $key || strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) ) continue;
+			if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::is_sensitive_database_column( $key ) ) continue;
+			$type = is_array( $schema ) && isset( $schema['type'] ) ? sanitize_key( (string) $schema['type'] ) : '';
+			if ( ! preg_match( '/(?:image|gallery|media|photo|thumbnail|hero|banner)/i', $key ) ) continue;
+			$is_gallery = (bool) preg_match( '/(?:gallery|images|photos|media_ids)/i', $key ) || 'array' === $type;
+			$spec = $is_gallery
+				? array( 'kind' => 'image_gallery', 'storage' => 'array' === $type ? 'ids' : 'csv_ids', 'max_items' => 50 )
+				: array( 'kind' => 'image_id', 'storage' => 'id', 'max_items' => 1 );
+			$candidates[] = array(
+				'key' => $key,
+				'source' => 'registered_post_meta',
+				'schema_type' => $type,
+				'protected' => 0 === strpos( $key, '_' ),
+				'suggested_spec' => $spec,
+				'auto_enabled' => false,
+			);
+		}
+		$extended = apply_filters( 'mad4b_scp_content_experience_media_field_candidates', $candidates, $post_type );
+		$extended = is_array( $extended ) ? $extended : $candidates;
+		$out = array(); $seen = array();
+		foreach ( array_slice( $extended, 0, self::MAX_MEDIA_META_FIELDS * 4 ) as $row ) {
+			if ( ! is_array( $row ) || empty( $row['key'] ) || ! is_string( $row['key'] ) ) continue;
+			$key = (string) $row['key'];
+			if ( strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) || isset( $seen[ $key ] ) ) continue;
+			$seen[ $key ] = true;
+			$out[] = array(
+				'key' => $key,
+				'source' => isset( $row['source'] ) ? sanitize_key( (string) $row['source'] ) : 'provider',
+				'schema_type' => isset( $row['schema_type'] ) ? sanitize_key( (string) $row['schema_type'] ) : '',
+				'protected' => ! empty( $row['protected'] ) || 0 === strpos( $key, '_' ),
+				'suggested_spec' => isset( $row['suggested_spec'] ) && is_array( $row['suggested_spec'] ) ? $row['suggested_spec'] : array(),
+				'auto_enabled' => false,
+			);
+		}
+		return $out;
+	}
+
 	private static function scenario_matrix( array $profile, $active ) {
 		$routes = self::routes_for_profile( $profile );
 		return array(
+			'remote_media_library_first' => array(
+				'supported' => true,
+				'discover' => class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY : 'media/remote-source-discover',
+				'import_plan' => class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY : 'media/remote-import-plan',
+				'import_apply' => class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY : 'media/remote-import-apply',
+				'bind_after_import' => array( 'featured_media_id', 'configured media_meta_fields' ),
+				'rights_confirmation_required_before_import' => true,
+				'active_now' => true,
+			),
 			'create_nonpublic' => array(
 				'supported' => true,
 				'planner' => $routes['create_plan'],
@@ -809,6 +882,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 					'featured_media' => array( 'type' => 'boolean' ),
 					'creation_status' => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'private' ), 'default' => 'draft' ),
 					'live_update_mode' => array( 'type' => 'string', 'enum' => array( 'draft_first', 'direct' ), 'default' => 'draft_first' ),
+					'media_meta_fields' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'allow_protected_media_meta' => array( 'type' => 'boolean', 'default' => false ),
 					'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
 				), array( 'post_type' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
