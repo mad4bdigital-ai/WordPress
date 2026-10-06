@@ -168,6 +168,12 @@ try {
 	}
 	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::BOOTSTRAP_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Bootstrap planner is not exposed on the read surface.' );
 
+	register_post_meta( 'mad4b_ci_trip', 'ci_registered_gallery', array( 'type' => 'array', 'single' => true, 'show_in_rest' => false ) );
+	$sample_post = wp_insert_post( array( 'post_type' => 'mad4b_ci_trip', 'post_status' => 'draft', 'post_title' => 'CI Media Schema Sample' ), true );
+	$check( ! is_wp_error( $sample_post ), 'Unable to create media-field inference sample.' );
+	$sample_post = (int) $sample_post; $post_ids[] = $sample_post;
+	update_post_meta( $sample_post, 'ci_sample_gallery', array( $image_one, $image_two ) );
+
 	$bootstrap_media = MAD4B_SCP_Content_Experience_Profiles::bootstrap_plan( array(
 		'post_type' => 'mad4b_ci_trip',
 		'profile_slug' => 'ci-bootstrap-media',
@@ -178,6 +184,9 @@ try {
 	$check( ! is_wp_error( $bootstrap_media ), 'Bootstrap explicit media mapping failed.' );
 	$check( in_array( 'ci_gallery', $bootstrap_media['profile_plan']['profile']['meta_keys'], true ), 'Bootstrap media mapping was not promoted into the profile meta allowlist.' );
 	$check( 'image_gallery' === $bootstrap_media['profile_plan']['profile']['media_meta_fields']['ci_gallery']['kind'], 'Bootstrap media mapping lost its typed image-gallery contract.' );
+	$candidate_keys = array_values( array_map( static function ( $row ) { return isset( $row['key'] ) ? (string) $row['key'] : ''; }, $bootstrap_media['media_field_candidates'] ) );
+	$check( in_array( 'ci_registered_gallery', $candidate_keys, true ), 'Registered media-like meta was not discovered.' );
+	$check( in_array( 'ci_sample_gallery', $candidate_keys, true ), 'Existing-content media meta inference did not discover an unregistered image gallery.' );
 
 	$remote_plan_unknown = $media_adapter->remote_import_plan( array( 'source_url' => 'https://images.example.invalid/tour.jpg' ) );
 	$check( ! is_wp_error( $remote_plan_unknown ) && empty( $remote_plan_unknown['ready'] ) && in_array( 'rights_confirmation_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not fail closed on unknown rights.' );
@@ -204,6 +213,11 @@ try {
 	foreach ( array( MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_INSPECT_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY ) as $ability_name ) {
 		$check( wp_has_ability( $ability_name ), 'Remote media Ability is not registered: ' . $ability_name );
 	}
+
+	$srcset_method = new ReflectionMethod( 'MAD4B_SCP_Media_Adapter', 'best_srcset_url' );
+	$srcset_method->setAccessible( true );
+	$cloudinary_srcset = 'https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/sample.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/sample.jpg 1600w';
+	$check( false !== strpos( (string) $srcset_method->invoke( $media_adapter, $cloudinary_srcset ), 'w_1600' ), 'Cloudinary comma-bearing srcset parsing did not preserve/select the largest candidate.' );
 
 	$profile_input = array(
 		'slug' => 'ci-trip',

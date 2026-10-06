@@ -510,7 +510,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'suggested_profile_slug' => trim( substr( preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) $post_type ) ), 0, 48 ), '-' ),
 				'configured_profile_slugs' => $configured_profiles,
 				'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
-				'media_field_candidates' => self::media_field_candidates( (string) $post_type ),
+				'media_field_candidates' => self::media_field_candidates( (string) $post_type, false ),
 				'taxonomies' => $taxonomies,
 			);
 		}
@@ -614,7 +614,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			return new WP_Error( 'mad4b_content_experience_bootstrap_live_update_mode_invalid', 'live_update_mode must be draft_first or direct.' );
 		}
 
-		$media_field_candidates = self::media_field_candidates( $post_type );
+		$media_field_candidates = self::media_field_candidates( $post_type, true );
 		$requested_media_fields = isset( $input['media_meta_fields'] ) ? $input['media_meta_fields'] : array();
 		if ( ! is_array( $requested_media_fields ) ) return new WP_Error( 'mad4b_content_experience_bootstrap_media_fields_invalid', 'media_meta_fields must be an object keyed by post meta key.' );
 		$allow_protected_media_meta = ! empty( $input['allow_protected_media_meta'] );
@@ -702,47 +702,139 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		);
 	}
 
-	private static function media_field_candidates( $post_type ) {
+	private static function media_field_candidates( $post_type, $deep = false ) {
 		$post_type = sanitize_key( (string) $post_type );
 		$candidates = array();
+
+		$append = static function ( array &$rows, $key, $source, $type, array $spec, $protected = false, array $evidence = array() ) {
+			$key = (string) $key;
+			if ( '' === $key || strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) ) return;
+			if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::is_sensitive_database_column( $key ) ) return;
+			$rows[] = array(
+				'key' => $key,
+				'source' => sanitize_key( (string) $source ),
+				'schema_type' => sanitize_key( (string) $type ),
+				'protected' => (bool) $protected || 0 === strpos( $key, '_' ),
+				'suggested_spec' => $spec,
+				'evidence' => $evidence,
+				'auto_enabled' => false,
+			);
+		};
+
 		$registered = function_exists( 'get_registered_meta_keys' ) ? get_registered_meta_keys( 'post', $post_type ) : array();
 		foreach ( is_array( $registered ) ? $registered : array() as $key => $schema ) {
 			$key = (string) $key;
-			if ( '' === $key || strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) ) continue;
-			if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::is_sensitive_database_column( $key ) ) continue;
-			$type = is_array( $schema ) && isset( $schema['type'] ) ? sanitize_key( (string) $schema['type'] ) : '';
 			if ( ! preg_match( '/(?:image|gallery|media|photo|thumbnail|hero|banner)/i', $key ) ) continue;
+			$type = is_array( $schema ) && isset( $schema['type'] ) ? sanitize_key( (string) $schema['type'] ) : '';
 			$is_gallery = (bool) preg_match( '/(?:gallery|images|photos|media_ids)/i', $key ) || 'array' === $type;
 			$spec = $is_gallery
 				? array( 'kind' => 'image_gallery', 'storage' => 'array' === $type ? 'ids' : 'csv_ids', 'max_items' => 50 )
 				: array( 'kind' => 'image_id', 'storage' => 'id', 'max_items' => 1 );
-			$candidates[] = array(
-				'key' => $key,
-				'source' => 'registered_post_meta',
-				'schema_type' => $type,
-				'protected' => 0 === strpos( $key, '_' ),
-				'suggested_spec' => $spec,
-				'auto_enabled' => false,
-			);
+			$append( $candidates, $key, 'registered_post_meta', $type, $spec, 0 === strpos( $key, '_' ), array( 'registered_schema' => true ) );
 		}
-		$extended = apply_filters( 'mad4b_scp_content_experience_media_field_candidates', $candidates, $post_type );
+
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			if ( method_exists( $registry, 'register_defaults' ) ) $registry->register_defaults();
+			foreach ( method_exists( $registry, 'all' ) ? $registry->all() : array() as $adapter_id => $adapter ) {
+				if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'content_experience_media_field_candidates' ) ) continue;
+				$declared = $adapter->content_experience_media_field_candidates( $post_type );
+				if ( ! is_array( $declared ) ) continue;
+				foreach ( array_slice( $declared, 0, self::MAX_MEDIA_META_FIELDS * 2 ) as $row ) {
+					if ( ! is_array( $row ) || empty( $row['key'] ) ) continue;
+					$append(
+						$candidates,
+						$row['key'],
+						'provider_' . sanitize_key( (string) $adapter_id ),
+						isset( $row['schema_type'] ) ? $row['schema_type'] : '',
+						isset( $row['suggested_spec'] ) && is_array( $row['suggested_spec'] ) ? $row['suggested_spec'] : array(),
+						! empty( $row['protected'] ),
+						array( 'provider_declared' => true )
+					);
+				}
+			}
+		}
+
+		// Deep bootstrap can learn from existing content without returning values.
+		// Global discovery stays shallow to avoid N×CPT query amplification.
+		if ( $deep ) {
+			$post_ids = get_posts( array(
+				'post_type' => $post_type, 'post_status' => 'any', 'posts_per_page' => 8,
+				'fields' => 'ids', 'orderby' => 'modified', 'order' => 'DESC',
+				'no_found_rows' => true, 'suppress_filters' => true,
+			) );
+			$sampled = array();
+			foreach ( array_map( 'absint', (array) $post_ids ) as $post_id ) {
+				foreach ( (array) get_post_meta( $post_id ) as $key => $raw_values ) {
+					$key = (string) $key;
+					if ( ! preg_match( '/(?:image|gallery|media|photo|thumbnail|hero|banner)/i', $key ) ) continue;
+					if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::is_sensitive_database_column( $key ) ) continue;
+					$value = get_post_meta( $post_id, $key, true );
+					$inference = self::infer_sampled_media_meta( $value );
+					if ( empty( $inference['supported'] ) ) continue;
+					if ( ! isset( $sampled[ $key ] ) ) $sampled[ $key ] = array( 'count' => 0, 'inference' => $inference );
+					if ( $sampled[ $key ]['inference']['spec'] === $inference['spec'] ) ++$sampled[ $key ]['count'];
+				}
+			}
+			foreach ( $sampled as $key => $row ) {
+				$append(
+					$candidates,
+					$key,
+					'sampled_post_meta',
+					$row['inference']['schema_type'],
+					$row['inference']['spec'],
+					0 === strpos( $key, '_' ),
+					array( 'sampled_match_count' => (int) $row['count'], 'values_disclosed' => false )
+				);
+			}
+		}
+
+		$extended = apply_filters( 'mad4b_scp_content_experience_media_field_candidates', $candidates, $post_type, (bool) $deep );
 		$extended = is_array( $extended ) ? $extended : $candidates;
 		$out = array(); $seen = array();
-		foreach ( array_slice( $extended, 0, self::MAX_MEDIA_META_FIELDS * 4 ) as $row ) {
+		foreach ( array_slice( $extended, 0, self::MAX_MEDIA_META_FIELDS * 6 ) as $row ) {
 			if ( ! is_array( $row ) || empty( $row['key'] ) || ! is_string( $row['key'] ) ) continue;
 			$key = (string) $row['key'];
-			if ( strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) || isset( $seen[ $key ] ) ) continue;
-			$seen[ $key ] = true;
+			if ( strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) ) continue;
+			if ( isset( $seen[ $key ] ) ) {
+				$index = $seen[ $key ];
+				$existing_sources = isset( $out[ $index ]['sources'] ) ? $out[ $index ]['sources'] : array( $out[ $index ]['source'] );
+				$existing_sources[] = isset( $row['source'] ) ? sanitize_key( (string) $row['source'] ) : 'provider';
+				$out[ $index ]['sources'] = array_values( array_unique( array_filter( $existing_sources ) ) );
+				continue;
+			}
+			$seen[ $key ] = count( $out );
 			$out[] = array(
 				'key' => $key,
 				'source' => isset( $row['source'] ) ? sanitize_key( (string) $row['source'] ) : 'provider',
+				'sources' => array( isset( $row['source'] ) ? sanitize_key( (string) $row['source'] ) : 'provider' ),
 				'schema_type' => isset( $row['schema_type'] ) ? sanitize_key( (string) $row['schema_type'] ) : '',
 				'protected' => ! empty( $row['protected'] ) || 0 === strpos( $key, '_' ),
 				'suggested_spec' => isset( $row['suggested_spec'] ) && is_array( $row['suggested_spec'] ) ? $row['suggested_spec'] : array(),
+				'evidence' => isset( $row['evidence'] ) && is_array( $row['evidence'] ) ? $row['evidence'] : array(),
 				'auto_enabled' => false,
 			);
 		}
 		return $out;
+	}
+
+	private static function infer_sampled_media_meta( $value ) {
+		$is_attachment = static function ( $id ) {
+			$id = absint( $id );
+			return $id > 0 && 'attachment' === get_post_type( $id ) && wp_attachment_is_image( $id );
+		};
+		if ( is_numeric( $value ) && $is_attachment( $value ) ) {
+			return array( 'supported' => true, 'schema_type' => 'integer', 'spec' => array( 'kind' => 'image_id', 'storage' => 'id', 'max_items' => 1 ) );
+		}
+		if ( is_string( $value ) && preg_match( '/^\s*\d+(?:\s*,\s*\d+)+\s*$/', $value ) ) {
+			$ids = array_values( array_filter( array_map( 'absint', preg_split( '/\s*,\s*/', trim( $value ) ) ) ) );
+			if ( $ids && count( array_filter( $ids, $is_attachment ) ) === count( $ids ) ) return array( 'supported' => true, 'schema_type' => 'string', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'csv_ids', 'max_items' => min( self::MAX_MEDIA_GALLERY_ITEMS, max( 1, count( $ids ) ) ) ) );
+		}
+		if ( is_array( $value ) && array_values( $value ) === $value ) {
+			$ids = array_values( array_filter( array_map( 'absint', $value ) ) );
+			if ( $ids && count( $ids ) === count( $value ) && count( array_filter( $ids, $is_attachment ) ) === count( $ids ) ) return array( 'supported' => true, 'schema_type' => 'array', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => min( self::MAX_MEDIA_GALLERY_ITEMS, max( 1, count( $ids ) ) ) ) );
+		}
+		return array( 'supported' => false );
 	}
 
 	private static function scenario_matrix( array $profile, $active ) {
