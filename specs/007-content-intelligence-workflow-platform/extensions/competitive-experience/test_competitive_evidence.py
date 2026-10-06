@@ -2,6 +2,8 @@
 from copy import deepcopy
 from pathlib import Path
 import importlib.util
+import json
+import tempfile
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("competitive_evidence", HERE / "competitive-evidence.py")
@@ -60,6 +62,18 @@ history = m.verify_history(s, summary)
 assert history["authorizing"] is False
 assert history["current_generation_sha256"] == s["generation_sha256"]
 assert history["entries"][-1]["summary_sha256"] == summary["summary_sha256"]
+assert history["current_entry_sha256"] == history["entries"][-1]["entry_sha256"]
+
+with tempfile.TemporaryDirectory() as temp:
+    tampered = deepcopy(history)
+    tampered["entries"][0]["source_generation"] = "0" * 64
+    tampered_path = Path(temp) / "competitive-evidence-history.json"
+    tampered_path.write_text(json.dumps(tampered), encoding="utf-8")
+    try:
+        m.verify_history(s, summary, tampered_path)
+        raise AssertionError("tampered competitive evidence history was accepted")
+    except SystemExit as error:
+        assert str(error) == "COMPETITIVE_EVIDENCE_HISTORY_ENTRY_DIGEST_INVALID"
 
 m.verify()
 print("mad4b.competitive-evidence-tests.v2: PASS")
