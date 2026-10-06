@@ -389,7 +389,9 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		if ( ! is_object( $adapter ) ) $adapter = self::adapter_for_provider( $provider );
 		$map = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$write_abilities = array();
-		foreach ( array( 'content', 'admin' ) as $surface ) {
+		// Provider mutations may live on content/admin or on the dedicated write
+		// surface. All three must compile through the same capability gate.
+		foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
 			foreach ( (array) ( isset( $map[ $surface ] ) ? $map[ $surface ] : array() ) as $ability ) {
 				$ability = (string) $ability;
 				if ( '' !== $ability ) $write_abilities[] = $ability;
