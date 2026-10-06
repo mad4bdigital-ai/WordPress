@@ -119,10 +119,24 @@ $GLOBALS['wp_post_types']=array('post'=>(object)array('public'=>true,'show_ui'=>
 $GLOBALS['wp_taxonomies']=array('category'=>(object)array('object_type'=>array('post'),'public'=>true,'show_ui'=>true));
 $GLOBALS['wp_filter']=array('init'=>new FakeHook());
 
+require_once dirname(__DIR__) . '/includes/class-mad4b-scp-competitive-evidence.php';
 require_once dirname(__DIR__) . '/includes/class-mad4b-scp-runtime-evidence-graph.php';
 require_once dirname(__DIR__) . '/includes/class-mad4b-scp-runtime-policy-classifier.php';
 
 function check($ok,$message){ if(!$ok){ fwrite(STDERR,$message."\n"); exit(1); } }
+
+$competitive=MAD4B_SCP_Competitive_Evidence::summary();
+check(!is_wp_error($competitive),'competitive evidence summary failed packaged integrity verification');
+check($competitive['integrity_verified']===true,'competitive evidence integrity was not verified');
+check($competitive['package_count']===4 && $competitive['capability_count']===59,'competitive evidence inventory count drifted');
+check($competitive['authorizing']===false && $competitive['authority_created']===false,'competitive evidence became authorizing');
+check($competitive['static_evidence_creates_runtime_certification']===false,'static evidence created runtime certification');
+check(!empty($competitive['capabilities'][0]['evidence_sources']),'competitive evidence provenance links missing');
+check(!empty($competitive['capabilities'][0]['mad4b_foundation_paths']),'MAD4B foundation links missing');
+check(array_key_exists('runtime_parity_claimed',$competitive['capabilities'][0]),'runtime parity boundary missing');
+foreach($competitive['capabilities'] as $capability){
+ foreach($capability['evidence_sources'] as $source) check($source['runtime_verified']===false,'static source claimed runtime verification');
+}
 
 $one=MAD4B_SCP_Runtime_Evidence_Graph::snapshot();
 $two=MAD4B_SCP_Runtime_Evidence_Graph::snapshot();
