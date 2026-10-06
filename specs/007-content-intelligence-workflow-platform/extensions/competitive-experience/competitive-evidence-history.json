@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.competitive-evidence-history.v1",
+  "current_generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
+  "entries": [
+    {
+      "revision": 1,
+      "generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
+      "previous_generation_sha256": "",
+      "source_generation": "fa615ba998fade31d180d10cb4d30472b38b7d8237349d8c3c21002e6e0128ba",
+      "task_generation": "0042404f776e5299a386b5aa005dcff3f33568e6f42cb5f4757a8bf5b2501d94",
+      "matrix_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+      "summary_sha256": "76c22a528a7ea6e2079d642f4bea280bb19ad8855c4f34311951d6078aacb5aa",
+      "package_fingerprints": {
+        "ai-engine": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+        "easy-mcp-ai": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+        "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+        "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
+      },
+      "authorizing": false
+    }
+  ],
+  "authorizing": false
+}
