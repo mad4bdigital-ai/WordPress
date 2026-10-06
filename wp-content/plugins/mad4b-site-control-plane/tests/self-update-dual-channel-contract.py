@@ -227,8 +227,7 @@ for marker in (
 ):
     if marker not in local_handler:
         raise SystemExit(f"native update durable attempt evidence missing: {marker}")
-apply_error_persist = local_handler.find("self::persist_update_attempt(
-				'apply_error'")
+apply_error_persist = local_handler.find("'apply_error',\n\t\t\t\t$manifest,")
 apply_error_redirect = local_handler.find("self::redirect_native_result( 'apply_error'")
 if min(apply_error_persist, apply_error_redirect) < 0 or apply_error_persist >= apply_error_redirect:
     raise SystemExit("apply_error evidence must be persisted before redirecting the operator")
