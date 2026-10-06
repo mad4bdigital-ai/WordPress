@@ -12,13 +12,27 @@ $check = static function ( $condition, $message ) {
 	if ( ! $condition ) throw new RuntimeException( $message );
 };
 
-foreach ( array( 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan' ) as $ability_name ) {
+$governance_surfaces = array(
+	'mad4b/agent-list' => 'admin',
+	'mad4b/agent-effective-access' => 'admin',
+	// approval-plan persists a pending exact ticket. Remote execution therefore
+	// belongs to the governed-write bootstrap lane even though administrators
+	// review the resulting ticket through the governance UI.
+	'mad4b/approval-plan' => 'write',
+);
+foreach ( $governance_surfaces as $ability_name => $expected_surface ) {
 	$check( wp_has_ability( $ability_name ), 'Governance ability is missing: ' . $ability_name );
 	$ability = wp_get_ability( $ability_name );
 	$check( is_object( $ability ) && method_exists( $ability, 'execute' ) && method_exists( $ability, 'get_meta' ), 'Governance ability is not executable: ' . $ability_name );
 	$meta = $ability->get_meta();
 	$check( empty( $meta['public'] ) && empty( $meta['mcp']['public'] ), 'Governance ability leaked to a public/default MCP surface: ' . $ability_name );
-	$check( isset( $meta['mcp']['surface'] ) && 'admin' === $meta['mcp']['surface'], 'Governance ability is not bound to the admin surface: ' . $ability_name );
+	$check( isset( $meta['mcp']['surface'] ) && $expected_surface === $meta['mcp']['surface'], 'Governance ability is not bound to the expected governed surface: ' . $ability_name );
+	if ( 'mad4b/approval-plan' === $ability_name ) {
+		$check( ! empty( $meta['mcp']['mad4b_approval_bootstrap_operation'] ), 'approval-plan lost governed bootstrap metadata.' );
+		$check( ! empty( $meta['mcp']['mad4b_creates_pending_ticket_only'] ), 'approval-plan no longer proves pending-ticket-only semantics.' );
+		$check( isset( $meta['mcp']['mad4b_execution_lane_binding'] ) && 'governed_write_bootstrap' === $meta['mcp']['mad4b_execution_lane_binding'], 'approval-plan descriptor is not bound to governed-write bootstrap execution.' );
+		$check( isset( $meta['annotations']['readonly'] ) && false === $meta['annotations']['readonly'], 'approval-plan is incorrectly annotated read-only.' );
+	}
 }
 
 $agent = MAD4B_SCP_Agent_Registry::create_agent(
