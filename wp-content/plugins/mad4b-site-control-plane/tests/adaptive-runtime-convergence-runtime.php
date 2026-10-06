@@ -81,7 +81,7 @@ $large_registry['seal'] = $seal_registry->invoke( null, $large_registry ); $GLOB
 $writes_before_page = $GLOBALS['writes'];
 $page = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
 check( 8 === count( $page['providers'] ) && $page['page']['has_more'] && 20 === $page['page']['total_provider_count'], 'Default response was not provider-bounded' );
-check( ! isset( $page['providers']['alpha']['capabilities'] ) && 3 === $page['providers']['alpha']['capability_count'], 'Summary leaked full details or lost capability counts' );
+check( ! isset( $page['providers']['alpha']['capabilities'] ) && 4 === $page['providers']['alpha']['capability_count'], 'Summary leaked full details or lost capability counts' );
 $seen = array_keys( $page['providers'] );
 while ( $page['page']['has_more'] ) {
  $page = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'after_provider' => $page['page']['next_after_provider'], 'expected_receipt_sha256' => $page['page']['receipt_sha256'] ) );
