@@ -193,6 +193,8 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 					'skills_pending' => MAD4B_SCP_Site_Profile::skills_enabled() && empty( $skills['ready'] ),
 					'runtime_identity_complete' => ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] ),
 					'build_changed' => true,
+					'current_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
+					'stored_version' => trim( (string) get_option( 'mad4b_scp_version', '' ) ),
 					'source' => $source,
 					'breakglass_enabled' => defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === MAD4B_MCP_BREAKGLASS_ENABLED,
 				) ) : array( 'decision' => 'REVIEW_REQUIRED', 'scenario_id' => 'registry_unavailable', 'mutation_allowed' => false );
