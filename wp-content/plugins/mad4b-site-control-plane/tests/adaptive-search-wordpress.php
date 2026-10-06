@@ -55,5 +55,8 @@ foreach ( MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'write' ) as $n
 $_GET = array( 'page' => 'mad4b-search-intelligence' ); ob_start(); MAD4B_SCP_Search_Experience::render(); $html = ob_get_clean();
 $check( false !== strpos( $html, 'Search Intelligence' ) && false !== strpos( $html, 'UNCONFIGURED' ), 'unconfigured operator page renders on real WordPress' );
 $check( false !== strpos( $html, '<nav aria-label=' ) && false !== strpos( $html, '<th scope=' ), 'navigation and table have accessible semantics' );
-$check( false === strpos( $html, 'api_key' ) && false === strpos( $html, 'password' ), 'no credential/debug surface' );
+$check( false !== strpos( $html, 'Search providers' ) && false !== strpos( $html, 'SerpApi' ) && false !== strpos( $html, 'DataForSEO' ), 'provider enrollment discoverable before a profile exists' );
+$check( ! preg_match( '/name="credentials\[[^"]+\]" value="[^"]+"/', $html ), 'saved credentials are never populated in real WordPress forms' );
+$check( false === strpos( $html, 'asi.local.' ), 'opaque secret handles are not rendered' );
+$check( has_action( 'admin_post_mad4b_search_provider_connection', array( 'MAD4B_SCP_Search_Provider_Connections', 'post' ) ) !== false, 'local nonce-bound enrollment handler registered through plugin boot' );
 echo wp_json_encode( array( 'contract' => 'mad4b.adaptive-search-wordpress-evidence.v1', 'status' => 'PASS', 'evidence_class' => 'disposable_wordpress_mysql', 'assertions' => $assertions, 'cas_workers' => 8, 'cas_winners' => $winners, 'authorizing' => false ), JSON_UNESCAPED_SLASHES ) . "\n";

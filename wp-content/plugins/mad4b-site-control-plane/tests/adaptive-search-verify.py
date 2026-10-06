@@ -57,7 +57,7 @@ def execute(php: list[str]) -> dict:
     for path in sorted(set(paths)):
         command(php + ["-l", str(path)])
     suites = []
-    for name in ("adaptive-search-runtime.php", "adaptive-search-provider-conformance.php"):
+    for name in ("adaptive-search-runtime.php", "adaptive-search-provider-conformance.php", "adaptive-search-provider-enrollment-runtime.php"):
         raw = command(php + [str(PLUGIN / "tests" / name)])
         report = json.loads(raw)
         if report.get("status") != "PASS" or not report.get("fixtures"):

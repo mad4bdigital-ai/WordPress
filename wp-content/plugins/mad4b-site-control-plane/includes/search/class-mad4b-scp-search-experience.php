@@ -53,6 +53,9 @@ final class MAD4B_SCP_Search_Experience {
 		foreach ( $model['metrics'] as $m ) echo '<tr><th scope="row">' . esc_html( str_replace( '_', ' ', $m['id'] ) ) . '</th><td>' . esc_html( (string) $m['value'] ) . '</td></tr>';
 		echo '</tbody></table>';
 		foreach ( $model['recommended_actions'] as $a ) echo '<p>' . esc_html( $a ) . '</p>';
+		$section = isset( $_GET['section'] ) && is_string( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : 'overview';
+		// Connection setup is useful before the first profile exists.
+		if ( 'providers' === $section || ! $id ) MAD4B_SCP_Search_Provider_Connections::render();
 		if ( $id ) {
 			$section = isset( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : 'overview';
 			$rows = self::section_rows( $id, $section );

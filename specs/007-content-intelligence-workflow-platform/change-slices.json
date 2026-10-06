@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
-  "changed_file_count": 51,
+  "changed_file_count": 58,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -548,6 +548,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-insights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-providers.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-store.php",
@@ -566,6 +567,7 @@
         "specs/007-content-intelligence-workflow-platform/adaptive-search-runtime-acceptance.json",
         "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-verify.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
@@ -573,6 +575,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "f43f68f304b4fbe25087c8176efb1acbd7edf3edbacf0a0983c04dba81993bb0",
+  "changed_paths_sha256": "9568abb5224bad3c4b3524b16ded2c6e24a4f2a6d80c0d24c80d6047b0f19ea8",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
