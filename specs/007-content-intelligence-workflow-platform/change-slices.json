@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
-  "changed_file_count": 60,
+  "changed_file_count": 61,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -91,6 +91,7 @@
         "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-browser.cjs",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py",
@@ -98,6 +99,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "7906952ddfc588190eaf557bc1ac2048f5f444535dbbf043e2b04eb98229a88b",
+  "changed_paths_sha256": "bd9e8737c387ee3a7f54bc8eef6c2a171dea259d130d777901f47058282685dc",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

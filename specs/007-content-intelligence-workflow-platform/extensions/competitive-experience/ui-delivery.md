@@ -56,6 +56,10 @@ No external fonts, runtime libraries or design-skill code are shipped.
   retains the actual registered API setup handoff after a profile is configured.
 - `tests/admin-pages-wordpress.php`: existing real disposable WordPress full-page
   matrix plus exact workspace coverage and forged provider-success denial.
+- `tests/adaptive-search-wordpress.php`: real WordPress discovery, CAS and setup
+  semantics; named navigation and scoped table headers are checked in the DOM,
+  independent of HTML attribute ordering. CI collects every disposable suite's
+  result and keeps any failed suite blocking.
 - Exact-head feature-owned CI executes these suites and publishes visual fixtures
   and screenshots. Disposable fixtures are not live Staging browser acceptance.
 

@@ -99,6 +99,10 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
       "sha256": "83e0bab96a728b0b2b81bfb13567cb68670e597aa1b17f935c8473fa4c036a3d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+      "sha256": "519dd7cb297ed063bb84928c3493bc75ebbef2ba8c31ddee95113c7b5ae12f37"
     }
   ],
   "design_skill": {

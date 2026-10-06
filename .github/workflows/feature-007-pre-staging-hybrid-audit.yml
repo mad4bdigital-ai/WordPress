@@ -631,9 +631,12 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH="$RUNNER_TEMP/asi-wordpress"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/admin-pages-${{ matrix.php }}.json"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci
+          # Independent disposable suites all run; any failure still blocks this job.
+          failed=0
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json" || failed=1
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/admin-pages-${{ matrix.php }}.json" || failed=1
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci || failed=1
+          exit "$failed"
 
       - name: Bind Adaptive Search gates to exact head and disposable evidence
         env:
