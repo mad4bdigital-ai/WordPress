@@ -107,6 +107,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'expected_height' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 12000 ),
 			'manifest_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^(?:|[a-fA-F0-9]{64})$', 'default' => '' ),
 			'manifest_index' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => self::MAX_REMOTE_CANDIDATES - 1 ),
+			'manifest_item_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_REMOTE_CANDIDATES ),
 			'manifest_item_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^(?:|[a-fA-F0-9]{64})$', 'default' => '' ),
 			'manifest_binding_role' => array( 'type' => 'string', 'enum' => array( 'featured', 'gallery', 'content', 'field', 'shared' ), 'default' => 'gallery' ),
 		);
@@ -326,6 +327,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( empty( $manifest_item['apply_input'] ) || ! is_array( $manifest_item['apply_input'] ) ) continue;
 			$manifest_item['apply_input']['manifest_sha256'] = $manifest['manifest_sha256'];
 			$manifest_item['apply_input']['manifest_index'] = (int) $index;
+			$manifest_item['apply_input']['manifest_item_count'] = (int) $manifest['item_count'];
 			$manifest_item['apply_input']['manifest_item_sha256'] = isset( $manifest_item['item_sha256'] ) ? $manifest_item['item_sha256'] : '';
 			$manifest_item['apply_input']['manifest_binding_role'] = isset( $manifest_item['binding_role'] ) ? $manifest_item['binding_role'] : 'gallery';
 		}
@@ -344,6 +346,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( is_wp_error( $manifest_context ) ) return $manifest_context;
 		$manifest_sha256 = $manifest_context['manifest_sha256'];
 		$manifest_index = $manifest_context['manifest_index'];
+		$manifest_item_count = $manifest_context['manifest_item_count'];
 		$manifest_item_sha256 = $manifest_context['manifest_item_sha256'];
 		$manifest_binding_role = $manifest_context['manifest_binding_role'];
 		if ( empty( $plan['ready'] ) ) return new WP_Error( 'mad4b_remote_media_import_blocked', 'Remote media import is blocked until its plan blockers are resolved.', array( 'blockers' => $plan['blockers'] ) );
@@ -372,7 +375,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				$source_content_hash = ! empty( $source_state['content_sha256'] ) ? (string) $source_state['content_sha256'] : (string) get_post_meta( (int) $source_state['attachment_id'], self::REMOTE_CONTENT_HASH_META, true );
 				$event = $this->append_remote_provenance( (int) $source_state['attachment_id'], $normalized, $source_content_hash, $plan['plan_sha256'], 'source_url_reuse' );
 				if ( is_wp_error( $event ) ) return $event;
-				return $this->remote_reuse_result( (int) $source_state['attachment_id'], $normalized, $plan, 'source_url', $event, $manifest_sha256, $manifest_index, $manifest_item_sha256, $manifest_binding_role );
+				return $this->remote_reuse_result( (int) $source_state['attachment_id'], $normalized, $plan, 'source_url', $event, $manifest_sha256, $manifest_index, $manifest_item_count, $manifest_item_sha256, $manifest_binding_role );
 			}
 
 			$content_state = '' !== $normalized['expected_content_sha256']
@@ -382,7 +385,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( ! empty( $content_state['exists'] ) ) {
 				$bound = $this->append_remote_provenance( (int) $content_state['attachment_id'], $normalized, $normalized['expected_content_sha256'], $plan['plan_sha256'], 'content_sha256_reuse' );
 				if ( is_wp_error( $bound ) ) return $bound;
-				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index, $manifest_item_sha256, $manifest_binding_role );
+				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index, $manifest_item_count, $manifest_item_sha256, $manifest_binding_role );
 			}
 
 			$download = $this->download_remote_image( $normalized, 'remote_media_import' );
@@ -399,7 +402,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				if ( 'fail' === $normalized['duplicate_policy'] ) return new WP_Error( 'mad4b_remote_media_content_duplicate', 'Downloaded remote image bytes already exist in the Media Library.' );
 				$bound = $this->append_remote_provenance( (int) $content_state['attachment_id'], $normalized, $download['content_sha256'], $plan['plan_sha256'], 'content_sha256_reuse' );
 				if ( is_wp_error( $bound ) ) return $bound;
-				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index, $manifest_item_sha256, $manifest_binding_role );
+				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index, $manifest_item_count, $manifest_item_sha256, $manifest_binding_role );
 			}
 
 			if ( ! function_exists( 'media_handle_sideload' ) ) {
@@ -450,7 +453,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'media' => $readback['media'], 'provenance_event' => $bound,
 				'binding_template' => $this->post_binding_template( $attachment_id, $normalized, $bound ),
 				'plan_sha256' => $plan['plan_sha256'],
-			), $manifest_sha256, $manifest_index, true, $manifest_item_sha256, $manifest_binding_role );
+			), $manifest_sha256, $manifest_index, $manifest_item_count, true, $manifest_item_sha256, $manifest_binding_role );
 		} finally {
 			foreach ( array_reverse( $held_locks ) as $held_lock ) MAD4B_SCP_Distributed_Lock::release( $held_lock );
 		}
@@ -815,7 +818,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $event;
 	}
 
-	private function remote_reuse_result( $attachment_id, array $normalized, array $plan, $basis, array $provenance_event = array(), $manifest_sha256 = '', $manifest_index = -1, $manifest_item_sha256 = '', $manifest_binding_role = '' ) {
+	private function remote_reuse_result( $attachment_id, array $normalized, array $plan, $basis, array $provenance_event = array(), $manifest_sha256 = '', $manifest_index = -1, $manifest_item_count = 0, $manifest_item_sha256 = '', $manifest_binding_role = '' ) {
 		$readback = $this->media_get( array( 'attachment_id' => absint( $attachment_id ) ) );
 		if ( is_wp_error( $readback ) ) return $readback;
 		MAD4B_SCP_Audit::record( self::REMOTE_IMPORT_APPLY_ABILITY, array(
@@ -831,7 +834,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'media' => $readback['media'], 'provenance_event' => $provenance_event,
 			'binding_template' => $this->post_binding_template( absint( $attachment_id ), $normalized, $provenance_event ),
 			'plan_sha256' => $plan['plan_sha256'],
-		), $manifest_sha256, $manifest_index, false, $manifest_item_sha256, $manifest_binding_role );
+		), $manifest_sha256, $manifest_index, $manifest_item_count, false, $manifest_item_sha256, $manifest_binding_role );
 	}
 
 	private function download_remote_image( array $normalized, $purpose = 'remote_media_import' ) {

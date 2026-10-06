@@ -34,7 +34,9 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		$plan = self::sha( isset( $context['import_plan_sha256'] ) ? $context['import_plan_sha256'] : '', 'mad4b_remote_media_recovery_plan_invalid' );
 		if ( is_wp_error( $plan ) ) return $plan;
 		$index = isset( $context['manifest_index'] ) ? (int) $context['manifest_index'] : -1;
-		if ( $index < 0 || $index >= MAD4B_SCP_Remote_Media_Adapter::MAX_REMOTE_CANDIDATES ) return new WP_Error( 'mad4b_remote_media_recovery_index_invalid', 'Recovery manifest index is outside the bounded media manifest.' );
+		$item_count = isset( $context['manifest_item_count'] ) ? (int) $context['manifest_item_count'] : 0;
+		if ( $item_count < 0 || $item_count > MAD4B_SCP_Remote_Media_Adapter::MAX_REMOTE_CANDIDATES ) return new WP_Error( 'mad4b_remote_media_recovery_item_count_invalid', 'Recovery manifest item count is outside the bounded media manifest.' );
+		if ( $index < 0 || $index >= ( $item_count > 0 ? $item_count : MAD4B_SCP_Remote_Media_Adapter::MAX_REMOTE_CANDIDATES ) ) return new WP_Error( 'mad4b_remote_media_recovery_index_invalid', 'Recovery manifest index is outside the bounded media manifest.' );
 		$provenance = isset( $context['provenance_event_sha256'] ) ? strtolower( trim( (string) $context['provenance_event_sha256'] ) ) : '';
 		if ( '' !== $provenance && ! preg_match( '/^[a-f0-9]{64}$/', $provenance ) ) return new WP_Error( 'mad4b_remote_media_recovery_provenance_invalid', 'Recovery provenance event identity is invalid.' );
 		$manifest_item_sha256 = isset( $context['manifest_item_sha256'] ) ? strtolower( trim( (string) $context['manifest_item_sha256'] ) ) : '';
@@ -59,6 +61,7 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 			'contract' => self::STAGE_CONTRACT,
 			'manifest_sha256' => $manifest,
 			'manifest_index' => $index,
+			'manifest_item_count' => $item_count,
 			'import_plan_sha256' => $plan,
 			'manifest_item_sha256' => $manifest_item_sha256,
 			'manifest_binding_role' => $manifest_binding_role,
@@ -92,12 +95,12 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		return $event;
 	}
 
-	public static function stage_import_result( array $result, $manifest_sha256, $manifest_index, $created_for_manifest, $manifest_item_sha256 = '', $manifest_binding_role = '' ) {
+	public static function stage_import_result( array $result, $manifest_sha256, $manifest_index, $manifest_item_count, $created_for_manifest, $manifest_item_sha256 = '', $manifest_binding_role = '' ) {
 		$manifest_sha256 = strtolower( trim( (string) $manifest_sha256 ) );
 		if ( '' === $manifest_sha256 ) { $result['recovery_stage'] = null; return $result; }
 		$event = isset( $result['provenance_event'] ) && is_array( $result['provenance_event'] ) ? $result['provenance_event'] : array();
 		$stage = self::stage_attachment( isset( $result['attachment_id'] ) ? absint( $result['attachment_id'] ) : 0, array(
-			'manifest_sha256' => $manifest_sha256, 'manifest_index' => (int) $manifest_index,
+			'manifest_sha256' => $manifest_sha256, 'manifest_index' => (int) $manifest_index, 'manifest_item_count' => (int) $manifest_item_count,
 			'import_plan_sha256' => isset( $result['plan_sha256'] ) ? $result['plan_sha256'] : '',
 			'manifest_item_sha256' => $manifest_item_sha256, 'manifest_binding_role' => $manifest_binding_role,
 			'provenance_event_sha256' => isset( $event['provenance_event_sha256'] ) ? $event['provenance_event_sha256'] : '',
@@ -144,6 +147,8 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		$canonical = array();
 		foreach ( $rows as $row ) {
 			$index = isset( $row['manifest_index'] ) ? (int) $row['manifest_index'] : -1;
+			$row_count = isset( $row['manifest_item_count'] ) ? (int) $row['manifest_item_count'] : 0;
+			if ( $row_count > 0 && $row_count !== $item_count ) return new WP_Error( 'mad4b_remote_media_recovery_item_count_drift', 'Staged manifest item count no longer matches the reviewed manifest.', array( 'manifest_index' => $index, 'staged_item_count' => $row_count, 'expected_item_count' => $item_count ) );
 			if ( $index < 0 || $index >= $item_count ) continue;
 			$projection = array(
 				'manifest_index' => $index,
@@ -235,19 +240,27 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		$rows = self::rows_for_manifest( $manifest );
 		$attachments = array_values( array_unique( array_map( static function ( $row ) { return absint( $row['attachment_id'] ?? 0 ); }, $rows ) ) );
 		$created = array_values( array_unique( array_map( static function ( $row ) { return ! empty( $row['created_for_manifest'] ) ? absint( $row['attachment_id'] ?? 0 ) : 0; }, $rows ) ) );
+		$counts = array_values( array_unique( array_filter( array_map( static function ( $row ) { return isset( $row['manifest_item_count'] ) ? (int) $row['manifest_item_count'] : 0; }, $rows ) ) ) );
+		if ( count( $counts ) > 1 ) return new WP_Error( 'mad4b_remote_media_recovery_item_count_conflict', 'Recovery rows disagree on the manifest item count.' );
+		$expected_count = $counts ? (int) $counts[0] : 0;
+		$staged_indices = array_values( array_unique( array_filter( array_map( static function ( $row ) { return isset( $row['manifest_index'] ) ? (int) $row['manifest_index'] : -1; }, $rows ), static function ( $index ) { return $index >= 0; } ) ) );
+		sort( $staged_indices, SORT_NUMERIC );
+		$missing = $expected_count > 0 ? array_values( array_diff( range( 0, $expected_count - 1 ), $staged_indices ) ) : array();
+		$complete = $expected_count > 0 && empty( $missing );
 		$created = array_values( array_filter( $created ) ); sort( $created, SORT_NUMERIC ); sort( $attachments, SORT_NUMERIC );
 		$posts = get_posts( array(
 			'post_type' => 'any', 'post_status' => 'any', 'posts_per_page' => 2, 'fields' => 'ids',
 			'meta_key' => self::POST_MANIFEST_META, 'meta_value' => $manifest, 'no_found_rows' => true, 'suppress_filters' => true,
 		) );
 		$posts = array_values( array_unique( array_map( 'absint', (array) $posts ) ) );
-		$state = $posts ? 'bound' : ( $rows ? 'staged_unbound' : 'unknown' );
+		$state = $posts ? 'bound' : ( $rows ? ( $complete ? 'staged_unbound' : 'staged_partial' ) : 'unknown' );
 		return array(
 			'contract' => self::CONTRACT, 'manifest_sha256' => $manifest, 'state' => $state,
 			'attachment_ids' => $attachments, 'created_for_manifest_attachment_ids' => $created,
-			'bound_post_ids' => $posts, 'recoverable' => 'staged_unbound' === $state,
+			'expected_item_count' => $expected_count, 'staged_item_count' => count( $staged_indices ), 'missing_manifest_indices' => $missing, 'complete' => $complete,
+			'bound_post_ids' => $posts, 'recoverable' => in_array( $state, array( 'staged_partial', 'staged_unbound' ), true ),
 			'auto_delete' => false, 'cleanup_policy' => 'manual_only_after_reference_review',
-			'next_action' => 'staged_unbound' === $state ? 'rerun_media_binding_then_content_plan' : ( 'bound' === $state ? 'none' : 'inspect_manifest_identity' ),
+			'next_action' => 'staged_partial' === $state ? 'resume_remaining_media_imports' : ( 'staged_unbound' === $state ? 'rerun_media_binding_then_content_plan' : ( 'bound' === $state ? 'none' : 'inspect_manifest_identity' ) ),
 			'mutation_performed' => false,
 		);
 	}
@@ -271,10 +284,10 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		$unbound = array(); $created_unbound = 0;
 		foreach ( array_keys( $manifests ) as $manifest ) {
 			$status = self::status( $manifest );
-			if ( is_wp_error( $status ) || 'staged_unbound' !== $status['state'] ) continue;
+			if ( is_wp_error( $status ) || ! in_array( $status['state'], array( 'staged_partial', 'staged_unbound' ), true ) ) continue;
 			$unbound[] = array(
-				'manifest_sha256' => $manifest,
-				'attachment_count' => count( $status['attachment_ids'] ),
+				'manifest_sha256' => $manifest, 'state' => $status['state'],
+				'attachment_count' => count( $status['attachment_ids'] ), 'expected_item_count' => $status['expected_item_count'], 'staged_item_count' => $status['staged_item_count'],
 				'created_for_manifest_count' => count( $status['created_for_manifest_attachment_ids'] ),
 				'next_action' => $status['next_action'],
 			);
@@ -282,7 +295,7 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		}
 		return array(
 			'contract' => self::CONTRACT, 'state' => 'overview', 'unbound_manifests' => $unbound,
-			'unbound_manifest_count' => count( $unbound ), 'created_unbound_attachment_count' => $created_unbound,
+			'unbound_manifest_count' => count( $unbound ), 'partial_manifest_count' => count( array_filter( $unbound, static function ( $row ) { return 'staged_partial' === $row['state']; } ) ), 'created_unbound_attachment_count' => $created_unbound,
 			'auto_delete' => false, 'cleanup_policy' => 'manual_only_after_reference_review',
 			'scan_attachment_limit' => self::MAX_OVERVIEW_ATTACHMENTS, 'manifest_limit' => self::MAX_OVERVIEW_MANIFESTS,
 			'truncated' => count( (array) $ids ) >= self::MAX_OVERVIEW_ATTACHMENTS || count( $manifests ) >= self::MAX_OVERVIEW_MANIFESTS,
