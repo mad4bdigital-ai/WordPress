@@ -55,6 +55,34 @@ $production = MAD4B_SCP_Runtime_Reconciliation_Scenarios::classify( array_merge(
 ) ) );
 check( 'hard_block' === $production['disposition'] && ! $production['production_mutation_allowed'], 'Production drift auto-promoted' );
 
+$review_signals = array(
+	'grant_inventory_drift',
+	'write_contract_drift',
+	'site_profile_drift',
+	'actor_identity_drift',
+	'transport_contract_drift',
+	'baseline_expired',
+);
+foreach ( $review_signals as $signal ) {
+	$review = MAD4B_SCP_Runtime_Reconciliation_Scenarios::classify( array_merge( $base, array(
+		'signals' => array( 'candidate_binding_drift', $signal ),
+	) ) );
+	check( 'review_required' === $review['disposition'], $signal . ' must require review' );
+	check( ! $review['authority_mutation_allowed'] && ! $review['grant_mutation_allowed'], $signal . ' widened authority' );
+}
+
+$untrusted = MAD4B_SCP_Runtime_Reconciliation_Scenarios::classify( array_merge( $base, array(
+	'signals' => array( 'candidate_binding_drift', 'untrusted_package' ),
+) ) );
+check( 'hard_block' === $untrusted['disposition'], 'untrusted package must hard-block reconciliation' );
+
+foreach ( array( 'continuation_conflict', 'maintenance_busy', 'concurrent_permit' ) as $signal ) {
+	$deferred = MAD4B_SCP_Runtime_Reconciliation_Scenarios::classify( array_merge( $base, array(
+		'signals' => array( $signal ),
+	) ) );
+	check( 'defer' === $deferred['disposition'], $signal . ' must defer to the active owner' );
+}
+
 $GLOBALS['scenario_filter'] = static function ( $rows ) {
 	$rows['custom_future_case'] = array(
 		'priority' => 999,
