@@ -9,6 +9,10 @@ servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding
 hybrid = (root / "tests" / "runtime-oauth-hybrid-smoke.php").read_text(encoding="utf-8")
 
 for marker in [
+    "public static function authority_identity_for_issuer",
+    "public static function issuer_fingerprint_for_issuer",
+    "hash( 'sha256', 'oauth-issuer' . \"\\0\" . $issuer )",
+    "'issuer_fingerprint' => self::issuer_fingerprint_for_issuer( $issuer )",
     "MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS",
     "MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER",
     "public static function advertised_issuers",
@@ -22,6 +26,9 @@ for marker in [
         raise SystemExit(f"missing multi-authority bridge marker: {marker}")
 
 for marker in [
+    "MAD4B_SCP_OAuth_Resource_Bridge::authority_identity_for_issuer( $issuer )",
+    "'authority_id' => isset( $identity['authority_id'] )",
+    "'issuer_fingerprint' => isset( $identity['issuer_fingerprint'] )",
     "mad4b.multi-authority-registry.v1",
     "mad4b.multi-authority-live-certification.v1",
     "mad4b/multi-authority-registry-status",
