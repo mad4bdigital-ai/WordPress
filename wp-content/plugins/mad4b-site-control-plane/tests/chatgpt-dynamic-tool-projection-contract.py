@@ -181,3 +181,18 @@ for marker in [
 ]:
     if marker not in (FENCE + ABILITIES):
         raise SystemExit("fixed-dispatch/projection isolation guard missing: " + marker)
+
+
+# Status is summary-first and deep work is explicit/bounded.
+for marker in [
+    "'detail' => array( 'type' => 'string', 'enum' => array( 'summary', 'page' )",
+    "'ability_limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 25",
+    "'include_catalog_preflight' => array( 'type' => 'boolean', 'default' => false )",
+    "'include_universe_count' => array( 'type' => 'boolean', 'default' => false )",
+    "'bounded_status' => true",
+    "'status_policy' => 'summary_first_opt_in_deep_scan'",
+    "'catalog_preflight_performed' => $include_preflight",
+    "'universe_scan_performed' => $include_universe",
+    "'ability_contract_scan_count' => $returned",
+]:
+    require(marker in PROJECTION, f"bounded projection status invariant missing: {marker}")

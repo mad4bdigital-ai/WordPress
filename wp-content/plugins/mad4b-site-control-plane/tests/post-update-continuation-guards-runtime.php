@@ -76,7 +76,7 @@ function setup_fixture() {
 	MAD4B_SCP_Staging_Write_Authority::$plan = $plan;
 	$old = array( 'source_commit_sha' => str_repeat( '1', 40 ), 'build_fingerprint' => str_repeat( '2', 64 ), 'package_manifest_digest' => str_repeat( '3', 64 ), 'artifact_identity' => 'old-artifact' );
 	MAD4B_SCP_Live_Acceptance_Observer::$identity = $old;
-	$binding = array( 'match' => true ); foreach ( $old as $key => $value ) { $binding['stored_' . $key] = $value; $binding['current_' . $key] = $value; } MAD4B_SCP_Staging_Write_Authority::$binding = $binding;
+	$binding = array( 'required' => true, 'stored_bound' => true, 'identity_completeness' => 'complete', 'match' => true ); foreach ( $old as $key => $value ) { $binding['stored_' . $key] = $value; $binding['current_' . $key] = $value; } MAD4B_SCP_Staging_Write_Authority::$binding = $binding;
 	return array( 'version' => '0.4.0-rc.88', 'source_commit_sha' => str_repeat( '4', 40 ), 'build_fingerprint' => str_repeat( '5', 64 ), 'package_manifest_digest' => str_repeat( '6', 64 ), 'artifact_identity' => 'new-artifact', 'archive_sha256' => str_repeat( '7', 64 ), 'release_verdict_success' => true, 'release_root_trust_verified' => true, 'published_from_master' => true, 'release_verdict_run_id' => 1 );
 }
 function prepare_fixture( array $target ) { return MAD4B_SCP_Post_Update_Continuation::prepare( $target, 'governed_native_release_pull', str_repeat( '8', 64 ), 'lease' ); }
@@ -151,6 +151,50 @@ foreach ( array( 'healthy', 'schema', 'risk', 'descriptor', 'expired', 'tampered
  check( is_wp_error( MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( 'lease' ) ), 'Observed update permit replayed' );
 }
 echo "Observed manual update convergence guards: PASS\n";
+
+// Read-only auto-reconciliation preflight is centrally classified and cannot
+// create authority.  Scenario discovery may grow independently, but only an
+// exact ZERO_DELTA observation is eligible for AUTO_REBIND.
+foreach ( array( 'healthy', 'baseline_missing', 'production', 'skills_pending', 'active_permit', 'schema_changed' ) as $case ) {
+	$target = setup_fixture();
+	$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' );
+	check( is_array( $baseline ) && 'OBSERVED' === $baseline['state'], 'Preflight baseline setup failed: ' . $case );
+	MAD4B_SCP_Live_Acceptance_Observer::$identity = $target;
+	MAD4B_SCP_Staging_Write_Authority::$binding['match'] = false;
+	MAD4B_SCP_Connection_Identity_Resolver::$build_fingerprint = 'new';
+
+	if ( 'baseline_missing' === $case ) unset( $GLOBALS['baseline_option'] );
+	if ( 'production' === $case ) MAD4B_SCP_Site_Profile::$environment = 'production';
+	if ( 'skills_pending' === $case ) MAD4B_SCP_Skill_Runtime_Certification::$current = false;
+	if ( 'schema_changed' === $case ) $GLOBALS['schema_changed'] = true;
+	if ( 'active_permit' === $case ) {
+		$prepared = MAD4B_SCP_Post_Update_Continuation::prepare_observed_update( $target, 'lease' );
+		check( is_array( $prepared ) && ! empty( $prepared['active'] ), 'Active-permit preflight fixture did not prepare continuation.' );
+	}
+
+	$calls = MAD4B_SCP_Staging_Write_Authority::$calls;
+	$preflight = MAD4B_SCP_Post_Update_Continuation::observed_reconciliation_preflight( $target );
+	check( is_array( $preflight ) && empty( $preflight['mutation_performed'] ), 'Observed preflight must remain read-only: ' . $case );
+	check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls, 'Observed preflight reached candidate-binding primitive: ' . $case );
+	check( 'candidate_binding_only' === ( $preflight['mutation_class'] ?? '' ), 'Observed preflight widened mutation class: ' . $case );
+	check( 'zero_required' === ( $preflight['authority_delta'] ?? '' ), 'Observed preflight weakened zero-delta policy: ' . $case );
+	check( empty( $preflight['production_allowed'] ) && empty( $preflight['breakglass_allowed'] ), 'Observed preflight widened environment authority: ' . $case );
+	check( empty( $preflight['grant_mutation_allowed'] ) && empty( $preflight['subject_mutation_allowed'] ) && empty( $preflight['agent_mutation_allowed'] ), 'Observed preflight widened authority mutation scope: ' . $case );
+
+	$expected = array(
+		'healthy' => 'AUTO_REBIND',
+		'baseline_missing' => 'REVIEW_REQUIRED',
+		'production' => 'HARD_BLOCK',
+		'skills_pending' => 'DEFER',
+		'active_permit' => 'DEFER',
+		'schema_changed' => 'REVIEW_REQUIRED',
+	);
+	check( $expected[ $case ] === ( $preflight['disposition'] ?? '' ), 'Unexpected observed reconciliation disposition: ' . $case . ' => ' . ( $preflight['disposition'] ?? 'missing' ) );
+	if ( 'skills_pending' === $case ) check( ! empty( $preflight['retryable'] ) && (int) $preflight['retry_after_seconds'] >= 5, 'Skill dependency defer must be bounded-retryable.' );
+	else check( empty( $preflight['retryable'] ), 'Non-transient preflight disposition unexpectedly became retryable: ' . $case );
+}
+echo "Observed reconciliation preflight matrix: PASS\n";
+
 
 // A subsequent background observation inherits only the consumed exact actor proof.
 foreach ( array( 'healthy', 'no_permit', 'tampered', 'actor', 'grant', 'transport', 'profile' ) as $case ) {
