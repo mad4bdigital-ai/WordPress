@@ -36,12 +36,16 @@
   ],
   "code_paths": [
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
+      "sha256": "4ab9e4079b61700a0869da1fbe7763300c1879b83793ad85ccfa5f0ff8b93ead"
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
-      "sha256": "ab2a68c98908f28f90b3ff4500049f6407546fe7f86d4b5d16274dfb1aa891ec"
+      "sha256": "f983f3f0d5511b3478cab203ff75bb20db072f762a9c3086974e5baa61334ead"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
-      "sha256": "41e1c72bb5cd225f7c9dbfc31ec0e44d4244ba95861604988f3e7342bfd1b6df"
+      "sha256": "e9c6631e6beffee95b06f8a25f54a7d4e4414d89cbe4011d7b49c15ee472db91"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
@@ -49,15 +53,15 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-collectors.php",
-      "sha256": "938d34e6e1e4185cfa3cff6d2119209155e48f8bc9f048453f2d35ffccf1f4ff"
+      "sha256": "9f5a2ee5750c4a2876021973dd4128a81bc0db2aa9e1973f5d2d6c14cee5d984"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
-      "sha256": "0ecd8b454f29efef0285192c11e41587b42a1f40e0d6d015b783acd529082d46"
+      "sha256": "8f07c596e8d805f712e596c935eab6f69178d0475e55a8c8e1799e96ad39c41e"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
-      "sha256": "8004ed3d7a6f6daac50ddfaa9cd1ccba3db6716d38ace612913e62b1c4032463"
+      "sha256": "d770dcf2104ac1e595e38092bca3657f5811b5e10d21d78260264ef8c5bdafed"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-conformance.php",
@@ -71,53 +75,53 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py",
-      "sha256": "3f6392f70c092c59bc7157c26471839175dc6620c137dc2f026ad49174c73c86"
+      "sha256": "f96fde9d0a9a3fdb1902345072498156407f29114a3611a222610aa3b8c88175"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php",
-      "sha256": "ed79fb21e5e158f05c5cc06cd13ca23de0b062e277ef0746fd5c5030c67eefef"
+      "sha256": "7e18092c7caf4e4b70aaf1616beb07ee0bbfef1ee904e1248768d42cb52b46b6"
     }
   ],
   "spec_paths": [
     {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
-      "sha256": "6a250767b3aeb7f2d84cb914c282ce1f505cbdf2052d2df460447539d48b060f"
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
+      "sha256": "d874b12c927f03e546671e5c0567f09c3a5bc6c21d2cb3c57a543b3c3252b786"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
-      "sha256": "9ddd24403b7395b5ae95efad014ce39011d895035e28bd908a2ff9189d9bba60"
+      "sha256": "f3e2784140b62d370003748e5fcc51eba8423cf9b76ee7c278927451f564130e"
     },
     {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-      "sha256": "3e85f18e094cb915098bca6b588b6047667b302f23a9c781de21eebae9af2659"
-    },
-    {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "5c79f0e6d45b95dc5185ae0b7a5782a798843aa3575b1773d7af7d7400ce558b"
-    },
-    {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "a820030dd85f748a4fd3ec45f0f1f3c610110dd1e2f89c7257fa97ce579b859a"
-    },
-    {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
-      "sha256": "d874b12c927f03e546671e5c0567f09c3a5bc6c21d2cb3c57a543b3c3252b786"
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
+      "sha256": "5352e265965a0eb3045b6f6b297654e9bfd931dfe37d6ee8e4c90afa91bfc24d"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
       "sha256": "c5449cc268cba519a9da1f7003d631aabe649e36166bf8b40a4ec6d2abf01fa2"
     },
     {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "65d91ca9adef5b3de4a9c86d1f9df58da2e4994fe8477bacf011e2c05c62f3f1"
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
+      "sha256": "7b2da3a851fac1f87833f4bff15f263e214b4cdd51bd6e1d0202cdd1ed87ba48"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
+      "sha256": "a820030dd85f748a4fd3ec45f0f1f3c610110dd1e2f89c7257fa97ce579b859a"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
+      "sha256": "1f0c21ad61a40dd2623dcb1d7c440665c0e918277e15e8df6da9c27c9ca4fbdb"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
+      "sha256": "22c6b5191af72030f2b1ca8439d25728d97720b41cc22726503b51c17e0c8c4e"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
       "sha256": "b72eed97214333e69d6561a76ac7c878d01ba5b11ebdaa319db6fc23959cbb00"
     },
     {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
-      "sha256": "5ad18493ce291e80bd44e0d586a35ff3a1b864713ff23d76f9b24f3513e46c51"
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "sha256": "65d91ca9adef5b3de4a9c86d1f9df58da2e4994fe8477bacf011e2c05c62f3f1"
     }
   ],
   "acceptance_contracts": [
@@ -129,13 +133,17 @@
     "trusted_conformance_bound_public_read_classifier",
     "append_only_audited_owner_review_overlay",
     "confidence_get_schema_annotation_never_authority",
-    "runtime_evidence_graph_domain_service_size_budget"
+    "runtime_evidence_graph_domain_service_size_budget",
+    "competitive_evidence_history_retention_alert_ack_lifecycle",
+    "runtime_evidence_collector_contract_metadata",
+    "owner_review_revision_fence_cas",
+    "operator_workstream_parity_gap_drilldown"
   ],
   "remaining_acceptance": [
     "Every integration candidate must pass the complete exact-head G1 child CI after delivery-manifest and cumulative change-slice binding.",
     "Representative Staging runtime must prove bounded discovery against installed providers without executing unknown code or leaking secret values.",
     "Any zero-effect read relied upon for automatic classification must carry a trusted conformance receipt for the exact graph/provider/schema generation.",
-    "Browser/operator acceptance must prove filtering, evidence boundaries, stale review handling and revision conflict behavior.",
+    "Browser/operator acceptance must prove workstream/status/evidence-class/runtime-parity filtering, evidence history context, remaining-task drill-down, stale review handling and revision conflict behavior.",
     "Integration Hub cumulative CI and post-merge Staging acceptance remain required; Production remains unauthorized."
   ]
 }
