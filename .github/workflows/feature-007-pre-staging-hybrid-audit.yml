@@ -140,6 +140,17 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-heartbeat-runtime.php
 
+      - name: Competitive Experience G1 runtime evidence and semantic classifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php
+
       - name: Feature 007 closure foundations and workstream certification
         shell: bash
         run: |
