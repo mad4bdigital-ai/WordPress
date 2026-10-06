@@ -305,3 +305,9 @@ The ASI families bind to `wp-content/plugins/mad4b-site-control-plane/includes/s
 
 
 P1 review closure is bound to Search runtime exact head `e8791ae6253b5667f1ffffdcf1693bd1d08a641a`: all six P1 findings are CLOSED at repository-runtime scope after PHP 7.4/8.3 feature-owned conformance passed (40 fixtures, 938 assertions, 15 gates). Live provider/account certification remains `NOT_CLAIMED` and is not substituted by repository fixtures.
+
+## Optional CE01 traceability
+
+[CE01 traceability](extensions/competitive-experience/traceability.md) maps the 40 competitor-derived plus 13 Adaptive Operations requirements and 145 OPEN tasks through independent CPBEN/CPUX/CPUNDO/CPNHI/CPOAUTH/CPGROW/CPFORMS/CPWC/CPBUILD/CPSEO/CPHIST/CPAIBASE/CPRAG/CPOPS/CPCORE/CPCONV families. These are optional extension families and create no current release blocker or authority.
+
+The adaptive families ACFGRAPH/ACFCLASS/ACFMAN/ACFSYNTH/ACFSHADOW/ACFCANARY/ACFPACK/ACFOWN/ACFJOURNAL/ACFUPDATE/ACFHOST/ACFEXT/ACFACT remain optional and outside the frozen release.

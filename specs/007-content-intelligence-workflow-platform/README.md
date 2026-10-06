@@ -169,3 +169,7 @@ The closure program separates:
 Phase 36 in `plan.md` and `tasks.md` is the execution umbrella. Existing phases remain authoritative for detailed semantics; Phase 36 does not duplicate or supersede their contracts.
 
 The first vertical slice cannot close while repository governance is only committed but not externally enforced, protected backup/recovery is unready, the exact installed workflow provider is uncertified, or the ContentJob-to-public-verification chain lacks exact ETG evidence.
+
+## Optional competitive experience extension
+
+[CE01](extensions/competitive-experience/README.md) retains four original competitor ZIPs with source hashes and defines 53 capability requirements, 29 local phases and 145 OPEN implementation tasks. Its independent ledger is outside the frozen release scope.

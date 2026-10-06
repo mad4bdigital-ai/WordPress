@@ -142,6 +142,9 @@ jobs:
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
 
+      - name: Reject unsafe competitor evidence and false extension completion
+        run: python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py
+
       - name: Enforce bulk closure hardening contract
         run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
 

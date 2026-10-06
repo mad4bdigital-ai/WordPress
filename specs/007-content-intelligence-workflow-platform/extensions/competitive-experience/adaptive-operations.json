@@ -1,0 +1,193 @@
+{
+  "contract": "mad4b.adaptive-capability-fabric-v2-spec.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "production_authorized": false,
+  "workstream_ids": [
+    "runtime-graph-v2",
+    "semantic-classifier",
+    "declarative-adapters",
+    "operation-synthesis",
+    "shadow-certification",
+    "reversible-canary",
+    "certification-packs",
+    "ownership-reconciliation",
+    "universal-journal",
+    "update-acceptance",
+    "host-capability-registry",
+    "external-provider-framework",
+    "operator-action-center"
+  ],
+  "task_count": 65,
+  "task_ids": [
+    "T4001",
+    "T4002",
+    "T4003",
+    "T4004",
+    "T4005",
+    "T4006",
+    "T4007",
+    "T4008",
+    "T4009",
+    "T4010",
+    "T4011",
+    "T4012",
+    "T4013",
+    "T4014",
+    "T4015",
+    "T4016",
+    "T4017",
+    "T4018",
+    "T4019",
+    "T4020",
+    "T4021",
+    "T4022",
+    "T4023",
+    "T4024",
+    "T4025",
+    "T4026",
+    "T4027",
+    "T4028",
+    "T4029",
+    "T4030",
+    "T4031",
+    "T4032",
+    "T4033",
+    "T4034",
+    "T4035",
+    "T4036",
+    "T4037",
+    "T4038",
+    "T4039",
+    "T4040",
+    "T4041",
+    "T4042",
+    "T4043",
+    "T4044",
+    "T4045",
+    "T4046",
+    "T4047",
+    "T4048",
+    "T4049",
+    "T4050",
+    "T4051",
+    "T4052",
+    "T4053",
+    "T4054",
+    "T4055",
+    "T4056",
+    "T4057",
+    "T4058",
+    "T4059",
+    "T4060",
+    "T4061",
+    "T4062",
+    "T4063",
+    "T4064",
+    "T4065"
+  ],
+  "loop": [
+    "OBSERVE",
+    "MODEL",
+    "DIFF",
+    "CLASSIFY",
+    "SIMULATE",
+    "CERTIFY",
+    "RECONCILE",
+    "VERIFY",
+    "PROMOTE"
+  ],
+  "autonomy_levels": [
+    {
+      "id": "L0",
+      "name": "Observe",
+      "automatic_actions": [
+        "OBSERVE_REGISTERED_METADATA"
+      ],
+      "admission": "trusted read-only schemas and masked metadata; no unknown code invocation"
+    },
+    {
+      "id": "L1",
+      "name": "Adapt",
+      "automatic_actions": [
+        "REFRESH_NON_AUTHORIZING_PROJECTIONS"
+      ],
+      "admission": "current reviewed contract, no change to authority or execution binding"
+    },
+    {
+      "id": "L2",
+      "name": "Repair",
+      "automatic_actions": [
+        "REPAIR_PROVEN_OWNED_NON_AUTHORIZING_DRIFT"
+      ],
+      "admission": "owned field, exact last-managed/current/desired diff, policy-admitted CAS plan; no human overwrite"
+    },
+    {
+      "id": "L3",
+      "name": "Certify",
+      "automatic_actions": [
+        "SHADOW_VERIFIED_READ",
+        "RUN_PREAUTHORIZED_DISPOSABLE_CANARY"
+      ],
+      "admission": "pre-existing exact Staging authority and approved probe recipe, isolated target, cost limits, readback and rollback proof"
+    },
+    {
+      "id": "L4",
+      "name": "Activate",
+      "automatic_actions": [
+        "REFRESH_EXISTING_ELIGIBLE_STAGING_PROJECTION"
+      ],
+      "admission": "current exact artifact/contract/behavior receipts and existing eligible grants; no new tool mounts, permissions or high-risk capability"
+    },
+    {
+      "id": "L5",
+      "name": "Governed",
+      "automatic_actions": [],
+      "admission": "high-risk/new authority/Production/Breakglass remain explicit owner-governed decisions"
+    }
+  ],
+  "rules": {
+    "classifier_creates_authority": false,
+    "confidence_is_safety_proof": false,
+    "generated_php_execution": false,
+    "arbitrary_symbol_invocation": false,
+    "generic_outbound_http": false,
+    "new_grants_or_mounts_automatic": false,
+    "host_binary_installation_automatic": false,
+    "human_edit_overwrite_automatic": false,
+    "unsafe_read_shadow_allowed": false,
+    "unknown_external_side_effect_retry": false,
+    "signed_pack_can_create_authority": false,
+    "canary_requires_existing_staging_authority": true,
+    "real_rollback_proof_required": true,
+    "exact_generation_binding_required": true,
+    "ownership_three_way_cas_required": true,
+    "data_pack_signature_revocation_anti_replay_required": true
+  },
+  "update_outcomes": [
+    "NO_SEMANTIC_DRIFT",
+    "READ_RECERTIFICATION_REQUIRED",
+    "SCHEMA_ADAPTATION_CANDIDATE",
+    "BEHAVIORAL_RECERTIFICATION_REQUIRED",
+    "CAPABILITY_REMOVED_DEPENDENTS_ISOLATED",
+    "QUARANTINED",
+    "AUTHORITY_OR_TOPOLOGY_BLOCKED",
+    "RECONCILIATION_REQUIRED"
+  ],
+  "operator_states": [
+    "AUTO_REPAIRED",
+    "APPROVAL_REQUIRED",
+    "EXTERNAL_ACTION_REQUIRED",
+    "RECONCILIATION_REQUIRED"
+  ],
+  "measurement": {
+    "automation_target_percent": [
+      90,
+      95
+    ],
+    "target_is_aspirational": true,
+    "observed_automation_percent": null,
+    "eligible_workload_denominator_required": true,
+    "governance_decisions_are_not_maintenance_success": true
+  }
+}

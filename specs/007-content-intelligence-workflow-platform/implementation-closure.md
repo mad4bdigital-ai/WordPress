@@ -9,7 +9,7 @@ It does not redefine the existing contracts. It orders them into one executable 
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `b43a90bab987c609792c8e410d57080b3dc4a2ae`
+- reviewed repository parent: `32e32a94ddb1b7864f8924ad22cb0b03199856be`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
@@ -257,3 +257,7 @@ This section is the normative reconciliation of the two October 6 All Royal Egyp
 A workstream is **DONE** only for the layer whose evidence is actually present. `REPOSITORY_CLOSED` does not mean a live provider canary ran. `EXTERNAL_PENDING`, `CONFIGURATION_PENDING`, `HOST_EXTERNAL_PENDING` and `HUMAN_GATE_PENDING` are not repository defects and must not trigger synthetic evidence, weakened guards, automatic grants, automatic mounts, unsandboxed Developer execution, Production promotion or Breakglass widening.
 
 The next release handoff must read this matrix together with the exact-head CI snapshot and the installed-candidate live diagnostics. Older rc.94 evidence may establish a baseline but may not certify rc.95.
+
+## Optional CE01 closure boundary
+
+[Competitive Experience](extensions/competitive-experience/README.md) has a separate 145-task OPEN ledger and 53 OPEN capability requirements. Archive/static evidence and Spec validation do not close runtime tasks. Existing 837-task/34-workstream release closure, Phase 38 evidence, live readiness and Production boundaries remain unchanged.

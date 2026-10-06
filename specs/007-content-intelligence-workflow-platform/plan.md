@@ -1004,3 +1004,7 @@ Exit gates:
 - forbid generalization/completion claims until exact-head executable evidence satisfies all mandatory gates.
 
 Phase 38 cannot be closed by documentation alone.
+
+## Optional CE01 implementation backlog
+
+[CE01 plan](extensions/competitive-experience/plan.md) extends operator journeys and governed provider breadth from four supplied competitor packages. Local phases 0–28 and tasks T3901–T3980 plus T4001–T4065 belong to the optional extension, not the frozen release phases 0–38. Future implementation requires reviewed, evidence-backed slices.

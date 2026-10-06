@@ -182,12 +182,12 @@
   "tool_execution_contract": "mad4b.governed-tool-execution.v1",
   "cli_host_runner_contract": "mad4b.cli-host-runner.v1",
   "host_provider_validation_profile": "mad4b.host-provider-validation-profile.v1",
-  "baseline_checked_at": "2026-10-05",
+  "baseline_checked_at": "2026-10-06",
   "implementation_closure_document": "implementation-closure.md",
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
-  "last_reviewed_master_parent_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
+  "last_reviewed_master_parent_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
@@ -331,5 +331,19 @@
     "frozen_workstream_count": 34,
     "frozen_phase38_task_count": 80,
     "max_change_slice_files": 35
+  },
+  "optional_spec_extensions": {
+    "competitive_experience": {
+      "contract": "mad4b.competitive-experience-extension.v1",
+      "path": "extensions/competitive-experience",
+      "status": "SPEC_BACKLOG_ONLY",
+      "task_count": 145,
+      "capability_count": 53,
+      "phase_count": 29,
+      "release_closure_included": false,
+      "authorizing": false,
+      "implementation_requires_separate_reviewed_pr": true,
+      "adaptive_operations_contract": "mad4b.adaptive-capability-fabric-v2-spec.v1"
+    }
   }
 }
