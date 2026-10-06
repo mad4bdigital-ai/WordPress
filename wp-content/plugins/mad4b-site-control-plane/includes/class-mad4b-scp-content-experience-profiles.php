@@ -15,6 +15,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	const PROFILE_APPLY_ABILITY = 'mad4b/content-experience-profile-apply';
 	const PROFILE_CLONE_APPLY_ABILITY = 'mad4b/content-experience-profile-clone-apply';
 	const PROFILE_DELETE_APPLY_ABILITY = 'mad4b/content-experience-profile-delete-apply';
+	const BOOTSTRAP_PLAN_ABILITY = 'mad4b/content-experience-bootstrap-plan';
+	const BOOTSTRAP_PLAN_CONTRACT = 'mad4b.content-experience-bootstrap-plan.v1';
 	const MAX_PROFILES = 64;
 	const MAX_META_KEYS = 128;
 	const MAX_MEDIA_META_FIELDS = 32;
@@ -494,6 +496,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 					'can_assign' => current_user_can( isset( $taxonomy->cap->assign_terms ) ? $taxonomy->cap->assign_terms : 'edit_posts' ),
 				);
 			}
+			$configured_profiles = array();
+			foreach ( self::stored_profiles() as $stored_slug => $stored_profile ) if ( isset( $stored_profile['post_type'] ) && (string) $post_type === (string) $stored_profile['post_type'] ) $configured_profiles[] = (string) $stored_slug;
 			$items[] = array(
 				'post_type' => (string) $post_type,
 				'label' => (string) $object->label,
@@ -503,7 +507,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'hierarchical' => ! empty( $object->hierarchical ),
 				'can_create' => current_user_can( self::post_type_create_cap( $object ) ),
 				'can_publish' => current_user_can( self::post_type_publish_cap( $object ) ),
-				'suggested_profile_slug' => substr( sanitize_title( $post_type ), 0, 48 ),
+				'suggested_profile_slug' => trim( substr( preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) $post_type ) ), 0, 48 ), '-' ),
+				'configured_profile_slugs' => $configured_profiles,
+				'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
 				'taxonomies' => $taxonomies,
 			);
 		}
@@ -514,14 +520,209 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_catalog' => array_values( self::helper_catalog() ),
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'profile_configuration_required_before_routes_exist' => true,
+			'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
+			'supported_scenarios' => array( 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ),
 			'safe_defaults' => array( 'meta_mode' => 'allowlist', 'taxonomy_mode' => 'allowlist', 'live_update_mode' => 'draft_first' ),
 			'mutation_performed' => false,
 		);
 	}
 
+	/**
+	 * Build a safe, non-authorizing profile proposal from the live post-type model.
+	 *
+	 * This intentionally does not infer business-specific meta keys or enable
+	 * external helpers. Those remain explicit operator decisions. The goal is to
+	 * remove expert-only boilerplate while preserving exact profile authority.
+	 */
+	public static function bootstrap_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$post_type = isset( $input['post_type'] ) ? sanitize_key( (string) $input['post_type'] ) : '';
+		$object = self::post_type_object( $post_type );
+		if ( is_wp_error( $object ) ) return $object;
+
+		$explicit_slug = isset( $input['profile_slug'] ) ? trim( (string) $input['profile_slug'] ) : '';
+		$existing_for_type = array();
+		foreach ( self::stored_profiles() as $stored ) {
+			if ( isset( $stored['post_type'] ) && $post_type === (string) $stored['post_type'] ) $existing_for_type[] = $stored;
+		}
+		if ( '' === $explicit_slug && $existing_for_type ) {
+			usort( $existing_for_type, static function ( $a, $b ) { return (int) $b['revision'] <=> (int) $a['revision']; } );
+			$existing = $existing_for_type[0];
+			return array(
+				'contract' => self::BOOTSTRAP_PLAN_CONTRACT,
+				'state' => 'ALREADY_CONFIGURED',
+				'post_type' => $post_type,
+				'existing_profile' => $existing,
+				'scenarios' => self::scenario_matrix( $existing, true ),
+				'profile_apply_ability' => self::PROFILE_APPLY_ABILITY,
+				'apply_required' => false,
+				'mutation_performed' => false,
+			);
+		}
+
+		$slug_seed = '' !== $explicit_slug ? $explicit_slug : preg_replace( '/[^a-z0-9]+/', '-', strtolower( $post_type ) );
+		$slug_seed = trim( substr( (string) $slug_seed, 0, 48 ), '-' );
+		$slug = self::route_slug( $slug_seed );
+		if ( is_wp_error( $slug ) ) return $slug;
+
+		$taxonomy_strategy = isset( $input['taxonomy_strategy'] ) ? sanitize_key( (string) $input['taxonomy_strategy'] ) : 'public_assignable';
+		if ( ! in_array( $taxonomy_strategy, array( 'none', 'public_assignable', 'all_assignable' ), true ) ) {
+			return new WP_Error( 'mad4b_content_experience_bootstrap_taxonomy_strategy_invalid', 'taxonomy_strategy must be none, public_assignable or all_assignable.' );
+		}
+
+		$included_taxonomies = array();
+		$excluded_taxonomies = array();
+		$taxonomy_objects = get_object_taxonomies( $post_type, 'objects' );
+		if ( is_array( $taxonomy_objects ) ) ksort( $taxonomy_objects, SORT_STRING );
+		foreach ( is_array( $taxonomy_objects ) ? $taxonomy_objects : array() as $name => $taxonomy ) {
+			$name = sanitize_key( (string) $name );
+			$assign_cap = is_object( $taxonomy ) && isset( $taxonomy->cap->assign_terms ) ? (string) $taxonomy->cap->assign_terms : 'edit_posts';
+			$assignable = current_user_can( $assign_cap );
+			$operator_visible = is_object( $taxonomy ) && ( ! empty( $taxonomy->public ) || ! empty( $taxonomy->show_ui ) || ! empty( $taxonomy->show_in_rest ) );
+			$reason = '';
+			if ( ! $assignable ) $reason = 'assignment_capability_missing';
+			elseif ( 'none' === $taxonomy_strategy ) $reason = 'strategy_none';
+			elseif ( 'public_assignable' === $taxonomy_strategy && ! $operator_visible ) $reason = 'internal_taxonomy_excluded';
+			elseif ( count( $included_taxonomies ) >= self::MAX_TAXONOMIES ) $reason = 'profile_taxonomy_limit';
+			if ( '' !== $reason ) {
+				$excluded_taxonomies[] = array( 'taxonomy' => $name, 'reason' => $reason );
+				continue;
+			}
+			$included_taxonomies[] = $name;
+		}
+
+		$supports_featured_media = function_exists( 'post_type_supports' ) ? (bool) post_type_supports( $post_type, 'thumbnail' ) : false;
+		$featured_media = array_key_exists( 'featured_media', $input ) ? (bool) $input['featured_media'] : $supports_featured_media;
+		$warnings = array();
+		if ( $featured_media && ! $supports_featured_media ) {
+			$featured_media = false;
+			$warnings[] = 'featured_media_requested_but_post_type_does_not_support_thumbnail';
+		}
+
+		$creation_status = isset( $input['creation_status'] ) ? sanitize_key( (string) $input['creation_status'] ) : 'draft';
+		if ( ! in_array( $creation_status, array( 'draft', 'pending', 'private' ), true ) ) {
+			return new WP_Error( 'mad4b_content_experience_bootstrap_creation_status_invalid', 'creation_status must be draft, pending or private.' );
+		}
+		$live_update_mode = isset( $input['live_update_mode'] ) ? sanitize_key( (string) $input['live_update_mode'] ) : 'draft_first';
+		if ( ! in_array( $live_update_mode, array( 'draft_first', 'direct' ), true ) ) {
+			return new WP_Error( 'mad4b_content_experience_bootstrap_live_update_mode_invalid', 'live_update_mode must be draft_first or direct.' );
+		}
+
+		$label = isset( $input['label'] ) ? sanitize_text_field( (string) $input['label'] ) : ( isset( $object->label ) ? (string) $object->label : $post_type );
+		$profile = array(
+			'slug' => $slug,
+			'label' => $label,
+			'post_type' => $post_type,
+			'enabled' => true,
+			'creation_status' => $creation_status,
+			'live_update_mode' => $live_update_mode,
+			'meta_mode' => 'allowlist',
+			'meta_keys' => array(),
+			'protected_meta_keys' => array(),
+			'media_meta_fields' => array(),
+			'taxonomy_mode' => 'allowlist',
+			'taxonomies' => $included_taxonomies,
+			'featured_media' => $featured_media,
+			'hierarchy' => ! empty( $object->hierarchical ),
+			'enabled_helpers' => array(),
+		);
+
+		$expected_revision = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : 0;
+		$profile_plan = self::profile_plan( array( 'profile' => $profile, 'expected_revision' => $expected_revision ) );
+		if ( is_wp_error( $profile_plan ) ) return $profile_plan;
+
+		$helper_candidates = array();
+		foreach ( self::helper_catalog() as $helper ) {
+			if ( ! is_array( $helper ) || ! empty( $helper['built_in'] ) ) continue;
+			$certification_ability = isset( $helper['certification_ability'] ) ? (string) $helper['certification_ability'] : '';
+			$helper_candidates[] = array(
+				'id' => isset( $helper['id'] ) ? (string) $helper['id'] : '',
+				'label' => isset( $helper['label'] ) ? (string) $helper['label'] : '',
+				'provider' => isset( $helper['provider'] ) ? (string) $helper['provider'] : '',
+				'operations' => isset( $helper['operations'] ) ? array_values( (array) $helper['operations'] ) : array(),
+				'reversible' => ! empty( $helper['reversible'] ),
+				'certification_ability' => $certification_ability,
+				'certification_ability_registered' => '' !== $certification_ability && ( ! function_exists( 'wp_has_ability' ) || wp_has_ability( $certification_ability ) ),
+				'auto_enabled' => false,
+			);
+		}
+
+		return array(
+			'contract' => self::BOOTSTRAP_PLAN_CONTRACT,
+			'state' => 'PROFILE_PROPOSED',
+			'post_type' => $post_type,
+			'taxonomy_strategy' => $taxonomy_strategy,
+			'included_taxonomies' => $included_taxonomies,
+			'excluded_taxonomies' => $excluded_taxonomies,
+			'supports_featured_media' => $supports_featured_media,
+			'helper_candidates' => $helper_candidates,
+			'warnings' => $warnings,
+			'safe_defaults' => array(
+				'new_content_is_nonpublic' => true,
+				'meta_allowlist_starts_empty' => true,
+				'external_helpers_start_disabled' => true,
+				'taxonomies_are_explicit_allowlist' => true,
+			),
+			'profile_plan' => $profile_plan,
+			'profile_apply_ability' => self::PROFILE_APPLY_ABILITY,
+			'apply_input' => array(
+				'profile' => $profile_plan['profile'],
+				'expected_revision' => $profile_plan['expected_revision'],
+				'plan_sha256' => $profile_plan['plan_sha256'],
+			),
+			'scenarios' => self::scenario_matrix( $profile_plan['profile'], false ),
+			'routes_active_after_profile_apply_and_next_request' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	private static function scenario_matrix( array $profile, $active ) {
+		$routes = self::routes_for_profile( $profile );
+		return array(
+			'create_nonpublic' => array(
+				'supported' => true,
+				'planner' => $routes['create_plan'],
+				'executor' => $routes['create_apply'],
+				'initial_status' => isset( $profile['creation_status'] ) ? (string) $profile['creation_status'] : 'draft',
+				'active_now' => (bool) $active,
+			),
+			'create_structured' => array(
+				'supported' => true,
+				'fields' => array( 'title', 'content', 'excerpt', 'slug', 'parent', 'menu_order', 'meta', 'taxonomies', 'featured_media', 'helpers' ),
+				'planner' => $routes['create_plan'],
+				'executor' => $routes['create_apply'],
+				'active_now' => (bool) $active,
+			),
+			'update_existing' => array(
+				'supported' => true,
+				'optimistic_concurrency_required' => true,
+				'planner' => $routes['update_plan'],
+				'executor' => $routes['update_apply'],
+				'active_now' => (bool) $active,
+			),
+			'publish_or_private' => array(
+				'supported' => true,
+				'final_visible_transition' => true,
+				'planner' => $routes['publish_plan'],
+				'executor' => $routes['publish_apply'],
+				'active_now' => (bool) $active,
+			),
+			'verify' => array(
+				'supported' => true,
+				'ability' => $routes['verify'],
+				'active_now' => (bool) $active,
+			),
+			'rollback' => array(
+				'supported' => true,
+				'contract' => 'mad4b.rollback.content-experience.v1',
+				'active_now' => (bool) $active,
+			),
+		);
+	}
+
 	public static function ability_names( $surface ) {
 		$surface = sanitize_key( (string) $surface );
-		$read = array( 'mad4b/content-experience-discover', 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
+		$read = array( 'mad4b/content-experience-discover', self::BOOTSTRAP_PLAN_ABILITY, 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
 		$content = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
@@ -593,6 +794,20 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$definitions = array(
 			array( 'name' => 'mad4b/content-experience-discover', 'label' => 'Discover Content Experience Profiles', 'callback' => array( __CLASS__, 'discover' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array(
+				'name' => self::BOOTSTRAP_PLAN_ABILITY, 'label' => 'Plan Content Experience Bootstrap', 'callback' => array( __CLASS__, 'bootstrap_plan' ), 'permission' => $read,
+				'schema' => self::schema( array(
+					'post_type' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[a-zA-Z0-9_-]+$' ),
+					'profile_slug' => array( 'type' => 'string', 'maxLength' => 48 ),
+					'label' => array( 'type' => 'string', 'maxLength' => 200 ),
+					'taxonomy_strategy' => array( 'type' => 'string', 'enum' => array( 'none', 'public_assignable', 'all_assignable' ), 'default' => 'public_assignable' ),
+					'featured_media' => array( 'type' => 'boolean' ),
+					'creation_status' => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'private' ), 'default' => 'draft' ),
+					'live_update_mode' => array( 'type' => 'string', 'enum' => array( 'draft_first', 'direct' ), 'default' => 'draft_first' ),
+					'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
+				), array( 'post_type' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+			),
 			array( 'name' => 'mad4b/content-experience-profile-status', 'label' => 'Content Experience Profile Status', 'callback' => array( __CLASS__, 'profile_status' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array(
 				'name' => 'mad4b/content-experience-profile-plan', 'label' => 'Plan Content Experience Profile', 'callback' => array( __CLASS__, 'profile_plan' ), 'permission' => $read,

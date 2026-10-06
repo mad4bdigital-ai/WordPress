@@ -152,6 +152,22 @@ try {
 	$check( 'allowlist' === $default_plan['profile']['taxonomy_mode'], 'Profile taxonomy default is not fail-closed allowlist.' );
 	$check( empty( $default_plan['profile']['taxonomies'] ), 'Empty taxonomy allowlist unexpectedly widened to all attached taxonomies.' );
 
+	$bootstrap = MAD4B_SCP_Content_Experience_Profiles::bootstrap_plan( array(
+		'post_type' => 'mad4b_ci_trip',
+		'profile_slug' => 'ci-bootstrap-trip',
+		'taxonomy_strategy' => 'public_assignable',
+	) );
+	$check( ! is_wp_error( $bootstrap ), 'Content Experience bootstrap planning failed.' );
+	$check( 'PROFILE_PROPOSED' === $bootstrap['state'] && empty( $bootstrap['mutation_performed'] ), 'Bootstrap plan must be read-only and proposed-only.' );
+	$check( in_array( 'mad4b_ci_region', $bootstrap['included_taxonomies'], true ), 'Bootstrap plan did not include the assignable public taxonomy.' );
+	$check( ! empty( $bootstrap['supports_featured_media'] ) && ! empty( $bootstrap['profile_plan']['profile']['featured_media'] ), 'Bootstrap plan did not infer thumbnail support.' );
+	$check( array() === $bootstrap['profile_plan']['profile']['meta_keys'] && array() === $bootstrap['profile_plan']['profile']['enabled_helpers'], 'Bootstrap plan widened meta/helper authority.' );
+	$check( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY === $bootstrap['profile_apply_ability'], 'Bootstrap plan did not hand off to the governed profile apply Ability.' );
+	foreach ( array( 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ) as $scenario ) {
+		$check( ! empty( $bootstrap['scenarios'][ $scenario ]['supported'] ), 'Bootstrap scenario missing: ' . $scenario );
+	}
+	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::BOOTSTRAP_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Bootstrap planner is not exposed on the read surface.' );
+
 	$profile_input = array(
 		'slug' => 'ci-trip',
 		'label' => 'CI Trip',

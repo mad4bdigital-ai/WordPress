@@ -75,3 +75,28 @@ Default automatic behavior:
 - enable mutation: disabled
 
 Automatic candidate generation and shadow identity certification stop at L1/lifecycle. L2/read requires a registered runtime adapter with at least one bounded read ability and clear side-channel governance. L3/L4 additionally require governed promotion with reversible contracts, certification evidence, functional acceptance and the normal authorization boundary.
+
+
+## Content Experience bootstrap scenarios
+
+Business content types remain configuration-driven. The fixed read-only ability
+`mad4b/content-experience-bootstrap-plan` can inspect any registered post type and
+produce a safe Content Experience profile proposal without creating content or
+changing authority.
+
+The bootstrap planner supports the generic scenarios:
+
+`create_nonpublic → create_structured → update_existing → publish_or_private → verify → rollback`
+
+Safe defaults are deliberate: new content is non-public, metadata starts with an
+empty allowlist, external helpers are not auto-enabled, and taxonomy access is an
+explicit allowlist. The planner can include assignable public/operator-visible
+taxonomies and infer featured-media support from the live post type. It also
+returns external helper candidates as evidence only; enabling SEO, translation,
+builder or other provider helpers remains an explicit reviewed profile change.
+
+The returned `profile_plan` is applied only through the existing governed
+`mad4b/content-experience-profile-apply` mutation. Generated create/update/publish
+routes become active on the next request, so this adds an ergonomic bootstrap
+layer without creating a generic write bypass or hardcoding business types such
+as tours, products, properties or jobs.
