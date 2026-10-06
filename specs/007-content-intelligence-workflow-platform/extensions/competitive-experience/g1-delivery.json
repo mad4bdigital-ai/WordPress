@@ -45,7 +45,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
-      "sha256": "cb6ea7f765372ca73a3e657bc30a9fad18e497b13f26be1c9dd1ae34bb2b86cc"
+      "sha256": "7866edec3642276dd9e9cac60c2dcbf8d1a3034859e1babd867544f6e3e97131"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-collectors.php",
+      "sha256": "61527e5793b2534224665e8a71bf976bc41fc9af2ee570e9a53b5c8e8c55463d"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
@@ -120,7 +124,8 @@
     "transitive_dependency_impact_isolation",
     "trusted_conformance_bound_public_read_classifier",
     "append_only_audited_owner_review_overlay",
-    "confidence_get_schema_annotation_never_authority"
+    "confidence_get_schema_annotation_never_authority",
+    "runtime_evidence_graph_domain_service_size_budget"
   ],
   "remaining_acceptance": [
     "Every integration candidate must pass the complete exact-head G1 child CI after delivery-manifest and cumulative change-slice binding.",
