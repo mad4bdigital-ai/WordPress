@@ -26,7 +26,8 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			array( 'id' => 'continuation_owner_gate', 'priority' => 960, 'signals_all' => array( 'continuation_owner_gate' ), 'decision' => self::DECISION_REVIEW, 'reason' => 'owner_gate_cannot_be_auto_satisfied' ),
 			array( 'id' => 'maintenance_busy', 'priority' => 950, 'signals_all' => array( 'maintenance_busy' ), 'decision' => self::DECISION_DEFER, 'reason' => 'single_writer_maintenance_lane_busy' ),
 			array( 'id' => 'continuation_executing', 'priority' => 940, 'signals_all' => array( 'continuation_executing' ), 'decision' => self::DECISION_DEFER, 'reason' => 'continuation_already_owns_execution' ),
-			array( 'id' => 'skills_dependency_pending', 'priority' => 930, 'signals_all' => array( 'reconcile_needed', 'skills_pending' ), 'decision' => self::DECISION_DEFER, 'reason' => 'current_build_skill_certification_not_ready' ),
+			array( 'id' => 'skills_dependency_pending', 'priority' => 930, 'signals_all' => array( 'reconcile_needed', 'skills_pending', 'environment_staging', 'runtime_identity_complete' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'runtime_worker_must_reconcile_skills_before_zero_delta_rebind' ),
+			array( 'id' => 'fresh_bootstrap_unbound', 'priority' => 910, 'signals_all' => array( 'environment_staging', 'build_changed', 'runtime_identity_complete', 'stored_binding_absent' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'fresh_bootstrap_requires_safe_runtime_convergence_without_authority_carry_forward' ),
 			array( 'id' => 'manual_or_same_version_package_drift', 'priority' => 900, 'signals_all' => array( 'environment_staging', 'candidate_binding_drift', 'runtime_identity_complete' ), 'signals_any' => array( 'source_wordpress_upgrader', 'source_build_stamp_drift', 'source_manual_replacement', 'source_plugin_activation', 'build_changed' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'candidate_binding_drift_requires_zero_delta_probe' ),
 			array( 'id' => 'native_or_release_set_continuation', 'priority' => 890, 'signals_all' => array( 'environment_staging', 'continuation_pending', 'runtime_identity_complete' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'resume_existing_exact_post_update_continuation' ),
 			array( 'id' => 'trusted_reinstall_or_rollback_probe', 'priority' => 880, 'signals_all' => array( 'environment_staging', 'candidate_binding_drift', 'runtime_identity_complete', 'stored_binding_present' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'exact_release_identity_changed_with_prior_bound_authority' ),
@@ -38,13 +39,17 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 	}
 
 	public static function registry() {
-		$rows = self::builtins();
+		$core = self::builtins();
+		$extensions = array();
 		if ( function_exists( 'apply_filters' ) ) {
-			$filtered = apply_filters( 'mad4b_scp_auto_reconcile_scenarios', $rows );
-			if ( is_array( $filtered ) ) $rows = $filtered;
+			$filtered = apply_filters( 'mad4b_scp_auto_reconcile_scenarios', array() );
+			if ( is_array( $filtered ) ) $extensions = array_slice( $filtered, 0, 50 );
 		}
+		$rows = array_merge( $core, $extensions );
+		$core_ids = array();
+		foreach ( $core as $core_row ) if ( is_array( $core_row ) && ! empty( $core_row['id'] ) ) $core_ids[ sanitize_key( (string) $core_row['id'] ) ] = true;
 		$out = array();
-		foreach ( array_slice( $rows, 0, 100 ) as $row ) {
+		foreach ( array_slice( $rows, 0, 150 ) as $row ) {
 			if ( ! is_array( $row ) ) continue;
 			$id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
 			if ( '' === $id ) continue;
@@ -52,9 +57,12 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			if ( ! in_array( $decision, array( self::DECISION_NO_OP, self::DECISION_SCHEDULE_PROBE, self::DECISION_DEFER, self::DECISION_REVIEW, self::DECISION_HARD_BLOCK ), true ) ) {
 				$decision = self::DECISION_REVIEW;
 			}
+			$is_core = isset( $core_ids[ $id ] );
+			$priority = max( -1000, min( $is_core ? 1000 : 850, isset( $row['priority'] ) ? (int) $row['priority'] : 0 ) );
 			$out[] = array(
 				'id' => $id,
-				'priority' => max( -1000, min( 1000, isset( $row['priority'] ) ? (int) $row['priority'] : 0 ) ),
+				'source' => $is_core ? 'core' : 'extension',
+				'priority' => $priority,
 				'signals_all' => self::signal_list( isset( $row['signals_all'] ) ? $row['signals_all'] : array() ),
 				'signals_any' => self::signal_list( isset( $row['signals_any'] ) ? $row['signals_any'] : array() ),
 				'signals_none' => self::signal_list( isset( $row['signals_none'] ) ? $row['signals_none'] : array() ),
@@ -147,6 +155,7 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'runtime_identity_incomplete' => empty( $context['runtime_identity_complete'] ),
 			'candidate_binding_required' => ! empty( $binding['required'] ),
 			'stored_binding_present' => ! empty( $binding['stored_bound'] ),
+			'stored_binding_absent' => empty( $binding['stored_bound'] ),
 			'candidate_binding_drift' => $candidate_drift,
 			'candidate_binding_match' => ! empty( $binding['match'] ),
 			'version_drift' => $version_drift,
