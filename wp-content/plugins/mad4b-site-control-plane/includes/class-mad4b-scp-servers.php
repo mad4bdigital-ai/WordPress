@@ -764,10 +764,7 @@ final class MAD4B_SCP_Servers {
 		return null;
 	}
 
-	/**
-	 * Resolve structural provider identity for canonical Capability Descriptors.
-	 * Runtime mount/certification remains a separate live authorization gate.
-	 */
+	// Resolve structural provider identity; runtime mount/certification remains a separate live authorization gate.
 	public static function provider_for_capability_descriptor( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
