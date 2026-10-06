@@ -39,6 +39,9 @@ profile_case( 'profile_editor_preserves_policy_and_fences_stale_or_renamed_forms
 	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'stale revision denied' );
 	$edit['expected_revision'] = '2'; $raw['profile_id'] = 'renamed.profile'; $edit['profile_json'] = json_encode( $raw ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'profile cannot be renamed through another form' );
 	$raw['profile_id'] = $p['profile_id']; $raw['provider_policy']['endpoint'] = 'https://example.invalid'; $edit['profile_json'] = json_encode( $raw ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'security fields remain denied by domain validator' );
+	unset( $raw['provider_policy']['endpoint'] );
+	foreach ( array( 'brand_id', 'objective' ) as $field ) { $bad = $raw; $bad[ $field ] = array( 'invalid' ); $edit['profile_json'] = json_encode( $bad ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'typed profile identity/objective: ' . $field ); }
+	$bad = $raw; $bad['markets'][0]['country'] = array( 'GB' ); $edit['profile_json'] = json_encode( $bad ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'array country cannot reach the page renderer' );
 } );
 profile_case( 'profile_form_denies_malformed_inputs_role_production_and_bad_nonce', static function () {
 	foreach ( array( 'profile_id', 'expected_revision', 'languages', 'market_country', 'providers', 'operation' ) as $field ) { $bad = profile_form(); $bad[ $field ] = array( array( 'invalid' ) ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'nested form value denied: ' . $field ); }

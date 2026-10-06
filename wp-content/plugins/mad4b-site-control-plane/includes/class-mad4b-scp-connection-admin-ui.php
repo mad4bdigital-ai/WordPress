@@ -276,6 +276,8 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			}
 		}
 		echo '<form id="mad4b-endpoint-diagnostic-form" method="post" style="margin:12px 0 18px">';
+		wp_nonce_field( 'mad4b_connection_deep_endpoints', 'nonce' );
+		echo '<input type="hidden" name="build" value="' . esc_attr( MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() ) . '">';
 		echo '<label for="mad4b-endpoint-diagnostic-server">' . esc_html__( 'Endpoint', 'mad4b-site-control-plane' ) . '</label> <select id="mad4b-endpoint-diagnostic-server" name="server_id">';
 		foreach ( array_values( array_unique( array_merge( array( 'mad4b-chatgpt' ), MAD4B_SCP_Servers::expected_server_ids() ) ) ) as $id ) echo '<option value="' . esc_attr( $id ) . '">' . esc_html( $id ) . '</option>';
 		echo '<option value="all">' . esc_html__( 'All endpoints', 'mad4b-site-control-plane' ) . '</option></select> ';

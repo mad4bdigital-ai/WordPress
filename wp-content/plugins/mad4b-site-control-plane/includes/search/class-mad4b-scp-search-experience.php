@@ -31,7 +31,6 @@ final class MAD4B_SCP_Search_Experience {
 		return array( 'contract' => 'mad4b.search-experience-model.v1', 'state' => $state, 'headline' => str_replace( '_', ' ', $state ), 'metrics' => array( array( 'id' => 'fresh_observations', 'value' => $fresh, 'scope' => 'bounded_current_page' ), array( 'id' => 'provider_count', 'value' => count( $providers ) ), array( 'id' => 'pending_jobs', 'value' => count( $jobs ), 'scope' => 'bounded_current_page' ) ), 'blockers' => array_values( array_unique( $blockers ) ), 'opportunities' => array(), 'recommended_actions' => array( $profile ? 'Review the observation cohort and its exact plan before capture.' : 'Create a search profile; markets and desired languages are independent of Site Profile.' ), 'sections' => $sections, 'reason_chain' => array( 'profile state', 'certified capabilities', 'known allowance', 'evidence freshness', 'outstanding job reconciliation' ), 'historical_intelligence_usable' => (bool) $views, 'authorizing' => false );
 	}
 	public static function boot() {
-		MAD4B_SCP_Search_Profile_Admin::boot();
 		// Register after the MAD4B parent menu (default priority 10). Registering
 		// this submenu first can make WordPress derive a different plugin-page hook
 		// before the parent exists, causing admin.php?page=... to fail with the

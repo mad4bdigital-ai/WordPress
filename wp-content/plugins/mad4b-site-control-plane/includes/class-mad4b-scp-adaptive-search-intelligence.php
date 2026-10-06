@@ -14,6 +14,7 @@ final class MAD4B_SCP_Adaptive_Search_Intelligence {
 	public static function boot() {
 		MAD4B_SCP_Search_Budgets::boot();
 		MAD4B_SCP_Search_Provider_Connections::boot();
+		MAD4B_SCP_Search_Profile_Admin::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register' ), 46 );
 		add_filter( 'mad4b_scp_search_live_surface_evidence', array( 'MAD4B_SCP_Search_Multilingual_Discovery', 'localize' ) );
 		MAD4B_SCP_Search_Experience::boot();
