@@ -47,7 +47,7 @@ class MAD4B_SCP_Identity_Context {
 			'authenticated' => true,
 			'auth_method' => 'oauth2_bearer',
 			'subject_fingerprint' => str_repeat( 'd', 64 ),
-			'issuer_fingerprint' => hash( 'sha256', 'https://issuer.test' ),
+			'issuer_fingerprint' => hash( 'sha256', 'oauth-issuer' . "\0" . 'https://issuer.test' ),
 		);
 	}
 }
@@ -61,6 +61,7 @@ class MAD4B_SCP_Multi_Authority_Registry {
 					'authority_id' => 'oauth-authority:v1:test',
 					'authority_type' => 'local',
 					'issuer' => 'https://issuer.test',
+					'issuer_fingerprint' => hash( 'sha256', 'oauth-issuer' . "\0" . 'https://issuer.test' ),
 					'trusted' => true,
 					'advertised' => true,
 					'allowed_subject_count' => 1,
@@ -72,6 +73,7 @@ class MAD4B_SCP_Multi_Authority_Registry {
 }
 class MAD4B_SCP_OAuth_Resource_Bridge {
 	public static function status() { return array( 'contract' => 'mad4b.oauth-resource-bridge.v1', 'effective' => true ); }
+	public static function issuer_fingerprint_for_issuer( $issuer ) { return hash( 'sha256', 'oauth-issuer' . "\0" . rtrim( trim( (string) $issuer ), '/' ) ); }
 }
 class MAD4B_SCP_Transport_Context { public static function current_server_id() { return 'mad4b-chatgpt'; } }
 class MAD4B_SCP_Authorization {
