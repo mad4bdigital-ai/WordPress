@@ -214,6 +214,10 @@ try {
 		$check( wp_has_ability( $ability_name ), 'Remote media Ability is not registered: ' . $ability_name );
 	}
 
+	$remote_import_classification = MAD4B_SCP_Impact_Policy::classify( MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY, 'media', array( 'rights_basis' => 'permission' ) );
+	$check( 'content_change' === $remote_import_classification['operation_type'] && 'medium' === $remote_import_classification['risk_tier'], 'Remote media import is not classified as a medium content change.' );
+	$check( ! empty( $remote_import_classification['approval_required'] ) && 'ai_autonomous' === $remote_import_classification['approval_lane'], 'Remote media import is not routed through exact staging approval.' );
+
 	$srcset_method = new ReflectionMethod( 'MAD4B_SCP_Media_Adapter', 'best_srcset_url' );
 	$srcset_method->setAccessible( true );
 	$cloudinary_srcset = 'https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/sample.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/sample.jpg 1600w';
