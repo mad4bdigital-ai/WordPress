@@ -105,7 +105,7 @@ foreach((array)($catalog['providers']??array()) as $provider_id=>$provider){
   }
  }
 }
-$check(17===$catalog_capability_count,'catalog capability count changed without updating conformance expectation');
+$check(19===$catalog_capability_count,'catalog capability count changed without updating conformance expectation');
 
 $profile = MAD4B_SCP_Capability_Traits::profile( 'bit_pi', 'flow.execute' );
 $check( 'mad4b.capability-profile.v1' === $profile['contract'], 'profile contract mismatch' );
