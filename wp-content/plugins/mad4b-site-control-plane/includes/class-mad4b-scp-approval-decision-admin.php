@@ -26,7 +26,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 
 	public static function protect_read_model_hot_path() {
 		if ( ! is_admin() || 'GET' !== strtoupper( isset( $_SERVER['REQUEST_METHOD'] ) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : '';
+		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 		if ( self::PAGE_SLUG !== $page ) return;
 		remove_action( 'admin_init', array( 'MAD4B_SCP_Plugin', 'prime_admin_mcp_runtime' ), 1 );
 		remove_action( 'admin_init', array( 'MAD4B_SCP_Plugin', 'reconcile_authority_on_mad4b_admin' ), 20 );
