@@ -147,3 +147,34 @@ for text in (runtime, schema, lease, reconnect, resilience):
 assert "blind_mutation_replay_after_transport_reinitialize' => false" in reconnect
 
 print("mad4b.post-update-bottleneck-hardening.v2: PASS")
+
+
+# Dynamic auto-reconciliation coverage.
+runtime_convergence = (ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
+continuation = (ROOT / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
+required_runtime_tokens = [
+    "mad4b_scp_auto_reconciliation_scenarios",
+    "manual_package_replacement",
+    "trusted_rollback_or_reinstall",
+    "governed_self_update_restart",
+    "build_provenance_drift",
+    "MAD4B_SCP_BOOT_PROVENANCE_SHA256",
+    "mad4b_scp_boot_provenance_sha256",
+    "authority_delta' => 'zero_required",
+    "mutation_class' => 'candidate_binding_only",
+    "production_allowed' => false",
+    "breakglass_allowed' => false",
+]
+for token in required_runtime_tokens:
+    assert token in runtime_convergence, f"missing dynamic auto-reconciliation contract token: {token}"
+assert "observed_reconciliation_preflight" in continuation
+for token in [
+    "'disposition' => 'AUTO_REBIND'",
+    "'disposition' => 'REVIEW_REQUIRED'",
+    "'disposition' => 'HARD_BLOCK'",
+    "'disposition' => 'DEFER'",
+    "'grant_mutation_allowed' => false",
+    "'subject_mutation_allowed' => false",
+    "'agent_mutation_allowed' => false",
+]:
+    assert token in continuation, f"missing fail-closed observed reconciliation token: {token}"
