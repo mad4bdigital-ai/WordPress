@@ -187,7 +187,6 @@ for token in (
 for token in (
     "image_gallery",
     "attachment_gallery",
-    "csv_ids",
     "image_gallery_usage",
     "attachment_gallery_usage",
     "alt_override",
@@ -586,6 +585,9 @@ print("MAD4B full governed content operations contract: PASS")
 # a field stores URL or ID+URL projections.
 for token in (
     "mad4b.content-experience-media-storage.v1",
+    "csv_ids",
+    "csv_urls",
+    "id_url_items",
     "json_id_url_items",
     "attachment_id_from_url",
     "infer_spec",
