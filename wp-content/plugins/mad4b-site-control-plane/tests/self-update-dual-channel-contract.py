@@ -5,6 +5,8 @@ import subprocess
 
 root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
+continuation = (root / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
+peer_governance = (root / "includes" / "class-mad4b-scp-mcp-peer-governance.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 grants = (root / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
@@ -240,6 +242,79 @@ for marker in (
 ):
     if marker not in self_update:
         raise SystemExit(f"durable update-attempt phase/replacement semantics missing: {marker}")
+
+
+# Non-REST wp-admin update requests must synchronize the canonical lazy REST
+# lifecycle before snapshotting Adapter servers. Otherwise rest_get_server()
+# registers MAD4B routes after get_servers() was captured and self-routes can be
+# falsely classified as foreign.
+peer_status = peer_governance.split("public static function status()", 1)[1].split("public static function analyze_servers", 1)[0]
+sync_index = peer_status.find("self::synchronize_rest_inventory_lifecycle()")
+server_index = peer_status.find("$servers = $adapter->get_servers();")
+if min(sync_index, server_index) < 0 or sync_index >= server_index:
+    raise SystemExit("MCP peer status must synchronize REST lifecycle before Adapter server inventory")
+peer_sync = peer_governance.split("private static function synchronize_rest_inventory_lifecycle()", 1)[1].split("public static function analyze_servers", 1)[0]
+for marker in (
+    "did_action( 'wp_loaded' )",
+    "rest_get_server",
+    "self::rest_server_for_foreign_inventory()",
+    "'read_only' => true",
+    "'mutation_performed' => false",
+    "'canonical_rest_initialized'",
+):
+    if marker not in peer_sync:
+        raise SystemExit(f"read-only MCP peer lifecycle synchronization missing: {marker}")
+if "do_action( 'rest_api_init'" in peer_sync or 'do_action( "rest_api_init"' in peer_sync:
+    raise SystemExit("MCP peer lifecycle synchronization must never replay rest_api_init manually")
+
+# Continuation transport refusal must preserve exact bounded evidence and
+# distinguish unavailable inventory from a real foreign/write-side-channel risk.
+transport_snapshot = continuation.split("private static function transport_snapshot()", 1)[1].split("private static function write_snapshot", 1)[0]
+for marker in (
+    "'inventory_observed'",
+    "'inventory_lifecycle_state'",
+    "'transport_blockers'",
+    "'foreign_transport_unreviewed'",
+    "'write_side_channel_detected'",
+):
+    if marker not in transport_snapshot:
+        raise SystemExit(f"continuation transport diagnostic missing: {marker}")
+prepare_transport = continuation.split("$transport = self::transport_snapshot();", 1)[1].split("$write_snapshot = self::write_snapshot", 1)[0]
+for marker in (
+    "mad4b_post_update_continuation_transport_unavailable",
+    "mad4b_post_update_continuation_foreign_transport_unreviewed",
+    "mad4b_post_update_continuation_write_side_channel_detected",
+    "'filesystem_replacement_attempted' => false",
+    "'transport_inventory_observed'",
+    "'transport_inventory_reason'",
+    "'transport_inventory_lifecycle_state'",
+    "'transport_server_count'",
+    "'transport_blockers'",
+):
+    if marker not in prepare_transport:
+        raise SystemExit(f"continuation transport blocker classification missing: {marker}")
+
+for marker in (
+    "'transport_inventory_observed'",
+    "'transport_inventory_reason'",
+    "'transport_inventory_lifecycle_state'",
+    "'transport_server_count'",
+    "'transport_blockers'",
+):
+    if marker not in self_update:
+        raise SystemExit(f"durable update-attempt transport evidence missing: {marker}")
+
+notice = self_update.split("public static function native_update_notice()", 1)[1].split("private static function redirect_native_result", 1)[0]
+for marker in (
+    "self::last_update_attempt_projection()",
+    "$pre_install_block",
+    "false === $attempt['filesystem_replacement_attempted']",
+    "blocked by a governed pre-installation check",
+    "No plugin files were changed",
+    "live MCP transport inventory must be verified",
+):
+    if marker not in notice:
+        raise SystemExit(f"operator-safe pre-install failure notice invariant missing: {marker}")
 managed_apply_bootstrap = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
 for marker in (
     "$bootstrap_candidate_drift = false",
