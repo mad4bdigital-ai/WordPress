@@ -16,7 +16,7 @@ Owned tasks: **T3901–T3905, T4001–T4010**. Owned capabilities: **CE001, CE00
 - Runtime graph snapshots expose bounded elapsed/memory metrics and request-level memoization without changing authority.
 - Semantic Policy Proposals separate observed runtime facts from reviewed policy overlay. Confidence, names, HTTP methods, schemas and annotations remain evidence only.
 - Automatic classification eligibility is restricted to a conformance-bound, zero-effect, public-bounded read with both input/output schema digests, no secret-bearing schema, verified execution boundary, non-privileged declared capability and non-sensitive data classification.
-- Conformance receipts are bound to ability, exact graph generation, descriptor generation, input/output schema digests and provider contract digest; untrusted issuers, forged receipt digests or observed effects fail closed.
+- Conformance receipts are bound to ability, exact graph generation, descriptor generation, input/output schema digests, provider contract digest, current provider capability ID, runtime artifact fingerprint and capability contract digest. The verifier callback must originate from the MAD4B code root; untrusted verifiers, stale artifacts/capabilities, forged receipts or observed effects fail closed.
 - Owner review is revision-fenced, graph/proposal-bound, audit-required and append-only. Stored review records are digest-verified; tampered review stores, stale revisions, lock loss or missing audit readiness fail closed.
 - Owner review remains evidence-only and cannot create grants, mounts, scopes, provider certification, Production authority or Breakglass authority.
 
