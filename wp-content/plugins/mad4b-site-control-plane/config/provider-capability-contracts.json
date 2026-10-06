@@ -149,6 +149,92 @@
             "compensation_support": true,
             "evidence_strength": "exact_readback_and_rollback_required"
           }
+        },
+        "native_configuration.read": {
+          "risk": "read",
+          "abilities": [
+            "jetengine/get-native-configuration",
+            "jetengine/get-native-website-config",
+            "jetengine/get-native-macros",
+            "jetengine/export-configuration"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "symbol_any",
+              "classes": [
+                "Jet_Engine"
+              ],
+              "functions": [
+                "jet_engine"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "native_schema.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "jetengine/create-cpt",
+            "jetengine/create-taxonomy",
+            "jetengine/create-meta-box",
+            "jetengine/create-cct",
+            "jetengine/create-query",
+            "jetengine/create-glossary",
+            "jetengine/create-listing",
+            "jetengine/manage-modules",
+            "jetengine/import-configuration"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "symbol_any",
+              "classes": [
+                "Jet_Engine"
+              ],
+              "functions": [
+                "jet_engine"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "idempotency_model": "mad4b_guarded",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "callback_model": "none",
+            "execution_history_retention": "provider_defined",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "local_or_remote": "local_wordpress",
+            "evidence_strength": "behavioral_readback_required"
+          }
         }
       }
     },
