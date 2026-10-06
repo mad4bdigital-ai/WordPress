@@ -121,7 +121,6 @@ req(
     competitive,
     "mad4b.competitive-evidence-summary.v2",
     "config/competitive-evidence-summary.php",
-    "Direct web execution",
     "MAX_PACKAGES",
     "MAX_CAPABILITIES",
     "MAX_SOURCES_PER_CAPABILITY",
