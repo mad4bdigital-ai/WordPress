@@ -36,16 +36,16 @@
   ],
   "code_paths": [
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.json",
-      "sha256": "4d44b7bca1a17e0d37bcd590ec84037567ab29dd5ca2f62e6de8586c3e529815"
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
+      "sha256": "d7628d387ce23223c2862b66888cce2f41dab823c9e1ff6b7d72a405a04ddde8"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
-      "sha256": "23f7a71bc4e4c727e6eb7a33c2b14a74aae10cbb6049573ba747463f1dc991dc"
+      "sha256": "41e1c72bb5cd225f7c9dbfc31ec0e44d4244ba95861604988f3e7342bfd1b6df"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
-      "sha256": "396ecc6eb899b34aa3263228edc47dedbdc87fd5a62dfcb13b5a780febd94c7f"
+      "sha256": "6478bf4a258fb13ad1bae4f7c2ee4afec29a255e6ba35fd45f26b5f688f78b25"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
@@ -63,21 +63,25 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py",
-      "sha256": "e016002c370ea8b21a1295d8cd344b79330a7284eda64cc945a4303b3adad565"
+      "sha256": "92e6a6a8e1d1975af8f0eeae3bc5917c827725fd2ba5f12630c2d8524c45a07e"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php",
-      "sha256": "2c96ffe4aed2e061598f54583509cf20b181f8c734133d4ea006236adbeb7ab5"
+      "sha256": "1276b70ea9f69d77f5e90fc384b0c421a0093ce190313630a1822590ea6314e4"
     }
   ],
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
-      "sha256": "64ceb8055f256b638b66a3732515b08615637a11078d88858a1033487462e9d6"
+      "sha256": "105a335e6483efce3226f36b09e5b57342e66b43a5bd261fbf617a1fb35282d7"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-      "sha256": "6da62b5d927f968d3993a49050d100b0253e82d2a084ccc2cd88d38b2e82f246"
+      "sha256": "abb2f0c324b1e1557fc3f8ca1577732e9c8313a968f10c2ac661cade1270a274"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
+      "sha256": "9ddd24403b7395b5ae95efad014ce39011d895035e28bd908a2ff9189d9bba60"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
@@ -113,7 +117,8 @@
     "bounded_runtime_candidate_graph_generation_and_diff",
     "non_authorizing_semantic_policy_proposals",
     "exact_generation_owner_review_overlay",
-    "confidence_get_schema_annotation_never_authority"
+    "confidence_get_schema_annotation_never_authority",
+    "guarded_competitive_evidence_resource_and_append_only_history"
   ],
   "remaining_acceptance": [
     "Exact-head G1 child CI must pass after the final delivery manifest and cumulative change-slice binding are committed.",
