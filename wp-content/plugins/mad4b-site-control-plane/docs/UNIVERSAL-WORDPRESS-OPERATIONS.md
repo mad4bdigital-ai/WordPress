@@ -207,3 +207,18 @@ from `index + binding_role + plan_sha256` before any media mutation. Unknown
 roles are rejected instead of being silently coerced to gallery. The same
 correlation survives source reuse, pre-download content reuse, and post-download
 dedupe reuse paths.
+
+
+### Partial manifest recovery
+
+Recovery state now distinguishes a partially imported media set from a complete
+but still-unbound one. Every manifest-correlated import carries the reviewed
+total item count. Recovery reports `expected_item_count`,
+`staged_item_count`, and exact `missing_manifest_indices`.
+
+A partial set reports `state=staged_partial` and
+`next_action=resume_remaining_media_imports`. Only after all reviewed indexes
+have staged successfully does it become `staged_unbound`, at which point the
+next step is the post media-binding/content plan. This prevents a half-imported
+gallery from being treated as post-ready while preserving already verified
+Media Library assets.

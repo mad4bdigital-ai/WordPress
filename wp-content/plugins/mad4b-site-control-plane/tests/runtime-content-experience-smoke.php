@@ -328,6 +328,7 @@ try {
 		),
 	) );
 	$check( ! is_wp_error( $remote_manifest ) && ! empty( $remote_manifest['ready'] ) && 64 === strlen( (string) $remote_manifest['manifest_sha256'] ), 'Remote media manifest planning failed.' );
+	$check( 1 === (int) $remote_manifest['items'][0]['apply_input']['manifest_item_count'], 'Manifest execution input lost total item count.' );
 	$check( $remote_manifest['manifest_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_sha256'] && 0 === (int) $remote_manifest['items'][0]['apply_input']['manifest_index'], 'Manifest execution input lost exact manifest correlation.' );
 	$check( $remote_manifest['items'][0]['item_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_item_sha256'] && 'featured' === $remote_manifest['items'][0]['apply_input']['manifest_binding_role'], 'Manifest execution input lost exact item/role intent.' );
 	$tampered_manifest_apply = $remote_manifest['items'][0]['apply_input'];
@@ -340,6 +341,7 @@ try {
 	$check( hash_equals( (string) $remote_manifest['items'][0]['item_sha256'], (string) $manifest_import['recovery_stage']['manifest_item_sha256'] ) && 'featured' === $manifest_import['recovery_stage']['manifest_binding_role'], 'Recovery stage lost reviewed manifest item/role intent.' );
 	$manifest_staged_status = MAD4B_SCP_Remote_Media_Recovery::status( $remote_manifest['manifest_sha256'] );
 	$check( ! is_wp_error( $manifest_staged_status ) && 'staged_unbound' === $manifest_staged_status['state'] && ! $manifest_staged_status['auto_delete'], 'Unbound manifest is not explicitly recoverable/non-deleting.' );
+	$check( ! empty( $manifest_staged_status['complete'] ) && 1 === (int) $manifest_staged_status['expected_item_count'] && empty( $manifest_staged_status['missing_manifest_indices'] ), 'Recovery status did not recognize a complete staged manifest.' );
 
 	$profile_input = array(
 		'slug' => 'ci-trip',
@@ -457,7 +459,7 @@ try {
 	wp_update_attachment_metadata( $orphan_attachment, array( 'width' => 1000, 'height' => 700, 'file' => 'ci-recoverable-unbound.jpg', 'filesize' => 9000 ) );
 	$orphan_manifest_sha = hash( 'sha256', 'ci-recoverable-unbound-manifest' );
 	$orphan_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $orphan_attachment, array(
-		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0,
+		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0, 'manifest_item_count' => 1,
 		'import_plan_sha256' => hash( 'sha256', 'ci-recoverable-unbound-import-plan' ),
 		'provenance_event_sha256' => '', 'created_for_manifest' => true,
 	) );
@@ -465,14 +467,30 @@ try {
 	$orphan_status = MAD4B_SCP_Remote_Media_Recovery::status( $orphan_manifest_sha );
 	$check( 'staged_unbound' === $orphan_status['state'] && in_array( $orphan_attachment, $orphan_status['created_for_manifest_attachment_ids'], true ) && false === $orphan_status['auto_delete'], 'Recoverable orphan semantics are not explicit/non-destructive.' );
 	$orphan_retry = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $orphan_attachment, array(
-		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0,
+		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0, 'manifest_item_count' => 1,
 		'import_plan_sha256' => hash( 'sha256', 'ci-recoverable-unbound-import-plan' ),
 		'provenance_event_sha256' => '', 'created_for_manifest' => false,
 	) );
 	$check( ! is_wp_error( $orphan_retry ) && ! empty( $orphan_retry['created_for_manifest'] ), 'Idempotent recovery retry lost created-for-manifest ownership.' );
+
+	$partial_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Partial Recovery Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $partial_attachment ), 'Unable to create partial recovery fixture.' );
+	$partial_attachment = (int) $partial_attachment; $post_ids[] = $partial_attachment;
+	$partial_manifest_sha = hash( 'sha256', 'ci-partial-recovery-manifest' );
+	$partial_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $partial_attachment, array(
+		'manifest_sha256' => $partial_manifest_sha, 'manifest_index' => 0, 'manifest_item_count' => 2,
+		'import_plan_sha256' => hash( 'sha256', 'ci-partial-recovery-plan' ), 'created_for_manifest' => true,
+	) );
+	$check( ! is_wp_error( $partial_stage ), 'Unable to stage partial recovery fixture.' );
+	$partial_status = MAD4B_SCP_Remote_Media_Recovery::status( $partial_manifest_sha );
+	$check( 'staged_partial' === $partial_status['state'] && array( 1 ) === $partial_status['missing_manifest_indices'] && 'resume_remaining_media_imports' === $partial_status['next_action'], 'Partial manifest recovery state did not expose the exact resume action.' );
+
 	$recovery_overview = MAD4B_SCP_Remote_Media_Recovery::status();
 	$overview_manifests = array_column( $recovery_overview['unbound_manifests'], 'manifest_sha256' );
 	$check( in_array( $orphan_manifest_sha, $overview_manifests, true ) && $recovery_overview['created_unbound_attachment_count'] >= 1, 'Recovery overview did not surface created-but-unbound Media Library assets.' );
+	$check( in_array( $partial_manifest_sha, $overview_manifests, true ) && $recovery_overview['partial_manifest_count'] >= 1, 'Recovery overview did not surface partial manifests.' );
 
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
 	$check( $adapter instanceof MAD4B_SCP_Full_Content_Operations_Adapter, 'Full Content Operations adapter is unavailable.' );

@@ -708,4 +708,20 @@ for token in (
 assert "Manifest-correlated import accepted tampered item intent." in experience_runtime_smoke_src
 assert "Post binding accepted manifest role drift." in experience_runtime_smoke_src
 
+for token in (
+    "manifest_item_count",
+    "mad4b_remote_media_manifest_item_count_invalid",
+):
+    assert token in remote_media_manifest_src or token in remote_media_src, f"remote manifest item-count correlation missing: {token}"
+for token in (
+    "staged_partial",
+    "missing_manifest_indices",
+    "resume_remaining_media_imports",
+    "mad4b_remote_media_recovery_item_count_drift",
+    "partial_manifest_count",
+):
+    assert token in remote_media_recovery_src, f"remote recovery progress semantics missing: {token}"
+assert "Partial manifest recovery state did not expose the exact resume action." in experience_runtime_smoke_src
+assert "Recovery overview did not surface partial manifests." in experience_runtime_smoke_src
+
 print("MAD4B full governed content operations contract: PASS")
