@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.competitive-evidence-summary.v1",
-  "snapshot_generation_sha256": "fc8336c918722c4d581031fb4fe05d7d56623cfc0efba4ae0fb40aafd6d6005e",
+  "snapshot_generation_sha256": "cd29191aac7746d37906720474b5bb7cc9574d24b67734a2038c37a9169d953e",
   "package_count": 4,
   "capability_count": 59,
   "status_counts": {
-    "OPEN": 55,
-    "PARTIAL": 4
+    "OPEN": 51,
+    "PARTIAL": 8
   },
   "packages": [
     {
@@ -49,7 +49,7 @@
     {
       "id": "CE001",
       "title": "Immutable competitor package archive",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "risk_class": "READ_ONLY",
       "task_ids": [
         "T3901",
@@ -68,7 +68,7 @@
     {
       "id": "CE002",
       "title": "Evidence-based comparison and progress",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "risk_class": "READ_ONLY",
       "task_ids": [
         "T3901",
@@ -846,7 +846,7 @@
     {
       "id": "CE041",
       "title": "Runtime Candidate Graph v2",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
         "T4001",
@@ -865,7 +865,7 @@
     {
       "id": "CE042",
       "title": "Semantic Classification Engine",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
         "T4006",
@@ -1206,5 +1206,5 @@
     }
   ],
   "authorizing": false,
-  "summary_sha256": "2807b2124bea6c2704b1214c7ebc019a269cf7ca49e78518e5e7d994be8220ac"
+  "summary_sha256": "1f2b0bae2082a6b071e4b13a8075fc49f05e2d389b3fffa210499d91ce51d019"
 }
