@@ -597,6 +597,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'menu_order' => array( 'type' => 'integer' ),
 			'featured_media_id' => array( 'type' => 'integer', 'minimum' => 0 ),
 			'expected_remote_media_state_sha256' => self::sha_schema(),
+			'expected_media_manifest_sha256' => self::sha_schema(),
+			'expected_media_manifest_item_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50 ),
+			'expected_media_recovery_receipt_sha256' => self::sha_schema(),
+			'expected_media_binding_state_sha256' => self::sha_schema(),
 			'meta' => array( 'type' => 'object', 'additionalProperties' => self::json_schema() ),
 			'taxonomies' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'helpers' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -639,6 +643,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'name' => self::MEDIA_BINDING_PLAN_ABILITY, 'label' => 'Plan Content Experience Media Binding', 'callback' => array( __CLASS__, 'media_binding_plan' ), 'permission' => $read,
 				'schema' => self::schema( array(
 					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+					'manifest_sha256' => self::sha_schema(),
+					'manifest_item_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50 ),
 					'items' => array(
 						'type' => 'array', 'minItems' => 1, 'maxItems' => self::MAX_MEDIA_GALLERY_ITEMS,
 						'items' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -793,13 +799,14 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'brand_key_regex' => '(^|[_-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords|editor|html|wysiwyg)([_-]|$)',
 			'operational_fields' => array(
 				'post_id', 'expected_modified_gmt', 'post_name', 'post_parent', 'menu_order',
-				'featured_media_id', 'expected_remote_media_state_sha256', 'taxonomies', 'post_status', 'plan_sha256',
+				'featured_media_id', 'expected_remote_media_state_sha256', 'expected_media_manifest_sha256', 'expected_media_manifest_item_count', 'expected_media_recovery_receipt_sha256', 'expected_media_binding_state_sha256', 'taxonomies', 'post_status', 'plan_sha256',
 			),
 			'operational_key_regex' => '^(?:term_ids?|taxonomy|taxonomies|post_status|post_id|featured_media_id|menu_order|post_parent|expected_modified_gmt|plan_sha256|id|ids|uuid|hash|checksum|status|enabled|disabled|price|amount|count|order|priority|color|size|width|height|position|timestamp|date|url|path)$',
 			'root_operational_paths' => array(
 				'post_id', 'expected_modified_gmt',
 				'post_title', 'post_content', 'post_excerpt',
 				'post_name', 'post_parent', 'menu_order', 'featured_media_id', 'expected_remote_media_state_sha256',
+				'expected_media_manifest_sha256', 'expected_media_manifest_item_count', 'expected_media_recovery_receipt_sha256', 'expected_media_binding_state_sha256',
 				'post_status', 'plan_sha256',
 				'meta.*', 'taxonomies.*', 'helpers.*',
 				'_mad4b_approval_ticket_id', '_mad4b_context_receipt',

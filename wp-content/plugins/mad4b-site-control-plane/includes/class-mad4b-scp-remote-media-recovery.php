@@ -157,17 +157,18 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		$identity = $event; unset( $identity['bound_at_gmt'], $identity['bound_by_user_id'] );
 		$event['binding_event_sha256'] = hash( 'sha256', wp_json_encode( $identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
-		$manifest_values = array_values( array_filter( array_map( 'strval', (array) get_post_meta( $post_id, self::POST_MANIFEST_META, false ) ) ) );
-		$manifest_added = false;
-		if ( ! in_array( $manifest, $manifest_values, true ) ) {
-			$manifest_added = false !== add_post_meta( $post_id, self::POST_MANIFEST_META, $manifest, false );
-			if ( ! $manifest_added ) return new WP_Error( 'mad4b_remote_media_recovery_post_manifest_failed', 'Post recovery manifest identity could not be persisted.' );
+		$current_manifest = (string) get_post_meta( $post_id, self::POST_MANIFEST_META, true );
+		$current_binding = get_post_meta( $post_id, self::POST_BINDING_META, true );
+		if ( $manifest === $current_manifest && is_array( $current_binding )
+			&& isset( $current_binding['binding_event_sha256'] )
+			&& hash_equals( (string) $current_binding['binding_event_sha256'], $event['binding_event_sha256'] ) ) return $current_binding;
+		if ( '' !== $current_manifest && ! hash_equals( $manifest, $current_manifest ) ) return new WP_Error( 'mad4b_remote_media_recovery_post_manifest_conflict', 'Post is already bound to a different remote media manifest.' );
+
+		if ( false === update_post_meta( $post_id, self::POST_MANIFEST_META, $manifest ) && $manifest !== (string) get_post_meta( $post_id, self::POST_MANIFEST_META, true ) ) {
+			return new WP_Error( 'mad4b_remote_media_recovery_post_manifest_failed', 'Post recovery manifest identity could not be persisted.' );
 		}
-		foreach ( (array) get_post_meta( $post_id, self::POST_BINDING_META, false ) as $existing ) {
-			if ( is_array( $existing ) && isset( $existing['binding_event_sha256'] ) && hash_equals( (string) $existing['binding_event_sha256'], $event['binding_event_sha256'] ) ) return $existing;
-		}
-		if ( false === add_post_meta( $post_id, self::POST_BINDING_META, $event, false ) ) {
-			if ( $manifest_added ) delete_post_meta( $post_id, self::POST_MANIFEST_META, $manifest );
+		if ( false === update_post_meta( $post_id, self::POST_BINDING_META, $event ) && get_post_meta( $post_id, self::POST_BINDING_META, true ) !== $event ) {
+			if ( '' === $current_manifest ) delete_post_meta( $post_id, self::POST_MANIFEST_META );
 			return new WP_Error( 'mad4b_remote_media_recovery_post_binding_failed', 'Post recovery binding evidence could not be persisted.' );
 		}
 		return $event;
@@ -178,12 +179,12 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		$binding = self::sha( $binding_state_sha256, 'mad4b_remote_media_recovery_binding_invalid' );
 		$receipt = self::sha( $recovery_receipt_sha256, 'mad4b_remote_media_recovery_receipt_invalid' );
 		if ( is_wp_error( $manifest ) || is_wp_error( $binding ) || is_wp_error( $receipt ) ) return is_wp_error( $manifest ) ? $manifest : ( is_wp_error( $binding ) ? $binding : $receipt );
-		foreach ( (array) get_post_meta( absint( $post_id ), self::POST_BINDING_META, false ) as $event ) {
-			if ( ! is_array( $event ) || self::BINDING_CONTRACT !== ( isset( $event['contract'] ) ? (string) $event['contract'] : '' ) ) continue;
-			if ( hash_equals( $manifest, (string) ( $event['manifest_sha256'] ?? '' ) )
-				&& hash_equals( $binding, (string) ( $event['binding_state_sha256'] ?? '' ) )
-				&& hash_equals( $receipt, (string) ( $event['recovery_receipt_sha256'] ?? '' ) ) ) return true;
-		}
+		if ( ! hash_equals( $manifest, (string) get_post_meta( absint( $post_id ), self::POST_MANIFEST_META, true ) ) ) return new WP_Error( 'mad4b_remote_media_recovery_post_manifest_drift', 'Post no longer carries the exact reviewed media manifest identity.' );
+		$event = get_post_meta( absint( $post_id ), self::POST_BINDING_META, true );
+		if ( is_array( $event ) && self::BINDING_CONTRACT === ( isset( $event['contract'] ) ? (string) $event['contract'] : '' )
+			&& hash_equals( $manifest, (string) ( $event['manifest_sha256'] ?? '' ) )
+			&& hash_equals( $binding, (string) ( $event['binding_state_sha256'] ?? '' ) )
+			&& hash_equals( $receipt, (string) ( $event['recovery_receipt_sha256'] ?? '' ) ) ) return true;
 		return new WP_Error( 'mad4b_remote_media_recovery_post_binding_drift', 'Post no longer carries the exact reviewed media manifest binding evidence.' );
 	}
 
