@@ -293,7 +293,9 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				continue;
 			}
 			$role = isset( $item['binding_role'] ) ? sanitize_key( (string) $item['binding_role'] ) : 'gallery';
-			if ( ! in_array( $role, array( 'featured', 'gallery', 'content' ), true ) ) $role = 'gallery';
+			if ( ! in_array( $role, array( 'featured', 'gallery', 'content', 'field', 'shared' ), true ) ) {
+				return new WP_Error( 'mad4b_remote_media_manifest_binding_role_invalid', 'Remote media manifest binding_role is unsupported.', array( 'index' => $index, 'binding_role' => $role ) );
+			}
 			if ( 'featured' === $role ) ++$featured;
 			$plan = $this->remote_import_plan( $item['import'] );
 			if ( is_wp_error( $plan ) ) {
@@ -347,6 +349,16 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		$plan = $this->remote_import_plan( $plan_input );
 		if ( is_wp_error( $plan ) ) return $plan;
 		if ( '' === $expected || ! hash_equals( (string) $plan['plan_sha256'], $expected ) ) return new WP_Error( 'mad4b_remote_media_import_plan_drift', 'Remote media import no longer matches the exact reviewed plan.' );
+		$has_manifest_correlation = '' !== $manifest_sha256 || $manifest_index >= 0 || '' !== $manifest_item_sha256 || '' !== $manifest_binding_role;
+		if ( $has_manifest_correlation ) {
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $manifest_sha256 ) ) return new WP_Error( 'mad4b_remote_media_manifest_identity_invalid', 'Manifest-correlated import requires an exact manifest SHA-256.' );
+			if ( $manifest_index < 0 || $manifest_index >= self::MAX_REMOTE_CANDIDATES ) return new WP_Error( 'mad4b_remote_media_manifest_index_invalid', 'Manifest-correlated import requires a bounded manifest index.' );
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $manifest_item_sha256 ) ) return new WP_Error( 'mad4b_remote_media_manifest_item_identity_invalid', 'Manifest-correlated import requires an exact manifest item SHA-256.' );
+			if ( ! in_array( $manifest_binding_role, array( 'featured', 'gallery', 'content', 'field', 'shared' ), true ) ) return new WP_Error( 'mad4b_remote_media_manifest_binding_role_invalid', 'Manifest-correlated import requires a supported binding role.' );
+			$item_identity = array( 'index' => $manifest_index, 'binding_role' => $manifest_binding_role, 'plan_sha256' => $plan['plan_sha256'] );
+			$current_item_sha256 = hash( 'sha256', wp_json_encode( $item_identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+			if ( ! hash_equals( $current_item_sha256, $manifest_item_sha256 ) ) return new WP_Error( 'mad4b_remote_media_manifest_item_drift', 'Manifest item intent no longer matches the reviewed import plan, index and binding role.' );
+		}
 		if ( empty( $plan['ready'] ) ) return new WP_Error( 'mad4b_remote_media_import_blocked', 'Remote media import is blocked until its plan blockers are resolved.', array( 'blockers' => $plan['blockers'] ) );
 
 		$normalized = $plan['normalized_input'];
@@ -400,7 +412,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				if ( 'fail' === $normalized['duplicate_policy'] ) return new WP_Error( 'mad4b_remote_media_content_duplicate', 'Downloaded remote image bytes already exist in the Media Library.' );
 				$bound = $this->append_remote_provenance( (int) $content_state['attachment_id'], $normalized, $download['content_sha256'], $plan['plan_sha256'], 'content_sha256_reuse' );
 				if ( is_wp_error( $bound ) ) return $bound;
-				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index );
+				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index, $manifest_item_sha256, $manifest_binding_role );
 			}
 
 			if ( ! function_exists( 'media_handle_sideload' ) ) {

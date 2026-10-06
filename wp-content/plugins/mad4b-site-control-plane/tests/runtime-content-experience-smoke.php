@@ -299,6 +299,21 @@ try {
 	$remote_state_two = MAD4B_SCP_Remote_Media_Rights::state_evidence( $remote_rights_attachment, array(), array() );
 	$check( ! is_wp_error( $remote_state_two ) && hash_equals( (string) $remote_state_one['remote_state_sha256'], (string) $remote_state_two['remote_state_sha256'] ), 'Remote media state evidence is not deterministic.' );
 
+	$remote_manifest_bad_role = $remote_media_adapter->remote_import_manifest_plan( array(
+		'items' => array(
+			array(
+				'binding_role' => 'mystery',
+				'import' => array(
+					'source_url' => $remote_source_url,
+					'rights_basis' => 'permission',
+					'rights_note' => 'CI permission fixture',
+					'expected_content_sha256' => $remote_content_hash,
+				),
+			),
+		),
+	) );
+	$check( is_wp_error( $remote_manifest_bad_role ) && 'mad4b_remote_media_manifest_binding_role_invalid' === $remote_manifest_bad_role->get_error_code(), 'Remote media manifest silently coerced an unsupported binding role.' );
+
 	$remote_manifest = $remote_media_adapter->remote_import_manifest_plan( array(
 		'items' => array(
 			array(
@@ -315,9 +330,14 @@ try {
 	$check( ! is_wp_error( $remote_manifest ) && ! empty( $remote_manifest['ready'] ) && 64 === strlen( (string) $remote_manifest['manifest_sha256'] ), 'Remote media manifest planning failed.' );
 	$check( $remote_manifest['manifest_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_sha256'] && 0 === (int) $remote_manifest['items'][0]['apply_input']['manifest_index'], 'Manifest execution input lost exact manifest correlation.' );
 	$check( $remote_manifest['items'][0]['item_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_item_sha256'] && 'featured' === $remote_manifest['items'][0]['apply_input']['manifest_binding_role'], 'Manifest execution input lost exact item/role intent.' );
+	$tampered_manifest_apply = $remote_manifest['items'][0]['apply_input'];
+	$tampered_manifest_apply['manifest_item_sha256'] = str_repeat( 'f', 64 );
+	$tampered_manifest_result = $remote_media_adapter->remote_import_apply( $tampered_manifest_apply );
+	$check( is_wp_error( $tampered_manifest_result ) && 'mad4b_remote_media_manifest_item_drift' === $tampered_manifest_result->get_error_code(), 'Manifest-correlated import accepted tampered item intent.' );
 	$manifest_import = $remote_media_adapter->remote_import_apply( $remote_manifest['items'][0]['apply_input'] );
 	$check( ! is_wp_error( $manifest_import ) && ! empty( $manifest_import['verified'] ) && $remote_rights_attachment === (int) $manifest_import['attachment_id'], 'Manifest-correlated remote media reuse failed.' );
 	$check( isset( $manifest_import['recovery_stage']['manifest_sha256'] ) && hash_equals( (string) $remote_manifest['manifest_sha256'], (string) $manifest_import['recovery_stage']['manifest_sha256'] ), 'Successful import did not create durable recovery stage evidence.' );
+	$check( hash_equals( (string) $remote_manifest['items'][0]['item_sha256'], (string) $manifest_import['recovery_stage']['manifest_item_sha256'] ) && 'featured' === $manifest_import['recovery_stage']['manifest_binding_role'], 'Recovery stage lost reviewed manifest item/role intent.' );
 	$manifest_staged_status = MAD4B_SCP_Remote_Media_Recovery::status( $remote_manifest['manifest_sha256'] );
 	$check( ! is_wp_error( $manifest_staged_status ) && 'staged_unbound' === $manifest_staged_status['state'] && ! $manifest_staged_status['auto_delete'], 'Unbound manifest is not explicitly recoverable/non-deleting.' );
 
@@ -397,6 +417,22 @@ try {
 			),
 		),
 	) );
+	$manifest_role_drift = MAD4B_SCP_Content_Experience_Profiles::media_binding_plan( array(
+		'profile_slug' => 'ci-trip',
+		'manifest_sha256' => $remote_manifest['manifest_sha256'],
+		'manifest_item_count' => 1,
+		'items' => array(
+			array(
+				'attachment_id' => $remote_rights_attachment,
+				'binding_role' => 'gallery',
+				'target_field' => 'ci_gallery',
+				'manifest_index' => 0,
+				'import_plan_sha256' => $manifest_import['plan_sha256'],
+				'manifest_item_sha256' => $remote_manifest['items'][0]['item_sha256'],
+			),
+		),
+	) );
+	$check( is_wp_error( $manifest_role_drift ) && 'mad4b_content_experience_media_binding_manifest_role_drift' === $manifest_role_drift->get_error_code(), 'Post binding accepted manifest role drift.' );
 	$check( ! is_wp_error( $manifest_binding_plan ), 'Manifest-aware post media binding plan failed.' );
 	$manifest_fragment = $manifest_binding_plan['content_input_fragment'];
 	$check( hash_equals( (string) $remote_manifest['manifest_sha256'], (string) $manifest_fragment['expected_media_manifest_sha256'] ), 'Binding plan did not hand off exact manifest identity.' );

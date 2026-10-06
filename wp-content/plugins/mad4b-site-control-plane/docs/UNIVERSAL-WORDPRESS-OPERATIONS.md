@@ -197,3 +197,13 @@ drift (for example, a reviewed gallery item silently becoming featured).
 A manifest item may declare `shared` when the same imported asset is
 intentionally reused across multiple final post roles; otherwise the reviewed
 role remains exact.
+
+
+Manifest execution correlation is now fail-closed even when an Ability is
+invoked directly rather than through schema validation. A manifest-correlated
+item must carry the exact manifest SHA, bounded index, per-item SHA, reviewed
+import-plan SHA, and a supported binding role. The per-item SHA is recomputed
+from `index + binding_role + plan_sha256` before any media mutation. Unknown
+roles are rejected instead of being silently coerced to gallery. The same
+correlation survives source reuse, pre-download content reuse, and post-download
+dedupe reuse paths.

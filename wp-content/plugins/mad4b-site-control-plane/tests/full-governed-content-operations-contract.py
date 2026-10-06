@@ -685,3 +685,19 @@ assert "mad4b_content_experience_media_binding_manifest_item_drift" in experienc
 assert "multi_post_meta_keys" in experience_media_manifest_src
 assert "'multi' => $is_multi" in experience_runtime_src
 assert "created_for_manifest = true" in remote_media_recovery_src
+
+
+for token in (
+    "mad4b_remote_media_manifest_identity_invalid",
+    "mad4b_remote_media_manifest_item_identity_invalid",
+    "mad4b_remote_media_manifest_item_drift",
+    "mad4b_remote_media_manifest_binding_role_invalid",
+):
+    assert token in remote_media_src, f"remote manifest execution correlation guard missing: {token}"
+for token in (
+    "mad4b_remote_media_recovery_item_identity_invalid",
+    "mad4b_remote_media_recovery_binding_role_invalid",
+):
+    assert token in remote_media_recovery_src, f"remote recovery correlation validation missing: {token}"
+assert "Manifest-correlated import accepted tampered item intent." in experience_runtime_smoke_src
+assert "Post binding accepted manifest role drift." in experience_runtime_smoke_src

@@ -37,6 +37,10 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		if ( $index < 0 || $index >= MAD4B_SCP_Remote_Media_Adapter::MAX_REMOTE_CANDIDATES ) return new WP_Error( 'mad4b_remote_media_recovery_index_invalid', 'Recovery manifest index is outside the bounded media manifest.' );
 		$provenance = isset( $context['provenance_event_sha256'] ) ? strtolower( trim( (string) $context['provenance_event_sha256'] ) ) : '';
 		if ( '' !== $provenance && ! preg_match( '/^[a-f0-9]{64}$/', $provenance ) ) return new WP_Error( 'mad4b_remote_media_recovery_provenance_invalid', 'Recovery provenance event identity is invalid.' );
+		$manifest_item_sha256 = isset( $context['manifest_item_sha256'] ) ? strtolower( trim( (string) $context['manifest_item_sha256'] ) ) : '';
+		$manifest_binding_role = isset( $context['manifest_binding_role'] ) ? sanitize_key( (string) $context['manifest_binding_role'] ) : '';
+		if ( '' !== $manifest_item_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $manifest_item_sha256 ) ) return new WP_Error( 'mad4b_remote_media_recovery_item_identity_invalid', 'Recovery manifest item identity must be an exact SHA-256 digest.' );
+		if ( '' !== $manifest_binding_role && ! in_array( $manifest_binding_role, array( 'featured', 'gallery', 'content', 'field', 'shared' ), true ) ) return new WP_Error( 'mad4b_remote_media_recovery_binding_role_invalid', 'Recovery manifest binding role is unsupported.' );
 
 		$history = array_values( array_filter( (array) get_post_meta( $attachment_id, self::ATTACHMENT_STAGE_META, false ), static function ( $row ) {
 			return is_array( $row ) && self::STAGE_CONTRACT === ( isset( $row['contract'] ) ? (string) $row['contract'] : '' );
@@ -56,8 +60,8 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 			'manifest_sha256' => $manifest,
 			'manifest_index' => $index,
 			'import_plan_sha256' => $plan,
-			'manifest_item_sha256' => isset( $context['manifest_item_sha256'] ) ? strtolower( trim( (string) $context['manifest_item_sha256'] ) ) : '',
-			'manifest_binding_role' => isset( $context['manifest_binding_role'] ) ? sanitize_key( (string) $context['manifest_binding_role'] ) : '',
+			'manifest_item_sha256' => $manifest_item_sha256,
+			'manifest_binding_role' => $manifest_binding_role,
 			'provenance_event_sha256' => $provenance,
 			'attachment_id' => $attachment_id,
 			'created_for_manifest' => $created_for_manifest,
