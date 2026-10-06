@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 foreach ( array( 'search-measurement', 'search-runtime-context', 'search-eligibility', 'search-evidence-policy', 'provider-account-budget-authority', 'search-decision-policy', 'adaptive-search-fault-guard' ) as $foundation ) require_once __DIR__ . '/class-mad4b-scp-' . $foundation . '.php';
 
-foreach ( array( 'contracts', 'store', 'context', 'surfaces', 'targets', 'decisions', 'budgets', 'providers', 'provider-connections', 'evidence', 'insights', 'worker', 'runtime', 'experience', 'work-operations' ) as $component ) require_once __DIR__ . '/search/class-mad4b-scp-search-' . $component . '.php';
+foreach ( array( 'contracts', 'store', 'context', 'surfaces', 'targets', 'decisions', 'budgets', 'providers', 'provider-connections', 'profile-admin', 'evidence', 'insights', 'worker', 'runtime', 'experience', 'work-operations' ) as $component ) require_once __DIR__ . '/search/class-mad4b-scp-search-' . $component . '.php';
 require_once __DIR__ . '/search/adapters/class-mad4b-scp-search-wordpress-discovery.php';
 require_once __DIR__ . '/search/adapters/class-mad4b-scp-search-serp-adapters.php';
 

@@ -105,7 +105,9 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		check_admin_referer( 'mad4b_apply_admin_query_indexes', 'mad4b_admin_query_performance_nonce' );
 		$result = self::enqueue_explicit();
 		$state = is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : ( is_array( $result ) && isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : 'unknown' );
-		$url = add_query_arg( array( 'page' => 'mad4b-control-plane', 'mad4b_performance_apply' => $state ), admin_url( 'admin.php' ) );
+		$page = 'mad4b-control-plane-performance';
+		$binding = hash( 'sha256', wp_json_encode( self::maintenance_job_status() ) );
+		$url = add_query_arg( array( 'page' => $page, 'mad4b_performance_apply' => $state, 'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( $page, $state, $binding ) ), admin_url( 'admin.php' ) );
 		wp_safe_redirect( $url );
 		exit;
 	}

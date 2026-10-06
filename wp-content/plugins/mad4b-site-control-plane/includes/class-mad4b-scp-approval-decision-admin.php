@@ -26,7 +26,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 
 	public static function protect_read_model_hot_path() {
 		if ( ! is_admin() || 'GET' !== strtoupper( isset( $_SERVER['REQUEST_METHOD'] ) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : '';
 		if ( self::PAGE_SLUG !== $page ) return;
 		remove_action( 'admin_init', array( 'MAD4B_SCP_Plugin', 'prime_admin_mcp_runtime' ), 1 );
 		remove_action( 'admin_init', array( 'MAD4B_SCP_Plugin', 'reconcile_authority_on_mad4b_admin' ), 20 );
@@ -171,6 +171,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 	public static function handle_admin_post() {
 		$is_approver = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_approve_mutations' ) ? MAD4B_SCP_Policy::can_approve_mutations() : current_user_can( 'manage_options' );
 		if ( ! $is_approver ) wp_die( esc_html__( 'Approval capability is required to decide MAD4B approval tickets.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		foreach ( array( 'ticket_id', 'decision', 'expected_payload_sha256', 'expected_candidate_sha', 'expected_build_fingerprint' ) as $key ) if ( isset( $_POST[ $key ] ) && ( ! is_string( $_POST[ $key ] ) || strlen( $_POST[ $key ] ) > 128 ) ) wp_die( 'Invalid decision input.', '', array( 'response' => 422 ) );
 		$request = array(
 			'ticket_id' => isset( $_POST['ticket_id'] ) ? sanitize_text_field( wp_unslash( $_POST['ticket_id'] ) ) : '',
 			'decision' => isset( $_POST['decision'] ) ? sanitize_key( wp_unslash( $_POST['decision'] ) ) : '',
@@ -182,7 +183,8 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		$result = self::decide( $request );
 		$code = is_wp_error( $result ) ? $result->get_error_code() : 'success';
 		$status = is_wp_error( $result ) ? 'error' : ( isset( $result['status'] ) ? (string) $result['status'] : 'updated' );
-		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE_SLUG, 'mad4b_decision_result' => $code, 'mad4b_decision_status' => $status ), admin_url( 'admin.php' ) ) );
+		$notice = 'decision.' . $code . '.' . $status;
+		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE_SLUG, 'mad4b_decision_result' => $code, 'mad4b_decision_status' => $status, 'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE_SLUG, $notice, wp_json_encode( self::current_candidate() ) ) ), admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -193,19 +195,19 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		echo '<div class="wrap"><h1>' . esc_html__( 'MAD4B Approval Decisions', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Human-only decision inbox. GET is read-only; every POST revalidates the exact Site Profile, deployed build, provider and one-time ticket before changing state.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( isset( $_GET['mad4b_decision_result'] ) ) {
-			$code = sanitize_key( wp_unslash( $_GET['mad4b_decision_result'] ) );
-			$status = isset( $_GET['mad4b_decision_status'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_decision_status'] ) ) : '';
-			echo '<div class="notice ' . ( 'success' === $code ? 'notice-success' : 'notice-error' ) . ' inline"><p><code>' . esc_html( $code ) . '</code> · ' . esc_html( $status ) . '</p></div>';
+			$code = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_decision_result' ) );
+			$status = isset( $_GET['mad4b_decision_status'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_decision_status' ) ) : '';
+			if ( MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'decision.' . $code . '.' . $status, wp_json_encode( $candidate ) ) ) echo '<div class="notice ' . ( 'success' === $code ? 'notice-success' : 'notice-error' ) . ' inline"><p><code>' . esc_html( $code ) . '</code> · ' . esc_html( $status ) . '</p></div>';
 		}
 		echo '<p><strong>Site:</strong> <code>' . esc_html( $candidate['site_uuid'] ) . '</code> · revision <code>' . esc_html( (string) $candidate['site_profile_revision'] ) . '</code><br><strong>Environment:</strong> <code>' . esc_html( $candidate['environment'] ) . '</code> · <code>' . esc_html( $candidate['host'] ) . '</code><br><strong>Candidate:</strong> <code>' . esc_html( $candidate['source_commit_sha'] ) . '</code><br><strong>Build:</strong> <code>' . esc_html( $candidate['build_fingerprint'] ) . '</code></p>';
 		if ( ! MAD4B_SCP_Schema::is_ready() ) { echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Current governance schema metadata is not ready. The decision inbox remains fail-closed.', 'mad4b-site-control-plane' ) . '</p></div></div>'; return; }
 		if ( empty( $candidate['ready'] ) ) { echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Exact Site Profile/build provenance is not ready. No ticket can be decided.', 'mad4b-site-control-plane' ) . '</p></div></div>'; return; }
-		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : 'actionable';
+		$view = isset( $_GET['view'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'view' ) ) : 'actionable';
 		if ( ! in_array( $view, array( 'actionable', 'history' ), true ) ) $view = 'actionable';
 		$base_url = add_query_arg( 'page', self::PAGE_SLUG, admin_url( 'admin.php' ) );
 		echo '<nav class="nav-tab-wrapper"><a class="nav-tab ' . ( 'actionable' === $view ? 'nav-tab-active' : '' ) . '" href="' . esc_url( add_query_arg( 'view', 'actionable', $base_url ) ) . '">' . esc_html__( 'Needs action', 'mad4b-site-control-plane' ) . '</a><a class="nav-tab ' . ( 'history' === $view ? 'nav-tab-active' : '' ) . '" href="' . esc_url( add_query_arg( 'view', 'history', $base_url ) ) . '">' . esc_html__( 'History', 'mad4b-site-control-plane' ) . '</a></nav>';
 		if ( 'history' === $view ) {
-			$page = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
+			$page = isset( $_GET['paged'] ) ? max( 1, min( 10000, absint( MAD4B_SCP_Admin_Experience::query_string( 'paged', '1', 5 ) ) ) ) : 1;
 			$result = MAD4B_SCP_Approval_Repository::history( $candidate, $page );
 			if ( is_wp_error( $result ) ) { self::render_read_error( $result ); echo '</div>'; return; }
 			self::render_table( isset( $result['rows'] ) ? $result['rows'] : array(), $candidate, false );

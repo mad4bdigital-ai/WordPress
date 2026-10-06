@@ -32,6 +32,17 @@ Regressions are wired to CI: `admin-route-registry-runtime.php`, `admin-settings
 - Elementor now participates in the capability-first catalog. Structurally compatible reads remain available across artifact drift; `elementor/update-widget-settings` may enter the existing one-time behavioral recertification runner only through an exact request-local probe context bound to provider, capability, target ability, artifact, contract and input digest. That context is cleared in `finally`. Structural Elementor writes remain high-risk gated and cannot use this bridge.
 - Google scope rejection now presents an explicit external action. Unsupported scopes remain rejected and rejected tokens are not stored.
 
+## Administrator workflow closure
+
+All 14 registered pages and their tabs/sections are covered by the administrator
+operability audit in `admin-operational-audit.md`. The repair adds first-profile
+creation and selection, native pipeline stage selection, typed navigation across
+all administrator surfaces, action feedback bound to the current actor/session
+and persisted view, and visible maintenance worker/runtime transaction results.
+The disposable WordPress CI smoke suite checks every page and all Search
+sections, nonce/action wiring, direct-render permissions and zero-HTTP GET views.
+It does not claim live browser acceptance or automatic provider certification.
+
 ## Evidence and limits
 
 Local regressions exercise real service methods with WordPress/provider fixtures. They cover cold option storage, failed writes, admin alias attacks, passive registration, provider model source provenance, worker resumption/signature tampering/profile races, capability-local isolation, and zero-delta manual replacement versus schema/grant/actor/package drift.

@@ -40,7 +40,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			'functional' => __( 'Functional Gaps', 'mad4b-site-control-plane' ),
 			'requests' => __( 'Support Requests', 'mad4b-site-control-plane' ),
 		);
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
 
 		MAD4B_SCP_Admin_Experience::styles();

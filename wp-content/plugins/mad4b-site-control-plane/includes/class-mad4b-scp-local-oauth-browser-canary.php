@@ -84,7 +84,7 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 
 	public static function enqueue_assets() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page selection.
+		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page selection.
 		if ( self::PAGE_SLUG !== $page ) return;
 
 		$status = self::status();

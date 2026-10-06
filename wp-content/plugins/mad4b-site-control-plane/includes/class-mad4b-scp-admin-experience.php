@@ -6,6 +6,33 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Admin_Experience {
 	private static $styles_rendered = false;
 
+	/** Query values are strings, never nested arrays or unbounded route input. */
+	public static function request_string( array $input, $key, $default = '', $max_length = 4096 ) {
+		if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] ) || strlen( $input[ $key ] ) > $max_length ) return $default;
+		return wp_unslash( $input[ $key ] );
+	}
+
+	public static function query_string( $key, $default = '', $max_length = 4096 ) {
+		return self::request_string( $_GET, $key, $default, $max_length );
+	}
+
+	/** Short-lived action feedback, bound to the current persisted view and actor. */
+	public static function notice_receipt( $page, $notice, $binding = '' ) {
+		$issued = (string) time();
+		return $issued . '.' . self::notice_signature( $issued, $page, $notice, $binding );
+	}
+
+	public static function notice_verified( $page, $notice, $binding = '' ) {
+		$receipt = self::query_string( 'mad4b_notice_receipt', '', 80 );
+		if ( ! preg_match( '/^([0-9]{10})\.([a-f0-9]{64})$/D', $receipt, $parts ) || time() - (int) $parts[1] > 300 || (int) $parts[1] > time() + 5 ) return false;
+		return hash_equals( self::notice_signature( $parts[1], $page, $notice, $binding ), $parts[2] );
+	}
+
+	private static function notice_signature( $issued, $page, $notice, $binding ) {
+		$values = array( 'mad4b.admin-action-notice.v1', $issued, $page, $notice, $binding, get_current_user_id(), wp_get_session_token(), home_url( '/' ) );
+		return hash_hmac( 'sha256', wp_json_encode( $values ), wp_salt( 'nonce' ) );
+	}
+
 	public static function styles() {
 		if ( self::$styles_rendered ) return;
 		self::$styles_rendered = true;

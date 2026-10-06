@@ -140,12 +140,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 	public static function handle_google_callback() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		if ( isset( $_GET['error'] ) ) {
-			$error = new WP_Error( 'mad4b_google_drive_oauth_denied', 'Google OAuth was cancelled or denied.', array( 'provider_error' => sanitize_key( wp_unslash( $_GET['error'] ) ) ) );
+			$error = new WP_Error( 'mad4b_google_drive_oauth_denied', 'Google OAuth was cancelled or denied.', array( 'provider_error' => sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'error' ) ) ) );
 			self::redirect_result( $error, 'google-drive', '' );
 		}
 		$result = MAD4B_SCP_Google_Drive_Context::complete_oauth(
-			isset( $_GET['code'] ) ? wp_unslash( $_GET['code'] ) : '',
-			isset( $_GET['state'] ) ? wp_unslash( $_GET['state'] ) : ''
+			isset( $_GET['code'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'code' ) : '',
+			isset( $_GET['state'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'state' ) : ''
 		);
 		self::redirect_result( $result, 'google-drive', 'google_connected' );
 	}
@@ -153,12 +153,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 	public static function handle_google_dedicated_callback() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		if ( isset( $_GET['error'] ) ) {
-			$error = new WP_Error( 'mad4b_google_dedicated_oauth_denied', 'Dedicated Google OAuth was cancelled or denied.', array( 'provider_error' => sanitize_key( wp_unslash( $_GET['error'] ) ) ) );
+			$error = new WP_Error( 'mad4b_google_dedicated_oauth_denied', 'Dedicated Google OAuth was cancelled or denied.', array( 'provider_error' => sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'error' ) ) ) );
 			self::redirect_result( $error, 'google-drive', '' );
 		}
 		$result = MAD4B_SCP_Google_Drive_Context::complete_oauth(
-			isset( $_GET['code'] ) ? wp_unslash( $_GET['code'] ) : '',
-			isset( $_GET['state'] ) ? wp_unslash( $_GET['state'] ) : ''
+			isset( $_GET['code'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'code' ) : '',
+			isset( $_GET['state'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'state' ) : ''
 		);
 		self::redirect_result( $result, 'google-drive', 'google_connected' );
 	}
@@ -166,12 +166,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 	public static function handle_google_managed_callback() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		if ( isset( $_GET['error'] ) ) {
-			$error = new WP_Error( 'mad4b_google_managed_oauth_denied', 'Managed Google Sign-In was cancelled or denied.', array( 'provider_error' => sanitize_key( wp_unslash( $_GET['error'] ) ) ) );
+			$error = new WP_Error( 'mad4b_google_managed_oauth_denied', 'Managed Google Sign-In was cancelled or denied.', array( 'provider_error' => sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'error' ) ) ) );
 			self::redirect_result( $error, 'google-drive', '' );
 		}
 		$result = MAD4B_SCP_Google_Drive_Context::complete_managed_oauth(
-			isset( $_GET['handoff_code'] ) ? wp_unslash( $_GET['handoff_code'] ) : '',
-			isset( $_GET['state'] ) ? wp_unslash( $_GET['state'] ) : ''
+			isset( $_GET['handoff_code'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'handoff_code' ) : '',
+			isset( $_GET['state'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'state' ) : ''
 		);
 		self::redirect_result( $result, 'google-drive', 'google_connected' );
 	}
@@ -349,7 +349,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'quality' => __( 'Quality', 'mad4b-site-control-plane' ),
 			'intelligence' => __( 'Intelligence', 'mad4b-site-control-plane' ),
 		);
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
 		echo '<div class="wrap mad4b-scp-admin-page mad4b-context-page">';
 		echo '<h1>' . esc_html__( 'Context Authority', 'mad4b-site-control-plane' ) . '</h1>';
@@ -777,7 +777,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	private static function render_folder_browser() {
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		if ( empty( $connection['connected'] ) ) return;
-		$folder_id = isset( $_GET['folder'] ) ? sanitize_text_field( wp_unslash( $_GET['folder'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only folder navigation.
+		$folder_id = isset( $_GET['folder'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'folder' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only folder navigation.
 		if ( '' === $folder_id ) return;
 		$folder = MAD4B_SCP_Google_Drive_Context::admin_folder_preview( $folder_id );
 		if ( is_wp_error( $folder ) ) {
@@ -953,11 +953,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</div></div>';
 		}
 		self::render_repair_queue( $assets );
-		$mode_filter = isset( $_GET['mode_filter'] ) ? sanitize_key( wp_unslash( $_GET['mode_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
-		$category_filter = isset( $_GET['category_filter'] ) ? sanitize_key( wp_unslash( $_GET['category_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
-		$review_filter = isset( $_GET['review_filter'] ) ? sanitize_key( wp_unslash( $_GET['review_filter'] ) ) : '';
-		$status_filter = isset( $_GET['status_filter'] ) ? sanitize_key( wp_unslash( $_GET['status_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
-		$search_filter = isset( $_GET['asset_search'] ) ? trim( sanitize_text_field( wp_unslash( $_GET['asset_search'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
+		$mode_filter = isset( $_GET['mode_filter'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mode_filter' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
+		$category_filter = isset( $_GET['category_filter'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'category_filter' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
+		$review_filter = isset( $_GET['review_filter'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'review_filter' ) ) : '';
+		$status_filter = isset( $_GET['status_filter'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'status_filter' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
+		$search_filter = isset( $_GET['asset_search'] ) ? trim( sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'asset_search' ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
 		$all_assets = $assets;
 		$assets = array_filter(
 			$assets,
@@ -1173,10 +1173,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 			return;
 		}
 
-		$action = isset( $_GET['intel_action'] ) ? sanitize_key( wp_unslash( $_GET['intel_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- validated below before any provider read.
+		$action = isset( $_GET['intel_action'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'intel_action' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- validated below before any provider read.
 		$result = null;
 		if ( '' !== $action ) {
-			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( '_wpnonce' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			if ( ! wp_verify_nonce( $nonce, 'mad4b_context_intelligence' ) ) {
 				$result = new WP_Error( 'mad4b_context_intelligence_nonce_invalid', 'Context Intelligence request expired. Run the analysis again.' );
 			} elseif ( 'brand_gap' === $action ) {
@@ -1184,23 +1184,23 @@ final class MAD4B_SCP_Context_Admin_UI {
 			} elseif ( 'conflicts' === $action ) {
 				$result = MAD4B_SCP_Context_Intelligence::conflict_report(
 					array(
-						'category' => isset( $_GET['category'] ) ? wp_unslash( $_GET['category'] ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						'category' => isset( $_GET['category'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'category' ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 						'limit' => 25,
 					)
 				);
 			} elseif ( 'retrieve' === $action ) {
 				$result = MAD4B_SCP_Context_Intelligence::retrieve(
 					array(
-						'query' => isset( $_GET['query'] ) ? wp_unslash( $_GET['query'] ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-						'task_scope' => isset( $_GET['task_scope'] ) ? wp_unslash( $_GET['task_scope'] ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-						'category' => isset( $_GET['category'] ) ? wp_unslash( $_GET['category'] ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						'query' => isset( $_GET['query'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'query' ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						'task_scope' => isset( $_GET['task_scope'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'task_scope' ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						'category' => isset( $_GET['category'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'category' ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 						'limit' => 10,
 					)
 				);
 			} elseif ( 'reference' === $action ) {
 				$result = MAD4B_SCP_Context_Intelligence::reference_profile(
 					array(
-						'asset_id' => isset( $_GET['asset_id'] ) ? wp_unslash( $_GET['asset_id'] ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						'asset_id' => isset( $_GET['asset_id'] ) ? MAD4B_SCP_Admin_Experience::query_string( 'asset_id' ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 					)
 				);
 			}
@@ -1316,8 +1316,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	private static function render_notice() {
-		$notice = isset( $_GET['mad4b_notice'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post-action status only.
-		$error = isset( $_GET['mad4b_error'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post-action status only.
+		$notice = isset( $_GET['mad4b_notice'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_notice' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post-action status only.
+		$error = isset( $_GET['mad4b_error'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_error' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post-action status only.
 		if ( $error ) {
 			echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'Action stopped safely:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $error ) . '</code></p></div>';
 			$actions = array(
@@ -1345,8 +1345,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'review_policy_saved' => __( 'Context approval mode saved. Grant reconciliation remains explicit and separate.', 'mad4b-site-control-plane' ),
 			'source_removed' => __( 'Source and its indexed assets were removed. Google Drive content was not changed.', 'mad4b-site-control-plane' ),
 		);
+		if ( ! $notice || ! MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, $notice, self::notice_binding() ) ) return;
 		if ( 'google_connected' === $notice ) {
 			$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+			if ( empty( $connection['connected'] ) || empty( $connection['read_available'] ) ) return;
 			$mode = ! empty( $connection['write_available'] ) ? __( 'Read + Write', 'mad4b-site-control-plane' ) : __( 'Read-only', 'mad4b-site-control-plane' );
 			echo '<div class="notice notice-success"><p>' . esc_html( sprintf( __( 'Google Drive connected. Access mode: %s.', 'mad4b-site-control-plane' ), $mode ) ) . '</p></div>';
 			return;
@@ -1398,9 +1400,18 @@ final class MAD4B_SCP_Context_Admin_UI {
 	private static function redirect_result( $result, $tab, $notice ) {
 		$args = array( 'page' => self::PAGE_SLUG, 'tab' => sanitize_key( $tab ) );
 		if ( is_wp_error( $result ) ) $args['mad4b_error'] = sanitize_key( $result->get_error_code() );
-		elseif ( '' !== $notice ) $args['mad4b_notice'] = sanitize_key( $notice );
+		elseif ( '' !== $notice ) {
+			$args['mad4b_notice'] = sanitize_key( $notice );
+			$args['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE_SLUG, $args['mad4b_notice'], self::notice_binding() );
+		}
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
 		exit;
+	}
+
+	private static function notice_binding() {
+		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+		$flags = array_intersect_key( $connection, array_flip( array( 'configured', 'connected', 'read_available', 'write_available' ) ) );
+		return hash( 'sha256', wp_json_encode( array( MAD4B_SCP_Context_Authority::profile(), MAD4B_SCP_Context_Authority::registry_revision(), MAD4B_SCP_Google_Drive_Context::auth_mode(), $flags ) ) );
 	}
 
 	private static function tab_url( $tab, array $extra = array() ) {

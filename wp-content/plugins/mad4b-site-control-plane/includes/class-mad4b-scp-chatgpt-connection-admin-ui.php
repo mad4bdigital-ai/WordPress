@@ -150,7 +150,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 
 	public static function enqueue_assets() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- page-scoped read-only selection.
+		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- page-scoped read-only selection.
 		if ( self::PAGE_SLUG !== $page ) return;
 		wp_enqueue_script(
 			'mad4b-scp-chatgpt-connection',

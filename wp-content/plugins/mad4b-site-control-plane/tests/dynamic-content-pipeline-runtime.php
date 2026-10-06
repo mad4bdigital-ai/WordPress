@@ -24,6 +24,7 @@ function absint($v){ return abs((int)$v); }
 function sanitize_key($v){ return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$v)); }
 function sanitize_text_field($v){ return trim(strip_tags((string)$v)); }
 function wp_json_encode($v,$flags=0){ return json_encode($v,$flags); }
+function add_action($tag,$callback,$priority=10,$accepted_args=1){return add_filter($tag,$callback,$priority,$accepted_args);}
 function add_filter($tag,$callback,$priority=10,$accepted_args=1){ $GLOBALS['mad4b_test_filters'][$tag][]=$callback; return true; }
 function has_filter($tag){ return !empty($GLOBALS['mad4b_test_filters'][$tag]); }
 function apply_filters($tag,$value){
@@ -312,4 +313,27 @@ $stale_lock_save=MAD4B_SCP_Dynamic_Content_Pipeline::persist(array('expected_rev
 check(!is_wp_error($stale_lock_save),'stale settings lock is safely reclaimed');
 check($stale_lock_save['revision']===21,'stale lock recovery still preserves revision CAS');
 
+// Native stage controls retain the exact runtime policy and CAS contract.
+require_once dirname(__DIR__) . '/includes/class-mad4b-scp-admin-route-registry.php';
+require_once dirname(__DIR__) . '/includes/class-mad4b-scp-dynamic-content-pipeline-admin.php';
+$current=MAD4B_SCP_Dynamic_Content_Pipeline::effective();
+$selected=array_column(array_filter($current['stages'],static function($stage){return !empty($stage['enabled']);}),'id');
+$form=array('pipeline_mode'=>'stages','expected_revision'=>(string)$current['revision'],'stage_enabled'=>$selected);
+$prepared=MAD4B_SCP_Dynamic_Content_Pipeline_Admin::settings_input($form);
+check(is_array($prepared),'registry-driven native form prepares typed settings');
+check($prepared['stages']===$current['stages'],'unchanged stage selection preserves conditions, order and repair policy');
+$form['stage_enabled'][]='source_fidelity';
+$prepared=MAD4B_SCP_Dynamic_Content_Pipeline_Admin::settings_input($form);
+$native_saved=MAD4B_SCP_Dynamic_Content_Pipeline::persist($prepared);
+check(!is_wp_error($native_saved),'native stage selection persists with exact revision');
+$source_stage=array_values(array_filter($native_saved['stages'],static function($stage){return 'source_fidelity'===$stage['id'];}))[0];
+check(!empty($source_stage['enabled']),'selected optional check enabled');
+check(is_wp_error(MAD4B_SCP_Dynamic_Content_Pipeline::persist($prepared)),'stale native form cannot overwrite settings');
+$form['stage_enabled']=array('unregistered-stage');
+check(null===MAD4B_SCP_Dynamic_Content_Pipeline_Admin::settings_input($form),'unknown stage cannot be selected');
+$form['stage_enabled']=array(array('invalid'));
+check(null===MAD4B_SCP_Dynamic_Content_Pipeline_Admin::settings_input($form),'nested stage identifier denied');
+$form['expected_revision']=array('invalid');
+check(null===MAD4B_SCP_Dynamic_Content_Pipeline_Admin::settings_input($form),'nested revision denied');
+check(null===MAD4B_SCP_Dynamic_Content_Pipeline_Admin::settings_input(array('pipeline_json'=>array('invalid'))),'nested JSON form value denied');
 echo "mad4b.dynamic-content-pipeline.runtime.v1: PASS\n";

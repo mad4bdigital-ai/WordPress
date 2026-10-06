@@ -18,8 +18,8 @@ final class MAD4B_SCP_Connection_Admin_UI {
 
 	public static function enqueue_assets() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
-		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
+		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
+		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
 		if ( self::PAGE_SLUG !== $page || 'endpoints' !== $tab ) return;
 		$asset_path = MAD4B_SCP_DIR . 'assets/connection-endpoint-diagnostics.js';
 		$asset_hash = is_readable( $asset_path ) ? @hash_file( 'sha256', $asset_path ) : false;
@@ -62,7 +62,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'isolation' => __( 'Isolation & Safety', 'mad4b-site-control-plane' ),
 			'certification' => __( 'Certification', 'mad4b-site-control-plane' ),
 		);
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'readiness';
 
 		// HTML always uses the bounded snapshot, including obsolete full-page POSTs.

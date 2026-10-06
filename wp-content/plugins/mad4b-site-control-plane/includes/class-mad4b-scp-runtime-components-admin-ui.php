@@ -43,7 +43,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 			'astra' => __( 'Astra / Child', 'mad4b-site-control-plane' ),
 			'maintenance' => __( 'Runtime Update', 'mad4b-site-control-plane' ),
 		);
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
 
 		MAD4B_SCP_Admin_Experience::styles();
@@ -106,6 +106,10 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Certified runtime-set maintenance is unavailable in this build.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
+		$runtime = MAD4B_SCP_Runtime_Release_Set::status();
+		echo '<table class="widefat striped"><tbody>';
+		foreach ( array( 'Runtime state' => $runtime['state'], 'Transaction state' => isset( $runtime['transaction']['state'] ) ? $runtime['transaction']['state'] : 'Not requested', 'Control Plane version' => isset( $runtime['current']['control_plane']['version'] ) ? $runtime['current']['control_plane']['version'] : 'Not checked', 'MCP Adapter version' => $runtime['current']['mcp_adapter']['version'] ) as $label => $value ) echo '<tr><th>' . esc_html( $label ) . '</th><td>' . esc_html( $value ) . '</td></tr>';
+		echo '</tbody></table>';
 
 		echo '<div class="mad4b-scp-panel"><h3>' . esc_html__( 'Control Plane + MCP Adapter', 'mad4b-site-control-plane' ) . '</h3>';
 		echo '<p>' . esc_html__( 'Use this explicit maintenance action instead of the generic Plugins action row. It never converts the MCP Adapter into a generic independently updatable dependency.', 'mad4b-site-control-plane' ) . '</p>';
