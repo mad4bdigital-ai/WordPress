@@ -106,6 +106,13 @@ foreach((array)($catalog['providers']??array()) as $provider_id=>$provider){
  }
 }
 $check(26===$catalog_capability_count,'catalog capability count changed without updating conformance expectation');
+$check('bounded_write'===($catalog['providers']['litespeed']['capabilities']['cache_url.bounded-write']['risk']??''),'LiteSpeed URL purge risk classification drifted');
+$check(false===($catalog['providers']['litespeed']['capabilities']['cache_url.bounded-write']['reversible']??null),'LiteSpeed URL purge unexpectedly became reversible');
+$check('high_risk_write'===($catalog['providers']['litespeed']['capabilities']['cache_all.high-risk-write']['risk']??''),'LiteSpeed full purge must remain high risk');
+$check(true===($catalog['providers']['polylang']['capabilities']['post_language.bounded-write']['reversible']??false),'Polylang language mutation lost reversible classification');
+$check('mad4b.rollback.polylang-post-language.v1'===($catalog['providers']['polylang']['capabilities']['post_language.bounded-write']['rollback_contract']??''),'Polylang rollback contract drifted');
+$check(true===($catalog['providers']['woocommerce']['capabilities']['product.bounded-write']['reversible']??false),'WooCommerce product mutation lost reversible classification');
+$check('mad4b.rollback.woocommerce-product.v1'===($catalog['providers']['woocommerce']['capabilities']['product.bounded-write']['rollback_contract']??''),'WooCommerce rollback contract drifted');
 
 $profile = MAD4B_SCP_Capability_Traits::profile( 'bit_pi', 'flow.execute' );
 $check( 'mad4b.capability-profile.v1' === $profile['contract'], 'profile contract mismatch' );
