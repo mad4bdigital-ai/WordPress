@@ -9,6 +9,7 @@ translation = adapters / "class-mad4b-scp-translation-bridge-adapter.php"
 provider = adapters / "class-mad4b-scp-native-provider-bridge-adapter.php"
 jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
 media = adapters / "class-mad4b-scp-media-adapter.php"
+remote_media = adapters / "class-mad4b-scp-remote-media-adapter.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
@@ -22,7 +23,7 @@ experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.ph
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, media, servers, semantic, experience, experience_governance, experience_media, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, remote_media, servers, semantic, experience, experience_governance, experience_media, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -31,6 +32,7 @@ translation_src = translation.read_text(encoding="utf-8")
 provider_src = provider.read_text(encoding="utf-8")
 jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 media_src = media.read_text(encoding="utf-8")
+remote_media_src = remote_media.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
@@ -294,6 +296,18 @@ assert len(remote_media_rights_src.splitlines()) <= 180, "remote-media-rights ex
 assert "class-mad4b-scp-remote-media-rights.php" in plugin_src
 assert "MAD4B_SCP_Remote_Media_Rights::publish_guard(" in experience_runtime_src
 assert len(media_src.splitlines()) <= 550, "media adapter exceeds the focused 550-line adapter budget"
+for token in (
+    "media/remote-source-discover",
+    "media/remote-image-inspect",
+    "media/remote-import-plan",
+    "media/remote-import-apply",
+    "media/remote-provenance-get",
+    "content_inspection_required",
+    "remote_candidate_score",
+):
+    assert token in remote_media_src, f"remote media adapter contract missing: {token}"
+assert "class-mad4b-scp-remote-media-adapter.php" in plugin_src
+assert len(remote_media_src.splitlines()) <= 900, "remote media adapter exceeds the focused 900-line adapter budget"
 
 for src, label in (
     (experience_src, "experience-registry"),

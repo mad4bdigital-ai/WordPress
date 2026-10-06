@@ -50,10 +50,10 @@ final class MAD4B_SCP_Remote_Media_Rights {
 		sort( $ids, SORT_NUMERIC );
 
 		$checked = 0; $remote = 0; $nearest_expiry = '';
-		$source_meta = class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_SOURCE_HASH_META : '_mad4b_remote_media_source_sha256';
-		$content_meta = class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_CONTENT_HASH_META : '_mad4b_remote_media_content_sha256';
-		$provenance_meta = class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META : '_mad4b_remote_media_provenance';
-		$provenance_contract = class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_CONTRACT : 'mad4b.remote-media-provenance.v1';
+		$source_meta = class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_SOURCE_HASH_META : '_mad4b_remote_media_source_sha256';
+		$content_meta = class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_CONTENT_HASH_META : '_mad4b_remote_media_content_sha256';
+		$provenance_meta = class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META : '_mad4b_remote_media_provenance';
+		$provenance_contract = class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_CONTRACT : 'mad4b.remote-media-provenance.v1';
 
 		foreach ( $ids as $id ) {
 			++$checked;

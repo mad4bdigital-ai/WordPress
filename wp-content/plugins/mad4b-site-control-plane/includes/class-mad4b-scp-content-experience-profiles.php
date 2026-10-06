@@ -841,12 +841,12 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 
 	private static function workflow_blueprint( array $profile, $active ) {
 		$routes = self::routes_for_profile( $profile );
-		$media = class_exists( 'MAD4B_SCP_Media_Adapter' )
+		$media = class_exists( 'MAD4B_SCP_Remote_Media_Adapter' )
 			? array(
-				'discover' => MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY,
-				'inspect' => MAD4B_SCP_Media_Adapter::REMOTE_INSPECT_ABILITY,
-				'import_plan' => MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY,
-				'import_apply' => MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY,
+				'discover' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_DISCOVER_ABILITY,
+				'inspect' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_INSPECT_ABILITY,
+				'import_plan' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY,
+				'import_apply' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY,
 			)
 			: array(
 				'discover' => 'media/remote-source-discover',
@@ -892,9 +892,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		return array(
 			'remote_media_library_first' => array(
 				'supported' => true,
-				'discover' => class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY : 'media/remote-source-discover',
-				'import_plan' => class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY : 'media/remote-import-plan',
-				'import_apply' => class_exists( 'MAD4B_SCP_Media_Adapter' ) ? MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY : 'media/remote-import-apply',
+				'discover' => class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_DISCOVER_ABILITY : 'media/remote-source-discover',
+				'import_plan' => class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY : 'media/remote-import-plan',
+				'import_apply' => class_exists( 'MAD4B_SCP_Remote_Media_Adapter' ) ? MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY : 'media/remote-import-apply',
 				'bind_after_import' => array( 'featured_media_id', 'configured media_meta_fields' ),
 				'rights_confirmation_required_before_import' => true,
 				'active_now' => true,

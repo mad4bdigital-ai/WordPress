@@ -120,6 +120,8 @@ try {
 
 	$media_adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'media' );
 	$check( $media_adapter instanceof MAD4B_SCP_Media_Adapter, 'Media adapter is unavailable.' );
+	$remote_media_adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'remote-media' );
+	$check( $remote_media_adapter instanceof MAD4B_SCP_Remote_Media_Adapter, 'Remote Media adapter is unavailable.' );
 	$media_before = $media_adapter->get_media( array( 'attachment_id' => $image_one ) );
 	$check( ! is_wp_error( $media_before ) && 1600 === (int) $media_before['media']['width'] && 900 === (int) $media_before['media']['height'], 'Image technical metadata readback is incomplete.' );
 	$technical_sha = (string) $media_before['media']['metadata_sha256'];
@@ -192,16 +194,16 @@ try {
 	$check( in_array( 'ci_registered_gallery', $candidate_keys, true ), 'Registered media-like meta was not discovered.' );
 	$check( in_array( 'ci_sample_gallery', $candidate_keys, true ), 'Existing-content media meta inference did not discover an unregistered image gallery.' );
 
-	$remote_plan_unknown = $media_adapter->remote_import_plan( array( 'source_url' => 'https://images.example.invalid/tour.jpg' ) );
+	$remote_plan_unknown = $remote_media_adapter->remote_import_plan( array( 'source_url' => 'https://images.example.invalid/tour.jpg' ) );
 	$check( ! is_wp_error( $remote_plan_unknown ) && empty( $remote_plan_unknown['ready'] ) && in_array( 'rights_confirmation_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not fail closed on unknown rights.' );
 	$check( in_array( 'content_inspection_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not require exact byte inspection before new import.' );
-	$remote_plan_missing_rights_evidence = $media_adapter->remote_import_plan( array(
+	$remote_plan_missing_rights_evidence = $remote_media_adapter->remote_import_plan( array(
 		'source_url' => 'https://images.example.invalid/tour.jpg',
 		'rights_basis' => 'permission',
 		'expected_content_sha256' => str_repeat( 'a', 64 ),
 	) );
 	$check( ! is_wp_error( $remote_plan_missing_rights_evidence ) && in_array( 'rights_evidence_required', $remote_plan_missing_rights_evidence['blockers'], true ), 'Remote media plan accepted permission without traceable rights evidence.' );
-	$remote_plan_allowed = $media_adapter->remote_import_plan( array(
+	$remote_plan_allowed = $remote_media_adapter->remote_import_plan( array(
 		'source_url' => 'https://images.example.invalid/tour.jpg',
 		'source_page_url' => 'https://example.invalid/tour',
 		'rights_basis' => 'permission',
@@ -214,24 +216,24 @@ try {
 		'expected_height' => 900,
 	) );
 	$check( ! is_wp_error( $remote_plan_allowed ) && ! empty( $remote_plan_allowed['ready'] ) && ! empty( $remote_plan_allowed['exact_content_locked'] ) && empty( $remote_plan_allowed['mutation_performed'] ), 'Remote media import planning is not exact/read-only.' );
-	foreach ( array( MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_INSPECT_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY ) as $ability_name ) {
+	foreach ( array( MAD4B_SCP_Remote_Media_Adapter::REMOTE_DISCOVER_ABILITY, MAD4B_SCP_Remote_Media_Adapter::REMOTE_INSPECT_ABILITY, MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY, MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY ) as $ability_name ) {
 		$check( wp_has_ability( $ability_name ), 'Remote media Ability is not registered: ' . $ability_name );
 	}
 
-	$remote_import_classification = MAD4B_SCP_Impact_Policy::classify( MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY, 'media', array( 'rights_basis' => 'permission' ) );
+	$remote_import_classification = MAD4B_SCP_Impact_Policy::classify( MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY, 'media', array( 'rights_basis' => 'permission' ) );
 	$check( 'content_change' === $remote_import_classification['operation_type'] && 'medium' === $remote_import_classification['risk_tier'], 'Remote media import is not classified as a medium content change.' );
 	$check( ! empty( $remote_import_classification['approval_required'] ), 'Remote media import does not require exact-operation approval.' );
 	if ( 'staging' === $remote_import_classification['environment'] ) $check( 'ai_autonomous' === $remote_import_classification['approval_lane'], 'Staging remote media import is not eligible for the governed AI approval lane.' );
 
-	$srcset_method = new ReflectionMethod( 'MAD4B_SCP_Media_Adapter', 'best_srcset_url' );
+	$srcset_method = new ReflectionMethod( 'MAD4B_SCP_Remote_Media_Adapter', 'best_srcset_url' );
 	$srcset_method->setAccessible( true );
 	$cloudinary_srcset = 'https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/sample.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/sample.jpg 1600w';
-	$check( false !== strpos( (string) $srcset_method->invoke( $media_adapter, $cloudinary_srcset ), 'w_1600' ), 'Cloudinary comma-bearing srcset parsing did not preserve/select the largest candidate.' );
+	$check( false !== strpos( (string) $srcset_method->invoke( $remote_media_adapter, $cloudinary_srcset ), 'w_1600' ), 'Cloudinary comma-bearing srcset parsing did not preserve/select the largest candidate.' );
 
-	$extract_method = new ReflectionMethod( 'MAD4B_SCP_Media_Adapter', 'extract_remote_image_candidates' );
+	$extract_method = new ReflectionMethod( 'MAD4B_SCP_Remote_Media_Adapter', 'extract_remote_image_candidates' );
 	$extract_method->setAccessible( true );
 	$discovered_candidates = $extract_method->invoke(
-		$media_adapter,
+		$remote_media_adapter,
 		'<html><head><meta property="og:image" content="/hero.jpg"><script type="application/ld+json">{"image":{"contentUrl":"https://cdn.example.invalid/jsonld.jpg"}}</script></head><body><img src="/favicon-icon.png" width="32" height="32" alt="icon"><img srcset="https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/ship.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/ship.jpg 1600w" alt="Cruise ship"></body></html>',
 		'https://example.invalid/trip',
 		10,
@@ -248,10 +250,10 @@ try {
 	$remote_source_url = 'https://images.example.invalid/rights.jpg';
 	$remote_source_hash = hash( 'sha256', $remote_source_url );
 	$remote_content_hash = str_repeat( 'b', 64 );
-	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_SOURCE_HASH_META, $remote_source_hash, false );
-	update_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_CONTENT_HASH_META, $remote_content_hash );
-	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, array(
-		'contract' => MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_SOURCE_HASH_META, $remote_source_hash, false );
+	update_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_CONTENT_HASH_META, $remote_content_hash );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, array(
+		'contract' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
 		'source_url' => $remote_source_url,
 		'source_url_sha256' => $remote_source_hash,
 		'rights_basis' => 'permission',
@@ -262,14 +264,14 @@ try {
 	), false );
 	$remote_publish_guard = MAD4B_SCP_Remote_Media_Rights::publish_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
 	$check( ! is_wp_error( $remote_publish_guard ) && 1 === (int) $remote_publish_guard['remote_attachment_count'], 'Remote media publish provenance guard rejected a valid fixture.' );
-	$expired_provenance = get_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, true );
+	$expired_provenance = get_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, true );
 	$expired_provenance['license_expires_on'] = '2020-01-01';
-	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, $expired_provenance, false );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, $expired_provenance, false );
 	$expired_guard = MAD4B_SCP_Remote_Media_Rights::publish_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
 	$check( is_wp_error( $expired_guard ) && 'mad4b_remote_media_publish_rights_expired' === $expired_guard->get_error_code(), 'Expired remote-media rights did not block publish.' );
-	delete_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META );
-	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, array(
-		'contract' => MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
+	delete_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, array(
+		'contract' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
 		'source_url' => $remote_source_url,
 		'source_url_sha256' => $remote_source_hash,
 		'rights_basis' => 'permission',
