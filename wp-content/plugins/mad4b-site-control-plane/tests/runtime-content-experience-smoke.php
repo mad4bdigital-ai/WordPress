@@ -259,6 +259,8 @@ try {
 	), true );
 	$check( ! is_wp_error( $remote_rights_attachment ), 'Unable to create remote-media rights fixture.' );
 	$remote_rights_attachment = (int) $remote_rights_attachment; $post_ids[] = $remote_rights_attachment;
+	$check( update_attached_file( $remote_rights_attachment, 'ci-remote-rights.jpg' ), 'Unable to bind remote-rights attachment file identity.' );
+	wp_update_attachment_metadata( $remote_rights_attachment, array( 'width' => 1400, 'height' => 900, 'file' => 'ci-remote-rights.jpg', 'filesize' => 11111 ) );
 	$remote_source_url = 'https://images.example.invalid/rights.jpg';
 	$remote_source_hash = hash( 'sha256', $remote_source_url );
 	$remote_content_hash = str_repeat( 'b', 64 );
@@ -296,6 +298,27 @@ try {
 	$check( ! is_wp_error( $remote_state_one ) && 1 === (int) $remote_state_one['remote_attachment_count'] && 64 === strlen( (string) $remote_state_one['remote_state_sha256'] ), 'Remote media state evidence did not bind the exact attachment/provenance identity.' );
 	$remote_state_two = MAD4B_SCP_Remote_Media_Rights::state_evidence( $remote_rights_attachment, array(), array() );
 	$check( ! is_wp_error( $remote_state_two ) && hash_equals( (string) $remote_state_one['remote_state_sha256'], (string) $remote_state_two['remote_state_sha256'] ), 'Remote media state evidence is not deterministic.' );
+
+	$remote_manifest = $remote_media_adapter->remote_import_manifest_plan( array(
+		'items' => array(
+			array(
+				'binding_role' => 'featured',
+				'import' => array(
+					'source_url' => $remote_source_url,
+					'rights_basis' => 'permission',
+					'rights_note' => 'CI permission fixture',
+					'expected_content_sha256' => $remote_content_hash,
+				),
+			),
+		),
+	) );
+	$check( ! is_wp_error( $remote_manifest ) && ! empty( $remote_manifest['ready'] ) && 64 === strlen( (string) $remote_manifest['manifest_sha256'] ), 'Remote media manifest planning failed.' );
+	$check( $remote_manifest['manifest_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_sha256'] && 0 === (int) $remote_manifest['items'][0]['apply_input']['manifest_index'], 'Manifest execution input lost exact manifest correlation.' );
+	$manifest_import = $remote_media_adapter->remote_import_apply( $remote_manifest['items'][0]['apply_input'] );
+	$check( ! is_wp_error( $manifest_import ) && ! empty( $manifest_import['verified'] ) && $remote_rights_attachment === (int) $manifest_import['attachment_id'], 'Manifest-correlated remote media reuse failed.' );
+	$check( isset( $manifest_import['recovery_stage']['manifest_sha256'] ) && hash_equals( (string) $remote_manifest['manifest_sha256'], (string) $manifest_import['recovery_stage']['manifest_sha256'] ), 'Successful import did not create durable recovery stage evidence.' );
+	$manifest_staged_status = MAD4B_SCP_Remote_Media_Recovery::status( $remote_manifest['manifest_sha256'] );
+	$check( ! is_wp_error( $manifest_staged_status ) && 'staged_unbound' === $manifest_staged_status['state'] && ! $manifest_staged_status['auto_delete'], 'Unbound manifest is not explicitly recoverable/non-deleting.' );
 
 	$profile_input = array(
 		'slug' => 'ci-trip',
@@ -358,6 +381,54 @@ try {
 	$check( ! empty( $binding_plan['binding_plan_sha256'] ) && empty( $binding_plan['mutation_performed'] ), 'Media binding plan lacks exact read-only identity.' );
 	$check( 64 === strlen( (string) $binding_plan['content_input_fragment']['expected_remote_media_state_sha256'] ) && hash_equals( (string) $binding_plan['remote_media_state']['remote_state_sha256'], (string) $binding_plan['content_input_fragment']['expected_remote_media_state_sha256'] ), 'Media binding planner did not hand off exact remote media state identity.' );
 	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::MEDIA_BINDING_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Media binding planner is not on the fixed read surface.' );
+
+	$manifest_binding_plan = MAD4B_SCP_Content_Experience_Profiles::media_binding_plan( array(
+		'profile_slug' => 'ci-trip',
+		'manifest_sha256' => $remote_manifest['manifest_sha256'],
+		'manifest_item_count' => 1,
+		'items' => array(
+			array(
+				'attachment_id' => $remote_rights_attachment,
+				'binding_role' => 'featured',
+				'manifest_index' => 0,
+				'import_plan_sha256' => $manifest_import['plan_sha256'],
+			),
+		),
+	) );
+	$check( ! is_wp_error( $manifest_binding_plan ), 'Manifest-aware post media binding plan failed.' );
+	$manifest_fragment = $manifest_binding_plan['content_input_fragment'];
+	$check( hash_equals( (string) $remote_manifest['manifest_sha256'], (string) $manifest_fragment['expected_media_manifest_sha256'] ), 'Binding plan did not hand off exact manifest identity.' );
+	$check( hash_equals( (string) $manifest_binding_plan['remote_media_recovery_receipt']['recovery_receipt_sha256'], (string) $manifest_fragment['expected_media_recovery_receipt_sha256'] ), 'Binding plan did not hand off exact recovery receipt.' );
+	$check( hash_equals( (string) $manifest_binding_plan['binding_state_sha256'], (string) $manifest_fragment['expected_media_binding_state_sha256'] ), 'Binding plan did not hand off exact content media binding identity.' );
+
+	$manifest_create_input = array_merge( array( 'post_title' => 'CI manifest-bound trip' ), $manifest_fragment );
+	$manifest_create_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'create', $manifest_create_input );
+	$check( ! is_wp_error( $manifest_create_plan ) && isset( $manifest_create_plan['remote_media_manifest_receipt']['recovery_receipt_sha256'] ), 'Content create plan lost manifest recovery evidence.' );
+	$manifest_create = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $manifest_create_input, array( 'plan_sha256' => $manifest_create_plan['plan_sha256'] ) ) );
+	$check( ! is_wp_error( $manifest_create ) && ! empty( $manifest_create['verified'] ) && ! empty( $manifest_create['recovery_binding'] ), 'Manifest-bound content create did not finish with verified recovery binding.' );
+	$manifest_post_id = (int) $manifest_create['post_id']; $post_ids[] = $manifest_post_id;
+	$manifest_bound_status = MAD4B_SCP_Remote_Media_Recovery::status( $remote_manifest['manifest_sha256'] );
+	$check( ! is_wp_error( $manifest_bound_status ) && 'bound' === $manifest_bound_status['state'] && in_array( $manifest_post_id, $manifest_bound_status['bound_post_ids'], true ), 'Manifest recovery status did not transition from staged to bound.' );
+
+	$orphan_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Recoverable Unbound Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $orphan_attachment ), 'Unable to create recoverable unbound media fixture.' );
+	$orphan_attachment = (int) $orphan_attachment; $post_ids[] = $orphan_attachment;
+	update_attached_file( $orphan_attachment, 'ci-recoverable-unbound.jpg' );
+	wp_update_attachment_metadata( $orphan_attachment, array( 'width' => 1000, 'height' => 700, 'file' => 'ci-recoverable-unbound.jpg', 'filesize' => 9000 ) );
+	$orphan_manifest_sha = hash( 'sha256', 'ci-recoverable-unbound-manifest' );
+	$orphan_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $orphan_attachment, array(
+		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0,
+		'import_plan_sha256' => hash( 'sha256', 'ci-recoverable-unbound-import-plan' ),
+		'provenance_event_sha256' => '', 'created_for_manifest' => true,
+	) );
+	$check( ! is_wp_error( $orphan_stage ), 'Unable to stage recoverable unbound attachment.' );
+	$orphan_status = MAD4B_SCP_Remote_Media_Recovery::status( $orphan_manifest_sha );
+	$check( 'staged_unbound' === $orphan_status['state'] && in_array( $orphan_attachment, $orphan_status['created_for_manifest_attachment_ids'], true ) && false === $orphan_status['auto_delete'], 'Recoverable orphan semantics are not explicit/non-destructive.' );
+	$recovery_overview = MAD4B_SCP_Remote_Media_Recovery::status();
+	$overview_manifests = array_column( $recovery_overview['unbound_manifests'], 'manifest_sha256' );
+	$check( in_array( $orphan_manifest_sha, $overview_manifests, true ) && $recovery_overview['created_unbound_attachment_count'] >= 1, 'Recovery overview did not surface created-but-unbound Media Library assets.' );
 
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
 	$check( $adapter instanceof MAD4B_SCP_Full_Content_Operations_Adapter, 'Full Content Operations adapter is unavailable.' );

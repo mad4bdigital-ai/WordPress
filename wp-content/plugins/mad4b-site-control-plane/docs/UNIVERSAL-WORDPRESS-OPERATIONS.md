@@ -138,3 +138,54 @@ Provider declarations, registered-meta heuristics, and sampled live values are
 kept as separate evidence sources. If they disagree, bootstrap marks
 `spec_conflict=true`, keeps the alternative specs, and requires review rather
 than silently widening or guessing the post-meta storage contract.
+
+
+### Manifest lifecycle and recoverable imported media
+
+Multi-image acquisition now has an explicit lifecycle instead of treating each
+successful sideload as an isolated write:
+
+```
+remote manifest plan
+→ per-item import plan
+→ per-item verified Media Library import/reuse
+→ durable recovery stage
+→ exact manifest receipt
+→ post-media binding plan
+→ content plan
+→ content apply
+→ manifest bound to post
+```
+
+The manifest SHA and item index are execution-correlation evidence; they do not
+change the reviewed per-image import plan identity. Every successful manifest
+item receives durable stage evidence on the attachment. The stage records
+whether the asset was **created for this manifest** or was a **pre-existing
+reused attachment**.
+
+If a later post plan or post apply fails, the imported Media Library asset is
+not deleted. Its state remains `staged_unbound` and
+`media/remote-recovery-status` can surface it for deterministic retry.
+Calling the same Ability without a manifest returns a bounded overview of
+unbound manifests and created-but-unbound attachment counts.
+
+There is deliberately no automatic orphan deletion. Recovery reports
+`auto_delete=false` and `cleanup_policy=manual_only_after_reference_review`.
+This prevents data loss while also preventing abandoned imports from becoming
+invisible operational debt.
+
+Before content creation, `mad4b/content-experience-media-binding-plan` verifies
+that every manifest index completed exactly once, that each staged attachment
+matches the reviewed import plan, and that every staged item is consumed by the
+post binding. It emits four exact hand-off identities:
+
+- `expected_media_manifest_sha256`
+- `expected_media_manifest_item_count`
+- `expected_media_recovery_receipt_sha256`
+- `expected_media_binding_state_sha256`
+
+The generic content planner independently recomputes the recovery receipt,
+attachment set, provider-normalized media mapping, and remote provenance state.
+Any TOCTOU drift fails closed before mutation. After a successful content
+mutation, the manifest is bound to the post and verified during readback;
+rollback restores/removes this binding with the post state.

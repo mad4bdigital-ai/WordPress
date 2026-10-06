@@ -19,6 +19,9 @@ experience_governance = root / "includes" / "class-mad4b-scp-content-experience-
 experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
 experience_media_storage = root / "includes" / "class-mad4b-scp-content-experience-media-storage.php"
 experience_media_binding = root / "includes" / "class-mad4b-scp-content-experience-media-binding.php"
+experience_media_manifest = root / "includes" / "class-mad4b-scp-content-experience-media-manifest.php"
+experience_media_planning = root / "includes" / "class-mad4b-scp-content-experience-media-planning.php"
+remote_media_recovery = root / "includes" / "class-mad4b-scp-remote-media-recovery.php"
 experience_media_rights = root / "includes" / "class-mad4b-scp-content-experience-media-rights.php"
 remote_media_rights = root / "includes" / "class-mad4b-scp-remote-media-rights.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
@@ -27,7 +30,7 @@ experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.ph
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine, jetengine_client, media, remote_media, servers, semantic, experience, experience_bootstrap, experience_governance, experience_media, experience_media_storage, experience_media_binding, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine, jetengine_client, media, remote_media, servers, semantic, experience, experience_bootstrap, experience_governance, experience_media, experience_media_storage, experience_media_binding, experience_media_manifest, experience_media_planning, remote_media_recovery, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -46,6 +49,9 @@ experience_governance_src = experience_governance.read_text(encoding="utf-8")
 experience_media_src = experience_media.read_text(encoding="utf-8")
 experience_media_storage_src = experience_media_storage.read_text(encoding="utf-8")
 experience_media_binding_src = experience_media_binding.read_text(encoding="utf-8")
+experience_media_manifest_src = experience_media_manifest.read_text(encoding="utf-8")
+experience_media_planning_src = experience_media_planning.read_text(encoding="utf-8")
+remote_media_recovery_src = remote_media_recovery.read_text(encoding="utf-8")
 experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
 remote_media_rights_src = remote_media_rights.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
@@ -619,3 +625,55 @@ for token in (
     assert token in jetengine_src, f"JetEngine adaptive media-field contract missing: {token}"
 for token in ("spec_conflict", "alternative_specs", "requires_review", "provider_declared"):
     assert token in experience_bootstrap_src, f"adaptive media candidate reconciliation missing: {token}"
+
+
+# Media manifest execution is checkpointed: successful imports survive later
+# content failure, remain discoverable, and are never silently auto-deleted.
+for token in (
+    "media/remote-recovery-status",
+    "manifest_hash_scope",
+    "manifest_sha256",
+    "manifest_index",
+    "stage_import_result",
+):
+    assert token in remote_media_src or token in remote_media_recovery_src, f"remote media recovery contract missing: {token}"
+for token in (
+    "mad4b.remote-media-recovery.v1",
+    "staged_unbound",
+    "created_for_manifest_attachment_ids",
+    "cleanup_policy",
+    "manual_only_after_reference_review",
+    "manifest_receipt",
+    "bind_post",
+    "verify_post_binding",
+):
+    assert token in remote_media_recovery_src, f"remote media recovery service missing: {token}"
+for token in (
+    "mad4b.content-experience-media-manifest.v1",
+    "media_recovery_receipt",
+    "expected_media_binding_state_sha256",
+    "attachment_ids",
+):
+    assert token in experience_media_manifest_src or token in experience_runtime_src, f"content media manifest contract missing: {token}"
+for token in (
+    "mad4b.content-experience-media-planning.v1",
+    "remote_media_state",
+    "media_publish_rights",
+    "remote_media_provenance_rights",
+):
+    assert token in experience_media_planning_src, f"content media planning extraction missing: {token}"
+for token in (
+    "expected_media_manifest_sha256",
+    "expected_media_manifest_item_count",
+    "expected_media_recovery_receipt_sha256",
+    "expected_media_binding_state_sha256",
+):
+    assert token in experience_src, f"content experience manifest schema missing: {token}"
+assert "class-mad4b-scp-remote-media-recovery.php" in plugin_src
+assert "class-mad4b-scp-content-experience-media-manifest.php" in plugin_src
+assert "class-mad4b-scp-content-experience-media-planning.php" in plugin_src
+assert len(remote_media_recovery_src.splitlines()) <= 320, "remote-media-recovery exceeds focused 320-line service budget"
+assert len(experience_media_manifest_src.splitlines()) <= 140, "content-experience-media-manifest exceeds focused 140-line service budget"
+assert len(experience_media_planning_src.splitlines()) <= 120, "content-experience-media-planning exceeds focused 120-line service budget"
+assert "Recoverable orphan semantics are not explicit/non-destructive." in experience_runtime_smoke_src
+assert "Manifest-bound content create did not finish with verified recovery binding." in experience_runtime_smoke_src
