@@ -5,6 +5,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 graph = (ROOT / "includes/class-mad4b-scp-runtime-evidence-graph.php").read_text(encoding="utf-8")
+collectors = (ROOT / "includes/class-mad4b-scp-runtime-evidence-collectors.php").read_text(encoding="utf-8")
 classifier = (ROOT / "includes/class-mad4b-scp-runtime-policy-classifier.php").read_text(encoding="utf-8")
 competitive = (ROOT / "includes/class-mad4b-scp-competitive-evidence.php").read_text(encoding="utf-8")
 summary_php = (ROOT / "config/competitive-evidence-summary.php").read_text(encoding="utf-8")
@@ -85,10 +86,22 @@ req(
 deny(graph, "call_user_func(", "call_user_func_array(", "wp_remote_get(", "wp_remote_post(", "$wpdb->query(", "$wpdb->get_results(", "grant_ability(")
 
 req(
+    collectors,
+    "MAD4B_SCP_Runtime_Evidence_Collectors",
+    "public static function post_types",
+    "public static function taxonomies",
+    "public static function meta_keys",
+    "public static function hooks",
+    "public static function mcp_descriptors",
+    "public static function symbols",
+)
+deny(collectors, "call_user_func(", "call_user_func_array(", "wp_remote_", "$wpdb->query(", "$wpdb->get_results(", "grant_ability(")
+
+req(
     classifier,
     "mad4b.runtime-policy-classifier.v2",
     "mad4b.runtime-policy-proposal.v2",
-    "mad4b.runtime-policy-conformance-receipt.v1",
+    "mad4b.runtime-policy-conformance-receipt.v2",
     "mad4b.runtime-policy-review-overlay.v2",
     "conformance_issuer_untrusted",
     "mad4b_scp_runtime_policy_conformance_verifiers",
@@ -99,6 +112,11 @@ req(
     "verifier_provenance",
     "conformance_binding_mismatch",
     "conformance_provider_binding_mismatch",
+    "current_provider_capability_binding",
+    "MAD4B_SCP_Provider_Compatibility_Certification::ability_status",
+    "conformance_provider_capability_not_read_eligible",
+    "conformance_artifact_fingerprint_binding_mismatch",
+    "conformance_capability_contract_digest_binding_mismatch",
     "conformance_receipt_digest_mismatch",
     "secret_output_schema_blocks_auto_classification",
     "privileged_capability_blocks_auto_classification",
@@ -131,6 +149,10 @@ req(
     "'authority_effect'=>'none'",
 )
 deny(classifier, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->", "MAD4B_SCP_Servers::register")
+
+assert len(graph.splitlines()) <= 1100, "runtime evidence graph exceeded maintainability budget"
+assert len(classifier.splitlines()) <= 1050, "runtime policy classifier exceeded maintainability budget"
+assert len(collectors.splitlines()) <= 350, "runtime evidence collectors exceeded maintainability budget"
 
 req(
     competitive,
