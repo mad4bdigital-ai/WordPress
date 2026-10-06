@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 import subprocess
+import re
 
 root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
@@ -230,10 +231,22 @@ for marker in (
 ):
     if marker not in local_handler:
         raise SystemExit(f"native update durable attempt evidence missing: {marker}")
-apply_error_persist = local_handler.find("'apply_error',\n\t\t\t\t$manifest,")
-apply_error_redirect = local_handler.find("self::redirect_native_result( 'apply_error'")
-if min(apply_error_persist, apply_error_redirect) < 0 or apply_error_persist >= apply_error_redirect:
-    raise SystemExit("apply_error evidence must be persisted before redirecting the operator")
+apply_error_persists = [
+    match.start()
+    for match in re.finditer(r"self::persist_update_attempt\(\s*'apply_error'", local_handler)
+]
+apply_error_redirects = [
+    match.start()
+    for match in re.finditer(r"self::redirect_native_result\(\s*'apply_error'", local_handler)
+]
+if not apply_error_redirects or len(apply_error_persists) != len(apply_error_redirects):
+    raise SystemExit(
+        "every apply_error redirect must have exactly one durable attempt record "
+        f"persists={len(apply_error_persists)} redirects={len(apply_error_redirects)}"
+    )
+for persist_index, redirect_index in zip(apply_error_persists, apply_error_redirects):
+    if persist_index >= redirect_index:
+        raise SystemExit("apply_error evidence must be persisted before redirecting the operator")
 for marker in (
     "'manifest_error' => 'manifest'",
     "'download_error' => 'download'",
