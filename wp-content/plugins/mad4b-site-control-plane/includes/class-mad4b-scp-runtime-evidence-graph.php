@@ -415,7 +415,8 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			$meta=is_array($meta)?$meta:array();
 			$annotations=isset($meta['annotations'])&&is_array($meta['annotations'])?$meta['annotations']:array();
 			$schema=is_object($ability)&&method_exists($ability,'get_input_schema')?$ability->get_input_schema():array();
-			$output_schema=is_object($ability)&&method_exists($ability,'get_output_schema')?$ability->get_output_schema():array();
+			$output_schema_declared=is_object($ability)&&method_exists($ability,'get_output_schema');
+			$output_schema=$output_schema_declared?$ability->get_output_schema():array();
 			$schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($schema,'ability_input_schema'):array('classification'=>'unknown','stats'=>array());
 			$output_schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($output_schema,'ability_output_schema'):array('classification'=>'unknown','stats'=>array());
 			$output_schema_sha256=self::digest('mad4b.ability-output-schema.v1',is_array($output_schema)?self::safe_row($output_schema):$output_schema);
@@ -438,7 +439,8 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				'resource_values_exposed'=>false,
 				'privilege_inferred_from_resources'=>false,
 				'input_schema_sha256'=>isset($descriptor['input_schema_sha256'])?(string)$descriptor['input_schema_sha256']:'',
-				'output_schema_sha256'=>$output_schema_sha256,
+				'output_schema_declared'=>$output_schema_declared,
+				'output_schema_sha256'=>$output_schema_declared?$output_schema_sha256:'',
 				'classification_sha256'=>isset($descriptor['classification_sha256'])?(string)$descriptor['classification_sha256']:'',
 				'descriptor_generation_sha256'=>isset($descriptor['descriptor_sha256'])?(string)$descriptor['descriptor_sha256']:'',
 				'readonly'=>!empty($descriptor['readonly']),
@@ -476,7 +478,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				),
 				'evidence'=>array(
 					'input_schema_sha256'=>isset($descriptor['input_schema_sha256'])?(string)$descriptor['input_schema_sha256']:'',
-					'output_schema_sha256'=>$output_schema_sha256,
+					'output_schema_sha256'=>$output_schema_declared?$output_schema_sha256:'',
 					'classification_sha256'=>isset($descriptor['classification_sha256'])?(string)$descriptor['classification_sha256']:'',
 					'descriptor_generation_sha256'=>isset($descriptor['descriptor_sha256'])?(string)$descriptor['descriptor_sha256']:'',
 				),
