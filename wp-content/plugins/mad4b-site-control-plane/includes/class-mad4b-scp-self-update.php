@@ -232,18 +232,30 @@ final class MAD4B_SCP_Self_Update {
 
 	private static function persist_update_attempt( $state, array $target = array(), $failure_code = '', array $details = array(), $channel = 'wordpress_admin_plugin_update' ) {
 		$failure_code = sanitize_key( (string) $failure_code );
+		$state = sanitize_key( (string) $state );
 		$rollback_known = array_key_exists( 'rollback_ok', $details );
 		$rollback_ok = $rollback_known ? (bool) $details['rollback_ok'] : null;
-		$replacement_attempted = in_array( sanitize_key( (string) $state ), array( 'applying', 'apply_error', 'success', 'bootstrap_success' ), true );
-		$final_runtime_changed = in_array( sanitize_key( (string) $state ), array( 'success', 'bootstrap_success' ), true )
+		$replacement_attempted = array_key_exists( 'filesystem_replacement_attempted', $details )
+			? (bool) $details['filesystem_replacement_attempted']
+			: in_array( $state, array( 'applying', 'success', 'bootstrap_success' ), true );
+		$final_runtime_changed = in_array( $state, array( 'success', 'bootstrap_success' ), true )
 			? true
 			: ( $rollback_known && $rollback_ok ? false : ( $replacement_attempted ? null : false ) );
+		$failure_phase = isset( $details['failure_phase'] ) ? sanitize_key( (string) $details['failure_phase'] ) : '';
+		if ( '' === $failure_phase && '' !== $failure_code ) {
+			$state_phase = array(
+				'manifest_error' => 'manifest',
+				'download_error' => 'download',
+				'verify_error' => 'verification',
+			);
+			$failure_phase = isset( $state_phase[ $state ] ) ? $state_phase[ $state ] : self::failure_phase_for_code( $failure_code );
+		}
 		$status = array(
 			'contract' => self::UPDATE_ATTEMPT_CONTRACT,
 			'observed_at' => gmdate( 'c' ),
 			'channel' => sanitize_key( (string) $channel ),
-			'state' => sanitize_key( (string) $state ),
-			'failure_phase' => '' !== $failure_code ? self::failure_phase_for_code( $failure_code ) : '',
+			'state' => $state,
+			'failure_phase' => $failure_phase,
 			'failure_code' => $failure_code,
 			'cause_code' => isset( $details['cause_code'] ) ? sanitize_key( (string) $details['cause_code'] ) : '',
 			'rollback_ok' => $rollback_ok,
@@ -1353,6 +1365,7 @@ final class MAD4B_SCP_Self_Update {
 		if ( is_wp_error( $result ) ) {
 			$details = method_exists( $result, 'get_error_data' ) ? $result->get_error_data() : array();
 			$details = is_array( $details ) ? $details : array();
+			$details['filesystem_replacement_attempted'] = true;
 			self::persist_update_attempt(
 				'apply_error',
 				$manifest,
