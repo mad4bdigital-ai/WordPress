@@ -20,7 +20,9 @@ assert that the candidate is installed or that live browser acceptance passed.
 | Adapter Coverage | Overview, Installed, Priority, Functional, Requests | Typed tabs; observational capability/certification workspace. An unknown artifact is not automatically behaviorally certified. |
 | Operator Control Center | Reduced runtime snapshot and next actions | Existing read-only reducer retained. It does not replace external browser or provider acceptance. |
 | Approval Decisions | Actionable inbox, history and exact decision | Typed routing and bounded pagination/POST scalars; result feedback actor/build bound. Human decision and one-time exact-ticket checks remain intact. |
-| Search Intelligence | Profile setup plus all 12 sections | Added encrypted SerpApi/DataForSEO setup in the preceding repair; added first-profile creation, saved-profile picker, explicit policy editor and safe selection recovery. New profiles start paused with spend frozen. |
+| Search Intelligence | Profile setup plus all 12 sections | Added encrypted SerpApi/DataForSEO setup, first-profile creation, saved-profile picker and safe selection recovery. Observation Resume/Pause and provider-spend Freeze/Unfreeze are now dedicated revision-fenced controls with post-apply readback; generic policy JSON cannot change those two state dimensions. New profiles start paused with spend frozen. |
+
+Every MAD4B administrator page also receives one shared environment context notice. Effective environment and raw WordPress environment are displayed side by side; when they differ, the UI states that operational authority follows the enrolled MAD4B Site Profile and the raw WordPress value is diagnostic only.
 
 ## Executable coverage
 
@@ -35,8 +37,8 @@ requests and preserve Site Profile, pipeline settings and write authority.
 
 The profile suite independently verifies exact persistence, disabled/frozen
 defaults, registry selection, advanced multi-market policy preservation, stale
-revision/rename/security-field denials, role/Production/nonce denials and typed
-navigation. The pipeline suite verifies that checkbox selection preserves stage
+revision/rename/security-field denials, explicit state-control fencing/readback,
+role/Production/nonce denials and typed navigation. The pipeline suite verifies that checkbox selection preserves stage
 policy and remains subject to mandatory stages, trusted registry IDs and CAS.
 
 ## Live evidence and outstanding external actions
