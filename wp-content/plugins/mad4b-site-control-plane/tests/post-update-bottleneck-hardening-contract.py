@@ -169,10 +169,10 @@ for token in required_runtime_tokens:
     assert token in runtime_convergence, f"missing dynamic auto-reconciliation contract token: {token}"
 assert "observed_reconciliation_preflight" in continuation
 for token in [
-    "\\$result['disposition'] = 'AUTO_REBIND'",
-    "\\$result['disposition'] = 'REVIEW_REQUIRED'",
+    "$result['disposition'] = 'AUTO_REBIND'",
+    "$result['disposition'] = 'REVIEW_REQUIRED'",
     "'disposition' => 'HARD_BLOCK'",
-    "\\$result['disposition'] = 'DEFER'",
+    "$result['disposition'] = 'DEFER'",
     "'grant_mutation_allowed' => false",
     "'subject_mutation_allowed' => false",
     "'agent_mutation_allowed' => false",
