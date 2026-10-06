@@ -300,7 +300,8 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			$expected = isset( $provider_binding[ $field ] ) ? (string) $provider_binding[ $field ] : '';
 			$actual = isset( $receipt[ $field ] ) ? (string) $receipt[ $field ] : '';
 			if ( '' === $expected || ! hash_equals( $expected, $actual ) ) {
-				$base['reason'] = $reason;
+				$legacy_reason = 'conformance_' . $field . '_binding_mismatch';
+				$base['reason'] = '' !== $reason ? $reason : $legacy_reason;
 				return $base;
 			}
 		}
