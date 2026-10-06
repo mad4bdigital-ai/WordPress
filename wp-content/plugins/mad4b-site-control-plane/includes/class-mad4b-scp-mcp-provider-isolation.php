@@ -459,6 +459,11 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'registry_available' => $registry,
 			'run_available' => $run,
 			'raw_routes_exposed' => false,
+			'materialization_attempted' => isset( self::$internal_rest_materialization_attempted[ $provider ] ),
+			'materialization_state' => isset( self::$internal_rest_materialization_state[ $provider ] ) ? sanitize_key( (string) self::$internal_rest_materialization_state[ $provider ] ) : 'not_attempted',
+			'suppressed_callback_count' => count( array_filter( self::$suppressed_rest_callbacks, static function ( $entry ) use ( $provider ) {
+				return is_array( $entry ) && $provider === sanitize_key( isset( $entry['provider'] ) ? (string) $entry['provider'] : '' );
+			} ) ),
 			'internal_permission_mode' => 'mad4b-governed-provider-permission-bypass',
 		);
 	}
