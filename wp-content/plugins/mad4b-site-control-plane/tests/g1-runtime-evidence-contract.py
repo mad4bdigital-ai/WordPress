@@ -155,7 +155,7 @@ req(
     "authority_created",
 )
 deny(competitive, "competitive-evidence-summary.json", "wp_remote_", "grant_ability(", "$wpdb->")
-req(summary_php, "if ( ! defined( 'ABSPATH' ) ) { exit; }", "Direct web execution", "MAD4B_JSON", "json_decode")
+req(summary_php, "if ( ! defined( 'ABSPATH' ) ) {", "http_response_code( 404 )", "MAD4B_JSON", "json_decode")
 deny(summary_php, "competitive-evidence-summary.json")
 
 php = shutil.which("php")
