@@ -46,6 +46,8 @@ final class MAD4B_SCP_Self_Update {
 	const MANIFEST_TRANSIENT_PREFIX = 'mad4b_scp_update_manifest_sha_';
 	const RECOVERY_CRON_HOOK      = 'mad4b_control_plane_recovery_update';
 	const RECOVERY_STATUS_OPTION  = 'mad4b_scp_recovery_update_status_v1';
+	const UPDATE_ATTEMPT_STATUS_OPTION = 'mad4b_scp_update_attempt_status_v1';
+	const UPDATE_ATTEMPT_CONTRACT = 'mad4b.control-plane-update-attempt.v1';
 
 	private static $booted = false;
 	private static $managed_apply = false;
@@ -198,6 +200,96 @@ final class MAD4B_SCP_Self_Update {
 
 	private static function persist_recovery_status( array $status ) {
 		if ( function_exists( 'update_option' ) ) update_option( self::RECOVERY_STATUS_OPTION, $status, false );
+	}
+
+	private static function bounded_update_identity( $identity ) {
+		$identity = is_array( $identity ) ? $identity : array();
+		$out = array();
+		foreach ( array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			if ( ! isset( $identity[ $field ] ) || '' === (string) $identity[ $field ] ) continue;
+			$value = sanitize_text_field( (string) $identity[ $field ] );
+			if ( strlen( $value ) > 191 ) $value = substr( $value, 0, 191 );
+			$out[ $field ] = $value;
+		}
+		return $out;
+	}
+
+	private static function failure_phase_for_code( $code ) {
+		$code = sanitize_key( (string) $code );
+		$map = array(
+			'mad4b_self_update_install_failed' => 'install',
+			'mad4b_self_update_maintenance_fence_lost' => 'post_install_maintenance_fence',
+			'mad4b_self_update_readback_failed' => 'readback',
+			'mad4b_self_update_continuation_readback_failed' => 'continuation_readback',
+			'mad4b_self_update_convergence_checkpoint_persist_failed' => 'post_update_convergence_checkpoint',
+			'mad4b_self_update_success_audit_failed' => 'success_audit',
+			'mad4b_runtime_maintenance_fence_conflict' => 'pre_update_maintenance',
+			'mad4b_runtime_maintenance_stale_repair_required' => 'pre_update_maintenance',
+			'mad4b_runtime_maintenance_busy' => 'pre_update_maintenance',
+		);
+		return isset( $map[ $code ] ) ? $map[ $code ] : 'apply';
+	}
+
+	private static function persist_update_attempt( $state, array $target = array(), $failure_code = '', array $details = array(), $channel = 'wordpress_admin_plugin_update' ) {
+		$failure_code = sanitize_key( (string) $failure_code );
+		$rollback_known = array_key_exists( 'rollback_ok', $details );
+		$rollback_ok = $rollback_known ? (bool) $details['rollback_ok'] : null;
+		$replacement_attempted = in_array( sanitize_key( (string) $state ), array( 'applying', 'apply_error', 'success', 'bootstrap_success' ), true );
+		$final_runtime_changed = in_array( sanitize_key( (string) $state ), array( 'success', 'bootstrap_success' ), true )
+			? true
+			: ( $rollback_known && $rollback_ok ? false : ( $replacement_attempted ? null : false ) );
+		$status = array(
+			'contract' => self::UPDATE_ATTEMPT_CONTRACT,
+			'observed_at' => gmdate( 'c' ),
+			'channel' => sanitize_key( (string) $channel ),
+			'state' => sanitize_key( (string) $state ),
+			'failure_phase' => '' !== $failure_code ? self::failure_phase_for_code( $failure_code ) : '',
+			'failure_code' => $failure_code,
+			'cause_code' => isset( $details['cause_code'] ) ? sanitize_key( (string) $details['cause_code'] ) : '',
+			'rollback_ok' => $rollback_ok,
+			'filesystem_replacement_attempted' => $replacement_attempted,
+			'final_runtime_changed' => $final_runtime_changed,
+			'maintenance_classification' => isset( $details['maintenance_classification'] ) ? sanitize_key( (string) $details['maintenance_classification'] ) : '',
+			'retry_after_seconds' => isset( $details['retry_after_seconds'] ) ? min( 1200, absint( $details['retry_after_seconds'] ) ) : 0,
+			'target' => self::bounded_update_identity( $target ),
+			'current' => self::bounded_update_identity( self::installed_identity() ),
+			'operator_action_required' => ! empty( $details['operator_action_required'] ),
+			'production_mutation_performed' => false,
+			'authorizing' => false,
+		);
+		if ( function_exists( 'update_option' ) ) update_option( self::UPDATE_ATTEMPT_STATUS_OPTION, $status, false );
+		return $status;
+	}
+
+	private static function last_update_attempt_projection() {
+		$status = function_exists( 'get_option' ) ? get_option( self::UPDATE_ATTEMPT_STATUS_OPTION, array() ) : array();
+		if ( ! is_array( $status ) || self::UPDATE_ATTEMPT_CONTRACT !== ( isset( $status['contract'] ) ? (string) $status['contract'] : '' ) ) {
+			return array(
+				'contract' => self::UPDATE_ATTEMPT_CONTRACT,
+				'state' => 'not_recorded',
+				'authorizing' => false,
+			);
+		}
+		return $status;
+	}
+
+	private static function recovery_status_projection() {
+		$status = function_exists( 'get_option' ) ? get_option( self::RECOVERY_STATUS_OPTION, array() ) : array();
+		if ( ! is_array( $status ) ) return array();
+		$out = array(
+			'contract' => isset( $status['contract'] ) ? sanitize_text_field( (string) $status['contract'] ) : '',
+			'checked_at' => isset( $status['checked_at'] ) ? sanitize_text_field( (string) $status['checked_at'] ) : '',
+			'eligible' => ! empty( $status['eligible'] ),
+			'update_available' => ! empty( $status['update_available'] ),
+			'applied' => ! empty( $status['applied'] ),
+			'state' => isset( $status['state'] ) ? sanitize_key( (string) $status['state'] ) : '',
+			'blocker' => isset( $status['blocker'] ) ? sanitize_key( (string) $status['blocker'] ) : '',
+			'operator_action_required' => ! empty( $status['operator_action_required'] ),
+			'production_mutation_performed' => false,
+			'authorizing' => false,
+		);
+		if ( isset( $status['target'] ) && is_array( $status['target'] ) ) $out['target'] = self::bounded_update_identity( $status['target'] );
+		return $out;
 	}
 
 	public static function register_abilities() {
@@ -633,6 +725,8 @@ final class MAD4B_SCP_Self_Update {
 			),
 			'production_remote_upload_allowed' => false,
 			'production_remote_native_pull_allowed' => false,
+			'last_update_attempt' => self::last_update_attempt_projection(),
+			'recovery_update' => self::recovery_status_projection(),
 			'mutation_performed' => false,
 			'authorizing' => false,
 		);
@@ -689,6 +783,8 @@ final class MAD4B_SCP_Self_Update {
 			'governed_file_upload' => array( 'ready' => (bool) $remote_ready, 'staging_only' => true ),
 			'production_remote_upload_allowed' => false,
 			'production_remote_native_pull_allowed' => false,
+			'last_update_attempt' => self::last_update_attempt_projection(),
+			'recovery_update' => self::recovery_status_projection(),
 			'mutation_performed' => false,
 			'authorizing' => false,
 		);
@@ -1188,27 +1284,63 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! self::environment_allowed( false ) ) wp_die( esc_html__( 'MAD4B self-update is not enabled for this environment.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 
 		$manifest = self::fetch_manifest( true );
-		if ( is_wp_error( $manifest ) ) self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
-		if ( ! self::update_available( $manifest ) ) self::redirect_native_result( 'current', '' );
+		if ( is_wp_error( $manifest ) ) {
+			self::persist_update_attempt( 'manifest_error', array(), $manifest->get_error_code() );
+			self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
+		}
+		if ( ! self::update_available( $manifest ) ) {
+			self::persist_update_attempt( 'current', $manifest );
+			self::redirect_native_result( 'current', '' );
+		}
 
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		$tmp = download_url( $manifest['package_url'], 30 );
-		if ( is_wp_error( $tmp ) ) self::redirect_native_result( 'download_error', $tmp->get_error_code() );
-
-		$verified = self::verify_archive( $tmp, $manifest );
-		if ( is_wp_error( $verified ) ) {
-			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			self::redirect_native_result( 'verify_error', $verified->get_error_code() );
+		// Do the read-only maintenance/continuation checks before downloading the
+		// package. apply_verified_archive() rechecks and acquires the lease at the
+		// mutation boundary, so this only avoids an expensive download when a known
+		// operator blocker is already present.
+		$maintenance = self::maintenance_preflight( 'wordpress_admin_plugin_update_preflight' );
+		if ( is_wp_error( $maintenance ) ) {
+			$details = method_exists( $maintenance, 'get_error_data' ) ? $maintenance->get_error_data() : array();
+			$details = is_array( $details ) ? $details : array();
+			self::persist_update_attempt( 'apply_error', $manifest, $maintenance->get_error_code(), $details );
+			self::redirect_native_result( 'apply_error', $maintenance->get_error_code(), $details );
 		}
 
 		$bootstrap_mode = false;
 		$continuation_probe = self::post_update_continuation_policy();
-		if ( is_wp_error( $continuation_probe )
-			&& 'mad4b_self_update_continuation_prior_authority_drift' === $continuation_probe->get_error_code() ) {
-			$bootstrap_policy = self::bootstrap_candidate_drift_policy();
-			if ( ! empty( $bootstrap_policy['eligible'] ) ) $bootstrap_mode = true;
+		if ( is_wp_error( $continuation_probe ) ) {
+			if ( 'mad4b_self_update_continuation_prior_authority_drift' === $continuation_probe->get_error_code() ) {
+				$bootstrap_policy = self::bootstrap_candidate_drift_policy();
+				if ( ! empty( $bootstrap_policy['eligible'] ) ) {
+					$bootstrap_mode = true;
+				} else {
+					$details = method_exists( $continuation_probe, 'get_error_data' ) ? $continuation_probe->get_error_data() : array();
+					$details = is_array( $details ) ? $details : array();
+					self::persist_update_attempt( 'apply_error', $manifest, $continuation_probe->get_error_code(), $details );
+					self::redirect_native_result( 'apply_error', $continuation_probe->get_error_code(), $details );
+				}
+			} else {
+				$details = method_exists( $continuation_probe, 'get_error_data' ) ? $continuation_probe->get_error_data() : array();
+				$details = is_array( $details ) ? $details : array();
+				self::persist_update_attempt( 'apply_error', $manifest, $continuation_probe->get_error_code(), $details );
+				self::redirect_native_result( 'apply_error', $continuation_probe->get_error_code(), $details );
+			}
 		}
 
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		$tmp = download_url( $manifest['package_url'], 30 );
+		if ( is_wp_error( $tmp ) ) {
+			self::persist_update_attempt( 'download_error', $manifest, $tmp->get_error_code() );
+			self::redirect_native_result( 'download_error', $tmp->get_error_code() );
+		}
+
+		$verified = self::verify_archive( $tmp, $manifest );
+		if ( is_wp_error( $verified ) ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			self::persist_update_attempt( 'verify_error', $manifest, $verified->get_error_code() );
+			self::redirect_native_result( 'verify_error', $verified->get_error_code() );
+		}
+
+		self::persist_update_attempt( 'applying', $manifest, '', array(), $bootstrap_mode ? 'wordpress_admin_candidate_drift_bootstrap' : 'wordpress_admin_plugin_update' );
 		$result = self::apply_verified_archive(
 			$tmp,
 			$manifest,
@@ -1220,9 +1352,19 @@ final class MAD4B_SCP_Self_Update {
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( is_wp_error( $result ) ) {
 			$details = method_exists( $result, 'get_error_data' ) ? $result->get_error_data() : array();
-			self::redirect_native_result( 'apply_error', $result->get_error_code(), is_array( $details ) ? $details : array() );
+			$details = is_array( $details ) ? $details : array();
+			self::persist_update_attempt(
+				'apply_error',
+				$manifest,
+				$result->get_error_code(),
+				$details,
+				$bootstrap_mode ? 'wordpress_admin_candidate_drift_bootstrap' : 'wordpress_admin_plugin_update'
+			);
+			self::redirect_native_result( 'apply_error', $result->get_error_code(), $details );
 		}
-		self::redirect_native_result( $bootstrap_mode ? 'bootstrap_success' : 'success', '' );
+		$final_state = $bootstrap_mode ? 'bootstrap_success' : 'success';
+		self::persist_update_attempt( $final_state, $manifest, '', array(), $bootstrap_mode ? 'wordpress_admin_candidate_drift_bootstrap' : 'wordpress_admin_plugin_update' );
+		self::redirect_native_result( $final_state, '' );
 	}
 
 	public static function native_update_notice() {
