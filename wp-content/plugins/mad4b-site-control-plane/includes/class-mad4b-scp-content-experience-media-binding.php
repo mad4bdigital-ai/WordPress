@@ -95,11 +95,12 @@ final class MAD4B_SCP_Content_Experience_Media_Binding {
 			}
 			if ( is_array( $manifest_receipt ) ) {
 				$manifest_index = isset( $item['manifest_index'] ) ? (int) $item['manifest_index'] : -1;
-				if ( $manifest_index < 0 || $manifest_index >= $manifest_item_count || isset( $seen_manifest_indices[ $manifest_index ] ) ) return new WP_Error( 'mad4b_content_experience_media_binding_manifest_index_invalid', 'Each manifest-bound media item requires one unique valid manifest_index.', array( 'index' => $index, 'manifest_index' => $manifest_index ) );
+				if ( $manifest_index < 0 || $manifest_index >= $manifest_item_count ) return new WP_Error( 'mad4b_content_experience_media_binding_manifest_index_invalid', 'Each manifest-bound media item requires a valid manifest_index.', array( 'index' => $index, 'manifest_index' => $manifest_index ) );
 				$receipt_item = $manifest_receipt['items'][ $manifest_index ];
 				if ( (int) $receipt_item['attachment_id'] !== $id ) return new WP_Error( 'mad4b_content_experience_media_binding_manifest_attachment_drift', 'Binding attachment does not match the staged import at this manifest index.', array( 'manifest_index' => $manifest_index, 'attachment_id' => $id ) );
 				if ( isset( $item['import_plan_sha256'] ) && '' !== (string) $item['import_plan_sha256'] && ! hash_equals( (string) $receipt_item['import_plan_sha256'], strtolower( trim( (string) $item['import_plan_sha256'] ) ) ) ) return new WP_Error( 'mad4b_content_experience_media_binding_manifest_plan_drift', 'Binding item import plan does not match the staged manifest receipt.', array( 'manifest_index' => $manifest_index ) );
-				$seen_manifest_indices[ $manifest_index ] = true;
+				if ( isset( $seen_manifest_indices[ $manifest_index ] ) && (int) $seen_manifest_indices[ $manifest_index ] !== $id ) return new WP_Error( 'mad4b_content_experience_media_binding_manifest_index_conflict', 'One manifest index cannot resolve to two different attachment IDs.', array( 'manifest_index' => $manifest_index ) );
+				$seen_manifest_indices[ $manifest_index ] = $id;
 			}
 			$role = isset( $item['binding_role'] ) ? sanitize_key( (string) $item['binding_role'] ) : 'gallery';
 			if ( ! in_array( $role, array( 'featured', 'gallery', 'field' ), true ) ) return new WP_Error( 'mad4b_content_experience_media_binding_role_invalid', 'binding_role must be featured, gallery or field.', array( 'index' => $index ) );

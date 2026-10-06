@@ -102,6 +102,7 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		) );
 		$rows = array();
 		foreach ( array_values( array_map( 'absint', (array) $ids ) ) as $id ) {
+			if ( ! current_user_can( 'read_post', $id ) ) continue;
 			foreach ( (array) get_post_meta( $id, self::ATTACHMENT_STAGE_META, false ) as $event ) {
 				if ( ! is_array( $event ) || self::STAGE_CONTRACT !== ( isset( $event['contract'] ) ? (string) $event['contract'] : '' ) ) continue;
 				if ( ! isset( $event['manifest_sha256'] ) || ! hash_equals( $manifest, (string) $event['manifest_sha256'] ) ) continue;
@@ -238,10 +239,14 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 			'no_found_rows' => true, 'suppress_filters' => true,
 		) );
 		$manifests = array();
-		foreach ( (array) $ids as $id ) foreach ( (array) get_post_meta( absint( $id ), self::ATTACHMENT_MANIFEST_META, false ) as $manifest ) {
+		foreach ( (array) $ids as $id ) {
+			$id = absint( $id );
+			if ( ! current_user_can( 'read_post', $id ) ) continue;
+			foreach ( (array) get_post_meta( $id, self::ATTACHMENT_MANIFEST_META, false ) as $manifest ) {
 			$manifest = strtolower( trim( (string) $manifest ) );
 			if ( preg_match( '/^[a-f0-9]{64}$/', $manifest ) ) $manifests[ $manifest ] = true;
-			if ( count( $manifests ) >= self::MAX_OVERVIEW_MANIFESTS ) break 2;
+				if ( count( $manifests ) >= self::MAX_OVERVIEW_MANIFESTS ) break 2;
+			}
 		}
 		$unbound = array(); $created_unbound = 0;
 		foreach ( array_keys( $manifests ) as $manifest ) {

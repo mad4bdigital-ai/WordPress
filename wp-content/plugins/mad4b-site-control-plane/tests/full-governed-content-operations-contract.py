@@ -587,8 +587,6 @@ for src, label in (
 assert "array( 'content', 'admin', 'write' )" in servers_src
 assert "'mad4b/database-raw-query'" in servers_src
 
-print("MAD4B full governed content operations contract: PASS")
-
 # Provider-compatible media storage remains attachment-identity based even when
 # a field stores URL or ID+URL projections.
 for token in (
@@ -677,3 +675,5 @@ assert len(experience_media_manifest_src.splitlines()) <= 140, "content-experien
 assert len(experience_media_planning_src.splitlines()) <= 120, "content-experience-media-planning exceeds focused 120-line service budget"
 assert "Recoverable orphan semantics are not explicit/non-destructive." in experience_runtime_smoke_src
 assert "Manifest-bound content create did not finish with verified recovery binding." in experience_runtime_smoke_src
+
+print("MAD4B full governed content operations contract: PASS")
