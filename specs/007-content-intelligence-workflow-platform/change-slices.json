@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
-  "changed_file_count": 71,
+  "changed_file_count": 72,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -446,6 +446,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/critical-ci-hermetic-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-diagnostic-ui-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-passive-catalog-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/projection-hotset-abilities.php",

@@ -10,6 +10,8 @@ function rest_url( $path ) { return 'https://fixture.test/wp-json/' . $path; }
 function esc_url_raw( $value ) { return $value; }
 function current_user_can( $capability ) { return false; }
 function submit_button( $label, ...$args ) { echo '<input type="submit" value="' . esc_attr( $label ) . '">'; }
+function wp_nonce_field( $action, $name = '_wpnonce' ) { if ( 'mad4b_connection_deep_endpoints' !== $action ) throw new RuntimeException( 'Unexpected diagnostic nonce action' ); echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="fixture-nonce">'; }
+class MAD4B_SCP_Endpoint_Diagnostic { static function build_fingerprint() { return str_repeat( 'b', 64 ); } }
 class MAD4B_SCP_Servers { static function expected_server_ids() { return array( 'mad4b-chatgpt', 'mad4b-write' ); } static function registration_status() { return array(); } static function write_tools() { throw new RuntimeException( 'Passive UI built a catalog' ); } }
 class MAD4B_SCP_MCP_Registration_Bridge { static function server_registration_identity_status( $id ) { return array( 'actual_registered' => false, 'identity_ready' => true, 'state' => 'identity_ready_deep_validation_deferred', 'deep_registration_deferred' => true ); } }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-connection-status.php';
@@ -29,6 +31,7 @@ ob_start(); $render->invoke( null, array( 'servers' => $servers, 'write_surface'
 check( 2 === substr_count( $html, 'data-check="registered">Not checked' ) && 2 === substr_count( $html, 'data-check="route_registered">Not checked' ), 'UI lost unknown registration/route measurements' );
 check( false !== strpos( $html, 'data-write-check="tool_count">Not checked' ), 'Unmeasured write catalog rendered as zero' );
 check( false !== strpos( $html, 'mad4b-endpoint-diagnostic-form' ) && false === strpos( $html, 'value="deep_endpoints"' ), 'UI submits the old whole-page deep job' );
+check( false !== strpos( $html, 'name="nonce"' ) && false !== strpos( $html, 'name="build" value="' . str_repeat( 'b', 64 ) . '"' ), 'Diagnostic form retains its exact nonce/build payload' );
 check( false !== strpos( $html, '/wp-json/mcp/mad4b-chatgpt' ), 'Passive endpoint URL missing' );
 $servers[0]['registered'] = false; $servers[0]['route_registered'] = true; $servers[0]['permission_callback_match'] = false;
 ob_start(); $render->invoke( null, array( 'servers' => $servers, 'write_surface' => $write ) ); $html = ob_get_clean();
