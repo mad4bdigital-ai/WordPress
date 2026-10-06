@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
-  "changed_file_count": 87,
+  "changed_file_count": 89,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -456,6 +456,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-passive-catalog-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/projection-hotset-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/provider-mcp-registration-callbacks.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/redis-object-cache.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-provider-plan-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php",
@@ -487,6 +488,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-postcondition-profile-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-core-rest-isolation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-exact-packages.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-rest-bootstrap.php",
@@ -593,6 +595,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "d65dfa838a6332826d2a4f47946fb19406e29b12f3fa3862e9e8ae15509ab6fa",
+  "changed_paths_sha256": "cf2f4a2451aedba39f5eb33cc84070cc96e5c631d9f07c885c0acc5db9d55b9f",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
