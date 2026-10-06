@@ -44,20 +44,24 @@
       "sha256": "41e1c72bb5cd225f7c9dbfc31ec0e44d4244ba95861604988f3e7342bfd1b6df"
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
-      "sha256": "a5d9288bc9f18d8b8c8fa76ee88196dfe26166035bbe415ef05c11ab80802d4d"
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
+      "sha256": "1e2b0807602e2f9c1fca62f49cc50d4f203cf810e6b0bd70ea4f09a117e8a2f8"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-collectors.php",
-      "sha256": "61527e5793b2534224665e8a71bf976bc41fc9af2ee570e9a53b5c8e8c55463d"
+      "sha256": "938d34e6e1e4185cfa3cff6d2119209155e48f8bc9f048453f2d35ffccf1f4ff"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
+      "sha256": "0ecd8b454f29efef0285192c11e41587b42a1f40e0d6d015b783acd529082d46"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
-      "sha256": "c8de029579219ce999cabb52d8311d95e6efa5128291add4ee551e097f840024"
+      "sha256": "8004ed3d7a6f6daac50ddfaa9cd1ccba3db6716d38ace612913e62b1c4032463"
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "1e2b0807602e2f9c1fca62f49cc50d4f203cf810e6b0bd70ea4f09a117e8a2f8"
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-conformance.php",
+      "sha256": "d3c6ec87595d6bce0ed94d97de6a4e4d98dc2e5c83fa002c62cc8470283e4644"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -67,7 +71,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py",
-      "sha256": "d779ad20839a6ae817a6f58368ee698f702c506370d5e0af1322d02331dc803e"
+      "sha256": "3f6392f70c092c59bc7157c26471839175dc6620c137dc2f026ad49174c73c86"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php",
