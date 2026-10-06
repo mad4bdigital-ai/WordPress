@@ -219,6 +219,45 @@ try {
 	$cloudinary_srcset = 'https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/sample.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/sample.jpg 1600w';
 	$check( false !== strpos( (string) $srcset_method->invoke( $media_adapter, $cloudinary_srcset ), 'w_1600' ), 'Cloudinary comma-bearing srcset parsing did not preserve/select the largest candidate.' );
 
+	$remote_rights_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Remote Rights Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $remote_rights_attachment ), 'Unable to create remote-media rights fixture.' );
+	$remote_rights_attachment = (int) $remote_rights_attachment; $post_ids[] = $remote_rights_attachment;
+	$remote_source_url = 'https://images.example.invalid/rights.jpg';
+	$remote_source_hash = hash( 'sha256', $remote_source_url );
+	$remote_content_hash = str_repeat( 'b', 64 );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_SOURCE_HASH_META, $remote_source_hash, false );
+	update_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_CONTENT_HASH_META, $remote_content_hash );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, array(
+		'contract' => MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
+		'source_url' => $remote_source_url,
+		'source_url_sha256' => $remote_source_hash,
+		'rights_basis' => 'permission',
+		'rights_note' => 'CI permission fixture',
+		'rights_reference' => '',
+		'license_expires_on' => '2099-12-31',
+		'content_sha256' => $remote_content_hash,
+	), false );
+	$remote_publish_guard = MAD4B_SCP_Content_Experience_Media_Rights::remote_provenance_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
+	$check( ! is_wp_error( $remote_publish_guard ) && 1 === (int) $remote_publish_guard['remote_attachment_count'], 'Remote media publish provenance guard rejected a valid fixture.' );
+	$expired_provenance = get_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, true );
+	$expired_provenance['license_expires_on'] = '2020-01-01';
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, $expired_provenance, false );
+	$expired_guard = MAD4B_SCP_Content_Experience_Media_Rights::remote_provenance_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
+	$check( is_wp_error( $expired_guard ) && 'mad4b_remote_media_publish_rights_expired' === $expired_guard->get_error_code(), 'Expired remote-media rights did not block publish.' );
+	delete_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_META, array(
+		'contract' => MAD4B_SCP_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
+		'source_url' => $remote_source_url,
+		'source_url_sha256' => $remote_source_hash,
+		'rights_basis' => 'permission',
+		'rights_note' => 'CI permission fixture',
+		'rights_reference' => '',
+		'license_expires_on' => '2099-12-31',
+		'content_sha256' => $remote_content_hash,
+	), false );
+
 	$profile_input = array(
 		'slug' => 'ci-trip',
 		'label' => 'CI Trip',

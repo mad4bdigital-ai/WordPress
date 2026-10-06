@@ -330,6 +330,17 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			}
 		}
 
+		$remote_media_provenance_rights = null;
+		if ( 'publish' === $operation ) {
+			$effective_featured_media_id = null !== $featured_media_id ? (int) $featured_media_id : ( $post ? (int) get_post_thumbnail_id( $post->ID ) : 0 );
+			$remote_media_provenance_rights = MAD4B_SCP_Content_Experience_Media_Rights::remote_provenance_guard(
+				$effective_featured_media_id,
+				$media_fields,
+				$effective_media_state
+			);
+			if ( is_wp_error( $remote_media_provenance_rights ) ) return $remote_media_provenance_rights;
+		}
+
 		$post_parent = array_key_exists( 'post_parent', $input ) ? absint( $input['post_parent'] ) : null;
 		if ( null !== $post_parent ) {
 			if ( empty( $profile['hierarchy'] ) ) return new WP_Error( 'mad4b_content_experience_hierarchy_disabled', 'Hierarchy is disabled for this experience profile.' );
@@ -373,6 +384,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'current_state_sha256' => $current_state_sha256,
 			'effective_media_state_sha256' => $effective_media_state_sha256,
 			'media_publish_rights' => $media_publish_rights,
+			'remote_media_provenance_rights' => $remote_media_provenance_rights,
 			'normalized_input' => $normalized,
 			'mutation_performed' => false,
 		);
