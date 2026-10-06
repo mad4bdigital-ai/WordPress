@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 graph = (ROOT / "includes/class-mad4b-scp-runtime-evidence-graph.php").read_text(encoding="utf-8")
 collectors = (ROOT / "includes/class-mad4b-scp-runtime-evidence-collectors.php").read_text(encoding="utf-8")
 classifier = (ROOT / "includes/class-mad4b-scp-runtime-policy-classifier.php").read_text(encoding="utf-8")
+conformance = (ROOT / "includes/class-mad4b-scp-runtime-policy-conformance.php").read_text(encoding="utf-8")
 competitive = (ROOT / "includes/class-mad4b-scp-competitive-evidence.php").read_text(encoding="utf-8")
 summary_php = (ROOT / "config/competitive-evidence-summary.php").read_text(encoding="utf-8")
 plugin = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -34,21 +35,14 @@ req(
     "mad4b_runtime_graph_before_oversized",
     "collector_contracts",
     "collector_observed_count",
-    "'providers'=>array('method'=>'providers')",
-    "'schemas'=>array('method'=>'schemas','source'=>'abilities')",
     "collection_status",
     "edge_status",
     "last_edge_observed_count",
-    "source_trustworthy_for_absence",
     "sources_complete",
     "mad4b_runtime_graph_collection_source_status_mismatch",
     "mad4b_runtime_graph_edge_source_status_mismatch",
     "impact_trustworthy",
-    "observed_count",
-    "emitted_count",
-    "source_incomplete",
     "source_trustworthy_for_absence",
-    "trustworthy_for_absence",
     "uncertain_added",
     "uncertain_removed",
     "comparison_trustworthy_for_absence",
@@ -61,7 +55,6 @@ req(
     "'unknown_endpoints_invoked'=>false",
     "'secret_values_read'=>false",
     "'writes_performed'=>false",
-    "did_action('rest_api_init')<=0",
     "'authority_inferred_from_method'=>false",
     "'schema_read'=>false",
     "'row_values_read'=>false",
@@ -88,6 +81,17 @@ deny(graph, "call_user_func(", "call_user_func_array(", "wp_remote_get(", "wp_re
 req(
     collectors,
     "MAD4B_SCP_Runtime_Evidence_Collectors",
+    "public static function contracts",
+    "public static function collection_status",
+    "public static function observed_count",
+    "public static function ability_names",
+    "'providers'=>array('method'=>'providers')",
+    "'schemas'=>array('method'=>'schemas','source'=>'abilities')",
+    "observed_count",
+    "emitted_count",
+    "source_incomplete",
+    "trustworthy_for_absence",
+    "did_action('rest_api_init')<=0",
     "public static function post_types",
     "public static function taxonomies",
     "public static function meta_keys",
@@ -103,23 +107,8 @@ req(
     "mad4b.runtime-policy-proposal.v2",
     "mad4b.runtime-policy-conformance-receipt.v2",
     "mad4b.runtime-policy-review-overlay.v2",
-    "conformance_issuer_untrusted",
-    "mad4b_scp_runtime_policy_conformance_verifiers",
-    "trusted_conformance_verifiers",
-    "callback_owned_by_control_plane",
-    "conformance_verifier_untrusted",
-    "conformance_signature_verification_failed",
-    "verifier_provenance",
-    "conformance_binding_mismatch",
-    "conformance_provider_binding_mismatch",
-    "current_provider_capability_binding",
-    "MAD4B_SCP_Provider_Compatibility_Certification::ability_status",
-    "conformance_provider_capability_not_read_eligible",
-    "'capability_id'",
-    "'artifact_fingerprint'",
-    "'capability_contract_digest'",
-    "'conformance_' . $field . '_binding_mismatch'",
-    "conformance_receipt_digest_mismatch",
+    "class-mad4b-scp-runtime-policy-conformance.php",
+    "MAD4B_SCP_Runtime_Policy_Conformance::verify",
     "secret_output_schema_blocks_auto_classification",
     "privileged_capability_blocks_auto_classification",
     "sensitive_data_classification_blocks_auto_classification",
@@ -152,9 +141,35 @@ req(
 )
 deny(classifier, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->", "MAD4B_SCP_Servers::register")
 
-assert len(graph.splitlines()) <= 1100, "runtime evidence graph exceeded maintainability budget"
-assert len(classifier.splitlines()) <= 1050, "runtime policy classifier exceeded maintainability budget"
+req(
+    conformance,
+    "MAD4B_SCP_Runtime_Policy_Conformance",
+    "mad4b.runtime-policy-conformance-receipt.v2",
+    "conformance_issuer_untrusted",
+    "mad4b_scp_runtime_policy_conformance_verifiers",
+    "trusted_verifiers",
+    "callback_owned_by_control_plane",
+    "conformance_verifier_untrusted",
+    "conformance_signature_verification_failed",
+    "verifier_provenance",
+    "conformance_binding_mismatch",
+    "conformance_provider_binding_mismatch",
+    "current_provider_capability_binding",
+    "MAD4B_SCP_Provider_Compatibility_Certification::ability_status",
+    "conformance_provider_capability_not_read_eligible",
+    "conformance_artifact_fingerprint_binding_mismatch",
+    "conformance_capability_contract_digest_binding_mismatch",
+    "conformance_receipt_digest_mismatch",
+    "'capability_id'",
+    "'artifact_fingerprint'",
+    "'capability_contract_digest'",
+)
+deny(conformance, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->", "MAD4B_SCP_Servers::register")
+
+assert len(graph.splitlines()) <= 900, "runtime evidence graph exceeded maintainability budget"
+assert len(classifier.splitlines()) <= 900, "runtime policy classifier exceeded maintainability budget"
 assert len(collectors.splitlines()) <= 350, "runtime evidence collectors exceeded maintainability budget"
+assert len(conformance.splitlines()) <= 400, "runtime policy conformance exceeded maintainability budget"
 
 req(
     competitive,
