@@ -1,0 +1,1210 @@
+{
+  "contract": "mad4b.competitive-evidence-summary.v1",
+  "snapshot_generation_sha256": "fc8336c918722c4d581031fb4fe05d7d56623cfc0efba4ae0fb40aafd6d6005e",
+  "package_count": 4,
+  "capability_count": 59,
+  "status_counts": {
+    "OPEN": 55,
+    "PARTIAL": 4
+  },
+  "packages": [
+    {
+      "id": "ai-engine",
+      "version": "3.7.6",
+      "sha256": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+      "license": "GPLv2 or later",
+      "entry_point": "ai-engine/ai-engine.php",
+      "file_count": 192,
+      "uncompressed_bytes": 5179410
+    },
+    {
+      "id": "easy-mcp-ai",
+      "version": "1.7.17",
+      "sha256": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+      "license": "GPL-2.0-or-later",
+      "entry_point": "easy-mcp-ai/easy-mcp-ai.php",
+      "file_count": 398,
+      "uncompressed_bytes": 4664614
+    },
+    {
+      "id": "miniorange-secure-mcp-server",
+      "version": "1.4.10",
+      "sha256": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+      "license": "Expat",
+      "entry_point": "miniorange-secure-mcp-server/miniorange-secure-mcp-server.php",
+      "file_count": 195,
+      "uncompressed_bytes": 2524933
+    },
+    {
+      "id": "royal-mcp",
+      "version": "1.5.0",
+      "sha256": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70",
+      "license": "GPL v2 or later",
+      "entry_point": "royal-mcp/royal-mcp.php",
+      "file_count": 105,
+      "uncompressed_bytes": 2004926
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "CE001",
+      "title": "Immutable competitor package archive",
+      "status": "OPEN",
+      "risk_class": "READ_ONLY",
+      "task_ids": [
+        "T3901",
+        "T3902",
+        "T3903",
+        "T3904",
+        "T3905"
+      ],
+      "evidence_ids": [
+        "SRC-RM-IDENTITY"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE002",
+      "title": "Evidence-based comparison and progress",
+      "status": "OPEN",
+      "risk_class": "READ_ONLY",
+      "task_ids": [
+        "T3901",
+        "T3902",
+        "T3903",
+        "T3904",
+        "T3905"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-COUNTS",
+        "SRC-MO-SECURITY-CLAIMS"
+      ],
+      "evidence_classes": [
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE003",
+      "title": "Guided first useful operation",
+      "status": "PARTIAL",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3906",
+        "T3907",
+        "T3908",
+        "T3909",
+        "T3910"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-ONBOARDING",
+        "SRC-MO-NHI"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC",
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE004",
+      "title": "Provider credential and profile discoverability",
+      "status": "PARTIAL",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3906",
+        "T3907",
+        "T3908",
+        "T3909",
+        "T3910"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-DFS",
+        "SRC-EASY-GA4",
+        "SRC-EASY-ONBOARDING"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC",
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE005",
+      "title": "Every admin page, legacy route and external action",
+      "status": "PARTIAL",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3906",
+        "T3907",
+        "T3908",
+        "T3909",
+        "T3910"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-ONBOARDING",
+        "SRC-RM-HEALTH"
+      ],
+      "evidence_classes": [
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE006",
+      "title": "Receipt-backed Undo workspace",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3911",
+        "T3912",
+        "T3913",
+        "T3914",
+        "T3915"
+      ],
+      "evidence_ids": [
+        "SRC-RM-UNDO-DRIFT",
+        "SRC-RM-UNDO-TTL"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE007",
+      "title": "Exact write readback and recovery uncertainty",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3911",
+        "T3912",
+        "T3913",
+        "T3914",
+        "T3915"
+      ],
+      "evidence_ids": [
+        "SRC-RM-READBACK",
+        "SRC-RM-UNDO-DRIFT"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE008",
+      "title": "NHI/agent permission editor and My Access",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3916",
+        "T3917",
+        "T3918",
+        "T3919",
+        "T3920"
+      ],
+      "evidence_ids": [
+        "SRC-MO-NHI",
+        "SRC-MO-WRITE-GUARD"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE009",
+      "title": "Agent attribution, scope conflict and lifecycle",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3916",
+        "T3917",
+        "T3918",
+        "T3919",
+        "T3920"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-SCOPED-CALL",
+        "SRC-MO-NHI"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE010",
+      "title": "Granular consent and safe presets",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3921",
+        "T3922",
+        "T3923",
+        "T3924",
+        "T3925"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-CONSENT",
+        "SRC-EASY-SCOPED-CALL"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE011",
+      "title": "OAuth and MCP client/session compatibility",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3921",
+        "T3922",
+        "T3923",
+        "T3924",
+        "T3925"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-SCOPED-CALL",
+        "SRC-RM-PKCE"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE012",
+      "title": "GA4 measurement and property selection",
+      "status": "OPEN",
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3926",
+        "T3927",
+        "T3928",
+        "T3929",
+        "T3930"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-GA4"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE013",
+      "title": "Search Console queries and index observations",
+      "status": "OPEN",
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3926",
+        "T3927",
+        "T3928",
+        "T3929",
+        "T3930"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-GSC"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE014",
+      "title": "Keyword, backlink, competitor and AI visibility adapters",
+      "status": "OPEN",
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3926",
+        "T3927",
+        "T3928",
+        "T3929",
+        "T3930"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-AHREFS",
+        "SRC-EASY-DFS",
+        "SRC-EASY-SEMRUSH",
+        "SRC-EASY-SERANKING"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE015",
+      "title": "Form/schema/configuration provider family",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3931",
+        "T3932",
+        "T3933",
+        "T3934",
+        "T3935"
+      ],
+      "evidence_ids": [
+        "SRC-MO-FORMS",
+        "SRC-RM-CF7",
+        "SRC-RM-WPFORMS"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE016",
+      "title": "Private submissions, retention and export/delete",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3931",
+        "T3932",
+        "T3933",
+        "T3934",
+        "T3935"
+      ],
+      "evidence_ids": [
+        "SRC-RM-CF7",
+        "SRC-RM-WPFORMS"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE017",
+      "title": "Products, variations, attributes and bounded batch",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3936",
+        "T3937",
+        "T3938",
+        "T3939",
+        "T3940"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-WC-PRODUCT"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE018",
+      "title": "Orders, customers, coupons and reports",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3936",
+        "T3937",
+        "T3938",
+        "T3939",
+        "T3940"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-WC-ORDER"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE019",
+      "title": "Shipping, taxes, gateways, webhooks and refunds",
+      "status": "OPEN",
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T3936",
+        "T3937",
+        "T3938",
+        "T3939",
+        "T3940"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-WC-ORDER",
+        "SRC-EASY-WC-WEBHOOK"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE020",
+      "title": "Elementor structural operations and templates",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3941",
+        "T3942",
+        "T3943",
+        "T3944",
+        "T3945"
+      ],
+      "evidence_ids": [
+        "SRC-RM-EDITOR-LOCK",
+        "SRC-RM-ELEMENTOR"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE021",
+      "title": "Divi 4/5 format-aware operations",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3941",
+        "T3942",
+        "T3943",
+        "T3944",
+        "T3945"
+      ],
+      "evidence_ids": [
+        "SRC-RM-DIVI",
+        "SRC-RM-EDITOR-LOCK"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE022",
+      "title": "Kadence and Gutenberg/FSE templates/styles",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3941",
+        "T3942",
+        "T3943",
+        "T3944",
+        "T3945"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-FSE",
+        "SRC-MO-KADENCE"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE023",
+      "title": "Six-provider field-level SEO family",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3946",
+        "T3947",
+        "T3948",
+        "T3949",
+        "T3950"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-SEO",
+        "SRC-EASY-SEO-HEAD"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE024",
+      "title": "Rendered head, language and archive verification",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3946",
+        "T3947",
+        "T3948",
+        "T3949",
+        "T3950"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-SEO-HEAD",
+        "SRC-RM-REDIRECT"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE025",
+      "title": "Visual timeline and structured diffs",
+      "status": "OPEN",
+      "risk_class": "READ_ONLY",
+      "task_ids": [
+        "T3951",
+        "T3952",
+        "T3953",
+        "T3954",
+        "T3955"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-HISTORY"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE026",
+      "title": "Redaction, retention and portable evidence",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3951",
+        "T3952",
+        "T3953",
+        "T3954",
+        "T3955"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-HISTORY",
+        "SRC-EASY-REDACTION"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE027",
+      "title": "Optional AI Workspace and approval cards",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3956",
+        "T3957",
+        "T3958",
+        "T3959",
+        "T3960"
+      ],
+      "evidence_ids": [
+        "SRC-AI-WORKSPACE"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE028",
+      "title": "Governed model routing and usage controls",
+      "status": "OPEN",
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3956",
+        "T3957",
+        "T3958",
+        "T3959",
+        "T3960"
+      ],
+      "evidence_ids": [
+        "SRC-AI-MODELS"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE029",
+      "title": "Copilot, translation, media and audio/video proposals",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3956",
+        "T3957",
+        "T3958",
+        "T3959",
+        "T3960"
+      ],
+      "evidence_ids": [
+        "SRC-AI-AUDIO-PRO",
+        "SRC-AI-MEDIA-CLAIM"
+      ],
+      "evidence_classes": [
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE030",
+      "title": "Knowledge/PDF ingestion, retrieval and vector stores",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3961",
+        "T3962",
+        "T3963",
+        "T3964",
+        "T3965"
+      ],
+      "evidence_ids": [
+        "SRC-AI-RAG-PRO"
+      ],
+      "evidence_classes": [
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE031",
+      "title": "AI forms and bounded function calling",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3961",
+        "T3962",
+        "T3963",
+        "T3964",
+        "T3965"
+      ],
+      "evidence_ids": [
+        "SRC-AI-FORMS-PRO",
+        "SRC-AI-WORKSPACE"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC",
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE032",
+      "title": "Backup and migration artifacts",
+      "status": "OPEN",
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "evidence_ids": [
+        "SRC-RM-BACKUP",
+        "SRC-RM-MIGRATION"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE033",
+      "title": "Cache inspection and bounded purge",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "evidence_ids": [
+        "SRC-RM-CACHE"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE034",
+      "title": "Security status, lockouts and policy claims",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "evidence_ids": [
+        "SRC-MO-SECURITY-CLAIMS",
+        "SRC-RM-SECURITY"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC",
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE035",
+      "title": "Redirect and link management",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "evidence_ids": [
+        "SRC-RM-REDIRECT"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE036",
+      "title": "Multilingual taxonomy hierarchy reconciliation",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3971",
+        "T3972",
+        "T3973",
+        "T3974",
+        "T3975"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-TERM"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE037",
+      "title": "Core content/media/menus/users and ACF completeness",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3971",
+        "T3972",
+        "T3973",
+        "T3974",
+        "T3975"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-ACF",
+        "SRC-RM-READBACK"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE038",
+      "title": "Community and event operations",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3971",
+        "T3972",
+        "T3973",
+        "T3974",
+        "T3975"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-COMMUNITY",
+        "SRC-EASY-EVENTS"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC"
+      ]
+    },
+    {
+      "id": "CE039",
+      "title": "Capability-local provider recertification",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3976",
+        "T3977",
+        "T3978",
+        "T3979",
+        "T3980"
+      ],
+      "evidence_ids": [
+        "SRC-MO-WRITE-GUARD",
+        "SRC-RM-HEALTH"
+      ],
+      "evidence_classes": [
+        "BUNDLED_STATIC",
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE040",
+      "title": "External handshake, browser and passive performance acceptance",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3976",
+        "T3977",
+        "T3978",
+        "T3979",
+        "T3980"
+      ],
+      "evidence_ids": [
+        "SRC-EASY-ONBOARDING",
+        "SRC-RM-HEALTH"
+      ],
+      "evidence_classes": [
+        "CLAIMED_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE041",
+      "title": "Runtime Candidate Graph v2",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4001",
+        "T4002",
+        "T4003",
+        "T4004",
+        "T4005"
+      ],
+      "evidence_ids": [
+        "SRC-AO-01"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE042",
+      "title": "Semantic Classification Engine",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4006",
+        "T4007",
+        "T4008",
+        "T4009",
+        "T4010"
+      ],
+      "evidence_ids": [
+        "SRC-AO-02"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE043",
+      "title": "Declarative Adapter Manifest",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4011",
+        "T4012",
+        "T4013",
+        "T4014",
+        "T4015"
+      ],
+      "evidence_ids": [
+        "SRC-AO-03"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE044",
+      "title": "Dynamic Operation Synthesis and Workflow Compiler",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4016",
+        "T4017",
+        "T4018",
+        "T4019",
+        "T4020"
+      ],
+      "evidence_ids": [
+        "SRC-AO-04"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE045",
+      "title": "Shadow Certification for Reads",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4021",
+        "T4022",
+        "T4023",
+        "T4024",
+        "T4025"
+      ],
+      "evidence_ids": [
+        "SRC-AO-05"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE046",
+      "title": "Reversible Canary Engine",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4026",
+        "T4027",
+        "T4028",
+        "T4029",
+        "T4030"
+      ],
+      "evidence_ids": [
+        "SRC-AO-06"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE047",
+      "title": "Versioned Runtime Registry and Certification Packs",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4031",
+        "T4032",
+        "T4033",
+        "T4034",
+        "T4035"
+      ],
+      "evidence_ids": [
+        "SRC-AO-07"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE048",
+      "title": "Ownership-aware Three-Way Reconciliation",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4036",
+        "T4037",
+        "T4038",
+        "T4039",
+        "T4040"
+      ],
+      "evidence_ids": [
+        "SRC-AO-08"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE049",
+      "title": "Universal Mutation Journal",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4041",
+        "T4042",
+        "T4043",
+        "T4044",
+        "T4045"
+      ],
+      "evidence_ids": [
+        "SRC-AO-09"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE050",
+      "title": "Update Acceptance and Safe Remediation Pipeline",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4046",
+        "T4047",
+        "T4048",
+        "T4049",
+        "T4050"
+      ],
+      "evidence_ids": [
+        "SRC-AO-10"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE051",
+      "title": "Host Capability Registry",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4051",
+        "T4052",
+        "T4053",
+        "T4054",
+        "T4055"
+      ],
+      "evidence_ids": [
+        "SRC-AO-11"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE052",
+      "title": "External Provider Framework",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4056",
+        "T4057",
+        "T4058",
+        "T4059",
+        "T4060"
+      ],
+      "evidence_ids": [
+        "SRC-AO-12"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE053",
+      "title": "Operator Action Center and Autonomy Evaluation",
+      "status": "PARTIAL",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4061",
+        "T4062",
+        "T4063",
+        "T4064",
+        "T4065"
+      ],
+      "evidence_ids": [
+        "SRC-AO-13"
+      ],
+      "evidence_classes": [
+        "USER_PROPOSAL_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "CE054",
+      "title": "Release Rings and Fleet/Multisite Promotion",
+      "status": "OPEN",
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T4066",
+        "T4067",
+        "T4068",
+        "T4069",
+        "T4070"
+      ],
+      "evidence_ids": [
+        "SRC-ARCH-01"
+      ],
+      "evidence_classes": [
+        "ARCHITECTURE_DERIVATION"
+      ]
+    },
+    {
+      "id": "CE055",
+      "title": "Automation SLOs, Error Budgets and Kill Switch",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4071",
+        "T4072",
+        "T4073",
+        "T4074",
+        "T4075"
+      ],
+      "evidence_ids": [
+        "SRC-ARCH-02"
+      ],
+      "evidence_classes": [
+        "ARCHITECTURE_DERIVATION"
+      ]
+    },
+    {
+      "id": "CE056",
+      "title": "Supply-chain Provenance and Trust",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4076",
+        "T4077",
+        "T4078",
+        "T4079",
+        "T4080"
+      ],
+      "evidence_ids": [
+        "SRC-ARCH-03"
+      ],
+      "evidence_classes": [
+        "ARCHITECTURE_DERIVATION"
+      ]
+    },
+    {
+      "id": "CE057",
+      "title": "Registry and Policy Schema Migration",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4081",
+        "T4082",
+        "T4083",
+        "T4084",
+        "T4085"
+      ],
+      "evidence_ids": [
+        "SRC-ARCH-04"
+      ],
+      "evidence_classes": [
+        "ARCHITECTURE_DERIVATION"
+      ]
+    },
+    {
+      "id": "CE058",
+      "title": "Adversarial Compatibility Fuzzing and Chaos Certification",
+      "status": "OPEN",
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4086",
+        "T4087",
+        "T4088",
+        "T4089",
+        "T4090"
+      ],
+      "evidence_ids": [
+        "SRC-ARCH-05"
+      ],
+      "evidence_classes": [
+        "ARCHITECTURE_DERIVATION"
+      ]
+    },
+    {
+      "id": "CE059",
+      "title": "Restore and Disaster-Recovery Convergence",
+      "status": "OPEN",
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T4091",
+        "T4092",
+        "T4093",
+        "T4094",
+        "T4095"
+      ],
+      "evidence_ids": [
+        "SRC-ARCH-06"
+      ],
+      "evidence_classes": [
+        "ARCHITECTURE_DERIVATION"
+      ]
+    }
+  ],
+  "authorizing": false,
+  "summary_sha256": "2807b2124bea6c2704b1214c7ebc019a269cf7ca49e78518e5e7d994be8220ac"
+}
