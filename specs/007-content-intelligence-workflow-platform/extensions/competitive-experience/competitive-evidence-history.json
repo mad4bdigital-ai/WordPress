@@ -16,8 +16,11 @@
         "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
         "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
       },
-      "authorizing": false
+      "authorizing": false,
+      "previous_entry_sha256": "",
+      "entry_sha256": "e790773acdf1ac99ebe9cc6bee5799935e6b3271797c6dc1189102ede55aaa45"
     }
   ],
-  "authorizing": false
+  "authorizing": false,
+  "current_entry_sha256": "e790773acdf1ac99ebe9cc6bee5799935e6b3271797c6dc1189102ede55aaa45"
 }
