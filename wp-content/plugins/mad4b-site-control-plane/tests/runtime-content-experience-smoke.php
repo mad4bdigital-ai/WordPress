@@ -228,6 +228,18 @@ try {
 	$cloudinary_srcset = 'https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/sample.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/sample.jpg 1600w';
 	$check( false !== strpos( (string) $srcset_method->invoke( $media_adapter, $cloudinary_srcset ), 'w_1600' ), 'Cloudinary comma-bearing srcset parsing did not preserve/select the largest candidate.' );
 
+	$extract_method = new ReflectionMethod( 'MAD4B_SCP_Media_Adapter', 'extract_remote_image_candidates' );
+	$extract_method->setAccessible( true );
+	$discovered_candidates = $extract_method->invoke(
+		$media_adapter,
+		'<html><head><meta property="og:image" content="/hero.jpg"><script type="application/ld+json">{"image":{"contentUrl":"https://cdn.example.invalid/jsonld.jpg"}}</script></head><body><img src="/favicon-icon.png" width="32" height="32" alt="icon"><img srcset="https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/ship.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/ship.jpg 1600w" alt="Cruise ship"></body></html>',
+		'https://example.invalid/trip',
+		10,
+		false
+	);
+	$check( ! is_wp_error( $discovered_candidates ) && count( $discovered_candidates ) >= 3, 'Remote media extraction did not include structured and responsive candidates.' );
+	$check( 'deprioritized' === end( $discovered_candidates )['likely_role'], 'Tiny utility image was not deprioritized by deterministic candidate scoring.' );
+
 	$remote_rights_attachment = wp_insert_post( array(
 		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Remote Rights Image', 'post_mime_type' => 'image/jpeg',
 	), true );

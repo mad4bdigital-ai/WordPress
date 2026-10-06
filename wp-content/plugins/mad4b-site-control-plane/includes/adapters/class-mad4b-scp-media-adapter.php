@@ -332,6 +332,15 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		$source_page_sha256 = hash( 'sha256', $body );
 		foreach ( $candidates as &$candidate ) {
 			$candidate['source_page_sha256'] = $source_page_sha256;
+			$candidate['inspect_input'] = array( 'source_url' => $candidate['source_url'] );
+			$candidate['import_input_template'] = array(
+				'source_url' => $candidate['source_url'],
+				'source_page_url' => $page_url,
+				'source_page_sha256' => $source_page_sha256,
+				'rights_basis' => 'unknown',
+				'alt' => isset( $candidate['alt'] ) ? (string) $candidate['alt'] : '',
+				'title' => isset( $candidate['title'] ) ? (string) $candidate['title'] : '',
+			);
 			$candidate['candidate_sha256'] = hash( 'sha256', wp_json_encode( $candidate, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		}
 		unset( $candidate );
@@ -341,7 +350,10 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'source_page_sha256' => $source_page_sha256,
 			'candidate_count' => count( $candidates ),
 			'candidates' => $candidates,
+			'inspect_ability' => self::REMOTE_INSPECT_ABILITY,
 			'import_plan_ability' => self::REMOTE_IMPORT_PLAN_ABILITY,
+			'auto_select' => false,
+			'semantic_review_required' => ! empty( $candidates ),
 			'mutation_performed' => false,
 		);
 	}
@@ -961,6 +973,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	private function extract_remote_image_candidates( $html, $page_url, $limit, $same_origin_only ) {
 		if ( ! class_exists( 'DOMDocument' ) ) return new WP_Error( 'mad4b_remote_media_dom_unavailable', 'Remote image discovery requires the PHP DOM extension.' );
 		$limit = max( 1, min( self::MAX_REMOTE_CANDIDATES, absint( $limit ) ) );
+		$collection_limit = min( self::MAX_REMOTE_CANDIDATES * 4, max( $limit, $limit * 4 ) );
 		$previous = libxml_use_internal_errors( true );
 		$dom = new DOMDocument();
 		$loaded = $dom->loadHTML( (string) $html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING );
@@ -968,14 +981,15 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		libxml_use_internal_errors( $previous );
 		if ( ! $loaded ) return new WP_Error( 'mad4b_remote_media_html_invalid', 'Remote source HTML could not be parsed.' );
 		$xpath = new DOMXPath( $dom );
-		$out = array(); $seen = array();
-		$append = function ( $raw_url, $kind, $alt = '', $title = '', $width = 0, $height = 0 ) use ( &$out, &$seen, $page_url, $limit, $same_origin_only ) {
-			if ( count( $out ) >= $limit || '' === trim( (string) $raw_url ) ) return;
+		$out = array(); $seen = array(); $source_order = 0;
+		$append = function ( $raw_url, $kind, $alt = '', $title = '', $width = 0, $height = 0 ) use ( &$out, &$seen, &$source_order, $page_url, $collection_limit, $same_origin_only ) {
+			if ( count( $out ) >= $collection_limit || '' === trim( (string) $raw_url ) ) return;
 			$url = $this->normalize_https_url( $raw_url, $page_url );
 			if ( is_wp_error( $url ) || ( $same_origin_only && ! $this->same_origin( $page_url, $url ) ) ) return;
 			$digest = hash( 'sha256', $url );
 			if ( isset( $seen[ $digest ] ) ) return;
-			$seen[ $digest ] = true;
+			$seen[ $digest ] = true; ++$source_order;
+			$score = $this->remote_candidate_score( $kind, $url, $alt, $title, $width, $height );
 			$out[] = array(
 				'source_url' => $url,
 				'source_url_sha256' => $digest,
@@ -984,6 +998,10 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'title' => sanitize_text_field( (string) $title ),
 				'width_hint' => max( 0, (int) $width ),
 				'height_hint' => max( 0, (int) $height ),
+				'source_order' => $source_order,
+				'selection_score' => $score['score'],
+				'selection_signals' => $score['signals'],
+				'likely_role' => $score['role'],
 			);
 		};
 		foreach ( $xpath->query( '//meta[@content]' ) as $node ) {
@@ -1001,7 +1019,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( ! is_array( $decoded ) ) continue;
 			$json_urls = array(); $json_nodes = 0;
 			$this->collect_jsonld_image_urls( $decoded, $json_urls, 0, $json_nodes );
-			foreach ( array_slice( array_values( array_unique( $json_urls ) ), 0, self::MAX_REMOTE_CANDIDATES ) as $json_url ) $append( $json_url, 'jsonld_image' );
+			foreach ( array_slice( array_values( array_unique( $json_urls ) ), 0, $collection_limit ) as $json_url ) $append( $json_url, 'jsonld_image' );
 		}
 		foreach ( $xpath->query( '//img' ) as $node ) {
 			$alt = $node->getAttribute( 'alt' ); $title = $node->getAttribute( 'title' );
@@ -1010,8 +1028,35 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			foreach ( array( 'srcset', 'data-srcset' ) as $attribute ) if ( $node->hasAttribute( $attribute ) ) $append( $this->best_srcset_url( $node->getAttribute( $attribute ) ), 'img_' . str_replace( '-', '_', $attribute ), $alt, $title, $width, $height );
 		}
 		foreach ( $xpath->query( '//source[@srcset]' ) as $node ) $append( $this->best_srcset_url( $node->getAttribute( 'srcset' ) ), 'source_srcset' );
+		usort( $out, static function ( $a, $b ) {
+			$score = (int) $b['selection_score'] <=> (int) $a['selection_score'];
+			return 0 !== $score ? $score : ( (int) $a['source_order'] <=> (int) $b['source_order'] );
+		} );
+		$out = array_slice( $out, 0, $limit );
+		foreach ( $out as $index => &$row ) $row['selection_rank'] = $index + 1;
+		unset( $row );
 		return $out;
 	}
+
+	private function remote_candidate_score( $kind, $url, $alt, $title, $width, $height ) {
+		$kind = sanitize_key( (string) $kind );
+		$haystack = strtolower( (string) $url . ' ' . (string) $alt . ' ' . (string) $title );
+		$score = 20; $signals = array();
+		if ( 0 === strpos( $kind, 'og_image' ) || 0 === strpos( $kind, 'twitter_image' ) ) { $score += 25; $signals[] = 'social_primary_image'; }
+		elseif ( 'jsonld_image' === $kind || 'link_image_src' === $kind ) { $score += 20; $signals[] = 'structured_image'; }
+		elseif ( false !== strpos( $kind, 'srcset' ) ) { $score += 15; $signals[] = 'responsive_high_resolution_candidate'; }
+		if ( '' !== trim( (string) $alt ) ) { $score += 10; $signals[] = 'alt_present'; }
+		if ( '' !== trim( (string) $title ) ) { $score += 5; $signals[] = 'title_present'; }
+		$width = max( 0, (int) $width ); $height = max( 0, (int) $height );
+		if ( $width >= 1200 || $height >= 800 ) { $score += 20; $signals[] = 'large_dimension_hint'; }
+		elseif ( $width >= 600 || $height >= 400 ) { $score += 10; $signals[] = 'medium_dimension_hint'; }
+		if ( $width > 0 && $height > 0 && $width <= 64 && $height <= 64 ) { $score -= 55; $signals[] = 'tiny_asset'; }
+		if ( preg_match( '/(?:logo|icon|sprite|avatar|flag|payment|badge|rating|star|loader|placeholder|tracking|pixel|favicon)/i', $haystack ) ) { $score -= 40; $signals[] = 'utility_asset_pattern'; }
+		$score = max( 0, min( 100, $score ) );
+		$role = $score >= 65 ? 'primary_candidate' : ( $score >= 35 ? 'gallery_candidate' : 'deprioritized' );
+		return array( 'score' => $score, 'signals' => array_values( array_unique( $signals ) ), 'role' => $role );
+	}
+
 
 	private function collect_jsonld_image_urls( $value, array &$urls, $depth, &$nodes ) {
 		if ( $depth > 8 || $nodes > 2000 || count( $urls ) >= self::MAX_REMOTE_CANDIDATES * 4 ) return;
