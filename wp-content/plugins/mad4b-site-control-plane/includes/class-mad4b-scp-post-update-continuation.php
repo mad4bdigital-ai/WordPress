@@ -80,7 +80,27 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$origin = untrailingslashit( (string) MAD4B_SCP_Site_Profile::current_origin() );
 		$actor = self::capture_actor();
 		$transport = self::transport_snapshot();
-		if ( empty( $transport['inventory_ready'] ) ) return new WP_Error( 'mad4b_post_update_continuation_transport_unavailable', 'Verified live transport inventory is required before update continuation.' );
+		if ( empty( $transport['inventory_ready'] ) ) {
+			$code = ! empty( $transport['foreign_transport_unreviewed'] )
+				? 'mad4b_post_update_continuation_foreign_transport_unreviewed'
+				: ( ! empty( $transport['write_side_channel_detected'] )
+					? 'mad4b_post_update_continuation_write_side_channel_detected'
+					: 'mad4b_post_update_continuation_transport_unavailable' );
+			return new WP_Error(
+				$code,
+				'Verified live transport inventory is required before update continuation.',
+				array(
+					'failure_phase' => 'pre_update_continuation_prepare',
+					'transport_inventory_observed' => ! empty( $transport['inventory_observed'] ),
+					'transport_inventory_reason' => isset( $transport['inventory_reason'] ) ? (string) $transport['inventory_reason'] : '',
+					'transport_inventory_lifecycle_state' => isset( $transport['inventory_lifecycle_state'] ) ? (string) $transport['inventory_lifecycle_state'] : '',
+					'transport_server_count' => isset( $transport['server_count'] ) ? (int) $transport['server_count'] : 0,
+					'transport_blockers' => isset( $transport['transport_blockers'] ) ? array_values( $transport['transport_blockers'] ) : array(),
+					'filesystem_replacement_attempted' => false,
+					'operator_action_required' => true,
+				)
+			);
+		}
 		$write_snapshot = self::write_snapshot( $plan );
 		$write_contracts = self::write_contract_fingerprint();
 		if ( '' === $write_contracts ) return new WP_Error( 'mad4b_post_update_continuation_contract_unavailable', 'Exact write contracts must be observed before preparing update continuation.' );
@@ -574,7 +594,18 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'resource' => isset( $kernel['resource']['url'] ) ? (string) $kernel['resource']['url'] : '',
 		);
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array();
-		$snapshot['inventory_ready'] = ! empty( $peer['inventory_ready'] ) && empty( $peer['blockers'] ) && ! empty( $peer['transport_inventory_fingerprint'] );
+		$peer_blockers = isset( $peer['blockers'] ) && is_array( $peer['blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $peer['blockers'] ) ) )
+			: array();
+		sort( $peer_blockers, SORT_STRING );
+		$snapshot['inventory_observed'] = ! empty( $peer['inventory_ready'] ) && ! empty( $peer['transport_inventory_fingerprint'] );
+		$snapshot['inventory_ready'] = ! empty( $snapshot['inventory_observed'] ) && empty( $peer_blockers );
+		$snapshot['inventory_reason'] = isset( $peer['reason'] ) ? sanitize_key( (string) $peer['reason'] ) : '';
+		$snapshot['inventory_lifecycle_state'] = isset( $peer['inventory_lifecycle_state'] ) ? sanitize_key( (string) $peer['inventory_lifecycle_state'] ) : '';
+		$snapshot['server_count'] = isset( $peer['server_count'] ) ? max( 0, (int) $peer['server_count'] ) : 0;
+		$snapshot['transport_blockers'] = $peer_blockers;
+		$snapshot['foreign_transport_unreviewed'] = ! empty( $peer['foreign_transport_unreviewed'] );
+		$snapshot['write_side_channel_detected'] = ! empty( $peer['write_side_channel_detected'] );
 		$snapshot['tool_inventory_fingerprint'] = isset( $peer['transport_inventory_fingerprint'] ) ? (string) $peer['transport_inventory_fingerprint'] : '';
 		$snapshot['foreign_transport_inventory'] = isset( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
 		$snapshot['fingerprint'] = self::digest( $snapshot );
