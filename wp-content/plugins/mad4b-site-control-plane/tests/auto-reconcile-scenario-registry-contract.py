@@ -12,10 +12,16 @@ assert "mad4b_scp_auto_reconcile_scenarios" in registry
 for decision in ("NO_OP", "SCHEDULE_PROBE", "DEFER", "REVIEW_REQUIRED", "HARD_BLOCK"):
     assert decision in registry
 for scenario in (
+    "same_version_package_replacement",
+    "forward_package_update",
+    "rollback_or_reinstall",
     "manual_or_same_version_package_drift",
     "native_or_release_set_continuation",
     "trusted_reinstall_or_rollback_probe",
     "version_or_schema_drift",
+    "untrusted_package_never_auto",
+    "authority_evidence_drift",
+    "concurrent_reconciliation",
     "production_never_auto",
     "breakglass_never_auto",
     "skills_dependency_pending",
@@ -45,3 +51,22 @@ assert "This only queues the existing convergence worker" in adaptive
 assert "'SCHEDULE_PROBE' === $decision" in adaptive
 assert "'DEFER' === $decision" in adaptive
 assert "'NO_OP' === $decision" in adaptive
+
+
+assert "'current_version' =>" in adaptive
+assert "'stored_version' =>" in adaptive
+assert "same_version_identity_drift" in registry
+assert "version_forward" in registry
+assert "version_rollback" in registry
+for signal in (
+    "grant_inventory_drift",
+    "write_contract_drift",
+    "site_profile_drift",
+    "actor_identity_drift",
+    "transport_contract_drift",
+    "baseline_expired",
+    "untrusted_package",
+    "continuation_conflict",
+    "concurrent_permit",
+):
+    assert signal in registry
