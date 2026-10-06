@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
-  "changed_file_count": 86,
+  "changed_file_count": 87,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -296,7 +296,7 @@
     },
     {
       "id": "tests-authority-security-01",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 1",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 1",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -334,12 +334,13 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/impact-approval-receipt-routing-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-governance-visibility-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
       ]
     },
     {
       "id": "tests-authority-security-02",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 2",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 2",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -379,7 +380,7 @@
     },
     {
       "id": "tests-authority-security-03",
-      "semantic_unit": "Authority, identity, crypto and security behavioral verification \u2014 shard 3",
+      "semantic_unit": "Authority, identity, crypto and security behavioral verification — shard 3",
       "revert_boundary": "Revert authority/security verification slice without runtime changes.",
       "certification": "exact_head",
       "path_globs": [
@@ -592,6 +593,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "2cedb3ba164c97090859653fa3abbfc3e92b69a1cea1780dff65a6b66d4a0aaf",
+  "changed_paths_sha256": "d65dfa838a6332826d2a4f47946fb19406e29b12f3fa3862e9e8ae15509ab6fa",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
