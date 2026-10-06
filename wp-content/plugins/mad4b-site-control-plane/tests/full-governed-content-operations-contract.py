@@ -13,6 +13,7 @@ remote_media = adapters / "class-mad4b-scp-remote-media-adapter.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
+experience_bootstrap = root / "includes" / "class-mad4b-scp-content-experience-bootstrap.php"
 experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
 experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
 experience_media_rights = root / "includes" / "class-mad4b-scp-content-experience-media-rights.php"
@@ -23,7 +24,7 @@ experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.ph
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, media, remote_media, servers, semantic, experience, experience_governance, experience_media, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, remote_media, servers, semantic, experience, experience_bootstrap, experience_governance, experience_media, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -36,6 +37,7 @@ remote_media_src = remote_media.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
 experience_src = experience.read_text(encoding="utf-8")
+experience_bootstrap_src = experience_bootstrap.read_text(encoding="utf-8")
 experience_governance_src = experience_governance.read_text(encoding="utf-8")
 experience_media_src = experience_media.read_text(encoding="utf-8")
 experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
@@ -319,6 +321,17 @@ for src, label in (
     assert len(src.splitlines()) <= 900, f"{label} exceeds the new domain-service 900-line budget"
 
 assert "MAX_PROFILES = 64" in experience_src
+assert "MAD4B_SCP_Content_Experience_Bootstrap::plan(" in experience_src
+assert "class-mad4b-scp-content-experience-bootstrap.php" in plugin_src
+for token in (
+    "remote_media_library_first",
+    "media_field_candidates",
+    "infer_sampled_media_meta",
+    "mad4b.content-experience-ingestion-workflow.v1",
+    "hardcoded_business_content_types",
+):
+    assert token in experience_bootstrap_src, f"content-experience bootstrap contract missing: {token}"
+assert len(experience_bootstrap_src.splitlines()) <= 700, "content-experience bootstrap exceeds the focused 700-line service budget"
 assert "MAX_HELPERS = 32" in experience_src
 
 # Profile semantics are immutable authority: descriptor generation + revision-bound
