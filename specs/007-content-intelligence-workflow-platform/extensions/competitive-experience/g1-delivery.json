@@ -49,7 +49,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
-      "sha256": "5433cbc4ed51c0370e453c0f951268b392cb8099927271fb23f122ee7d27a9a2"
+      "sha256": "a5d1a768ae6727e93d5bd059d49bd651b56e1a44985505c3915ab77d8b1ff7c4"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
@@ -101,7 +101,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
-      "sha256": "72a0ac539459c2d186d0cf8d9afca8b6f8ef35c279d0d66d3ada54e6e0bf15f6"
+      "sha256": "b72eed97214333e69d6561a76ac7c878d01ba5b11ebdaa319db6fc23959cbb00"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
