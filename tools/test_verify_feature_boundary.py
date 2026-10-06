@@ -52,6 +52,13 @@ GRANT_CATALOG = {
             "repository_governance_mutation_allowed": False,
             "metadata_cannot_widen_grant": True,
             "release_critical_workflows_must_be_baseline_owned": True,
+            "integration_hubs": [
+                {
+                    "branch": "spec/007-competitive-experience-20261006",
+                    "pull_request": 258,
+                    "mode": "implementation",
+                }
+            ],
         }
     },
 }
@@ -129,7 +136,7 @@ def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None, br
         assert result["ready"] is True
         assert result["trusted_verifier_source"] == "base"
         assert result["pull_request_code_executed"] is False
-        if result.get("mode") in {"specification", "implementation", "implementation_spec_maintenance"}:
+        if result.get("mode") in {"specification", "implementation", "implementation_spec_maintenance", "implementation_integration_hub"}:
             assert result["grant_source"] == "base"
         else:
             assert "grant_source" not in result
@@ -141,6 +148,33 @@ run_case([
     ".github/workflows/feature-007-spec-ci.yml",
     "specs/006-agent-governed-reversible-control-plane/data-model.md",
 ])
+
+integration = run_case(
+    [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/tasks.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/example.php",
+        ".github/workflows/feature-007-spec-ci.yml",
+    ],
+    branch="spec/007-competitive-experience-20261006",
+    pr_number=258,
+)
+assert integration["mode"] == "implementation_integration_hub"
+assert integration["integration_hub"] is True
+assert integration["integration_hub_pr_number"] == 258
+
+run_case(
+    ["wp-content/plugins/mad4b-site-control-plane/includes/example.php"],
+    branch="spec/007-competitive-experience-20261006",
+    pr_number=259,
+    expect_error="INTEGRATION_HUB_PR_MISMATCH",
+)
+
+run_case(
+    ["wp-content/plugins/mad4b-site-control-plane/includes/example.php"],
+    branch="spec/007-other-maintenance",
+    pr_number=258,
+    expect_error="FORBIDDEN_CHANGE",
+)
 
 run_case(
     [".github/mad4b-repository-governance-policy.json"],
@@ -332,6 +366,22 @@ assert governance_parity_paths.issubset(release_evidence_paths), (
     "release verdict governance parity paths must remain release-evidence scoped: "
     + repr(sorted(governance_parity_paths - release_evidence_paths))
 )
+
+# The exact PR #260 Integration Hub boundary repair must not wait for runtime
+# package/live-evidence jobs that cannot trigger on this governance-only file set.
+assert "integration_hub_boundary_repair_branch = 'gov/feature-007-integration-hub-boundary-20261006'" in release_verdict_text
+assert "integration_hub_boundary_repair_expected_base = '3b66989d6f29c104e6f5cd4e7018766214ce8c84'" in release_verdict_text
+for path in {
+    ".github/mad4b-feature-boundary-grants.json",
+    ".github/workflows/mad4b-release-verdict.yml",
+    "tools/test_verify_feature_boundary.py",
+    "tools/verify_feature_boundary.py",
+}:
+    assert path in release_verdict_text
+assert "os.environ.get('PR_NUMBER', '').strip() == '260'" in release_verdict_text
+assert "integration_hub_boundary_repair_bootstrap and set(changed) != integration_hub_boundary_repair_expected_paths" in release_verdict_text
+assert "required = ['Repository governance policy', 'Repository feature boundary']" in release_verdict_text
+assert "mode = 'integration_hub_boundary_repair_bootstrap'" in release_verdict_text
 
 # Feature Boundary must pin the current trusted target branch, not the historical
 # pull-request event base SHA. This keeps strict "branch up to date" rules from
