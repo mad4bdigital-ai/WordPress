@@ -20,13 +20,19 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 	private static function builtins() {
 		return array(
 			array( 'id' => 'production_never_auto', 'priority' => 1000, 'signals_all' => array( 'environment_production' ), 'decision' => self::DECISION_HARD_BLOCK, 'reason' => 'production_is_never_auto_reconciled' ),
+			array( 'id' => 'untrusted_package_never_auto', 'priority' => 995, 'signals_all' => array( 'untrusted_package' ), 'decision' => self::DECISION_HARD_BLOCK, 'reason' => 'package_provenance_must_be_trusted_before_reconciliation' ),
 			array( 'id' => 'breakglass_never_auto', 'priority' => 990, 'signals_all' => array( 'breakglass_enabled' ), 'decision' => self::DECISION_HARD_BLOCK, 'reason' => 'breakglass_state_requires_explicit_operator_control' ),
+			array( 'id' => 'authority_evidence_drift', 'priority' => 985, 'signals_any' => array( 'grant_inventory_drift', 'write_contract_drift', 'site_profile_drift', 'actor_identity_drift', 'transport_contract_drift', 'baseline_expired' ), 'decision' => self::DECISION_REVIEW, 'reason' => 'authority_affecting_evidence_changed' ),
 			array( 'id' => 'identity_incomplete', 'priority' => 980, 'signals_all' => array( 'reconcile_needed', 'runtime_identity_incomplete' ), 'decision' => self::DECISION_HARD_BLOCK, 'reason' => 'exact_runtime_identity_required' ),
 			array( 'id' => 'continuation_blocked', 'priority' => 970, 'signals_all' => array( 'continuation_blocked' ), 'decision' => self::DECISION_HARD_BLOCK, 'reason' => 'terminal_continuation_blocker_requires_repair' ),
 			array( 'id' => 'continuation_owner_gate', 'priority' => 960, 'signals_all' => array( 'continuation_owner_gate' ), 'decision' => self::DECISION_REVIEW, 'reason' => 'owner_gate_cannot_be_auto_satisfied' ),
 			array( 'id' => 'maintenance_busy', 'priority' => 950, 'signals_all' => array( 'maintenance_busy' ), 'decision' => self::DECISION_DEFER, 'reason' => 'single_writer_maintenance_lane_busy' ),
+			array( 'id' => 'concurrent_reconciliation', 'priority' => 945, 'signals_any' => array( 'continuation_conflict', 'concurrent_permit' ), 'decision' => self::DECISION_DEFER, 'reason' => 'another_governed_reconciliation_owner_is_active' ),
 			array( 'id' => 'continuation_executing', 'priority' => 940, 'signals_all' => array( 'continuation_executing' ), 'decision' => self::DECISION_DEFER, 'reason' => 'continuation_already_owns_execution' ),
 			array( 'id' => 'skills_dependency_pending', 'priority' => 930, 'signals_all' => array( 'reconcile_needed', 'skills_pending', 'environment_staging', 'runtime_identity_complete' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'runtime_worker_must_reconcile_skills_before_zero_delta_rebind' ),
+			array( 'id' => 'same_version_package_replacement', 'priority' => 925, 'signals_all' => array( 'environment_staging', 'candidate_binding_drift', 'runtime_identity_complete', 'same_version_identity_drift' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'same_version_replacement_requires_zero_delta_probe' ),
+			array( 'id' => 'forward_package_update', 'priority' => 920, 'signals_all' => array( 'environment_staging', 'candidate_binding_drift', 'runtime_identity_complete', 'version_forward' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'forward_update_requires_zero_delta_probe' ),
+			array( 'id' => 'rollback_or_reinstall', 'priority' => 915, 'signals_all' => array( 'environment_staging', 'candidate_binding_drift', 'runtime_identity_complete', 'version_rollback' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'rollback_or_reinstall_requires_zero_delta_probe' ),
 			array( 'id' => 'fresh_bootstrap_unbound', 'priority' => 910, 'signals_all' => array( 'environment_staging', 'build_changed', 'runtime_identity_complete', 'stored_binding_absent' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'fresh_bootstrap_requires_safe_runtime_convergence_without_authority_carry_forward' ),
 			array( 'id' => 'manual_or_same_version_package_drift', 'priority' => 900, 'signals_all' => array( 'environment_staging', 'candidate_binding_drift', 'runtime_identity_complete' ), 'signals_any' => array( 'source_wordpress_upgrader', 'source_build_stamp_drift', 'source_manual_replacement', 'source_plugin_activation', 'build_changed' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'candidate_binding_drift_requires_zero_delta_probe' ),
 			array( 'id' => 'native_or_release_set_continuation', 'priority' => 890, 'signals_all' => array( 'environment_staging', 'continuation_pending', 'runtime_identity_complete' ), 'decision' => self::DECISION_SCHEDULE_PROBE, 'reason' => 'resume_existing_exact_post_update_continuation' ),
@@ -162,6 +168,11 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 		$version_drift = ! empty( $context['version_drift'] );
 		$schema_drift = ! empty( $context['schema_drift'] );
 		$build_changed = ! empty( $context['build_changed'] );
+		$current_version = trim( (string) ( isset( $context['current_version'] ) ? $context['current_version'] : '' ) );
+		$stored_version = trim( (string) ( isset( $context['stored_version'] ) ? $context['stored_version'] : '' ) );
+		$same_version_identity_drift = $candidate_drift && '' !== $current_version && '' !== $stored_version && hash_equals( $current_version, $stored_version );
+		$version_forward = $candidate_drift && '' !== $current_version && '' !== $stored_version && function_exists( 'version_compare' ) && version_compare( $current_version, $stored_version, '>' );
+		$version_rollback = $candidate_drift && '' !== $current_version && '' !== $stored_version && function_exists( 'version_compare' ) && version_compare( $current_version, $stored_version, '<' );
 		$continuation_pending = ! empty( $continuation['active'] ) && in_array( $continuation_state, array( 'exact_readback_verified', 'pending_convergence', 'prepared', 'claimed' ), true );
 		$signals = array(
 			'environment_staging' => 'staging' === $environment,
@@ -177,6 +188,9 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'version_drift' => $version_drift,
 			'schema_drift' => $schema_drift,
 			'build_changed' => $build_changed,
+			'same_version_identity_drift' => $same_version_identity_drift,
+			'version_forward' => $version_forward,
+			'version_rollback' => $version_rollback,
 			'continuation_pending' => $continuation_pending,
 			'continuation_blocked' => in_array( $continuation_state, array( 'blocked', 'authority_blocked' ), true ),
 			'continuation_owner_gate' => 'owner_gate' === $continuation_state,
