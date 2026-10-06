@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.competitive-g1-delivery.v1",
-  "status": "REPOSITORY_IMPLEMENTED_ACCEPTANCE_PENDING",
+  "status": "REPOSITORY_HARDENED_WITH_EXTERNAL_ACCEPTANCE_GATES",
   "integration_pr": 258,
   "implementation_pr": 262,
   "implementation_branch": "feat/007-g1-evidence-runtime-graph-semantic-classifier-20261006",
@@ -76,12 +76,12 @@
       "sha256": "105a335e6483efce3226f36b09e5b57342e66b43a5bd261fbf617a1fb35282d7"
     },
     {
-      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-      "sha256": "abb2f0c324b1e1557fc3f8ca1577732e9c8313a968f10c2ac661cade1270a274"
-    },
-    {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
       "sha256": "9ddd24403b7395b5ae95efad014ce39011d895035e28bd908a2ff9189d9bba60"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
+      "sha256": "abb2f0c324b1e1557fc3f8ca1577732e9c8313a968f10c2ac661cade1270a274"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
@@ -109,22 +109,24 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
-      "sha256": "9b6ae3ac20f9d9d5654a19c2aa099534e39772c9239c51a13ad55359d3163443"
+      "sha256": "aa8255970257bdefed3df8b8b495b73973778f7b4b87e4e062efcb965e4dffef"
     }
   ],
   "acceptance_contracts": [
-    "reproducible_competitor_snapshot_and_source_drift",
-    "bounded_runtime_candidate_graph_generation_and_diff",
-    "non_authorizing_semantic_policy_proposals",
-    "exact_generation_owner_review_overlay",
-    "confidence_get_schema_annotation_never_authority",
-    "guarded_competitive_evidence_resource_and_append_only_history"
+    "reproducible_tamper_evident_competitor_snapshot_history",
+    "guarded_competitive_evidence_projection",
+    "provenance_bound_runtime_candidate_graph_v2",
+    "exact_collector_completeness_and_lifecycle_semantics",
+    "transitive_dependency_impact_isolation",
+    "trusted_conformance_bound_public_read_classifier",
+    "append_only_audited_owner_review_overlay",
+    "confidence_get_schema_annotation_never_authority"
   ],
   "remaining_acceptance": [
-    "Exact-head G1 child CI must pass after the final delivery manifest and cumulative change-slice binding are committed.",
-    "Real Staging must prove bounded runtime discovery against representative installed providers without executing unknown code or leaking secret values.",
-    "Real conformance evidence must prove any zero-effect read before automatic classification eligibility is relied on.",
-    "Admin/browser acceptance must prove owner review revision conflicts, stale graph/proposal denial and evidence-only overlay presentation.",
+    "Every integration candidate must pass the complete exact-head G1 child CI after delivery-manifest and cumulative change-slice binding.",
+    "Representative Staging runtime must prove bounded discovery against installed providers without executing unknown code or leaking secret values.",
+    "Any zero-effect read relied upon for automatic classification must carry a trusted conformance receipt for the exact graph/provider/schema generation.",
+    "Browser/operator acceptance must prove filtering, evidence boundaries, stale review handling and revision conflict behavior.",
     "Integration Hub cumulative CI and post-merge Staging acceptance remain required; Production remains unauthorized."
   ]
 }
