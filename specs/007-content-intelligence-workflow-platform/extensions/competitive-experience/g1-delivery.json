@@ -45,7 +45,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
-      "sha256": "2b4eca109cf7ba58c6d77906e88fc5f19b449cb64a1a605d0088b623ffdc5656"
+      "sha256": "3f179694b5cee9311bcd653519fa6efe995bee97fb53e028b17ee70b9953930b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
@@ -67,7 +67,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php",
-      "sha256": "d7e3f4f58b907f9df5c35b32285d3aa94c3379e688028f1081d2f7415ece9a34"
+      "sha256": "d3efba85653e4d8d3e1f298059d360c3c669c778a74e64616561ad89f78b87c3"
     }
   ],
   "spec_paths": [
