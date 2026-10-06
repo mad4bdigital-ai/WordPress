@@ -112,17 +112,19 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			} );
 			$observed = self::collector_observed_count( $kind, $rows, $nodes );
 			$nodes[ $kind ] = array_slice( $rows, 0, self::MAX_ITEMS_PER_KIND );
-			$source_incomplete = false;
-			if ( ! empty( $collector['source'] ) ) {
-				$source_kind = (string) $collector['source'];
-				$source_incomplete = empty( $collection_status[ $source_kind ]['trustworthy_for_absence'] );
-			}
-			$collection_status[ $kind ] = self::collection_status( $kind, count( $nodes[ $kind ] ), $observed, $source_incomplete );
+			$source_complete = true;
 			if ( '' !== $source ) {
 				$source_complete = ! empty( $collection_status[ $source ]['trustworthy_for_absence'] );
+			}
+			$collection_status[ $kind ] = self::collection_status(
+				$kind,
+				count( $nodes[ $kind ] ),
+				$observed,
+				! $source_complete
+			);
+			if ( '' !== $source ) {
 				$collection_status[ $kind ]['source_kind'] = $source;
 				$collection_status[ $kind ]['source_trustworthy_for_absence'] = $source_complete;
-				if ( ! $source_complete ) $collection_status[ $kind ]['trustworthy_for_absence'] = false;
 			}
 		}
 		$site = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
