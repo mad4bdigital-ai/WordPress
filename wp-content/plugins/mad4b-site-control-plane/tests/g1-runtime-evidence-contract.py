@@ -30,6 +30,11 @@ req(graph,
     "'row_values_read'=>false",
     "'candidate_package'=>array('state'=>'descriptive_only'",
     "'isolation_policy'=>'removed_or_changed_only_fail_closed'",
+    "'hooks'=>self::hooks()",
+    "'mcp_descriptors'=>self::mcp_descriptors($ability_nodes)",
+    "'edges'=>$edges",
+    "'affected_workflows'=>array_values(array_unique($affected_workflows))",
+    "'semantic_dimensions'=>array('provider','component','capability','operation','schema','precondition','effect','reversal','evidence')",
 )
 deny(graph, "call_user_func(", "call_user_func_array(", "wp_remote_get(", "wp_remote_post(", "$wpdb->query(", "$wpdb->get_results(", "grant_ability(")
 
@@ -48,8 +53,15 @@ req(classifier,
     "actual_conformance_missing",
     "secret_schema_blocks_zero_effect_auto_classification",
     "'authority_delta'=>array('grants'=>0,'mounts'=>0,'scopes'=>0,'certifications'=>0)",
+    "mad4b.runtime-policy-review-overlay.v1",
+    "mad4b/runtime-policy-review-record",
+    "mad4b_runtime_policy_review_graph_stale",
+    "mad4b_runtime_policy_review_proposal_stale",
+    "mad4b_runtime_policy_review_stale",
+    "'creates_certification'=>false",
+    "'authority_effect'=>'none'",
 )
-deny(classifier, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->")
+deny(classifier, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->", "MAD4B_SCP_Servers::register")
 
 req(competitive,
     "mad4b.competitive-evidence-summary.v1",
