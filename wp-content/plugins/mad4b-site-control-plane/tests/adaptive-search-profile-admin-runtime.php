@@ -37,11 +37,26 @@ profile_case( 'profile_editor_preserves_policy_and_fences_stale_or_renamed_forms
 	$result = MAD4B_SCP_Search_Profile_Admin::save( $edit ); profile_check( ! is_wp_error( $result ) && 2 === $result['profile']['revision'], 'current edit commits next revision' );
 	profile_check( $raw['markets'] === $result['profile']['markets'] && 86400 === $result['profile']['refresh_policy']['baseline_seconds'], 'multi-market location mappings and advanced policy preserved' );
 	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'stale revision denied' );
-	$edit['expected_revision'] = '2'; $raw['profile_id'] = 'renamed.profile'; $edit['profile_json'] = json_encode( $raw ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'profile cannot be renamed through another form' );
+	$edit['expected_revision'] = '2';
+	$state_edit = $raw; $state_edit['enabled'] = true; $edit['profile_json'] = json_encode( $state_edit ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'generic JSON cannot resume observations' );
+	$spend_edit = $raw; $spend_edit['provider_policy']['freeze_spend'] = false; $edit['profile_json'] = json_encode( $spend_edit ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'generic JSON cannot unfreeze provider spend' );
+	$raw['profile_id'] = 'renamed.profile'; $edit['profile_json'] = json_encode( $raw ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'profile cannot be renamed through another form' );
 	$raw['profile_id'] = $p['profile_id']; $raw['provider_policy']['endpoint'] = 'https://example.invalid'; $edit['profile_json'] = json_encode( $raw ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'security fields remain denied by domain validator' );
 	unset( $raw['provider_policy']['endpoint'] );
 	foreach ( array( 'brand_id', 'objective' ) as $field ) { $bad = $raw; $bad[ $field ] = array( 'invalid' ); $edit['profile_json'] = json_encode( $bad ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'typed profile identity/objective: ' . $field ); }
 	$bad = $raw; $bad['markets'][0]['country'] = array( 'GB' ); $edit['profile_json'] = json_encode( $bad ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'array country cannot reach the page renderer' );
+} );
+
+profile_case( 'profile_runtime_state_controls_are_explicit_revision_fenced_and_read_back', static function () {
+	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form() ); $id = $saved['profile']['profile_id'];
+	ob_start(); MAD4B_SCP_Search_Profile_Admin::render( $id ); $html = ob_get_clean();
+	foreach ( array( 'Profile runtime controls', 'Resume observations', 'Unfreeze provider spend', 'cannot be changed through this JSON editor' ) as $text ) profile_check( false !== strpos( $html, $text ), 'explicit profile state control visible: ' . $text );
+	$resume = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'resume', 'expected_revision' => 1 ) );
+	profile_check( ! is_wp_error( $resume ) && ! empty( $resume['control_readback_verified'] ) && ! empty( $resume['profile']['enabled'] ) && 2 === $resume['profile']['revision'], 'resume uses exact revision and verified readback' );
+	profile_check( is_wp_error( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'freeze_spend', 'expected_revision' => 1 ) ) ), 'stale runtime control revision denied' );
+	$unfreeze = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'unfreeze_spend', 'expected_revision' => 2 ) );
+	profile_check( ! is_wp_error( $unfreeze ) && ! empty( $unfreeze['control_readback_verified'] ) && empty( $unfreeze['profile']['provider_policy']['freeze_spend'] ) && 3 === $unfreeze['profile']['revision'], 'spend unfreeze uses independent verified readback' );
+	profile_check( 0 === count( $GLOBALS['fixture_http'] ), 'profile state controls never call a provider' );
 } );
 profile_case( 'profile_form_denies_malformed_inputs_role_production_and_bad_nonce', static function () {
 	foreach ( array( 'profile_id', 'expected_revision', 'languages', 'market_country', 'providers', 'operation' ) as $field ) { $bad = profile_form(); $bad[ $field ] = array( array( 'invalid' ) ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'nested form value denied: ' . $field ); }
