@@ -72,16 +72,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4; do
-            if curl -fL --retry 2 --retry-all-errors --connect-timeout 15 --max-time 120 https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar; then
-              break
-            fi
-            if [ "$attempt" -eq 4 ]; then
-              echo "WP-CLI download failed after $attempt attempts." >&2
-              exit 1
-            fi
-            sleep $(( attempt * 5 ))
-          done
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
           php /tmp/wp-cli.phar --info
 
       - name: Provision disposable WordPress
@@ -94,16 +85,7 @@ jobs:
           WP_PATH=/tmp/mad4b-wordpress
           rm -rf "$WP_PATH"
           mkdir -p "$WP_PATH"
-          for attempt in 1 2 3 4; do
-            if php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force; then
-              break
-            fi
-            if [ "$attempt" -eq 4 ]; then
-              echo "WordPress core download failed after $attempt attempts (version=$WP_VERSION)." >&2
-              exit 1
-            fi
-            sleep $(( attempt * 5 ))
-          done
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-local-transport.test' --title='MAD4B Local Transport' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
