@@ -347,7 +347,7 @@
         "repository_only": true,
         "workflow_plan_profile_fingerprint_bound": true,
         "certification_drift_invalidates_plan": true,
-        "catalog_capability_count": 17,
+        "catalog_capability_count": 19,
         "explicit_trait_keys_per_capability": 14,
         "semantic_unknowns_outside_measured_bounds_forbidden": true,
         "allowed_unknown_trait_keys": [
