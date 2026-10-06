@@ -36,9 +36,13 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 	public function is_available() {
 		return ( function_exists( 'wp_get_abilities' ) && function_exists( 'wp_get_ability' ) ) || ( class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) && MAD4B_SCP_JetEngine_MCP_Client::available() );
 	}
-	protected function certified_provider_key() { return 'native-provider'; }
-	protected function provider_certification( $available ) { return null; }
-	protected function mutation_requires_certification() { return false; }
+	// Current provider-specific mutation abilities are JetEngine-native. Generic
+	// provider import remains independently fail-closed by runtime eligibility.
+	// Binding the adapter to JetEngine here makes mount, permission and central
+	// authorization consume the same provider identity instead of the synthetic
+	// bridge id.
+	protected function certified_provider_key() { return 'jetengine'; }
+	protected function mutation_requires_certification() { return true; }
 
 	public function irreversible_abilities() {
 		return array(
