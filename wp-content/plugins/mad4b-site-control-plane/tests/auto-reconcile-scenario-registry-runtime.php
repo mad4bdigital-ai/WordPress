@@ -29,6 +29,8 @@ $base = array(
 	'maintenance' => array( 'active' => false ),
 	'skills_pending' => false,
 	'build_changed' => true,
+	'current_version' => '0.4.0-rc.96',
+	'stored_version' => '0.4.0-rc.95',
 	'source' => 'wordpress_upgrader',
 	'breakglass_enabled' => false,
 );
@@ -41,9 +43,37 @@ $foreign_owned['maintenance'] = array( 'active' => true, 'owner' => 'runtime_con
 check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $foreign_owned )['decision'], 'foreign maintenance owner must defer' );
 
 $manual = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $base );
+check( 'forward_package_update' === $manual['scenario_id'], 'forward package update must classify explicitly' );
 check( 'SCHEDULE_PROBE' === $manual['decision'], 'manual ZIP drift must schedule a bounded probe' );
 check( empty( $manual['mutation_allowed'] ) && empty( $manual['authority_expansion_allowed'] ), 'probe must never be authorizing' );
 check( ! empty( $manual['zero_delta_required_for_rebind'] ), 'rebind must remain ZERO_DELTA only' );
+
+$same = $base; $same['stored_version'] = $same['current_version'];
+$same_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $same );
+check( 'same_version_package_replacement' === $same_result['scenario_id'], 'same-version replacement must classify explicitly' );
+check( 'SCHEDULE_PROBE' === $same_result['decision'], 'same-version replacement must only schedule a probe' );
+
+$rollback = $base; $rollback['current_version'] = '0.4.0-rc.94'; $rollback['stored_version'] = '0.4.0-rc.95';
+$rollback_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $rollback );
+check( 'rollback_or_reinstall' === $rollback_result['scenario_id'], 'rollback/reinstall must classify explicitly' );
+check( 'SCHEDULE_PROBE' === $rollback_result['decision'], 'rollback/reinstall must remain ZERO_DELTA-probe only' );
+
+foreach ( array( 'grant_inventory_drift', 'write_contract_drift', 'site_profile_drift', 'actor_identity_drift', 'transport_contract_drift', 'baseline_expired' ) as $signal ) {
+	$authority_drift = $base;
+	$authority_drift['signals'] = array( $signal => true );
+	$result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $authority_drift );
+	check( 'REVIEW_REQUIRED' === $result['decision'], $signal . ' must require review' );
+	check( empty( $result['mutation_allowed'] ) && empty( $result['authority_expansion_allowed'] ), $signal . ' widened authority' );
+}
+
+$untrusted = $base; $untrusted['signals'] = array( 'untrusted_package' => true );
+check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $untrusted )['decision'], 'untrusted package must hard block' );
+
+foreach ( array( 'continuation_conflict', 'concurrent_permit' ) as $signal ) {
+	$concurrent = $base;
+	$concurrent['signals'] = array( $signal => true );
+	check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $concurrent )['decision'], $signal . ' must defer to active owner' );
+}
 
 $production = $base; $production['environment'] = 'production';
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $production )['decision'], 'Production must hard block' );
