@@ -312,20 +312,9 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 	}
 
 	private static function infer_sampled_media_meta( $value ) {
-		$is_attachment = static function ( $id ) {
-			$id = absint( $id );
-			return $id > 0 && 'attachment' === get_post_type( $id ) && wp_attachment_is_image( $id );
-		};
-		if ( is_numeric( $value ) && $is_attachment( $value ) ) {
-			return array( 'supported' => true, 'schema_type' => 'integer', 'spec' => array( 'kind' => 'image_id', 'storage' => 'id', 'max_items' => 1 ) );
-		}
-		if ( is_string( $value ) && preg_match( '/^\s*\d+(?:\s*,\s*\d+)+\s*$/', $value ) ) {
-			$ids = array_values( array_filter( array_map( 'absint', preg_split( '/\s*,\s*/', trim( $value ) ) ) ) );
-			if ( $ids && count( array_filter( $ids, $is_attachment ) ) === count( $ids ) ) return array( 'supported' => true, 'schema_type' => 'string', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'csv_ids', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, max( 1, count( $ids ) ) ) ) );
-		}
-		if ( is_array( $value ) && array_values( $value ) === $value ) {
-			$ids = array_values( array_filter( array_map( 'absint', $value ) ) );
-			if ( $ids && count( $ids ) === count( $value ) && count( array_filter( $ids, $is_attachment ) ) === count( $ids ) ) return array( 'supported' => true, 'schema_type' => 'array', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, max( 1, count( $ids ) ) ) ) );
+		if ( class_exists( 'MAD4B_SCP_Content_Experience_Media_Storage' ) ) {
+			$inferred = MAD4B_SCP_Content_Experience_Media_Storage::infer_spec( $value );
+			if ( is_array( $inferred ) && ! empty( $inferred['supported'] ) ) return $inferred;
 		}
 		return array( 'supported' => false );
 	}

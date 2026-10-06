@@ -144,6 +144,18 @@ try {
 	$check( 'Cairo Nile journey in Egypt' === $media_after['media']['alt'], 'Media alt readback mismatch.' );
 	$check( hash_equals( $technical_sha, (string) $media_after['media']['metadata_sha256'] ), 'Editorial metadata update unexpectedly changed generated attachment metadata.' );
 
+	$single_url_projection = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( 'ci_url', $image_one, array( 'kind' => 'image_id', 'storage' => 'url', 'max_items' => 1 ) );
+	$check( ! is_wp_error( $single_url_projection ) && wp_get_attachment_url( $image_one ) === $single_url_projection, 'Media URL storage projection failed.' );
+	$gallery_both_projection = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( 'ci_both', array( $image_one, $image_two ), array( 'kind' => 'image_gallery', 'storage' => 'id_url_items', 'max_items' => 12 ) );
+	$check( ! is_wp_error( $gallery_both_projection ) && $image_one === (int) $gallery_both_projection[0]['id'] && wp_get_attachment_url( $image_two ) === $gallery_both_projection[1]['url'], 'Media ID+URL gallery projection failed.' );
+	$json_both_projection = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( 'ci_json_both', array( $image_one, $image_two ), array( 'kind' => 'image_gallery', 'storage' => 'json_id_url_items', 'max_items' => 12 ) );
+	$check( is_string( $json_both_projection ) && false !== strpos( $json_both_projection, '"id":' . $image_one ), 'Media JSON ID+URL gallery projection failed.' );
+	$check( array( $image_one, $image_two ) === MAD4B_SCP_Content_Experience_Media_Storage::reference_ids( $json_both_projection, array( 'kind' => 'image_gallery', 'storage' => 'json_id_url_items' ) ), 'Media JSON ID+URL round-trip lost attachment identity.' );
+	$inferred_url = MAD4B_SCP_Content_Experience_Media_Storage::infer_spec( wp_get_attachment_url( $image_one ) );
+	$check( ! empty( $inferred_url['supported'] ) && 'url' === $inferred_url['spec']['storage'], 'Adaptive media schema inference did not recognize a local Media Library URL.' );
+	$inferred_both = MAD4B_SCP_Content_Experience_Media_Storage::infer_spec( $gallery_both_projection );
+	$check( ! empty( $inferred_both['supported'] ) && 'id_url_items' === $inferred_both['spec']['storage'], 'Adaptive media schema inference did not recognize ID+URL gallery storage.' );
+
 	// Least-privilege defaults are explicit and empty means empty, never "everything".
 	$default_plan = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array(
 		'profile' => array( 'slug' => 'ci-default', 'post_type' => 'mad4b_ci_trip', 'label' => 'CI Default' ),
@@ -321,6 +333,26 @@ try {
 	$routes_v1 = $profile_v1['routes'];
 	$check( false !== strpos( $routes_v1['create_apply'], '-r1-create-apply' ), 'Mutation executor route is not generation-bound.' );
 	$check( 'mad4b/ci-trip-create-plan' === $routes_v1['create_plan'], 'Planner route should remain stable across profile generations.' );
+
+	$binding_plan = MAD4B_SCP_Content_Experience_Profiles::media_binding_plan( array(
+		'profile_slug' => 'ci-trip',
+		'items' => array(
+			array( 'attachment_id' => $image_one, 'binding_role' => 'featured' ),
+			array(
+				'attachment_id' => $image_two, 'binding_role' => 'gallery', 'target_field' => 'ci_gallery', 'usage_field' => 'ci_gallery_usage',
+				'usage' => array( 'role' => 'gallery', 'license' => 'licensed', 'license_expires_on' => '2099-12-31', 'source_url' => 'https://example.invalid/source-two' ),
+			),
+			array(
+				'attachment_id' => $image_one, 'binding_role' => 'gallery', 'target_field' => 'ci_gallery', 'usage_field' => 'ci_gallery_usage',
+				'usage' => array( 'role' => 'hero', 'license' => 'owned', 'source_url' => 'https://example.invalid/source-one' ),
+			),
+		),
+	) );
+	$check( ! is_wp_error( $binding_plan ) && $image_one === (int) $binding_plan['content_input_fragment']['featured_media_id'], 'Media binding planner did not preserve featured attachment identity.' );
+	$check( array( $image_two, $image_one ) === $binding_plan['content_input_fragment']['meta']['ci_gallery'], 'Media binding planner lost gallery ordering.' );
+	$check( array( $image_two, $image_one ) === array_column( $binding_plan['content_input_fragment']['meta']['ci_gallery_usage'], 'attachment_id' ), 'Media binding planner lost contextual usage ordering.' );
+	$check( ! empty( $binding_plan['binding_plan_sha256'] ) && empty( $binding_plan['mutation_performed'] ), 'Media binding plan lacks exact read-only identity.' );
+	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::MEDIA_BINDING_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Media binding planner is not on the fixed read surface.' );
 
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
 	$check( $adapter instanceof MAD4B_SCP_Full_Content_Operations_Adapter, 'Full Content Operations adapter is unavailable.' );

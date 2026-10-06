@@ -16,6 +16,8 @@ experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.ph
 experience_bootstrap = root / "includes" / "class-mad4b-scp-content-experience-bootstrap.php"
 experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
 experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
+experience_media_storage = root / "includes" / "class-mad4b-scp-content-experience-media-storage.php"
+experience_media_binding = root / "includes" / "class-mad4b-scp-content-experience-media-binding.php"
 experience_media_rights = root / "includes" / "class-mad4b-scp-content-experience-media-rights.php"
 remote_media_rights = root / "includes" / "class-mad4b-scp-remote-media-rights.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
@@ -24,7 +26,7 @@ experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.ph
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine_client, media, remote_media, servers, semantic, experience, experience_bootstrap, experience_governance, experience_media, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine_client, media, remote_media, servers, semantic, experience, experience_bootstrap, experience_governance, experience_media, experience_media_storage, experience_media_binding, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -40,6 +42,8 @@ experience_src = experience.read_text(encoding="utf-8")
 experience_bootstrap_src = experience_bootstrap.read_text(encoding="utf-8")
 experience_governance_src = experience_governance.read_text(encoding="utf-8")
 experience_media_src = experience_media.read_text(encoding="utf-8")
+experience_media_storage_src = experience_media_storage.read_text(encoding="utf-8")
+experience_media_binding_src = experience_media_binding.read_text(encoding="utf-8")
 experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
 remote_media_rights_src = remote_media_rights.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
@@ -577,3 +581,25 @@ assert "array( 'content', 'admin', 'write' )" in servers_src
 assert "'mad4b/database-raw-query'" in servers_src
 
 print("MAD4B full governed content operations contract: PASS")
+
+# Provider-compatible media storage remains attachment-identity based even when
+# a field stores URL or ID+URL projections.
+for token in (
+    "mad4b.content-experience-media-storage.v1",
+    "json_id_url_items",
+    "attachment_id_from_url",
+    "infer_spec",
+):
+    assert token in experience_media_storage_src, f"media storage projection contract missing: {token}"
+for token in (
+    "mad4b.content-experience-media-binding-plan.v1",
+    "content_input_fragment",
+    "storage_projection",
+    "binding_plan_sha256",
+):
+    assert token in experience_media_binding_src, f"media binding plan contract missing: {token}"
+assert "MEDIA_BINDING_PLAN_ABILITY" in experience_src
+assert "class-mad4b-scp-content-experience-media-storage.php" in plugin_src
+assert "class-mad4b-scp-content-experience-media-binding.php" in plugin_src
+assert len(experience_media_storage_src.splitlines()) <= 360, "content-experience-media-storage exceeds focused 360-line service budget"
+assert len(experience_media_binding_src.splitlines()) <= 260, "content-experience-media-binding exceeds focused 260-line service budget"

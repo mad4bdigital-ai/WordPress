@@ -24,6 +24,57 @@ final class MAD4B_SCP_Content_Experience_Media_Storage {
 			: new WP_Error( 'mad4b_content_experience_media_meta_storage_invalid', 'Media metadata field storage is unsupported for the configured field kind.', array( 'kind' => $kind, 'storage' => $storage ) );
 	}
 
+	public static function infer_spec( $value ) {
+		if ( is_numeric( $value ) ) {
+			$ids = self::single_id( $value );
+			if ( ! is_wp_error( $ids ) && 'attachment' === get_post_type( $ids[0] ) && wp_attachment_is_image( $ids[0] ) ) {
+				return array( 'supported' => true, 'schema_type' => 'integer', 'spec' => array( 'kind' => 'image_id', 'storage' => 'id', 'max_items' => 1 ) );
+			}
+		}
+		if ( is_string( $value ) ) {
+			$trimmed = trim( $value );
+			if ( '' === $trimmed ) return array( 'supported' => false );
+			if ( preg_match( '/^\s*\d+(?:\s*,\s*\d+)+\s*$/', $trimmed ) ) {
+				$ids = self::id_list( preg_split( '/\s*,\s*/', $trimmed ) );
+				if ( ! is_wp_error( $ids ) && self::all_image_attachments( $ids ) ) return array( 'supported' => true, 'schema_type' => 'string', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'csv_ids', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, max( 1, count( $ids ) ) ) ) );
+			}
+			if ( 0 === strpos( $trimmed, '{' ) || 0 === strpos( $trimmed, '[' ) ) {
+				$decoded = json_decode( $trimmed, true );
+				if ( is_array( $decoded ) ) {
+					$single = self::id_url_object_ids( $decoded, false );
+					if ( ! is_wp_error( $single ) && self::all_image_attachments( $single ) ) return array( 'supported' => true, 'schema_type' => 'string', 'spec' => array( 'kind' => 'image_id', 'storage' => 'json_id_url', 'max_items' => 1 ) );
+					$many = self::id_url_object_ids( $decoded, true );
+					if ( ! is_wp_error( $many ) && $many && self::all_image_attachments( $many ) ) return array( 'supported' => true, 'schema_type' => 'string', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'json_id_url_items', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, count( $many ) ) ) );
+				}
+			}
+			if ( preg_match( '#^https?://#i', $trimmed ) ) {
+				if ( false !== strpos( $trimmed, ',' ) ) {
+					$urls = preg_split( '/\s*,\s*/', $trimmed );
+					$ids = self::url_list_ids( $urls );
+					if ( ! is_wp_error( $ids ) && $ids && self::all_image_attachments( $ids ) ) return array( 'supported' => true, 'schema_type' => 'string', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'csv_urls', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, count( $ids ) ) ) );
+				}
+				$id = self::attachment_id_from_url( $trimmed );
+				if ( $id > 0 && wp_attachment_is_image( $id ) ) return array( 'supported' => true, 'schema_type' => 'string', 'spec' => array( 'kind' => 'image_id', 'storage' => 'url', 'max_items' => 1 ) );
+			}
+		}
+		if ( is_array( $value ) ) {
+			if ( array_values( $value ) === $value ) {
+				if ( self::looks_like_id_list( $value ) ) {
+					$ids = self::id_list( $value );
+					if ( ! is_wp_error( $ids ) && $ids && self::all_image_attachments( $ids ) ) return array( 'supported' => true, 'schema_type' => 'array', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, count( $ids ) ) ) );
+				}
+				$urls = self::url_list_ids( $value );
+				if ( ! is_wp_error( $urls ) && $urls && self::all_image_attachments( $urls ) ) return array( 'supported' => true, 'schema_type' => 'array', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'urls', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, count( $urls ) ) ) );
+				$both = self::id_url_object_ids( $value, true );
+				if ( ! is_wp_error( $both ) && $both && self::all_image_attachments( $both ) ) return array( 'supported' => true, 'schema_type' => 'array', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'id_url_items', 'max_items' => min( MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS, count( $both ) ) ) );
+			} else {
+				$both = self::id_url_object_ids( $value, false );
+				if ( ! is_wp_error( $both ) && self::all_image_attachments( $both ) ) return array( 'supported' => true, 'schema_type' => 'array', 'spec' => array( 'kind' => 'image_id', 'storage' => 'id_url', 'max_items' => 1 ) );
+			}
+		}
+		return array( 'supported' => false );
+	}
+
 	public static function normalize_reference_value( $key, $value, array $spec, $image_only ) {
 		$key = (string) $key;
 		$kind = isset( $spec['kind'] ) ? sanitize_key( (string) $spec['kind'] ) : '';
@@ -236,6 +287,12 @@ final class MAD4B_SCP_Content_Experience_Media_Storage {
 			'no_found_rows' => true, 'suppress_filters' => true,
 		) );
 		return 1 === count( (array) $ids ) ? absint( $ids[0] ) : 0;
+	}
+
+	private static function all_image_attachments( array $ids ) {
+		if ( empty( $ids ) ) return false;
+		foreach ( $ids as $id ) if ( 'attachment' !== get_post_type( absint( $id ) ) || ! wp_attachment_is_image( absint( $id ) ) ) return false;
+		return true;
 	}
 
 	private static function shape_error( $message ) {

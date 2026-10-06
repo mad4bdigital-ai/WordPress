@@ -100,3 +100,26 @@ The returned `profile_plan` is applied only through the existing governed
 routes become active on the next request, so this adds an ergonomic bootstrap
 layer without creating a generic write bypass or hardcoding business types such
 as tours, products, properties or jobs.
+
+
+### Provider-compatible post media storage
+
+The Content Experience layer keeps **attachment identity** canonical even when a
+provider field stores a different database representation. A profile can now
+project verified Media Library attachments into bounded storage shapes:
+
+- single: `id`, `url`, `id_url`, `json_id_url`;
+- gallery: `ids`, `csv_ids`, `urls`, `csv_urls`,
+  `id_url_items`, `json_id_url_items`.
+
+The adaptive bootstrap can infer these shapes from existing content without
+returning the underlying values. This is useful for field systems that support
+Media ID, Media URL, or combined ID+URL formats while preserving the rule that
+remote acquisition creates a WordPress attachment first.
+
+`mad4b/content-experience-media-binding-plan` is the read-only bridge from
+verified attachment IDs to one exact Content Experience profile. It resolves a
+single featured image and ordered single/gallery targets, validates contextual
+usage fields, previews the exact provider storage projection, and returns the
+logical `featured_media_id` / `meta` fragment consumed by the normal
+create/update planner. Ambiguous field targets remain fail-closed.
