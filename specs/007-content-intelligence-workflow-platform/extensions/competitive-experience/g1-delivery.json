@@ -63,7 +63,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py",
-      "sha256": "a9c567c78864d36bf6d938587f0feec5ff0ca7d1064eb014a2415e873d07c11c"
+      "sha256": "3b4ca04e3fc5bf3fcc98f455f929724409c0b16b1ecb0bd0119791cf21da48d8"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php",
