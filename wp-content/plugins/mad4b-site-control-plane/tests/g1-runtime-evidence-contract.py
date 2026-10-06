@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+graph = (ROOT / "includes/class-mad4b-scp-runtime-evidence-graph.php").read_text(encoding="utf-8")
+classifier = (ROOT / "includes/class-mad4b-scp-runtime-policy-classifier.php").read_text(encoding="utf-8")
+competitive = (ROOT / "includes/class-mad4b-scp-competitive-evidence.php").read_text(encoding="utf-8")
+plugin = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+
+def req(text, *needles):
+    for needle in needles:
+        assert needle in text, f"missing marker: {needle}"
+
+def deny(text, *needles):
+    for needle in needles:
+        assert needle not in text, f"forbidden marker: {needle}"
+
+req(graph,
+    "mad4b.runtime-evidence-graph.v1",
+    "mad4b.runtime-evidence-generation.v1",
+    "mad4b.runtime-evidence-graph-diff.v1",
+    "'callbacks_executed'=>false",
+    "'unknown_plugin_code_executed'=>false",
+    "'unknown_endpoints_invoked'=>false",
+    "'secret_values_read'=>false",
+    "'writes_performed'=>false",
+    "did_action('rest_api_init')<=0",
+    "'authority_inferred_from_method'=>false",
+    "'schema_read'=>false",
+    "'row_values_read'=>false",
+    "'candidate_package'=>array('state'=>'descriptive_only'",
+    "'isolation_policy'=>'removed_or_changed_only_fail_closed'",
+)
+deny(graph, "call_user_func(", "call_user_func_array(", "wp_remote_get(", "wp_remote_post(", "$wpdb->query(", "$wpdb->get_results(", "grant_ability(")
+
+req(classifier,
+    "mad4b.runtime-policy-classifier.v1",
+    "mad4b.runtime-policy-proposal.v1",
+    "'confidence_is_safety_proof'=>false",
+    "'operation_names_create_authority'=>false",
+    "'schema_infers_privilege'=>false",
+    "'annotations_create_authority'=>false",
+    "'grants_changed'=>false",
+    "'mounts_changed'=>false",
+    "operation_name_cannot_prove_read_safety",
+    "http_get_cannot_prove_read_safety",
+    "risk_downgrade_rejected",
+    "actual_conformance_missing",
+    "secret_schema_blocks_zero_effect_auto_classification",
+    "'authority_delta'=>array('grants'=>0,'mounts'=>0,'scopes'=>0,'certifications'=>0)",
+)
+deny(classifier, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->")
+
+req(competitive,
+    "mad4b.competitive-evidence-summary.v1",
+    "Static or marketed evidence never proves runtime parity or creates access.",
+    "snapshot_generation_sha256", "task_ids", "evidence_ids",
+)
+req(plugin,
+    "class-mad4b-scp-runtime-evidence-graph.php",
+    "class-mad4b-scp-runtime-policy-classifier.php",
+    "class-mad4b-scp-competitive-evidence.php",
+)
+print("mad4b.g1-runtime-evidence-contract.v1: PASS")
