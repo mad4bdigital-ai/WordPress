@@ -92,6 +92,8 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		$providers = isset( $inventory['providers'] ) && is_array( $inventory['providers'] ) ? $inventory['providers'] : array();
 		$ability_index = self::ability_index( $providers );
 
+		$provider_families = self::provider_family_states();
+
 		$items = array();
 		foreach ( $blocked as $row ) {
 			if ( ! is_array( $row ) ) continue;
@@ -116,6 +118,7 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			$selection = self::select_candidate( $surface_provider, $candidates );
 			$selected = isset( $selection['selected'] ) && is_array( $selection['selected'] ) ? $selection['selected'] : array();
 			$ambiguous = ! empty( $selection['ambiguous'] );
+			$applicability = self::site_applicability( $ability, $surface_provider, $selected, $providers, $provider_families );
 			$closure = $ambiguous
 				? array(
 					'closure_class' => 'ambiguous_provider_capability_mapping',
@@ -124,6 +127,15 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 					'owner_review_required' => false,
 				)
 				: self::closure_for( $ability, $surface_reason, $selected, $providers, $runtime_eligibility_code, $surface_violations );
+			if ( 'inactive' === $applicability['state'] ) {
+				$closure = array(
+					'closure_class' => 'not_applicable_on_site',
+					'next_action' => 'no_action_required_while_provider_inactive',
+					'evidence_required' => array( 'provider_family', 'provider_active', 'provider_coverage_state' ),
+					'owner_review_required' => false,
+				);
+			}
+			$operational_action_required = 'inactive' !== $applicability['state'] && empty( $selected['status']['write_eligible'] );
 
 			$items[] = array(
 				'ability' => $ability,
@@ -131,6 +143,13 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 				'surface_reason' => $surface_reason,
 				'runtime_eligibility_code' => $runtime_eligibility_code,
 				'surface_violations' => $surface_violations,
+				'applicability_state' => $applicability['state'],
+				'site_applicable' => $applicability['site_applicable'],
+				'provider_family' => $applicability['provider_family'],
+				'provider_family_active' => $applicability['provider_family_active'],
+				'provider_adapter_ready' => $applicability['provider_adapter_ready'],
+				'provider_coverage_state' => $applicability['provider_coverage_state'],
+				'operational_action_required' => $operational_action_required,
 				'catalog_provider_id' => isset( $selected['provider_id'] ) ? (string) $selected['provider_id'] : '',
 				'ambiguous_mapping' => $ambiguous,
 				'candidate_count' => count( $candidates ),
@@ -162,11 +181,20 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		usort( $items, static function ( $a, $b ) { return strcmp( $a['ability'], $b['ability'] ); } );
 
 		$counts = array();
+		$applicability_counts = array( 'active' => 0, 'inactive' => 0, 'unresolved' => 0 );
+		$action_required_count = 0;
+		$owner_review_required_count = 0;
 		foreach ( $items as $item ) {
 			$key = isset( $item['closure_class'] ) ? (string) $item['closure_class'] : 'unknown';
 			$counts[ $key ] = isset( $counts[ $key ] ) ? $counts[ $key ] + 1 : 1;
+			$applicability_key = isset( $item['applicability_state'] ) ? sanitize_key( (string) $item['applicability_state'] ) : 'unresolved';
+			if ( ! isset( $applicability_counts[ $applicability_key ] ) ) $applicability_counts[ $applicability_key ] = 0;
+			++$applicability_counts[ $applicability_key ];
+			if ( ! empty( $item['operational_action_required'] ) ) ++$action_required_count;
+			if ( ! empty( $item['operational_action_required'] ) && ! empty( $item['owner_review_required'] ) ) ++$owner_review_required_count;
 		}
 		ksort( $counts, SORT_STRING );
+		ksort( $applicability_counts, SORT_STRING );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -175,6 +203,13 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'mutation_performed' => false,
 			'provider_gated_count' => count( $items ),
 			'closure_class_counts' => $counts,
+			'applicability_state_counts' => $applicability_counts,
+			'site_applicable_count' => isset( $applicability_counts['active'] ) ? (int) $applicability_counts['active'] : 0,
+			'not_applicable_count' => isset( $applicability_counts['inactive'] ) ? (int) $applicability_counts['inactive'] : 0,
+			'unresolved_applicability_count' => isset( $applicability_counts['unresolved'] ) ? (int) $applicability_counts['unresolved'] : 0,
+			'operational_action_required_count' => $action_required_count,
+			'owner_review_required_count' => $owner_review_required_count,
+			'operational_state' => $action_required_count > 0 ? 'provider_closure_actions_pending' : 'provider_closure_operationally_clean',
 			'items' => $items,
 			'candidate_binding_match' => $candidate_binding_match,
 			'write_authority_ready' => $write_authority_ready,
@@ -219,6 +254,73 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		if ( count( $exact ) > 1 ) return array( 'selected' => array(), 'ambiguous' => true );
 		if ( 1 === count( $candidates ) ) return array( 'selected' => $candidates[0], 'ambiguous' => false );
 		return array( 'selected' => array(), 'ambiguous' => true );
+	}
+
+	private static function provider_family_states() {
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! method_exists( 'MAD4B_SCP_Skill_Provider_Discovery', 'inspect' ) ) return array();
+		$inspection = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+		if ( ! is_array( $inspection ) || ! isset( $inspection['families'] ) || ! is_array( $inspection['families'] ) ) return array();
+		return $inspection['families'];
+	}
+
+	private static function family_candidates( $ability, $surface_provider, array $selected, array $providers ) {
+		$candidates = array();
+		$push = static function ( $value ) use ( &$candidates ) {
+			$value = sanitize_key( (string) $value );
+			if ( '' === $value ) return;
+			$candidates[] = $value;
+			$candidates[] = str_replace( '_', '-', $value );
+			$candidates[] = str_replace( '-', '_', $value );
+		};
+		$push( $surface_provider );
+		$provider_id = isset( $selected['provider_id'] ) ? sanitize_key( (string) $selected['provider_id'] ) : '';
+		$push( $provider_id );
+		if ( '' !== $provider_id && isset( $providers[ $provider_id ] ) && is_array( $providers[ $provider_id ] ) ) {
+			$push( isset( $providers[ $provider_id ]['adapter_id'] ) ? $providers[ $provider_id ]['adapter_id'] : '' );
+		}
+		$parts = explode( '/', (string) $ability, 2 );
+		$push( isset( $parts[0] ) ? $parts[0] : '' );
+		return array_values( array_unique( array_filter( $candidates ) ) );
+	}
+
+	private static function site_applicability( $ability, $surface_provider, array $selected, array $providers, array $families ) {
+		$matches = array();
+		foreach ( self::family_candidates( $ability, $surface_provider, $selected, $providers ) as $family ) {
+			if ( ! isset( $families[ $family ] ) || ! is_array( $families[ $family ] ) ) continue;
+			$matches[ $family ] = $families[ $family ];
+		}
+		if ( empty( $matches ) ) {
+			return array(
+				'state' => 'unresolved',
+				'site_applicable' => null,
+				'provider_family' => '',
+				'provider_family_active' => null,
+				'provider_adapter_ready' => null,
+				'provider_coverage_state' => '',
+			);
+		}
+		$selected_family = '';
+		$family_state = array();
+		foreach ( $matches as $family => $state ) {
+			if ( ! empty( $state['active'] ) ) {
+				$selected_family = $family;
+				$family_state = $state;
+				break;
+			}
+		}
+		if ( '' === $selected_family ) {
+			$selected_family = (string) array_key_first( $matches );
+			$family_state = $matches[ $selected_family ];
+		}
+		$active = ! empty( $family_state['active'] );
+		return array(
+			'state' => $active ? 'active' : 'inactive',
+			'site_applicable' => $active,
+			'provider_family' => sanitize_key( $selected_family ),
+			'provider_family_active' => $active,
+			'provider_adapter_ready' => ! empty( $family_state['adapter_ready'] ),
+			'provider_coverage_state' => isset( $family_state['coverage_state'] ) ? sanitize_key( (string) $family_state['coverage_state'] ) : '',
+		);
 	}
 
 	private static function closure_for( $ability, $surface_reason, array $selected, array $providers, $runtime_eligibility_code = '', array $surface_violations = array() ) {

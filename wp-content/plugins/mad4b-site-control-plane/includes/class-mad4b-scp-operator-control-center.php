@@ -74,6 +74,10 @@ final class MAD4B_SCP_Operator_Control_Center {
 			'write_authority_ready' => null,
 			'candidate_binding_match' => null,
 			'database_topology_ready' => null,
+			'governed_write_lane_ready' => null,
+			'developer_lane_ready' => null,
+			'developer_breakglass_lane_ready' => null,
+			'provider_closure_action_required' => null,
 			'mutation_uncertain' => false,
 			'recovery_required' => false,
 		);
@@ -99,6 +103,23 @@ final class MAD4B_SCP_Operator_Control_Center {
 			: array();
 		$database_topology = is_array( $database_topology ) ? $database_topology : array();
 		$signals['database_topology_ready'] = array_key_exists( 'ready', $database_topology ) ? (bool) $database_topology['ready'] : null;
+
+		$full_authority = class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) && method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'status' )
+			? MAD4B_SCP_Full_Staging_Authority::status()
+			: array();
+		$full_authority = is_array( $full_authority ) ? $full_authority : array();
+		$lane_readiness = isset( $full_authority['lane_readiness'] ) && is_array( $full_authority['lane_readiness'] ) ? $full_authority['lane_readiness'] : array();
+		$signals['governed_write_lane_ready'] = array_key_exists( 'governed_write', $lane_readiness ) ? (bool) $lane_readiness['governed_write'] : null;
+		$signals['developer_lane_ready'] = array_key_exists( 'developer', $lane_readiness ) ? (bool) $lane_readiness['developer'] : null;
+		$signals['developer_breakglass_lane_ready'] = array_key_exists( 'developer_breakglass', $lane_readiness ) ? (bool) $lane_readiness['developer_breakglass'] : null;
+
+		$provider_closure = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix' ) && method_exists( 'MAD4B_SCP_Provider_Closure_Matrix', 'matrix' )
+			? MAD4B_SCP_Provider_Closure_Matrix::matrix()
+			: array();
+		$provider_closure = is_array( $provider_closure ) ? $provider_closure : array();
+		$signals['provider_closure_action_required'] = array_key_exists( 'operational_action_required_count', $provider_closure )
+			? ( (int) $provider_closure['operational_action_required_count'] > 0 )
+			: null;
 
 		if ( isset( $input['bundle'] ) && is_array( $input['bundle'] ) && ! empty( $input['bundle'] ) && class_exists( 'MAD4B_SCP_Production_Readiness_Evaluator' ) ) {
 			$validated = MAD4B_SCP_Production_Readiness_Evaluator::execute( array( 'bundle' => $input['bundle'] ) );
@@ -136,6 +157,27 @@ final class MAD4B_SCP_Operator_Control_Center {
 				'read_your_writes' => array_key_exists( 'read_your_writes', $database_topology ) ? (bool) $database_topology['read_your_writes'] : null,
 				'database_dropin_ownership' => isset( $database_topology['database_dropin_ownership'] ) ? sanitize_key( (string) $database_topology['database_dropin_ownership'] ) : '',
 				'blockers' => isset( $database_topology['blockers'] ) && is_array( $database_topology['blockers'] ) ? array_values( array_slice( array_unique( array_map( 'sanitize_key', $database_topology['blockers'] ) ), 0, 12 ) ) : array(),
+			),
+			'lanes' => array(
+				'operational_ready' => array_key_exists( 'operational_ready', $full_authority ) ? (bool) $full_authority['operational_ready'] : null,
+				'degraded_mode' => ! empty( $full_authority['degraded_mode'] ),
+				'degraded_mode_semantics' => isset( $full_authority['degraded_mode_semantics'] ) ? sanitize_key( (string) $full_authority['degraded_mode_semantics'] ) : '',
+				'lane_readiness' => $lane_readiness,
+				'available_lanes' => isset( $full_authority['available_lanes'] ) && is_array( $full_authority['available_lanes'] ) ? array_values( array_slice( array_map( 'sanitize_key', $full_authority['available_lanes'] ), 0, 8 ) ) : array(),
+				'blocked_lanes' => isset( $full_authority['blocked_lanes'] ) && is_array( $full_authority['blocked_lanes'] ) ? array_values( array_slice( array_map( 'sanitize_key', $full_authority['blocked_lanes'] ), 0, 8 ) ) : array(),
+				'blockers' => isset( $full_authority['operational_blockers'] ) && is_array( $full_authority['operational_blockers'] ) ? array_values( array_slice( array_unique( array_map( 'sanitize_key', $full_authority['operational_blockers'] ) ), 0, 16 ) ) : array(),
+				'client_action' => isset( $full_authority['operational_client_action'] ) ? sanitize_key( (string) $full_authority['operational_client_action'] ) : '',
+				'developer_execution' => isset( $full_authority['developer_execution'] ) && is_array( $full_authority['developer_execution'] ) ? $full_authority['developer_execution'] : array(),
+			),
+			'provider_closure' => array(
+				'state' => isset( $provider_closure['operational_state'] ) ? sanitize_key( (string) $provider_closure['operational_state'] ) : 'unavailable',
+				'provider_gated_count' => isset( $provider_closure['provider_gated_count'] ) ? (int) $provider_closure['provider_gated_count'] : 0,
+				'action_required_count' => isset( $provider_closure['operational_action_required_count'] ) ? (int) $provider_closure['operational_action_required_count'] : 0,
+				'not_applicable_count' => isset( $provider_closure['not_applicable_count'] ) ? (int) $provider_closure['not_applicable_count'] : 0,
+				'unresolved_applicability_count' => isset( $provider_closure['unresolved_applicability_count'] ) ? (int) $provider_closure['unresolved_applicability_count'] : 0,
+				'owner_review_required_count' => isset( $provider_closure['owner_review_required_count'] ) ? (int) $provider_closure['owner_review_required_count'] : 0,
+				'closure_class_counts' => isset( $provider_closure['closure_class_counts'] ) && is_array( $provider_closure['closure_class_counts'] ) ? $provider_closure['closure_class_counts'] : array(),
+				'read_only' => true,
 			),
 			'database_recovery' => array(
 				'scope' => 'external_provider_disaster_recovery',
@@ -176,6 +218,11 @@ final class MAD4B_SCP_Operator_Control_Center {
 		if ( array_key_exists( 'write_authority_ready', $signals ) && false === self::tri( $signals, 'write_authority_ready' ) ) $blocking[] = 'write_authority_not_current';
 		if ( array_key_exists( 'candidate_binding_match', $signals ) && false === self::tri( $signals, 'candidate_binding_match' ) ) $blocking[] = 'runtime_authority_candidate_not_reconciled';
 		if ( array_key_exists( 'database_topology_ready', $signals ) && false === self::tri( $signals, 'database_topology_ready' ) ) $blocking[] = 'database_topology_not_write_safe';
+
+		if ( array_key_exists( 'governed_write_lane_ready', $signals ) && false === self::tri( $signals, 'governed_write_lane_ready' ) ) $blocking[] = 'governed_write_lane_not_ready';
+		if ( array_key_exists( 'developer_lane_ready', $signals ) && false === self::tri( $signals, 'developer_lane_ready' ) ) $degraded[] = 'developer_lane_not_ready';
+		if ( array_key_exists( 'developer_breakglass_lane_ready', $signals ) && false === self::tri( $signals, 'developer_breakglass_lane_ready' ) ) $degraded[] = 'developer_breakglass_lane_not_ready';
+		if ( true === self::tri( $signals, 'provider_closure_action_required' ) ) $degraded[] = 'provider_closure_actions_pending';
 
 		foreach ( array(
 			'repository_green' => 'repository_evidence_unbound',
@@ -229,6 +276,10 @@ final class MAD4B_SCP_Operator_Control_Center {
 			'write_authority_not_current' => 'reconcile_exact_staging_write_authority',
 			'runtime_authority_candidate_not_reconciled' => 'reconcile_exact_staging_write_authority',
 			'database_topology_not_write_safe' => 'repair_query_monitor_db_attribution_then_retry',
+			'governed_write_lane_not_ready' => 'reconcile_exact_staging_write_authority',
+			'developer_lane_not_ready' => 'resolve_developer_host_execution_prerequisites',
+			'developer_breakglass_lane_not_ready' => 'resolve_developer_host_execution_prerequisites',
+			'provider_closure_actions_pending' => 'close_active_provider_certification_gaps',
 		);
 		$out = array();
 		foreach ( $reasons as $reason ) if ( isset( $map[ $reason ] ) ) $out[] = $map[ $reason ];
@@ -266,6 +317,14 @@ final class MAD4B_SCP_Operator_Control_Center {
 		echo ' &nbsp; <strong>' . esc_html__( 'WordPress raw environment:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $runtime['wordpress_environment'] ) ? (string) $runtime['wordpress_environment'] : 'unknown' ) . '</code></p>';
 		echo '<p><strong>' . esc_html__( 'Write authority current:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $operational['write_authority']['ready'] ) ? 'true' : 'false' ) . '</code>';
 		echo ' &nbsp; <strong>' . esc_html__( 'Database topology ready:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $operational['database_topology']['ready'] ) ? 'true' : 'false' ) . '</code></p>';
+		$lanes = isset( $operational['lanes'] ) && is_array( $operational['lanes'] ) ? $operational['lanes'] : array();
+		$provider_closure = isset( $operational['provider_closure'] ) && is_array( $operational['provider_closure'] ) ? $operational['provider_closure'] : array();
+		echo '<p><strong>' . esc_html__( 'Governed Write lane:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $lanes['lane_readiness']['governed_write'] ) ? 'ready' : 'blocked' ) . '</code>';
+		echo ' &nbsp; <strong>' . esc_html__( 'Developer lane:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $lanes['lane_readiness']['developer'] ) ? 'ready' : 'blocked' ) . '</code>';
+		echo ' &nbsp; <strong>' . esc_html__( 'Degraded mode:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $lanes['degraded_mode'] ) ? 'true' : 'false' ) . '</code></p>';
+		echo '<p><strong>' . esc_html__( 'Provider actions required:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $provider_closure['action_required_count'] ) ? (string) $provider_closure['action_required_count'] : '0' ) . '</code>';
+		echo ' &nbsp; <strong>' . esc_html__( 'Provider gates not applicable:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $provider_closure['not_applicable_count'] ) ? (string) $provider_closure['not_applicable_count'] : '0' ) . '</code>';
+		echo ' &nbsp; <strong>' . esc_html__( 'Applicability unresolved:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $provider_closure['unresolved_applicability_count'] ) ? (string) $provider_closure['unresolved_applicability_count'] : '0' ) . '</code></p>';
 		echo '<h2>' . esc_html__( 'Reasons', 'mad4b-site-control-plane' ) . '</h2><ul>';
 		foreach ( $reasons as $reason ) echo '<li><code>' . esc_html( (string) $reason ) . '</code></li>';
 		echo '</ul><h2>' . esc_html__( 'Next actions', 'mad4b-site-control-plane' ) . '</h2><ol>';

@@ -258,6 +258,9 @@ for marker in [
     "is_file( $file )",
     "realpath( $root )",
     "atomic_write",
+    "private static function canonical_seed_document",
+    "canonical_seed_manifest_mismatch",
+    "skill-seeds/",
 ]:
     if marker not in provider_discovery:
         raise SystemExit(f'missing dynamic provider Skill guard: {marker}')
@@ -283,7 +286,22 @@ for family, definitions in provider_packs.items():
             raise SystemExit(f'provider Skill {family} has invalid target')
         if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', definition.get('name', '')):
             raise SystemExit(f'provider Skill {family} has invalid name')
-        if not definition.get('description') or not definition.get('body'):
+        if definition.get('canonical_seed') is True:
+            if definition.get('description') or definition.get('body'):
+                raise SystemExit(f'canonical provider Skill {family} must not duplicate seed description/body')
+            matching_seed = [
+                row for row in seed_manifest.get('skills', [])
+                if isinstance(row, dict)
+                and row.get('level') == definition.get('level')
+                and row.get('target') == definition.get('target')
+                and row.get('name') == definition.get('name')
+            ]
+            if len(matching_seed) != 1:
+                raise SystemExit(f'canonical provider Skill {family} must bind exactly one seed manifest row')
+            canonical_seed = wp / 'skill-seeds' / definition.get('name', '') / 'SKILL.md'
+            if not canonical_seed.is_file():
+                raise SystemExit(f'canonical provider Skill {family} seed file is missing')
+        elif not definition.get('description') or not definition.get('body'):
             raise SystemExit(f'provider Skill {family} must contain description and body')
 
 if "MAD4B_SCP_DIR . 'skills" in registry:
