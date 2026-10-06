@@ -3,8 +3,24 @@ require __DIR__ . '/fixtures/search-runtime-fixtures.php';
 set_error_handler( static function ( $severity, $message, $file, $line ) { if ( error_reporting() & $severity ) throw new ErrorException( $message, 0, $severity, $file, $line ); } );
 function wp_salt( $scheme ) { return isset( $GLOBALS['enrollment_salt'] ) ? $GLOBALS['enrollment_salt'] : 'hermetic-site-secret-not-a-live-credential'; }
 function esc_html( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES, 'UTF-8' ); }
+function __( $v, $domain = '' ) { return (string) $v; }
+function esc_html__( $v, $domain = '' ) { return esc_html( $v ); }
+function esc_attr__( $v, $domain = '' ) { return esc_attr( $v ); }
 function esc_attr( $v ) { return esc_html( $v ); }
 function esc_url( $v ) { return esc_html( $v ); }
+function add_query_arg( $key, $value = null, $url = null ) {
+	if ( is_array( $key ) ) { $query = $key; $url = $value; } else { $query = array( $key => $value ); }
+	$url = null === $url ? home_url( '/' ) : $url;
+	return $url . ( false === strpos( $url, '?' ) ? '?' : '&' ) . http_build_query( $query );
+}
+if ( ! class_exists( 'MAD4B_SCP_Admin_Workspace' ) ) {
+	final class MAD4B_SCP_Admin_Workspace {
+		public static function link( $slug, array $query = array(), $fragment = '' ) {
+			$url = add_query_arg( array_merge( array( 'page' => sanitize_key( (string) $slug ) ), $query ), admin_url( 'admin.php' ) );
+			return $url . ( '' !== $fragment ? '#' . rawurlencode( $fragment ) : '' );
+		}
+	}
+}
 function wp_unslash( $v ) { return is_array( $v ) ? array_map( 'wp_unslash', $v ) : ( is_string( $v ) ? stripslashes( $v ) : $v ); }
 function wp_nonce_field( $action ) { echo '<input type="hidden" name="_wpnonce" value="' . esc_attr( hash( 'sha256', $action ) ) . '">'; }
 function check_admin_referer( $action ) { if ( ! isset( $_POST['_wpnonce'] ) || hash( 'sha256', $action ) !== $_POST['_wpnonce'] ) throw new RuntimeException( 'nonce_denied' ); }
