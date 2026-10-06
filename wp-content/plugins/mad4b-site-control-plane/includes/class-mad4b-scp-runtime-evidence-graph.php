@@ -67,6 +67,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			'providers'=>self::providers(),
 			'components'=>self::components(),
 			'abilities'=>$ability_nodes,
+			'schemas'=>self::schemas($ability_nodes),
 			'operations'=>self::operations(),
 			'plugins'=>self::plugins(),
 			'rest_routes'=>self::rest_routes(),
@@ -245,6 +246,26 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				),
 				'provenance'=>array('descriptor_contract'=>isset($descriptor['descriptor_contract'])?(string)$descriptor['descriptor_contract']:'','generation_contract'=>isset($descriptor['generation_contract'])?(string)$descriptor['generation_contract']:''),
 			);
+		}
+		return $out;
+	}
+
+	private static function schemas( array $abilities ) {
+		$out = array();
+		foreach ( $abilities as $row ) {
+			if ( ! is_array( $row ) || empty( $row['id'] ) ) continue;
+			$digest = isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '';
+			$out[] = array(
+				'id' => 'ability:' . (string) $row['id'] . ':input',
+				'kind' => 'schema',
+				'owner_kind' => 'ability',
+				'owner_id' => (string) $row['id'],
+				'schema_sha256' => $digest,
+				'secret_bearing' => ! empty( $row['schema_secret_bearing'] ),
+				'values_read' => false,
+				'privilege_inferred' => false,
+			);
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
 		}
 		return $out;
 	}
@@ -546,6 +567,11 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		foreach(isset($nodes['abilities'])&&is_array($nodes['abilities'])?$nodes['abilities']:array() as $row) if(is_array($row)&&!empty($row['id'])) $ability_ids[(string)$row['id']]=true;
 		foreach(isset($nodes['providers'])&&is_array($nodes['providers'])?$nodes['providers']:array() as $row) if(is_array($row)&&!empty($row['id'])) $provider_ids[(string)$row['id']]=true;
 		foreach(isset($nodes['components'])&&is_array($nodes['components'])?$nodes['components']:array() as $row) if(is_array($row)&&!empty($row['id'])) $component_ids[(string)$row['id']]=true;
+		foreach(isset($nodes['schemas'])&&is_array($nodes['schemas'])?$nodes['schemas']:array() as $row){
+			if(!is_array($row)||empty($row['id'])||empty($row['owner_id'])) continue;
+			$ability=(string)$row['owner_id'];
+			if(isset($ability_ids[$ability])) $edges[]=array('from'=>'ability:'.$ability,'to'=>'schema:'.(string)$row['id'],'relation'=>'declares_schema');
+		}
 		foreach(isset($nodes['providers'])&&is_array($nodes['providers'])?$nodes['providers']:array() as $row){
 			if(!is_array($row)||empty($row['id'])) continue;
 			foreach(isset($row['component_refs'])&&is_array($row['component_refs'])?$row['component_refs']:array() as $component){
