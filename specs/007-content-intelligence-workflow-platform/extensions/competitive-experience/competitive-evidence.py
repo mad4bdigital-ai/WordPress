@@ -284,7 +284,12 @@ def acknowledge_history_alert(history, alert_id, actor):
         entry["entry_sha256"] = sha(basis)
         previous = entry["entry_sha256"]
     history["current_entry_sha256"] = previous
-    history["previous_known_good_generation_sha256"] = target["generation_sha256"]
+    known = [r["generation_sha256"] for r in history.get("entries", []) if r.get("state") == "known_good"]
+    current_generation = history.get("current_generation_sha256", "")
+    if known and known[-1] == current_generation:
+        history["previous_known_good_generation_sha256"] = known[-2] if len(known) > 1 else ""
+    else:
+        history["previous_known_good_generation_sha256"] = known[-1] if known else ""
     return history
 
 def verify_history(snapshot, summary, history_path: Path = HISTORY):

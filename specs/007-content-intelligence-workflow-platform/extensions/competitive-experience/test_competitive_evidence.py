@@ -65,8 +65,12 @@ history = m.verify_history(s, summary)
 assert history["authorizing"] is False
 assert history["contract"] == m.HISTORY_CONTRACT
 assert history["retention"]["max_entries"] == m.MAX_HISTORY_ENTRIES
-assert history["previous_known_good_generation_sha256"] == ""
-assert history["alerts"] == [] and history["acknowledgements"] == []
+assert len(history["entries"]) >= 2, "append-only history was reset"
+assert history["entries"][-1]["revision"] == len(history["entries"])
+assert history["previous_known_good_generation_sha256"] == history["entries"][-2]["generation_sha256"]
+assert history["alerts"] and history["alerts"][-1]["generation_sha256"] == s["generation_sha256"]
+assert history["alerts"][-1]["state"] == "open"
+assert history["acknowledgements"] == []
 assert history["current_generation_sha256"] == s["generation_sha256"]
 assert history["entries"][-1]["summary_sha256"] == summary["summary_sha256"]
 assert history["current_entry_sha256"] == history["entries"][-1]["entry_sha256"]
@@ -92,7 +96,7 @@ assert next_history["alerts"][-1]["state"] == "open"
 acknowledged = m.acknowledge_history_alert(next_history, next_history["alerts"][-1]["alert_id"], "owner-test")
 assert acknowledged["alerts"][-1]["state"] == "acknowledged"
 assert acknowledged["acknowledgements"][-1]["authorizing"] is False
-assert acknowledged["previous_known_good_generation_sha256"] == future["generation_sha256"]
+assert acknowledged["previous_known_good_generation_sha256"] == history["entries"][-1]["generation_sha256"]
 
 m.verify()
 print("mad4b.competitive-evidence-tests.v3: PASS")
