@@ -291,15 +291,16 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			$base['reason'] = isset( $provider_binding['reason'] ) ? (string) $provider_binding['reason'] : 'conformance_provider_capability_binding_unavailable';
 			return $base;
 		}
-		foreach ( array(
-			'capability_id',
-			'artifact_fingerprint',
-			'capability_contract_digest',
-		) as $field ) {
+		$binding_checks = array(
+			'capability_id' => 'conformance_capability_id_binding_mismatch',
+			'artifact_fingerprint' => 'conformance_artifact_fingerprint_binding_mismatch',
+			'capability_contract_digest' => 'conformance_capability_contract_digest_binding_mismatch',
+		);
+		foreach ( $binding_checks as $field => $reason ) {
 			$expected = isset( $provider_binding[ $field ] ) ? (string) $provider_binding[ $field ] : '';
 			$actual = isset( $receipt[ $field ] ) ? (string) $receipt[ $field ] : '';
 			if ( '' === $expected || ! hash_equals( $expected, $actual ) ) {
-				$base['reason'] = 'conformance_' . $field . '_binding_mismatch';
+				$base['reason'] = $reason;
 				return $base;
 			}
 		}
