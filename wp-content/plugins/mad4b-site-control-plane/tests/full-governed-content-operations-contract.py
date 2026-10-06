@@ -605,3 +605,15 @@ assert "class-mad4b-scp-content-experience-media-storage.php" in plugin_src
 assert "class-mad4b-scp-content-experience-media-binding.php" in plugin_src
 assert len(experience_media_storage_src.splitlines()) <= 360, "content-experience-media-storage exceeds focused 360-line service budget"
 assert len(experience_media_binding_src.splitlines()) <= 260, "content-experience-media-binding exceeds focused 260-line service budget"
+
+# JetEngine can contribute exact media-field declarations through its public
+# context field catalog; unknown value formats remain non-authorizing.
+for token in (
+    "content_experience_media_field_candidates",
+    "get_fields_for_context",
+    "provider_value_format",
+    "id_url_items",
+):
+    assert token in jetengine_src, f"JetEngine adaptive media-field contract missing: {token}"
+for token in ("spec_conflict", "alternative_specs", "requires_review", "provider_declared"):
+    assert token in experience_bootstrap_src, f"adaptive media candidate reconciliation missing: {token}"

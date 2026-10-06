@@ -242,7 +242,10 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 						isset( $row['schema_type'] ) ? $row['schema_type'] : '',
 						isset( $row['suggested_spec'] ) && is_array( $row['suggested_spec'] ) ? $row['suggested_spec'] : array(),
 						! empty( $row['protected'] ),
-						array( 'provider_declared' => true )
+						array_merge(
+							array( 'provider_declared' => true ),
+							isset( $row['evidence'] ) && is_array( $row['evidence'] ) ? $row['evidence'] : array()
+						)
 					);
 				}
 			}
@@ -291,9 +294,25 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 			if ( strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) ) continue;
 			if ( isset( $seen[ $key ] ) ) {
 				$index = $seen[ $key ];
+				$row_source = isset( $row['source'] ) ? sanitize_key( (string) $row['source'] ) : 'provider';
 				$existing_sources = isset( $out[ $index ]['sources'] ) ? $out[ $index ]['sources'] : array( $out[ $index ]['source'] );
-				$existing_sources[] = isset( $row['source'] ) ? sanitize_key( (string) $row['source'] ) : 'provider';
+				$existing_sources[] = $row_source;
 				$out[ $index ]['sources'] = array_values( array_unique( array_filter( $existing_sources ) ) );
+				$current_spec = isset( $out[ $index ]['suggested_spec'] ) && is_array( $out[ $index ]['suggested_spec'] ) ? $out[ $index ]['suggested_spec'] : array();
+				$row_spec = isset( $row['suggested_spec'] ) && is_array( $row['suggested_spec'] ) ? $row['suggested_spec'] : array();
+				if ( $row_spec && $current_spec !== $row_spec ) {
+					$out[ $index ]['spec_conflict'] = true;
+					$alternatives = isset( $out[ $index ]['alternative_specs'] ) && is_array( $out[ $index ]['alternative_specs'] ) ? $out[ $index ]['alternative_specs'] : array();
+					$alternatives[] = array( 'source' => $out[ $index ]['source'], 'spec' => $current_spec );
+					$alternatives[] = array( 'source' => $row_source, 'spec' => $row_spec );
+					$out[ $index ]['alternative_specs'] = array_values( array_unique( $alternatives, SORT_REGULAR ) );
+					if ( 0 === strpos( $row_source, 'provider_' ) && 0 !== strpos( (string) $out[ $index ]['source'], 'provider_' ) ) {
+						$out[ $index ]['suggested_spec'] = $row_spec;
+						$out[ $index ]['source'] = $row_source;
+						$out[ $index ]['evidence'] = isset( $row['evidence'] ) && is_array( $row['evidence'] ) ? $row['evidence'] : array();
+					}
+				}
+				$out[ $index ]['requires_review'] = ! empty( $out[ $index ]['spec_conflict'] );
 				continue;
 			}
 			$seen[ $key ] = count( $out );
@@ -305,6 +324,10 @@ final class MAD4B_SCP_Content_Experience_Bootstrap {
 				'protected' => ! empty( $row['protected'] ) || 0 === strpos( $key, '_' ),
 				'suggested_spec' => isset( $row['suggested_spec'] ) && is_array( $row['suggested_spec'] ) ? $row['suggested_spec'] : array(),
 				'evidence' => isset( $row['evidence'] ) && is_array( $row['evidence'] ) ? $row['evidence'] : array(),
+				'confidence' => 0 === strpos( isset( $row['source'] ) ? (string) $row['source'] : '', 'provider_' ) ? 'provider_declared' : ( 'sampled_post_meta' === ( isset( $row['source'] ) ? (string) $row['source'] : '' ) ? 'observed_existing_value' : 'heuristic' ),
+				'spec_conflict' => false,
+				'alternative_specs' => array(),
+				'requires_review' => false,
 				'auto_enabled' => false,
 			);
 		}

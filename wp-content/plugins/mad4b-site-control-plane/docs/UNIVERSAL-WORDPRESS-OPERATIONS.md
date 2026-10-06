@@ -123,3 +123,18 @@ single featured image and ordered single/gallery targets, validates contextual
 usage fields, previews the exact provider storage projection, and returns the
 logical `featured_media_id` / `meta` fragment consumed by the normal
 create/update planner. Ambiguous field targets remain fail-closed.
+
+
+### JetEngine field-definition discovery
+
+When JetEngine is active, the JetEngine adapter now contributes media-field
+candidates from its live post-type field context instead of relying only on
+meta-key names or sampled posts. Media/Gallery fields with a declared
+`value_format` of `id`, `url`, or `both` are translated into the
+canonical Content Experience storage projections. Unknown provider formats are
+reported but not mapped.
+
+Provider declarations, registered-meta heuristics, and sampled live values are
+kept as separate evidence sources. If they disagree, bootstrap marks
+`spec_conflict=true`, keeps the alternative specs, and requires review rather
+than silently widening or guessing the post-meta storage contract.
