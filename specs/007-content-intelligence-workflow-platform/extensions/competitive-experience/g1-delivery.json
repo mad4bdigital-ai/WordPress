@@ -113,7 +113,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
-      "sha256": "aa8255970257bdefed3df8b8b495b73973778f7b4b87e4e062efcb965e4dffef"
+      "sha256": "5ad18493ce291e80bd44e0d586a35ff3a1b864713ff23d76f9b24f3513e46c51"
     }
   ],
   "acceptance_contracts": [
