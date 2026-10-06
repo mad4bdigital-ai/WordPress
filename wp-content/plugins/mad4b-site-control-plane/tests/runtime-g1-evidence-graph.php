@@ -71,7 +71,7 @@ class MAD4B_SCP_Capability_Descriptor_Registry {
      'classification_sha256'=>str_repeat('b',64),
      'descriptor_sha256'=>str_repeat('c',64),
      'readonly'=>true,'readonly_declared'=>true,
-     'execution_lane'=>'read','execution_provider'=>'core',
+     'execution_lane'=>'read','execution_provider'=>'demo',
      'execution_eligible'=>true,'execution_boundary_verified'=>true,'breakglass'=>false,
      'descriptor_contract'=>'mad4b.capability-descriptor.v2',
      'generation_contract'=>'mad4b.capability-generation-roots.v1',
@@ -88,6 +88,26 @@ class MAD4B_SCP_Servers {
  public static function chatgpt_full_catalog_candidates(){ return array('mad4b/example-read'); }
 }
 class MAD4B_SCP_Adapter_Registry { public static function instance(){ return new self(); } public function ability_names($surface){ return array(); } }
+class MAD4B_SCP_Provider_Contracts {
+ public static function all(){
+   return array('demo'=>array(
+     'label'=>'Demo Provider',
+     'version'=>'1.0.0',
+     'contract_mode'=>'exact_fixture',
+     'components'=>array('primary'=>array(
+       'label'=>'Demo Component','plugin_file'=>'demo/demo.php','version'=>'1.0.0',
+       'archive_sha256'=>'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+     )),
+   ));
+ }
+ public static function runtime_status($provider,$available=null){
+   return array(
+     'provider'=>$provider,'label'=>'Demo Provider','status'=>'certified',
+     'runtime_contract_ok'=>true,'certified_version'=>'1.0.0','installed_version'=>'1.0.0',
+     'contract_mode'=>'exact_fixture','certification_authority'=>'fixture',
+   );
+ }
+}
 class MAD4B_SCP_Operation_Registry {
  public static function status(){
    return array('operations'=>array(array(
@@ -147,12 +167,18 @@ check($one['discovery']['callbacks_executed']===false,'graph executed callbacks'
 check($one['discovery']['unknown_plugin_code_executed']===false,'graph executed unknown plugin code');
 check(count($one['nodes']['rest_routes'])===0,'REST lazy route discovery should remain unobserved before rest_api_init');
 check($one['nodes']['plugins'][0]['candidate_package']['state']==='descriptive_only','unknown plugin candidate is not descriptive only');
+check(count($one['nodes']['providers'])===1,'provider graph node missing');
+check(count($one['nodes']['components'])===1,'component graph node missing');
+check($one['nodes']['providers'][0]['authority_inferred']===false,'provider identity inferred authority');
+check($one['nodes']['components'][0]['code_executed']===false,'component discovery executed code');
 check(count($one['nodes']['operations'])===1,'operation registry rows were not captured');
 check($one['nodes']['operations'][0]['preconditions']['descriptor_binding_ready']===true,'operation descriptor precondition missing');
 check(count($one['nodes']['hooks'])===1 && $one['nodes']['hooks'][0]['callback_count']===2,'bounded hook inventory missing');
 check($one['nodes']['hooks'][0]['callbacks_invoked']===false && $one['nodes']['hooks'][0]['callback_identities_exposed']===false,'hook discovery exposed or invoked callbacks');
 check(count($one['nodes']['mcp_descriptors'])===1,'MCP descriptor projection missing');
-check(count($one['edges'])>=2,'runtime graph edges missing');
+check(count($one['edges'])>=4,'runtime graph provider/component/operation edges missing');
+check(in_array('contains_component',array_column($one['edges'],'relation'),true),'provider component edge missing');
+check(in_array('bound_to_provider',array_column($one['edges'],'relation'),true),'ability provider edge missing');
 check(in_array('precondition',$one['semantic_dimensions'],true) && in_array('reversal',$one['semantic_dimensions'],true),'semantic graph dimensions incomplete');
 
 $meta=json_encode($one['nodes']['meta_keys']);
