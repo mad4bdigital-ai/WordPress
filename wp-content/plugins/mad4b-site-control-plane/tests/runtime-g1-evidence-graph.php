@@ -3,6 +3,11 @@ define('ABSPATH', __DIR__ . '/');
 define('MAD4B_SCP_DIR', dirname(__DIR__) . '/');
 
 $GLOBALS['g1_options']=array();
+$GLOBALS['g1_conformance_receipt']=array();
+$GLOBALS['g1_provider_version']='1.0.0';
+$GLOBALS['g1_audit_ready']=true;
+$GLOBALS['g1_audit_records']=array();
+
 function add_action(){ return true; }
 function sanitize_key($v){ return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$v)); }
 function sanitize_textarea_field($v){ return trim((string)$v); }
@@ -11,7 +16,7 @@ function wp_json_encode($v,$flags=0){ return json_encode($v,$flags); }
 function current_user_can(){ return true; }
 function get_current_user_id(){ return 7; }
 function current_time($type='mysql',$gmt=false){ return '2026-10-06 16:00:00'; }
-function wp_generate_uuid4(){ return '12345678-1234-4234-8234-123456789abc'; }
+function wp_generate_uuid4(){ static $i=0; $i++; return sprintf('12345678-1234-4234-8234-%012d',$i); }
 function add_option($name,$value,$deprecated='',$autoload=false){
  if(array_key_exists($name,$GLOBALS['g1_options'])) return false;
  $GLOBALS['g1_options'][$name]=$value; return true;
@@ -26,17 +31,19 @@ function get_option($name,$default=array()){
  return array_key_exists($name,$GLOBALS['g1_options'])?$GLOBALS['g1_options'][$name]:$default;
 }
 function apply_filters($name,$value){
- $args=func_get_args();
- if('mad4b_scp_runtime_policy_conformance'===$name) {
-   return array('result'=>'zero_effect_read_verified','evidence_sha256'=>str_repeat('e',64));
- }
+ if('mad4b_scp_runtime_policy_conformance'===$name) return $GLOBALS['g1_conformance_receipt'];
  return $value;
 }
 function get_plugins(){ return array('unknown/unknown.php'=>array('Name'=>'Unknown Plugin','Version'=>'1.2.3','PluginURI'=>'https://example.invalid','Author'=>'Vendor','License'=>'GPLv2')); }
 function did_action($name){ return 'rest_api_init'===$name?0:1; }
 function rest_get_server(){ throw new RuntimeException('REST lazy loader must not be invoked when rest_api_init was not observed.'); }
 function get_registered_meta_keys($type){ return 'post'===$type?array('public_key'=>array('type'=>'string','single'=>true),'api_secret'=>array('type'=>'string','single'=>true)):array(); }
-function _get_cron_array(){ return array(123=>array('safe_hook'=>array('x'=>array('schedule'=>'hourly','args'=>array('token'=>'SHOULD_NOT_LEAK'))))); }
+function _get_cron_array(){
+ return array(123=>array(
+   'safe_hook'=>array('x'=>array('schedule'=>'hourly','args'=>array('token'=>'SHOULD_NOT_LEAK'))),
+   'api_secret_cron'=>array('y'=>array('schedule'=>'daily','args'=>array('secret'=>'ALSO_NEVER_LEAK'))),
+ ));
+}
 
 class WP_Error {
  private $code;
@@ -51,12 +58,13 @@ class FakeAbility {
      'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true),
      'mcp'=>array(
        'surface'=>'read','public'=>false,'mad4b_reversible_contract'=>'none_required',
-       'required_capability'=>'read','resource_schema_version'=>'v1',
-       'resource_constraints'=>array('post_type'=>'post'),
+       'required_capability'=>'read','data_classification'=>'public',
+       'resource_schema_version'=>'v1','resource_constraints'=>array('post_type'=>'post'),
      ),
    );
  }
  public function get_input_schema(){ return array('type'=>'object','properties'=>array('id'=>array('type'=>'integer')),'additionalProperties'=>false); }
+ public function get_output_schema(){ return array('type'=>'object','properties'=>array('title'=>array('type'=>'string')),'additionalProperties'=>false); }
 }
 function wp_has_ability($name){ return 'mad4b/example-read'===$name; }
 function wp_get_abilities(){ return array('mad4b/example-read'=>new FakeAbility()); }
@@ -70,21 +78,20 @@ class MAD4B_SCP_Capability_Descriptor_Registry {
  public static function describe($name){
    if(!wp_has_ability($name)) return new WP_Error('missing');
    return array(
-     'category'=>'mad4b-read',
-     'input_schema_sha256'=>str_repeat('a',64),
-     'classification_sha256'=>str_repeat('b',64),
-     'descriptor_sha256'=>str_repeat('c',64),
-     'readonly'=>true,'readonly_declared'=>true,
-     'execution_lane'=>'read','execution_provider'=>'demo',
-     'execution_eligible'=>true,'execution_boundary_verified'=>true,'breakglass'=>false,
-     'descriptor_contract'=>'mad4b.capability-descriptor.v2',
-     'generation_contract'=>'mad4b.capability-generation-roots.v1',
+     'category'=>'mad4b-read','input_schema_sha256'=>str_repeat('a',64),'classification_sha256'=>str_repeat('b',64),
+     'descriptor_sha256'=>str_repeat('c',64),'readonly'=>true,'readonly_declared'=>true,
+     'execution_lane'=>'read','execution_provider'=>'demo','execution_eligible'=>true,'execution_boundary_verified'=>true,'breakglass'=>false,
+     'descriptor_contract'=>'mad4b.capability-descriptor.v2','generation_contract'=>'mad4b.capability-generation-roots.v1',
    );
  }
 }
 class MAD4B_SCP_Structural_Redaction {
- public static function sensitive_key($key){ return false!==strpos(strtolower((string)$key),'secret') || false!==strpos(strtolower((string)$key),'token'); }
- public static function classify($value,$context='metadata'){ return array('classification'=>'public_bounded','stats'=>array('redacted'=>0)); }
+ public static function sensitive_key($key){ $k=strtolower((string)$key); return false!==strpos($k,'secret') || false!==strpos($k,'token') || false!==strpos($k,'password'); }
+ public static function classify($value,$context='metadata'){
+   $encoded=strtolower(json_encode($value));
+   $redacted=(false!==strpos($encoded,'secret')||false!==strpos($encoded,'token')||false!==strpos($encoded,'password'))?1:0;
+   return array('classification'=>$redacted?'sensitive_redacted':'public_bounded','stats'=>array('redacted'=>$redacted));
+ }
  public static function redact($value,$context='metadata'){ return $value; }
 }
 class MAD4B_SCP_Servers {
@@ -94,43 +101,51 @@ class MAD4B_SCP_Servers {
 class MAD4B_SCP_Adapter_Registry { public static function instance(){ return new self(); } public function ability_names($surface){ return array(); } }
 class MAD4B_SCP_Provider_Contracts {
  public static function all(){
+   $v=$GLOBALS['g1_provider_version'];
    return array('demo'=>array(
-     'label'=>'Demo Provider',
-     'version'=>'1.0.0',
-     'contract_mode'=>'exact_fixture',
+     'label'=>'Demo Provider','version'=>$v,'contract_mode'=>'exact_fixture',
      'components'=>array('primary'=>array(
-       'label'=>'Demo Component','plugin_file'=>'demo/demo.php','version'=>'1.0.0',
+       'label'=>'Demo Component','plugin_file'=>'demo/demo.php','version'=>$v,
        'archive_sha256'=>'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
      )),
    ));
  }
  public static function runtime_status($provider,$available=null){
+   $v=$GLOBALS['g1_provider_version'];
    return array(
-     'provider'=>$provider,'label'=>'Demo Provider','status'=>'certified',
-     'runtime_contract_ok'=>true,'certified_version'=>'1.0.0','installed_version'=>'1.0.0',
-     'contract_mode'=>'exact_fixture','certification_authority'=>'fixture',
+     'provider'=>$provider,'label'=>'Demo Provider','status'=>'certified','runtime_contract_ok'=>true,
+     'certified_version'=>$v,'installed_version'=>$v,'contract_mode'=>'exact_fixture','certification_authority'=>'fixture',
    );
  }
 }
 class MAD4B_SCP_Operation_Registry {
  public static function status(){
    return array('operations'=>array(array(
-     'id'=>'content.inspect',
-     'planner'=>'mad4b/example-read',
-     'executor'=>'exact_executor_from_plan',
-     'pipeline_profile'=>'readonly_inspect',
-     'required_runtime'=>true,
-     'planner_registered'=>true,
-     'executor_registered'=>true,
-     'descriptor_binding_ready'=>true,
+     'id'=>'content.inspect','planner'=>'mad4b/example-read','executor'=>'exact_executor_from_plan',
+     'pipeline_profile'=>'readonly_inspect','required_runtime'=>true,'planner_registered'=>true,
+     'executor_registered'=>true,'descriptor_binding_ready'=>true,
    )));
  }
  public static function operation($id){
+   return array('planner_descriptor_sha256'=>str_repeat('d',64),'executor_descriptor_sha256'=>str_repeat('f',64),'descriptor_binding_ready'=>true);
+ }
+}
+class MAD4B_SCP_Dependency_Impact_Graph {
+ public static function inspect($input=null){
    return array(
-     'planner_descriptor_sha256'=>str_repeat('d',64),
-     'executor_descriptor_sha256'=>str_repeat('f',64),
-     'descriptor_binding_ready'=>true,
+     'contract'=>'mad4b.dependency-impact-graph.v1',
+     'provider_id'=>isset($input['provider_id'])?(string)$input['provider_id']:'',
+     'plugin'=>isset($input['plugin'])?(string)$input['plugin']:'',
+     'impact_reasons'=>array('fixture_dependency_revalidation'),
+     'mutation_performed'=>false,'authority_created'=>false,
    );
+ }
+}
+class MAD4B_SCP_Audit {
+ public static function storage_status(){ return array('ready'=>!empty($GLOBALS['g1_audit_ready'])); }
+ public static function record($action,$context,$status){
+   if(empty($GLOBALS['g1_audit_ready'])) return new WP_Error('audit_not_ready');
+   $GLOBALS['g1_audit_records'][]=array($action,$context,$status); return array('recorded'=>true);
  }
 }
 class MAD4B_SCP_Admin_Route_Registry { public static function routes(){ return array('mad4b-control-plane'=>array('required_capability'=>'manage_options')); } }
@@ -151,128 +166,151 @@ function check($ok,$message){ if(!$ok){ fwrite(STDERR,$message."\n"); exit(1); }
 
 $competitive=MAD4B_SCP_Competitive_Evidence::summary();
 check(!is_wp_error($competitive),'competitive evidence summary failed packaged integrity verification');
-check($competitive['integrity_verified']===true,'competitive evidence integrity was not verified');
-check($competitive['package_count']===4 && $competitive['capability_count']===59,'competitive evidence inventory count drifted');
+check($competitive['integrity_verified']===true && $competitive['direct_web_resource']===false,'competitive evidence resource boundary invalid');
+check($competitive['package_count']===count($competitive['packages']) && $competitive['capability_count']===count($competitive['capabilities']),'competitive evidence inventory count drifted');
 check($competitive['authorizing']===false && $competitive['authority_created']===false,'competitive evidence became authorizing');
 check($competitive['static_evidence_creates_runtime_certification']===false,'static evidence created runtime certification');
-check(!empty($competitive['capabilities'][0]['evidence_sources']),'competitive evidence provenance links missing');
-check(!empty($competitive['capabilities'][0]['mad4b_foundation_paths']),'MAD4B foundation links missing');
-check(array_key_exists('runtime_parity_claimed',$competitive['capabilities'][0]),'runtime parity boundary missing');
 foreach($competitive['capabilities'] as $capability){
  foreach($capability['evidence_sources'] as $source) check($source['runtime_verified']===false,'static source claimed runtime verification');
 }
 
-$one=MAD4B_SCP_Runtime_Evidence_Graph::snapshot();
+$one=MAD4B_SCP_Runtime_Evidence_Graph::snapshot(array('refresh'=>true));
 $two=MAD4B_SCP_Runtime_Evidence_Graph::snapshot();
 check(is_array($one),'graph snapshot unavailable');
+check($one['contract']==='mad4b.runtime-evidence-graph.v2','runtime graph v2 contract missing');
 check($one['generation_sha256']===$two['generation_sha256'],'graph generation is not deterministic');
+check($two['metrics']['cache_hit']===true,'request-level graph cache was not used');
 check($one['authorizing']===false && $one['mutation_performed']===false,'graph became authorizing');
-check($one['discovery']['callbacks_executed']===false,'graph executed callbacks');
-check($one['discovery']['unknown_plugin_code_executed']===false,'graph executed unknown plugin code');
+check($one['discovery']['callbacks_executed']===false && $one['discovery']['unknown_plugin_code_executed']===false,'graph executed discovered code');
+check($one['observation_phase']['rest_api_initialized']===false,'REST lifecycle observation is wrong');
+check($one['collection_status']['rest_routes']['trustworthy_for_absence']===false,'uninitialized REST routes were treated as trustworthy absence');
 check(count($one['nodes']['rest_routes'])===0,'REST lazy route discovery should remain unobserved before rest_api_init');
 check($one['nodes']['plugins'][0]['candidate_package']['state']==='descriptive_only','unknown plugin candidate is not descriptive only');
-check(count($one['nodes']['providers'])===1,'provider graph node missing');
-check(count($one['nodes']['components'])===1,'component graph node missing');
-check($one['nodes']['providers'][0]['authority_inferred']===false,'provider identity inferred authority');
-check($one['nodes']['components'][0]['code_executed']===false,'component discovery executed code');
-check(count($one['nodes']['schemas'])===1,'ability schema graph node missing');
+check(count($one['nodes']['providers'])===1 && count($one['nodes']['components'])===1,'provider/component graph nodes missing');
+check(count($one['nodes']['schemas'])===2,'input/output schema graph nodes missing');
 check($one['nodes']['abilities'][0]['required_capability']==='read','declared capability evidence missing');
-check($one['nodes']['abilities'][0]['resource_schema_version']==='v1','resource schema version evidence missing');
+check($one['nodes']['abilities'][0]['data_classification']==='public','data classification evidence missing');
+check(strlen($one['nodes']['abilities'][0]['output_schema_sha256'])===64,'output schema digest missing');
+check($one['nodes']['abilities'][0]['output_schema_secret_bearing']===false,'public output schema was marked secret-bearing');
 check(strlen($one['nodes']['abilities'][0]['resource_constraints_sha256'])===64,'resource constraints digest missing');
-check($one['nodes']['abilities'][0]['resource_values_exposed']===false && $one['nodes']['abilities'][0]['privilege_inferred_from_resources']===false,'resource evidence exposed values or inferred privilege');
-check($one['nodes']['schemas'][0]['values_read']===false && $one['nodes']['schemas'][0]['privilege_inferred']===false,'schema node read values or inferred privilege');
-check(count($one['nodes']['operations'])===1,'operation registry rows were not captured');
-check($one['nodes']['operations'][0]['preconditions']['descriptor_binding_ready']===true,'operation descriptor precondition missing');
+check(count($one['nodes']['operations'])===1 && $one['nodes']['operations'][0]['preconditions']['descriptor_binding_ready']===true,'operation registry projection missing');
 check(count($one['nodes']['hooks'])===1 && $one['nodes']['hooks'][0]['callback_count']===2,'bounded hook inventory missing');
-check($one['nodes']['hooks'][0]['callbacks_invoked']===false && $one['nodes']['hooks'][0]['callback_identities_exposed']===false,'hook discovery exposed or invoked callbacks');
 check(count($one['nodes']['mcp_descriptors'])===1,'MCP descriptor projection missing');
-check(count($one['edges'])>=4,'runtime graph provider/component/operation edges missing');
 check(in_array('contains_component',array_column($one['edges'],'relation'),true),'provider component edge missing');
 check(in_array('bound_to_provider',array_column($one['edges'],'relation'),true),'ability provider edge missing');
 check(in_array('declares_schema',array_column($one['edges'],'relation'),true),'ability schema edge missing');
-check(in_array('precondition',$one['semantic_dimensions'],true) && in_array('reversal',$one['semantic_dimensions'],true),'semantic graph dimensions incomplete');
+check(isset($one['metrics']['elapsed_ms'],$one['metrics']['memory_delta_bytes'],$one['metrics']['within_soft_budget']),'graph performance metrics missing');
 
-$meta=json_encode($one['nodes']['meta_keys']);
-check(false===strpos($meta,'api_secret'),'sensitive meta key leaked');
-check(false===strpos(json_encode($one),'SHOULD_NOT_LEAK'),'cron args leaked');
-check(false===strpos(json_encode($one),'SHOULD_NOT_EXPOSE'),'hook callback identity leaked');
+$encoded=json_encode($one);
+check(false===strpos($encoded,'api_secret'),'sensitive meta key leaked');
+check(false===strpos($encoded,'SHOULD_NOT_LEAK') && false===strpos($encoded,'ALSO_NEVER_LEAK'),'cron args leaked');
+check(false===strpos($encoded,'api_secret_cron'),'sensitive cron hook name leaked');
+check(false===strpos($encoded,'SHOULD_NOT_EXPOSE'),'hook callback identity leaked');
 check($one['nodes']['database_tables'][0]['schema_read']===false,'database schema was read');
 
+$fabricated=$one; $fabricated['generation_sha256']=str_repeat('0',64);
+$bad_generation=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$fabricated));
+check(is_wp_error($bad_generation) && 'mad4b_runtime_graph_generation_mismatch'===$bad_generation->get_error_code(),'fabricated graph generation was accepted');
+
+$cross_site=$one; $cross_site['site_binding']['origin']='https://other.example';
+$cross_site_result=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$cross_site));
+check(is_wp_error($cross_site_result) && 'mad4b_runtime_graph_cross_site_rejected'===$cross_site_result->get_error_code(),'cross-site graph comparison was accepted');
+
+$oversized=$one; $oversized['junk']=str_repeat('x',2100000);
+$oversized_result=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$oversized));
+check(is_wp_error($oversized_result) && 'mad4b_runtime_graph_before_oversized'===$oversized_result->get_error_code(),'oversized graph comparison input was accepted');
+
 $before=$one;
-$GLOBALS['wp_post_types']['book']=(object)array('public'=>true,'show_ui'=>true);
-$delta=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$before));
-check(!is_wp_error($delta),'graph diff failed');
-check(count($delta['added'])>=1,'graph diff failed to detect an added runtime node');
-check($delta['isolation_policy']==='removed_or_changed_only_fail_closed','graph diff isolation policy changed');
+$GLOBALS['g1_provider_version']='2.0.0';
+$provider_delta=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$before));
+check(!is_wp_error($provider_delta),'provider drift diff failed');
+check(in_array('mad4b/example-read',$provider_delta['affected_abilities'],true),'provider drift did not propagate to dependent ability');
+check(in_array('content.inspect',$provider_delta['affected_operations'],true),'provider drift did not propagate to dependent operation');
+check(in_array('pipeline:readonly_inspect',$provider_delta['affected_workflows'],true),'provider drift did not propagate to dependent workflow');
+check(!empty($provider_delta['dependency_impacts']),'dependency impact foundation was not reused');
+$GLOBALS['g1_provider_version']='1.0.0';
+MAD4B_SCP_Runtime_Evidence_Graph::clear_request_cache();
+
+$many_hooks=array();
+for($i=0;$i<300;$i++) $many_hooks['fixture_hook_'.$i]=new FakeHook();
+$GLOBALS['wp_filter']=$many_hooks;
+$truncated=MAD4B_SCP_Runtime_Evidence_Graph::snapshot(array('refresh'=>true));
+check($truncated['collection_status']['hooks']['truncated']===true,'bounded hook truncation was not declared');
+check($truncated['collection_status']['hooks']['trustworthy_for_absence']===false,'truncated hook collection claimed trustworthy absence');
+$GLOBALS['wp_filter']=array('init'=>new FakeHook());
+MAD4B_SCP_Runtime_Evidence_Graph::clear_request_cache();
+$one=MAD4B_SCP_Runtime_Evidence_Graph::snapshot(array('refresh'=>true));
+
+$node=$one['nodes']['abilities'][0];
+$provider_sha=$one['nodes']['providers'][0]['contract_sha256'];
+$receipt=array(
+ 'contract'=>MAD4B_SCP_Runtime_Policy_Classifier::CONFORMANCE_CONTRACT,
+ 'ability_name'=>'mad4b/example-read',
+ 'graph_generation_sha256'=>$one['generation_sha256'],
+ 'descriptor_generation_sha256'=>$node['descriptor_generation_sha256'],
+ 'input_schema_sha256'=>$node['input_schema_sha256'],
+ 'output_schema_sha256'=>$node['output_schema_sha256'],
+ 'provider_contract_sha256'=>$provider_sha,
+ 'result'=>'zero_effect_read_verified',
+ 'observed_writes'=>0,
+ 'observed_external_effects'=>0,
+ 'output_classification'=>'public_bounded',
+ 'issuer_contract'=>'mad4b.provider-compatibility-certification.v1',
+ 'evidence_sha256'=>str_repeat('e',64),
+);
+$receipt['receipt_sha256']=MAD4B_SCP_Ability_Contract_Inspector::digest(MAD4B_SCP_Runtime_Policy_Classifier::CONFORMANCE_CONTRACT,$receipt);
+$GLOBALS['g1_conformance_receipt']=$receipt;
 
 $safe=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
- 'namespace'=>'mad4b','action'=>'inspect','schema_sha256'=>str_repeat('a',64),'readonly_annotation'=>true,
- 'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
- 'actual_conformance_verified'=>true,'execution_eligible'=>true,'execution_boundary_verified'=>true,'execution_provider'=>'demo','breakglass'=>false,
+ 'namespace'=>'mad4b','action'=>'inspect','schema_sha256'=>str_repeat('a',64),'output_schema_sha256'=>str_repeat('b',64),
+ 'readonly_annotation'=>true,'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
+ 'output_schema_secret_bearing'=>false,'actual_conformance_verified'=>true,'actual_output_classification'=>'public_bounded',
+ 'execution_eligible'=>true,'execution_boundary_verified'=>true,'execution_provider'=>'demo','breakglass'=>false,'declared_capability'=>'read',
 ));
-check($safe['auto_classification_eligible']===true,'verified zero-effect read was not eligible');
+check($safe['auto_classification_eligible']===true,'verified public zero-effect read was not eligible');
 
-$schema_missing=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
- 'namespace'=>'vendor','action'=>'inspect','schema_sha256'=>'','readonly_annotation'=>true,
- 'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
- 'actual_conformance_verified'=>true,'execution_eligible'=>true,'execution_boundary_verified'=>true,'execution_provider'=>'demo','breakglass'=>false,
-));
-check($schema_missing['auto_classification_eligible']===false,'schema disappearance retained automatic classification');
-check(in_array('schema_digest_missing',$schema_missing['missing_evidence'],true),'schema disappearance missing-evidence marker absent');
+$output_secret=$safe['features']; // public_features payload is suitable evidence input except booleans added below.
+$output_secret['namespace']='vendor'; $output_secret['action']='inspect'; $output_secret['readonly_annotation']=true;
+$output_secret['execution_lane']='read'; $output_secret['effect_class']='declared_read_only'; $output_secret['schema_secret_bearing']=false;
+$output_secret['output_schema_secret_bearing']=true; $output_secret['actual_conformance_verified']=true; $output_secret['actual_output_classification']='public_bounded';
+$output_secret['execution_eligible']=true; $output_secret['execution_boundary_verified']=true; $output_secret['declared_capability']='read';
+$output_secret_result=MAD4B_SCP_Runtime_Policy_Classifier::classify_features($output_secret);
+check($output_secret_result['auto_classification_eligible']===false && in_array('secret_output_schema_blocks_auto_classification',$output_secret_result['contradictory_evidence'],true),'secret output auto-classified');
 
-$boundary_missing=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
- 'namespace'=>'vendor','action'=>'inspect','schema_sha256'=>str_repeat('a',64),'readonly_annotation'=>true,
- 'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
- 'actual_conformance_verified'=>true,'execution_eligible'=>true,'execution_boundary_verified'=>false,'execution_provider'=>'demo','breakglass'=>false,
-));
-check($boundary_missing['auto_classification_eligible']===false,'unverified execution boundary retained automatic classification');
-check(in_array('execution_boundary_unverified',$boundary_missing['missing_evidence'],true),'execution boundary missing-evidence marker absent');
+$privileged=$output_secret; $privileged['output_schema_secret_bearing']=false; $privileged['declared_capability']='manage_options';
+$privileged_result=MAD4B_SCP_Runtime_Policy_Classifier::classify_features($privileged);
+check($privileged_result['auto_classification_eligible']===false && in_array('privileged_capability_blocks_auto_classification',$privileged_result['contradictory_evidence'],true),'privileged read auto-classified');
 
-$get_only=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
- 'namespace'=>'vendor','action'=>'get-admin','schema_sha256'=>str_repeat('b',64),'readonly_annotation'=>true,
- 'execution_lane'=>'write','effect_class'=>'mutation_or_unknown','schema_secret_bearing'=>false,
- 'actual_conformance_verified'=>false,'execution_eligible'=>true,'http_method'=>'GET','requested_risk'=>'low',
-));
-check($get_only['auto_classification_eligible']===false,'unsafe GET gained automatic read classification');
-check(in_array('http_get_cannot_prove_read_safety',$get_only['contradictory_evidence'],true),'unsafe GET contradiction missing');
-check(in_array('risk_downgrade_rejected',$get_only['contradictory_evidence'],true),'risk downgrade was not rejected');
-
-$confidence_only=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
- 'namespace'=>'vendor','action'=>'list-things','schema_sha256'=>str_repeat('c',64),'readonly_annotation'=>true,
- 'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
- 'actual_conformance_verified'=>false,'execution_eligible'=>true,
-));
-check($confidence_only['confidence']>0 && $confidence_only['auto_classification_eligible']===false,'confidence alone promoted authority');
-
-$secret=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
- 'namespace'=>'vendor','action'=>'inspect','schema_sha256'=>str_repeat('d',64),'readonly_annotation'=>true,
- 'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>true,
- 'actual_conformance_verified'=>true,'execution_eligible'=>true,
-));
-check($secret['auto_classification_eligible']===false,'secret-bearing schema auto-classified');
+$fake_receipt=$receipt; $fake_receipt['receipt_sha256']=str_repeat('f',64); $GLOBALS['g1_conformance_receipt']=$fake_receipt;
+$fake_proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
+check($fake_proposals['proposals'][0]['auto_classification_eligible']===false,'forged conformance receipt enabled auto classification');
+check($fake_proposals['proposals'][0]['conformance']['verified']===false,'forged conformance receipt was marked verified');
+$GLOBALS['g1_conformance_receipt']=$receipt;
 
 $proposals=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
 check(!is_wp_error($proposals) && count($proposals['proposals'])===1,'runtime policy proposal missing');
 $proposal=$proposals['proposals'][0];
-check($proposal['auto_classification_eligible']===true,'actual conformance did not admit the zero-effect read candidate');
-check($proposal['features']['declared_capability']==='read','classifier capability feature missing');
-check($proposal['features']['resource_schema_version']==='v1','classifier resource schema feature missing');
-check(strlen($proposal['features']['resource_constraints_sha256'])===64,'classifier resource constraint digest missing');
+check($proposal['auto_classification_eligible']===true && $proposal['conformance']['verified']===true,'trusted conformance did not admit public zero-effect read');
+
 $status=MAD4B_SCP_Runtime_Policy_Classifier::review_status();
-check($status['revision']===0 && $status['review_count']===0,'review ledger did not start empty');
+check($status['revision']===0 && $status['history_count']===0 && $status['integrity_valid']===true,'review ledger did not start clean');
+
+$GLOBALS['g1_audit_ready']=false;
+$audit_block=MAD4B_SCP_Runtime_Policy_Classifier::record_review(array(
+ 'ability_name'=>'mad4b/example-read','graph_generation_sha256'=>$proposals['graph_generation_sha256'],
+ 'proposal_sha256'=>$proposal['proposal_sha256'],'decision'=>'accept_evidence','expected_revision'=>0,
+));
+check(is_wp_error($audit_block) && 'mad4b_runtime_policy_review_audit_not_ready'===$audit_block->get_error_code(),'review write did not fail closed when audit was unavailable');
+$GLOBALS['g1_audit_ready']=true;
 
 $review=MAD4B_SCP_Runtime_Policy_Classifier::record_review(array(
- 'ability_name'=>'mad4b/example-read',
- 'graph_generation_sha256'=>$proposals['graph_generation_sha256'],
- 'proposal_sha256'=>$proposal['proposal_sha256'],
- 'decision'=>'accept_evidence',
- 'requested_scope_change'=>false,
- 'note'=>'Fixture review only.',
- 'expected_revision'=>0,
+ 'ability_name'=>'mad4b/example-read','graph_generation_sha256'=>$proposals['graph_generation_sha256'],
+ 'proposal_sha256'=>$proposal['proposal_sha256'],'decision'=>'accept_evidence','requested_scope_change'=>false,
+ 'note'=>'Fixture review only.','expected_revision'=>0,
 ));
 check(!is_wp_error($review),'owner review could not be recorded');
-check($review['revision']===1 && $review['authorizing']===false,'owner review became authorizing');
-check($review['grants_changed']===false && $review['mounts_changed']===false && $review['scopes_changed']===false && $review['certifications_changed']===false,'owner review widened authority');
+check($review['revision']===1 && $review['history_count']===1 && $review['authorizing']===false,'append-only review history was not recorded');
+check(count($GLOBALS['g1_audit_records'])===1,'mandatory review audit record missing');
 
 $after_review=MAD4B_SCP_Runtime_Policy_Classifier::proposals(array('ability_name'=>'mad4b/example-read'));
 $overlay=$after_review['proposals'][0]['reviewed_overlay'];
@@ -280,21 +318,20 @@ check($overlay['state']==='reviewed_evidence_only' && $overlay['decision']==='ac
 check($overlay['creates_grant']===false && $overlay['creates_mount']===false && $overlay['creates_scope']===false && $overlay['creates_certification']===false,'review overlay created authority');
 
 $stale=MAD4B_SCP_Runtime_Policy_Classifier::record_review(array(
- 'ability_name'=>'mad4b/example-read',
- 'graph_generation_sha256'=>$proposals['graph_generation_sha256'],
- 'proposal_sha256'=>$proposal['proposal_sha256'],
- 'decision'=>'defer',
- 'expected_revision'=>0,
+ 'ability_name'=>'mad4b/example-read','graph_generation_sha256'=>$proposals['graph_generation_sha256'],
+ 'proposal_sha256'=>$proposal['proposal_sha256'],'decision'=>'defer','expected_revision'=>0,
 ));
 check(is_wp_error($stale) && 'mad4b_runtime_policy_review_stale'===$stale->get_error_code(),'stale review revision did not fail closed');
 
-$graph_stale=MAD4B_SCP_Runtime_Policy_Classifier::record_review(array(
- 'ability_name'=>'mad4b/example-read',
- 'graph_generation_sha256'=>str_repeat('0',64),
- 'proposal_sha256'=>$proposal['proposal_sha256'],
- 'decision'=>'defer',
- 'expected_revision'=>1,
+$store=$GLOBALS['g1_options'][MAD4B_SCP_Runtime_Policy_Classifier::REVIEW_OPTION];
+$store['reviews']['mad4b/example-read']['note']='tampered';
+$GLOBALS['g1_options'][MAD4B_SCP_Runtime_Policy_Classifier::REVIEW_OPTION]=$store;
+$tampered_status=MAD4B_SCP_Runtime_Policy_Classifier::review_status();
+check($tampered_status['integrity_valid']===false,'tampered review digest was accepted');
+$tampered_write=MAD4B_SCP_Runtime_Policy_Classifier::record_review(array(
+ 'ability_name'=>'mad4b/example-read','graph_generation_sha256'=>$proposals['graph_generation_sha256'],
+ 'proposal_sha256'=>$proposal['proposal_sha256'],'decision'=>'defer','expected_revision'=>1,
 ));
-check(is_wp_error($graph_stale) && 'mad4b_runtime_policy_review_graph_stale'===$graph_stale->get_error_code(),'stale graph review did not fail closed');
+check(is_wp_error($tampered_write) && 'mad4b_runtime_policy_review_store_tampered'===$tampered_write->get_error_code(),'tampered review store accepted a new write');
 
-echo "mad4b.g1-runtime-evidence-runtime.v2: PASS\n";
+echo "mad4b.g1-runtime-evidence-runtime.v3: PASS\n";
