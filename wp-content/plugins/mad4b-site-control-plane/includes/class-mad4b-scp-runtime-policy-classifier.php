@@ -199,33 +199,6 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			return new WP_Error( 'mad4b_runtime_policy_review_decision_invalid', 'Runtime policy review decision is invalid.' );
 		}
 
-		$proposal_set = self::proposals( array( 'ability_name' => $name ) );
-		if ( is_wp_error( $proposal_set ) ) return $proposal_set;
-
-		$proposal = isset( $proposal_set['proposals'][0] ) && is_array( $proposal_set['proposals'][0] )
-			? $proposal_set['proposals'][0]
-			: array();
-
-		if ( empty( $proposal ) || $name !== ( isset( $proposal['ability_name'] ) ? (string) $proposal['ability_name'] : '' ) ) {
-			return new WP_Error( 'mad4b_runtime_policy_review_proposal_missing', 'Runtime policy proposal is unavailable for this ability.' );
-		}
-
-		if ( ! hash_equals( (string) $proposal_set['graph_generation_sha256'], (string) $input['graph_generation_sha256'] ) ) {
-			return new WP_Error( 'mad4b_runtime_policy_review_graph_stale', 'Runtime evidence graph changed before review could be recorded.' );
-		}
-
-		if ( ! hash_equals( (string) $proposal['proposal_sha256'], (string) $input['proposal_sha256'] ) ) {
-			return new WP_Error( 'mad4b_runtime_policy_review_proposal_stale', 'Runtime policy proposal changed before review could be recorded.' );
-		}
-
-		if (
-			'accept_evidence' === $decision
-			&& ! empty( $proposal['owner_review_required'] )
-			&& 'high' === ( isset( $proposal['risk'] ) ? (string) $proposal['risk'] : '' )
-		) {
-			return new WP_Error( 'mad4b_runtime_policy_review_high_risk_cannot_auto_accept', 'High-risk evidence may be reviewed but cannot be accepted as automatic classification.' );
-		}
-
 		$token = self::acquire_review_lock();
 		if ( is_wp_error( $token ) ) return $token;
 
@@ -234,6 +207,40 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 		if ( $expected !== (int) $before['revision'] ) {
 			self::release_review_lock( $token );
 			return new WP_Error( 'mad4b_runtime_policy_review_stale', 'Runtime policy review ledger changed since it was loaded.' );
+		}
+
+		$proposal_set = self::proposals( array( 'ability_name' => $name ) );
+		if ( is_wp_error( $proposal_set ) ) {
+			self::release_review_lock( $token );
+			return $proposal_set;
+		}
+
+		$proposal = isset( $proposal_set['proposals'][0] ) && is_array( $proposal_set['proposals'][0] )
+			? $proposal_set['proposals'][0]
+			: array();
+
+		if ( empty( $proposal ) || $name !== ( isset( $proposal['ability_name'] ) ? (string) $proposal['ability_name'] : '' ) ) {
+			self::release_review_lock( $token );
+			return new WP_Error( 'mad4b_runtime_policy_review_proposal_missing', 'Runtime policy proposal is unavailable for this ability.' );
+		}
+
+		if ( ! hash_equals( (string) $proposal_set['graph_generation_sha256'], (string) $input['graph_generation_sha256'] ) ) {
+			self::release_review_lock( $token );
+			return new WP_Error( 'mad4b_runtime_policy_review_graph_stale', 'Runtime evidence graph changed before review could be recorded.' );
+		}
+
+		if ( ! hash_equals( (string) $proposal['proposal_sha256'], (string) $input['proposal_sha256'] ) ) {
+			self::release_review_lock( $token );
+			return new WP_Error( 'mad4b_runtime_policy_review_proposal_stale', 'Runtime policy proposal changed before review could be recorded.' );
+		}
+
+		if (
+			'accept_evidence' === $decision
+			&& ! empty( $proposal['owner_review_required'] )
+			&& 'high' === ( isset( $proposal['risk'] ) ? (string) $proposal['risk'] : '' )
+		) {
+			self::release_review_lock( $token );
+			return new WP_Error( 'mad4b_runtime_policy_review_high_risk_cannot_auto_accept', 'High-risk evidence may be reviewed but cannot be accepted as automatic classification.' );
 		}
 
 		$reviews = $before['reviews'];
