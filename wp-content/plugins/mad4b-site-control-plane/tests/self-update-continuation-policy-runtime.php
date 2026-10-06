@@ -315,6 +315,8 @@ $registry_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4
 check( false !== strpos( $registry_source, "mad4b_scp_auto_reconcile_scenarios" ), 'dynamic auto-reconcile registry filter missing' );
 check( false !== strpos( $registry_source, "post_update_zero_delta_only" ), 'central ZERO_DELTA auto-reconcile policy missing' );
 check( false !== strpos( $registry_source, "'authority_expansion_allowed' => false" ), 'registry must prohibit authority expansion' );
+check( false !== strpos( $registry_source, "array_key_exists( 'authority_effect', \$row )" ), 'AUTO extension descriptors must explicitly declare authority effect' );
+check( false !== strpos( $registry_source, "continuation_requires_review" ), 'central continuation review guard must be non-overridable' );
 
 $runtime_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-convergence.php' );
 check( false !== strpos( $runtime_source, "candidate_binding_drift" ), 'runtime convergence must detect candidate binding drift' );

@@ -64,18 +64,24 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 				'id' => 'candidate_binding_drift',
 				'priority' => 900,
 				'decision' => self::DECISION_AUTO_EVALUATE,
+				'authority_effect' => 'none',
+				'mutation_policy' => self::ZERO_DELTA_POLICY,
 				'when' => array( array( 'field' => 'candidate_binding_drift', 'op' => 'truthy' ) ),
 			),
 			array(
 				'id' => 'plugin_version_drift',
 				'priority' => 800,
 				'decision' => self::DECISION_AUTO_EVALUATE,
+				'authority_effect' => 'none',
+				'mutation_policy' => self::ZERO_DELTA_POLICY,
 				'when' => array( array( 'field' => 'plugin_version_drift', 'op' => 'truthy' ) ),
 			),
 			array(
 				'id' => 'schema_version_drift',
 				'priority' => 790,
 				'decision' => self::DECISION_AUTO_EVALUATE,
+				'authority_effect' => 'none',
+				'mutation_policy' => self::ZERO_DELTA_POLICY,
 				'when' => array( array( 'field' => 'schema_version_drift', 'op' => 'truthy' ) ),
 			),
 			array(
@@ -107,6 +113,18 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 		}
 		if ( $signals['breakglass_active'] ) {
 			return self::result( 'breakglass_active', self::DECISION_HARD_BLOCK, $signals, array( 'breakglass_active' ) );
+		}
+		if ( in_array( $signals['continuation_state'], array( 'blocked', 'owner_gate' ), true ) ) {
+			return self::result( 'continuation_requires_review', self::DECISION_REVIEW, $signals, array( 'continuation_requires_review' ) );
+		}
+		if ( $signals['authority_drift'] ) {
+			return self::result( 'authority_drift', self::DECISION_REVIEW, $signals, array( 'authority_drift' ) );
+		}
+		if ( $signals['maintenance_busy'] ) {
+			return self::result( 'maintenance_busy', self::DECISION_DEFER, $signals, array( 'maintenance_busy' ) );
+		}
+		if ( $signals['continuation_active'] ) {
+			return self::result( 'continuation_active', self::DECISION_NO_OP, $signals, array() );
 		}
 		$drift_present = $signals['candidate_binding_drift'] || $signals['plugin_version_drift'] || $signals['schema_version_drift'] || $signals['authority_drift'];
 		if ( $drift_present && ! $signals['identity_complete'] ) {
@@ -200,8 +218,9 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			$when = isset( $row['when'] ) && is_array( $row['when'] ) ? array_slice( $row['when'], 0, 16 ) : array();
 			// Extension rows may schedule evaluation, never authority expansion.
 			if ( self::DECISION_AUTO_EVALUATE === $decision ) {
-				$authority_effect = isset( $row['authority_effect'] ) ? sanitize_key( (string) $row['authority_effect'] ) : 'none';
-				$mutation_policy = isset( $row['mutation_policy'] ) ? sanitize_key( (string) $row['mutation_policy'] ) : self::ZERO_DELTA_POLICY;
+				if ( ! array_key_exists( 'authority_effect', $row ) || ! array_key_exists( 'mutation_policy', $row ) ) continue;
+				$authority_effect = sanitize_key( (string) $row['authority_effect'] );
+				$mutation_policy = sanitize_key( (string) $row['mutation_policy'] );
 				if ( 'none' !== $authority_effect || self::ZERO_DELTA_POLICY !== $mutation_policy ) continue;
 			}
 			$out[] = array(
