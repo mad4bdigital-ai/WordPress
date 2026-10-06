@@ -102,7 +102,7 @@ final class MAD4B_SCP_Competitive_Evidence {
 		}
 
 		foreach ( $capabilities as $row ) {
-			if ( ! is_array( $row ) || empty( $row['id'] ) || empty( $row['task_ids'] ) || empty( $row['evidence_sources'] ) ) {
+			if ( ! is_array( $row ) || empty( $row['id'] ) || empty( $row['task_ids'] ) || empty( $row['evidence_ids'] ) || empty( $row['evidence_sources'] ) ) {
 				return new WP_Error( 'mad4b_competitive_evidence_capability_invalid', 'Competitive evidence capability row is incomplete.' );
 			}
 			$sources = is_array( $row['evidence_sources'] ) ? $row['evidence_sources'] : array();
@@ -178,6 +178,10 @@ final class MAD4B_SCP_Competitive_Evidence {
 				? implode( ', ', array_map( 'strval', $row['evidence_classes'] ) )
 				: '';
 
+			$evidence_ids = isset( $row['evidence_ids'] ) && is_array( $row['evidence_ids'] )
+				? implode( ', ', array_map( 'strval', array_slice( $row['evidence_ids'], 0, 32 ) ) )
+				: '';
+
 			$source_labels = array();
 			foreach ( isset( $row['evidence_sources'] ) && is_array( $row['evidence_sources'] ) ? array_slice( $row['evidence_sources'], 0, 32 ) : array() as $source ) {
 				if ( ! is_array( $source ) ) continue;
@@ -205,7 +209,7 @@ final class MAD4B_SCP_Competitive_Evidence {
 			echo '<tr>';
 			echo '<th scope="row"><bdi>' . esc_html( (string) ( isset( $row['id'] ) ? $row['id'] : '' ) ) . '</bdi> — ' . esc_html( (string) ( isset( $row['title'] ) ? $row['title'] : '' ) ) . '</th>';
 			echo '<td>' . esc_html( (string) ( isset( $row['status'] ) ? $row['status'] : 'OPEN' ) ) . '<br><small>' . esc_html( (string) ( isset( $row['baseline_assessment'] ) ? $row['baseline_assessment'] : '' ) ) . '</small></td>';
-			echo '<td><strong>' . esc_html( $classes ) . '</strong><br><code><bdi>' . esc_html( implode( ' | ', $source_labels ) ) . '</bdi></code></td>';
+			echo '<td><strong>' . esc_html( $classes ) . '</strong><br><code><bdi>' . esc_html( $evidence_ids ) . '</bdi></code><br><small><bdi>' . esc_html( implode( ' | ', $source_labels ) ) . '</bdi></small></td>';
 			echo '<td><code><bdi>' . esc_html( $foundation ) . '</bdi></code></td>';
 			echo '<td>' . esc_html( $runtime_parity ) . '</td>';
 			echo '<td><code><bdi>' . esc_html( $tasks ) . '</bdi></code><br><small>' . esc_html( $acceptance ) . '</small></td>';
