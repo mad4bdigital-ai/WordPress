@@ -803,6 +803,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			$state = 'pending_safe_phases';
 		}
+		// Review-required reconciliation is deliberately terminal until an operator
+		// explicitly changes the governing evidence. Do not recreate/schedule it on
+		// every permitted request and do not let descriptor extensions auto-revive it.
+		if ( 'reconciliation_review_required' === $state ) return;
 		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) {
 			$detected = self::detect_lightweight_runtime_drift();
 			if ( ! empty( $detected['detected'] ) && ! empty( $detected['identity_complete'] ) ) {
