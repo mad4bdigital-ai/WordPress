@@ -742,6 +742,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$continuation = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
 		$reasons = isset( $detected['reasons'] ) && is_array( $detected['reasons'] ) ? $detected['reasons'] : array();
+		$maintenance = class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) && method_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease', 'status' )
+			? MAD4B_SCP_Runtime_Maintenance_Lease::status()
+			: array();
+		$maintenance_owner = is_array( $maintenance ) && isset( $maintenance['owner'] ) ? sanitize_key( (string) $maintenance['owner'] ) : '';
 		return array(
 			'environment' => sanitize_key( (string) $environment ),
 			'breakglass_active' => ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) )
@@ -754,7 +758,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'schema_version_drift' => in_array( 'schema_version_drift', $reasons, true ),
 			'authority_drift' => in_array( 'authority_drift', $reasons, true ) || in_array( 'candidate_binding_state_invalid', $reasons, true ),
 			'skills_pending' => false,
-			'maintenance_busy' => false,
+			'maintenance_busy' => is_array( $maintenance ) && ! empty( $maintenance['active'] ) && ! in_array( $maintenance_owner, array( '', 'runtime_convergence' ), true ),
 			'lifecycle_hint_present' => ! empty( $detected['lifecycle_hint_present'] ),
 		);
 	}

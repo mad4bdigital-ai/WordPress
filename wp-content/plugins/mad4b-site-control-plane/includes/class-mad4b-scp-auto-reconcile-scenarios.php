@@ -55,6 +55,12 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 				),
 			),
 			array(
+				'id' => 'authority_drift',
+				'priority' => 930,
+				'decision' => self::DECISION_REVIEW,
+				'when' => array( array( 'field' => 'authority_drift', 'op' => 'truthy' ) ),
+			),
+			array(
 				'id' => 'candidate_binding_drift',
 				'priority' => 900,
 				'decision' => self::DECISION_AUTO_EVALUATE,

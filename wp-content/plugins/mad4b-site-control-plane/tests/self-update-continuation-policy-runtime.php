@@ -280,6 +280,14 @@ $authority_drift = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
 check( MAD4B_SCP_Auto_Reconcile_Scenarios::DECISION_REVIEW === $authority_drift['decision'], 'authority-affecting drift must require review' );
 check( empty( $authority_drift['automatic_worker_allowed'] ), 'authority-affecting drift must not auto-run reconciliation' );
 
+$authority_only = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
+	'environment' => 'staging',
+	'identity_complete' => true,
+	'authority_drift' => true,
+) );
+check( MAD4B_SCP_Auto_Reconcile_Scenarios::DECISION_REVIEW === $authority_only['decision'], 'authority-only drift must fail closed to review' );
+check( empty( $authority_only['automatic_worker_allowed'] ), 'authority-only drift must never auto-run reconciliation' );
+
 $production_auto = MAD4B_SCP_Auto_Reconcile_Scenarios::classify( array(
 	'environment' => 'production',
 	'identity_complete' => true,
