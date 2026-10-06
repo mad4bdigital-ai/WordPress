@@ -4,19 +4,45 @@ Owned tasks: **T3901–T3905, T4001–T4010**. Owned capabilities: **CE001, CE00
 
 ## Repository implementation
 
-- Reproducible competitor evidence snapshot and semantic diff preserve the four inert ZIP identities, evidence classes, task ownership and capability-local status without promoting marketing/static evidence to runtime proof.
-- The packaged Competitive Evidence projection exposes capability/task/evidence links to the operator workspace and is bound to a generated SHA-256 snapshot.
-- Runtime Candidate Graph v2 observes bounded registered facts: abilities, governed operations, plugins, hooks, REST routes already initialized by WordPress, MCP descriptors, CPTs, taxonomies, registered meta, cron hook counts, admin routes, loaded MAD4B symbols and descriptive database table identities.
-- The graph includes generation-bound semantic dimensions for provider/component/capability/operation/schema/precondition/effect/reversal/evidence plus explicit edges. Discovery never invokes callbacks, unknown plugin code, REST endpoints or cron events and never reads option/meta values, table schemas or rows.
-- Semantic graph diff isolates removed/changed abilities, affected operations and affected pipeline workflows while retaining an explicit count of unrelated compatible reads.
-- Semantic Policy Proposals separate observed runtime facts from reviewed policy overlay. Confidence, names, GET methods, schemas and annotations are evidence only.
-- Automatic classification eligibility is limited to an actually conformance-verified, non-secret, zero-effect read candidate on the existing read execution lane.
-- Owner review is revision-fenced and bound to the exact graph generation and exact proposal digest. It records evidence decisions only and cannot create grants, mounts, scopes, provider certification, Production authority or Breakglass authority.
+- Reproducible competitor evidence snapshots preserve immutable archive identities, evidence classes, source ranges, task ownership, capability-local status and acceptance requirements without promoting static or marketed evidence to runtime proof.
+- Competitive evidence history is revisioned and tamper-evident through a generation chain plus `previous_entry_sha256` / `entry_sha256` hash chaining.
+- The packaged Competitive Evidence projection is generated as an ABSPATH-guarded PHP resource, not a directly readable JSON asset, and its canonical `summary_sha256` is verified before operator display.
+- Operator comparison supports bounded search, status filtering, evidence-class filtering and expandable per-capability details for evidence IDs, task ownership, MAD4B foundation and acceptance boundaries.
+- Runtime Candidate Graph v2 is provenance-bound to site/environment and verifies the canonical generation digest before accepting a prior snapshot for diff.
+- Runtime graph discovery remains bounded and non-executing: registered abilities, provider/component contracts, operation registry, plugin headers, initialized REST routes, CPTs, taxonomies, registered meta, hooks, cron hook counts, admin routes, MCP descriptors, loaded MAD4B symbols and descriptive database table identities.
+- Every collector has a declarative internal registry entry plus exact `observed_count`, `emitted_count`, truncation and lifecycle evidence. Truncated or not-yet-initialized kinds are not trusted for absence.
+- Graph diff rejects fabricated, oversized and cross-site snapshots; uncertain add/remove states are separated from trustworthy absence.
+- Provider/component/schema/ability/operation edges support reverse transitive impact. Provider/plugin drift reuses `MAD4B_SCP_Dependency_Impact_Graph` for certification/dependency revalidation evidence.
+- Runtime graph snapshots expose bounded elapsed/memory metrics and request-level memoization without changing authority.
+- Semantic Policy Proposals separate observed runtime facts from reviewed policy overlay. Confidence, names, HTTP methods, schemas and annotations remain evidence only.
+- Automatic classification eligibility is restricted to a conformance-bound, zero-effect, public-bounded read with both input/output schema digests, no secret-bearing schema, verified execution boundary, non-privileged declared capability and non-sensitive data classification.
+- Conformance receipts are bound to ability, exact graph generation, descriptor generation, input/output schema digests and provider contract digest; untrusted issuers, forged receipt digests or observed effects fail closed.
+- Owner review is revision-fenced, graph/proposal-bound, audit-required and append-only. Stored review records are digest-verified; tampered review stores, stale revisions, lock loss or missing audit readiness fail closed.
+- Owner review remains evidence-only and cannot create grants, mounts, scopes, provider certification, Production authority or Breakglass authority.
 
 ## Fail-closed coverage
 
-The exact-head tests deny unsafe GET inference, confidence-only promotion, lying read annotations, secret-bearing schemas, risk downgrades, lazy REST discovery, unknown callback execution, stale graph/proposal review, stale review revisions and delivery/source hash drift.
+The exact-head tests deny:
 
-## Status
+- altered/unsafe competitor archives, stale source hashes and documentation-only parity claims;
+- fabricated graph generations, cross-site snapshots, oversized snapshots and silent absence claims after truncation;
+- REST lazy discovery before lifecycle initialization, callback/endpoint execution, secret meta/cron disclosure and raw database introspection;
+- provider drift without downstream ability/operation/workflow impact propagation;
+- confidence-only promotion, unsafe GET/name inference, schema disappearance, secret input/output schemas, privileged reads, sensitive data classification and risk downgrades;
+- forged/untrusted conformance receipts;
+- review writes without audit readiness, stale graph/proposal/revision, lost lock ownership and tampered review history/store;
+- direct execution of the packaged competitive evidence resource disclosing evidence.
 
-All 15 G1 tasks remain **PARTIAL**, not DONE. Repository implementation and exact-head CI are necessary but insufficient for runtime parity. Real Staging/provider/browser acceptance remains required where applicable. Production remains unauthorized.
+## Status and external acceptance
+
+All 15 G1 tasks remain **PARTIAL**, not DONE. Repository implementation and exact-head CI are necessary gates, but live acceptance remains separate where the task contract requires real provider/browser/runtime evidence.
+
+Invariant gates before integration:
+
+1. The final exact HEAD must pass the complete G1 child CI after delivery-manifest and change-slice binding.
+2. Representative Staging runtime must prove bounded discovery against installed providers without executing unknown code or leaking secret values.
+3. Any zero-effect read relied upon for automatic classification must carry a trusted conformance receipt for the exact graph/provider/schema generation.
+4. Browser/operator acceptance must prove filtering, evidence boundaries, stale review handling and revision conflict behavior.
+5. Integration Hub cumulative CI and post-merge Staging acceptance remain required.
+
+`runtime_parity_claimed=false`. Production and Breakglass remain unauthorized.
