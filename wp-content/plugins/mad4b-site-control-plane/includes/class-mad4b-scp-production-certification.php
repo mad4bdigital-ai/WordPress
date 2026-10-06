@@ -413,7 +413,11 @@ final class MAD4B_SCP_Production_Certification {
 		$matched = array();
 		foreach ( isset( $registry['authorities'] ) && is_array( $registry['authorities'] ) ? $registry['authorities'] : array() as $row ) {
 			if ( ! is_array( $row ) || empty( $row['issuer'] ) ) continue;
-			if ( '' !== $issuer_fp && hash_equals( hash( 'sha256', rtrim( (string) $row['issuer'], '/' ) ), $issuer_fp ) ) {
+			$row_issuer_fp = isset( $row['issuer_fingerprint'] ) ? strtolower( trim( (string) $row['issuer_fingerprint'] ) ) : '';
+			if ( '' === $row_issuer_fp && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'issuer_fingerprint_for_issuer' ) ) {
+				$row_issuer_fp = MAD4B_SCP_OAuth_Resource_Bridge::issuer_fingerprint_for_issuer( (string) $row['issuer'] );
+			}
+			if ( '' !== $issuer_fp && 1 === preg_match( '/^[a-f0-9]{64}$/', $row_issuer_fp ) && hash_equals( $row_issuer_fp, $issuer_fp ) ) {
 				$matched = $row;
 				break;
 			}
@@ -433,6 +437,8 @@ final class MAD4B_SCP_Production_Certification {
 			'authority_snapshot_sha256' => isset( $registry['authority_snapshot_sha256'] ) ? (string) $registry['authority_snapshot_sha256'] : '',
 			'authority_id' => isset( $matched['authority_id'] ) ? (string) $matched['authority_id'] : '',
 			'authority_type' => isset( $matched['authority_type'] ) ? (string) $matched['authority_type'] : '',
+			'issuer' => isset( $matched['issuer'] ) ? (string) $matched['issuer'] : '',
+			'registry_issuer_fingerprint' => isset( $matched['issuer_fingerprint'] ) ? (string) $matched['issuer_fingerprint'] : '',
 			'transport_server_id' => $server_id,
 			'subject_fingerprint' => $subject_fp,
 			'issuer_fingerprint' => $issuer_fp,
