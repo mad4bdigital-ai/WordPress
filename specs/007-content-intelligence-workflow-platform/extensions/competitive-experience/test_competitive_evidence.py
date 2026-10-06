@@ -69,8 +69,9 @@ assert len(history["entries"]) >= 2, "append-only history was reset"
 assert history["entries"][-1]["revision"] == len(history["entries"])
 assert history["previous_known_good_generation_sha256"] == history["entries"][-2]["generation_sha256"]
 assert history["alerts"] and history["alerts"][-1]["generation_sha256"] == s["generation_sha256"]
-assert history["alerts"][-1]["state"] == "open"
-assert history["acknowledgements"] == []
+assert history["alerts"][-1]["state"] in {"open", "acknowledged"}
+if history["alerts"][-1]["state"] == "acknowledged":
+    assert history["acknowledgements"] and history["acknowledgements"][-1]["alert_id"] == history["alerts"][-1]["alert_id"]
 assert history["current_generation_sha256"] == s["generation_sha256"]
 assert history["entries"][-1]["summary_sha256"] == summary["summary_sha256"]
 assert history["current_entry_sha256"] == history["entries"][-1]["entry_sha256"]
@@ -93,10 +94,12 @@ future_summary = m.operator_summary(future)
 next_history = m.next_history(history, future, future_summary)
 assert next_history["entries"][-1]["state"] == "drifted"
 assert next_history["alerts"][-1]["state"] == "open"
+prior_known = [r["generation_sha256"] for r in next_history["entries"][:-1] if r.get("state") == "known_good"]
+expected_previous_known_good = prior_known[-1] if prior_known else ""
 acknowledged = m.acknowledge_history_alert(next_history, next_history["alerts"][-1]["alert_id"], "owner-test")
 assert acknowledged["alerts"][-1]["state"] == "acknowledged"
 assert acknowledged["acknowledgements"][-1]["authorizing"] is False
-assert acknowledged["previous_known_good_generation_sha256"] == history["previous_known_good_generation_sha256"]
+assert acknowledged["previous_known_good_generation_sha256"] == expected_previous_known_good
 
 m.verify()
 print("mad4b.competitive-evidence-tests.v3: PASS")

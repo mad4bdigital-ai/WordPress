@@ -6,7 +6,7 @@
     "silent_pruning": false
   },
   "current_generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
-  "current_entry_sha256": "98ea448157a6175a00c9057046cda2c1574b6bc89969b214c5c863621edd73ef",
+  "current_entry_sha256": "cc1b5c26741aa43df20d379b4bb9e4b0cec38f47c3ffdfc117aa089049b8f50e",
   "previous_known_good_generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
   "alerts": [
     {
@@ -16,12 +16,21 @@
       "reasons": [
         "task"
       ],
-      "state": "open",
+      "state": "acknowledged",
       "authorizing": false,
-      "alert_sha256": "f382da4af6744e5ec0e74a7b8fadda0355fbbb6b3e53746f71374e730cf310ee"
+      "alert_sha256": "435eb266aaca42483df865c60489b7c9c68f682103dca5c1cb1acaf3d49d3b76"
     }
   ],
-  "acknowledgements": [],
+  "acknowledgements": [
+    {
+      "ack_revision": 1,
+      "alert_id": "drift-385762c5d046ce9b",
+      "generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
+      "actor": "g1-repository-hardening",
+      "authorizing": false,
+      "ack_sha256": "cf636dadc16525128cb46fdde2a443e853ac0653db627fa6d8082defae58f88e"
+    }
+  ],
   "entries": [
     {
       "revision": 1,
@@ -63,7 +72,7 @@
         "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
         "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
       },
-      "state": "drifted",
+      "state": "known_good",
       "drift_flags": {
         "source": false,
         "task": true,
@@ -71,7 +80,7 @@
         "packages": false
       },
       "authorizing": false,
-      "entry_sha256": "98ea448157a6175a00c9057046cda2c1574b6bc89969b214c5c863621edd73ef"
+      "entry_sha256": "cc1b5c26741aa43df20d379b4bb9e4b0cec38f47c3ffdfc117aa089049b8f50e"
     }
   ],
   "authorizing": false

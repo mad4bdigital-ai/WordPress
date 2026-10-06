@@ -37,7 +37,7 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
-      "sha256": "9e86fbed57436df6ebf47c9a9bb10e2890b757c19701550bd49de3efaf16c9d5"
+      "sha256": "c7ff73ff1f80dea4f37302027577092efffefaf033a6b4e20f25fbfa5d097f7e"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
@@ -89,7 +89,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
-      "sha256": "248bf4adc0aedf29d6f52233766f88653b942a33b58779594360816deb424c17"
+      "sha256": "9726d9df90a4f1a9719622bbc45275e25c2a2bcc75d7d7503df3904f97d40f85"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
@@ -113,7 +113,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-      "sha256": "ba2aa2b95fd54fe1e8efe2ff3b770854de0b4b7986d6e7994dcf5afffb837894"
+      "sha256": "da225a32dbad820b084f0fed80fc7ce9816d39cf1c092bd00012b7656e59e06e"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
@@ -138,7 +138,8 @@
     "runtime_evidence_collector_contract_metadata",
     "owner_review_revision_fence_cas",
     "operator_workstream_parity_gap_drilldown",
-    "runtime_history_full_chain_alert_ack_integrity"
+    "runtime_history_full_chain_alert_ack_integrity",
+    "repository_drift_acknowledgement_preserves_previous_known_good"
   ],
   "remaining_acceptance": [
     "Every integration candidate must pass the complete exact-head G1 child CI after delivery-manifest and cumulative change-slice binding.",
