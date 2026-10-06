@@ -181,15 +181,27 @@ try {
 
 	$remote_plan_unknown = $media_adapter->remote_import_plan( array( 'source_url' => 'https://images.example.invalid/tour.jpg' ) );
 	$check( ! is_wp_error( $remote_plan_unknown ) && empty( $remote_plan_unknown['ready'] ) && in_array( 'rights_confirmation_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not fail closed on unknown rights.' );
+	$check( in_array( 'content_inspection_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not require exact byte inspection before new import.' );
+	$remote_plan_missing_rights_evidence = $media_adapter->remote_import_plan( array(
+		'source_url' => 'https://images.example.invalid/tour.jpg',
+		'rights_basis' => 'permission',
+		'expected_content_sha256' => str_repeat( 'a', 64 ),
+	) );
+	$check( ! is_wp_error( $remote_plan_missing_rights_evidence ) && in_array( 'rights_evidence_required', $remote_plan_missing_rights_evidence['blockers'], true ), 'Remote media plan accepted permission without traceable rights evidence.' );
 	$remote_plan_allowed = $media_adapter->remote_import_plan( array(
 		'source_url' => 'https://images.example.invalid/tour.jpg',
 		'source_page_url' => 'https://example.invalid/tour',
 		'rights_basis' => 'permission',
 		'rights_note' => 'CI fixture',
 		'alt' => 'Nile cruise exterior',
+		'expected_content_sha256' => str_repeat( 'a', 64 ),
+		'expected_content_bytes' => 123456,
+		'expected_mime_type' => 'image/jpeg',
+		'expected_width' => 1600,
+		'expected_height' => 900,
 	) );
-	$check( ! is_wp_error( $remote_plan_allowed ) && ! empty( $remote_plan_allowed['ready'] ) && empty( $remote_plan_allowed['mutation_performed'] ), 'Remote media import planning is not safe/read-only.' );
-	foreach ( array( MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY ) as $ability_name ) {
+	$check( ! is_wp_error( $remote_plan_allowed ) && ! empty( $remote_plan_allowed['ready'] ) && ! empty( $remote_plan_allowed['exact_content_locked'] ) && empty( $remote_plan_allowed['mutation_performed'] ), 'Remote media import planning is not exact/read-only.' );
+	foreach ( array( MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_INSPECT_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY ) as $ability_name ) {
 		$check( wp_has_ability( $ability_name ), 'Remote media Ability is not registered: ' . $ability_name );
 	}
 
