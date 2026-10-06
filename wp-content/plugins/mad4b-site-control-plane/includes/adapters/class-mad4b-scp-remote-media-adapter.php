@@ -373,7 +373,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				$source_content_hash = ! empty( $source_state['content_sha256'] ) ? (string) $source_state['content_sha256'] : (string) get_post_meta( (int) $source_state['attachment_id'], self::REMOTE_CONTENT_HASH_META, true );
 				$event = $this->append_remote_provenance( (int) $source_state['attachment_id'], $normalized, $source_content_hash, $plan['plan_sha256'], 'source_url_reuse' );
 				if ( is_wp_error( $event ) ) return $event;
-				return $this->remote_reuse_result( (int) $source_state['attachment_id'], $normalized, $plan, 'source_url', $event, $manifest_sha256, $manifest_index );
+				return $this->remote_reuse_result( (int) $source_state['attachment_id'], $normalized, $plan, 'source_url', $event, $manifest_sha256, $manifest_index, $manifest_item_sha256, $manifest_binding_role );
 			}
 
 			$content_state = '' !== $normalized['expected_content_sha256']
@@ -383,7 +383,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( ! empty( $content_state['exists'] ) ) {
 				$bound = $this->append_remote_provenance( (int) $content_state['attachment_id'], $normalized, $normalized['expected_content_sha256'], $plan['plan_sha256'], 'content_sha256_reuse' );
 				if ( is_wp_error( $bound ) ) return $bound;
-				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index );
+				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound, $manifest_sha256, $manifest_index, $manifest_item_sha256, $manifest_binding_role );
 			}
 
 			$download = $this->download_remote_image( $normalized, 'remote_media_import' );
@@ -816,7 +816,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $event;
 	}
 
-	private function remote_reuse_result( $attachment_id, array $normalized, array $plan, $basis, array $provenance_event = array(), $manifest_sha256 = '', $manifest_index = -1 ) {
+	private function remote_reuse_result( $attachment_id, array $normalized, array $plan, $basis, array $provenance_event = array(), $manifest_sha256 = '', $manifest_index = -1, $manifest_item_sha256 = '', $manifest_binding_role = '' ) {
 		$readback = $this->media_get( array( 'attachment_id' => absint( $attachment_id ) ) );
 		if ( is_wp_error( $readback ) ) return $readback;
 		MAD4B_SCP_Audit::record( self::REMOTE_IMPORT_APPLY_ABILITY, array(
