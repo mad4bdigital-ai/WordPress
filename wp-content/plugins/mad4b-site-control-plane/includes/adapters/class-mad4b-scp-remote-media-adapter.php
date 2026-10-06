@@ -13,6 +13,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	const REMOTE_DISCOVER_ABILITY = 'media/remote-source-discover';
 	const REMOTE_INSPECT_ABILITY = 'media/remote-image-inspect';
 	const REMOTE_IMPORT_PLAN_ABILITY = 'media/remote-import-plan';
+	const REMOTE_MANIFEST_PLAN_ABILITY = 'media/remote-import-manifest-plan';
 	const REMOTE_IMPORT_APPLY_ABILITY = 'media/remote-import-apply';
 	const REMOTE_PROVENANCE_GET_ABILITY = 'media/remote-provenance-get';
 	const REMOTE_IMPORT_CONTRACT = 'mad4b.remote-media-import.v1';
@@ -34,7 +35,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function ability_names() {
 		return array(
-			'read' => array( self::REMOTE_DISCOVER_ABILITY, self::REMOTE_INSPECT_ABILITY, self::REMOTE_IMPORT_PLAN_ABILITY, self::REMOTE_PROVENANCE_GET_ABILITY ),
+			'read' => array( self::REMOTE_DISCOVER_ABILITY, self::REMOTE_INSPECT_ABILITY, self::REMOTE_IMPORT_PLAN_ABILITY, self::REMOTE_MANIFEST_PLAN_ABILITY, self::REMOTE_PROVENANCE_GET_ABILITY ),
 			'content' => array( self::REMOTE_IMPORT_APPLY_ABILITY ),
 			'admin' => array(),
 		);
@@ -61,6 +62,10 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->add_ability(
 			self::REMOTE_IMPORT_PLAN_ABILITY, 'Plan Remote Image Import', 'remote_import_plan',
 			array( 'MAD4B_SCP_Policy', 'can_read' ), $this->remote_import_schema( false )
+		);
+		$this->add_ability(
+			self::REMOTE_MANIFEST_PLAN_ABILITY, 'Plan Ordered Remote Image Import Manifest', 'remote_import_manifest_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ), $this->remote_manifest_schema()
 		);
 		$this->add_ability(
 			self::REMOTE_PROVENANCE_GET_ABILITY, 'Get Remote Media Provenance', 'remote_provenance_get',
@@ -101,6 +106,24 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			$required[] = 'plan_sha256';
 		}
 		return $this->schema( $properties, $required );
+	}
+
+	private function remote_manifest_schema() {
+		$import_schema = $this->remote_import_schema( false );
+		return $this->schema( array(
+			'items' => array(
+				'type' => 'array', 'minItems' => 1, 'maxItems' => self::MAX_REMOTE_CANDIDATES,
+				'items' => array(
+					'type' => 'object',
+					'properties' => array(
+						'binding_role' => array( 'type' => 'string', 'enum' => array( 'featured', 'gallery', 'content' ), 'default' => 'gallery' ),
+						'import' => $import_schema,
+					),
+					'required' => array( 'import' ),
+					'additionalProperties' => false,
+				),
+			),
+		), array( 'items' ) );
 	}
 
 	public function can_import_remote( $input = array() ) {
@@ -244,6 +267,50 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $plan;
 	}
 
+	public function remote_import_manifest_plan( $input ) {
+		$items = isset( $input['items'] ) && is_array( $input['items'] ) ? array_values( $input['items'] ) : array();
+		if ( empty( $items ) || count( $items ) > self::MAX_REMOTE_CANDIDATES ) return new WP_Error( 'mad4b_remote_media_manifest_items_invalid', 'Remote media manifest requires a bounded non-empty ordered item list.' );
+		$out = array(); $blockers = array(); $featured = 0;
+		foreach ( $items as $index => $item ) {
+			if ( ! is_array( $item ) || empty( $item['import'] ) || ! is_array( $item['import'] ) ) {
+				$blockers[] = 'item_' . $index . '_invalid';
+				$out[] = array( 'index' => $index, 'ready' => false, 'blockers' => array( 'invalid_item' ) );
+				continue;
+			}
+			$role = isset( $item['binding_role'] ) ? sanitize_key( (string) $item['binding_role'] ) : 'gallery';
+			if ( ! in_array( $role, array( 'featured', 'gallery', 'content' ), true ) ) $role = 'gallery';
+			if ( 'featured' === $role ) ++$featured;
+			$plan = $this->remote_import_plan( $item['import'] );
+			if ( is_wp_error( $plan ) ) {
+				$blockers[] = 'item_' . $index . '_' . sanitize_key( $plan->get_error_code() );
+				$out[] = array( 'index' => $index, 'binding_role' => $role, 'ready' => false, 'blockers' => array( sanitize_key( $plan->get_error_code() ) ) );
+				continue;
+			}
+			foreach ( (array) $plan['blockers'] as $reason ) $blockers[] = 'item_' . $index . '_' . sanitize_key( (string) $reason );
+			$out[] = array(
+				'index' => $index,
+				'binding_role' => $role,
+				'ready' => ! empty( $plan['ready'] ),
+				'blockers' => array_values( (array) $plan['blockers'] ),
+				'plan_sha256' => $plan['plan_sha256'],
+				'apply_input' => array_merge( $plan['normalized_input'], array( 'plan_sha256' => $plan['plan_sha256'] ) ),
+			);
+		}
+		if ( $featured > 1 ) $blockers[] = 'multiple_featured_candidates';
+		$manifest = array(
+			'contract' => 'mad4b.remote-media-import-manifest.v1',
+			'ready' => empty( $blockers ),
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'item_count' => count( $out ),
+			'items' => $out,
+			'execution_model' => 'ordered_checkpointed_per_item_apply',
+			'partial_success_semantics' => 'verified_media_library_assets_survive_later_item_or_post_failure',
+			'mutation_performed' => false,
+		);
+		$manifest['manifest_sha256'] = hash( 'sha256', wp_json_encode( $manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		return $manifest;
+	}
+
 	public function remote_import_apply( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['plan_sha256'] ) ? strtolower( trim( (string) $input['plan_sha256'] ) ) : '';
@@ -274,7 +341,12 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		try {
 			$source_state = $this->remote_state_for_source_hash( $normalized['source_url_sha256'] );
 			if ( is_wp_error( $source_state ) ) return $source_state;
-			if ( ! empty( $source_state['exists'] ) ) return $this->remote_reuse_result( (int) $source_state['attachment_id'], $normalized, $plan, 'source_url' );
+			if ( ! empty( $source_state['exists'] ) ) {
+				$source_content_hash = ! empty( $source_state['content_sha256'] ) ? (string) $source_state['content_sha256'] : (string) get_post_meta( (int) $source_state['attachment_id'], self::REMOTE_CONTENT_HASH_META, true );
+				$event = $this->append_remote_provenance( (int) $source_state['attachment_id'], $normalized, $source_content_hash, $plan['plan_sha256'], 'source_url_reuse' );
+				if ( is_wp_error( $event ) ) return $event;
+				return $this->remote_reuse_result( (int) $source_state['attachment_id'], $normalized, $plan, 'source_url', $event );
+			}
 
 			$content_state = '' !== $normalized['expected_content_sha256']
 				? $this->remote_state_for_content_hash( $normalized['expected_content_sha256'] )
@@ -283,7 +355,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( ! empty( $content_state['exists'] ) ) {
 				$bound = $this->append_remote_provenance( (int) $content_state['attachment_id'], $normalized, $normalized['expected_content_sha256'], $plan['plan_sha256'], 'content_sha256_reuse' );
 				if ( is_wp_error( $bound ) ) return $bound;
-				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256' );
+				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound );
 			}
 
 			$download = $this->download_remote_image( $normalized, 'remote_media_import' );
@@ -300,7 +372,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				if ( 'fail' === $normalized['duplicate_policy'] ) return new WP_Error( 'mad4b_remote_media_content_duplicate', 'Downloaded remote image bytes already exist in the Media Library.' );
 				$bound = $this->append_remote_provenance( (int) $content_state['attachment_id'], $normalized, $download['content_sha256'], $plan['plan_sha256'], 'content_sha256_reuse' );
 				if ( is_wp_error( $bound ) ) return $bound;
-				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256' );
+				return $this->remote_reuse_result( (int) $content_state['attachment_id'], $normalized, $plan, 'content_sha256', $bound );
 			}
 
 			if ( ! function_exists( 'media_handle_sideload' ) ) {
@@ -353,7 +425,8 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'dedupe_basis' => 'created',
 				'verified' => true,
 				'media' => $readback['media'],
-				'binding_template' => $this->post_binding_template( $attachment_id, $normalized ),
+				'provenance_event' => $bound,
+				'binding_template' => $this->post_binding_template( $attachment_id, $normalized, $bound ),
 				'plan_sha256' => $plan['plan_sha256'],
 			);
 		} finally {
@@ -663,7 +736,6 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( $attachment_id < 1 || 'attachment' !== get_post_type( $attachment_id ) ) return new WP_Error( 'mad4b_remote_media_provenance_target_invalid', 'Remote media provenance target is not an attachment.' );
 		$source_hashes = array_values( array_filter( array_map( 'strval', (array) get_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, false ) ) ) );
 		$history = array_values( array_filter( (array) get_post_meta( $attachment_id, self::REMOTE_PROVENANCE_META, false ), 'is_array' ) );
-		if ( count( $history ) >= self::MAX_REMOTE_PROVENANCE_EVENTS ) return new WP_Error( 'mad4b_remote_media_provenance_history_full', 'Remote media provenance history reached its bounded event limit.' );
 
 		$event = array(
 			'contract' => self::REMOTE_PROVENANCE_CONTRACT,
@@ -681,11 +753,29 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'plan_sha256' => (string) $plan_sha256,
 			'state' => sanitize_key( (string) $state ),
 		);
+		$identity = array(
+			'contract' => self::REMOTE_PROVENANCE_CONTRACT,
+			'source_url_sha256' => $event['source_url_sha256'],
+			'source_page_sha256' => $event['source_page_sha256'],
+			'rights_basis' => $event['rights_basis'],
+			'rights_note' => $event['rights_note'],
+			'rights_reference' => $event['rights_reference'],
+			'license_expires_on' => $event['license_expires_on'],
+			'content_sha256' => $event['content_sha256'],
+		);
+		$event['provenance_event_sha256'] = hash( 'sha256', wp_json_encode( $identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
 		$source_added = false;
 		if ( ! in_array( $normalized['source_url_sha256'], $source_hashes, true ) ) {
 			$source_added = false !== add_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, $normalized['source_url_sha256'], false );
 			if ( ! $source_added ) return new WP_Error( 'mad4b_remote_media_source_alias_failed', 'Remote media source identity could not be persisted.' );
+		}
+		foreach ( $history as $existing_event ) {
+			if ( is_array( $existing_event ) && isset( $existing_event['provenance_event_sha256'] ) && hash_equals( (string) $existing_event['provenance_event_sha256'], $event['provenance_event_sha256'] ) ) return $existing_event;
+		}
+		if ( count( $history ) >= self::MAX_REMOTE_PROVENANCE_EVENTS ) {
+			if ( $source_added ) delete_post_meta( $attachment_id, self::REMOTE_SOURCE_HASH_META, $normalized['source_url_sha256'] );
+			return new WP_Error( 'mad4b_remote_media_provenance_history_full', 'Remote media provenance history reached its bounded event limit.' );
 		}
 		$event_added = false !== add_post_meta( $attachment_id, self::REMOTE_PROVENANCE_META, $event, false );
 		if ( ! $event_added ) {
@@ -703,7 +793,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $event;
 	}
 
-	private function remote_reuse_result( $attachment_id, array $normalized, array $plan, $basis ) {
+	private function remote_reuse_result( $attachment_id, array $normalized, array $plan, $basis, array $provenance_event = array() ) {
 		$readback = $this->media_get( array( 'attachment_id' => absint( $attachment_id ) ) );
 		if ( is_wp_error( $readback ) ) return $readback;
 		MAD4B_SCP_Audit::record( self::REMOTE_IMPORT_APPLY_ABILITY, array(
@@ -721,7 +811,8 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'dedupe_basis' => sanitize_key( (string) $basis ),
 			'verified' => true,
 			'media' => $readback['media'],
-			'binding_template' => $this->post_binding_template( absint( $attachment_id ), $normalized ),
+			'provenance_event' => $provenance_event,
+			'binding_template' => $this->post_binding_template( absint( $attachment_id ), $normalized, $provenance_event ),
 			'plan_sha256' => $plan['plan_sha256'],
 		);
 	}
@@ -768,7 +859,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		);
 	}
 
-	private function post_binding_template( $attachment_id, array $normalized ) {
+	private function post_binding_template( $attachment_id, array $normalized, array $provenance_event = array() ) {
 		return array(
 			'ordering' => 'media_library_first_then_post_binding',
 			'attachment_id' => (int) $attachment_id,
@@ -776,6 +867,9 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'single_media_meta_value' => (int) $attachment_id,
 			'gallery_append_value' => (int) $attachment_id,
 			'contextual_source_url' => $normalized['source_url'],
+			'source_url_sha256' => $normalized['source_url_sha256'],
+			'content_sha256' => isset( $provenance_event['content_sha256'] ) ? (string) $provenance_event['content_sha256'] : '',
+			'remote_provenance_sha256' => isset( $provenance_event['provenance_event_sha256'] ) ? (string) $provenance_event['provenance_event_sha256'] : '',
 			'rights_basis' => $normalized['rights_basis'],
 			'license_expires_on' => $normalized['license_expires_on'],
 			'content_experience_requirement' => 'Bind only through a configured media_meta_fields profile entry or featured_media_id.',
