@@ -197,9 +197,25 @@ check($delta['isolation_policy']==='removed_or_changed_only_fail_closed','graph 
 $safe=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
  'namespace'=>'mad4b','action'=>'inspect','schema_sha256'=>str_repeat('a',64),'readonly_annotation'=>true,
  'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
- 'actual_conformance_verified'=>true,'execution_eligible'=>true,'execution_provider'=>'core','breakglass'=>false,
+ 'actual_conformance_verified'=>true,'execution_eligible'=>true,'execution_boundary_verified'=>true,'execution_provider'=>'demo','breakglass'=>false,
 ));
 check($safe['auto_classification_eligible']===true,'verified zero-effect read was not eligible');
+
+$schema_missing=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
+ 'namespace'=>'vendor','action'=>'inspect','schema_sha256'=>'','readonly_annotation'=>true,
+ 'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
+ 'actual_conformance_verified'=>true,'execution_eligible'=>true,'execution_boundary_verified'=>true,'execution_provider'=>'demo','breakglass'=>false,
+));
+check($schema_missing['auto_classification_eligible']===false,'schema disappearance retained automatic classification');
+check(in_array('schema_digest_missing',$schema_missing['missing_evidence'],true),'schema disappearance missing-evidence marker absent');
+
+$boundary_missing=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
+ 'namespace'=>'vendor','action'=>'inspect','schema_sha256'=>str_repeat('a',64),'readonly_annotation'=>true,
+ 'execution_lane'=>'read','effect_class'=>'declared_read_only','schema_secret_bearing'=>false,
+ 'actual_conformance_verified'=>true,'execution_eligible'=>true,'execution_boundary_verified'=>false,'execution_provider'=>'demo','breakglass'=>false,
+));
+check($boundary_missing['auto_classification_eligible']===false,'unverified execution boundary retained automatic classification');
+check(in_array('execution_boundary_unverified',$boundary_missing['missing_evidence'],true),'execution boundary missing-evidence marker absent');
 
 $get_only=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
  'namespace'=>'vendor','action'=>'get-admin','schema_sha256'=>str_repeat('b',64),'readonly_annotation'=>true,
