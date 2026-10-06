@@ -188,6 +188,18 @@ require_once dirname(__DIR__) . '/includes/class-mad4b-scp-runtime-evidence-grap
 require_once dirname(__DIR__) . '/includes/class-mad4b-scp-runtime-policy-classifier.php';
 
 function check($ok,$message){ if(!$ok){ fwrite(STDERR,$message."\n"); exit(1); } }
+function rebind_graph_generation(&$snapshot){
+ $basis=array(
+   'contract'=>MAD4B_SCP_Runtime_Evidence_Graph::GENERATION_CONTRACT,
+   'site'=>$snapshot['site_binding'],
+   'observation_phase'=>$snapshot['observation_phase'],
+   'collection_status'=>$snapshot['collection_status'],
+   'edge_status'=>$snapshot['edge_status'],
+   'nodes'=>$snapshot['nodes'],
+   'edges'=>$snapshot['edges'],
+ );
+ $snapshot['generation_sha256']=MAD4B_SCP_Ability_Contract_Inspector::digest(MAD4B_SCP_Runtime_Evidence_Graph::GENERATION_CONTRACT,$basis);
+}
 
 $competitive=MAD4B_SCP_Competitive_Evidence::summary();
 check(!is_wp_error($competitive),'competitive evidence summary failed packaged integrity verification');
@@ -241,6 +253,18 @@ check(is_wp_error($status_tamper_result) && 'mad4b_runtime_graph_generation_mism
 $edge_tamper=$one; $edge_tamper['edge_status']['observed_count']=$edge_tamper['edge_status']['observed_count']+1;
 $edge_tamper_result=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$edge_tamper));
 check(is_wp_error($edge_tamper_result) && 'mad4b_runtime_graph_generation_mismatch'===$edge_tamper_result->get_error_code(),'edge completeness metadata was not generation-bound');
+
+$source_semantic_tamper=$one;
+$source_semantic_tamper['collection_status']['abilities']['trustworthy_for_absence']=false;
+rebind_graph_generation($source_semantic_tamper);
+$source_semantic_result=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$source_semantic_tamper));
+check(is_wp_error($source_semantic_result) && 'mad4b_runtime_graph_collection_source_status_mismatch'===$source_semantic_result->get_error_code(),'derived collector claimed completeness after source became incomplete');
+
+$edge_semantic_tamper=$one;
+$edge_semantic_tamper['edge_status']['sources_complete']=false;
+rebind_graph_generation($edge_semantic_tamper);
+$edge_semantic_result=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$edge_semantic_tamper));
+check(is_wp_error($edge_semantic_result) && 'mad4b_runtime_graph_edge_source_status_mismatch'===$edge_semantic_result->get_error_code(),'edge source completeness inconsistency was accepted');
 
 $fabricated=$one; $fabricated['generation_sha256']=str_repeat('0',64);
 $bad_generation=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$fabricated));
