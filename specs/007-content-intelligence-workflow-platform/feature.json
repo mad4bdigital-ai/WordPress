@@ -201,7 +201,7 @@
     "general_distribution_artifact_id": 10838403565,
     "runtime_affecting_changes_since_release": true,
     "repository_changes_since_release_are_non_runtime": false,
-    "recapture_reason": "rc.95 repairs parent/submenu registration, typed Context save readback, active Google connection UX and scoped rejection diagnostics, core/add-on identity, bounded provider status and periodic zero-delta authority observation; recapture the exact post-merge package before deployment."
+    "recapture_reason": "rc.95 repairs parent/submenu registration, typed Context save readback, active Google connection UX and scoped rejection diagnostics, core/add-on identity, bounded provider status and periodic zero-delta authority observation; recapture the exact post-merge package before deployment. The rc.96 admin workspace UI and Arabic catalog require exact post-merge package recapture; no live deployment is claimed."
   },
   "runtime_identity_paths": [
     "wp-content/plugins/mad4b-site-control-plane/",
@@ -336,7 +336,7 @@
     "competitive_experience": {
       "contract": "mad4b.competitive-experience-extension.v1",
       "path": "extensions/competitive-experience",
-      "status": "SPEC_BACKLOG_ONLY",
+      "status": "UI_IMPLEMENTATION_IN_PROGRESS",
       "task_count": 175,
       "capability_count": 59,
       "phase_count": 35,

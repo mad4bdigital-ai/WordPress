@@ -1,6 +1,6 @@
 # Tasks — Optional Competitive Experience Extension
 
-All new tasks are OPEN. Existing Feature 007 release tasks and closure counts remain unchanged.
+170 tasks are OPEN and five UI tasks are PARTIAL, with explicit source/test bindings and remaining acceptance in `ui-delivery.json`. Existing Feature 007 release tasks and closure counts remain unchanged.
 
 ## Phase 0 — Evidence and reproducible comparison
 

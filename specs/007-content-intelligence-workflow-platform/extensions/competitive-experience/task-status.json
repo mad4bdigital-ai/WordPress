@@ -1,5 +1,46 @@
 {
   "contract": "mad4b.competitive-experience-task-status.v1",
-  "overrides": {},
+  "overrides": {
+    "T3906": {
+      "status": "PARTIAL",
+      "reason": "Registered page/section inventory and shared directory implemented; field-level operability receipts remain pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T3907": {
+      "status": "PARTIAL",
+      "reason": "Read-only setup path and registered handoffs implemented; adaptive verified first-operation journey remains pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T3908": {
+      "status": "PARTIAL",
+      "reason": "Descriptor-driven existing SERP credential setup is prominent with exact persisted feedback; broader analytics/provider enrollment remains pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T3909": {
+      "status": "PARTIAL",
+      "reason": "Canonical workspace links, Arabic translation, RTL/mobile/focus and external notice handoffs implemented; real Staging browser journeys remain pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T4061": {
+      "status": "PARTIAL",
+      "reason": "Operator action cards and L0-L5 reference implemented without dispatch or claimed repair; per-plan receipts and autonomy evaluation remain pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    }
+  },
   "documentation_only_completion_forbidden": true
 }

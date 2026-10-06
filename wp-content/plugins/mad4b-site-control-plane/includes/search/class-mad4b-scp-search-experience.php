@@ -43,19 +43,22 @@ final class MAD4B_SCP_Search_Experience {
 		if ( ! current_user_can( 'manage_options' ) || ! MAD4B_SCP_Policy::can_read() ) return;
 		$id = MAD4B_SCP_Search_Profile_Admin::selected_id();
 		$model = MAD4B_SCP_Search_Runtime::status( array( 'profile_id' => $id ) );
-		echo '<div class="wrap"><h1>Search Intelligence</h1>';
+		MAD4B_SCP_Admin_Experience::styles();
+		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'Search Intelligence', 'mad4b-site-control-plane' ) . '</h1>';
+		echo '<p class="description">' . esc_html__( 'Configure a paused profile, connect a provider and review the budget before capturing search observations.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p><a class="button button-secondary" href="' . esc_url( MAD4B_SCP_Admin_Workspace::link( self::PAGE_SLUG, array( 'section' => 'providers', 'profile_id' => $id ), 'search-providers' ) ) . '">' . esc_html__( 'Add or manage search API credentials', 'mad4b-site-control-plane' ) . '</a></p>';
 		MAD4B_SCP_Search_Profile_Admin::render( $id );
 		if ( is_wp_error( $model ) ) { echo '<p>' . esc_html( $model->get_error_message() ) . '</p></div>'; return; }
-		echo '<h2>' . esc_html( $model['headline'] ) . '</h2><nav aria-label="Search Intelligence sections">';
-		foreach ( $model['sections'] as $s ) echo '<a style="margin-right:16px" href="' . esc_url( $s['url'] . '&profile_id=' . rawurlencode( $id ) ) . '">' . esc_html( $s['label'] ) . '</a>';
+		$section = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'section', 'overview', 96 ) );
+		if ( ! in_array( $section, MAD4B_SCP_Search_Context::policy()['section_order'], true ) ) $section = 'overview';
+		echo '<h2>' . esc_html( $model['headline'] ) . '</h2><nav class="nav-tab-wrapper" aria-label="' . esc_attr__( 'Search Intelligence sections', 'mad4b-site-control-plane' ) . '">';
+		foreach ( $model['sections'] as $s ) echo '<a class="nav-tab' . ( $section === $s['id'] ? ' nav-tab-active' : '' ) . '"' . ( $section === $s['id'] ? ' aria-current="page"' : '' ) . ' href="' . esc_url( add_query_arg( 'profile_id', $id, $s['url'] ) ) . '">' . esc_html( $s['label'] ) . '</a>';
 		echo '</nav>';
 		foreach ( $model['blockers'] as $blocker ) echo '<div class="notice notice-warning"><p>' . esc_html( $blocker ) . '</p></div>';
 		echo '<table class="widefat"><caption>Current search state</caption><thead><tr><th scope="col">Metric</th><th scope="col">Value</th></tr></thead><tbody>';
 		foreach ( $model['metrics'] as $m ) echo '<tr><th scope="row">' . esc_html( str_replace( '_', ' ', $m['id'] ) ) . '</th><td>' . esc_html( (string) $m['value'] ) . '</td></tr>';
 		echo '</tbody></table>';
 		foreach ( $model['recommended_actions'] as $a ) echo '<p>' . esc_html( $a ) . '</p>';
-		$section = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'section', 'overview', 96 ) );
-		if ( ! in_array( $section, MAD4B_SCP_Search_Context::policy()['section_order'], true ) ) $section = 'overview';
 		// Connection setup is useful before the first profile exists.
 		if ( 'providers' === $section || ! $id ) MAD4B_SCP_Search_Provider_Connections::render( $id );
 		if ( $id ) {

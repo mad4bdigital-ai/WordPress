@@ -305,45 +305,9 @@ final class MAD4B_SCP_Operator_Control_Center {
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to inspect operator state.', 'mad4b-site-control-plane' ) );
 		$snapshot = self::execute();
-		$state = isset( $snapshot['state'] ) ? (string) $snapshot['state'] : 'DEGRADED';
-		$reasons = isset( $snapshot['reasons'] ) && is_array( $snapshot['reasons'] ) ? $snapshot['reasons'] : array();
-		$actions = isset( $snapshot['next_actions'] ) && is_array( $snapshot['next_actions'] ) ? $snapshot['next_actions'] : array();
-		echo '<div class="wrap"><h1>' . esc_html__( 'MAD4B Operator Control Center', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Read-only consolidated operator state. Missing external evidence is never success and this page never grants Production authority.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<div class="notice notice-info inline"><p><strong>' . esc_html( $state ) . '</strong></p></div>';
-		$runtime = isset( $snapshot['runtime'] ) && is_array( $snapshot['runtime'] ) ? $snapshot['runtime'] : array();
-		$operational = isset( $snapshot['operational'] ) && is_array( $snapshot['operational'] ) ? $snapshot['operational'] : array();
-		echo '<p><strong>' . esc_html__( 'Effective environment:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $runtime['effective_environment'] ) ? (string) $runtime['effective_environment'] : 'unknown' ) . '</code>';
-		echo ' &nbsp; <strong>' . esc_html__( 'WordPress raw environment:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $runtime['wordpress_environment'] ) ? (string) $runtime['wordpress_environment'] : 'unknown' ) . '</code></p>';
-		echo '<p><strong>' . esc_html__( 'Write authority current:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $operational['write_authority']['ready'] ) ? 'true' : 'false' ) . '</code>';
-		echo ' &nbsp; <strong>' . esc_html__( 'Database topology ready:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $operational['database_topology']['ready'] ) ? 'true' : 'false' ) . '</code></p>';
-		$lanes = isset( $operational['lanes'] ) && is_array( $operational['lanes'] ) ? $operational['lanes'] : array();
-		$provider_closure = isset( $operational['provider_closure'] ) && is_array( $operational['provider_closure'] ) ? $operational['provider_closure'] : array();
-		echo '<p><strong>' . esc_html__( 'Governed Write lane:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $lanes['lane_readiness']['governed_write'] ) ? 'ready' : 'blocked' ) . '</code>';
-		echo ' &nbsp; <strong>' . esc_html__( 'Developer lane:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $lanes['lane_readiness']['developer'] ) ? 'ready' : 'blocked' ) . '</code>';
-		echo ' &nbsp; <strong>' . esc_html__( 'Degraded mode:', 'mad4b-site-control-plane' ) . '</strong> <code>' . ( ! empty( $lanes['degraded_mode'] ) ? 'true' : 'false' ) . '</code></p>';
-		echo '<p><strong>' . esc_html__( 'Provider actions required:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $provider_closure['action_required_count'] ) ? (string) $provider_closure['action_required_count'] : '0' ) . '</code>';
-		echo ' &nbsp; <strong>' . esc_html__( 'Provider gates not applicable:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $provider_closure['not_applicable_count'] ) ? (string) $provider_closure['not_applicable_count'] : '0' ) . '</code>';
-		echo ' &nbsp; <strong>' . esc_html__( 'Applicability unresolved:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $provider_closure['unresolved_applicability_count'] ) ? (string) $provider_closure['unresolved_applicability_count'] : '0' ) . '</code></p>';
-		echo '<h2>' . esc_html__( 'Reasons', 'mad4b-site-control-plane' ) . '</h2><ul>';
-		foreach ( $reasons as $reason ) echo '<li><code>' . esc_html( (string) $reason ) . '</code></li>';
-		echo '</ul><h2>' . esc_html__( 'Next actions', 'mad4b-site-control-plane' ) . '</h2><ol>';
-		foreach ( $actions as $action ) echo '<li><code>' . esc_html( (string) $action ) . '</code></li>';
-		echo '</ol>';
-		if ( class_exists( 'MAD4B_SCP_Adaptive_Runtime_Convergence', false ) ) {
-			$adaptive = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) );
-			echo '<h2>' . esc_html__( 'Automatic runtime observations', 'mad4b-site-control-plane' ) . '</h2>';
-			echo '<p>' . esc_html( $adaptive['state'] ) . ' — ' . esc_html__( 'Capabilities are assessed separately. Stored observations do not grant permission.', 'mad4b-site-control-plane' ) . '</p>';
-			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Provider', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Capability', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'State', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
-			$shown = 0;
-			foreach ( $adaptive['providers'] as $provider => $observation ) foreach ( $observation['capabilities'] ?? array() as $capability => $row ) {
-				if ( ++$shown > 64 ) break 2;
-				echo '<tr><td>' . esc_html( $provider ) . '</td><td>' . esc_html( $capability ) . '</td><td>' . esc_html( $row['state'] ) . '</td></tr>';
-			}
-			echo '</tbody></table><p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-adapter-coverage' ) ) . '">' . esc_html__( 'Review provider capabilities', 'mad4b-site-control-plane' ) . '</a></p>';
-			if ( ! empty( $adaptive['page']['has_more'] ) || $shown > 64 ) echo '<p class="description">' . esc_html__( 'This overview shows a bounded sample. Open provider coverage for the remaining capabilities.', 'mad4b-site-control-plane' ) . '</p>';
-		}
-		echo '<p><strong>' . esc_html__( 'Production authorized:', 'mad4b-site-control-plane' ) . '</strong> <code>false</code></p></div>';
+		$adaptive = class_exists( 'MAD4B_SCP_Adaptive_Runtime_Convergence', false )
+			? MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) ) : array();
+		MAD4B_SCP_Operator_Workspace::render( $snapshot, is_array( $adaptive ) ? $adaptive : array() );
 	}
 }
 

@@ -1,0 +1,85 @@
+/* Scoped WordPress admin workspace. Native fonts and logical properties support RTL. */
+.mad4b-workspace-page {
+  --mad4b-ink: #1d2327;
+  --mad4b-muted: #50575e;
+  --mad4b-surface: #fff;
+  --mad4b-border: #c3c4c7;
+  --mad4b-primary: #135e96;
+  --mad4b-success: #116329;
+  --mad4b-warning: #754700;
+  --mad4b-danger: #a82024;
+  --mad4b-radius: 8px;
+}
+.mad4b-workspace { position: relative; margin: 12px 20px 12px 0; padding: 16px 20px; max-width: 1440px; box-sizing: border-box; background: var(--mad4b-surface); border: 1px solid var(--mad4b-border); border-radius: var(--mad4b-radius); color: var(--mad4b-ink); }
+.rtl .mad4b-workspace { margin: 12px 0 12px 20px; }
+.mad4b-workspace-heading, .mad4b-workspace-heading > div, .mad4b-workspace-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.mad4b-workspace-heading { justify-content: space-between; }
+.mad4b-workspace-brand { font-size: 18px; font-weight: 700; color: var(--mad4b-primary); }
+.mad4b-workspace-current { padding-inline-start: 12px; border-inline-start: 1px solid var(--mad4b-border); font-size: 14px; }
+.mad4b-workspace-environment { font-size: 13px; color: var(--mad4b-muted); }
+.mad4b-workspace-shortcuts { margin-block-start: 12px; gap: 8px; }
+.mad4b-workspace-shortcuts a { display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--mad4b-border); border-radius: 6px; color: var(--mad4b-primary); text-decoration: none; font-weight: 600; }
+.mad4b-workspace a:hover, .mad4b-workspace a:active { background: #f0f6fc; }
+.mad4b-workspace-directory { margin-block-start: 12px; }
+.mad4b-workspace-directory summary { cursor: pointer; min-height: 44px; display: list-item; align-content: center; padding: 4px 8px; box-sizing: border-box; color: var(--mad4b-primary); font-weight: 600; }
+.mad4b-workspace-directory summary span { color: var(--mad4b-muted); }
+.mad4b-workspace [data-mad4b-directory-controls] { margin-block: 12px; }
+.mad4b-workspace [data-mad4b-directory-controls] label { display: block; font-weight: 600; margin-block-end: 6px; }
+.mad4b-workspace input[type=search] { width: min(100%, 480px); min-height: 44px; }
+.mad4b-workspace-pages { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.mad4b-workspace-pages article { min-width: 0; }
+.mad4b-workspace-pages article > a { display: block; padding: 12px; box-sizing: border-box; border: 1px solid var(--mad4b-border); border-radius: 6px; color: var(--mad4b-ink); text-decoration: none; }
+.mad4b-workspace-section-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.mad4b-workspace-section-links li { margin: 0; }
+.mad4b-workspace-section-links a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 8px; box-sizing: border-box; text-decoration: none; color: var(--mad4b-primary); border: 1px solid var(--mad4b-border); border-radius: 4px; }
+.mad4b-workspace-pages article a[aria-current=page] { border-color: var(--mad4b-primary); box-shadow: inset 0 0 0 1px var(--mad4b-primary); }
+.mad4b-workspace-pages article strong { color: var(--mad4b-primary); font-size: 14px; }
+.mad4b-workspace-pages article span { display: block; margin-block-start: 6px; color: var(--mad4b-muted); line-height: 1.6; }
+.mad4b-workspace [hidden] { display: none !important; }
+.mad4b-workspace-skip { position: absolute; inset-inline-start: 12px; top: -10000px; padding: 12px; z-index: 2; background: var(--mad4b-surface); }
+.mad4b-workspace-skip:focus { top: 8px; }
+.mad4b-workspace-page #wpbody-content .wrap { max-width: 1440px; color: var(--mad4b-ink); }
+.mad4b-workspace-page #wpbody-content .wrap p { line-height: 1.6; }
+.mad4b-workspace-page #wpbody-content .wrap :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible,
+.mad4b-workspace :is(a, input, summary):focus-visible { outline: 3px solid var(--mad4b-primary); outline-offset: 3px; box-shadow: none; }
+.mad4b-workspace-page #wpbody-content .wrap :is(h1, h2, h3, p, code, td, th, dd) { overflow-wrap: anywhere; }
+.mad4b-workspace-page #wpbody-content .wrap :is(input.regular-text, input.large-text, textarea, select) { max-width: 100%; box-sizing: border-box; }
+.mad4b-workspace-page #wpbody-content .wrap :is(.button, input:not([type=checkbox]):not([type=radio]):not([type=hidden]), select) { min-height: 40px; }
+.mad4b-workspace-page #wpbody-content .wrap :is(.button, summary) { cursor: pointer; }
+.mad4b-workspace-page #wpbody-content .wrap .button:disabled { cursor: default; }
+.mad4b-workspace-page #wpbody-content .wrap .nav-tab-wrapper { display: flex; flex-wrap: wrap; gap: 8px; }
+.mad4b-workspace-page #wpbody-content .wrap .nav-tab { margin-inline: 0; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; }
+.mad4b-workspace-page .mad4b-scp-stage, .mad4b-workspace-page .mad4b-scp-next-step { border-left-width: 1px; border-inline-start-width: 4px; }
+.rtl.mad4b-workspace-page .mad4b-scp-stage, .rtl.mad4b-workspace-page .mad4b-scp-next-step { border-left-color: var(--mad4b-border); }
+.mad4b-workspace-page :is(.mad4b-scp-stage, .mad4b-scp-next-step).is-complete { border-inline-start-color: var(--mad4b-success); }
+.mad4b-workspace-page :is(.mad4b-scp-stage, .mad4b-scp-next-step).is-attention { border-inline-start-color: var(--mad4b-warning); }
+.mad4b-workspace-page :is(.mad4b-scp-stage, .mad4b-scp-next-step).is-blocked { border-inline-start-color: var(--mad4b-danger); }
+.mad4b-workspace-table { max-width: 100%; overflow-x: auto; margin-block: 12px 20px; border-radius: 4px; }
+.mad4b-workspace-table:focus-visible { outline: 3px solid var(--mad4b-primary); outline-offset: 2px; }
+.mad4b-workspace-table table { min-width: 640px; }
+.mad4b-action-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin-block: 20px; }
+.mad4b-action-card { min-width: 0; padding: 20px; background: var(--mad4b-surface); border: 1px solid var(--mad4b-border); border-radius: var(--mad4b-radius); }
+.mad4b-action-card h3 { margin-block: 12px 8px; font-size: 16px; }
+.mad4b-action-card p { color: var(--mad4b-muted); }
+.mad4b-action-state { display: inline-block; max-width: 100%; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; color: var(--mad4b-primary); background: #f0f6fc; }
+.mad4b-action-state.is-approval_required { color: var(--mad4b-warning); background: #fff5e5; }
+.mad4b-action-state.is-external_action_required, .mad4b-action-state.is-reconciliation_required { color: var(--mad4b-danger); background: #fcf0f1; }
+.mad4b-action-state.is-auto_repaired { color: var(--mad4b-success); background: #edfaef; }
+.mad4b-evidence-details { margin-block: 20px; padding: 16px; border: 1px solid var(--mad4b-border); background: var(--mad4b-surface); border-radius: var(--mad4b-radius); }
+.mad4b-evidence-details summary { min-height: 44px; align-content: center; cursor: pointer; font-weight: 600; }
+.mad4b-workspace-page .mad4b-scp-panel, .mad4b-workspace-page .mad4b-scp-card { border-radius: var(--mad4b-radius); }
+@media (max-width: 782px) {
+  .mad4b-workspace, .rtl .mad4b-workspace { margin-inline: 10px; padding: 14px; }
+  .mad4b-workspace-heading { align-items: flex-start; }
+  .mad4b-workspace-current { padding-inline-start: 0; border: 0; width: 100%; }
+  .mad4b-workspace-shortcuts a { flex: 1 1 180px; }
+  .mad4b-workspace-page #wpbody-content .wrap :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { font-size: 16px; }
+  .mad4b-workspace-page #wpbody-content .wrap .button { min-height: 44px; white-space: normal; }
+  .mad4b-action-card { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mad4b-workspace-page #wpbody-content .wrap *, .mad4b-workspace * { scroll-behavior: auto; transition: none; animation: none; }
+}
+@media (forced-colors: active) {
+  .mad4b-action-state, .mad4b-workspace-shortcuts a { border: 1px solid CanvasText; }
+}
