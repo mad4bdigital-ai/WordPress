@@ -78,7 +78,8 @@ final class MAD4B_SCP_Multi_Authority_Registry {
 
 		$authorities = array();
 		foreach ( $trusted as $issuer ) {
-			$type = MAD4B_SCP_OAuth_Resource_Bridge::authority_type_for_issuer( $issuer );
+			$identity = MAD4B_SCP_OAuth_Resource_Bridge::authority_identity_for_issuer( $issuer );
+			$type = isset( $identity['authority_type'] ) ? (string) $identity['authority_type'] : '';
 			$user_id = MAD4B_SCP_OAuth_Resource_Bridge::configured_user_id_for_issuer( $issuer );
 			$resources = MAD4B_SCP_OAuth_Resource_Bridge::resource_policy_for_issuer( $issuer );
 			$subjects = MAD4B_SCP_OAuth_Resource_Bridge::allowed_subjects_for_issuer( $issuer );
@@ -90,9 +91,10 @@ final class MAD4B_SCP_Multi_Authority_Registry {
 			if ( empty( $resources ) ) $reasons[] = 'RESOURCE_POLICY_EMPTY';
 
 			$authorities[] = array(
-				'authority_id' => 'oauth-authority:v1:' . substr( hash( 'sha256', $issuer ), 0, 24 ),
+				'authority_id' => isset( $identity['authority_id'] ) ? (string) $identity['authority_id'] : '',
 				'authority_type' => in_array( $type, array( 'local', 'external', 'managed', 'custom' ), true ) ? $type : 'custom',
 				'issuer' => $issuer,
+				'issuer_fingerprint' => isset( $identity['issuer_fingerprint'] ) ? (string) $identity['issuer_fingerprint'] : '',
 				'configured' => true,
 				'trusted' => true,
 				'advertised' => $is_advertised,
