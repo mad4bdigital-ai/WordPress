@@ -43,7 +43,7 @@
     },
     "T3901": {
       "status": "PARTIAL",
-      "reason": "Reproducible archive verification and immutable packaged evidence snapshot are implemented; exact-head group acceptance remains pending.",
+      "reason": "Reproducible archive verification and immutable packaged evidence snapshot are implemented; exact-head G1 child CI is an invariant integration gate; terminal verdict evidence lives outside the commit.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -75,7 +75,7 @@
     },
     "T3905": {
       "status": "PARTIAL",
-      "reason": "Evidence integrity and denial contracts are implemented and CI-bound; terminal exact-head group acceptance remains pending.",
+      "reason": "Evidence integrity and denial contracts are implemented and CI-bound; terminal exact-head G1 child CI is an invariant integration gate; terminal verdict evidence lives outside the commit.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -115,7 +115,7 @@
     },
     "T4005": {
       "status": "PARTIAL",
-      "reason": "Fail-closed denial coverage for lazy REST discovery, secret metadata, unknown code and non-authorizing discovery is implemented; terminal exact-head acceptance remains pending.",
+      "reason": "Fail-closed denial coverage for lazy REST discovery, secret metadata, unknown code and non-authorizing discovery is implemented; exact-head G1 child CI is an invariant integration gate; terminal verdict evidence lives outside the commit.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -123,7 +123,7 @@
     },
     "T4006": {
       "status": "PARTIAL",
-      "reason": "Deterministic semantic evidence features and versioned Policy Proposal contract are implemented; exact-head runtime acceptance remains pending.",
+      "reason": "Deterministic semantic evidence features and versioned Policy Proposal contract are implemented; exact-head G1 child CI is an invariant integration gate; live runtime acceptance remains separate where the task contract requires it.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
@@ -155,7 +155,7 @@
     },
     "T4010": {
       "status": "PARTIAL",
-      "reason": "Denials for confidence-only promotion, unsafe GET, secret schema and risk downgrade are implemented and CI-bound; terminal exact-head group acceptance remains pending.",
+      "reason": "Denials for confidence-only promotion, unsafe GET, secret schema and risk downgrade are implemented and CI-bound; terminal exact-head G1 child CI is an invariant integration gate; terminal verdict evidence lives outside the commit.",
       "evidence_refs": [
         "g1-delivery.json",
         "g1-delivery.md"
