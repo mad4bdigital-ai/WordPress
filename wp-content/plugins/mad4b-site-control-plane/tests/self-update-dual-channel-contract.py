@@ -317,6 +317,12 @@ for marker in (
     if marker not in self_update:
         raise SystemExit(f"durable update-attempt transport evidence missing: {marker}")
 
+
+subprocess.run(
+    ["php", str(root / "tests" / "mcp-peer-admin-rest-lifecycle-runtime.php")],
+    check=True,
+)
+
 notice = self_update.split("public static function native_update_notice()", 1)[1].split("private static function redirect_native_result", 1)[0]
 for marker in (
     "self::last_update_attempt_projection()",
