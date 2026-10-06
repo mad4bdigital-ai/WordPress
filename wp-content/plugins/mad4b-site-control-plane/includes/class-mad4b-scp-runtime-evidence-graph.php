@@ -64,6 +64,8 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 	public static function snapshot( $input = array() ) {
 		$ability_nodes=self::abilities();
 		$nodes = array(
+			'providers'=>self::providers(),
+			'components'=>self::components(),
 			'abilities'=>$ability_nodes,
 			'operations'=>self::operations(),
 			'plugins'=>self::plugins(),
@@ -309,6 +311,95 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		return $out;
 	}
 
+	private static function providers() {
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) || ! method_exists( 'MAD4B_SCP_Provider_Contracts', 'all' ) ) return array();
+
+		$contracts = MAD4B_SCP_Provider_Contracts::all();
+		if ( ! is_array( $contracts ) ) return array();
+		ksort( $contracts, SORT_STRING );
+
+		$out = array();
+		foreach ( $contracts as $provider => $contract ) {
+			if ( ! is_string( $provider ) || '' === $provider || ! is_array( $contract ) ) continue;
+
+			$status = method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' )
+				? MAD4B_SCP_Provider_Contracts::runtime_status( $provider )
+				: array();
+			if ( ! is_array( $status ) ) $status = array();
+
+			$component_refs = array();
+			if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
+				foreach ( array_keys( $contract['components'] ) as $component_key ) {
+					$component_key = sanitize_key( (string) $component_key );
+					if ( '' !== $component_key ) $component_refs[] = $provider . ':' . $component_key;
+				}
+			} else {
+				$component_refs[] = $provider . ':primary';
+			}
+			sort( $component_refs, SORT_STRING );
+
+			$out[] = array(
+				'id' => $provider,
+				'kind' => 'provider',
+				'label' => isset( $status['label'] ) ? (string) $status['label'] : ( isset( $contract['label'] ) ? (string) $contract['label'] : $provider ),
+				'runtime_status' => isset( $status['status'] ) ? sanitize_key( (string) $status['status'] ) : 'unknown',
+				'runtime_contract_ok' => ! empty( $status['runtime_contract_ok'] ),
+				'certified_version' => isset( $status['certified_version'] ) ? (string) $status['certified_version'] : ( isset( $contract['version'] ) ? (string) $contract['version'] : '' ),
+				'installed_version' => isset( $status['installed_version'] ) ? (string) $status['installed_version'] : '',
+				'contract_mode' => isset( $status['contract_mode'] ) ? sanitize_key( (string) $status['contract_mode'] ) : ( isset( $contract['contract_mode'] ) ? sanitize_key( (string) $contract['contract_mode'] ) : '' ),
+				'certification_authority' => isset( $status['certification_authority'] ) ? sanitize_key( (string) $status['certification_authority'] ) : '',
+				'component_refs' => $component_refs,
+				'contract_sha256' => self::digest( 'mad4b.provider-contract-graph-node.v1', self::safe_row( $contract ) ),
+				'authority_inferred' => false,
+			);
+
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
+		}
+		return $out;
+	}
+
+	private static function components() {
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) || ! method_exists( 'MAD4B_SCP_Provider_Contracts', 'all' ) ) return array();
+
+		$contracts = MAD4B_SCP_Provider_Contracts::all();
+		if ( ! is_array( $contracts ) ) return array();
+		ksort( $contracts, SORT_STRING );
+
+		$out = array();
+		foreach ( $contracts as $provider => $contract ) {
+			if ( ! is_string( $provider ) || '' === $provider || ! is_array( $contract ) ) continue;
+
+			$components = ! empty( $contract['components'] ) && is_array( $contract['components'] )
+				? $contract['components']
+				: array( 'primary' => $contract );
+			ksort( $components, SORT_STRING );
+
+			foreach ( $components as $component_key => $component ) {
+				if ( ! is_array( $component ) ) continue;
+				$key = sanitize_key( (string) $component_key );
+				if ( '' === $key ) continue;
+
+				$out[] = array(
+					'id' => $provider . ':' . $key,
+					'kind' => 'component',
+					'provider_ref' => $provider,
+					'label' => isset( $component['label'] ) ? (string) $component['label'] : $key,
+					'plugin_file' => isset( $component['plugin_file'] ) ? (string) $component['plugin_file'] : '',
+					'certified_version' => isset( $component['version'] ) ? (string) $component['version'] : '',
+					'archive_sha256' => isset( $component['archive_sha256'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/D', strtolower( (string) $component['archive_sha256'] ) )
+						? strtolower( (string) $component['archive_sha256'] )
+						: '',
+					'contract_sha256' => self::digest( 'mad4b.provider-component-graph-node.v1', self::safe_row( $component ) ),
+					'code_executed' => false,
+					'authority_inferred' => false,
+				);
+
+				if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break 2;
+			}
+		}
+		return $out;
+	}
+
 	private static function plugins() {
 		if(!function_exists('get_plugins')) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins=get_plugins(); if(!is_array($plugins)) $plugins=array(); ksort($plugins,SORT_STRING);
@@ -451,8 +542,21 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 
 	private static function edges( array $nodes ) {
 		$edges=array();
-		$ability_ids=array();
+		$ability_ids=array(); $provider_ids=array(); $component_ids=array();
 		foreach(isset($nodes['abilities'])&&is_array($nodes['abilities'])?$nodes['abilities']:array() as $row) if(is_array($row)&&!empty($row['id'])) $ability_ids[(string)$row['id']]=true;
+		foreach(isset($nodes['providers'])&&is_array($nodes['providers'])?$nodes['providers']:array() as $row) if(is_array($row)&&!empty($row['id'])) $provider_ids[(string)$row['id']]=true;
+		foreach(isset($nodes['components'])&&is_array($nodes['components'])?$nodes['components']:array() as $row) if(is_array($row)&&!empty($row['id'])) $component_ids[(string)$row['id']]=true;
+		foreach(isset($nodes['providers'])&&is_array($nodes['providers'])?$nodes['providers']:array() as $row){
+			if(!is_array($row)||empty($row['id'])) continue;
+			foreach(isset($row['component_refs'])&&is_array($row['component_refs'])?$row['component_refs']:array() as $component){
+				if(isset($component_ids[$component])) $edges[]=array('from'=>'provider:'.(string)$row['id'],'to'=>'component:'.(string)$component,'relation'=>'contains_component');
+			}
+		}
+		foreach(isset($nodes['abilities'])&&is_array($nodes['abilities'])?$nodes['abilities']:array() as $row){
+			if(!is_array($row)||empty($row['id'])||empty($row['execution_provider'])) continue;
+			$provider=(string)$row['execution_provider'];
+			if(isset($provider_ids[$provider])) $edges[]=array('from'=>'ability:'.(string)$row['id'],'to'=>'provider:'.$provider,'relation'=>'bound_to_provider');
+		}
 		foreach(isset($nodes['operations'])&&is_array($nodes['operations'])?$nodes['operations']:array() as $row){
 			if(!is_array($row)||empty($row['id'])) continue;
 			foreach(isset($row['ability_refs'])&&is_array($row['ability_refs'])?$row['ability_refs']:array() as $ability){
