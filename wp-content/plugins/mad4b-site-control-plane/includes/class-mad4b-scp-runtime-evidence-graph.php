@@ -199,12 +199,22 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			$schema=is_object($ability)&&method_exists($ability,'get_input_schema')?$ability->get_input_schema():array();
 			$schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($schema,'ability_schema'):array('classification'=>'unknown','stats'=>array());
 			$parts=explode('/',$name,2);
+			$mcp_meta=isset($meta['mcp'])&&is_array($meta['mcp'])?$meta['mcp']:array();
+			$resource_constraints_sha256='';
+			if(isset($mcp_meta['resource_constraints'])&&is_array($mcp_meta['resource_constraints'])){
+				$resource_constraints_sha256=self::digest('mad4b.runtime-resource-constraints.v1',self::safe_row($mcp_meta['resource_constraints']));
+			}
 			$out[]=array(
 				'id'=>$name,
 				'kind'=>'ability',
 				'namespace'=>isset($parts[0])?$parts[0]:'',
 				'action'=>isset($parts[1])?$parts[1]:'',
 				'category'=>isset($descriptor['category'])?(string)$descriptor['category']:'',
+				'required_capability'=>isset($mcp_meta['required_capability'])?sanitize_key((string)$mcp_meta['required_capability']):'',
+				'resource_schema_version'=>isset($mcp_meta['resource_schema_version'])?substr((string)$mcp_meta['resource_schema_version'],0,64):'',
+				'resource_constraints_sha256'=>$resource_constraints_sha256,
+				'resource_values_exposed'=>false,
+				'privilege_inferred_from_resources'=>false,
 				'input_schema_sha256'=>isset($descriptor['input_schema_sha256'])?(string)$descriptor['input_schema_sha256']:'',
 				'classification_sha256'=>isset($descriptor['classification_sha256'])?(string)$descriptor['classification_sha256']:'',
 				'descriptor_generation_sha256'=>isset($descriptor['descriptor_sha256'])?(string)$descriptor['descriptor_sha256']:'',
