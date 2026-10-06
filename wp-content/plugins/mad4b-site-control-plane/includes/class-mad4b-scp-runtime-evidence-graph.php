@@ -415,7 +415,10 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			$meta=is_array($meta)?$meta:array();
 			$annotations=isset($meta['annotations'])&&is_array($meta['annotations'])?$meta['annotations']:array();
 			$schema=is_object($ability)&&method_exists($ability,'get_input_schema')?$ability->get_input_schema():array();
-			$schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($schema,'ability_schema'):array('classification'=>'unknown','stats'=>array());
+			$output_schema=is_object($ability)&&method_exists($ability,'get_output_schema')?$ability->get_output_schema():array();
+			$schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($schema,'ability_input_schema'):array('classification'=>'unknown','stats'=>array());
+			$output_schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($output_schema,'ability_output_schema'):array('classification'=>'unknown','stats'=>array());
+			$output_schema_sha256=self::digest('mad4b.ability-output-schema.v1',is_array($output_schema)?self::safe_row($output_schema):$output_schema);
 			$parts=explode('/',$name,2);
 			$mcp_meta=isset($meta['mcp'])&&is_array($meta['mcp'])?$meta['mcp']:array();
 			$resource_constraints_sha256='';
@@ -429,11 +432,13 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				'action'=>isset($parts[1])?$parts[1]:'',
 				'category'=>isset($descriptor['category'])?(string)$descriptor['category']:'',
 				'required_capability'=>isset($mcp_meta['required_capability'])?sanitize_key((string)$mcp_meta['required_capability']):'',
+				'data_classification'=>isset($mcp_meta['data_classification'])?sanitize_key((string)$mcp_meta['data_classification']):'',
 				'resource_schema_version'=>isset($mcp_meta['resource_schema_version'])?substr((string)$mcp_meta['resource_schema_version'],0,64):'',
 				'resource_constraints_sha256'=>$resource_constraints_sha256,
 				'resource_values_exposed'=>false,
 				'privilege_inferred_from_resources'=>false,
 				'input_schema_sha256'=>isset($descriptor['input_schema_sha256'])?(string)$descriptor['input_schema_sha256']:'',
+				'output_schema_sha256'=>$output_schema_sha256,
 				'classification_sha256'=>isset($descriptor['classification_sha256'])?(string)$descriptor['classification_sha256']:'',
 				'descriptor_generation_sha256'=>isset($descriptor['descriptor_sha256'])?(string)$descriptor['descriptor_sha256']:'',
 				'readonly'=>!empty($descriptor['readonly']),
@@ -451,6 +456,8 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				),
 				'schema_evidence_classification'=>isset($schema_class['classification'])?(string)$schema_class['classification']:'unknown',
 				'schema_secret_bearing'=>isset($schema_class['stats']['redacted']) && (int)$schema_class['stats']['redacted']>0,
+				'output_schema_evidence_classification'=>isset($output_schema_class['classification'])?(string)$output_schema_class['classification']:'unknown',
+				'output_schema_secret_bearing'=>isset($output_schema_class['stats']['redacted']) && (int)$output_schema_class['stats']['redacted']>0,
 				'effect_class'=>(!empty($descriptor['readonly'])&&'read'===(isset($descriptor['execution_lane'])?$descriptor['execution_lane']:''))?'declared_read_only':'mutation_or_unknown',
 				'mcp_surface'=>isset($meta['mcp']['surface'])?sanitize_key((string)$meta['mcp']['surface']):'',
 				'mcp_public'=>!empty($meta['mcp']['public']),
@@ -469,6 +476,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 				),
 				'evidence'=>array(
 					'input_schema_sha256'=>isset($descriptor['input_schema_sha256'])?(string)$descriptor['input_schema_sha256']:'',
+					'output_schema_sha256'=>$output_schema_sha256,
 					'classification_sha256'=>isset($descriptor['classification_sha256'])?(string)$descriptor['classification_sha256']:'',
 					'descriptor_generation_sha256'=>isset($descriptor['descriptor_sha256'])?(string)$descriptor['descriptor_sha256']:'',
 				),
@@ -482,14 +490,26 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		$out = array();
 		foreach ( $abilities as $row ) {
 			if ( ! is_array( $row ) || empty( $row['id'] ) ) continue;
-			$digest = isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '';
 			$out[] = array(
 				'id' => 'ability:' . (string) $row['id'] . ':input',
 				'kind' => 'schema',
 				'owner_kind' => 'ability',
 				'owner_id' => (string) $row['id'],
-				'schema_sha256' => $digest,
+				'direction' => 'input',
+				'schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
 				'secret_bearing' => ! empty( $row['schema_secret_bearing'] ),
+				'values_read' => false,
+				'privilege_inferred' => false,
+			);
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
+			$out[] = array(
+				'id' => 'ability:' . (string) $row['id'] . ':output',
+				'kind' => 'schema',
+				'owner_kind' => 'ability',
+				'owner_id' => (string) $row['id'],
+				'direction' => 'output',
+				'schema_sha256' => isset( $row['output_schema_sha256'] ) ? (string) $row['output_schema_sha256'] : '',
+				'secret_bearing' => ! empty( $row['output_schema_secret_bearing'] ),
 				'values_read' => false,
 				'privilege_inferred' => false,
 			);
@@ -548,11 +568,11 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 					'contract' => isset( $row['reversal_contract'] ) ? (string) $row['reversal_contract'] : '',
 				),
 				'evidence' => array(
-					'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v1', $safe ),
+					'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v2', $safe ),
 					'planner_descriptor_sha256' => isset( $bound['planner_descriptor_sha256'] ) ? (string) $bound['planner_descriptor_sha256'] : '',
 					'executor_descriptor_sha256' => isset( $bound['executor_descriptor_sha256'] ) ? (string) $bound['executor_descriptor_sha256'] : '',
 				),
-				'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v1', $safe ),
+				'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v2', $safe ),
 			);
 
 			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
@@ -750,13 +770,25 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		foreach($cron as $timestamp=>$entries){
 			if(!is_array($entries)) continue;
 			foreach($entries as $hook=>$instances){
-				if(!isset($hooks[$hook])) $hooks[$hook]=array('id'=>(string)$hook,'kind'=>'cron_hook','instance_count'=>0,'next_timestamp'=>(int)$timestamp);
+				if(!isset($hooks[$hook])) $hooks[$hook]=array('instance_count'=>0,'next_timestamp'=>(int)$timestamp);
 				$hooks[$hook]['instance_count']+=is_array($instances)?count($instances):0;
 				$hooks[$hook]['next_timestamp']=min($hooks[$hook]['next_timestamp'],(int)$timestamp);
 			}
 		}
-		ksort($hooks,SORT_STRING);
-		return array_slice(array_values($hooks),0,self::MAX_ITEMS_PER_KIND);
+		ksort($hooks,SORT_STRING); $out=array();
+		foreach($hooks as $hook=>$row){
+			$sensitive=class_exists('MAD4B_SCP_Structural_Redaction')&&MAD4B_SCP_Structural_Redaction::sensitive_key($hook);
+			$out[]=array(
+				'id'=>$sensitive?'cron:'.hash('sha256',(string)$hook):'cron:'.(string)$hook,
+				'kind'=>'cron_hook',
+				'name_redacted'=>$sensitive,
+				'instance_count'=>(int)$row['instance_count'],
+				'next_timestamp'=>(int)$row['next_timestamp'],
+				'arguments_read'=>false,
+			);
+			if(count($out)>=self::MAX_ITEMS_PER_KIND) break;
+		}
+		return $out;
 	}
 
 	private static function admin_routes() {
@@ -823,7 +855,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			}
 		}
 		usort($edges,static function($a,$b){return strcmp($a['from']."\0".$a['to']."\0".$a['relation'],$b['from']."\0".$b['to']."\0".$b['relation']);});
-		return array_slice($edges,0,self::MAX_ITEMS_PER_KIND*4);
+		return array_slice($edges,0,self::MAX_EDGES);
 	}
 
 	private static function symbols() {
