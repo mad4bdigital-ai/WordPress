@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
-  "reviewed_base_sha": "7e53f19e04c82e5893aaf97d9251cfbb6a8a77b6",
-  "changed_file_count": 71,
+  "reviewed_base_sha": "e80b76cbf75cc5d59f17b2dda394e8e8bd6d55d3",
+  "changed_file_count": 23,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -104,11 +104,12 @@
       "revert_boundary": "Revert G1 evidence snapshot, runtime graph/classifier services and their exact tests as one non-authorizing implementation slice.",
       "certification": "exact_head",
       "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-        "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
@@ -117,6 +118,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "d42e0287c23da4fc9ecd8585552691edffe51845c84a0351276bd50361f5d432",
+  "changed_paths_sha256": "5bd18d4aeec4b1a41b9a516d8afe8c977d7f8d5f6c5dd650248b23d538d1d2bf",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
