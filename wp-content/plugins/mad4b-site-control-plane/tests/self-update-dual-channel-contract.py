@@ -95,6 +95,13 @@ required_self_update = [
     "mad4b_self_update_disk_provenance_version_mismatch",
     "cached_manifest",
     "mad4b_self_update_manifest_not_cached",
+    "mad4b.control-plane-update-attempt.v1",
+    "mad4b_scp_update_attempt_status_v1",
+    "'last_update_attempt' => self::last_update_attempt_projection()",
+    "'recovery_update' => self::recovery_status_projection()",
+    "private static function persist_update_attempt(",
+    "private static function failure_phase_for_code(",
+    "wordpress_admin_plugin_update_preflight",
 ]
 for marker in required_self_update:
     if marker not in self_update:
@@ -200,6 +207,31 @@ for marker in (
 ):
     if marker not in local_handler:
         raise SystemExit(f"local candidate-drift bootstrap routing invariant missing: {marker}")
+
+# The wp-admin lane must reject known maintenance/continuation blockers before
+# downloading the release, then persist a bounded outcome for every terminal
+# state so a rolled-back build can still explain the previous attempt.
+preflight_index = local_handler.find("self::maintenance_preflight( 'wordpress_admin_plugin_update_preflight' )")
+download_index = local_handler.find("download_url( $manifest['package_url'], 30 )")
+if min(preflight_index, download_index) < 0 or preflight_index >= download_index:
+    raise SystemExit("native wp-admin update must run read-only maintenance preflight before package download")
+for marker in (
+    "self::persist_update_attempt( 'manifest_error'",
+    "self::persist_update_attempt( 'current'",
+    "self::persist_update_attempt( 'download_error'",
+    "self::persist_update_attempt( 'verify_error'",
+    "self::persist_update_attempt( 'applying'",
+    "'apply_error'",
+    "$final_state = $bootstrap_mode ? 'bootstrap_success' : 'success';",
+    "self::persist_update_attempt( $final_state",
+):
+    if marker not in local_handler:
+        raise SystemExit(f"native update durable attempt evidence missing: {marker}")
+apply_error_persist = local_handler.find("self::persist_update_attempt(
+				'apply_error'")
+apply_error_redirect = local_handler.find("self::redirect_native_result( 'apply_error'")
+if min(apply_error_persist, apply_error_redirect) < 0 or apply_error_persist >= apply_error_redirect:
+    raise SystemExit("apply_error evidence must be persisted before redirecting the operator")
 managed_apply_bootstrap = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
 for marker in (
     "$bootstrap_candidate_drift = false",
