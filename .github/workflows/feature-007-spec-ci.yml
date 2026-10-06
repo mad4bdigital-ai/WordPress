@@ -47,15 +47,37 @@ jobs:
         run: |
           set -euo pipefail
           BASE="${{ github.event.pull_request.base.sha }}"
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          INTEGRATION_REF="spec/007-competitive-experience-20261006"
           if ! git merge-base --is-ancestor "$BASE" HEAD; then
             echo "BASELINE_STALE"
             git rev-list --left-right --count "$BASE"...HEAD || true
             exit 1
           fi
+
           META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["last_reviewed_master_parent_sha"])')"
-          if [ "$META_BASE" != "$BASE" ]; then
-            echo "BASELINE_METADATA_STALE expected_reviewed_parent=$BASE recorded=$META_BASE"
-            exit 1
+          if [ "$BASE_REF" = "master" ]; then
+            if [ "$META_BASE" != "$BASE" ]; then
+              echo "BASELINE_METADATA_STALE expected_reviewed_master_parent=$BASE recorded=$META_BASE"
+              exit 1
+            fi
+          elif [ "$BASE_REF" = "$INTEGRATION_REF" ]; then
+            git fetch --no-tags origin master
+            CURRENT_MASTER="$(git rev-parse FETCH_HEAD)"
+            if ! git merge-base --is-ancestor "$CURRENT_MASTER" "$BASE"; then
+              echo "INTEGRATION_HUB_STALE current_master=$CURRENT_MASTER integration_base=$BASE"
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$META_BASE" "$BASE"; then
+              echo "INTEGRATION_MASTER_PROVENANCE_INVALID recorded_master_parent=$META_BASE integration_base=$BASE"
+              exit 1
+            fi
+            echo "INTEGRATION_CHILD_BASE_OK current_master=$CURRENT_MASTER integration_base=$BASE recorded_master_parent=$META_BASE"
+          else
+            if ! git merge-base --is-ancestor "$META_BASE" "$BASE"; then
+              echo "BASELINE_METADATA_PROVENANCE_INVALID base_ref=$BASE_REF base=$BASE recorded_master_parent=$META_BASE"
+              exit 1
+            fi
           fi
 
           python - "$BASE" <<'PY'
