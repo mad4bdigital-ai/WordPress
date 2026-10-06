@@ -38,7 +38,7 @@ def php_executable_text(text):
                 i += 2
                 state = 'line_comment'
                 continue
-            if ch == '#':
+            if ch == '#' and nxt != '[':
                 out.append(' ')
                 i += 1
                 state = 'line_comment'
