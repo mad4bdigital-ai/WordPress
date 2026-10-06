@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 graph = (ROOT / "includes/class-mad4b-scp-runtime-evidence-graph.php").read_text(encoding="utf-8")
 classifier = (ROOT / "includes/class-mad4b-scp-runtime-policy-classifier.php").read_text(encoding="utf-8")
 competitive = (ROOT / "includes/class-mad4b-scp-competitive-evidence.php").read_text(encoding="utf-8")
+summary_php = (ROOT / "config/competitive-evidence-summary.php").read_text(encoding="utf-8")
 plugin = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 def normalized(text):
@@ -20,10 +21,23 @@ def deny(text, *needles):
     for needle in needles:
         assert normalized(needle) not in haystack, f"forbidden marker: {needle}"
 
-req(graph,
-    "mad4b.runtime-evidence-graph.v1",
-    "mad4b.runtime-evidence-generation.v1",
-    "mad4b.runtime-evidence-graph-diff.v1",
+req(
+    graph,
+    "mad4b.runtime-evidence-graph.v2",
+    "mad4b.runtime-evidence-generation.v2",
+    "mad4b.runtime-evidence-graph-diff.v2",
+    "mad4b_runtime_graph_generation_mismatch",
+    "mad4b_runtime_graph_cross_site_rejected",
+    "mad4b_runtime_graph_before_oversized",
+    "collection_status",
+    "trustworthy_for_absence",
+    "uncertain_added",
+    "uncertain_removed",
+    "comparison_trustworthy_for_absence",
+    "observation_phase",
+    "rest_api_initialized",
+    "within_soft_budget",
+    "cache_hit",
     "'callbacks_executed'=>false",
     "'unknown_plugin_code_executed'=>false",
     "'unknown_endpoints_invoked'=>false",
@@ -40,23 +54,39 @@ req(graph,
     "'schemas'=>self::schemas($ability_nodes)",
     "'hooks'=>self::hooks()",
     "'mcp_descriptors'=>self::mcp_descriptors($ability_nodes)",
-    "'edges'=>$edges",
     "'relation'=>'contains_component'",
     "'relation'=>'bound_to_provider'",
     "'relation'=>'declares_schema'",
-    "'affected_workflows'=>array_values(array_unique($affected_workflows))",
+    "transitive_impact",
+    "MAD4B_SCP_Dependency_Impact_Graph::inspect",
     "'semantic_dimensions'=>array('provider','component','capability','operation','schema','precondition','effect','reversal','evidence')",
     "required_capability",
+    "data_classification",
+    "output_schema_sha256",
+    "output_schema_secret_bearing",
     "resource_schema_version",
     "resource_constraints_sha256",
     "resource_values_exposed",
     "privilege_inferred_from_resources",
+    "'arguments_read'=>false",
 )
 deny(graph, "call_user_func(", "call_user_func_array(", "wp_remote_get(", "wp_remote_post(", "$wpdb->query(", "$wpdb->get_results(", "grant_ability(")
 
-req(classifier,
-    "mad4b.runtime-policy-classifier.v1",
-    "mad4b.runtime-policy-proposal.v1",
+req(
+    classifier,
+    "mad4b.runtime-policy-classifier.v2",
+    "mad4b.runtime-policy-proposal.v2",
+    "mad4b.runtime-policy-conformance-receipt.v1",
+    "mad4b.runtime-policy-review-overlay.v2",
+    "conformance_issuer_untrusted",
+    "conformance_binding_mismatch",
+    "conformance_provider_binding_mismatch",
+    "conformance_receipt_digest_mismatch",
+    "secret_output_schema_blocks_auto_classification",
+    "privileged_capability_blocks_auto_classification",
+    "sensitive_data_classification_blocks_auto_classification",
+    "trusted_conformance_receipt_missing",
+    "output_schema_digest_missing",
     "'confidence_is_safety_proof'=>false",
     "'operation_names_create_authority'=>false",
     "'schema_infers_privilege'=>false",
@@ -66,27 +96,40 @@ req(classifier,
     "operation_name_cannot_prove_read_safety",
     "http_get_cannot_prove_read_safety",
     "risk_downgrade_rejected",
-    "actual_conformance_missing",
     "schema_digest_missing",
     "execution_boundary_unverified",
-    "secret_schema_blocks_zero_effect_auto_classification",
     "'authority_delta'=>array('grants'=>0,'mounts'=>0,'scopes'=>0,'certifications'=>0)",
-    "mad4b.runtime-policy-review-overlay.v1",
     "mad4b/runtime-policy-review-record",
     "mad4b_runtime_policy_review_graph_stale",
     "mad4b_runtime_policy_review_proposal_stale",
     "mad4b_runtime_policy_review_stale",
+    "mad4b_runtime_policy_review_store_tampered",
+    "mad4b_runtime_policy_review_audit_not_ready",
+    "mad4b_runtime_policy_review_lock_lost",
+    "previous_review_sha256",
+    "MAX_REVIEW_HISTORY",
+    "review_record_digest",
     "'creates_certification'=>false",
     "'authority_effect'=>'none'",
-    "resource_schema_version",
-    "resource_constraints_sha256",
 )
 deny(classifier, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->", "MAD4B_SCP_Servers::register")
 
-req(competitive,
-    "mad4b.competitive-evidence-summary.v1",
+req(
+    competitive,
+    "mad4b.competitive-evidence-summary.v2",
+    "config/competitive-evidence-summary.php",
+    "Direct web execution",
+    "MAX_PACKAGES",
+    "MAX_CAPABILITIES",
+    "MAX_SOURCES_PER_CAPABILITY",
+    "direct_web_resource",
+    "mad4b_ce_status",
+    "mad4b_ce_class",
+    "mad4b_ce_q",
     "Static or marketed evidence never proves runtime parity or creates access.",
-    "snapshot_generation_sha256", "task_ids", "evidence_ids",
+    "snapshot_generation_sha256",
+    "task_ids",
+    "evidence_ids",
     "summary_sha256",
     "mad4b_competitive_evidence_digest_mismatch",
     "mad4b_competitive_evidence_static_runtime_claim",
@@ -96,10 +139,15 @@ req(competitive,
     "runtime_parity_claimed",
     "authority_created",
 )
-deny(competitive, "wp_remote_", "grant_ability(", "$wpdb->")
-req(plugin,
+deny(competitive, "competitive-evidence-summary.json", "wp_remote_", "grant_ability(", "$wpdb->")
+req(summary_php, "if ( ! defined( 'ABSPATH' ) ) { exit; }", "MAD4B_JSON", "json_decode")
+deny(summary_php, "competitive-evidence-summary.json")
+
+req(
+    plugin,
     "class-mad4b-scp-runtime-evidence-graph.php",
     "class-mad4b-scp-runtime-policy-classifier.php",
     "class-mad4b-scp-competitive-evidence.php",
 )
-print("mad4b.g1-runtime-evidence-contract.v1: PASS")
+
+print("mad4b.g1-runtime-evidence-contract.v2: PASS")
