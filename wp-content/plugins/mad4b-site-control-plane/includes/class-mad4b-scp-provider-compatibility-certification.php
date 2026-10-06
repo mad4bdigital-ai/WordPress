@@ -184,15 +184,18 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				foreach ( (array) ( isset( $capability['abilities'] ) ? $capability['abilities'] : array() ) as $ability ) {
 					$ability = (string) $ability;
 					if ( '' === $ability ) continue;
-					$key = $adapter_id . "\0" . $ability;
-					if ( ! isset( $policy_index[ $key ] ) ) $policy_index[ $key ] = array();
-					$policy_index[ $key ][] = array(
+					$policy_row = array(
 						'provider_id' => sanitize_key( (string) $provider_id ),
 						'capability_id' => (string) $capability_id,
 						'risk' => isset( $capability['risk'] ) ? sanitize_key( (string) $capability['risk'] ) : 'read',
 						'reversible' => ! empty( $capability['reversible'] ),
 						'rollback_contract' => isset( $capability['rollback_contract'] ) ? (string) $capability['rollback_contract'] : '',
 					);
+					foreach ( array_values( array_unique( array( $adapter_id, sanitize_key( (string) $provider_id ) ) ) ) as $identity_key ) {
+						$key = $identity_key . "\0" . $ability;
+						if ( ! isset( $policy_index[ $key ] ) ) $policy_index[ $key ] = array();
+						$policy_index[ $key ][] = $policy_row;
+					}
 				}
 			}
 		}
@@ -203,6 +206,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		foreach ( $adapters as $adapter_id => $adapter ) {
 			$adapter_id = sanitize_key( (string) $adapter_id );
 			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
+			$provider_key = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : $adapter_id;
+			if ( '' === $provider_key ) $provider_key = $adapter_id;
 			$ability_surfaces = array();
 			foreach ( (array) $adapter->ability_names() as $surface => $abilities ) {
 				$surface = sanitize_key( (string) $surface );
@@ -217,10 +222,18 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			foreach ( $ability_surfaces as $ability => $surfaces ) {
 				$surfaces = array_values( array_unique( array_filter( $surfaces ) ) );
 				sort( $surfaces, SORT_STRING );
-				$matches = isset( $policy_index[ $adapter_id . "\0" . $ability ] ) ? $policy_index[ $adapter_id . "\0" . $ability ] : array();
+				$matches = array();
+				foreach ( array_values( array_unique( array( $adapter_id, $provider_key ) ) ) as $identity_key ) {
+					foreach ( isset( $policy_index[ $identity_key . "\0" . $ability ] ) ? $policy_index[ $identity_key . "\0" . $ability ] : array() as $policy_match ) {
+						$match_key = ( isset( $policy_match['provider_id'] ) ? $policy_match['provider_id'] : '' ) . "\0" . ( isset( $policy_match['capability_id'] ) ? $policy_match['capability_id'] : '' );
+						$matches[ $match_key ] = $policy_match;
+					}
+				}
+				$matches = array_values( $matches );
 				if ( empty( $matches ) ) ++$unclassified;
 				$candidates[] = array(
 					'adapter_id' => $adapter_id,
+					'provider_key' => $provider_key,
 					'ability' => $ability,
 					'surfaces' => $surfaces,
 					'policy_state' => $matches ? 'REVIEWED_POLICY_OVERLAY' : 'UNCLASSIFIED_FAIL_CLOSED',
