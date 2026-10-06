@@ -178,3 +178,19 @@ for token in [
     "'agent_mutation_allowed' => false",
 ]:
     assert token in continuation, f"missing fail-closed observed reconciliation token: {token}"
+
+
+# Observed-release auto-reconciliation retries only transient dependencies.
+runtime_convergence = (ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
+for token in [
+    "private static function observed_release_error_policy",
+    "mad4b_observed_release_identity_mismatch",
+    "mad4b_observed_release_integrity_required",
+    "mad4b_self_update_pointer_fetch_failed",
+    "mad4b_self_update_manifest_not_cached",
+    "automatic_bounded_reconciliation_retry",
+    "explicit_review_after_retry_exhaustion",
+    "bounded_retry_exhausted",
+    "MAX_TRANSIENT_RETRIES",
+]:
+    assert token in runtime_convergence, f"missing observed-release retry policy token: {token}"

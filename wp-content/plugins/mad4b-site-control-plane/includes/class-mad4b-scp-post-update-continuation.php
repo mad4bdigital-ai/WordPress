@@ -310,6 +310,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'agent_mutation_allowed' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
+			'retryable' => false,
+			'retry_after_seconds' => 0,
 		);
 
 		$environment = class_exists( 'MAD4B_SCP_Site_Profile' )
@@ -402,6 +404,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		if ( empty( $skills['ready'] ) || empty( $skills['build_identity_current'] ) || ! self::identity_matches( $target, $skills ) ) {
 			$result['disposition'] = 'DEFER';
 			$result['reasons'] = array( 'current_build_skill_certification_pending' );
+			$result['retryable'] = true;
+			$result['retry_after_seconds'] = 15;
 			return $result;
 		}
 

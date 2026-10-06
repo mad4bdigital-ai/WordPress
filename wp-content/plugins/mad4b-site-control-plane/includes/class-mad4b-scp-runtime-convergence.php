@@ -927,6 +927,67 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 	}
 
+
+	private static function observed_release_error_policy( $error ) {
+		$code = is_wp_error( $error ) ? sanitize_key( (string) $error->get_error_code() ) : 'unknown_observed_release_error';
+		$data = is_wp_error( $error ) && method_exists( $error, 'get_error_data' ) ? $error->get_error_data() : array();
+		$data = is_array( $data ) ? $data : array();
+		$status = isset( $data['status'] ) ? absint( $data['status'] ) : 0;
+		$result = array(
+			'disposition' => 'REVIEW_REQUIRED',
+			'reasons' => array( $code ),
+			'retryable' => false,
+			'retry_after_seconds' => 0,
+		);
+
+		// Network availability is not an authority decision. Retry only bounded,
+		// clearly transient fetch failures. 4xx channel errors are reviewable,
+		// while 5xx/408/425/429 are transient.
+		if ( preg_match( '/_(?:pointer|manifest)_fetch_failed$/', $code )
+			|| 'mad4b_self_update_manifest_not_cached' === $code ) {
+			$result['disposition'] = 'DEFER';
+			$result['retryable'] = true;
+			$result['retry_after_seconds'] = 15;
+			return $result;
+		}
+		if ( preg_match( '/_(?:pointer|manifest)_http_error$/', $code ) ) {
+			if ( in_array( $status, array( 408, 425, 429 ), true ) || $status >= 500 ) {
+				$result['disposition'] = 'DEFER';
+				$result['retryable'] = true;
+				$result['retry_after_seconds'] = 30;
+			}
+			return $result;
+		}
+
+		// A valid but different installed package is not retried: it needs a new
+		// trusted release observation or owner review. This is the expected
+		// behavior for a non-master Integration Hub artifact.
+		if ( 'mad4b_observed_release_identity_mismatch' === $code ) {
+			$result['disposition'] = 'REVIEW_REQUIRED';
+			return $result;
+		}
+
+		// Integrity, environment and release-root failures are terminal for
+		// automatic reconciliation. No retry may turn them into authority.
+		$hard_codes = array(
+			'mad4b_observed_release_staging_required',
+			'mad4b_observed_release_integrity_required',
+			'mad4b_self_update_pointer_trust_invalid',
+			'mad4b_self_update_manifest_digest_mismatch',
+			'mad4b_self_update_pointer_source_mismatch',
+			'mad4b_self_update_pointer_verdict_mismatch',
+		);
+		if ( in_array( $code, $hard_codes, true )
+			|| preg_match( '/_(?:contract_mismatch|repository_mismatch|release_tag_mismatch|asset_invalid|source_invalid|verdict_invalid|package_url_invalid|identity_invalid|size_invalid|version_invalid)$/', $code ) ) {
+			$result['disposition'] = 'HARD_BLOCK';
+			return $result;
+		}
+
+		// Unknown release-channel failures remain explicit review gates. They are
+		// never silently retried and never auto-promoted.
+		return $result;
+	}
+
 	private static function reconciliation_decision( array $signals, array $preflight = array() ) {
 		$scenario = self::select_reconciliation_scenario( $signals );
 		$disposition = isset( $preflight['disposition'] ) ? strtoupper( sanitize_key( (string) $preflight['disposition'] ) ) : 'DEFER';
@@ -944,6 +1005,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'subject_mutation_allowed' => false,
 			'agent_mutation_allowed' => false,
 			'reasons' => isset( $preflight['reasons'] ) && is_array( $preflight['reasons'] ) ? array_values( array_unique( array_map( 'sanitize_key', $preflight['reasons'] ) ) ) : array(),
+			'retryable' => ! empty( $preflight['retryable'] ),
+			'retry_after_seconds' => ! empty( $preflight['retryable'] ) ? max( 5, min( 300, absint( $preflight['retry_after_seconds'] ?? 15 ) ) ) : 0,
 			'dynamic_registry' => true,
 			'extension_filter' => 'mad4b_scp_auto_reconciliation_scenarios',
 			'read_only' => true,
@@ -1174,10 +1237,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'observed_reconciliation_preflight' ) ) {
 				$trusted_target = MAD4B_SCP_Self_Update::observed_release_target();
 				if ( is_wp_error( $trusted_target ) ) {
-					$preflight = array(
-						'disposition' => 'DEFER',
-						'reasons' => array( sanitize_key( (string) $trusted_target->get_error_code() ) ),
-					);
+					$preflight = self::observed_release_error_policy( $trusted_target );
 					$observed_continuation = $trusted_target;
 				} else {
 					$preflight = MAD4B_SCP_Post_Update_Continuation::observed_reconciliation_preflight( $trusted_target );
@@ -1193,6 +1253,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 					array(
 						'disposition' => ! empty( $continuation_status['active'] ) ? 'DEFER' : 'NO_OP',
 						'reasons' => ! empty( $continuation_status['active'] ) ? array( 'continuation_already_active' ) : array(),
+						'retryable' => false,
+						'retry_after_seconds' => 0,
 					)
 				);
 			}
@@ -1211,6 +1273,37 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$continuation_state = isset( $final_continuation['state'] ) ? sanitize_key( (string) $final_continuation['state'] ) : '';
 			$checkpoint_state = empty( $status['required_blockers'] ) ? 'completed' : 'awaiting_gated_phases';
 			if ( 'blocked' === $continuation_state ) $checkpoint_state = 'authority_blocked';
+
+			$auto_retry_scheduled = false;
+			$retry_count = is_array( $existing_checkpoint ) && isset( $existing_checkpoint['transient_retry_count'] )
+				? absint( $existing_checkpoint['transient_retry_count'] )
+				: 0;
+			$retry_after_seconds = 0;
+			if ( 'DEFER' === ( $auto_reconciliation['disposition'] ?? '' )
+				&& ! empty( $auto_reconciliation['retryable'] )
+				&& empty( $continuation_result ) ) {
+				if ( $retry_count < self::MAX_TRANSIENT_RETRIES ) {
+					++$retry_count;
+					$retry_after_seconds = max(
+						5,
+						min(
+							300,
+							max( absint( $auto_reconciliation['retry_after_seconds'] ?? 15 ), 5 * ( 1 << min( 5, $retry_count - 1 ) ) )
+						)
+					);
+					$checkpoint_state = 'pending_safe_phases';
+					$auto_reconciliation['retry_attempt'] = $retry_count;
+					$auto_reconciliation['retry_after_seconds'] = $retry_after_seconds;
+					$auto_reconciliation['retry_policy'] = 'automatic_bounded_reconciliation_retry';
+				} else {
+					$auto_reconciliation['disposition'] = 'REVIEW_REQUIRED';
+					$auto_reconciliation['retryable'] = false;
+					$auto_reconciliation['retry_exhausted'] = true;
+					$auto_reconciliation['retry_policy'] = 'explicit_review_after_retry_exhaustion';
+					$auto_reconciliation['reasons'][] = 'bounded_retry_exhausted';
+					$auto_reconciliation['reasons'] = array_values( array_unique( array_map( 'sanitize_key', $auto_reconciliation['reasons'] ) ) );
+				}
+			}
 			$prior_source = is_array( $existing_checkpoint ) && isset( $existing_checkpoint['source'] ) ? sanitize_key( (string) $existing_checkpoint['source'] ) : '';
 			$checkpoint_source = 'self_update' === $prior_source ? 'self_update' : sanitize_key( (string) $source );
 			$checkpoint = array(
@@ -1229,8 +1322,17 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'production_mutation' => false,
 				'candidate_binding_mutation' => is_array( $continuation_result ) && 'completed' === ( isset( $continuation_result['state'] ) ? (string) $continuation_result['state'] : '' ),
 				'provider_write_certification' => false,
+				'transient_retry_count' => $retry_count,
+				'automatic_retry_allowed' => 'pending_safe_phases' === $checkpoint_state && ! empty( $auto_reconciliation['retryable'] ),
+				'retry_policy' => isset( $auto_reconciliation['retry_policy'] ) ? (string) $auto_reconciliation['retry_policy'] : 'none',
+				'retry_after_seconds' => $retry_after_seconds,
 			);
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			if ( 'pending_safe_phases' === $checkpoint_state && $retry_after_seconds > 0 ) {
+				$auto_retry_scheduled = self::schedule_resume( time() + $retry_after_seconds );
+				$checkpoint['auto_retry_scheduled'] = (bool) $auto_retry_scheduled;
+				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			}
 			if ( defined( 'MAD4B_SCP_VERSION' ) ) update_option( 'mad4b_scp_version', (string) MAD4B_SCP_VERSION, false );
 			if ( defined( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' ) && 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 ) ) ) {
 				update_option( 'mad4b_scp_boot_provenance_sha256', strtolower( (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 ), false );

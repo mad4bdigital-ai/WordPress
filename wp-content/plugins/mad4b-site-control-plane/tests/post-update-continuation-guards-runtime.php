@@ -190,6 +190,8 @@ foreach ( array( 'healthy', 'baseline_missing', 'production', 'skills_pending', 
 		'schema_changed' => 'REVIEW_REQUIRED',
 	);
 	check( $expected[ $case ] === ( $preflight['disposition'] ?? '' ), 'Unexpected observed reconciliation disposition: ' . $case . ' => ' . ( $preflight['disposition'] ?? 'missing' ) );
+	if ( 'skills_pending' === $case ) check( ! empty( $preflight['retryable'] ) && (int) $preflight['retry_after_seconds'] >= 5, 'Skill dependency defer must be bounded-retryable.' );
+	else check( empty( $preflight['retryable'] ), 'Non-transient preflight disposition unexpectedly became retryable: ' . $case );
 }
 echo "Observed reconciliation preflight matrix: PASS\n";
 
