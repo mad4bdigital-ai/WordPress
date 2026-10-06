@@ -546,7 +546,11 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			if ( isset( $stored['post_type'] ) && $post_type === (string) $stored['post_type'] ) $existing_for_type[] = $stored;
 		}
 		if ( '' === $explicit_slug && $existing_for_type ) {
-			usort( $existing_for_type, static function ( $a, $b ) { return (int) $b['revision'] <=> (int) $a['revision']; } );
+			usort( $existing_for_type, static function ( $a, $b ) {
+				$ar = is_array( $a ) && isset( $a['revision'] ) ? (int) $a['revision'] : 0;
+				$br = is_array( $b ) && isset( $b['revision'] ) ? (int) $b['revision'] : 0;
+				return $br <=> $ar;
+			} );
 			$existing = $existing_for_type[0];
 			return array(
 				'contract' => self::BOOTSTRAP_PLAN_CONTRACT,
@@ -562,6 +566,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 
 		$slug_seed = '' !== $explicit_slug ? $explicit_slug : preg_replace( '/[^a-z0-9]+/', '-', strtolower( $post_type ) );
 		$slug_seed = trim( substr( (string) $slug_seed, 0, 48 ), '-' );
+		if ( strlen( $slug_seed ) < 2 ) $slug_seed = 'content-' . $slug_seed;
 		$slug = self::route_slug( $slug_seed );
 		if ( is_wp_error( $slug ) ) return $slug;
 
