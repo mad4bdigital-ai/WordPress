@@ -51,18 +51,18 @@ try {
   await page.goto(base + '/wp-login.php', { waitUntil: 'domcontentloaded' });
   await page.locator('#user_login').fill(username);
   await page.locator('#user_pass').fill(password);
-  // The disposable PHP server is intentionally single-process. The wp-admin
-  // redirect can commit promptly while the full window load remains busy on
-  // admin assets, so bind login success to DOM readiness plus the real admin
-  // shell instead of an arbitrary full-load deadline.
+  // The disposable PHP server can spend material time rendering wp-admin and
+  // its asset waterfall. Authentication is established by the login redirect;
+  // the OAuth authorize page below is the actual session-bound surface under
+  // test. Wait only for the committed authenticated redirect, then navigate
+  // directly to OAuth instead of making unrelated admin DOM readiness a gate.
   await Promise.all([
     page.waitForURL(
       url => url.pathname.includes('/wp-admin/'),
-      { timeout: 30000, waitUntil: 'domcontentloaded' }
+      { timeout: 30000, waitUntil: 'commit' }
     ),
     page.locator('#wp-submit').click(),
   ]);
-  await page.locator('#wpwrap').waitFor({ state: 'visible', timeout: 15000 });
   assert(page.url().includes('/wp-admin/'), 'WordPress browser login failed.', { url: page.url() });
 
   const params = new URLSearchParams({
