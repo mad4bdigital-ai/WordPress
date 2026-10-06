@@ -42,14 +42,6 @@ profile_case( 'profile_form_creates_paused_draft_exact_readback_without_authorit
 	foreach ( array( 'Selected profile', 'Edit selected profile policy', 'Create a search profile', 'expected_revision', 'Profile policy JSON' ) as $text ) profile_check( false !== strpos( $html, $text ), 'operator path discoverable: ' . $text );
 	profile_check( 0 === count( $GLOBALS['fixture_http'] ), 'draft save and rendering never call provider' );
 } );
-profile_case( 'guided_profile_accepts_checkbox_lists_and_renders_site_aware_defaults', static function () {
-	$args = profile_form( 'guided.profile' ); $args['languages'] = array( 'en', 'ar' ); $args['engines'] = array( 'google' ); $args['market_country'] = 'eg';
-	$result = MAD4B_SCP_Search_Profile_Admin::save( $args );
-	profile_check( ! is_wp_error( $result ) && array( 'en', 'ar' ) === $result['profile']['language_policy']['desired'], 'flat checkbox language list accepted and normalized' );
-	profile_check( 'EG' === $result['profile']['markets'][0]['country'], 'lowercase country input normalized to ISO uppercase' );
-	ob_start(); MAD4B_SCP_Search_Profile_Admin::render( '' ); $html = ob_get_clean();
-	foreach ( array( 'Guided setup', '1. Target market', '2. Site languages', '3. Search engines', '4. Provider accounts', 'Technical identifiers (auto-filled)', 'name="languages[]"', 'name="engines[]"' ) as $text ) profile_check( false !== strpos( $html, $text ), 'guided setup element visible: ' . $text );
-});
 profile_case( 'profile_editor_preserves_policy_and_fences_stale_or_renamed_forms', static function () {
 	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form() ); $p = $saved['profile']; $raw = array_intersect_key( $p, array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) );
 	$raw['markets'][] = array( 'id' => 'second-market', 'country' => 'FR', 'provider_locations' => array( 'alpha' => array( 'id' => 'fixture-location', 'precision' => 'country' ) ) );

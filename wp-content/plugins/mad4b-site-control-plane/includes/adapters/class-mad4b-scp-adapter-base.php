@@ -91,6 +91,8 @@ abstract class MAD4B_SCP_Adapter_Base {
 	 * plugin presence or from an arbitrary Ability name.
 	 */
 	public function content_experience_helpers() { return array(); }
+	/** Optional provider-declared media-field candidates for Content Experience bootstrap. */
+	public function content_experience_media_field_candidates( $post_type ) { return array(); }
 	public function plan_content_experience_helper( $helper_id, $input, array $profile, $operation ) {
 		return new WP_Error( 'mad4b_content_experience_helper_planning_unsupported', 'Adapter does not implement this content-experience helper.' );
 	}

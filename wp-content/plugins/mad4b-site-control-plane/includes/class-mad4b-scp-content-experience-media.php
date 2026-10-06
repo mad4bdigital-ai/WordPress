@@ -59,14 +59,9 @@ final class MAD4B_SCP_Content_Experience_Media {
 			$storage = isset( $spec['storage'] ) ? sanitize_key( (string) $spec['storage'] ) : ( $is_usage ? 'items' : ( $is_gallery ? 'ids' : 'id' ) );
 			if ( $is_usage ) {
 				if ( 'items' !== $storage ) return new WP_Error( 'mad4b_content_experience_media_meta_storage_invalid', 'Media usage metadata must use canonical items storage.', array( 'key' => $key ) );
-			} elseif ( ! in_array( $storage, array( 'id', 'ids', 'csv_ids' ), true ) ) {
-				return new WP_Error( 'mad4b_content_experience_media_meta_storage_invalid', 'Media metadata field storage is unsupported.', array( 'key' => $key ) );
-			}
-			if ( ! $is_usage && $is_gallery && 'id' === $storage ) {
-				return new WP_Error( 'mad4b_content_experience_media_meta_storage_invalid', 'Gallery metadata cannot use single-id storage.', array( 'key' => $key ) );
-			}
-			if ( ! $is_usage && ! $is_gallery && 'id' !== $storage ) {
-				return new WP_Error( 'mad4b_content_experience_media_meta_storage_invalid', 'Single media metadata must use id storage.', array( 'key' => $key ) );
+			} else {
+				$storage_guard = MAD4B_SCP_Content_Experience_Media_Storage::validate_storage( $kind, $storage );
+				if ( is_wp_error( $storage_guard ) ) return new WP_Error( $storage_guard->get_error_code(), $storage_guard->get_error_message(), array_merge( array( 'key' => $key ), (array) $storage_guard->get_error_data() ) );
 			}
 
 			$max_items = $is_gallery
@@ -289,38 +284,11 @@ final class MAD4B_SCP_Content_Experience_Media {
 			return $out;
 		}
 
-		$ids = array();
-		if ( $is_gallery ) {
-			if ( ! is_array( $value ) || array_values( $value ) !== $value ) return new WP_Error( 'mad4b_content_experience_media_gallery_shape_invalid', 'Media gallery metadata must be a list of attachment IDs.', array( 'key' => $key ) );
-			if ( count( $value ) > $max_items ) return new WP_Error( 'mad4b_content_experience_media_gallery_limit', 'Media gallery exceeds the configured item limit.', array( 'key' => $key, 'max_items' => $max_items ) );
-			foreach ( $value as $candidate ) {
-				if ( ! is_int( $candidate ) && ! ( is_string( $candidate ) && ctype_digit( $candidate ) ) ) return new WP_Error( 'mad4b_content_experience_media_id_invalid', 'Media gallery contains a non-integer attachment ID.', array( 'key' => $key ) );
-				$id = absint( $candidate );
-				if ( $id < 1 ) return new WP_Error( 'mad4b_content_experience_media_id_invalid', 'Media gallery attachment IDs must be positive.', array( 'key' => $key ) );
-				$ids[] = $id;
-			}
-			if ( count( array_unique( $ids ) ) !== count( $ids ) ) return new WP_Error( 'mad4b_content_experience_media_gallery_duplicate', 'Media gallery contains duplicate attachment IDs.', array( 'key' => $key ) );
-		} else {
-			if ( null === $value || '' === $value || 0 === $value || '0' === $value ) return 0;
-			if ( ! is_int( $value ) && ! ( is_string( $value ) && ctype_digit( $value ) ) ) return new WP_Error( 'mad4b_content_experience_media_id_invalid', 'Media metadata must reference one attachment ID.', array( 'key' => $key ) );
-			$id = absint( $value );
-			if ( $id < 1 ) return new WP_Error( 'mad4b_content_experience_media_id_invalid', 'Media attachment ID must be positive.', array( 'key' => $key ) );
-			$ids[] = $id;
-		}
-		foreach ( $ids as $id ) {
-			if ( 'attachment' !== get_post_type( $id ) ) return new WP_Error( 'mad4b_content_experience_media_attachment_missing', 'Media metadata references a missing or non-attachment object.', array( 'key' => $key, 'attachment_id' => $id ) );
-			if ( $image_only && ! wp_attachment_is_image( $id ) ) return new WP_Error( 'mad4b_content_experience_media_image_required', 'Image metadata field references a non-image attachment.', array( 'key' => $key, 'attachment_id' => $id ) );
-			if ( ! current_user_can( 'read_post', $id ) ) return new WP_Error( 'mad4b_content_experience_media_read_denied', 'Current user cannot read one referenced media attachment.', array( 'key' => $key, 'attachment_id' => $id ) );
-		}
-		if ( ! $is_gallery ) return isset( $ids[0] ) ? (int) $ids[0] : 0;
-		return 'csv_ids' === $storage ? implode( ',', $ids ) : $ids;
+		return MAD4B_SCP_Content_Experience_Media_Storage::normalize_reference_value( $key, $value, $spec, $image_only );
 	}
 
-	private static function reference_ids( $value ) {
-		if ( is_array( $value ) ) return array_values( array_map( 'absint', $value ) );
-		if ( is_string( $value ) && '' !== $value ) return array_values( array_filter( array_map( 'absint', explode( ',', $value ) ) ) );
-		if ( is_numeric( $value ) && (int) $value > 0 ) return array( (int) $value );
-		return array();
+	private static function reference_ids( $value, array $spec ) {
+		return MAD4B_SCP_Content_Experience_Media_Storage::reference_ids( $value, $spec );
 	}
 
 	private static function verification_projection( $value, array $spec ) {
@@ -330,7 +298,7 @@ final class MAD4B_SCP_Content_Experience_Media {
 		);
 		$is_usage = false !== strpos( isset( $spec['kind'] ) ? (string) $spec['kind'] : '', '_usage' );
 		if ( ! $is_usage ) {
-			$result['attachment_ids'] = self::reference_ids( $value );
+			$result['attachment_ids'] = self::reference_ids( $value, $spec );
 			return $result;
 		}
 		$items = is_array( $value ) ? $value : array();
@@ -358,7 +326,7 @@ final class MAD4B_SCP_Content_Experience_Media {
 					array( 'key' => $key, 'references_field' => $reference )
 				);
 			}
-			$expected = self::reference_ids( $normalized_meta[ $reference ] );
+			$expected = self::reference_ids( $normalized_meta[ $reference ], $field_specs[ $reference ] );
 			$actual = array_values( array_map( 'absint', array_column( (array) $normalized_meta[ $key ], 'attachment_id' ) ) );
 			if ( $expected !== $actual ) {
 				return new WP_Error(
@@ -382,11 +350,7 @@ final class MAD4B_SCP_Content_Experience_Media {
 			}
 			if ( $post_id < 1 || ! metadata_exists( 'post', $post_id, $key ) ) continue;
 			$stored = get_post_meta( $post_id, $key, true );
-			$input = $stored;
-			if ( 'csv_ids' === ( isset( $spec['storage'] ) ? (string) $spec['storage'] : '' ) ) {
-				$input = '' === (string) $stored ? array() : array_values( array_filter( array_map( 'absint', explode( ',', (string) $stored ) ) ) );
-			}
-			$value = self::normalize_meta_value( $key, $input, $spec );
+			$value = self::normalize_meta_value( $key, $stored, $spec );
 			if ( is_wp_error( $value ) ) {
 				return new WP_Error(
 					'mad4b_content_experience_media_effective_state_invalid',
@@ -424,11 +388,7 @@ final class MAD4B_SCP_Content_Experience_Media {
 				continue;
 			}
 			$stored = get_post_meta( $post_id, $key, true );
-			$input = $stored;
-			if ( 'csv_ids' === ( isset( $spec['storage'] ) ? (string) $spec['storage'] : '' ) ) {
-				$input = '' === (string) $stored ? array() : array_values( array_filter( array_map( 'absint', explode( ',', (string) $stored ) ) ) );
-			}
-			$value = self::normalize_meta_value( $key, $input, $spec );
+			$value = self::normalize_meta_value( $key, $stored, $spec );
 			if ( is_wp_error( $value ) ) return new WP_Error(
 				'mad4b_content_experience_media_verify_invalid',
 				'Stored media metadata no longer satisfies the profile contract.',
@@ -440,10 +400,8 @@ final class MAD4B_SCP_Content_Experience_Media {
 				array( 'key' => $key )
 			);
 			$normalized[ $key ] = $value;
-			$count = 0;
-			if ( is_array( $value ) ) $count = count( $value );
-			elseif ( 'csv_ids' === (string) $spec['storage'] && '' !== (string) $value ) $count = count( explode( ',', (string) $value ) );
-			elseif ( is_numeric( $value ) && (int) $value > 0 ) $count = 1;
+			$projection = self::verification_projection( $value, $spec );
+			$count = isset( $projection['attachment_ids'] ) ? count( $projection['attachment_ids'] ) : ( is_array( $value ) ? count( $value ) : 0 );
 			$encoded = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			$summary[ $key ] = array_merge(
 				array(
@@ -452,7 +410,7 @@ final class MAD4B_SCP_Content_Experience_Media {
 					'count' => $count,
 					'value_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
 				),
-				self::verification_projection( $value, $spec )
+				$projection
 			);
 		}
 		$usage_guard = self::validate_usage_bindings( $field_specs, $normalized );

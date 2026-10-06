@@ -468,3 +468,33 @@ require("MAD4B_SCP_Runtime_Release_Set::boot();" in main, "runtime release-set c
 # implementation is merged. This implementation contract must not self-certify
 # release-critical workflow mutations.
 print("mad4b.runtime-release-set-contract.v1: PASS")
+
+
+# Normal runtime release-set execution must be mounted, but remains governed.
+servers_source = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+admin_start = servers_source.find("'mad4b-admin' => array(")
+admin_end = servers_source.find("'mad4b-developer' =>", admin_start)
+require(
+    admin_start >= 0
+    and admin_end > admin_start
+    and "'mad4b/runtime-release-set-apply'" in servers_source[admin_start:admin_end],
+    "normal runtime release-set apply must be mounted on the governed admin lane",
+)
+write_candidates_start = servers_source.find("private static function core_write_candidates()")
+write_candidates_end = servers_source.find("private static function catalog_cacheable()", write_candidates_start)
+require(
+    write_candidates_start >= 0
+    and write_candidates_end > write_candidates_start
+    and "'mad4b/runtime-release-set-apply'" in servers_source[write_candidates_start:write_candidates_end],
+    "runtime release-set apply must participate in exact governed-write inventory",
+)
+semantic_contracts = json.loads((CONFIG / "semantic-content-field-contracts.json").read_text(encoding="utf-8"))
+for ability_name in (
+    "mad4b/control-plane-native-apply",
+    "mad4b/control-plane-upload-apply",
+    "mad4b/runtime-release-set-apply",
+):
+    row = (semantic_contracts.get("abilities") or {}).get(ability_name) or {}
+    require(row.get("mode") == "exact_paths", f"operational semantic contract missing for {ability_name}")
+    require(not (row.get("brand_paths") or []), f"operational updater ability must not declare brand-bearing paths: {ability_name}")
+    require("reason" in (row.get("operational_paths") or []), f"operator reason must be explicitly operational for {ability_name}")
