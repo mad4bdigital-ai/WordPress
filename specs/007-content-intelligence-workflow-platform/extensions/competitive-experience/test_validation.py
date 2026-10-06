@@ -124,7 +124,7 @@ class EvidenceDenials(unittest.TestCase):
     def test_checkbox_is_not_completion(self):
         path = self.root / "tasks.md"
         path.write_text(path.read_text().replace("- [ ] T3901", "- [x] T3901"))
-        self.rejects("task_status_missing_evidence")
+        self.rejects("task_status_checkbox_mismatch")
 
     def test_docs_only_done_even_with_ledger_regenerated(self):
         path = self.root / "tasks.md"
