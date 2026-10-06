@@ -79,7 +79,15 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	}
 
 	public static function maybe_schedule() {
-		if ( ! self::eligible() || is_admin() || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
+		$admin_lifecycle = false;
+		if ( is_admin() ) {
+			global $pagenow;
+			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
+			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+			$admin_lifecycle = in_array( $screen, array( 'plugins.php', 'update.php', 'update-core.php', 'plugin-install.php' ), true )
+				|| in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate' ), true );
+		}
+		if ( ! self::eligible() || ( is_admin() && ! $admin_lifecycle ) || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
 			|| class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$event = self::event();
 		if ( ( $event['build_stamp'] ?? '' ) !== self::stamp() ) self::enqueue( array( 'source' => 'build_stamp_drift' ) );
