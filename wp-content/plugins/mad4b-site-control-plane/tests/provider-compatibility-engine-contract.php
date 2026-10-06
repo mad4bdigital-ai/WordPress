@@ -98,6 +98,16 @@ $guard=MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard('jetengine
 expect_true(is_wp_error($guard),'drifted write remains fail closed');
 $plan=MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan(array('provider_id'=>'jetengine'));
 expect_same('OWNER_REVIEW_REQUIRED',$plan['classification'],'write-path drift requires governed behavioral/rollback review');
+expect_same('mad4b.provider-recertification-orchestration.v1',$plan['orchestration']['contract'],'provider recertification orchestration contract drifted');
+expect_same(false,$plan['orchestration']['version_drift_is_incompatibility'],'version drift alone must not become incompatibility');
+expect_same(true,$plan['orchestration']['automatic_observation'],'provider drift observation must be automatic and non-authorizing');
+expect_same(true,$plan['orchestration']['automatic_structural_assessment'],'structural reassessment must be automatic');
+expect_same(false,$plan['orchestration']['automatic_mutation_probe'],'behavioral mutation probes must remain explicit governed actions');
+expect_same(false,$plan['orchestration']['automatic_mount_or_grant'],'recertification planning must never auto-mount or mint grants');
+expect_same('mad4b/provider-behavioral-recertify',$plan['orchestration']['behavioral_probe_ability'],'behavioral probe routing drifted');
+expect_same('mad4b/provider-mcp-mount-plan',$plan['orchestration']['mount_plan_ability'],'mount-plan routing drifted');
+expect_same(true,$plan['orchestration']['reassess_after_receipt'],'accepted behavioral receipts must trigger reassessment semantics');
+expect_same(false,$plan['orchestration']['authorizing'],'recertification orchestration must remain non-authorizing');
 
 MAD4B_SCP_Provider_Contracts::$exact=true;
 MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
