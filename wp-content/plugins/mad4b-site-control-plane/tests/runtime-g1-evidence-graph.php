@@ -171,6 +171,8 @@ check(count($one['nodes']['providers'])===1,'provider graph node missing');
 check(count($one['nodes']['components'])===1,'component graph node missing');
 check($one['nodes']['providers'][0]['authority_inferred']===false,'provider identity inferred authority');
 check($one['nodes']['components'][0]['code_executed']===false,'component discovery executed code');
+check(count($one['nodes']['schemas'])===1,'ability schema graph node missing');
+check($one['nodes']['schemas'][0]['values_read']===false && $one['nodes']['schemas'][0]['privilege_inferred']===false,'schema node read values or inferred privilege');
 check(count($one['nodes']['operations'])===1,'operation registry rows were not captured');
 check($one['nodes']['operations'][0]['preconditions']['descriptor_binding_ready']===true,'operation descriptor precondition missing');
 check(count($one['nodes']['hooks'])===1 && $one['nodes']['hooks'][0]['callback_count']===2,'bounded hook inventory missing');
@@ -179,6 +181,7 @@ check(count($one['nodes']['mcp_descriptors'])===1,'MCP descriptor projection mis
 check(count($one['edges'])>=4,'runtime graph provider/component/operation edges missing');
 check(in_array('contains_component',array_column($one['edges'],'relation'),true),'provider component edge missing');
 check(in_array('bound_to_provider',array_column($one['edges'],'relation'),true),'ability provider edge missing');
+check(in_array('declares_schema',array_column($one['edges'],'relation'),true),'ability schema edge missing');
 check(in_array('precondition',$one['semantic_dimensions'],true) && in_array('reversal',$one['semantic_dimensions'],true),'semantic graph dimensions incomplete');
 
 $meta=json_encode($one['nodes']['meta_keys']);
