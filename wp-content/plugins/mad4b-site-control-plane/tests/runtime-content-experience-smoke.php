@@ -428,6 +428,12 @@ try {
 	$check( ! is_wp_error( $orphan_stage ), 'Unable to stage recoverable unbound attachment.' );
 	$orphan_status = MAD4B_SCP_Remote_Media_Recovery::status( $orphan_manifest_sha );
 	$check( 'staged_unbound' === $orphan_status['state'] && in_array( $orphan_attachment, $orphan_status['created_for_manifest_attachment_ids'], true ) && false === $orphan_status['auto_delete'], 'Recoverable orphan semantics are not explicit/non-destructive.' );
+	$orphan_retry = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $orphan_attachment, array(
+		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0,
+		'import_plan_sha256' => hash( 'sha256', 'ci-recoverable-unbound-import-plan' ),
+		'provenance_event_sha256' => '', 'created_for_manifest' => false,
+	) );
+	$check( ! is_wp_error( $orphan_retry ) && ! empty( $orphan_retry['created_for_manifest'] ), 'Idempotent recovery retry lost created-for-manifest ownership.' );
 	$recovery_overview = MAD4B_SCP_Remote_Media_Recovery::status();
 	$overview_manifests = array_column( $recovery_overview['unbound_manifests'], 'manifest_sha256' );
 	$check( in_array( $orphan_manifest_sha, $overview_manifests, true ) && $recovery_overview['created_unbound_attachment_count'] >= 1, 'Recovery overview did not surface created-but-unbound Media Library assets.' );

@@ -682,3 +682,7 @@ print("MAD4B full governed content operations contract: PASS")
 
 assert "mad4b_content_experience_media_binding_manifest_role_drift" in experience_media_binding_src
 assert "mad4b_content_experience_media_binding_manifest_item_drift" in experience_media_binding_src
+
+assert "multi_post_meta_keys" in experience_media_manifest_src
+assert "'multi' => $is_multi" in experience_runtime_src
+assert "created_for_manifest = true" in remote_media_recovery_src

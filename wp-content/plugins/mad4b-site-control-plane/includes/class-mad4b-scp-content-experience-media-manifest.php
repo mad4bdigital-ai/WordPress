@@ -65,4 +65,6 @@ final class MAD4B_SCP_Content_Experience_Media_Manifest {
 			MAD4B_SCP_Remote_Media_Recovery::POST_BINDING_META,
 		);
 	}
+
+	public static function multi_post_meta_keys() { return self::post_meta_keys(); }
 }

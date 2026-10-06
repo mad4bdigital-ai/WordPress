@@ -648,10 +648,13 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			array( self::MARKER_META, self::REVISION_META, self::AUTHORITY_META, self::CREATION_BINDING_META ),
 			MAD4B_SCP_Content_Experience_Media_Manifest::post_meta_keys()
 		);
+		$multi_internal_meta = MAD4B_SCP_Content_Experience_Media_Manifest::multi_post_meta_keys();
 		foreach ( $internal_meta_keys as $key ) {
+			$is_multi = in_array( $key, $multi_internal_meta, true );
 			$meta[ $key ] = array(
 				'exists' => metadata_exists( 'post', $post_id, $key ),
-				'value' => get_post_meta( $post_id, $key, true ),
+				'multi' => $is_multi,
+				'value' => get_post_meta( $post_id, $key, $is_multi ? false : true ),
 			);
 		}
 		$terms = array();
@@ -777,7 +780,10 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$result = wp_update_post( wp_slash( $postarr ), true );
 		if ( is_wp_error( $result ) ) return $result;
 		foreach ( (array) $state['meta'] as $key => $entry ) {
-			if ( ! empty( $entry['exists'] ) ) update_post_meta( $post_id, $key, $entry['value'] );
+			if ( ! empty( $entry['multi'] ) ) {
+				delete_post_meta( $post_id, $key );
+				if ( ! empty( $entry['exists'] ) ) foreach ( (array) $entry['value'] as $value ) add_post_meta( $post_id, $key, $value, false );
+			} elseif ( ! empty( $entry['exists'] ) ) update_post_meta( $post_id, $key, $entry['value'] );
 			else delete_post_meta( $post_id, $key );
 		}
 		foreach ( (array) $state['terms'] as $taxonomy => $ids ) {
