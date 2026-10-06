@@ -10,8 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Runtime_Policy_Classifier {
 	const CONTRACT = 'mad4b.runtime-policy-classifier.v2';
 	const PROPOSAL_CONTRACT = 'mad4b.runtime-policy-proposal.v2';
-	const CONFORMANCE_CONTRACT = 'mad4b.runtime-policy-conformance-receipt.v1';
-	const CLASSIFIER_VERSION = '2.0.0';
+	const CONFORMANCE_CONTRACT = 'mad4b.runtime-policy-conformance-receipt.v2';
+	const CLASSIFIER_VERSION = '2.1.0';
 	const REVIEW_CONTRACT = 'mad4b.runtime-policy-review-overlay.v2';
 	const REVIEW_OPTION = 'mad4b_runtime_policy_review_overlay_v2';
 	const REVIEW_LOCK_OPTION = 'mad4b_runtime_policy_review_overlay_lock_v2';
@@ -285,6 +285,24 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 				return $base;
 			}
 		}
+
+		$provider_binding = self::current_provider_capability_binding( $provider, $ability_name );
+		if ( empty( $provider_binding['verified'] ) ) {
+			$base['reason'] = isset( $provider_binding['reason'] ) ? (string) $provider_binding['reason'] : 'conformance_provider_capability_binding_unavailable';
+			return $base;
+		}
+		foreach ( array(
+			'capability_id',
+			'artifact_fingerprint',
+			'capability_contract_digest',
+		) as $field ) {
+			$expected = isset( $provider_binding[ $field ] ) ? (string) $provider_binding[ $field ] : '';
+			$actual = isset( $receipt[ $field ] ) ? (string) $receipt[ $field ] : '';
+			if ( '' === $expected || ! hash_equals( $expected, $actual ) ) {
+				$base['reason'] = 'conformance_' . $field . '_binding_mismatch';
+				return $base;
+			}
+		}
 		if ( 'zero_effect_read_verified' !== ( isset( $receipt['result'] ) ? (string) $receipt['result'] : '' ) ) {
 			$base['reason'] = 'conformance_result_not_zero_effect_read';
 			return $base;
@@ -320,6 +338,9 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 					'ability_name' => (string) $ability_name,
 					'graph_generation_sha256' => (string) $graph['generation_sha256'],
 					'provider_contract_sha256' => $expected_provider_sha,
+					'capability_id' => (string) $provider_binding['capability_id'],
+					'artifact_fingerprint' => (string) $provider_binding['artifact_fingerprint'],
+					'capability_contract_digest' => (string) $provider_binding['capability_contract_digest'],
 				)
 			);
 		} catch ( Throwable $error ) {
@@ -349,6 +370,55 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			'signature_scheme' => $verifier['signature_scheme'],
 			'verifier_provenance' => $verifier['verifier_provenance'],
 			'provider_contract_sha256' => $expected_provider_sha,
+			'capability_id' => (string) $provider_binding['capability_id'],
+			'artifact_fingerprint' => (string) $provider_binding['artifact_fingerprint'],
+			'capability_contract_digest' => (string) $provider_binding['capability_contract_digest'],
+		);
+	}
+
+	private static function current_provider_capability_binding( $provider, $ability_name ) {
+		$base = array(
+			'verified' => false,
+			'reason' => 'conformance_provider_capability_binding_unavailable',
+			'capability_id' => '',
+			'artifact_fingerprint' => '',
+			'capability_contract_digest' => '',
+		);
+		$provider = sanitize_key( (string) $provider );
+		$ability_name = (string) $ability_name;
+		if ( '' === $provider || ''
+			=== $ability_name
+			|| ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
+			|| ! method_exists( 'MAD4B_SCP_Provider_Compatibility_Certification', 'ability_status' ) ) {
+			return $base;
+		}
+		$status = MAD4B_SCP_Provider_Compatibility_Certification::ability_status( $provider, $ability_name );
+		if ( ! is_array( $status ) || empty( $status ) ) {
+			$base['reason'] = 'conformance_provider_capability_not_cataloged';
+			return $base;
+		}
+		if ( 'read' !== ( isset( $status['risk'] ) ? sanitize_key( (string) $status['risk'] ) : '' )
+			|| empty( $status['read_eligible'] )
+			|| empty( $status['surface_exposed'] ) ) {
+			$base['reason'] = 'conformance_provider_capability_not_read_eligible';
+			return $base;
+		}
+		$artifact = isset( $status['artifact'] ) && is_array( $status['artifact'] ) ? $status['artifact'] : array();
+		$capability_id = isset( $status['capability_id'] ) ? sanitize_key( (string) $status['capability_id'] ) : '';
+		$artifact_fingerprint = isset( $artifact['runtime_artifact_fingerprint'] ) ? strtolower( (string) $artifact['runtime_artifact_fingerprint'] ) : '';
+		$contract_digest = isset( $status['capability_contract_digest'] ) ? strtolower( (string) $status['capability_contract_digest'] ) : '';
+		if ( '' === $capability_id
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $artifact_fingerprint )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $contract_digest ) ) {
+			$base['reason'] = 'conformance_provider_capability_binding_invalid';
+			return $base;
+		}
+		return array(
+			'verified' => true,
+			'reason' => 'verified',
+			'capability_id' => $capability_id,
+			'artifact_fingerprint' => $artifact_fingerprint,
+			'capability_contract_digest' => $contract_digest,
 		);
 	}
 
