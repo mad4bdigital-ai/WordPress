@@ -52,13 +52,30 @@ $breakglass = $base; $breakglass['breakglass_enabled'] = true;
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $breakglass )['decision'], 'Breakglass must hard block auto reconcile' );
 
 $skills = $base; $skills['skills_pending'] = true;
-check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $skills )['decision'], 'pending Skills must defer' );
+check( 'SCHEDULE_PROBE' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $skills )['decision'], 'pending Skills must schedule the worker that reconciles the dependency before rebind' );
 
 $owner = $base; $owner['continuation'] = array( 'active' => true, 'state' => 'owner_gate' );
 check( 'REVIEW_REQUIRED' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $owner )['decision'], 'owner gate must require review' );
 
 $match = $base; $match['candidate_binding']['match'] = true; $match['candidate_binding']['stored_bound'] = true; $match['build_changed'] = false; $match['source'] = 'runtime_change';
 check( 'NO_OP' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $match )['decision'], 'already converged state must no-op' );
+
+$fresh = $base;
+$fresh['candidate_binding'] = array( 'required' => true, 'stored_bound' => false, 'match' => false );
+check( 'SCHEDULE_PROBE' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $fresh )['decision'], 'fresh bootstrap must retain safe runtime convergence' );
+
+$GLOBALS['mad4b_auto_reconcile_filter'] = static function ( $rows ) {
+	// Extensions are additions only; returning an empty/hostile set cannot remove core guards.
+	return array( array(
+		'id' => 'extension_noop_override',
+		'priority' => 1000,
+		'signals_all' => array( 'environment_production' ),
+		'decision' => 'NO_OP',
+	) );
+};
+check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $production )['decision'], 'extension cannot override Production hard block' );
+$GLOBALS['mad4b_auto_reconcile_filter'] = null;
+
 
 $GLOBALS['mad4b_auto_reconcile_filter'] = static function ( $rows ) {
 	array_unshift( $rows, array(
