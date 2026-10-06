@@ -978,7 +978,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'mad4b_self_update_pointer_verdict_mismatch',
 		);
 		if ( in_array( $code, $hard_codes, true )
-			|| preg_match( '/_(?:contract_mismatch|repository_mismatch|release_tag_mismatch|asset_invalid|source_invalid|verdict_invalid|package_url_invalid|identity_invalid|size_invalid|version_invalid)$/', $code ) ) {
+			|| preg_match( '/_(?:contract_mismatch|repository_mismatch|release_tag_mismatch|asset_invalid|source_invalid|verdict_invalid|digest_invalid|package_url_invalid|identity_invalid|size_invalid|version_invalid|pointer_invalid|manifest_invalid)$/', $code ) ) {
 			$result['disposition'] = 'HARD_BLOCK';
 			return $result;
 		}

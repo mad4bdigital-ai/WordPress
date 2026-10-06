@@ -186,7 +186,7 @@ for token in [
     "private static function observed_release_error_policy",
     "mad4b_observed_release_identity_mismatch",
     "mad4b_observed_release_integrity_required",
-    "mad4b_self_update_pointer_fetch_failed",
+    "_(?:pointer|manifest)_fetch_failed",
     "mad4b_self_update_manifest_not_cached",
     "automatic_bounded_reconciliation_retry",
     "explicit_review_after_retry_exhaustion",
