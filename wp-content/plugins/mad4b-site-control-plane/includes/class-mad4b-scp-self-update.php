@@ -226,6 +226,11 @@ final class MAD4B_SCP_Self_Update {
 			'mad4b_runtime_maintenance_fence_conflict' => 'pre_update_maintenance',
 			'mad4b_runtime_maintenance_stale_repair_required' => 'pre_update_maintenance',
 			'mad4b_runtime_maintenance_busy' => 'pre_update_maintenance',
+			'mad4b_post_update_continuation_transport_unavailable' => 'pre_update_continuation_prepare',
+			'mad4b_post_update_continuation_foreign_transport_unreviewed' => 'pre_update_continuation_prepare',
+			'mad4b_post_update_continuation_write_side_channel_detected' => 'pre_update_continuation_prepare',
+			'mad4b_post_update_continuation_previous_authority_required' => 'pre_update_continuation_prepare',
+			'mad4b_self_update_continuation_prior_authority_drift' => 'pre_update_continuation_policy',
 		);
 		return isset( $map[ $code ] ) ? $map[ $code ] : 'apply';
 	}
@@ -250,6 +255,12 @@ final class MAD4B_SCP_Self_Update {
 			);
 			$failure_phase = isset( $state_phase[ $state ] ) ? $state_phase[ $state ] : self::failure_phase_for_code( $failure_code );
 		}
+		$transport_blockers = isset( $details['transport_blockers'] ) && is_array( $details['transport_blockers'] )
+			? array_values( array_unique( array_filter( array_map( 'sanitize_key', $details['transport_blockers'] ) ) ) )
+			: array();
+		sort( $transport_blockers, SORT_STRING );
+		if ( count( $transport_blockers ) > 16 ) $transport_blockers = array_slice( $transport_blockers, 0, 16 );
+
 		$status = array(
 			'contract' => self::UPDATE_ATTEMPT_CONTRACT,
 			'observed_at' => gmdate( 'c' ),
@@ -263,6 +274,11 @@ final class MAD4B_SCP_Self_Update {
 			'final_runtime_changed' => $final_runtime_changed,
 			'maintenance_classification' => isset( $details['maintenance_classification'] ) ? sanitize_key( (string) $details['maintenance_classification'] ) : '',
 			'retry_after_seconds' => isset( $details['retry_after_seconds'] ) ? min( 1200, absint( $details['retry_after_seconds'] ) ) : 0,
+			'transport_inventory_observed' => array_key_exists( 'transport_inventory_observed', $details ) ? (bool) $details['transport_inventory_observed'] : null,
+			'transport_inventory_reason' => isset( $details['transport_inventory_reason'] ) ? sanitize_key( (string) $details['transport_inventory_reason'] ) : '',
+			'transport_inventory_lifecycle_state' => isset( $details['transport_inventory_lifecycle_state'] ) ? sanitize_key( (string) $details['transport_inventory_lifecycle_state'] ) : '',
+			'transport_server_count' => isset( $details['transport_server_count'] ) ? min( 100, absint( $details['transport_server_count'] ) ) : 0,
+			'transport_blockers' => $transport_blockers,
 			'target' => self::bounded_update_identity( $target ),
 			'current' => self::bounded_update_identity( self::installed_identity() ),
 			'operator_action_required' => ! empty( $details['operator_action_required'] ),
@@ -1399,17 +1415,29 @@ final class MAD4B_SCP_Self_Update {
 			return;
 		}
 
+		$attempt = self::last_update_attempt_projection();
+		$attempt_matches = is_array( $attempt )
+			&& $state === ( isset( $attempt['state'] ) ? (string) $attempt['state'] : '' )
+			&& ( '' === $code || $code === ( isset( $attempt['failure_code'] ) ? (string) $attempt['failure_code'] : '' ) );
+		$pre_install_block = $attempt_matches
+			&& array_key_exists( 'filesystem_replacement_attempted', $attempt )
+			&& false === $attempt['filesystem_replacement_attempted'];
+
 		if ( 'manifest_error' === $state ) {
 			$message = __( 'MAD4B could not check for updates right now. Try again later or review Update diagnostics in MAD4B Control Plane.', 'mad4b-site-control-plane' );
 		} elseif ( 'download_error' === $state ) {
 			$message = __( 'The MAD4B update package could not be downloaded. No plugin files were changed.', 'mad4b-site-control-plane' );
 		} elseif ( 'verify_error' === $state ) {
 			$message = __( 'The MAD4B update package could not be verified, so it was not installed.', 'mad4b-site-control-plane' );
+		} elseif ( 'apply_error' === $state && $pre_install_block ) {
+			$message = __( 'The MAD4B update was blocked by a governed pre-installation check. No plugin files were changed. Review Update diagnostics in MAD4B Control Plane.', 'mad4b-site-control-plane' );
 		} else {
 			$message = __( 'The MAD4B update did not complete. The governed updater kept or restored the previous verified build. Review Update diagnostics in MAD4B Control Plane.', 'mad4b-site-control-plane' );
 		}
 
-		if ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
+		if ( in_array( $code, array( 'mad4b_post_update_continuation_transport_unavailable', 'mad4b_post_update_continuation_foreign_transport_unreviewed', 'mad4b_post_update_continuation_write_side_channel_detected' ), true ) ) {
+			$message .= ' ' . __( 'The live MCP transport inventory must be verified before the update can proceed.', 'mad4b-site-control-plane' );
+		} elseif ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
 			$message .= ' ' . __( 'Governed write authority must be reconciled to the currently installed build before updating.', 'mad4b-site-control-plane' );
 		} elseif ( isset( $_GET['mad4b_update_maintenance_state'] ) && '' !== sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) ) {
 			$message .= ' ' . __( 'Another governed maintenance operation is active; try again after it finishes.', 'mad4b-site-control-plane' );
