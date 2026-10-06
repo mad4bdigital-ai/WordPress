@@ -73,11 +73,11 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
-      "sha256": "3b1c70bc65f5a9acf1de92adec75c190496c64fa52686bdfb1f9a0e127877127"
+      "sha256": "de20ed661980afc69ad1d70beea17827d5b594c6e2cd9144a4c8184cc191cca3"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-      "sha256": "b9c773c9529a7a1b49f9ecc149da406c76590280f0f3ada6eabbd7879657c0b9"
+      "sha256": "6da62b5d927f968d3993a49050d100b0253e82d2a084ccc2cd88d38b2e82f246"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
