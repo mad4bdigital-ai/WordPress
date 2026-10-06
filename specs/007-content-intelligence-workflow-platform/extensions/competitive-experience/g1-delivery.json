@@ -41,7 +41,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
-      "sha256": "0f31676660d12a06c1e130f1d148c092fec44a8f2ea0a38f39a0b8ebc8b65fa9"
+      "sha256": "23f7a71bc4e4c727e6eb7a33c2b14a74aae10cbb6049573ba747463f1dc991dc"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
