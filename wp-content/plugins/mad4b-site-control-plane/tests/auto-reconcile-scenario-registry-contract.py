@@ -36,6 +36,9 @@ assert "DECISION_HARD_BLOCK" in registry
 assert "upgrader_process_complete" in adaptive
 assert "'source' => 'wordpress_upgrader'" in adaptive
 assert "'source' => 'build_stamp_drift'" in adaptive
+assert "plugins.php" in adaptive and "update.php" in adaptive and "plugin-install.php" in adaptive
+assert "$admin_lifecycle" in adaptive
+assert "( is_admin() && ! $admin_lifecycle )" in adaptive
 assert "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate" in adaptive
 assert "MAD4B_SCP_Runtime_Convergence::mark_activation_pending()" in adaptive
 assert "This only queues the existing convergence worker" in adaptive
