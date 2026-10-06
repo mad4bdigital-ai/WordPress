@@ -89,19 +89,23 @@ class MAD4B_SCP_Servers {
 }
 class MAD4B_SCP_Adapter_Registry { public static function instance(){ return new self(); } public function ability_names($surface){ return array(); } }
 class MAD4B_SCP_Operation_Registry {
- public static function catalog(){
+ public static function status(){
    return array('operations'=>array(array(
      'id'=>'content.inspect',
      'planner'=>'mad4b/example-read',
      'executor'=>'exact_executor_from_plan',
      'pipeline_profile'=>'readonly_inspect',
      'required_runtime'=>true,
+     'planner_registered'=>true,
+     'executor_registered'=>true,
+     'descriptor_binding_ready'=>true,
    )));
  }
  public static function operation($id){
    return array(
-     'planner_registered'=>true,'executor_registered'=>true,'descriptor_binding_ready'=>true,
-     'planner_descriptor_sha256'=>str_repeat('d',64),'executor_descriptor_sha256'=>str_repeat('f',64),
+     'planner_descriptor_sha256'=>str_repeat('d',64),
+     'executor_descriptor_sha256'=>str_repeat('f',64),
+     'descriptor_binding_ready'=>true,
    );
  }
 }
