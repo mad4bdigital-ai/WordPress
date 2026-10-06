@@ -19,7 +19,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php'
 
@@ -194,6 +194,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php
+          php -l wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php
+          test -z "$(php wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php)"
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php
 
       - name: Enforce bulk closure hardening contract
