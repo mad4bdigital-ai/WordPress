@@ -74,6 +74,16 @@ $GLOBALS['mad4b_auto_reconcile_filter'] = static function ( $rows ) {
 	) );
 };
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $production )['decision'], 'extension cannot override Production hard block' );
+$GLOBALS['mad4b_auto_reconcile_filter'] = static function ( $rows ) {
+	return array( array(
+		'id' => 'production_never_auto',
+		'priority' => 1000,
+		'signals_all' => array( 'environment_production' ),
+		'decision' => 'NO_OP',
+	) );
+};
+check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $production )['decision'], 'extension cannot shadow immutable core scenario id' );
+
 $GLOBALS['mad4b_auto_reconcile_filter'] = null;
 
 
