@@ -76,7 +76,7 @@ class EvidenceDenials(unittest.TestCase):
             subject.validate(self.root, subject.REPO)
 
     def test_supplied_snapshot_passes(self):
-        self.assertEqual(subject.validate(self.root, subject.REPO)["extension_counts"]["OPEN"], 145)
+        self.assertEqual(subject.validate(self.root, subject.REPO)["extension_counts"]["OPEN"], 175)
 
     def test_changed_original_zip(self):
         path = self.root / "artifacts/royal-mcp-1.5.0.zip"
@@ -129,7 +129,7 @@ class EvidenceDenials(unittest.TestCase):
         path.write_text(path.read_text().replace("- [ ] T3901", "- [x] T3901"))
         self.change("task-status.json", lambda d: d["overrides"].update(T3901={"status": "DONE", "reason": "docs", "evidence_refs": ["spec.md"]}))
         (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
-        self.rejects("spec_only_backlog_requires_145_open_tasks")
+        self.rejects("spec_only_backlog_requires_175_open_tasks")
 
     def test_missing_ledger_regeneration(self):
         path = self.root / "tasks.md"
@@ -165,6 +165,30 @@ class EvidenceDenials(unittest.TestCase):
         self.change("adaptive-operations.json", lambda d: d["measurement"].update(observed_automation_percent=95))
         self.rejects("adaptive_aspiration_cannot_be_claimed_measurement")
 
+
+    def test_fleet_cannot_infer_authority(self):
+        self.change("adaptive-operations.json", lambda d: d["rules"].update(cross_site_authority_inference=True))
+        self.rejects("adaptive_operations_authority_or_safety_boundary_invalid")
+
+    def test_automation_kill_switch_is_required(self):
+        self.change("adaptive-operations.json", lambda d: d["rules"].update(automation_kill_switch_required=False))
+        self.rejects("adaptive_operations_authority_or_safety_boundary_invalid")
+
+    def test_signature_cannot_create_authority(self):
+        self.change("adaptive-operations.json", lambda d: d["rules"].update(supply_chain_signature_creates_authority=True))
+        self.rejects("adaptive_operations_authority_or_safety_boundary_invalid")
+
+    def test_schema_migration_cannot_lower_risk(self):
+        self.change("adaptive-operations.json", lambda d: d["rules"].update(schema_migration_can_lower_risk=True))
+        self.rejects("adaptive_operations_authority_or_safety_boundary_invalid")
+
+    def test_fuzzing_must_remain_disposable(self):
+        self.change("adaptive-operations.json", lambda d: d["rules"].update(fuzzing_disposable_fixture_required=False))
+        self.rejects("adaptive_operations_authority_or_safety_boundary_invalid")
+
+    def test_restore_cannot_replay_authority(self):
+        self.change("adaptive-operations.json", lambda d: d["rules"].update(restore_replays_prior_authority=True))
+        self.rejects("adaptive_operations_authority_or_safety_boundary_invalid")
 
 if __name__ == "__main__":
     unittest.main()

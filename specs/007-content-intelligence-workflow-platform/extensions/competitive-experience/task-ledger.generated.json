@@ -1,12 +1,12 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
-  "source_tasks_sha256": "66f163de29ae3d197fd6c3fe9f1a27326bd0128e062852b1d76b0cf799d22fd7",
+  "source_tasks_sha256": "b47e2ee7edf5ab86052c288e1e19a15e3e10b5d7d55d10280f63d9f05bac83cf",
   "status_source_sha256": "4fb4556e96b4698af9e453e6a01a17eb8c32a55861c1638f5e6f6c8e0fa00fbf",
   "authorizing": false,
   "release_closure_included": false,
-  "task_count": 145,
+  "task_count": 175,
   "counts": {
-    "OPEN": 145,
+    "OPEN": 175,
     "PARTIAL": 0,
     "DONE": 0,
     "DEFERRED": 0
@@ -1276,7 +1276,7 @@
       "task_id": "T4061",
       "phase": 28,
       "priority": "P0",
-      "summary": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "summary": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""
@@ -1303,7 +1303,7 @@
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
-      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness.",
+      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""
@@ -1313,6 +1313,276 @@
       "phase": 28,
       "priority": "P0",
       "summary": "GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4066",
+      "phase": 29,
+      "priority": "P0",
+      "summary": "Implement exact site/cohort/generation release-ring identities with site-local authority; no implicit Production ring.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4067",
+      "phase": 29,
+      "priority": "P0",
+      "summary": "Implement Multisite/fleet inventory and cohort diff with independent provider/grant/binding truth per site.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4068",
+      "phase": 29,
+      "priority": "P0",
+      "summary": "Implement pilot-ring health thresholds, bounded cohorts, per-site receipts and partial rollback state.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4069",
+      "phase": 29,
+      "priority": "P0",
+      "summary": "Implement distributed rollout fencing/idempotency so duplicate workers cannot promote or rollback the same site twice.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4070",
+      "phase": 29,
+      "priority": "P0",
+      "summary": "GATE stale cohort, split brain, cross-site authority bleed, provider mismatch, partial rollback and missing site evidence.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4071",
+      "phase": 30,
+      "priority": "P0",
+      "summary": "Define automation SLOs over explicit eligible workload: repair success, false repair, MTTR, quarantine, rollback failure, intervention and cost.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4072",
+      "phase": 30,
+      "priority": "P0",
+      "summary": "Implement per-site/provider/capability retry/error budgets with cooldown and deterministic exclusion reasons.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4073",
+      "phase": 30,
+      "priority": "P0",
+      "summary": "Implement backpressure, queue isolation and circuit breaking for repeated self-heal failures.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4074",
+      "phase": 30,
+      "priority": "P0",
+      "summary": "Implement durable kill switch stopping L2-L4 automatic actions while preserving L0-L1 observation and governed manual paths.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4075",
+      "phase": 30,
+      "priority": "P0",
+      "summary": "GATE flapping drift, metric loss, queue storms, exhausted budgets and kill-switch bypass.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4076",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Implement source-channel/hash/signer/revocation/dependency provenance for runtime/provider/policy artifacts.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4077",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Bind supply-chain provenance to candidate generations and certification packs without treating provenance as authority.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4078",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Implement downgrade, mirror mismatch, dependency substitution and unexpected source detection with capability-local quarantine.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4079",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Expose provenance/revocation status in operator/update acceptance views with bounded remediation.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4080",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "GATE unsigned, revoked, downgraded, foreign or dependency-tampered artifacts; signatures cannot create grants or promotion.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4081",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Implement versioned registry/policy/manifest migration DAGs with compatibility declarations and dry-run semantic diffs.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4082",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Capture exact pre-migration snapshots and reversible migration receipts with atomic cutover.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4083",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Support declared mixed-generation worker windows without dropping unknown fields or reinterpreting stale evidence.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4084",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Require governed review for migrations that lower risk, change authority semantics or make prior ineligible capability executable.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4085",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "GATE partial migration, stale workers, unknown fields, downgrade, restored old registries and interrupted cutover.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4086",
+      "phase": 33,
+      "priority": "P1",
+      "summary": "Implement deterministic disposable schema/property fuzz cases for boundary, malformed-response, contradictory annotation and hidden-effect conditions.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4087",
+      "phase": 33,
+      "priority": "P1",
+      "summary": "Implement isolated timeout/cancellation/duplicate/concurrency/provider-fault injection with reproducible seeds.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4088",
+      "phase": 33,
+      "priority": "P1",
+      "summary": "Implement differential compatibility fuzzing across certified and candidate versions without candidate output entering active responses.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4089",
+      "phase": 33,
+      "priority": "P1",
+      "summary": "Feed reproducible fuzz findings into policy/canary/quarantine evidence without automatic authority changes.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4090",
+      "phase": 33,
+      "priority": "P1",
+      "summary": "GATE fuzzing Production/shared objects, paid/irreversible effects, arbitrary code or blind retries.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4091",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Implement restore-epoch detection across DB, files, runtime package, Site Profile and registry generations.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4092",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Invalidate stale mutable receipts, leases, candidate bindings and execution assumptions while retaining append-only audit evidence.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4093",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Rebuild current artifact/provider/host graphs and reconcile exact site-local grants/authority before writes return.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4094",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Implement external-effect reconciliation for actions not rewound by local restore and issue post-restore acceptance receipt.",
+      "status": "OPEN",
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T4095",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "GATE cloned origins, clock rollback, stale grants, partial restore, revoked providers and unrewound effects; never replay authority.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""

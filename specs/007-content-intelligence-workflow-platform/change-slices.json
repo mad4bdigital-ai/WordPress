@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
-  "changed_file_count": 36,
+  "changed_file_count": 37,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -33,6 +33,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/README.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/adaptive-operations.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/adaptive-operations.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/architecture-expansion.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/artifact-manifest.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/comparison.md",
@@ -66,6 +67,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "1b6119e1843fa249d6acce657f7956c5261f7536d147d422a16d38e66fd30739",
+  "changed_paths_sha256": "4db06a021b8f98390f6dae11ef9511b599f817f6d938a3c72b48dc51ce3fc237",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

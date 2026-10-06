@@ -26,6 +26,9 @@ BOUNDARIES = {
     "no_classifier_authority", "no_generated_php_execution", "no_arbitrary_symbol_invocation",
     "preserve_human_owned_changes", "signed_data_pack_non_authorizing",
     "canary_requires_existing_staging_authority",
+    "no_cross_site_authority_inference", "automation_kill_switch_required",
+    "signatures_do_not_equal_authority", "schema_migration_no_risk_downgrade",
+    "fuzzing_disposable_only", "restore_never_replays_authority",
 }
 EXPECTED_PACKAGES = {
     "ai-engine": ("3.7.6", "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0"),
@@ -139,14 +142,15 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     feature = load(root, "extension.json")
     for name in ("README.md", "spec.md", "plan.md", "traceability.md", "contracts/runtime.md",
                  "contracts/acceptance.md", "comparison.md", "source-comparison-report.ar.md",
-                 "adaptive-operations.md", "contracts/adaptive-operations-runtime.md", "source-adaptive-operations-proposal.ar.md"):
+                 "adaptive-operations.md", "contracts/adaptive-operations-runtime.md", "source-adaptive-operations-proposal.ar.md",
+                 "architecture-expansion.md"):
         local_file(root, name)
     if (feature.get("contract") != "mad4b.competitive-experience-extension.v1"
             or feature.get("authorizing") is not False or feature.get("production_authorized") is not False
             or feature.get("release_closure_included") is not False
             or feature.get("status") != "SPEC_BACKLOG_ONLY"):
         raise ValueError("extension_must_be_optional_spec_backlog_non_authorizing")
-    if (feature.get("required_phase_count"), feature.get("task_count"), feature.get("capability_count")) != (29, 145, 53):
+    if (feature.get("required_phase_count"), feature.get("task_count"), feature.get("capability_count")) != (35, 175, 59):
         raise ValueError("extension_inventory_metadata_mismatch")
     if not BOUNDARIES <= set(feature.get("hard_boundaries", [])):
         raise ValueError("extension_hard_boundary_missing")
@@ -189,12 +193,16 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     sources = load(root, "source-index.json")["evidence"]
     source_ids = set()
     for source in sources:
-        if source["id"] in source_ids or source["kind"] not in {"BUNDLED_STATIC", "CLAIMED_UNVERIFIED", "USER_PROPOSAL_UNVERIFIED"}:
+        if source["id"] in source_ids or source["kind"] not in {"BUNDLED_STATIC", "CLAIMED_UNVERIFIED", "USER_PROPOSAL_UNVERIFIED", "ARCHITECTURE_DERIVATION"}:
             raise ValueError("source_id_or_evidence_class_invalid")
         source_ids.add(source["id"])
         if source["kind"] == "USER_PROPOSAL_UNVERIFIED":
             if source["package_id"] is not None or source["path"] not in report_paths:
                 raise ValueError("user_proposal_source_binding_invalid")
+            raw = local_file(root, source["path"]).read_bytes()
+        elif source["kind"] == "ARCHITECTURE_DERIVATION":
+            if source["package_id"] is not None or source["path"] != "architecture-expansion.md":
+                raise ValueError("architecture_derivation_source_binding_invalid")
             raw = local_file(root, source["path"]).read_bytes()
         else:
             raw = members[source["package_id"]][source["path"]]
@@ -209,10 +217,10 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     ledger = build_ledger(root)
     if load(root, "task-ledger.generated.json") != ledger:
         raise ValueError("generated_task_ledger_drift")
-    expected_tasks = {f"T39{i:02}" for i in range(1, 81)} | {f"T40{i:02}" for i in range(1, 66)}
+    expected_tasks = {f"T39{i:02}" for i in range(1, 81)} | {f"T40{i:02}" for i in range(1, 96)}
     if {r["task_id"] for r in ledger["tasks"]} != expected_tasks or any(r["status"] != "OPEN" for r in ledger["tasks"]):
-        raise ValueError("spec_only_backlog_requires_145_open_tasks")
-    phases = set(range(29))
+        raise ValueError("spec_only_backlog_requires_175_open_tasks")
+    phases = set(range(35))
     for name in ("tasks.md", "plan.md"):
         found = {int(x) for x in re.findall(r"^## Phase (\d+)\b", local_file(root, name).read_text(), re.MULTILINE)}
         if found != phases:
@@ -223,15 +231,15 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
         raise ValueError("matrix_identity_or_authority_mismatch")
     streams, capabilities = matrix["workstreams"], matrix["capabilities"]
     stream_ids = {w["id"] for w in streams}
-    if len(streams) != 29 or len(stream_ids) != 29:
+    if len(streams) != 35 or len(stream_ids) != 35:
         raise ValueError("extension_workstream_identity_mismatch")
-    if {w["phase"] for w in streams} != phases or len({w["family"] for w in streams}) != 29:
+    if {w["phase"] for w in streams} != phases or len({w["family"] for w in streams}) != 35:
         raise ValueError("extension_workstream_phase_or_family_mismatch")
     mapped = [t for w in streams for t in w["task_ids"]]
     if set(mapped) != expected_tasks or len(mapped) != len(expected_tasks):
         raise ValueError("task_workstream_ownership_mismatch")
     cap_ids = {c["id"] for c in capabilities}
-    if cap_ids != {f"CE{i:03}" for i in range(1, 54)} or len(capabilities) != 53:
+    if cap_ids != {f"CE{i:03}" for i in range(1, 60)} or len(capabilities) != 59:
         raise ValueError("capability_identity_mismatch")
     trace = local_file(root, "traceability.md").read_text()
     for stream in streams:
@@ -285,20 +293,24 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     if parent_ledger["task_count"] != 837 or expected_tasks & {r["task_id"] for r in parent_ledger["tasks"]}:
         raise ValueError("extension_tasks_must_remain_separate_from_frozen_release")
     adaptive = load(root, "adaptive-operations.json")
-    adaptive_ids = {f"T40{i:02}" for i in range(1, 66)}
+    adaptive_ids = {f"T40{i:02}" for i in range(1, 96)}
     if (adaptive.get("contract") != "mad4b.adaptive-capability-fabric-v2-spec.v1"
             or adaptive.get("status") != "SPEC_BACKLOG_ONLY" or adaptive.get("authorizing") is not False
-            or adaptive.get("production_authorized") is not False or adaptive.get("task_count") != 65
+            or adaptive.get("production_authorized") is not False or adaptive.get("task_count") != 95
             or set(adaptive.get("task_ids", [])) != adaptive_ids
             or set(adaptive.get("workstream_ids", [])) != {w["id"] for w in streams if w["phase"] >= 16}):
         raise ValueError("adaptive_operations_identity_or_task_binding_invalid")
     forbidden = {"classifier_creates_authority", "confidence_is_safety_proof", "generated_php_execution",
                  "arbitrary_symbol_invocation", "generic_outbound_http", "new_grants_or_mounts_automatic",
                  "host_binary_installation_automatic", "human_edit_overwrite_automatic", "unsafe_read_shadow_allowed",
-                 "unknown_external_side_effect_retry", "signed_pack_can_create_authority"}
+                 "unknown_external_side_effect_retry", "signed_pack_can_create_authority",
+                 "cross_site_authority_inference", "automation_error_budget_bypass", "supply_chain_signature_creates_authority",
+                 "schema_migration_can_lower_risk", "fuzzing_live_or_paid_effects", "restore_replays_prior_authority"}
     mandatory = {"canary_requires_existing_staging_authority", "real_rollback_proof_required",
                  "exact_generation_binding_required", "ownership_three_way_cas_required",
-                 "data_pack_signature_revocation_anti_replay_required"}
+                 "data_pack_signature_revocation_anti_replay_required", "promotion_ring_exact_generation_required",
+                 "automation_kill_switch_required", "supply_chain_provenance_required", "registry_migration_reversible_required",
+                 "fuzzing_disposable_fixture_required", "restore_rebind_current_authority_required"}
     rules = adaptive.get("rules", {})
     if any(rules.get(k) is not False for k in forbidden) or any(rules.get(k) is not True for k in mandatory):
         raise ValueError("adaptive_operations_authority_or_safety_boundary_invalid")
