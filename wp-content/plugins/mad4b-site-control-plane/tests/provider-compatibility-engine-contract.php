@@ -62,16 +62,23 @@ final class FakeSeoAdapter {
     public function ability_names(){ return array('read'=>array('seo/status','seo/get-meta','seo/validate'),'content'=>array('seo/update-meta'),'admin'=>array()); }
     public function reversible_contracts(){ return array('seo/update-meta'=>'mad4b.rollback.rank-math-meta.v1'); }
 }
+final class FakeNativeBridgeAdapter {
+    public function id(){ return 'native-provider-bridge'; }
+    public function provider_key(){ return 'jetengine'; }
+    public function is_available(){ return true; }
+    public function ability_names(){ return array('read'=>array(),'content'=>array(),'admin'=>array('jetengine/create-query')); }
+}
 final class MAD4B_SCP_Adapter_Registry {
     private static $instance;
     private $jetengine;
     private $bitflows;
     private $seo;
+    private $native_bridge;
     public static function instance(){ if(!self::$instance) self::$instance=new self(); return self::$instance; }
-    public function __construct(){ $this->jetengine=new FakeJetEngineAdapter(); $this->bitflows=new FakeBitFlowsAdapter(); $this->seo=new FakeSeoAdapter(); }
+    public function __construct(){ $this->jetengine=new FakeJetEngineAdapter(); $this->bitflows=new FakeBitFlowsAdapter(); $this->seo=new FakeSeoAdapter(); $this->native_bridge=new FakeNativeBridgeAdapter(); }
     public function register_defaults(){}
     public function get($id){ if('jetengine'===$id) return $this->jetengine; if('bitflows'===$id) return $this->bitflows; if('seo'===$id) return $this->seo; return null; }
-    public function all(){ return array('bitflows'=>$this->bitflows,'jetengine'=>$this->jetengine,'seo'=>$this->seo); }
+    public function all(){ return array('bitflows'=>$this->bitflows,'jetengine'=>$this->jetengine,'native-provider-bridge'=>$this->native_bridge,'seo'=>$this->seo); }
     public function register($adapter){ return true; }
 }
 
@@ -91,6 +98,10 @@ $known_candidates=array_values(array_filter($candidate_graph['candidates'],stati
 expect_same(1,count($known_candidates),'known runtime ability missing from candidate graph');
 expect_same('REVIEWED_POLICY_OVERLAY',$known_candidates[0]['policy_state'],'known runtime ability lost reviewed policy overlay');
 expect_same(false,$candidate_graph['policy_overlay_creates_authority'],'policy overlay must remain non-authorizing');
+$bridge_candidates=array_values(array_filter($candidate_graph['candidates'],static function($row){return 'native-provider-bridge'===$row['adapter_id'] && 'jetengine/create-query'===$row['ability'];}));
+expect_same(1,count($bridge_candidates),'native provider bridge candidate missing');
+expect_same('jetengine',$bridge_candidates[0]['provider_key'],'bridge candidate must expose canonical provider identity');
+expect_same('REVIEWED_POLICY_OVERLAY',$bridge_candidates[0]['policy_state'],'bridge candidate must match provider policy identity rather than adapter id only');
 
 $adapter=new FakeJetEngineAdapter();
 MAD4B_SCP_Provider_Contracts::$exact=false;
