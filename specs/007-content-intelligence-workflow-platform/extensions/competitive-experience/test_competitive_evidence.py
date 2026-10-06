@@ -52,6 +52,7 @@ assert summary["authorizing"] is False
 assert summary["package_count"] == len(s["packages"])
 assert summary["capability_count"] == len(s["capabilities"])
 assert all("runtime_parity_claimed" in r and "mad4b_foundation_paths" in r and "evidence_sources" in r for r in summary["capabilities"])
+assert all("workstream_id" in r and "family" in r and "open_task_ids" in r and "partial_task_ids" in r for r in summary["capabilities"])
 
 rendered = m.render_php_summary(summary)
 assert rendered.startswith("<?php\nif ( ! defined( 'ABSPATH' ) ) {\n")
@@ -62,6 +63,10 @@ assert "MAD4B_JSON" in rendered
 
 history = m.verify_history(s, summary)
 assert history["authorizing"] is False
+assert history["contract"] == m.HISTORY_CONTRACT
+assert history["retention"]["max_entries"] == m.MAX_HISTORY_ENTRIES
+assert history["previous_known_good_generation_sha256"] == ""
+assert history["alerts"] == [] and history["acknowledgements"] == []
 assert history["current_generation_sha256"] == s["generation_sha256"]
 assert history["entries"][-1]["summary_sha256"] == summary["summary_sha256"]
 assert history["current_entry_sha256"] == history["entries"][-1]["entry_sha256"]
@@ -77,5 +82,17 @@ with tempfile.TemporaryDirectory() as temp:
     except SystemExit as error:
         assert str(error) == "COMPETITIVE_EVIDENCE_HISTORY_ENTRY_DIGEST_INVALID"
 
+future = deepcopy(s)
+future["source_generation"] = "1" * 64
+future["generation_sha256"] = "2" * 64
+future_summary = m.operator_summary(future)
+next_history = m.next_history(history, future, future_summary)
+assert next_history["entries"][-1]["state"] == "drifted"
+assert next_history["alerts"][-1]["state"] == "open"
+acknowledged = m.acknowledge_history_alert(next_history, next_history["alerts"][-1]["alert_id"], "owner-test")
+assert acknowledged["alerts"][-1]["state"] == "acknowledged"
+assert acknowledged["acknowledgements"][-1]["authorizing"] is False
+assert acknowledged["previous_known_good_generation_sha256"] == future["generation_sha256"]
+
 m.verify()
-print("mad4b.competitive-evidence-tests.v2: PASS")
+print("mad4b.competitive-evidence-tests.v3: PASS")

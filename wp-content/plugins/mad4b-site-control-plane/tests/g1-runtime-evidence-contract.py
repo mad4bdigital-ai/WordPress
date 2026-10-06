@@ -10,6 +10,7 @@ classifier = (ROOT / "includes/class-mad4b-scp-runtime-policy-classifier.php").r
 conformance = (ROOT / "includes/class-mad4b-scp-runtime-policy-conformance.php").read_text(encoding="utf-8")
 competitive = (ROOT / "includes/class-mad4b-scp-competitive-evidence.php").read_text(encoding="utf-8")
 summary_php = (ROOT / "config/competitive-evidence-summary.php").read_text(encoding="utf-8")
+history_php = (ROOT / "config/competitive-evidence-history.php").read_text(encoding="utf-8")
 plugin = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 def normalized(text):
@@ -197,6 +198,7 @@ req(
 )
 deny(competitive, "competitive-evidence-summary.json", "wp_remote_", "grant_ability(", "$wpdb->")
 req(summary_php, "if ( ! defined( 'ABSPATH' ) ) {", "http_response_code( 404 )", "MAD4B_JSON", "json_decode")
+req(history_php, "if ( ! defined( 'ABSPATH' ) ) {", "http_response_code( 404 )", "MAD4B_JSON", "mad4b.competitive-evidence-history.v2", "append_only_fail_closed")
 deny(summary_php, "competitive-evidence-summary.json")
 
 php = shutil.which("php")
@@ -204,6 +206,9 @@ assert php, "php executable is required for direct-resource denial verification"
 direct = subprocess.run([php, str(ROOT / "config/competitive-evidence-summary.php")], capture_output=True, text=True, check=False)
 assert direct.returncode == 0, f"direct evidence resource execution returned {direct.returncode}"
 assert direct.stdout == "" and direct.stderr == "", "direct evidence resource execution disclosed output"
+direct_history = subprocess.run([php, str(ROOT / "config/competitive-evidence-history.php")], capture_output=True, text=True, check=False)
+assert direct_history.returncode == 0, f"direct history resource execution returned {direct_history.returncode}"
+assert direct_history.stdout == "" and direct_history.stderr == "", "direct history resource execution disclosed output"
 
 req(
     plugin,
