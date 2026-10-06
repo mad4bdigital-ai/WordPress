@@ -163,10 +163,35 @@ try {
 	$check( ! empty( $bootstrap['supports_featured_media'] ) && ! empty( $bootstrap['profile_plan']['profile']['featured_media'] ), 'Bootstrap plan did not infer thumbnail support.' );
 	$check( array() === $bootstrap['profile_plan']['profile']['meta_keys'] && array() === $bootstrap['profile_plan']['profile']['enabled_helpers'], 'Bootstrap plan widened meta/helper authority.' );
 	$check( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY === $bootstrap['profile_apply_ability'], 'Bootstrap plan did not hand off to the governed profile apply Ability.' );
-	foreach ( array( 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ) as $scenario ) {
+	foreach ( array( 'remote_media_library_first', 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ) as $scenario ) {
 		$check( ! empty( $bootstrap['scenarios'][ $scenario ]['supported'] ), 'Bootstrap scenario missing: ' . $scenario );
 	}
 	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::BOOTSTRAP_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Bootstrap planner is not exposed on the read surface.' );
+
+	$bootstrap_media = MAD4B_SCP_Content_Experience_Profiles::bootstrap_plan( array(
+		'post_type' => 'mad4b_ci_trip',
+		'profile_slug' => 'ci-bootstrap-media',
+		'media_meta_fields' => array(
+			'ci_gallery' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => 12 ),
+		),
+	) );
+	$check( ! is_wp_error( $bootstrap_media ), 'Bootstrap explicit media mapping failed.' );
+	$check( in_array( 'ci_gallery', $bootstrap_media['profile_plan']['profile']['meta_keys'], true ), 'Bootstrap media mapping was not promoted into the profile meta allowlist.' );
+	$check( 'image_gallery' === $bootstrap_media['profile_plan']['profile']['media_meta_fields']['ci_gallery']['kind'], 'Bootstrap media mapping lost its typed image-gallery contract.' );
+
+	$remote_plan_unknown = $media_adapter->remote_import_plan( array( 'source_url' => 'https://images.example.invalid/tour.jpg' ) );
+	$check( ! is_wp_error( $remote_plan_unknown ) && empty( $remote_plan_unknown['ready'] ) && in_array( 'rights_confirmation_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not fail closed on unknown rights.' );
+	$remote_plan_allowed = $media_adapter->remote_import_plan( array(
+		'source_url' => 'https://images.example.invalid/tour.jpg',
+		'source_page_url' => 'https://example.invalid/tour',
+		'rights_basis' => 'permission',
+		'rights_note' => 'CI fixture',
+		'alt' => 'Nile cruise exterior',
+	) );
+	$check( ! is_wp_error( $remote_plan_allowed ) && ! empty( $remote_plan_allowed['ready'] ) && empty( $remote_plan_allowed['mutation_performed'] ), 'Remote media import planning is not safe/read-only.' );
+	foreach ( array( MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY, MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY ) as $ability_name ) {
+		$check( wp_has_ability( $ability_name ), 'Remote media Ability is not registered: ' . $ability_name );
+	}
 
 	$profile_input = array(
 		'slug' => 'ci-trip',
