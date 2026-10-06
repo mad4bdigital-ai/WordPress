@@ -41,7 +41,7 @@ final class MAD4B_SCP_Search_Experience {
 	public static function menu() { add_submenu_page( 'mad4b-control-plane', 'Search Intelligence', 'Search Intelligence', 'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) ); }
 	public static function render() {
 		if ( ! MAD4B_SCP_Policy::can_read() ) return;
-		$id = isset( $_GET['profile_id'] ) ? (string) wp_unslash( $_GET['profile_id'] ) : '';
+		$id = isset( $_GET['profile_id'] ) && is_string( $_GET['profile_id'] ) ? wp_unslash( $_GET['profile_id'] ) : '';
 		$model = MAD4B_SCP_Search_Runtime::status( array( 'profile_id' => $id ) );
 		echo '<div class="wrap"><h1>Search Intelligence</h1>';
 		if ( is_wp_error( $model ) ) { echo '<p>' . esc_html( $model->get_error_message() ) . '</p></div>'; return; }
@@ -55,7 +55,7 @@ final class MAD4B_SCP_Search_Experience {
 		foreach ( $model['recommended_actions'] as $a ) echo '<p>' . esc_html( $a ) . '</p>';
 		$section = isset( $_GET['section'] ) && is_string( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : 'overview';
 		// Connection setup is useful before the first profile exists.
-		if ( 'providers' === $section || ! $id ) MAD4B_SCP_Search_Provider_Connections::render();
+		if ( 'providers' === $section || ! $id ) MAD4B_SCP_Search_Provider_Connections::render( $id );
 		if ( $id ) {
 			$section = isset( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : 'overview';
 			$rows = self::section_rows( $id, $section );

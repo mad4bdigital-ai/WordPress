@@ -63,8 +63,11 @@ final class MAD4B_SCP_Search_Provider_Connections {
 	}
 	private static function account_receipt( $result ) {
 		if ( is_wp_error( $result ) ) return $result;
-		if ( ! is_array( $result ) || ! MAD4B_SCP_Search_Contracts::bounded( $result ) || ! isset( $result['account_ref'], $result['quota'] ) || ! array_key_exists( 'balance', $result ) || ! MAD4B_SCP_Search_Contracts::sha( $result['account_ref'] ) || ! is_array( $result['quota'] ) || array_diff( array_keys( $result ), array( 'account_ref', 'quota', 'balance' ) ) || array_diff( array_keys( $result['quota'] ), array( 'remaining', 'monthly_limit', 'monthly_used', 'reset_at' ) ) ) return MAD4B_SCP_Search_Contracts::error( 'account_receipt_invalid' );
-		foreach ( $result['quota'] as $value ) if ( ! is_int( $value ) || $value < 0 ) return MAD4B_SCP_Search_Contracts::error( 'account_receipt_invalid' );
+		if ( ! is_array( $result ) || ! MAD4B_SCP_Search_Contracts::bounded( $result ) || ! isset( $result['account_ref'], $result['quota'] ) || ! array_key_exists( 'balance', $result ) || ! MAD4B_SCP_Search_Contracts::sha( $result['account_ref'] ) || ! is_array( $result['quota'] ) || array_diff( array_keys( $result ), array( 'account_ref', 'quota', 'balance' ) ) || array_diff( array_keys( $result['quota'] ), array( 'remaining', 'monthly_limit', 'monthly_used', 'reset_at', 'renewal_date' ) ) ) return MAD4B_SCP_Search_Contracts::error( 'account_receipt_invalid' );
+		foreach ( $result['quota'] as $field => $value ) {
+			if ( 'renewal_date' === $field ) { if ( ! is_string( $value ) || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/D', $value ) || gmdate( 'Y-m-d', strtotime( $value . ' UTC' ) ) !== $value ) return MAD4B_SCP_Search_Contracts::error( 'account_receipt_invalid' ); }
+			elseif ( ! is_int( $value ) || $value < 0 ) return MAD4B_SCP_Search_Contracts::error( 'account_receipt_invalid' );
+		}
 		$b = $result['balance'];
 		if ( null !== $b && ( ! is_array( $b ) || ! isset( $b['amount'], $b['currency'] ) || ( ! is_int( $b['amount'] ) && ! is_float( $b['amount'] ) ) || ! is_finite( (float) $b['amount'] ) || ! is_string( $b['currency'] ) || ! preg_match( '/^[A-Z]{3}$/D', $b['currency'] ) || array_diff( array_keys( $b ), array( 'amount', 'currency' ) ) ) ) return MAD4B_SCP_Search_Contracts::error( 'account_receipt_invalid' );
 		return $result;
@@ -141,7 +144,7 @@ final class MAD4B_SCP_Search_Provider_Connections {
 		return is_wp_error( $a ) ? null : $a->credential_value( $p['credentials'] );
 	}
 
-	public static function render() {
+	public static function render( $profile_id = '' ) {
 		if ( ! current_user_can( 'manage_options' ) ) return;
 		echo '<h2 id="search-providers">Search providers</h2><p>Save API credentials, then test the account connection. Saving or testing does not enable search capture. An approved provider, Search Profile and governed budget are required before observations can run.</p>';
 		$editable = MAD4B_SCP_Search_Runtime::can_configure();
@@ -156,7 +159,7 @@ final class MAD4B_SCP_Search_Provider_Connections {
 			else {
 				echo '<dl><dt>Credentials</dt><dd>' . esc_html( $s['configured'] ? 'Saved securely; fields remain blank' : 'Not configured' ) . '</dd><dt>Connection</dt><dd>' . esc_html( str_replace( '_', ' ', $s['connection_state'] ) ) . '</dd>';
 				echo '<dt>Observed search allowance</dt><dd>' . esc_html( isset( $s['quota']['remaining'] ) ? (string) $s['quota']['remaining'] . ( isset( $s['quota']['monthly_limit'] ) ? ' remaining; monthly plan: ' . $s['quota']['monthly_limit'] : ' remaining' ) : 'Not observed; monetary balance does not establish a search allowance' ) . '</dd>';
-				if ( isset( $s['quota']['reset_at'] ) ) echo '<dt>Provider renewal date</dt><dd>' . esc_html( gmdate( 'Y-m-d', $s['quota']['reset_at'] ) ) . '</dd>';
+				if ( isset( $s['quota']['renewal_date'] ) ) echo '<dt>Provider renewal date</dt><dd>' . esc_html( $s['quota']['renewal_date'] ) . '</dd>';
 				if ( null !== $s['balance'] ) echo '<dt>Observed account balance</dt><dd>' . esc_html( (string) $s['balance']['amount'] . ' ' . $s['balance']['currency'] ) . '</dd>';
 				if ( null !== $s['observed_at'] ) echo '<dt>Account checked at</dt><dd>' . esc_html( gmdate( 'c', $s['observed_at'] ) ) . '</dd>';
 				echo '</dl>';
@@ -167,6 +170,7 @@ final class MAD4B_SCP_Search_Provider_Connections {
 			echo '<p>Governed budget: ' . esc_html( is_array( $b ) ? $b['authority_scope'] . '; remaining: ' . $b['remaining'] : 'Not configured for this provider account' ) . '</p>';
 			if ( $editable ) {
 				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_search_provider_connection"><input type="hidden" name="provider_id" value="' . esc_attr( $id ) . '"><input type="hidden" name="expected_revision" value="' . esc_attr( (string) $revision ) . '">';
+				if ( MAD4B_SCP_Search_Contracts::id( $profile_id ) ) echo '<input type="hidden" name="profile_id" value="' . esc_attr( $profile_id ) . '">';
 				wp_nonce_field( 'mad4b_search_provider_connection:' . $id );
 				foreach ( $m['fields'] as $key => $field ) {
 					$input_id = 'mad4b-provider-' . $id . '-' . $key;
@@ -186,9 +190,11 @@ final class MAD4B_SCP_Search_Provider_Connections {
 		if ( ! MAD4B_SCP_Search_Runtime::can_configure() ) wp_die( 'Provider configuration is not authorized.', '', array( 'response' => 403 ) );
 		$id = isset( $_POST['provider_id'] ) && is_string( $_POST['provider_id'] ) ? wp_unslash( $_POST['provider_id'] ) : '';
 		if ( ! MAD4B_SCP_Search_Contracts::id( $id ) ) wp_die( 'Invalid provider.', '', array( 'response' => 400 ) );
+		$profile_id = isset( $_POST['profile_id'] ) ? wp_unslash( $_POST['profile_id'] ) : '';
+		if ( ! is_string( $profile_id ) || ( '' !== $profile_id && ! MAD4B_SCP_Search_Contracts::id( $profile_id ) ) ) wp_die( 'Invalid profile.', '', array( 'response' => 400 ) );
 		check_admin_referer( 'mad4b_search_provider_connection:' . $id );
 		$result = self::post_input( wp_unslash( $_POST ) );
 		if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 400, 'back_link' => true ) );
-		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-search-intelligence&section=providers&provider_notice=' . rawurlencode( $result['connection_state'] ) ) ); exit;
+		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-search-intelligence&section=providers&profile_id=' . rawurlencode( $profile_id ) ) ); exit;
 	}
 }

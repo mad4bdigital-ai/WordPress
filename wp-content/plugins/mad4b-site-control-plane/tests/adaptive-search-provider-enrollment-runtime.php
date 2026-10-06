@@ -47,6 +47,8 @@ enrollment_case( 'local_enrollment_encryption_unconfigured_ui_and_secret_project
 	foreach ( array( 'fixture-serp-private', 'asi.local.' ) as $secret ) enrollment_check( false === strpos( $html, $secret ), 'no saved secret or handle in HTML' );
 	enrollment_check( ! preg_match( '/name="credentials\[[^"]+\]" value="[^"]+"/', $html ), 'all rendered credential values blank' );
 	enrollment_check( 0 === count( $GLOBALS['fixture_http'] ), 'page render remains a read-only projection' );
+	ob_start(); MAD4B_SCP_Search_Provider_Connections::render( 'fixture.search' ); $profile_html = ob_get_clean();
+	enrollment_check( false !== strpos( $profile_html, 'name="profile_id" value="fixture.search"' ), 'provider enrollment preserves the selected profile on return' );
 	$keep = enrollment_action( 'serpapi', 'save', 1, array( 'api_key' => '' ) );
 	enrollment_check( 1 === $keep['revision'] && $keep['configured'], 'blank save preserves the exact connection' );
 } );
@@ -64,7 +66,8 @@ enrollment_case( 'native_account_probe_quota_privacy_and_capture_boundary', stat
 	enrollment_check( 47 === $s['quota']['remaining'] && 250 === $s['quota']['monthly_limit'] && 203 === $s['quota']['monthly_used'], 'native account limits are dynamic, not a fixed free-plan quota' );
 	enrollment_no_secret( array( $s, enrollment_row( 'serpapi' ) ), array( 'fixture-serp-private', 'private@example.test', 'private payload' ) );
 	$a = new MAD4B_SCP_Search_SerpApi_Adapter(); $d = $a->descriptor();
-	enrollment_check( 47 === $d['usage']['remaining'] && $d['shared_account'] && MAD4B_SCP_Search_Contracts::sha( $d['account_id'] ), 'observed quota and shared identity reach provider selection' );
+	enrollment_check( $d['shared_account'] && MAD4B_SCP_Search_Contracts::sha( $d['account_id'] ), 'observed shared identity reaches provider selection' );
+	enrollment_check( isset( $s['quota']['renewal_date'] ) && ! isset( $s['quota']['reset_at'] ) && empty( $d['usage'] ), 'date-only renewal is not fabricated into an exact budget reset' );
 	enrollment_check( ! $d['certified'] && ! $d['active'] && empty( $d['economics'] ) && empty( $d['evidence_rights'] ), 'account observation grants no rights, pricing or behavioral certification' );
 	$r = array_merge( asi_candidate(), array( 'depth' => 3, 'requested_country' => 'US' ) );
 	$denied = $a->execute( $a->prepare( $r, asi_profile()['markets'][0] ) );
@@ -160,6 +163,8 @@ enrollment_case( 'local_authorization_nonce_and_strict_post_admission', static f
 	$GLOBALS['fixture_environment'] = 'staging';
 	$_POST = array( 'provider_id' => 'serpapi', 'operation' => 'test', 'expected_revision' => '0' );
 	try { MAD4B_SCP_Search_Provider_Connections::post(); enrollment_check( false, 'missing nonce must terminate' ); } catch ( RuntimeException $e ) { enrollment_check( 'nonce_denied' === $e->getMessage(), 'provider-bound nonce before any secret or network action' ); }
+	$_POST['profile_id'] = array( 'invalid' );
+	try { MAD4B_SCP_Search_Provider_Connections::post(); enrollment_check( false, 'invalid profile must terminate' ); } catch ( RuntimeException $e ) { enrollment_check( 'post_denied:400' === $e->getMessage(), 'invalid return profile cannot alter provider credentials' ); }
 	foreach ( array( null, array(), '1e2', '-1', '01', '9999999999999999999999' ) as $bad ) enrollment_check( is_wp_error( MAD4B_SCP_Search_Provider_Connections::post_input( array( 'provider_id' => 'serpapi', 'operation' => 'test', 'expected_revision' => $bad ) ) ), 'strict bounded revision admission' );
 	enrollment_check( is_wp_error( enrollment_action( array(), 'save', 0, array() ) ), 'array provider input rejected without coercion' );
 	enrollment_check( is_wp_error( enrollment_action( 'serpapi', 'save', 0, array( 'api_key' => array() ) ) ), 'array credential rejected' );

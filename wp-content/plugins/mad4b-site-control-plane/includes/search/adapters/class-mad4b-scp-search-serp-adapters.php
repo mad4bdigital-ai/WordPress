@@ -99,7 +99,9 @@ final class MAD4B_SCP_Search_SerpApi_Adapter extends MAD4B_SCP_Search_HTTP_SERP_
 		$quota = array( 'remaining' => $p['total_searches_left'] );
 		foreach ( array( 'searches_per_month' => 'monthly_limit', 'this_month_usage' => 'monthly_used' ) as $native => $key ) if ( isset( $p[ $native ] ) && is_int( $p[ $native ] ) && $p[ $native ] >= 0 ) $quota[ $key ] = $p[ $native ];
 		$renewal = isset( $p['plan_renewal_date'] ) ? $p['plan_renewal_date'] : null;
-		if ( is_string( $renewal ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/D', $renewal ) ) { $reset = strtotime( $renewal . ' 00:00:00 UTC' ); if ( false !== $reset && gmdate( 'Y-m-d', $reset ) === $renewal ) $quota['reset_at'] = $reset; }
+		// The API supplies a date, not an exact reset instant or timezone.
+		// Keep that native precision; budget certification must supply its own fence.
+		if ( is_string( $renewal ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/D', $renewal ) ) { $date = strtotime( $renewal . ' 00:00:00 UTC' ); if ( false !== $date && gmdate( 'Y-m-d', $date ) === $renewal ) $quota['renewal_date'] = $renewal; }
 		return array( 'account_ref' => hash( 'sha256', $p['account_id'] ), 'quota' => $quota, 'balance' => null );
 	}
 	public function prepare( array $request, array $market ) { return $this->prepared( $request, $market, 'location' ); }
