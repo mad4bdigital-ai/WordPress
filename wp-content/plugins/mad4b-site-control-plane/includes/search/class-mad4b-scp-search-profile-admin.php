@@ -46,6 +46,18 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			if ( 0 === $revision || ! isset( $input['profile_json'] ) || ! is_string( $input['profile_json'] ) || strlen( $input['profile_json'] ) > 65536 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$raw = json_decode( $input['profile_json'], true, 32 );
 			if ( ! is_array( $raw ) || ! isset( $raw['profile_id'] ) || $raw['profile_id'] !== $input['profile_id'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$current = MAD4B_SCP_Search_Context::profile( $input['profile_id'] );
+			if ( is_wp_error( $current ) ) return $current;
+			$current_enabled = ! empty( $current['enabled'] );
+			$current_freeze_spend = ! empty( $current['provider_policy']['freeze_spend'] );
+			if ( array_key_exists( 'enabled', $raw ) && (bool) $raw['enabled'] !== $current_enabled ) return MAD4B_SCP_Search_Contracts::error( 'profile_state_requires_explicit_control' );
+			if ( ! isset( $raw['provider_policy'] ) || ! is_array( $raw['provider_policy'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			if ( array_key_exists( 'freeze_spend', $raw['provider_policy'] ) && (bool) $raw['provider_policy']['freeze_spend'] !== $current_freeze_spend ) return MAD4B_SCP_Search_Contracts::error( 'profile_state_requires_explicit_control' );
+			// Generic policy JSON cannot resume observations or unfreeze spend. Those
+			// state transitions use dedicated controls with their own operator intent
+			// and exact post-apply readback.
+			$raw['enabled'] = $current_enabled;
+			$raw['provider_policy']['freeze_spend'] = $current_freeze_spend;
 		} else return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 		$args = array( 'profile' => $raw, 'expected_revision' => $revision );
 		$plan = MAD4B_SCP_Search_Runtime::profile_plan( $args );
@@ -82,8 +94,13 @@ final class MAD4B_SCP_Search_Profile_Admin {
 		if ( isset( $profiles[ $id ] ) ) {
 			$p = $profiles[ $id ];
 			if ( MAD4B_SCP_Admin_Experience::notice_verified( MAD4B_SCP_Search_Experience::PAGE_SLUG, 'profile_saved', $p['profile_sha256'] ) ) echo '<div class="notice notice-success"><p>Search profile saved and verified.</p></div>';
+			echo '<div class="mad4b-scp-panel"><h3>Profile runtime controls</h3><p>Observation state and provider spend state are intentionally separate from advanced policy JSON. These controls do not certify a provider, allocate allowance or create write authority.</p>';
+			echo '<p><strong>Observations:</strong> ' . esc_html( ! empty( $p['enabled'] ) ? 'Enabled' : 'Paused' ) . ' &nbsp; <strong>Provider spend:</strong> ' . esc_html( ! empty( $p['provider_policy']['freeze_spend'] ) ? 'Frozen' : 'Unfrozen' ) . '</p>';
+			self::runtime_control_form( $id, $p['revision'], ! empty( $p['enabled'] ) ? 'pause' : 'resume', ! empty( $p['enabled'] ) ? 'Pause observations' : 'Resume observations' );
+			self::runtime_control_form( $id, $p['revision'], ! empty( $p['provider_policy']['freeze_spend'] ) ? 'unfreeze_spend' : 'freeze_spend', ! empty( $p['provider_policy']['freeze_spend'] ) ? 'Unfreeze provider spend' : 'Freeze provider spend' );
+			echo '</div>';
 			$policy = MAD4B_SCP_Search_Context::policy(); $raw = array_intersect_key( $p, array_flip( $policy['profile_fields'] ) );
-			echo '<details><summary>Edit selected profile policy</summary><p>Markets, provider location mappings, language and budget policies are independent of Site Profile. Editing policy does not certify a provider or allocate paid allowance.</p>';
+			echo '<details><summary>Edit selected profile policy</summary><p>Markets, provider location mappings, language and budget policies are independent of Site Profile. Observation enablement and spend freeze state cannot be changed through this JSON editor.</p>';
 			self::form_start( 'edit', $id, $p['revision'] );
 			echo '<label for="mad4b-search-profile-json">Profile policy JSON</label><textarea id="mad4b-search-profile-json" name="profile_json" rows="20" class="large-text code">' . esc_textarea( wp_json_encode( $raw, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ) . '</textarea><button class="button button-primary">Save and verify profile</button></form></details>';
 		}
@@ -93,6 +110,16 @@ final class MAD4B_SCP_Search_Profile_Admin {
 		echo '<fieldset><legend>Allowed providers</legend>';
 		foreach ( MAD4B_SCP_Search_Providers::adapters() as $key => $adapter ) echo '<label style="margin-right:16px"><input type="checkbox" name="providers[]" value="' . esc_attr( $key ) . '"> ' . esc_html( $key ) . '</label>';
 		echo '</fieldset><p><button class="button button-primary">Create paused profile</button></p></form></details></section>';
+	}
+
+	private static function runtime_control_form( $profile_id, $revision, $control, $label ) {
+		$confirmation = 'resume' === $control ? 'RESUME SEARCH OBSERVATIONS' : ( 'unfreeze_spend' === $control ? 'UNFREEZE SEARCH SPEND' : '' );
+		echo '<form method="post" style="display:inline-block;margin:0 12px 8px 0" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="mad4b_search_control"><input type="hidden" name="profile_id" value="' . esc_attr( $profile_id ) . '"><input type="hidden" name="control" value="' . esc_attr( $control ) . '"><input type="hidden" name="expected_revision" value="' . esc_attr( (string) $revision ) . '">';
+		wp_nonce_field( 'mad4b_search_control' );
+		if ( '' !== $confirmation ) echo '<button class="button button-secondary" name="confirmation" value="' . esc_attr( $confirmation ) . '">' . esc_html( $label ) . '</button>';
+		else echo '<button class="button button-secondary">' . esc_html( $label ) . '</button>';
+		echo '</form>';
 	}
 
 	private static function form_start( $operation, $id, $revision ) {
