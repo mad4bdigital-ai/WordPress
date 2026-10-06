@@ -679,7 +679,6 @@ assert len(experience_media_planning_src.splitlines()) <= 120, "content-experien
 assert "Recoverable orphan semantics are not explicit/non-destructive." in experience_runtime_smoke_src
 assert "Manifest-bound content create did not finish with verified recovery binding." in experience_runtime_smoke_src
 
-print("MAD4B full governed content operations contract: PASS")
 
 assert "mad4b_content_experience_media_binding_manifest_role_drift" in experience_media_binding_src
 assert "mad4b_content_experience_media_binding_manifest_item_drift" in experience_media_binding_src
@@ -708,3 +707,5 @@ for token in (
     assert token in remote_media_recovery_src, f"remote recovery correlation validation missing: {token}"
 assert "Manifest-correlated import accepted tampered item intent." in experience_runtime_smoke_src
 assert "Post binding accepted manifest role drift." in experience_runtime_smoke_src
+
+print("MAD4B full governed content operations contract: PASS")
