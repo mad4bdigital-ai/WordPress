@@ -89,7 +89,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "b03daa4ce52406016e0fa2937e441aa9d32085e998d80a26b7be1584300445a5"
+      "sha256": "5c79f0e6d45b95dc5185ae0b7a5782a798843aa3575b1773d7af7d7400ce558b"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
