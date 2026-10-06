@@ -68,7 +68,7 @@ final class MAD4B_SCP_Live_Truth {
 		// recovery is confined to MAD4B operator surfaces; explicit read abilities
 		// call current truth directly and are unaffected by this guard.
 		if ( is_admin() ) {
-			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
+			$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
 			if ( 0 !== strpos( $page, 'mad4b-control-plane' ) && 'mad4b-approval-decisions' !== $page ) return;
 			// Context admin pages render bounded persisted/candidate projections.
 			// Passive Abilities bootstrap must not turn an ordinary page load or
@@ -662,8 +662,8 @@ final class MAD4B_SCP_Live_Truth {
 
 	public static function refresh_admin_certification() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
+		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
+		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
 		$skills = 'mad4b-control-plane-skills' === $page;
 		$certification = 'mad4b-control-plane-connection' === $page && 'certification' === $tab;
 		if ( ! $skills && ! $certification ) return;

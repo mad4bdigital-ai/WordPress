@@ -18,6 +18,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * to the exact enrolled Site Profile and its managed-runtime feature.
  */
 final class MAD4B_SCP_MCP_Request_Scope {
+	/** Classification input cannot be a nested query value or an unbounded route. */
+	private static function query_value( $key ) {
+		return isset( $_GET[ $key ] ) && is_string( $_GET[ $key ] ) && strlen( $_GET[ $key ] ) <= 4096 ? wp_unslash( $_GET[ $key ] ) : '';
+	}
+
 	const CONTRACT = 'mad4b.mcp-request-scope.v1';
 	const MAX_PROTOCOL_REST_CALLBACK_SCAN = 512;
 	const MAX_PROTOCOL_REST_CALLBACK_EVIDENCE = 100;
@@ -163,10 +168,10 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		// Classification only. A raw AJAX action keeps boot passive; it cannot arm
 		// the Adapter until the worker verifies the administrator, nonce and target.
 		if ( self::current_request_is_endpoint_diagnostic_job() ) return true;
-		$page = isset( $_GET['page'] ) ? wp_unslash( (string) $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$page = isset( $_GET['page'] ) ? self::query_value( 'page' ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		if ( 'mad4b-control-plane-connection' === $page ) return true;
 		if ( ! self::current_admin_request_method_is_read_only() ) return false;
-		$tab = isset( $_GET['tab'] ) ? wp_unslash( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$tab = isset( $_GET['tab'] ) ? self::query_value( 'tab' ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		return self::passive_admin_route( $page, $tab );
 	}
 
@@ -374,7 +379,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	 */
 	public static function current_request_mcp_server_id() {
 		if ( ! self::current_request_is_http_mcp_transport() ) return '';
-		$route = isset( $_GET['rest_route'] ) ? wp_unslash( (string) $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$route = isset( $_GET['rest_route'] ) ? self::query_value( 'rest_route' ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		if ( '' === $route && '' !== $uri ) {
 			$query = wp_parse_url( $uri, PHP_URL_QUERY );
@@ -420,13 +425,13 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return self::cli_mcp_opt_in();
 		if ( self::current_request_is_endpoint_diagnostic_job() ) return '' !== self::$endpoint_diagnostic_server_id;
 
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$page = isset( $_GET['page'] ) ? sanitize_key( self::query_value( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		if ( self::current_request_is_passive_admin_hotpath() ) return false;
 		if ( '' !== $page && 0 === strpos( $page, 'mad4b-control-plane' ) ) return true;
 
 		$route = '';
 		if ( isset( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
-			$route = wp_unslash( (string) $_GET['rest_route'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+			$route = self::query_value( 'rest_route' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		}
 
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
@@ -463,7 +468,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	public static function current_request_is_http_mcp_transport() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;
 
-		$route = isset( $_GET['rest_route'] ) ? wp_unslash( (string) $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$route = isset( $_GET['rest_route'] ) ? self::query_value( 'rest_route' ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		if ( self::is_mad4b_mcp_route( $route ) ) return true;
 
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
@@ -486,7 +491,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	public static function current_request_is_protocol_hotpath() {
 		if ( self::current_request_is_http_mcp_transport() ) return true;
 
-		$route = isset( $_GET['rest_route'] ) ? wp_unslash( (string) $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$route = isset( $_GET['rest_route'] ) ? self::query_value( 'rest_route' ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
 		if ( '/mad4b/v1/oauth-protected-resource' === $route ) return true;
 

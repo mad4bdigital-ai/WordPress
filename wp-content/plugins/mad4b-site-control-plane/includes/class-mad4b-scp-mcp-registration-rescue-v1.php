@@ -59,8 +59,8 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 
 	public static function admin_checkpoint() {
 		if ( ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only lifecycle checkpoint.
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only lifecycle checkpoint.
+		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only lifecycle checkpoint.
+		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only lifecycle checkpoint.
 		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
 
 		if ( function_exists( 'rest_get_server' ) ) rest_get_server();

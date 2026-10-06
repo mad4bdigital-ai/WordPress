@@ -37,7 +37,7 @@ $render = static function ( $slug, array $page, array $query ) use ( &$renders, 
 	set_current_screen( 'mad4b-control-plane_page_' . $slug );
 	ob_start();
 	try { call_user_func( array( $page[0], $page[1] ) ); MAD4B_SCP_MCP_Registration_Diagnostics_Admin::render(); MAD4B_SCP_Runtime_Release_Set::admin_notice(); $html = ob_get_clean(); }
-	catch ( Throwable $error ) { ob_end_clean(); throw new RuntimeException( $slug . ': ' . $error->getMessage(), 0, $error ); }
+	catch ( Throwable $error ) { ob_end_clean(); throw new RuntimeException( $slug . ': ' . $error->getMessage() . ' (' . basename( $error->getFile() ) . ':' . $error->getLine() . ')', 0, $error ); }
 	++$renders; $check( false !== strpos( $html, '<h1>' ), $slug . ': page renders a title' );
 	$check( ! preg_match( '#/wp-admin/mad4b-[a-z-]+["?]#', $html ), $slug . ': canonical admin URLs' );
 	$doc = new DOMDocument(); @$doc->loadHTML( '<!doctype html><html><body>' . $html . '</body></html>' ); $xpath = new DOMXPath( $doc );
