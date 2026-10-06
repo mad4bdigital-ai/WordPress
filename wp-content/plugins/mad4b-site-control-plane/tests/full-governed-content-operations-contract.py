@@ -24,13 +24,14 @@ experience_media_planning = root / "includes" / "class-mad4b-scp-content-experie
 remote_media_recovery = root / "includes" / "class-mad4b-scp-remote-media-recovery.php"
 experience_media_rights = root / "includes" / "class-mad4b-scp-content-experience-media-rights.php"
 remote_media_rights = root / "includes" / "class-mad4b-scp-remote-media-rights.php"
+remote_media_manifest = root / "includes" / "class-mad4b-scp-remote-media-manifest.php"
 experience_runtime = root / "includes" / "class-mad4b-scp-content-experience-runtime.php"
 descriptor = root / "includes" / "class-mad4b-scp-capability-descriptor-registry.php"
 experience_runtime_smoke = root / "tests" / "runtime-content-experience-smoke.php"
 reversible = root / "includes" / "class-mad4b-scp-reversible-adapter-mutations.php"
 plugin = root / "mad4b-site-control-plane.php"
 
-for path in (base, full, translation, provider, jetengine, jetengine_client, media, remote_media, servers, semantic, experience, experience_bootstrap, experience_governance, experience_media, experience_media_storage, experience_media_binding, experience_media_manifest, experience_media_planning, remote_media_recovery, experience_media_rights, remote_media_rights, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
+for path in (base, full, translation, provider, jetengine, jetengine_client, media, remote_media, servers, semantic, experience, experience_bootstrap, experience_governance, experience_media, experience_media_storage, experience_media_binding, experience_media_manifest, experience_media_planning, remote_media_recovery, experience_media_rights, remote_media_rights, remote_media_manifest, experience_runtime, descriptor, experience_runtime_smoke, reversible, plugin):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
@@ -54,6 +55,7 @@ experience_media_planning_src = experience_media_planning.read_text(encoding="ut
 remote_media_recovery_src = remote_media_recovery.read_text(encoding="utf-8")
 experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
 remote_media_rights_src = remote_media_rights.read_text(encoding="utf-8")
+remote_media_manifest_src = remote_media_manifest.read_text(encoding="utf-8")
 experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
 descriptor_src = descriptor.read_text(encoding="utf-8")
 experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
@@ -688,12 +690,17 @@ assert "created_for_manifest = true" in remote_media_recovery_src
 
 
 for token in (
+    "mad4b.remote-media-import-manifest.v1",
     "mad4b_remote_media_manifest_identity_invalid",
     "mad4b_remote_media_manifest_item_identity_invalid",
     "mad4b_remote_media_manifest_item_drift",
     "mad4b_remote_media_manifest_binding_role_invalid",
+    "item_sha256",
+    "execution_context",
 ):
-    assert token in remote_media_src, f"remote manifest execution correlation guard missing: {token}"
+    assert token in remote_media_manifest_src, f"remote manifest execution correlation guard missing: {token}"
+assert "class-mad4b-scp-remote-media-manifest.php" in plugin_src
+assert len(remote_media_manifest_src.splitlines()) <= 120, "remote-media-manifest exceeds focused 120-line service budget"
 for token in (
     "mad4b_remote_media_recovery_item_identity_invalid",
     "mad4b_remote_media_recovery_binding_role_invalid",
