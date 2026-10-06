@@ -285,6 +285,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-table-backend.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-backend-controller.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ability-contract-inspector.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-descriptor-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-competitive-evidence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-policy-classifier.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-evidence-graph.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-preparation-receipt.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-replay-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-object-store.php';

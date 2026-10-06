@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "a71c6382b072b782c9d900205732a9ba38bb1a30d964d63d497d4fbdb8276256",
+  "status_source_sha256": "2ba70bc189b78e9a8b2d24d5e6ae826bfc1bbc4f0a1bbbdf490c70954c5c7011",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 170,
-    "PARTIAL": 5,
+    "OPEN": 155,
+    "PARTIAL": 20,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -17,45 +17,60 @@
       "phase": 0,
       "priority": "P0",
       "summary": "Implement a reproducible artifact inventory with immutable original ZIP fingerprints, license/header identity and safe bounded member inspection.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Reproducible archive verification, immutable package fingerprints and guarded packaged evidence are implemented; exact-head child CI remains an external integration invariant."
     },
     {
       "task_id": "T3902",
       "phase": 0,
       "priority": "P0",
       "summary": "Implement normalized capability comparison that separates bundled static paths, marketing/Pro claims, MAD4B foundation and runtime-certified parity.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Capability comparison separates static evidence, marketed claims, MAD4B foundation and runtime-certified parity; representative external/runtime acceptance remains required where applicable."
     },
     {
       "task_id": "T3903",
       "phase": 0,
       "priority": "P0",
       "summary": "Implement revisioned competitor snapshot diff with added/removed/schema-changed features, comparison history and source drift alerts.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Append-only evidence history v2 now provides generation chaining, fail-closed retention, previous-known-good pointers, drift alerts and acknowledgement lifecycle; live multi-generation acceptance remains pending."
     },
     {
       "task_id": "T3904",
       "phase": 0,
       "priority": "P0",
       "summary": "Expose artifact/source/requirement/task/evidence links and capability-local progress in an operator comparison view.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Operator evidence view now supports search plus status, evidence-class, workstream and runtime-parity filters, expandable evidence, remaining-task reasons, acceptance gaps and history context; real browser acceptance remains pending."
     },
     {
       "task_id": "T3905",
       "phase": 0,
       "priority": "P0",
       "summary": "GATE Reject altered ZIPs, unsafe entries, unbound line hashes, duplicate task ownership and documentation-only parity completion.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Tamper, archive, evidence-resource, history-chain and documentation-only completion denials are CI-bound; exact-head child CI remains the terminal external integration gate."
     },
     {
       "task_id": "T3906",
@@ -749,90 +764,120 @@
       "phase": 16,
       "priority": "P0",
       "summary": "Implement provenance-bound provider/component/capability/operation/schema/precondition/effect/reversal/evidence graph snapshots with immutable generation identities.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Runtime Candidate Graph v2 is provenance-bound with immutable generation, site/environment envelope, semantic dimensions, explicit edges and collector contract provenance; representative runtime acceptance remains pending."
     },
     {
       "task_id": "T4002",
       "phase": 16,
       "priority": "P0",
       "summary": "Discover registered symbols, hooks, REST routes, Abilities, MCP descriptors, CPTs/taxonomies/meta, schemas, cron and admin pages through bounded trusted readers.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Bounded structural discovery now declares per-collector lifecycle, sensitivity, provenance, budgets and completeness/truncation semantics while avoiding callback or endpoint execution; Staging acceptance remains pending."
     },
     {
       "task_id": "T4003",
       "phase": 16,
       "priority": "P0",
       "summary": "Implement unknown-plugin candidate packages and descriptive database/endpoint inventory without invoking unknown code, exposing settings secrets or creating writes.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Unknown-plugin candidates and descriptive database/endpoint inventory remain non-executing and non-secret, with bounded discovery and no row/schema reads; unknown-provider Staging acceptance remains pending."
     },
     {
       "task_id": "T4004",
       "phase": 16,
       "priority": "P0",
       "summary": "Implement semantic pre/post graph diff and isolate removed/changed capabilities plus dependent workflows while preserving unrelated compatible reads.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Semantic graph diff validates the before envelope and propagates provider/component/ability/operation/workflow impact transitively using the existing dependency-impact foundation while isolating unrelated reads; Staging drift acceptance remains pending."
     },
     {
       "task_id": "T4005",
       "phase": 16,
       "priority": "P0",
       "summary": "GATE Prove false annotations/GET methods, lazy-loader effects, stale workers, schema disappearance, secret schemas and unknown side effects never gain authority.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Fail-closed tests cover fabricated/cross-site/oversized snapshots, lifecycle ambiguity, truncation, sensitive cron names, unknown code and non-authorizing discovery; exact-head CI remains the external integration gate."
     },
     {
       "task_id": "T4006",
       "phase": 17,
       "priority": "P0",
       "summary": "Implement deterministic evidence features for namespace/action/schema/annotations/capabilities/resources/effects/reversibility and a versioned Policy Proposal contract.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Deterministic semantic features and versioned Policy Proposal contracts include input/output schema digests, capability/resource/effect/reversibility and provenance; live runtime acceptance remains separate."
     },
     {
       "task_id": "T4007",
       "phase": 17,
       "priority": "P0",
       "summary": "Implement confidence, contradictory/missing evidence, provenance and classifier-version traces; confidence and operation names are never safety proof.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Confidence, missing/contradictory evidence, provenance, classifier version and conformance reasons are explicit and never treated as safety proof; Staging evidence remains pending."
     },
     {
       "task_id": "T4008",
       "phase": 17,
       "priority": "P0",
       "summary": "Separate runtime-discovered facts from reviewed policy overlay; only admitted zero-effect/non-secret read recipes may auto-classify after actual conformance.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Auto-classification is limited to conformance-bound zero-effect reads with non-secret input/output, acceptable data classification, capability/resource constraints and trusted artifact/generation-bound receipts; real conformance-source acceptance remains pending."
     },
     {
       "task_id": "T4009",
       "phase": 17,
       "priority": "P0",
       "summary": "Implement owner review for new write/unknown/high-risk proposals and record scope/risk/authority differences without altering grants or mounts.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Owner review is append-only, audit-fail-closed, digest-verified, exact graph/proposal-bound and protected by expected-revision CAS plus token/revision fencing and readback; admin/browser concurrency acceptance remains pending."
     },
     {
       "task_id": "T4010",
       "phase": 17,
       "priority": "P0",
       "summary": "GATE Prove confidence-only promotion, unsafe GET, lying read annotations, schema-based privilege inference and risk downgrade fail closed.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ],
+      "reason": "Denials cover confidence-only promotion, unsafe GET, lying annotations, secret output, privileged reads, forged/untrusted/stale conformance and risk downgrade; exact-head CI remains the external integration gate."
     },
     {
       "task_id": "T4011",
@@ -1288,7 +1333,7 @@
       "task_id": "T4061",
       "phase": 28,
       "priority": "P0",
-      "summary": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "summary": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
       "status": "PARTIAL",
       "evidence_refs": [
         "ui-delivery.json",
@@ -1318,7 +1363,7 @@
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
-      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness.",
+      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""
