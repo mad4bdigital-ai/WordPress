@@ -559,6 +559,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'post_type' => $post_type,
 				'existing_profile' => $existing,
 				'scenarios' => self::scenario_matrix( $existing, true ),
+				'workflow_blueprint' => self::workflow_blueprint( $existing, true ),
 				'profile_apply_ability' => self::PROFILE_APPLY_ABILITY,
 				'apply_required' => false,
 				'mutation_performed' => false,
@@ -697,6 +698,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'plan_sha256' => $profile_plan['plan_sha256'],
 			),
 			'scenarios' => self::scenario_matrix( $profile_plan['profile'], false ),
+			'workflow_blueprint' => self::workflow_blueprint( $profile_plan['profile'], false ),
 			'routes_active_after_profile_apply_and_next_request' => true,
 			'mutation_performed' => false,
 		);
@@ -835,6 +837,54 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			if ( $ids && count( $ids ) === count( $value ) && count( array_filter( $ids, $is_attachment ) ) === count( $ids ) ) return array( 'supported' => true, 'schema_type' => 'array', 'spec' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => min( self::MAX_MEDIA_GALLERY_ITEMS, max( 1, count( $ids ) ) ) ) );
 		}
 		return array( 'supported' => false );
+	}
+
+	private static function workflow_blueprint( array $profile, $active ) {
+		$routes = self::routes_for_profile( $profile );
+		$media = class_exists( 'MAD4B_SCP_Media_Adapter' )
+			? array(
+				'discover' => MAD4B_SCP_Media_Adapter::REMOTE_DISCOVER_ABILITY,
+				'inspect' => MAD4B_SCP_Media_Adapter::REMOTE_INSPECT_ABILITY,
+				'import_plan' => MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY,
+				'import_apply' => MAD4B_SCP_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY,
+			)
+			: array(
+				'discover' => 'media/remote-source-discover',
+				'inspect' => 'media/remote-image-inspect',
+				'import_plan' => 'media/remote-import-plan',
+				'import_apply' => 'media/remote-import-apply',
+			);
+		return array(
+			'contract' => 'mad4b.content-experience-ingestion-workflow.v1',
+			'profile_slug' => isset( $profile['slug'] ) ? (string) $profile['slug'] : '',
+			'post_type' => isset( $profile['post_type'] ) ? (string) $profile['post_type'] : '',
+			'active_now' => (bool) $active,
+			'activation_barrier' => $active ? 'none' : 'profile_apply_then_next_request',
+			'steps' => array(
+				array( 'id' => 'discover_source_media', 'ability' => $media['discover'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_source_page' ),
+				array( 'id' => 'inspect_selected_media', 'ability' => $media['inspect'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_selected_candidate', 'produces' => array( 'expected_content_sha256', 'expected_content_bytes', 'expected_mime_type', 'expected_width', 'expected_height' ) ),
+				array( 'id' => 'plan_media_import', 'ability' => $media['import_plan'], 'surface' => 'read', 'optional' => true, 'repeat' => 'per_selected_candidate', 'requires' => array( 'rights_basis', 'exact_content_evidence_or_existing_library_identity' ) ),
+				array( 'id' => 'apply_media_import', 'ability' => $media['import_apply'], 'surface' => 'content', 'optional' => true, 'repeat' => 'per_selected_candidate', 'produces' => array( 'attachment_id' ), 'ordering' => 'before_post_media_binding' ),
+				array( 'id' => 'plan_content_create', 'ability' => $routes['create_plan'], 'surface' => 'read', 'optional' => false ),
+				array( 'id' => 'apply_content_create', 'ability' => $routes['create_apply'], 'surface' => 'content', 'optional' => false, 'consumes' => array( 'attachment_ids_as_featured_media_or_configured_media_meta' ) ),
+				array( 'id' => 'verify_content', 'ability' => $routes['verify'], 'surface' => 'read', 'optional' => false ),
+				array( 'id' => 'plan_publish', 'ability' => $routes['publish_plan'], 'surface' => 'read', 'optional' => true, 'ordering' => 'final_visible_transition_only' ),
+				array( 'id' => 'apply_publish', 'ability' => $routes['publish_apply'], 'surface' => 'content', 'optional' => true, 'ordering' => 'after_successful_verify_only' ),
+			),
+			'data_bindings' => array(
+				'imported_attachment_ids' => array( 'featured_media_id', 'configured_media_meta_fields' ),
+				'imported_media_provenance' => 'publish_time_remote_provenance_guard',
+				'created_post_id' => array( 'verify', 'update', 'publish' ),
+			),
+			'failure_semantics' => array(
+				'imported_assets_survive_later_post_failure' => true,
+				'publish_is_never_implicit' => true,
+				'gallery_order_is_client_selected_attachment_order' => true,
+				'blind_retry_allowed' => false,
+			),
+			'hardcoded_business_content_types' => false,
+			'authorizing' => false,
+		);
 	}
 
 	private static function scenario_matrix( array $profile, $active ) {

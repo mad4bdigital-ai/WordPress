@@ -163,6 +163,10 @@ try {
 	$check( ! empty( $bootstrap['supports_featured_media'] ) && ! empty( $bootstrap['profile_plan']['profile']['featured_media'] ), 'Bootstrap plan did not infer thumbnail support.' );
 	$check( array() === $bootstrap['profile_plan']['profile']['meta_keys'] && array() === $bootstrap['profile_plan']['profile']['enabled_helpers'], 'Bootstrap plan widened meta/helper authority.' );
 	$check( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY === $bootstrap['profile_apply_ability'], 'Bootstrap plan did not hand off to the governed profile apply Ability.' );
+	$check( 'mad4b.content-experience-ingestion-workflow.v1' === $bootstrap['workflow_blueprint']['contract'], 'Bootstrap did not emit the versioned ingestion workflow blueprint.' );
+	$check( 'profile_apply_then_next_request' === $bootstrap['workflow_blueprint']['activation_barrier'], 'Proposed profile workflow omitted its next-request activation barrier.' );
+	$check( 'inspect_selected_media' === $bootstrap['workflow_blueprint']['steps'][1]['id'] && 'apply_media_import' === $bootstrap['workflow_blueprint']['steps'][3]['id'], 'Remote media workflow ordering drifted.' );
+	$check( ! empty( $bootstrap['workflow_blueprint']['failure_semantics']['publish_is_never_implicit'] ), 'Workflow blueprint lost explicit publish separation.' );
 	foreach ( array( 'remote_media_library_first', 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ) as $scenario ) {
 		$check( ! empty( $bootstrap['scenarios'][ $scenario ]['supported'] ), 'Bootstrap scenario missing: ' . $scenario );
 	}
