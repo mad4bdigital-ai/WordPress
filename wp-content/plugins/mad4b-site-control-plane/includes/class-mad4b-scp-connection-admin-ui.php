@@ -11,15 +11,15 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 20 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 20 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		MAD4B_SCP_Endpoint_Diagnostic::boot();
 	}
 
 	public static function enqueue_assets() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
-		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
+		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
+		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
 		if ( self::PAGE_SLUG !== $page || 'endpoints' !== $tab ) return;
 		$asset_path = MAD4B_SCP_DIR . 'assets/connection-endpoint-diagnostics.js';
 		$asset_hash = is_readable( $asset_path ) ? @hash_file( 'sha256', $asset_path ) : false;
@@ -62,7 +62,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'isolation' => __( 'Isolation & Safety', 'mad4b-site-control-plane' ),
 			'certification' => __( 'Certification', 'mad4b-site-control-plane' ),
 		);
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'readiness';
 
 		// HTML always uses the bounded snapshot, including obsolete full-page POSTs.
@@ -276,6 +276,8 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			}
 		}
 		echo '<form id="mad4b-endpoint-diagnostic-form" method="post" style="margin:12px 0 18px">';
+		wp_nonce_field( 'mad4b_connection_deep_endpoints', 'nonce' );
+		echo '<input type="hidden" name="build" value="' . esc_attr( MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() ) . '">';
 		echo '<label for="mad4b-endpoint-diagnostic-server">' . esc_html__( 'Endpoint', 'mad4b-site-control-plane' ) . '</label> <select id="mad4b-endpoint-diagnostic-server" name="server_id">';
 		foreach ( array_values( array_unique( array_merge( array( 'mad4b-chatgpt' ), MAD4B_SCP_Servers::expected_server_ids() ) ) ) as $id ) echo '<option value="' . esc_attr( $id ) . '">' . esc_html( $id ) . '</option>';
 		echo '<option value="all">' . esc_html__( 'All endpoints', 'mad4b-site-control-plane' ) . '</option></select> ';
@@ -300,7 +302,9 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'Permission binding exact' => self::measurement( $write['permission_callback_match'] ?? null ),
 			'Mounted write tools' => isset( $write['mounted_write_tool_count'] ) ? (int) $write['mounted_write_tool_count'] : __( 'Not checked', 'mad4b-site-control-plane' ),
 			'Global mutation configured' => ! empty( $write['mutation_global_enabled'] ),
-			'Mutation effective for current request' => ! empty( $write['mutation_effective_for_current_request'] ),
+			'Mutation policy gate' => ! empty( $write['mutation_policy_allows_current_request'] ),
+			'Candidate-bound Write checkpoint' => self::measurement( $write['candidate_bound_write_checkpoint_ready'] ?? null ),
+			'Exact Write execution verdict' => self::measurement( $write['mutation_effective_for_current_request'] ?? null ),
 			'Exact transport grant required' => ! empty( $write['exact_transport_grant_required'] ),
 			'Generic dispatcher exposed' => ! empty( $write['generic_dispatcher_exposed'] ),
 		), array( 'Registered' => 'registered', 'REST route registered' => 'route_registered', 'Permission binding exact' => 'permission_callback_match', 'Mounted write tools' => 'tool_count' ) );

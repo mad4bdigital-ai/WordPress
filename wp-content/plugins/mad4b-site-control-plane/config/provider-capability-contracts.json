@@ -149,6 +149,92 @@
             "compensation_support": true,
             "evidence_strength": "exact_readback_and_rollback_required"
           }
+        },
+        "native_configuration.read": {
+          "risk": "read",
+          "abilities": [
+            "jetengine/get-native-configuration",
+            "jetengine/get-native-website-config",
+            "jetengine/get-native-macros",
+            "jetengine/export-configuration"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "symbol_any",
+              "classes": [
+                "Jet_Engine"
+              ],
+              "functions": [
+                "jet_engine"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "native_schema.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "jetengine/create-cpt",
+            "jetengine/create-taxonomy",
+            "jetengine/create-meta-box",
+            "jetengine/create-cct",
+            "jetengine/create-query",
+            "jetengine/create-glossary",
+            "jetengine/create-listing",
+            "jetengine/manage-modules",
+            "jetengine/import-configuration"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "symbol_any",
+              "classes": [
+                "Jet_Engine"
+              ],
+              "functions": [
+                "jet_engine"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "idempotency_model": "mad4b_guarded",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "callback_model": "none",
+            "execution_history_retention": "provider_defined",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "local_or_remote": "local_wordpress",
+            "evidence_strength": "behavioral_readback_required"
+          }
         }
       }
     },
@@ -958,6 +1044,521 @@
             "concurrency_model": "mad4b_expected_document_sha",
             "compensation_support": true,
             "evidence_strength": "exact_canary_readback_and_owner_promotion_required"
+          }
+        }
+      }
+    },
+    "litespeed": {
+      "adapter_id": "litespeed",
+      "capabilities": {
+        "cache.read": {
+          "risk": "read",
+          "abilities": [
+            "litespeed/status"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "cache_url.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "litespeed/purge-url"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": false,
+            "evidence_strength": "bounded_behavioral_readback_required"
+          }
+        },
+        "cache_all.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "litespeed/purge-all"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "idempotency_model": "mad4b_guarded",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "callback_model": "none",
+            "execution_history_retention": "provider_defined",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "local_or_remote": "local_wordpress",
+            "evidence_strength": "behavioral_readback_required"
+          }
+        }
+      }
+    },
+    "polylang": {
+      "adapter_id": "polylang",
+      "capabilities": {
+        "language.read": {
+          "risk": "read",
+          "abilities": [
+            "polylang/status",
+            "polylang/list-languages",
+            "polylang/get-post-translations"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "function_any",
+              "values": [
+                "pll_get_post_language",
+                "pll_set_post_language"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "post_language.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "polylang/set-post-language"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.polylang-post-language.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "function_any",
+              "values": [
+                "pll_get_post_language",
+                "pll_set_post_language"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_readback_and_rollback_required"
+          }
+        }
+      }
+    },
+    "woocommerce": {
+      "adapter_id": "woocommerce",
+      "capabilities": {
+        "product.read": {
+          "risk": "read",
+          "abilities": [
+            "woocommerce/status",
+            "woocommerce/get-product"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "function_any",
+              "values": [
+                "wc_get_product"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "product.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "woocommerce/update-product"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.woocommerce-product.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "function_any",
+              "values": [
+                "wc_get_product"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "local_wordpress",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_readback_and_rollback_required"
+          }
+        }
+      }
+    },
+    "google_drive_context": {
+      "adapter_id": "context",
+      "capabilities": {
+        "context.read": {
+          "risk": "read",
+          "abilities": [
+            "context/status",
+            "context/assets",
+            "context/review-queue",
+            "context/review-audit",
+            "context/brand-core-coverage",
+            "context/brand-core-convergence-plan",
+            "context/google-drive-status",
+            "context/runtime-readiness",
+            "context/conflicts",
+            "context/reference-profile",
+            "context/retrieve",
+            "context/compliance-check",
+            "context/brand-gap-plan",
+            "context/brand-draft-preflight",
+            "context/source-scan-plan",
+            "context/provider-capabilities"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "read_repeatable",
+            "retry_semantics": "same_observation",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "structural_runtime_read"
+          }
+        },
+        "local_context.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/brand-draft-append",
+            "context/brand-draft-create",
+            "context/source-scan-apply"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": false,
+            "evidence_strength": "bounded_behavioral_readback_required"
+          }
+        },
+        "drive_asset.create.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "context/create-drive-asset"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "behavioral_readback_required"
+          }
+        },
+        "drive_asset.update.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/update-drive-asset"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.google-drive-context-update.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_readback_and_rollback_required"
+          }
+        },
+        "drive_asset.recreate.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/recreate-drive-asset"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.google-drive-context-recreate.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": true,
+            "evidence_strength": "exact_readback_and_rollback_required"
+          }
+        },
+        "brand_materialization.high-risk-write": {
+          "risk": "high_risk_write",
+          "abilities": [
+            "context/materialize-brand-draft",
+            "context/reconcile-brand-materialization"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "evidence_strength": "behavioral_readback_required"
+          }
+        },
+        "brand_materialization.rollback.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "context/rollback-materialized-brand-draft"
+          ],
+          "reversible": false,
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "MAD4B_SCP_Google_Drive_Context"
+              ]
+            }
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "execution_history_retention": "provider_defined",
+            "local_or_remote": "remote_api",
+            "idempotency_model": "mad4b_guarded",
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "callback_model": "none",
+            "concurrency_model": "mad4b_precondition_guarded",
+            "compensation_support": false,
+            "evidence_strength": "bounded_behavioral_readback_required"
           }
         }
       }

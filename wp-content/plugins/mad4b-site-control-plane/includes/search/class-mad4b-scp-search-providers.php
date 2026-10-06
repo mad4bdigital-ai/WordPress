@@ -9,6 +9,14 @@ interface MAD4B_SCP_Search_SERP_Adapter {
 	public function reconcile( array $job );
 }
 
+/** Optional local-admin enrollment; existing adapters need not expose credentials. */
+interface MAD4B_SCP_Search_SERP_Enrollment {
+	public function enrollment();
+	public function normalize_credentials( array $credentials );
+	public function credential_value( array $credentials );
+	public function observe_account( array $credentials );
+}
+
 /** Selection admits only registered adapters, exact generations and known economics. */
 final class MAD4B_SCP_Search_Providers {
 	public static function adapters() {

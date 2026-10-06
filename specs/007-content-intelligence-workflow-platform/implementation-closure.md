@@ -9,7 +9,7 @@ It does not redefine the existing contracts. It orders them into one executable 
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `a2208930c675e9a5889fa0ac73a4cd964b63569b`
+- reviewed repository parent: `b43a90bab987c609792c8e410d57080b3dc4a2ae`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
@@ -230,3 +230,30 @@ The complete discovery → context → target → budgeted capture → immutable
 Phase 38 repository implementation tasks and all six P1 review tasks are closed against the feature-owned exact-head workflow (40 scenarios, 938 assertions, 15 gates, PHP 7.4/8.3 and disposable WordPress/MySQL CAS, discovery and operator UI proof). Phase 38 is 80/80 DONE at repository-runtime scope. Provider account/site live certification and Production authority are not claimed.
 
 The follow-up acceptance matrix adds direct-capture mute enforcement, concurrent mute before provider entry, malformed factor rejection and first-party/live-SERP classification denials. These regressions increase the required suite to 42 scenarios and 981 assertions. The workflow recertifies all 15 gates on the current clean head; the earlier closure anchor remains historical evidence.
+## PR #255 unified operational closure
+
+This section is the normative reconciliation of the two October 6 All Royal Egypt reports. It separates **repository/runtime closure**, **live external evidence**, and **human authorization** so a healthy core cannot be reported as globally blocked and an unobserved external gate cannot be reported as complete.
+
+| Workstream | Repository state in #255 | Remaining evidence/action | Closure state |
+| --- | --- | --- | --- |
+| rc.94 live core baseline: exact release identity, 66/66 governed-write grants, candidate binding, DB topology/read-your-writes, MCP Adapter 0.7.0 | Inherited baseline; no regression repair required | Re-check after trusted rc.95 install | LIVE_BASELINE_CURRENT / CANDIDATE_RECHECK_REQUIRED |
+| Governed write transport / Canonical Capability Descriptor / approval-plan | Canonical governed-write bootstrap classification, fixed dispatcher transport semantics and fenced projection evidence implemented and regression-locked | Exact installed-candidate runtime readback after rc.95 | REPOSITORY_CLOSED / LIVE_RECHECK_REQUIRED |
+| Multi-Authority issuer binding | Canonical issuer authority identity + domain-separated issuer fingerprint reused by registry and canary; runtime regression asserts non-empty authority id/type/issuer/fingerprint | Exact OAuth live canary after rc.95 | REPOSITORY_CLOSED / LIVE_RECHECK_REQUIRED |
+| Dynamic provider version drift | Capability-first observation and structural reassessment implemented; runtime adapters also emit a dynamic candidate graph while the repository catalog remains the reviewed policy overlay. Unknown runtime abilities are visible and `UNCLASSIFIED_FAIL_CLOSED`; version drift is not incompatibility. | Real bounded mutation/rollback receipts where risk requires them | REPOSITORY_CLOSED / EXTERNAL_PENDING |
+| JetEngine native provider bridge | Reviewed isolated transport materialization, post-discovery truth, JetEngine provider binding and native capability risk contracts implemented | Behavioral certification/owner canary for gated writes; high-risk schema writes stay fail-closed | REPOSITORY_CLOSED / EXTERNAL_PENDING |
+| Elementor / JetEngine post-meta / JetSmartFilters / Rank Math write recertification | Generic capability-first recertification/orchestration path implemented | Exact live artifact authority and behavioral receipts | EXTERNAL_PENDING |
+| WP Import/Export | Exact external acceptance handoff implemented; no false activation | Composite artifact + disposable job + dry-run/readback/rollback or export ingest + signed receipt | EXTERNAL_PENDING |
+| Google Drive / Context / Brand Core | Capability surface and fail-closed prerequisites represented | Connect Drive, select governed source/assets, provide Brand Strategy/Tone/Editorial evidence | CONFIGURATION_PENDING |
+| Search Intelligence | Secure provider enrollment and Search Profile administration implemented. Resume/Pause and Freeze/Unfreeze Spend are dedicated revision-fenced/readback controls; generic policy JSON cannot change those state dimensions. | Configure/select a paused Search Profile and provider account evidence | REPOSITORY_CLOSED / CONFIGURATION_PENDING |
+| Admin environment semantics | Shared UI exposes Effective environment and Raw WordPress environment side by side; Site Profile authority is explicit when values differ | Re-check presentation on installed rc.95 browser acceptance | REPOSITORY_CLOSED / LIVE_RECHECK_REQUIRED |
+| Developer execution lane | Authority/execution split and safe remediation contract implemented | Host operator installs/configures `prlimit` and `bubblewrap` or `unshare-net` | HOST_EXTERNAL_PENDING |
+| External MCP / Browser Acceptance | Evidence contracts exist and cannot be forged by server status | Fresh client reconnect/handshake and real browser provider receipt | EXTERNAL_PENDING |
+| Performance acceptance | Comparative exact-release policy exists; no invented universal DB/include/memory threshold | Same-workload previous/current candidate samples plus required frontend sample count | EXTERNAL_PENDING |
+| Exact-head Release Verdict | Technical checks may pass, but repository requires current-head owner attestation | `OWNER_ATTEST_SINGLE_OWNER` for the exact current PR head | HUMAN_GATE_PENDING |
+| Production | No automatic inference or authority widening | Separate governed Production certification/promotion authorization | NOT_AUTHORIZED |
+
+### Unified decision rule
+
+A workstream is **DONE** only for the layer whose evidence is actually present. `REPOSITORY_CLOSED` does not mean a live provider canary ran. `EXTERNAL_PENDING`, `CONFIGURATION_PENDING`, `HOST_EXTERNAL_PENDING` and `HUMAN_GATE_PENDING` are not repository defects and must not trigger synthetic evidence, weakened guards, automatic grants, automatic mounts, unsandboxed Developer execution, Production promotion or Breakglass widening.
+
+The next release handoff must read this matrix together with the exact-head CI snapshot and the installed-candidate live diagnostics. Older rc.94 evidence may establish a baseline but may not certify rc.95.

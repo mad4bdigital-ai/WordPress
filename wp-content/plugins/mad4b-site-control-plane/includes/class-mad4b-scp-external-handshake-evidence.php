@@ -477,7 +477,9 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$write_transport_names = self::ability_names_to_mcp_tool_names( array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ) );
 		$observed_write_transport = array_values( array_intersect( $names, $write_transport_names ) );
 		if ( count( $observed_write_transport ) !== count( $write_transport_names ) ) return;
-		$direct_write_schema_leaks = array_values( array_intersect( $names, $write_names ) );
+		$governed_write_projections = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && method_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', 'governed_write_projection_names' )
+			? self::ability_names_to_mcp_tool_names( MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() ) : array();
+		$direct_write_schema_leaks = array_values( array_diff( array_intersect( $names, $write_names ), $governed_write_projections ) );
 		if ( ! empty( $direct_write_schema_leaks ) ) return;
 		$breakglass_names = self::breakglass_tool_names();
 		if ( ! empty( array_intersect( $names, $breakglass_names ) ) ) return;

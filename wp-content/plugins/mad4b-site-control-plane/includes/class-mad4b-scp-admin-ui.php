@@ -18,7 +18,7 @@ final class MAD4B_SCP_Admin_UI {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), MAD4B_SCP_Admin_Route_Registry::PARENT_MENU_PRIORITY );
 	}
 
 	public static function register_menu() {
@@ -123,9 +123,9 @@ final class MAD4B_SCP_Admin_UI {
 			'mutations' => __( 'Mutations', 'mad4b-site-control-plane' ),
 			'audit' => __( 'Audit', 'mad4b-site-control-plane' ),
 		);
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
-		$agent_public_id = isset( $_GET['agent'] ) ? sanitize_text_field( wp_unslash( $_GET['agent'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only inspection.
+		$agent_public_id = isset( $_GET['agent'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'agent' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only inspection.
 		if ( '' !== $agent_public_id && ! preg_match( '/^[A-Za-z0-9-]{36,64}$/', $agent_public_id ) ) $agent_public_id = '';
 
 		$snapshot = self::snapshot( $agent_public_id, $tab );

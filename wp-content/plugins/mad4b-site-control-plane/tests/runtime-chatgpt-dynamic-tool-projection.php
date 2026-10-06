@@ -227,6 +227,24 @@ $fixture_state = array(
 update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 
 try {
+	// Certification shares the projection's exact schema/classification and
+	// callback fence proof, without executing the selected mutation.
+	$write_name = 'mad4b/plugin-package-apply';
+	$write_state = $fixture_state;
+	$write_state['abilities'] = array( $write_name => $write_plan['desired_abilities'][0] );
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $write_state, false );
+	if ( array( $write_name ) !== MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() ) $fail( 'A current fenced mutation projection was classified as an ungoverned schema leak.' );
+	foreach ( array( 'input_schema_sha256', 'classification_sha256' ) as $pin ) {
+		$stale_write = $write_state; $stale_write['abilities'][ $write_name ][ $pin ] = str_repeat( '0', 64 );
+		update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $stale_write, false );
+		if ( MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() ) $fail( 'Stale mutation projection was treated as governed exposure: ' . $pin );
+	}
+	$foreign_write = $write_state; $foreign_write['binding']['site_uuid'] = 'foreign-site';
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $foreign_write, false );
+	if ( MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() ) $fail( 'Foreign-site mutation projection was treated as governed exposure.' );
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
+	if ( MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() ) $fail( 'A read hot-set member became write certification evidence.' );
+
 	$projected = MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names();
 	if ( ! in_array( 'mad4b/diagnostics-health', $projected, true ) ) $fail( 'Schema-pinned dynamic projection did not become effective.', $projected );
 

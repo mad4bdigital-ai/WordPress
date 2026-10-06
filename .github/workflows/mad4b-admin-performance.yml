@@ -41,18 +41,31 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
       - name: Adaptive runtime and admin recovery regressions
+        shell: bash
         run: |
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py
-          php wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/enrollment-passive-catalog-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-readonly-bootstrap-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/provider-health-view-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/connection-catalog-readiness-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/zero-touch-external-snapshot-runtime.php
+          status=0
+          test_root=wp-content/plugins/mad4b-site-control-plane/tests
+          if ! python3 "$test_root/admin-route-registry-contract.py"; then
+            status=1
+          fi
+          for regression in \
+            admin-route-registry-runtime \
+            enrollment-passive-catalog-runtime \
+            adaptive-runtime-convergence-runtime \
+            post-update-continuation-guards-runtime \
+            context-registry-atomicity-runtime \
+            wp-import-export-readonly-bootstrap-runtime \
+            provider-health-view-runtime \
+            connection-catalog-readiness-runtime \
+            context-oauth-lifecycle-runtime \
+            context-admin-recovery-runtime \
+            zero-touch-external-snapshot-runtime; do
+            if ! php "$test_root/$regression.php"; then
+              echo "::error::Runtime regression failed: $regression"
+              status=1
+            fi
+          done
+          exit "$status"
 
       - name: Prove expensive governance work is scoped
         shell: python

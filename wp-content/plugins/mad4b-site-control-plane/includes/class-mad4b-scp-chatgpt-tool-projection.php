@@ -663,6 +663,25 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return array_keys( self::effective_projection_rows() );
 	}
 
+	/** Structural exposure evidence only; never grants invocation authority. */
+	public static function governed_write_projection_names() {
+		$names = array();
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) ) return $names;
+		foreach ( self::effective_projection_rows() as $name => $row ) {
+			try {
+				if ( empty( $row['readonly_declared'] ) || false !== $row['readonly']
+					|| ! empty( $row['breakglass'] )
+					|| ! in_array( $row['lane'], array( 'write', 'content', 'admin' ), true )
+					|| empty( $row['execution_boundary_verified'] ) || empty( $row['execution_eligible'] )
+					|| ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) continue;
+				$server = self::execution_server( $name );
+				if ( is_wp_error( $server ) || 'mad4b-' . $row['lane'] !== $server ) continue;
+				$names[] = (string) $name;
+			} catch ( Throwable $error ) { continue; }
+		}
+		return $names;
+	}
+
 	public static function is_projected( $ability_name ) {
 		$state = self::raw_state();
 		$required_base = array_diff( MAD4B_SCP_Servers::chatgpt_base_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );

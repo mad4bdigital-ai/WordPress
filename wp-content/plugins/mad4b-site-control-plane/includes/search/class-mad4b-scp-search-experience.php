@@ -35,15 +35,16 @@ final class MAD4B_SCP_Search_Experience {
 		// this submenu first can make WordPress derive a different plugin-page hook
 		// before the parent exists, causing admin.php?page=... to fail with the
 		// generic core "not allowed" screen even for an authorized administrator.
-		add_action( 'admin_menu', array( __CLASS__, 'menu' ), self::MENU_PRIORITY );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), self::MENU_PRIORITY );
 		add_action( 'admin_post_mad4b_search_control', array( __CLASS__, 'control_post' ) );
 	}
 	public static function menu() { add_submenu_page( 'mad4b-control-plane', 'Search Intelligence', 'Search Intelligence', 'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) ); }
 	public static function render() {
-		if ( ! MAD4B_SCP_Policy::can_read() ) return;
-		$id = isset( $_GET['profile_id'] ) ? (string) wp_unslash( $_GET['profile_id'] ) : '';
+		if ( ! current_user_can( 'manage_options' ) || ! MAD4B_SCP_Policy::can_read() ) return;
+		$id = MAD4B_SCP_Search_Profile_Admin::selected_id();
 		$model = MAD4B_SCP_Search_Runtime::status( array( 'profile_id' => $id ) );
 		echo '<div class="wrap"><h1>Search Intelligence</h1>';
+		MAD4B_SCP_Search_Profile_Admin::render( $id );
 		if ( is_wp_error( $model ) ) { echo '<p>' . esc_html( $model->get_error_message() ) . '</p></div>'; return; }
 		echo '<h2>' . esc_html( $model['headline'] ) . '</h2><nav aria-label="Search Intelligence sections">';
 		foreach ( $model['sections'] as $s ) echo '<a style="margin-right:16px" href="' . esc_url( $s['url'] . '&profile_id=' . rawurlencode( $id ) ) . '">' . esc_html( $s['label'] ) . '</a>';
@@ -53,8 +54,11 @@ final class MAD4B_SCP_Search_Experience {
 		foreach ( $model['metrics'] as $m ) echo '<tr><th scope="row">' . esc_html( str_replace( '_', ' ', $m['id'] ) ) . '</th><td>' . esc_html( (string) $m['value'] ) . '</td></tr>';
 		echo '</tbody></table>';
 		foreach ( $model['recommended_actions'] as $a ) echo '<p>' . esc_html( $a ) . '</p>';
+		$section = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'section', 'overview', 96 ) );
+		if ( ! in_array( $section, MAD4B_SCP_Search_Context::policy()['section_order'], true ) ) $section = 'overview';
+		// Connection setup is useful before the first profile exists.
+		if ( 'providers' === $section || ! $id ) MAD4B_SCP_Search_Provider_Connections::render( $id );
 		if ( $id ) {
-			$section = isset( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : 'overview';
 			$rows = self::section_rows( $id, $section );
 			echo '<h2 id="search-' . esc_attr( $section ) . '">' . esc_html( ucfirst( $section ) ) . '</h2><table class="widefat striped"><thead><tr><th scope="col">Item</th><th scope="col">State or evidence</th></tr></thead><tbody>';
 			foreach ( $rows as $row ) echo '<tr><th scope="row">' . esc_html( $row['label'] ) . '</th><td>' . esc_html( $row['value'] ) . '</td></tr>';
@@ -64,7 +68,7 @@ final class MAD4B_SCP_Search_Experience {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_search_control"><input type="hidden" name="profile_id" value="' . esc_attr( $id ) . '">';
 			wp_nonce_field( 'mad4b_search_control' );
 			echo '<label for="mad4b-search-control">Operator control</label> <select id="mad4b-search-control" name="control">';
-			foreach ( array( 'pause' => 'Pause observations', 'resume' => 'Resume observations', 'freeze_spend' => 'Freeze spend', 'unfreeze_spend' => 'Unfreeze spend', 'disable_provider' => 'Disable provider', 'enable_provider' => 'Enable provider', 'pin' => 'Pin target', 'unpin' => 'Unpin target', 'mute' => 'Mute target', 'unmute' => 'Unmute target', 'refresh' => 'Request refresh' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '">' . esc_html( $label ) . '</option>';
+			foreach ( array( 'disable_provider' => 'Disable provider', 'enable_provider' => 'Enable provider', 'pin' => 'Pin target', 'unpin' => 'Unpin target', 'mute' => 'Mute target', 'unmute' => 'Unmute target', 'refresh' => 'Request refresh' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '">' . esc_html( $label ) . '</option>';
 			echo '</select> <label>Provider ID <input name="provider_id" maxlength="96"></label> <label>Target ID <input name="target_id" maxlength="64"></label> ';
 			submit_button( 'Apply control', 'secondary', 'submit', false ); echo '</form>';
 		}
@@ -75,6 +79,7 @@ final class MAD4B_SCP_Search_Experience {
 		$id = isset( $input['profile_id'] ) ? $input['profile_id'] : ''; $control = isset( $input['control'] ) ? $input['control'] : '';
 		$p = MAD4B_SCP_Search_Context::profile( $id ); if ( is_wp_error( $p ) ) return $p;
 		if ( in_array( $control, array( 'pause', 'resume', 'freeze_spend', 'unfreeze_spend', 'disable_provider', 'enable_provider' ), true ) ) {
+			if ( isset( $input['expected_revision'] ) && (int) $input['expected_revision'] !== (int) $p['revision'] ) return MAD4B_SCP_Search_Contracts::error( 'search_control_stale' );
 			$policy = MAD4B_SCP_Search_Context::policy(); $raw = array_intersect_key( $p, array_flip( $policy['profile_fields'] ) );
 			if ( 'pause' === $control ) $raw['enabled'] = false;
 			if ( 'resume' === $control ) $raw['enabled'] = true;
@@ -82,7 +87,18 @@ final class MAD4B_SCP_Search_Experience {
 			if ( 'disable_provider' === $control ) { if ( empty( $input['provider_id'] ) || ! MAD4B_SCP_Search_Contracts::id( $input['provider_id'] ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_id_invalid' ); $raw['provider_policy']['disabled'][] = $input['provider_id']; }
 			if ( 'enable_provider' === $control ) $raw['provider_policy']['disabled'] = array_values( array_diff( $raw['provider_policy']['disabled'], array( isset( $input['provider_id'] ) ? $input['provider_id'] : '' ) ) );
 			$args = array( 'profile' => $raw, 'expected_revision' => $p['revision'] ); $plan = MAD4B_SCP_Search_Context::plan( $args );
-			return is_wp_error( $plan ) ? $plan : MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) );
+			if ( is_wp_error( $plan ) ) return $plan;
+			$result = MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) );
+			if ( is_wp_error( $result ) ) return $result;
+			$verify = MAD4B_SCP_Search_Context::verify( array( 'profile_id' => $id ) );
+			if ( is_wp_error( $verify ) || empty( $verify['valid'] ) || ! isset( $result['profile']['profile_sha256'] ) || ! hash_equals( (string) $result['profile']['profile_sha256'], (string) $verify['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			if ( 'pause' === $control && ! empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			if ( 'resume' === $control && empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			if ( 'freeze_spend' === $control && empty( $result['profile']['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			if ( 'unfreeze_spend' === $control && ! empty( $result['profile']['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			$result['control_readback_verified'] = true;
+			$result['control'] = $control;
+			return $result;
 		}
 		if ( in_array( $control, array( 'pin', 'unpin', 'mute', 'unmute', 'refresh' ), true ) && ! empty( $input['target_id'] ) ) {
 			$row = MAD4B_SCP_Search_Store::read( 'target', $input['target_id'] );
@@ -117,9 +133,18 @@ final class MAD4B_SCP_Search_Experience {
 	}
 	public static function control_post() {
 		check_admin_referer( 'mad4b_search_control' );
-		$result = self::control( array( 'profile_id' => isset( $_POST['profile_id'] ) ? (string) wp_unslash( $_POST['profile_id'] ) : '', 'control' => isset( $_POST['control'] ) ? sanitize_key( wp_unslash( $_POST['control'] ) ) : '', 'provider_id' => isset( $_POST['provider_id'] ) ? (string) wp_unslash( $_POST['provider_id'] ) : '', 'target_id' => isset( $_POST['target_id'] ) ? (string) wp_unslash( $_POST['target_id'] ) : '' ) );
+		$args = array();
+		foreach ( array( 'profile_id', 'control', 'provider_id', 'target_id', 'confirmation', 'expected_revision' ) as $key ) {
+			if ( isset( $_POST[ $key ] ) && ( ! is_string( $_POST[ $key ] ) || strlen( $_POST[ $key ] ) > 96 ) ) wp_die( 'Invalid control input.', '', array( 'response' => 422 ) );
+			$args[ $key ] = MAD4B_SCP_Admin_Experience::request_string( $_POST, $key, '', 96 );
+		}
+		if ( '' !== $args['expected_revision'] && ! preg_match( '/^(0|[1-9][0-9]{0,8})$/D', $args['expected_revision'] ) ) wp_die( 'Invalid control revision.', '', array( 'response' => 422 ) );
+		if ( '' !== $args['expected_revision'] ) $args['expected_revision'] = (int) $args['expected_revision'];
+		$confirmations = array( 'resume' => 'RESUME SEARCH OBSERVATIONS', 'unfreeze_spend' => 'UNFREEZE SEARCH SPEND' );
+		if ( isset( $confirmations[ $args['control'] ] ) && ! hash_equals( $confirmations[ $args['control'] ], $args['confirmation'] ) ) wp_die( 'Explicit confirmation is required for this Search control.', '', array( 'response' => 422 ) );
+		$result = self::control( $args );
 		if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ) );
-		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-search-intelligence&profile_id=' . rawurlencode( $_POST['profile_id'] ) ) ); exit;
+		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-search-intelligence&profile_id=' . rawurlencode( $args['profile_id'] ) ) ); exit;
 	}
 }
 

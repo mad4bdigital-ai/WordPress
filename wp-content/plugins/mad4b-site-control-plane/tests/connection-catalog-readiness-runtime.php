@@ -55,3 +55,23 @@ check( false === strpos( json_encode( $diagnostic ), 'PRIVATE' ), 'Private descr
 unset( MAD4B_SCP_Servers::$row['descriptor_evidence'] );
 check( null === MAD4B_SCP_Connection_Status::endpoint_diagnostic( 'mad4b-chatgpt' )['capability_descriptor_ready'], 'Unobserved descriptor evidence fabricated' );
 echo "Connection catalog readiness runtime: PASS\n";
+
+class MAD4B_SCP_Policy {
+ static $allow = true;
+ static function can_mutate() { return self::$allow; }
+ static function can_breakglass() { return false; }
+}
+class MAD4B_SCP_Staging_Write_Authority {
+ static $current = false;
+ static function effective() { return self::$current; }
+ static function current_execution_readiness() { throw new RuntimeException( 'A connection view must not scan live grants' ); }
+}
+$surface = new ReflectionMethod( 'MAD4B_SCP_Connection_Status', 'write_surface_summary' ); $surface->setAccessible( true );
+$blocked = $surface->invoke( null, array(), true );
+check( true === $blocked['mutation_policy_allows_current_request'] && false === $blocked['mutation_effective_for_current_request'], 'General policy gate concealed a stale candidate' );
+MAD4B_SCP_Staging_Write_Authority::$current = true;
+$checkpoint = $surface->invoke( null, array(), true );
+check( true === $checkpoint['candidate_bound_write_checkpoint_ready'] && null === $checkpoint['mutation_effective_for_current_request'] && $checkpoint['live_write_grant_validation_deferred'], 'Checkpoint invented exact execution authority' );
+MAD4B_SCP_Policy::$allow = false;
+check( false === $surface->invoke( null, array(), true )['mutation_effective_for_current_request'], 'Denied policy was displayed as unmeasured' );
+echo "Connection write checkpoint versus execution truth: PASS\n";

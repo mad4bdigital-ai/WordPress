@@ -43,7 +43,7 @@ final class FakeJetEngineAdapter {
     public function id(){ return 'jetengine'; }
     public function provider_key(){ return 'jetengine'; }
     public function is_available(){ return true; }
-    public function ability_names(){ return array('read'=>array('jetengine/get-post-meta','jetengine/list-post-meta','jetengine/get-cpt-definition'),'content'=>array('jetengine/update-post-meta'),'admin'=>array()); }
+    public function ability_names(){ return array('read'=>array('jetengine/get-post-meta','jetengine/list-post-meta','jetengine/get-cpt-definition','jetengine/runtime-new-capability'),'content'=>array('jetengine/update-post-meta'),'admin'=>array()); }
     public function reversible_contracts(){ return array('jetengine/update-post-meta'=>'mad4b.rollback.jetengine-post-meta.v1'); }
 }
 final class FakeBitFlowsAdapter {
@@ -62,15 +62,23 @@ final class FakeSeoAdapter {
     public function ability_names(){ return array('read'=>array('seo/status','seo/get-meta','seo/validate'),'content'=>array('seo/update-meta'),'admin'=>array()); }
     public function reversible_contracts(){ return array('seo/update-meta'=>'mad4b.rollback.rank-math-meta.v1'); }
 }
+final class FakeNativeBridgeAdapter {
+    public function id(){ return 'native-provider-bridge'; }
+    public function provider_key(){ return 'jetengine'; }
+    public function is_available(){ return true; }
+    public function ability_names(){ return array('read'=>array(),'content'=>array(),'admin'=>array('jetengine/create-query')); }
+}
 final class MAD4B_SCP_Adapter_Registry {
     private static $instance;
     private $jetengine;
     private $bitflows;
     private $seo;
+    private $native_bridge;
     public static function instance(){ if(!self::$instance) self::$instance=new self(); return self::$instance; }
-    public function __construct(){ $this->jetengine=new FakeJetEngineAdapter(); $this->bitflows=new FakeBitFlowsAdapter(); $this->seo=new FakeSeoAdapter(); }
+    public function __construct(){ $this->jetengine=new FakeJetEngineAdapter(); $this->bitflows=new FakeBitFlowsAdapter(); $this->seo=new FakeSeoAdapter(); $this->native_bridge=new FakeNativeBridgeAdapter(); }
     public function register_defaults(){}
     public function get($id){ if('jetengine'===$id) return $this->jetengine; if('bitflows'===$id) return $this->bitflows; if('seo'===$id) return $this->seo; return null; }
+    public function all(){ return array('bitflows'=>$this->bitflows,'jetengine'=>$this->jetengine,'native-provider-bridge'=>$this->native_bridge,'seo'=>$this->seo); }
     public function register($adapter){ return true; }
 }
 
@@ -78,6 +86,22 @@ require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-provider-compatibil
 
 function expect_true($condition,$message){ if(!$condition){fwrite(STDERR,"FAIL: $message\n");exit(1);} }
 function expect_same($expected,$actual,$message){ if($expected!==$actual){fwrite(STDERR,"FAIL: $message expected=".var_export($expected,true)." actual=".var_export($actual,true)."\n");exit(1);} }
+
+$candidate_graph=MAD4B_SCP_Provider_Compatibility_Certification::runtime_candidate_graph();
+expect_same('mad4b.provider-runtime-candidate-graph.v1',$candidate_graph['contract'],'runtime candidate graph contract drifted');
+expect_same('registered_runtime_adapter_ability_maps',$candidate_graph['discovery_source'],'candidate discovery must come from live adapter maps');
+$unknown_candidates=array_values(array_filter($candidate_graph['candidates'],static function($row){return 'jetengine/runtime-new-capability'===$row['ability'];}));
+expect_same(1,count($unknown_candidates),'runtime candidate graph must discover uncataloged adapter abilities');
+expect_same('UNCLASSIFIED_FAIL_CLOSED',$unknown_candidates[0]['policy_state'],'unknown runtime candidate must fail closed pending reviewed policy overlay');
+expect_same(false,$unknown_candidates[0]['auto_activation_allowed'],'runtime discovery must never auto-activate an unreviewed candidate');
+$known_candidates=array_values(array_filter($candidate_graph['candidates'],static function($row){return 'jetengine/get-post-meta'===$row['ability'];}));
+expect_same(1,count($known_candidates),'known runtime ability missing from candidate graph');
+expect_same('REVIEWED_POLICY_OVERLAY',$known_candidates[0]['policy_state'],'known runtime ability lost reviewed policy overlay');
+expect_same(false,$candidate_graph['policy_overlay_creates_authority'],'policy overlay must remain non-authorizing');
+$bridge_candidates=array_values(array_filter($candidate_graph['candidates'],static function($row){return 'native-provider-bridge'===$row['adapter_id'] && 'jetengine/create-query'===$row['ability'];}));
+expect_same(1,count($bridge_candidates),'native provider bridge candidate missing');
+expect_same('jetengine',$bridge_candidates[0]['provider_key'],'bridge candidate must expose canonical provider identity');
+expect_same('REVIEWED_POLICY_OVERLAY',$bridge_candidates[0]['policy_state'],'bridge candidate must match provider policy identity rather than adapter id only');
 
 $adapter=new FakeJetEngineAdapter();
 MAD4B_SCP_Provider_Contracts::$exact=false;
@@ -98,6 +122,16 @@ $guard=MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard('jetengine
 expect_true(is_wp_error($guard),'drifted write remains fail closed');
 $plan=MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan(array('provider_id'=>'jetengine'));
 expect_same('OWNER_REVIEW_REQUIRED',$plan['classification'],'write-path drift requires governed behavioral/rollback review');
+expect_same('mad4b.provider-recertification-orchestration.v1',$plan['orchestration']['contract'],'provider recertification orchestration contract drifted');
+expect_same(false,$plan['orchestration']['version_drift_is_incompatibility'],'version drift alone must not become incompatibility');
+expect_same(true,$plan['orchestration']['automatic_observation'],'provider drift observation must be automatic and non-authorizing');
+expect_same(true,$plan['orchestration']['automatic_structural_assessment'],'structural reassessment must be automatic');
+expect_same(false,$plan['orchestration']['automatic_mutation_probe'],'behavioral mutation probes must remain explicit governed actions');
+expect_same(false,$plan['orchestration']['automatic_mount_or_grant'],'recertification planning must never auto-mount or mint grants');
+expect_same('mad4b/provider-behavioral-recertify',$plan['orchestration']['behavioral_probe_ability'],'behavioral probe routing drifted');
+expect_same('mad4b/provider-mcp-mount-plan',$plan['orchestration']['mount_plan_ability'],'mount-plan routing drifted');
+expect_same(true,$plan['orchestration']['reassess_after_receipt'],'accepted behavioral receipts must trigger reassessment semantics');
+expect_same(false,$plan['orchestration']['authorizing'],'recertification orchestration must remain non-authorizing');
 
 MAD4B_SCP_Provider_Contracts::$exact=true;
 MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
@@ -190,6 +224,16 @@ foreach(array(
     expect_true(false!==strpos($registry_source,$marker),'runtime self-test must classify provider drift by active capability impact: '.$marker);
 }
 $compat_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-provider-compatibility-certification.php');
+foreach(array(
+    'public static function runtime_candidate_graph( $registry = null, $catalog = null )',
+    "'policy_overlay_role' => 'reviewed_semantic_risk_reversibility_and_certification_policy'",
+    "'unclassified_runtime_candidate_count'",
+    "'unknown_candidates_fail_closed' => true",
+    "'policy_overlay_creates_authority' => false",
+    "'runtime_adapter_discovery_to_reviewed_policy_overlay_to_trusted_behavioral_evidence_to_governed_mount'"
+) as $marker){
+    expect_true(false!==strpos($compat_source,$marker),'dynamic candidate/policy overlay invariant missing: '.$marker);
+}
 $state_anchor=strpos($compat_source,'$installed_artifact_present =');
 $state_end=false!==$state_anchor?strpos($compat_source,'$structural_fingerprint =',$state_anchor):false;
 expect_true(false!==$state_anchor && false!==$state_end && $state_end>$state_anchor,'provider compatibility state block is missing');

@@ -302,13 +302,58 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 
 	private static function canonical_document( array $definition ) {
 		$name = isset( $definition['name'] ) ? sanitize_key( (string) $definition['name'] ) : '';
+		if ( '' === $name || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) ) {
+			return new WP_Error( 'invalid_document', 'Provider Skill document is invalid.' );
+		}
+
+		if ( ! empty( $definition['canonical_seed'] ) ) {
+			return self::canonical_seed_document(
+				isset( $definition['level'] ) ? sanitize_key( (string) $definition['level'] ) : '',
+				isset( $definition['target'] ) ? sanitize_key( (string) $definition['target'] ) : '',
+				$name
+			);
+		}
+
 		$description = isset( $definition['description'] ) ? trim( (string) $definition['description'] ) : '';
 		$body = isset( $definition['body'] ) ? trim( (string) $definition['body'] ) : '';
-		if ( '' === $name || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) || '' === $description || strlen( $description ) > 2000 || '' === $body ) {
+		if ( '' === $description || strlen( $description ) > 2000 || '' === $body ) {
 			return new WP_Error( 'invalid_document', 'Provider Skill document is invalid.' );
 		}
 		$document = "---\nname: " . $name . "\ndescription: " . self::yaml_scalar( $description ) . "\n---\n\n" . $body . "\n";
 		if ( strlen( $document ) > MAD4B_SCP_Skill_Registry::MAX_SKILL_BYTES || false !== strpos( $document, "\0" ) ) return new WP_Error( 'document_too_large', 'Provider Skill document is invalid.' );
+		return $document;
+	}
+
+	private static function canonical_seed_document( $level, $target, $name ) {
+		$manifest_path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/skill-seed-manifest.json' : '';
+		if ( '' === $manifest_path || ! is_readable( $manifest_path ) || is_link( $manifest_path ) ) {
+			return new WP_Error( 'canonical_seed_manifest_unavailable', 'Canonical Skill seed manifest is unavailable.' );
+		}
+		$raw = file_get_contents( $manifest_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$manifest = false === $raw ? null : json_decode( $raw, true );
+		$rows = is_array( $manifest ) && isset( $manifest['skills'] ) && is_array( $manifest['skills'] ) ? $manifest['skills'] : array();
+		$matched = false;
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			if (
+				sanitize_key( (string) ( isset( $row['level'] ) ? $row['level'] : '' ) ) === $level
+				&& sanitize_key( (string) ( isset( $row['target'] ) ? $row['target'] : '' ) ) === $target
+				&& sanitize_key( (string) ( isset( $row['name'] ) ? $row['name'] : '' ) ) === $name
+			) {
+				$matched = true;
+				break;
+			}
+		}
+		if ( ! $matched ) return new WP_Error( 'canonical_seed_manifest_mismatch', 'Provider Skill canonical seed is not declared by the exact seed manifest.' );
+
+		$file = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'skill-seeds/' . $name . '/SKILL.md' : '';
+		if ( '' === $file || ! is_file( $file ) || is_link( $file ) || ! is_readable( $file ) ) {
+			return new WP_Error( 'canonical_seed_unavailable', 'Provider Skill canonical seed file is unavailable.' );
+		}
+		$document = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( ! is_string( $document ) || '' === trim( $document ) || strlen( $document ) > MAD4B_SCP_Skill_Registry::MAX_SKILL_BYTES || false !== strpos( $document, "\0" ) ) {
+			return new WP_Error( 'canonical_seed_invalid', 'Provider Skill canonical seed file is invalid.' );
+		}
 		return $document;
 	}
 
@@ -382,10 +427,11 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$name = isset( $definition['name'] ) ? sanitize_key( (string) $definition['name'] ) : '';
 		$description = isset( $definition['description'] ) ? trim( (string) $definition['description'] ) : '';
 		$body = isset( $definition['body'] ) ? trim( (string) $definition['body'] ) : '';
+		$canonical_seed = ! empty( $definition['canonical_seed'] );
 		if ( ! in_array( $level, MAD4B_SCP_Skill_Registry::levels(), true ) ) return new WP_Error( 'invalid_level', 'Provider Skill level is invalid.' );
 		if ( '' === $target || $target !== sanitize_key( $target ) ) return new WP_Error( 'invalid_target', 'Provider Skill target is invalid.' );
 		if ( '' === $name || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) ) return new WP_Error( 'invalid_name', 'Provider Skill name is invalid.' );
-		if ( '' === $description || strlen( $description ) > 2000 || '' === $body ) return new WP_Error( 'invalid_document', 'Provider Skill document is invalid.' );
+		if ( ! $canonical_seed && ( '' === $description || strlen( $description ) > 2000 || '' === $body ) ) return new WP_Error( 'invalid_document', 'Provider Skill document is invalid.' );
 		$document = self::canonical_document( $definition );
 		if ( is_wp_error( $document ) ) return $document;
 

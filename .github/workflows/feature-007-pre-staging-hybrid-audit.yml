@@ -608,6 +608,7 @@ jobs:
           set -euo pipefail
           WP_PATH="$RUNNER_TEMP/asi-wordpress"
           wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/admin-pages-${{ matrix.php }}.json"
           wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci
 
       - name: Bind Adaptive Search gates to exact head and disposable evidence
@@ -622,5 +623,6 @@ jobs:
           path: |
             ${{ runner.temp }}/asi-evidence-${{ matrix.php }}.json
             ${{ runner.temp }}/asi-wordpress-${{ matrix.php }}.json
+            ${{ runner.temp }}/admin-pages-${{ matrix.php }}.json
           if-no-files-found: error
           retention-days: 14

@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Admin_Query_Performance_UI {
 	const PAGE_SLUG = 'mad4b-control-plane-performance';
 	public static function boot() {
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 31 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 31 );
 	}
 
 	public static function register_menu() {
@@ -26,12 +26,21 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html__( 'MAD4B Performance Maintenance', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Performance indexes are never created during plugin upload, update, activation, or ordinary admin requests. Apply them only here during a maintenance window.', 'mad4b-site-control-plane' ) . '</p>';
+		$job = isset( $status['maintenance_job'] ) && is_array( $status['maintenance_job'] ) ? $status['maintenance_job'] : array();
+		$feedback = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_performance_apply', '', 128 ) );
+		if ( $feedback && MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, $feedback, hash( 'sha256', wp_json_encode( $job ) ) ) ) echo '<div class="notice notice-info"><p>' . esc_html( 'Maintenance request: ' . $feedback . '. Check the persisted worker and index status below.' ) . '</p></div>';
 		echo '<table class="widefat striped" style="max-width:900px"><tbody>';
 		self::row( 'Environment', isset( $status['environment'] ) ? $status['environment'] : '' );
 		self::row( 'Ready', ! empty( $status['ready'] ) ? 'yes' : 'no' );
 		self::row( 'Automatic apply', ! empty( $status['automatic_apply'] ) ? 'yes' : 'no' );
 		self::row( 'Index version', isset( $status['index_version'] ) ? $status['index_version'] : '' );
+		self::row( 'Maintenance worker', isset( $job['status'] ) ? $job['status'] : 'Not requested' );
+		self::row( 'Maintenance executor ready', ! empty( $status['maintenance_executor_ready'] ) ? 'yes' : 'no' );
+		if ( isset( $job['result']['state'] ) ) self::row( 'Worker result', $job['result']['state'] );
+		if ( isset( $job['result']['error_code'] ) ) self::row( 'Worker error', $job['result']['error_code'] );
 		echo '</tbody></table>';
+		if ( ! empty( $status['maintenance_job_health']['reconciliation_required'] ) ) echo '<div class="notice notice-warning"><p>' . esc_html__( 'The maintenance worker exceeded its lease. Reconciliation is required before another attempt; refreshing this page does not retry the operation.', 'mad4b-site-control-plane' ) . '</p></div>';
+		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ) . '">' . esc_html__( 'Refresh persisted status', 'mad4b-site-control-plane' ) . '</a></p>';
 
 		$indexes = isset( $status['indexes'] ) && is_array( $status['indexes'] ) ? $status['indexes'] : array();
 		if ( $indexes ) {

@@ -48,7 +48,13 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		wp_register_ability( self::ABILITY, array(
 			'label' => 'Inspect Adaptive Runtime Convergence', 'description' => 'Read persisted artifact, contract and behavioral states per capability. No provider scans, execution, approval or authority changes.',
 			'category' => 'mad4b-read', 'execute_callback' => array( __CLASS__, 'status' ), 'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
-			'input_schema' => array( 'type' => 'object', 'properties' => array( 'provider_id' => array( 'type' => 'string', 'maxLength' => 80 ) ), 'additionalProperties' => false ),
+			'input_schema' => array( 'type' => 'object', 'properties' => array(
+				'provider_id' => array( 'type' => 'string', 'maxLength' => 80 ),
+				'include_capabilities' => array( 'type' => 'boolean' ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 20 ),
+				'after_provider' => array( 'type' => 'string', 'maxLength' => 80 ),
+				'expected_receipt_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+			), 'additionalProperties' => false ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array( 'public' => false, 'show_in_rest' => false, 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
 		) );
@@ -219,23 +225,43 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$registry = get_option( self::OPTION, array() );
 		$valid = self::valid_registry( $registry );
 		if ( ! $valid ) $registry = array( 'state' => 'NOT_OBSERVED', 'providers' => array() );
+		$receipt_sha256 = hash( 'sha256', wp_json_encode( $registry ) );
+		$after = isset( $input['after_provider'] ) ? sanitize_key( (string) $input['after_provider'] ) : '';
+		if ( '' !== $after && ( ! $valid || ( $input['expected_receipt_sha256'] ?? '' ) !== $receipt_sha256 ) ) return new WP_Error( 'mad4b_adaptive_runtime_page_stale', 'The observation changed between pages. Start with a fresh first page.' );
+		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
+		$details = isset( $input['include_capabilities'] ) ? true === $input['include_capabilities'] : '' !== $provider;
+		$limit = isset( $input['limit'] ) ? max( 1, min( 20, (int) $input['limit'] ) ) : 8;
+		ksort( $registry['providers'], SORT_STRING );
+		$total = count( $registry['providers'] );
+		if ( '' !== $provider ) $registry['providers'] = isset( $registry['providers'][ $provider ] ) ? array( $provider => $registry['providers'][ $provider ] ) : array();
+		elseif ( '' !== $after ) $registry['providers'] = array_filter( $registry['providers'], static function ( $key ) use ( $after ) { return strcmp( $key, $after ) > 0; }, ARRAY_FILTER_USE_KEY );
+		$has_more = count( $registry['providers'] ) > $limit;
+		$registry['providers'] = array_slice( $registry['providers'], 0, $limit, true );
 		$event = self::event();
 		$current = $valid && ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) && ( $registry['build_stamp'] ?? '' ) === self::stamp()
 			&& class_exists( 'MAD4B_SCP_Site_Profile', false ) && ( $registry['profile_digest'] ?? '' ) === MAD4B_SCP_Site_Profile::profile_digest();
 		if ( $valid && ! $current ) $registry['state'] = 'STALE_OBSERVATION';
 		foreach ( $registry['providers'] as &$observation ) {
+			if ( ! is_array( $observation ) || ! is_array( $observation['capabilities'] ?? null ) ) { $observation = array( 'state' => 'ISOLATED', 'error_code' => 'malformed_provider_observation', 'capabilities' => array() ); }
 			$observation['observation_current'] = $current && ! empty( $registry['observation_epoch'] ) && ( $observation['observation_epoch'] ?? '' ) === $registry['observation_epoch'];
-			if ( $observation['observation_current'] ) continue;
-			$observation['state'] = 'STALE_OBSERVATION';
-			foreach ( $observation['capabilities'] as &$capability ) { $capability['last_observed_state'] = $capability['state']; $capability['state'] = 'STALE_OBSERVATION'; $capability['next_action'] = 'await_current_provider_observation'; }
+			if ( ! $observation['observation_current'] && 'malformed_provider_observation' !== ( $observation['error_code'] ?? '' ) ) $observation['state'] = 'STALE_OBSERVATION';
+			$counts = array();
+			foreach ( $observation['capabilities'] as &$capability ) {
+				if ( ! is_array( $capability ) ) $capability = array( 'state' => 'ISOLATED', 'next_action' => 'repair_capability_contract' );
+				if ( ! $observation['observation_current'] ) { $capability['last_observed_state'] = $capability['state'] ?? 'ISOLATED'; $capability['state'] = 'STALE_OBSERVATION'; $capability['next_action'] = 'await_current_provider_observation'; }
+				$state = isset( $capability['state'] ) && is_string( $capability['state'] ) ? $capability['state'] : 'ISOLATED';
+				$counts[ $state ] = ( $counts[ $state ] ?? 0 ) + 1;
+			}
 			unset( $capability );
+			$observation['capability_count'] = count( $observation['capabilities'] );
+			$observation['capability_state_counts'] = $counts;
+			if ( ! $details ) unset( $observation['capabilities'], $observation['capability_diff'] );
 		}
 		unset( $observation );
 		$registry['last_worker_failure'] = isset( $event['failure_code'] ) ? array( 'state' => $event['failure_state'] ?? '', 'code' => sanitize_key( $event['failure_code'] ), 'attempts' => (int) ( $event['attempts'] ?? 0 ) ) : array();
 		unset( $registry['seal'] );
-		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
-		if ( '' !== $provider ) $registry['providers'] = isset( $registry['providers'][ $provider ] ) ? array( $provider => $registry['providers'][ $provider ] ) : array();
 		return array_merge( $registry, array( 'contract' => self::CONTRACT, 'receipt_integrity_valid' => $valid, 'observation_current' => $current, 'authorizing' => false, 'read_only' => true, 'production_mutation' => false,
+			'page' => array( 'total_provider_count' => $total, 'returned_provider_count' => count( $registry['providers'] ), 'has_more' => $has_more, 'next_after_provider' => $has_more ? array_keys( $registry['providers'] )[ count( $registry['providers'] ) - 1 ] : '', 'receipt_sha256' => $receipt_sha256, 'capability_details_included' => $details ),
 			'canary_policy' => 'actual_disposable_probe_exact_readback_and_rollback_required', 'provider_live_validation_deferred' => true, 'external_evidence_policy' => 'real_current_build_oauth_initialize_and_tools_list_required',
 			'scheduler_state' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'EXTERNAL_ACTION_REQUIRED' : 'AVAILABLE' ) );
 	}

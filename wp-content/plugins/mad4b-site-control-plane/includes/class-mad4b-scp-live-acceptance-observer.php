@@ -677,7 +677,9 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		$missing = array_values( array_diff( $expected, $external ) );
 		$unexpected = array_values( array_diff( $external, $expected ) );
 		$breakglass_leaks = array_values( array_intersect( $external, $breakglass ) );
-		$direct_write_schema_leaks = array_values( array_intersect( $external, $expected_write ) );
+		$governed_write_projections = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && method_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', 'governed_write_projection_names' )
+			? self::abilities_to_mcp_names( MAD4B_SCP_ChatGPT_Tool_Projection::governed_write_projection_names() ) : array();
+		$direct_write_schema_leaks = array_values( array_diff( array_intersect( $external, $expected_write ), $governed_write_projections ) );
 		$observed_write_transport = array_values( array_intersect( $external, $write_transport ) );
 
 		$external_fp = self::inventory_fingerprint( $external );
@@ -733,6 +735,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'expected_write_transport_tool_count' => count( $write_transport ),
 			'write_transport_ready' => $write_transport_ready,
 			'direct_write_schema_leaks' => $direct_write_schema_leaks,
+			'governed_projected_write_tools' => array_values( array_intersect( $external, $expected_write, $governed_write_projections ) ),
 			'eligible_write_tool_count' => 0,
 			'expected_eligible_write_tool_count' => 0,
 			'provider_gated_write_tool_count' => 0,

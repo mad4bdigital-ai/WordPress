@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 foreach ( array( 'search-measurement', 'search-runtime-context', 'search-eligibility', 'search-evidence-policy', 'provider-account-budget-authority', 'search-decision-policy', 'adaptive-search-fault-guard' ) as $foundation ) require_once __DIR__ . '/class-mad4b-scp-' . $foundation . '.php';
 
-foreach ( array( 'contracts', 'store', 'context', 'surfaces', 'targets', 'decisions', 'budgets', 'providers', 'evidence', 'insights', 'worker', 'runtime', 'experience', 'work-operations' ) as $component ) require_once __DIR__ . '/search/class-mad4b-scp-search-' . $component . '.php';
+foreach ( array( 'contracts', 'store', 'context', 'surfaces', 'targets', 'decisions', 'budgets', 'providers', 'provider-connections', 'profile-admin', 'evidence', 'insights', 'worker', 'runtime', 'experience', 'work-operations' ) as $component ) require_once __DIR__ . '/search/class-mad4b-scp-search-' . $component . '.php';
 require_once __DIR__ . '/search/adapters/class-mad4b-scp-search-wordpress-discovery.php';
 require_once __DIR__ . '/search/adapters/class-mad4b-scp-search-serp-adapters.php';
 
@@ -13,6 +13,8 @@ final class MAD4B_SCP_Adaptive_Search_Intelligence {
 	public static function ability_names( $surface ) { return isset( self::$registered[ $surface ] ) ? array_values( array_unique( self::$registered[ $surface ] ) ) : array(); }
 	public static function boot() {
 		MAD4B_SCP_Search_Budgets::boot();
+		MAD4B_SCP_Search_Provider_Connections::boot();
+		MAD4B_SCP_Search_Profile_Admin::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register' ), 46 );
 		add_filter( 'mad4b_scp_search_live_surface_evidence', array( 'MAD4B_SCP_Search_Multilingual_Discovery', 'localize' ) );
 		MAD4B_SCP_Search_Experience::boot();

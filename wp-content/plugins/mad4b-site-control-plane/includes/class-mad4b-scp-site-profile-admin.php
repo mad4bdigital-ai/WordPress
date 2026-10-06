@@ -12,7 +12,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_page' ), 25 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_page' ), 25 );
 		add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'wp_ajax_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'admin_post_' . self::ACTION_DISABLE, array( __CLASS__, 'handle_disable' ) );
@@ -228,7 +228,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$users = MAD4B_SCP_Site_Profile::oauth_user_ids();
 		$wordpress_default_production = 'production' === (string) $resolution['wordpress_environment'] && empty( $resolution['wordpress_environment_explicit'] );
 		$override_already_confirmed = ! empty( $profile['implicit_production_override_confirmed'] );
-		$state = isset( $_GET['mad4b_site_profile'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_site_profile'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$state = isset( $_GET['mad4b_site_profile'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_site_profile' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
 		<div class="wrap" id="mad4b-site-profile-workspace">
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>

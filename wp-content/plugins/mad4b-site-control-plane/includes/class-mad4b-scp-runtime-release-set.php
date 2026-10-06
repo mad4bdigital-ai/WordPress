@@ -763,12 +763,18 @@ final class MAD4B_SCP_Runtime_Release_Set {
 	}
 
 	private static function redirect_admin_result( $state, $detail ) {
+		$state = sanitize_key( (string) $state );
+		$detail = sanitize_text_field( substr( (string) $detail, 0, 512 ) );
+		$page = 'mad4b-runtime-components';
 		$url = add_query_arg(
 			array(
-				'mad4b_runtime_release_set' => sanitize_key( (string) $state ),
-				'mad4b_runtime_release_detail' => sanitize_key( (string) $detail ),
+				'page' => $page,
+				'tab' => 'maintenance',
+				'mad4b_runtime_release_set' => $state,
+				'mad4b_runtime_release_detail' => $detail,
+				'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( $page, $state . '.' . $detail, self::admin_notice_binding() ),
 			),
-			admin_url( 'plugins.php' )
+			admin_url( 'admin.php' )
 		);
 		wp_safe_redirect( $url );
 		exit;
@@ -776,13 +782,18 @@ final class MAD4B_SCP_Runtime_Release_Set {
 
 	public static function admin_notice() {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return;
-		$state = isset( $_GET['mad4b_runtime_release_set'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_runtime_release_set'] ) ) : '';
+		$state = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_runtime_release_set', '', 96 ) );
 		if ( '' === $state ) return;
-		$detail = isset( $_GET['mad4b_runtime_release_detail'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_runtime_release_detail'] ) ) : '';
+		$detail = sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_runtime_release_detail', '', 512 ) );
+		if ( ! MAD4B_SCP_Admin_Experience::notice_verified( 'mad4b-runtime-components', $state . '.' . $detail, self::admin_notice_binding() ) ) return;
 		$class = in_array( $state, array( 'committed', 'current' ), true ) ? 'notice notice-success' : ( in_array( $state, array( 'apply_error', 'plan_error', 'blocked' ), true ) ? 'notice notice-error' : 'notice notice-info' );
 		$message = 'MAD4B runtime release set: ' . str_replace( '_', ' ', $state );
 		if ( '' !== $detail ) $message .= ' (' . $detail . ')';
 		echo '<div class="' . esc_attr( $class ) . '"><p>' . esc_html( $message ) . '</p></div>';
+	}
+
+	private static function admin_notice_binding() {
+		return hash( 'sha256', wp_json_encode( array( get_option( self::TRANSACTION_OPTION, array() ), get_option( self::LAST_RECEIPT_OPTION, array() ) ) ) );
 	}
 
 	private static function result( array $plan, $state, $mutated, $reboot ) {

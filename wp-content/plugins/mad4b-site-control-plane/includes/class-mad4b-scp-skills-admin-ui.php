@@ -15,7 +15,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'admin_init', array( __CLASS__, 'intercept_export' ), 1 );
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 30 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 30 );
 	}
 
 	public static function register_menu() {
@@ -35,8 +35,8 @@ final class MAD4B_SCP_Skills_Admin_UI {
 	 */
 	public static function intercept_export() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		if ( empty( $_POST['mad4b_skill_action'] ) || 'export' !== sanitize_key( wp_unslash( $_POST['mad4b_skill_action'] ) ) ) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
+		if ( empty( $_POST['mad4b_skill_action'] ) || 'export' !== sanitize_key( MAD4B_SCP_Admin_Experience::request_string( $_POST, 'mad4b_skill_action' ) ) ) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
+		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
 		if ( self::PAGE_SLUG !== $page ) return;
 
 		check_admin_referer( 'mad4b_skill_export', 'mad4b_skill_export_nonce' );
@@ -79,7 +79,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 		$message = null;
 		if ( isset( $_POST['mad4b_skill_action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified in handler.
-			$action = sanitize_key( wp_unslash( $_POST['mad4b_skill_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$action = sanitize_key( MAD4B_SCP_Admin_Experience::request_string( $_POST, 'mad4b_skill_action' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			if ( 'save' === $action ) $message = self::handle_save();
 			if ( 'save_resource' === $action ) $message = self::handle_save_resource();
 			if ( 'reconcile_managed' === $action ) $message = self::handle_reconcile_managed();
@@ -108,9 +108,9 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 	private static function render_query_notice() {
 		if ( empty( $_GET['mad4b_skill_notice'] ) ) return; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only notice.
-		$notice = sanitize_key( wp_unslash( $_GET['mad4b_skill_notice'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$notice = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_skill_notice' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( 'export_error' !== $notice ) return;
-		$code = isset( $_GET['mad4b_skill_error'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_skill_error'] ) ) : 'unknown'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$code = isset( $_GET['mad4b_skill_error'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_skill_error' ) ) : 'unknown'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( sprintf( __( 'Portable Plugin export failed. Error: %s', 'mad4b-site-control-plane' ), $code ) ) . '</p></div>';
 	}
 
@@ -172,9 +172,9 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 	private static function selected_skill() {
 		if ( empty( $_GET['skill'] ) || empty( $_GET['level'] ) ) return null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only selection.
-		$level = sanitize_key( wp_unslash( $_GET['level'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$target = isset( $_GET['target'] ) ? sanitize_text_field( wp_unslash( $_GET['target'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$name = sanitize_key( wp_unslash( $_GET['skill'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$level = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'level' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$target = isset( $_GET['target'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'target' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$name = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'skill' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
 		return is_wp_error( $skill ) ? null : $skill;
 	}

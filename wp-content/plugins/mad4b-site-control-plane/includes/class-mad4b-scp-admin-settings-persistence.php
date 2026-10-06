@@ -12,8 +12,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Admin_Settings_Persistence {
 	const HANDLE = 'mad4b-admin-settings-persistence';
+	const VIEW_CONTRACT = 'mad4b.admin-settings-view-readback.v1';
 
 	private static $booted = false;
+
+	/** Public persisted values only. This proves a refreshed view, not authority. */
+	public static function view_readback( $form_id, array $fields ) {
+		return array( 'contract' => self::VIEW_CONTRACT, 'form_id' => (string) $form_id, 'fields' => $fields );
+	}
+
+	public static function view_attributes( $form_id, array $fields ) {
+		return ' data-mad4b-settings-view="' . esc_attr( wp_json_encode( self::view_readback( $form_id, $fields ) ) ) . '"';
+	}
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -23,7 +33,7 @@ final class MAD4B_SCP_Admin_Settings_Persistence {
 
 	public static function enqueue() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- route selection only.
+		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- route selection only.
 		if ( '' === $page || 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
 
 		$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';

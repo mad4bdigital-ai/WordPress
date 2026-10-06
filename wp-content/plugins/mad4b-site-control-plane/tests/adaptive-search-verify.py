@@ -30,6 +30,7 @@ def source_digest() -> str:
         PLUGIN / "includes/class-mad4b-scp-provider-account-budget-authority.php",
         PLUGIN / "includes/class-mad4b-scp-servers.php",
         PLUGIN / "includes/class-mad4b-scp-remote-work-queue.php",
+        PLUGIN / "includes/class-mad4b-scp-admin-experience.php",
         PLUGIN / "config/search-runtime-policy.json",
         *PLUGIN.glob("tests/adaptive-search-*"),
         PLUGIN / "tests/fixtures/search-runtime-fixtures.php",
@@ -57,7 +58,7 @@ def execute(php: list[str]) -> dict:
     for path in sorted(set(paths)):
         command(php + ["-l", str(path)])
     suites = []
-    for name in ("adaptive-search-runtime.php", "adaptive-search-provider-conformance.php"):
+    for name in ("adaptive-search-runtime.php", "adaptive-search-provider-conformance.php", "adaptive-search-provider-enrollment-runtime.php", "adaptive-search-profile-admin-runtime.php"):
         raw = command(php + [str(PLUGIN / "tests" / name)])
         report = json.loads(raw)
         if report.get("status") != "PASS" or not report.get("fixtures"):

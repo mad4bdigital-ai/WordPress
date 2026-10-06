@@ -168,3 +168,37 @@ foreach ( array( 'healthy', 'no_permit', 'tampered', 'actor', 'grant', 'transpor
  if ( 'healthy' === $case ) check( 1 === $GLOBALS['baseline_option']['actor']['wp_user_id'], 'Cron fabricated a new actor' );
 }
 echo "Consumed lifecycle baseline guards: PASS\n";
+
+// Periodic observation preserves previously verified attribution while checking
+// live authority again. It cannot revive stale evidence or bless a changed contract.
+foreach ( array( 'healthy', 'missing', 'expired', 'tampered', 'actor', 'grant', 'transport', 'profile', 'site_uuid', 'binding', 'schema', 'risk', 'descriptor', 'lease' ) as $case ) {
+ setup_fixture();
+ check( is_array( MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' ) ), 'Initial sealed observation failed' );
+ $previous = $GLOBALS['baseline_option'];
+ MAD4B_SCP_Identity_Context::$cron = true;
+ if ( 'missing' === $case ) unset( $GLOBALS['baseline_option'] );
+ if ( 'expired' === $case ) $GLOBALS['baseline_option']['expires_at'] = time() - 1;
+ if ( 'tampered' === $case ) $GLOBALS['baseline_option']['actor']['wp_user_id'] = 2;
+ if ( 'actor' === $case ) $GLOBALS['actor_revoked'] = true;
+ if ( 'grant' === $case ) MAD4B_SCP_Staging_Write_Authority::$plan['persisted_grant_records_fingerprint'] = 'changed';
+ if ( 'transport' === $case ) MAD4B_SCP_MCP_Peer_Governance::$tools = 'changed';
+ if ( 'profile' === $case ) MAD4B_SCP_Site_Profile::$revision++;
+ if ( 'site_uuid' === $case ) MAD4B_SCP_Site_Profile::$uuid = 'foreign';
+ if ( 'binding' === $case ) MAD4B_SCP_Staging_Write_Authority::$binding['stored_artifact_identity'] = 'foreign';
+ if ( 'schema' === $case ) $GLOBALS['schema_changed'] = true;
+ if ( 'risk' === $case ) $GLOBALS['risk_changed'] = true;
+ if ( 'descriptor' === $case ) $GLOBALS['descriptor_throws'] = true;
+ if ( 'lease' === $case ) MAD4B_SCP_Runtime_Maintenance_Lease::$lost = true;
+ $before = $GLOBALS['baseline_option'] ?? null;
+ $calls = MAD4B_SCP_Staging_Write_Authority::$calls;
+ $result = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease', 'adaptive_runtime_observation' );
+ if ( 'healthy' === $case ) {
+  check( is_array( $result ) && 'OBSERVED' === $result['state'], 'Periodic observation lost existing attribution' );
+  check( $previous['actor'] === $GLOBALS['baseline_option']['actor'], 'Periodic observation invented an actor' );
+ } else {
+  check( is_wp_error( $result ), 'Unsafe periodic observation was accepted: ' . $case );
+  check( $before === ( $GLOBALS['baseline_option'] ?? null ), 'Rejected observation changed stored evidence: ' . $case );
+ }
+ check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls && null === $GLOBALS['wpdb']->value, 'Observation granted authority or created an update intent' );
+}
+echo "Periodic authority observation guards: PASS\n";

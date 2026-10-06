@@ -4,9 +4,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Definition-only admin routes. WordPress still owns authentication and page permissions. */
 final class MAD4B_SCP_Admin_Route_Registry {
 	const CONTRACT = 'mad4b.admin-route-registry.v1';
+	const PARENT_MENU_PRIORITY = 10;
+	const SUBMENU_PRIORITY = 20;
 	private static $routes = array();
 	private static $aliases = array();
 	private static $booted = false;
+
+	/** Queue child menus after the parent, regardless of include/boot order. */
+	public static function schedule_submenu( $callback, $priority = self::SUBMENU_PRIORITY ) {
+		add_action( 'admin_menu', $callback, max( self::SUBMENU_PRIORITY, (int) $priority ) );
+	}
 
 	public static function register( $slug, $required_capability, $legacy_aliases = array(), $query_keys = array( 'tab', 'section', 'profile_id' ) ) {
 		if ( ! is_string( $slug ) || ! preg_match( '/^mad4b-[a-z0-9-]{1,100}$/D', $slug )

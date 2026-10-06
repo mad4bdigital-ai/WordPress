@@ -5,6 +5,7 @@ matrix = (root / 'includes' / 'class-mad4b-scp-provider-closure-matrix.php').rea
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
+operator = (root / 'includes' / 'class-mad4b-scp-operator-control-center.php').read_text(encoding='utf-8')
 
 required = [
     "const CONTRACT = 'mad4b.provider-closure-matrix.v1';",
@@ -28,10 +29,41 @@ required = [
     "'candidates'",
     "'ambiguous_provider_capability_mapping'",
     "'resolve_provider_capability_mapping'",
+    "MAD4B_SCP_Skill_Provider_Discovery::inspect()",
+    "private static function site_applicability",
+    "private static function family_candidates",
+    "'not_applicable_on_site'",
+    "'no_action_required_while_provider_inactive'",
+    "'applicability_state'",
+    "'site_applicable'",
+    "'provider_family_active'",
+    "'provider_adapter_ready'",
+    "'provider_coverage_state'",
+    "'operational_action_required'",
+    "'applicability_state_counts'",
+    "'site_applicable_count'",
+    "'not_applicable_count'",
+    "'unresolved_applicability_count'",
+    "'operational_action_required_count'",
+    "'owner_review_required_count'",
+    "'provider_closure_actions_pending'",
+    "'runtime_eligibility_code'",
+    "'surface_violations'",
+    "'runtime_capability_prerequisite'",
+    "'provider_scope_prerequisite'",
+    "'provider_source_prerequisite'",
+    "'provider_source_policy'",
+    "'rollback_contract_certification'",
+    "'adapter_contract_defect'",
 ]
 for marker in required:
     if marker not in matrix:
         raise SystemExit(f'missing provider closure matrix invariant: {marker}')
+
+runtime_priority = matrix.index("if ( 'adapter_runtime_capability_not_eligible' === $surface_reason )")
+artifact_priority = matrix.index("elseif ( ! empty( $status['artifact_authority_required'] )")
+if runtime_priority > artifact_priority:
+    raise SystemExit('runtime capability prerequisite must take precedence over generic artifact authority diagnosis')
 
 for marker in [
     "'write_authority_state' => $write_authority_ready ? 'write_authority_current' : 'write_authority_reconciliation_required'",
@@ -47,6 +79,16 @@ for marker in [
         raise SystemExit(f'provider closure matrix current-authority semantics missing: {marker}')
 if "'write_authority_ready' => isset( $authority_status['ready'] ) ? (bool) $authority_status['ready'] : false" in matrix:
     raise SystemExit('provider closure matrix regressed to checkpoint-only write readiness')
+
+for marker in [
+    "'state' => 'unresolved'",
+    "'site_applicable' => null",
+    "'state' => $active ? 'active' : 'inactive'",
+    "$operational_action_required = 'inactive' !== $applicability['state']",
+    "'operational_state' => $action_required_count > 0 ? 'provider_closure_actions_pending' : 'provider_closure_operationally_clean'",
+]:
+    if marker not in matrix:
+        raise SystemExit(f'provider closure applicability semantics missing: {marker}')
 
 for forbidden in [
     'MAD4B_SCP_Local_OAuth_Server::consent_grant_projection',
@@ -98,5 +140,41 @@ for marker in [
 ]:
     if marker not in parity:
         raise SystemExit(f'authority convergence operation is not future-discoverable: {marker}')
+
+for marker in [
+    "MAD4B_SCP_Full_Staging_Authority::status()",
+    "MAD4B_SCP_Provider_Closure_Matrix::matrix()",
+    "'governed_write_lane_ready'",
+    "'developer_lane_ready'",
+    "'developer_breakglass_lane_ready'",
+    "'provider_closure_action_required'",
+    "'provider_closure_actions_pending'",
+    "'developer_lane_not_ready'",
+    "'developer_breakglass_lane_not_ready'",
+    "'close_active_provider_certification_gaps'",
+    "'lanes' => array(",
+    "'provider_closure' => array(",
+    "'action_required_count'",
+    "'not_applicable_count'",
+    "'unresolved_applicability_count'",
+    "'production_authorized' => false",
+    "'authorizing' => false",
+    "'mutation_performed' => false",
+]:
+    if marker not in operator:
+        raise SystemExit(f'operator control operational-truth marker missing: {marker}')
+
+for forbidden in [
+    'update_option(',
+    'delete_option(',
+    'wp_insert_post(',
+    'update_post_meta(',
+    'wp_remote_post(',
+    'shell_exec(',
+    'exec(',
+    'proc_open(',
+]:
+    if forbidden in operator:
+        raise SystemExit(f'operator control must remain read-only: {forbidden}')
 
 print('mad4b.provider-closure-matrix.v1: PASS')

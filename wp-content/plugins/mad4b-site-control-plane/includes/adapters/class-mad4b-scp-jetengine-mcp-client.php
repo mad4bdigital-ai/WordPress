@@ -44,16 +44,22 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return is_array( $routes ) ? $routes : array();
 	}
 
-	private static function isolated_transport_status() {
+	private static function isolated_transport_status( $materialize = false ) {
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) || ! method_exists( 'MAD4B_SCP_MCP_Provider_Isolation', 'internal_provider_transport_status' ) ) {
 			return array( 'registry_available' => false, 'run_available' => false, 'retained_route_count' => 0, 'raw_routes_exposed' => false );
 		}
 		$status = MAD4B_SCP_MCP_Provider_Isolation::internal_provider_transport_status( 'jetengine' );
+		$ready = is_array( $status ) && ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
+		if ( ! $ready && $materialize && ! empty( $status['isolation_effective'] ) && self::initialized_rest_server()
+			&& method_exists( 'MAD4B_SCP_MCP_Provider_Isolation', 'ensure_internal_provider_transport' ) ) {
+			$ensured = MAD4B_SCP_MCP_Provider_Isolation::ensure_internal_provider_transport( 'jetengine' );
+			if ( is_array( $ensured ) ) $status = $ensured;
+		}
 		return is_array( $status ) ? $status : array( 'registry_available' => false, 'run_available' => false, 'retained_route_count' => 0, 'raw_routes_exposed' => false );
 	}
 
-	private static function isolated_rest_tools_available() {
-		$status = self::isolated_transport_status();
+	private static function isolated_rest_tools_available( $materialize = false ) {
+		$status = self::isolated_transport_status( $materialize );
 		return ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
 	}
 
@@ -129,6 +135,23 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		$isolated = self::isolated_transport_status();
 		$isolated_registry = ! empty( $isolated['registry_available'] );
 		$isolated_run = ! empty( $isolated['run_available'] );
+		$available = '' !== $mcp || ( '' !== $registry && $run ) || ( $isolated_registry && $isolated_run );
+		$materialization_state = isset( $isolated['materialization_state'] ) ? sanitize_key( (string) $isolated['materialization_state'] ) : 'not_observed';
+		$blockers = array();
+		if ( ! $available ) {
+			if ( empty( $isolated['isolation_effective'] ) && '' === $mcp && '' === $registry ) $blockers[] = 'provider_transport_not_registered';
+			if ( ! empty( $isolated['isolation_effective'] ) && empty( $isolated['suppressed_callback_count'] ) ) $blockers[] = 'reviewed_provider_registration_callback_not_observed';
+			if ( in_array( $materialization_state, array( 'rest_server_unavailable', 'reviewed_callback_failed', 'reviewed_callback_unavailable', 'materialization_incomplete' ), true ) ) $blockers[] = $materialization_state;
+			if ( empty( $blockers ) ) $blockers[] = 'provider_native_transport_unavailable';
+		}
+		$next_action = '';
+		if ( ! $available ) {
+			if ( 'rest_server_unavailable' === $materialization_state ) $next_action = 'retry_after_rest_api_initialization';
+			elseif ( 'reviewed_callback_failed' === $materialization_state ) $next_action = 'inspect_reviewed_jetengine_registration_callback_failure';
+			elseif ( 'reviewed_callback_unavailable' === $materialization_state || empty( $isolated['suppressed_callback_count'] ) ) $next_action = 'reconcile_jetengine_native_registration_lifecycle';
+			elseif ( 'materialization_incomplete' === $materialization_state ) $next_action = 'inspect_retained_registry_and_execute_routes';
+			else $next_action = 'discover_or_restore_provider_native_transport';
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'mcp_jsonrpc_endpoint' => $mcp,
@@ -139,13 +162,24 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 			'isolated_native_rest_registry_available' => $isolated_registry,
 			'isolated_native_rest_run_available' => $isolated_run,
 			'isolated_native_rest_retained_route_count' => isset( $isolated['retained_route_count'] ) ? (int) $isolated['retained_route_count'] : 0,
+			'isolated_materialization_attempted' => ! empty( $isolated['materialization_attempted'] ),
+			'isolated_materialization_state' => $materialization_state,
+			'isolated_suppressed_callback_count' => isset( $isolated['suppressed_callback_count'] ) ? (int) $isolated['suppressed_callback_count'] : 0,
 			'raw_provider_routes_exposed' => false,
 			'preferred_transport' => '' !== $mcp ? 'mcp-jsonrpc' : ( '' !== $registry && $run ? 'native-rest-tools' : ( $isolated_registry && $isolated_run ? 'isolated-native-rest-tools' : 'unavailable' ) ),
-			'available' => '' !== $mcp || ( '' !== $registry && $run ) || ( $isolated_registry && $isolated_run ),
+			'available' => $available,
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'next_action' => $next_action,
+			'authorizing' => false,
+			'mutation_performed' => false,
 		);
 	}
 
 	public static function available() {
+		// Availability is an active discovery question. Once REST is initialized,
+		// allow the reviewed isolated provider callback to materialize request-local
+		// registry/run definitions before declaring the transport unavailable.
+		if ( self::isolated_rest_tools_available( true ) ) return true;
 		$status = self::transport_status();
 		return ! empty( $status['available'] );
 	}
@@ -366,7 +400,7 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
 			if ( is_wp_error( $tools ) ) $errors['native_rest_tools'] = $tools->get_error_code();
 		}
-		if ( self::isolated_rest_tools_available() ) {
+		if ( self::isolated_rest_tools_available( true ) ) {
 			$tools = self::rest_registry_tools( true );
 			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
 			if ( is_wp_error( $tools ) ) $errors['isolated_native_rest_tools'] = $tools->get_error_code();

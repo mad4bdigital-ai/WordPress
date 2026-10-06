@@ -104,6 +104,18 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 		if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+		if ( ! isset( $args['meta']['annotations'] ) || ! is_array( $args['meta']['annotations'] ) ) $args['meta']['annotations'] = array();
+		// approval-plan is registered by the administrative governance catalog, but
+		// remote execution is a governed-write bootstrap mutation. Bind the
+		// canonical descriptor to the actual execution lane before the central
+		// Authorization wrapper (priority 190) seals the execution boundary.
+		// This changes classification only; it grants no authority and cannot
+		// approve or execute the target operation.
+		$args['meta']['mcp']['surface'] = 'write';
+		$args['meta']['annotations']['readonly'] = false;
+		$args['meta']['annotations']['destructive'] = false;
+		$args['meta']['annotations']['idempotent'] = false;
+		$args['meta']['mcp']['mad4b_execution_lane_binding'] = 'governed_write_bootstrap';
 		$args['meta']['mcp']['mad4b_governed_write_authority'] = MAD4B_SCP_Staging_Write_Authority::CONTRACT;
 		$args['meta']['mcp']['mad4b_approval_bootstrap_operation'] = true;
 		$args['meta']['mcp']['mad4b_creates_pending_ticket_only'] = true;

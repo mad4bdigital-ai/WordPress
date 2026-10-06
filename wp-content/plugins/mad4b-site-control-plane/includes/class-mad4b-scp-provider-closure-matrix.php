@@ -92,12 +92,18 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		$providers = isset( $inventory['providers'] ) && is_array( $inventory['providers'] ) ? $inventory['providers'] : array();
 		$ability_index = self::ability_index( $providers );
 
+		$provider_families = self::provider_family_states();
+
 		$items = array();
 		foreach ( $blocked as $row ) {
 			if ( ! is_array( $row ) ) continue;
 			$ability = isset( $row['ability'] ) ? trim( (string) $row['ability'] ) : '';
 			$surface_provider = isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '';
 			$surface_reason = isset( $row['reason'] ) ? sanitize_key( (string) $row['reason'] ) : 'provider_gated';
+			$runtime_eligibility_code = isset( $row['runtime_eligibility_code'] ) ? sanitize_key( (string) $row['runtime_eligibility_code'] ) : '';
+			$surface_violations = isset( $row['violations'] ) && is_array( $row['violations'] )
+				? array_values( array_unique( array_filter( array_map( 'sanitize_key', $row['violations'] ) ) ) )
+				: array();
 			if ( '' === $ability ) continue;
 			if ( '' !== $ability_filter && $ability !== $ability_filter ) continue;
 			if ( '' !== $provider_filter && $surface_provider !== $provider_filter ) {
@@ -112,6 +118,7 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			$selection = self::select_candidate( $surface_provider, $candidates );
 			$selected = isset( $selection['selected'] ) && is_array( $selection['selected'] ) ? $selection['selected'] : array();
 			$ambiguous = ! empty( $selection['ambiguous'] );
+			$applicability = self::site_applicability( $ability, $surface_provider, $selected, $providers, $provider_families );
 			$closure = $ambiguous
 				? array(
 					'closure_class' => 'ambiguous_provider_capability_mapping',
@@ -119,12 +126,30 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 					'evidence_required' => array( 'surface_provider', 'candidate_provider_ids', 'candidate_capability_ids', 'provider_capability_contract' ),
 					'owner_review_required' => false,
 				)
-				: self::closure_for( $ability, $surface_reason, $selected, $providers );
+				: self::closure_for( $ability, $surface_reason, $selected, $providers, $runtime_eligibility_code, $surface_violations );
+			if ( 'inactive' === $applicability['state'] ) {
+				$closure = array(
+					'closure_class' => 'not_applicable_on_site',
+					'next_action' => 'no_action_required_while_provider_inactive',
+					'evidence_required' => array( 'provider_family', 'provider_active', 'provider_coverage_state' ),
+					'owner_review_required' => false,
+				);
+			}
+			$operational_action_required = 'inactive' !== $applicability['state'] && empty( $selected['status']['write_eligible'] );
 
 			$items[] = array(
 				'ability' => $ability,
 				'surface_provider' => $surface_provider,
 				'surface_reason' => $surface_reason,
+				'runtime_eligibility_code' => $runtime_eligibility_code,
+				'surface_violations' => $surface_violations,
+				'applicability_state' => $applicability['state'],
+				'site_applicable' => $applicability['site_applicable'],
+				'provider_family' => $applicability['provider_family'],
+				'provider_family_active' => $applicability['provider_family_active'],
+				'provider_adapter_ready' => $applicability['provider_adapter_ready'],
+				'provider_coverage_state' => $applicability['provider_coverage_state'],
+				'operational_action_required' => $operational_action_required,
 				'catalog_provider_id' => isset( $selected['provider_id'] ) ? (string) $selected['provider_id'] : '',
 				'ambiguous_mapping' => $ambiguous,
 				'candidate_count' => count( $candidates ),
@@ -156,11 +181,20 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		usort( $items, static function ( $a, $b ) { return strcmp( $a['ability'], $b['ability'] ); } );
 
 		$counts = array();
+		$applicability_counts = array( 'active' => 0, 'inactive' => 0, 'unresolved' => 0 );
+		$action_required_count = 0;
+		$owner_review_required_count = 0;
 		foreach ( $items as $item ) {
 			$key = isset( $item['closure_class'] ) ? (string) $item['closure_class'] : 'unknown';
 			$counts[ $key ] = isset( $counts[ $key ] ) ? $counts[ $key ] + 1 : 1;
+			$applicability_key = isset( $item['applicability_state'] ) ? sanitize_key( (string) $item['applicability_state'] ) : 'unresolved';
+			if ( ! isset( $applicability_counts[ $applicability_key ] ) ) $applicability_counts[ $applicability_key ] = 0;
+			++$applicability_counts[ $applicability_key ];
+			if ( ! empty( $item['operational_action_required'] ) ) ++$action_required_count;
+			if ( ! empty( $item['operational_action_required'] ) && ! empty( $item['owner_review_required'] ) ) ++$owner_review_required_count;
 		}
 		ksort( $counts, SORT_STRING );
+		ksort( $applicability_counts, SORT_STRING );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -169,6 +203,13 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'mutation_performed' => false,
 			'provider_gated_count' => count( $items ),
 			'closure_class_counts' => $counts,
+			'applicability_state_counts' => $applicability_counts,
+			'site_applicable_count' => isset( $applicability_counts['active'] ) ? (int) $applicability_counts['active'] : 0,
+			'not_applicable_count' => isset( $applicability_counts['inactive'] ) ? (int) $applicability_counts['inactive'] : 0,
+			'unresolved_applicability_count' => isset( $applicability_counts['unresolved'] ) ? (int) $applicability_counts['unresolved'] : 0,
+			'operational_action_required_count' => $action_required_count,
+			'owner_review_required_count' => $owner_review_required_count,
+			'operational_state' => $action_required_count > 0 ? 'provider_closure_actions_pending' : 'provider_closure_operationally_clean',
 			'items' => $items,
 			'candidate_binding_match' => $candidate_binding_match,
 			'write_authority_ready' => $write_authority_ready,
@@ -215,7 +256,74 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		return array( 'selected' => array(), 'ambiguous' => true );
 	}
 
-	private static function closure_for( $ability, $surface_reason, array $selected, array $providers ) {
+	private static function provider_family_states() {
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! method_exists( 'MAD4B_SCP_Skill_Provider_Discovery', 'inspect' ) ) return array();
+		$inspection = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+		if ( ! is_array( $inspection ) || ! isset( $inspection['families'] ) || ! is_array( $inspection['families'] ) ) return array();
+		return $inspection['families'];
+	}
+
+	private static function family_candidates( $ability, $surface_provider, array $selected, array $providers ) {
+		$candidates = array();
+		$push = static function ( $value ) use ( &$candidates ) {
+			$value = sanitize_key( (string) $value );
+			if ( '' === $value ) return;
+			$candidates[] = $value;
+			$candidates[] = str_replace( '_', '-', $value );
+			$candidates[] = str_replace( '-', '_', $value );
+		};
+		$push( $surface_provider );
+		$provider_id = isset( $selected['provider_id'] ) ? sanitize_key( (string) $selected['provider_id'] ) : '';
+		$push( $provider_id );
+		if ( '' !== $provider_id && isset( $providers[ $provider_id ] ) && is_array( $providers[ $provider_id ] ) ) {
+			$push( isset( $providers[ $provider_id ]['adapter_id'] ) ? $providers[ $provider_id ]['adapter_id'] : '' );
+		}
+		$parts = explode( '/', (string) $ability, 2 );
+		$push( isset( $parts[0] ) ? $parts[0] : '' );
+		return array_values( array_unique( array_filter( $candidates ) ) );
+	}
+
+	private static function site_applicability( $ability, $surface_provider, array $selected, array $providers, array $families ) {
+		$matches = array();
+		foreach ( self::family_candidates( $ability, $surface_provider, $selected, $providers ) as $family ) {
+			if ( ! isset( $families[ $family ] ) || ! is_array( $families[ $family ] ) ) continue;
+			$matches[ $family ] = $families[ $family ];
+		}
+		if ( empty( $matches ) ) {
+			return array(
+				'state' => 'unresolved',
+				'site_applicable' => null,
+				'provider_family' => '',
+				'provider_family_active' => null,
+				'provider_adapter_ready' => null,
+				'provider_coverage_state' => '',
+			);
+		}
+		$selected_family = '';
+		$family_state = array();
+		foreach ( $matches as $family => $state ) {
+			if ( ! empty( $state['active'] ) ) {
+				$selected_family = $family;
+				$family_state = $state;
+				break;
+			}
+		}
+		if ( '' === $selected_family ) {
+			$selected_family = (string) array_key_first( $matches );
+			$family_state = $matches[ $selected_family ];
+		}
+		$active = ! empty( $family_state['active'] );
+		return array(
+			'state' => $active ? 'active' : 'inactive',
+			'site_applicable' => $active,
+			'provider_family' => sanitize_key( $selected_family ),
+			'provider_family_active' => $active,
+			'provider_adapter_ready' => ! empty( $family_state['adapter_ready'] ),
+			'provider_coverage_state' => isset( $family_state['coverage_state'] ) ? sanitize_key( (string) $family_state['coverage_state'] ) : '',
+		);
+	}
+
+	private static function closure_for( $ability, $surface_reason, array $selected, array $providers, $runtime_eligibility_code = '', array $surface_violations = array() ) {
 		$status = isset( $selected['status'] ) && is_array( $selected['status'] ) ? $selected['status'] : array();
 		$provider_id = isset( $selected['provider_id'] ) ? sanitize_key( (string) $selected['provider_id'] ) : '';
 		$capability_id = isset( $selected['capability_id'] ) ? (string) $selected['capability_id'] : '';
@@ -232,6 +340,39 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		$evidence = array();
 		$owner = false;
 		$class = 'diagnostic_required';
+
+		// Runtime capability blockers are stronger evidence than downstream catalog
+		// or artifact state. Preserve the exact operational prerequisite instead of
+		// replacing it with a generic artifact/certification diagnosis.
+		if ( 'adapter_runtime_capability_not_eligible' === $surface_reason ) {
+			$code = sanitize_key( (string) $runtime_eligibility_code );
+			$runtime_classes = array(
+				'mad4b_google_drive_create_rollback_not_certified' => array( 'rollback_contract_certification', 'certify_exact_create_identity_and_rollback_contract', array( 'exact_create_identity', 'post_create_readback', 'delete_or_compensation_contract', 'rollback_verification' ), true ),
+				'mad4b_google_drive_write_scope_required' => array( 'provider_scope_prerequisite', 'grant_bounded_google_drive_write_scope_then_refresh', array( 'google_oauth_access_mode', 'write_scope_presence', 'connection_readback' ), true ),
+				'mad4b_context_source_required_for_write' => array( 'provider_source_prerequisite', 'select_governed_context_source_then_refresh', array( 'selected_source_id', 'source_boundary', 'write_policy' ), true ),
+				'mad4b_context_source_policy_blocks_write' => array( 'provider_source_policy', 'update_governed_source_write_policy_then_refresh', array( 'source_id', 'requested_operation', 'source_write_policy' ), true ),
+				'mad4b_context_provider_contract_not_ready' => array( 'runtime_contract_certification', 'reconcile_first_party_context_provider_contract', array( 'control_plane_build_fingerprint', 'critical_file_hashes', 'rollback_contracts' ), false ),
+				'mad4b_context_write_operation_unknown' => array( 'adapter_contract_defect', 'map_context_write_operation_before_execution', array( 'ability', 'provider_contract', 'source_policy_mapping' ), false ),
+				'mad4b_provider_import_reversibility_unverified' => array( 'rollback_contract_certification', 'certify_provider_import_compensation_before_mount', array( 'provider_identity', 'bounded_target', 'compensation_contract', 'rollback_readback' ), true ),
+				'mad4b_native_provider_write_mode_unverified' => array( 'provider_transport_prerequisite', 'reconcile_provider_native_write_mode', array( 'native_ability', 'annotations', 'transport_contract' ), false ),
+				'mad4b_native_provider_operation_unavailable' => array( 'provider_transport_prerequisite', 'restore_reviewed_provider_native_transport_then_refresh', array( 'provider_transport_status', 'reviewed_route_contract', 'runtime_inventory' ), false ),
+			);
+			if ( isset( $runtime_classes[ $code ] ) ) {
+				$mapped = $runtime_classes[ $code ];
+				return array(
+					'closure_class' => $mapped[0],
+					'next_action' => $mapped[1],
+					'evidence_required' => $mapped[2],
+					'owner_review_required' => (bool) $mapped[3],
+				);
+			}
+			return array(
+				'closure_class' => 'runtime_capability_prerequisite',
+				'next_action' => '' !== $code ? $code : 'reconcile_adapter_runtime_capability_prerequisite',
+				'evidence_required' => array_values( array_unique( array_merge( array( 'adapter_runtime_status', 'ability_runtime_contract' ), $surface_violations ) ) ),
+				'owner_review_required' => false,
+			);
+		}
 
 		if ( empty( $selected['provider_id'] ) || empty( $status ) ) {
 			$class = 'adapter_or_catalog_reconciliation';

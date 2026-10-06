@@ -644,6 +644,27 @@ if "$production = 'production' === self::current_environment();" not in scope_bo
 if "mad4b:read" not in scope_body or "oauth2_bearer" not in scope_body:
     raise SystemExit('candidate bootstrap scope delegation must retain verified OAuth read identity')
 
+# approval-plan is the one bounded mutation that creates a PENDING ticket.
+# Its catalog registration is administrative for local operator discovery, but
+# remote execution is always classified on the canonical governed-write lane.
+# The planning guard must establish that lane before Authorization seals the
+# central execution boundary; classification never grants authority by itself.
+for marker in [
+    "$args['meta']['mcp']['surface'] = 'write';",
+    "$args['meta']['annotations']['readonly'] = false;",
+    "$args['meta']['annotations']['destructive'] = false;",
+    "$args['meta']['annotations']['idempotent'] = false;",
+    "$args['meta']['mcp']['mad4b_execution_lane_binding'] = 'governed_write_bootstrap';",
+]:
+    if marker not in planning:
+        raise SystemExit('approval-plan canonical write-lane binding missing: ' + marker)
+if planning.find("$args['meta']['mcp']['surface'] = 'write';") > planning.find("$args['meta']['mcp']['mad4b_governed_write_authority']"):
+    raise SystemExit('approval-plan canonical write lane must be fixed before governed authority metadata is finalized')
+if "add_filter( 'wp_register_ability_args', array( __CLASS__, 'govern_registration' ), 85, 2 );" not in planning:
+    raise SystemExit('approval-plan lane binding must remain before central Authorization execution-boundary wrapping')
+if "add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 190, 2 );" not in auth:
+    raise SystemExit('central Authorization boundary priority drifted; approval-plan lane proof is no longer ordered')
+
 # approval-plan is the one bounded mutation that creates a PENDING ticket. It
 # cannot require that same ticket merely to pass OAuth scope delegation.
 for marker in [

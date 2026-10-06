@@ -156,15 +156,104 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			$items[ $provider ] = self::assess_provider( $provider, $adapter );
 		}
 		ksort( $items, SORT_STRING );
+		$candidate_graph = self::runtime_candidate_graph( $registry, $catalog );
 		return array(
 			'contract' => self::CONTRACT,
 			'catalog_contract' => isset( $catalog['contract'] ) ? (string) $catalog['contract'] : '',
 			'catalog_digest' => self::stable_digest( $catalog ),
+			'policy_overlay_role' => 'reviewed_semantic_risk_reversibility_and_certification_policy',
+			'runtime_candidate_graph' => $candidate_graph,
+			'unclassified_runtime_candidate_count' => isset( $candidate_graph['unclassified_count'] ) ? (int) $candidate_graph['unclassified_count'] : 0,
 			'authorizing' => false,
 			'read_only' => true,
 			'providers' => $items,
 			'provider_count' => count( $items ),
-			'principle' => 'artifact_discovery_to_capability_contract_to_trusted_behavioral_evidence_to_governed_mount',
+			'principle' => 'runtime_adapter_discovery_to_reviewed_policy_overlay_to_trusted_behavioral_evidence_to_governed_mount',
+		);
+	}
+
+	public static function runtime_candidate_graph( $registry = null, $catalog = null ) {
+		if ( ! is_object( $registry ) ) $registry = self::adapter_registry();
+		if ( ! is_array( $catalog ) ) $catalog = self::catalog();
+		$policy_index = array();
+		foreach ( (array) ( isset( $catalog['providers'] ) ? $catalog['providers'] : array() ) as $provider_id => $declaration ) {
+			if ( ! is_array( $declaration ) ) continue;
+			$adapter_id = isset( $declaration['adapter_id'] ) ? sanitize_key( (string) $declaration['adapter_id'] ) : sanitize_key( (string) $provider_id );
+			foreach ( (array) ( isset( $declaration['capabilities'] ) ? $declaration['capabilities'] : array() ) as $capability_id => $capability ) {
+				if ( ! is_array( $capability ) ) continue;
+				foreach ( (array) ( isset( $capability['abilities'] ) ? $capability['abilities'] : array() ) as $ability ) {
+					$ability = (string) $ability;
+					if ( '' === $ability ) continue;
+					$policy_row = array(
+						'provider_id' => sanitize_key( (string) $provider_id ),
+						'capability_id' => (string) $capability_id,
+						'risk' => isset( $capability['risk'] ) ? sanitize_key( (string) $capability['risk'] ) : 'read',
+						'reversible' => ! empty( $capability['reversible'] ),
+						'rollback_contract' => isset( $capability['rollback_contract'] ) ? (string) $capability['rollback_contract'] : '',
+					);
+					foreach ( array_values( array_unique( array( $adapter_id, sanitize_key( (string) $provider_id ) ) ) ) as $identity_key ) {
+						$key = $identity_key . "\0" . $ability;
+						if ( ! isset( $policy_index[ $key ] ) ) $policy_index[ $key ] = array();
+						$policy_index[ $key ][] = $policy_row;
+					}
+				}
+			}
+		}
+		$candidates = array();
+		$unclassified = 0;
+		$adapters = is_object( $registry ) && method_exists( $registry, 'all' ) ? (array) $registry->all() : array();
+		ksort( $adapters, SORT_STRING );
+		foreach ( $adapters as $adapter_id => $adapter ) {
+			$adapter_id = sanitize_key( (string) $adapter_id );
+			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
+			$provider_key = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : $adapter_id;
+			if ( '' === $provider_key ) $provider_key = $adapter_id;
+			$ability_surfaces = array();
+			foreach ( (array) $adapter->ability_names() as $surface => $abilities ) {
+				$surface = sanitize_key( (string) $surface );
+				foreach ( is_array( $abilities ) ? $abilities : array() as $ability ) {
+					$ability = (string) $ability;
+					if ( '' === $ability ) continue;
+					if ( ! isset( $ability_surfaces[ $ability ] ) ) $ability_surfaces[ $ability ] = array();
+					$ability_surfaces[ $ability ][] = $surface;
+				}
+			}
+			ksort( $ability_surfaces, SORT_STRING );
+			foreach ( $ability_surfaces as $ability => $surfaces ) {
+				$surfaces = array_values( array_unique( array_filter( $surfaces ) ) );
+				sort( $surfaces, SORT_STRING );
+				$matches = array();
+				foreach ( array_values( array_unique( array( $adapter_id, $provider_key ) ) ) as $identity_key ) {
+					foreach ( isset( $policy_index[ $identity_key . "\0" . $ability ] ) ? $policy_index[ $identity_key . "\0" . $ability ] : array() as $policy_match ) {
+						$match_key = ( isset( $policy_match['provider_id'] ) ? $policy_match['provider_id'] : '' ) . "\0" . ( isset( $policy_match['capability_id'] ) ? $policy_match['capability_id'] : '' );
+						$matches[ $match_key ] = $policy_match;
+					}
+				}
+				$matches = array_values( $matches );
+				if ( empty( $matches ) ) ++$unclassified;
+				$candidates[] = array(
+					'adapter_id' => $adapter_id,
+					'provider_key' => $provider_key,
+					'ability' => $ability,
+					'surfaces' => $surfaces,
+					'policy_state' => $matches ? 'REVIEWED_POLICY_OVERLAY' : 'UNCLASSIFIED_FAIL_CLOSED',
+					'policy_matches' => $matches,
+					'policy_match_count' => count( $matches ),
+					'auto_activation_allowed' => false,
+					'authorizing' => false,
+				);
+			}
+		}
+		return array(
+			'contract' => 'mad4b.provider-runtime-candidate-graph.v1',
+			'discovery_source' => 'registered_runtime_adapter_ability_maps',
+			'policy_source' => self::CATALOG_CONTRACT,
+			'candidate_count' => count( $candidates ),
+			'unclassified_count' => $unclassified,
+			'candidates' => $candidates,
+			'unknown_candidates_fail_closed' => true,
+			'policy_overlay_creates_authority' => false,
+			'authorizing' => false,
 		);
 	}
 
@@ -288,6 +377,21 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'structural_fingerprint' => isset( $assessment['structural_fingerprint'] ) ? $assessment['structural_fingerprint'] : '',
 			'steps' => $steps,
 			'owner_review_required' => $owner_review,
+			'orchestration' => array(
+				'contract' => 'mad4b.provider-recertification-orchestration.v1',
+				'version_drift_is_incompatibility' => false,
+				'automatic_observation' => true,
+				'automatic_structural_assessment' => true,
+				'automatic_mutation_probe' => false,
+				'automatic_mount_or_grant' => false,
+				'behavioral_probe_ability' => 'mad4b/provider-behavioral-recertify',
+				'mount_plan_ability' => 'mad4b/provider-mcp-mount-plan',
+				'observation_ability' => 'mad4b/adaptive-runtime-convergence-status',
+				'reassess_after_receipt' => true,
+				'high_risk_owner_promotion_required' => true,
+				'production_authorized' => false,
+				'authorizing' => false,
+			),
 			'authorizing' => false,
 			'read_only' => true,
 		);
@@ -374,7 +478,9 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		if ( ! is_object( $adapter ) ) $adapter = self::adapter_for_provider( $provider );
 		$map = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$write_abilities = array();
-		foreach ( array( 'content', 'admin' ) as $surface ) {
+		// Provider mutations may live on content/admin or on the dedicated write
+		// surface. All three must compile through the same capability gate.
+		foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
 			foreach ( (array) ( isset( $map[ $surface ] ) ? $map[ $surface ] : array() ) as $ability ) {
 				$ability = (string) $ability;
 				if ( '' !== $ability ) $write_abilities[] = $ability;

@@ -343,12 +343,29 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		);
 	}
 
+	private static function internal_materialization_cataloged( $provider ) {
+		$provider = sanitize_key( (string) $provider );
+		if ( '' === $provider || ! class_exists( 'MAD4B_SCP_Provider_Transport_Registry' ) || ! method_exists( 'MAD4B_SCP_Provider_Transport_Registry', 'route_descriptors' ) ) return false;
+		$purposes = array();
+		foreach ( MAD4B_SCP_Provider_Transport_Registry::route_descriptors() as $descriptor ) {
+			if ( ! is_array( $descriptor ) || $provider !== sanitize_key( isset( $descriptor['provider'] ) ? (string) $descriptor['provider'] : '' ) ) continue;
+			if ( empty( $descriptor['internal_retention'] ) || 'mcp_execution_surface' !== sanitize_key( isset( $descriptor['class'] ) ? (string) $descriptor['class'] : '' ) ) continue;
+			$purpose = sanitize_key( isset( $descriptor['purpose'] ) ? (string) $descriptor['purpose'] : '' );
+			if ( in_array( $purpose, array( 'registry', 'execute' ), true ) ) $purposes[ $purpose ] = true;
+		}
+		return isset( $purposes['registry'], $purposes['execute'] );
+	}
+
 	private static function materialize_internal_provider_routes( $provider ) {
 		$provider = sanitize_key( (string) $provider );
-		if ( 'jetengine' !== $provider ) return false;
+		if ( ! self::internal_materialization_cataloged( $provider ) ) return false;
 		if ( isset( self::$internal_rest_materialization_attempted[ $provider ] ) ) {
 			$status = self::internal_provider_transport_status( $provider );
-			return ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
+			if ( ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] ) ) return true;
+			// A pre-REST observation is transient. Once WordPress has created the
+			// REST server, one reviewed retry may materialize the captured callback.
+			if ( 'rest_server_unavailable' !== ( isset( self::$internal_rest_materialization_state[ $provider ] ) ? (string) self::$internal_rest_materialization_state[ $provider ] : '' ) ) return false;
+			unset( self::$internal_rest_materialization_attempted[ $provider ] );
 		}
 		self::$internal_rest_materialization_attempted[ $provider ] = true;
 
@@ -439,6 +456,27 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		self::$internal_provider_routes[ $route ] = array( 'definition' => $definition, 'descriptor' => $descriptor );
 	}
 
+	/**
+	 * Materialize only catalog-reviewed provider-native registry/execute routes
+	 * into the private retained-route map. This is request-local discovery: it
+	 * performs no outbound I/O, persists no state, changes no provider settings,
+	 * creates no authority and never replays the global rest_api_init action.
+	 */
+	public static function ensure_internal_provider_transport( $provider ) {
+		$provider = sanitize_key( (string) $provider );
+		if ( ! self::effective() ) return new WP_Error( 'mad4b_internal_provider_isolation_inactive', 'Internal provider materialization requires effective provider isolation.' );
+		if ( ! self::internal_materialization_cataloged( $provider ) ) return new WP_Error( 'mad4b_internal_provider_not_cataloged', 'Provider has no reviewed internally retained registry/execute transport contract.' );
+		$before = self::internal_provider_transport_status( $provider );
+		if ( empty( $before['registry_available'] ) || empty( $before['run_available'] ) ) self::materialize_internal_provider_routes( $provider );
+		$status = self::internal_provider_transport_status( $provider );
+		$status['materialization_ready'] = ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
+		$status['authorizing'] = false;
+		$status['mutation_performed'] = false;
+		$status['provider_settings_changed'] = false;
+		$status['outbound_network_performed'] = false;
+		return $status;
+	}
+
 	public static function internal_provider_transport_status( $provider ) {
 		$provider = sanitize_key( (string) $provider );
 		$registry = false;
@@ -459,6 +497,11 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'registry_available' => $registry,
 			'run_available' => $run,
 			'raw_routes_exposed' => false,
+			'materialization_attempted' => isset( self::$internal_rest_materialization_attempted[ $provider ] ),
+			'materialization_state' => isset( self::$internal_rest_materialization_state[ $provider ] ) ? sanitize_key( (string) self::$internal_rest_materialization_state[ $provider ] ) : 'not_attempted',
+			'suppressed_callback_count' => count( array_filter( self::$suppressed_rest_callbacks, static function ( $entry ) use ( $provider ) {
+				return is_array( $entry ) && $provider === sanitize_key( isset( $entry['provider'] ) ? (string) $entry['provider'] : '' );
+			} ) ),
 			'internal_permission_mode' => 'mad4b-governed-provider-permission-bypass',
 		);
 	}

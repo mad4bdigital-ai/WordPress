@@ -26,7 +26,38 @@
 		});
 	}
 
-	async function refreshSelector(selector, expectedReadback) {
+	function validViewReadback(value) {
+		if (!value || value.contract !== "mad4b.admin-settings-view-readback.v1" ||
+			typeof value.form_id !== "string" || !/^[a-z0-9_-]{1,160}$/.test(value.form_id) ||
+			!value.fields || Array.isArray(value.fields) || typeof value.fields !== "object") return false;
+		var keys = Object.keys(value.fields);
+		return keys.length > 0 && keys.length <= 16 && keys.every(function (key) {
+			var field = value.fields[key];
+			return /^[a-z][a-z0-9_]{0,63}$/.test(key) && (field === null || typeof field === "boolean" ||
+				(typeof field === "number" && Number.isFinite(field)) || (typeof field === "string" && field.length <= 2048));
+		});
+	}
+
+	function viewForm(next, expected) {
+		if (!validViewReadback(expected)) return null;
+		var forms = next.matches && next.matches(".mad4b-settings-ajax-form") ? [next] :
+			Array.prototype.slice.call(next.querySelectorAll ? next.querySelectorAll(".mad4b-settings-ajax-form") : []);
+		var matches = forms.filter(function (form) {
+			var marker = form.getAttribute && form.getAttribute("data-mad4b-settings-view");
+			if (!marker || marker.length > 8192) return false;
+			try {
+				var actual = JSON.parse(marker);
+				return validViewReadback(actual) && actual.form_id === expected.form_id &&
+					Object.keys(actual.fields).length === Object.keys(expected.fields).length &&
+					Object.keys(expected.fields).every(function (key) {
+						return Object.prototype.hasOwnProperty.call(actual.fields, key) && actual.fields[key] === expected.fields[key];
+					});
+			} catch (error) { return false; }
+		});
+		return matches.length === 1 ? matches[0] : null;
+	}
+
+	async function refreshSelector(selector, expectedReadback, expectedView) {
 		if (!selector) return null;
 		var response = await fetch(window.location.href, {
 			credentials: "same-origin",
@@ -52,11 +83,17 @@
 		var nextForm = next.matches && next.matches(".mad4b-settings-ajax-form")
 			? next
 			: (next.querySelector ? next.querySelector(".mad4b-settings-ajax-form") : null);
-		if (expectedReadback && nextForm) {
+		if (expectedView && !viewForm(next, expectedView)) {
+			var viewFailure = new Error(cfg().savedViewRefreshFailed || "Settings were saved and verified, but the refreshed workspace is stale. Reload before editing again.");
+			viewFailure.mad4bCode = "mad4b_settings_view_readback_mismatch";
+			viewFailure.mad4bPersisted = true;
+			throw viewFailure;
+		}
+		if (!expectedView && expectedReadback) {
 			var expectedRevision = expectedReadback.revision !== undefined ? String(expectedReadback.revision) : "";
 			var expectedDigest = expectedReadback.profile_digest ? String(expectedReadback.profile_digest) : "";
-			var revisionField = nextForm.querySelector ? nextForm.querySelector('input[name="expected_revision"]') : null;
-			var digestField = nextForm.querySelector ? nextForm.querySelector('input[name="expected_profile_digest"]') : null;
+			var revisionField = nextForm && nextForm.querySelector ? nextForm.querySelector('input[name="expected_revision"]') : null;
+			var digestField = nextForm && nextForm.querySelector ? nextForm.querySelector('input[name="expected_profile_digest"]') : null;
 			var revisionMismatch = expectedRevision && (!revisionField || String(revisionField.value) !== expectedRevision);
 			var digestMismatch = expectedDigest && (!digestField || String(digestField.value) !== expectedDigest);
 			if (revisionMismatch || digestMismatch) {
@@ -187,10 +224,10 @@
 			var selector = form.getAttribute("data-mad4b-refresh-selector") || "";
 			var feedbackForm = form;
 			if (selector) {
-				var refreshedNode = await refreshSelector(selector, payload.data.readback || {});
+				var refreshedNode = await refreshSelector(selector, payload.data.readback || {}, payload.data.view_readback || null);
 				var refreshed = refreshedNode || document.querySelector(selector);
 				if (refreshed) {
-					feedbackForm = refreshed.matches && refreshed.matches(".mad4b-settings-ajax-form")
+					feedbackForm = payload.data.view_readback ? viewForm(refreshed, payload.data.view_readback) || form : refreshed.matches && refreshed.matches(".mad4b-settings-ajax-form")
 						? refreshed
 						: (refreshed.querySelector ? refreshed.querySelector(".mad4b-settings-ajax-form") || form : form);
 				}

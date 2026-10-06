@@ -83,13 +83,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			$capability_certification=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider($this->provider_key(),$this);
 			$capability_mount_projection=MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection($this->provider_key(),$this);
 		}
-		$versions=array();
-		foreach($runtime as $plugin){
-			$file=isset($plugin['plugin_file'])?(string)$plugin['plugin_file']:'';
-			$version=isset($plugin['version'])?sanitize_text_field((string)$plugin['version']):'';
-			if(false!==strpos($file,'wp-all-import'))$versions['import']=$version;
-			if(false!==strpos($file,'wp-all-export')||false!==strpos($file,'wpae-'))$versions['export']=$version;
-		}
+		$versions=self::component_versions($runtime);
 		return array(
 			'contract'=>self::CONTRACT,'id'=>$this->id(),'label'=>$this->label(),'available'=>$available,
 			'authority_mode'=>'governed_read_plan_execution_unmounted','abilities'=>$this->ability_names(),
@@ -121,6 +115,26 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'capability_certification_mode'=>'per_ability_separate_from_artifact_truth',
 			'mutation_exposed'=>false,'reversible_contracts'=>array(),'runtime_plugins'=>$runtime,
 		);
+	}
+
+	/** Add-ons cannot supply or overwrite the identity of a core component. */
+	private static function component_versions( array $runtime ) {
+		$contract = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::get( 'wp-import-export' ) : array();
+		$components = isset( $contract['components'] ) && is_array( $contract['components'] ) ? $contract['components'] : array();
+		$versions = array();
+		foreach ( $components as $component_id => $component ) {
+			$expected_file = isset( $component['plugin_file'] ) ? ltrim( str_replace( '\\', '/', (string) $component['plugin_file'] ), '/' ) : '';
+			if ( '' === $expected_file ) continue;
+			$matches = array();
+			foreach ( $runtime as $plugin ) {
+				if ( ! is_array( $plugin ) ) continue;
+				$file = isset( $plugin['plugin_file'] ) ? ltrim( str_replace( '\\', '/', (string) $plugin['plugin_file'] ), '/' ) : '';
+				if ( $expected_file === $file ) $matches[] = isset( $plugin['version'] ) ? sanitize_text_field( (string) $plugin['version'] ) : '';
+			}
+			// Ambiguous catalog identity is unmeasured, never last-row-wins.
+			if ( 1 === count( $matches ) && '' !== $matches[0] ) $versions[ $component_id ] = $matches[0];
+		}
+		return $versions;
 	}
 
 	public function execution_readiness( $input = array() ) {
@@ -181,6 +195,26 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 					'mad4b_wp_all_export_artifact_registry_ingest_not_certified',
 					'mad4b_bulk_content_io_operation_receipt_not_certified',
 				))),
+			),
+			'closure_state'=>'EXTERNAL_BEHAVIORAL_ACCEPTANCE_REQUIRED',
+			'acceptance_to_activation'=>array(
+				'contract'=>'mad4b.wp-import-export-acceptance-handoff.v1',
+				'plan_ability'=>'wp-import-export/behavioral-acceptance-plan',
+				'required_environment'=>'governed_nonproduction',
+				'exact_composite_artifact_required'=>true,
+				'disposable_saved_job_required'=>true,
+				'trusted_behavioral_receipt_required'=>true,
+				'exact_candidate_and_artifact_binding_required'=>true,
+				'import_dry_run_diff_required'=>true,
+				'import_exact_rollback_required'=>true,
+				'export_artifact_registry_ingest_required'=>true,
+				'operation_receipt_required'=>true,
+				'provider_compatibility_reassessment_required'=>true,
+				'automatic_mount_allowed'=>false,
+				'production_allowed'=>false,
+				'caller_supplied_secret_allowed'=>false,
+				'next_action'=>'execute_behavioral_acceptance_plan_then_reassess_exact_provider_capability_evidence',
+				'authorizing'=>false,
 			),
 			'desired_execution_abilities'=>array(
 				'wp-import-export/run-import','wp-import-export/run-export',

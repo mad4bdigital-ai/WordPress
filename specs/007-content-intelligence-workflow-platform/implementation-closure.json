@@ -347,7 +347,7 @@
         "repository_only": true,
         "workflow_plan_profile_fingerprint_bound": true,
         "certification_drift_invalidates_plan": true,
-        "catalog_capability_count": 17,
+        "catalog_capability_count": 33,
         "explicit_trait_keys_per_capability": 14,
         "semantic_unknowns_outside_measured_bounds_forbidden": true,
         "allowed_unknown_trait_keys": [
@@ -1264,7 +1264,7 @@
   "repository_baseline": {
     "contract": "mad4b.reviewed-repository-parent.v1",
     "branch": "master",
-    "last_reviewed_parent_sha": "a2208930c675e9a5889fa0ac73a4cd964b63569b",
+    "last_reviewed_parent_sha": "b43a90bab987c609792c8e410d57080b3dc4a2ae",
     "current_head_is_external_evidence": true,
     "self_referential_current_head_forbidden": true
   },
