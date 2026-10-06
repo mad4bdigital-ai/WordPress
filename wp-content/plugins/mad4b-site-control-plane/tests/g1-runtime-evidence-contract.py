@@ -46,6 +46,11 @@ req(graph,
     "'relation'=>'declares_schema'",
     "'affected_workflows'=>array_values(array_unique($affected_workflows))",
     "'semantic_dimensions'=>array('provider','component','capability','operation','schema','precondition','effect','reversal','evidence')",
+    "required_capability",
+    "resource_schema_version",
+    "resource_constraints_sha256",
+    "resource_values_exposed",
+    "privilege_inferred_from_resources",
 )
 deny(graph, "call_user_func(", "call_user_func_array(", "wp_remote_get(", "wp_remote_post(", "$wpdb->query(", "$wpdb->get_results(", "grant_ability(")
 
@@ -73,6 +78,8 @@ req(classifier,
     "mad4b_runtime_policy_review_stale",
     "'creates_certification'=>false",
     "'authority_effect'=>'none'",
+    "resource_schema_version",
+    "resource_constraints_sha256",
 )
 deny(classifier, "grant_ability(", "register_defaults()", "wp_remote_", "$wpdb->", "MAD4B_SCP_Servers::register")
 
