@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "e80b76cbf75cc5d59f17b2dda394e8e8bd6d55d3",
-  "changed_file_count": 24,
+  "changed_file_count": 25,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -114,11 +114,12 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-collectors.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-conformance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php"
       ]
     }
   ],
-  "changed_paths_sha256": "81d22a34adbb95927a223f6f980bdeaf37cfeb3b63f2fae36965cc9eb66dff17",
+  "changed_paths_sha256": "428a0195473dfa314d00d2e12428e1e3919783695dfb09e35e1414d42d169486",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
