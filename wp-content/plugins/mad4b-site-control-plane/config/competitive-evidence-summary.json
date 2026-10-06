@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.competitive-evidence-summary.v1",
-  "snapshot_generation_sha256": "cd29191aac7746d37906720474b5bb7cc9574d24b67734a2038c37a9169d953e",
+  "snapshot_generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
   "package_count": 4,
   "capability_count": 59,
   "status_counts": {
@@ -58,11 +58,35 @@
         "T3904",
         "T3905"
       ],
+      "task_statuses": {
+        "T3901": "PARTIAL",
+        "T3902": "PARTIAL",
+        "T3903": "PARTIAL",
+        "T3904": "PARTIAL",
+        "T3905": "PARTIAL"
+      },
       "evidence_ids": [
         "SRC-RM-IDENTITY"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-IDENTITY",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/royal-mcp.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Original SHA-256 and every file member digest match; license/version identity retained."
       ]
     },
     {
@@ -77,12 +101,43 @@
         "T3904",
         "T3905"
       ],
+      "task_statuses": {
+        "T3901": "PARTIAL",
+        "T3902": "PARTIAL",
+        "T3903": "PARTIAL",
+        "T3904": "PARTIAL",
+        "T3905": "PARTIAL"
+      },
       "evidence_ids": [
         "SRC-EASY-COUNTS",
         "SRC-MO-SECURITY-CLAIMS"
       ],
       "evidence_classes": [
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-COUNTS",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/readme.txt",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-MO-SECURITY-CLAIMS",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/readme.txt",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Every row maps archive evidence, MAD4B foundation, task owner and acceptance; no count-based superiority score."
       ]
     },
     {
@@ -97,6 +152,13 @@
         "T3909",
         "T3910"
       ],
+      "task_statuses": {
+        "T3906": "PARTIAL",
+        "T3907": "PARTIAL",
+        "T3908": "PARTIAL",
+        "T3909": "PARTIAL",
+        "T3910": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-ONBOARDING",
         "SRC-MO-NHI"
@@ -104,6 +166,30 @@
       "evidence_classes": [
         "BUNDLED_STATIC",
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-ONBOARDING",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/readme.txt",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-MO-NHI",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/includes/common/repositories/class-nhi-store.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-route-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Real browser completes first authorized draft/read with no dead-end status page."
       ]
     },
     {
@@ -118,6 +204,13 @@
         "T3909",
         "T3910"
       ],
+      "task_statuses": {
+        "T3906": "PARTIAL",
+        "T3907": "PARTIAL",
+        "T3908": "PARTIAL",
+        "T3909": "PARTIAL",
+        "T3910": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-DFS",
         "SRC-EASY-GA4",
@@ -126,6 +219,37 @@
       "evidence_classes": [
         "BUNDLED_STATIC",
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-DFS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/dfs/class-serp-google-organic-live.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-GA4",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/ga/class-run-report.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-ONBOARDING",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/readme.txt",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Every provider has reachable setup, save/readback, explicit test and selected account/profile state; GET sends zero HTTP requests."
       ]
     },
     {
@@ -140,12 +264,43 @@
         "T3909",
         "T3910"
       ],
+      "task_statuses": {
+        "T3906": "PARTIAL",
+        "T3907": "PARTIAL",
+        "T3908": "PARTIAL",
+        "T3909": "PARTIAL",
+        "T3910": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-ONBOARDING",
         "SRC-RM-HEALTH"
       ],
       "evidence_classes": [
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-ONBOARDING",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/readme.txt",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-HEALTH",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/readme.txt",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-route-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Every page has operable save, empty/denied/error states and a canonical URL; license changes remain vendor/owner handoffs."
       ]
     },
     {
@@ -160,12 +315,43 @@
         "T3914",
         "T3915"
       ],
+      "task_statuses": {
+        "T3911": "OPEN",
+        "T3912": "OPEN",
+        "T3913": "OPEN",
+        "T3914": "OPEN",
+        "T3915": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-UNDO-DRIFT",
         "SRC-RM-UNDO-TTL"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-UNDO-DRIFT",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/MCP/Server.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-UNDO-TTL",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/MCP/Undo_Store.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Current object/field digests, expiry, actor, exact reversal plan and one-time readback receipt bind the action."
       ]
     },
     {
@@ -180,12 +366,43 @@
         "T3914",
         "T3915"
       ],
+      "task_statuses": {
+        "T3911": "OPEN",
+        "T3912": "OPEN",
+        "T3913": "OPEN",
+        "T3914": "OPEN",
+        "T3915": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-READBACK",
         "SRC-RM-UNDO-DRIFT"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-READBACK",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/MCP/Support/WriteVerifier.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-UNDO-DRIFT",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/MCP/Server.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Partial/dropped fields and possible external effect produce explicit uncertain/reconciling states."
       ]
     },
     {
@@ -200,12 +417,43 @@
         "T3919",
         "T3920"
       ],
+      "task_statuses": {
+        "T3916": "OPEN",
+        "T3917": "OPEN",
+        "T3918": "OPEN",
+        "T3919": "OPEN",
+        "T3920": "OPEN"
+      },
       "evidence_ids": [
         "SRC-MO-NHI",
         "SRC-MO-WRITE-GUARD"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-MO-NHI",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/includes/common/repositories/class-nhi-store.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-MO-WRITE-GUARD",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/libraries/abilities/src/class-ability-registrar.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identity-context.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Named identities show effective per-object access and clear disable/revoke outcomes."
       ]
     },
     {
@@ -220,12 +468,43 @@
         "T3919",
         "T3920"
       ],
+      "task_statuses": {
+        "T3916": "OPEN",
+        "T3917": "OPEN",
+        "T3918": "OPEN",
+        "T3919": "OPEN",
+        "T3920": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-SCOPED-CALL",
         "SRC-MO-NHI"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-SCOPED-CALL",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/mcp/class-server.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-MO-NHI",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/includes/common/repositories/class-nhi-store.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identity-context.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Role/subject/resource drift invalidates next admission and pending commit."
       ]
     },
     {
@@ -240,12 +519,43 @@
         "T3924",
         "T3925"
       ],
+      "task_statuses": {
+        "T3921": "OPEN",
+        "T3922": "OPEN",
+        "T3923": "OPEN",
+        "T3924": "OPEN",
+        "T3925": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-CONSENT",
         "SRC-EASY-SCOPED-CALL"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-CONSENT",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/oauth/views/consent.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-SCOPED-CALL",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/mcp/class-server.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "tools/list and tools/call both revalidate selected scope against current authority."
       ]
     },
     {
@@ -260,12 +570,43 @@
         "T3924",
         "T3925"
       ],
+      "task_statuses": {
+        "T3921": "OPEN",
+        "T3922": "OPEN",
+        "T3923": "OPEN",
+        "T3924": "OPEN",
+        "T3925": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-SCOPED-CALL",
         "SRC-RM-PKCE"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-SCOPED-CALL",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/mcp/class-server.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-PKCE",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/OAuth/PKCE.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Exact resource/issuer/subject/client/build session receipt supports external acceptance."
       ]
     },
     {
@@ -280,11 +621,35 @@
         "T3929",
         "T3930"
       ],
+      "task_statuses": {
+        "T3926": "OPEN",
+        "T3927": "OPEN",
+        "T3928": "OPEN",
+        "T3929": "OPEN",
+        "T3930": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-GA4"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-GA4",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/ga/class-run-report.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Property, attribution window, consent, sampling and freshness appear in every report."
       ]
     },
     {
@@ -299,11 +664,35 @@
         "T3929",
         "T3930"
       ],
+      "task_statuses": {
+        "T3926": "OPEN",
+        "T3927": "OPEN",
+        "T3928": "OPEN",
+        "T3929": "OPEN",
+        "T3930": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-GSC"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-GSC",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/gsc/class-query-performance.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Verified site scope and language/market/window provenance survive normalization."
       ]
     },
     {
@@ -318,6 +707,13 @@
         "T3929",
         "T3930"
       ],
+      "task_statuses": {
+        "T3926": "OPEN",
+        "T3927": "OPEN",
+        "T3928": "OPEN",
+        "T3929": "OPEN",
+        "T3930": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-AHREFS",
         "SRC-EASY-DFS",
@@ -326,6 +722,44 @@
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-AHREFS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/ahrefs/class-domain-rating-free.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-DFS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/dfs/class-serp-google-organic-live.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-SEMRUSH",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/semrush/class-competitors-organic.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-SERANKING",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/seranking/class-ai-overview.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Provider-specific quotas/currency/rights and equivalent-comparison limits are explicit; existing SerpApi/DataForSEO are reused."
       ]
     },
     {
@@ -340,6 +774,13 @@
         "T3934",
         "T3935"
       ],
+      "task_statuses": {
+        "T3931": "OPEN",
+        "T3932": "OPEN",
+        "T3933": "OPEN",
+        "T3934": "OPEN",
+        "T3935": "OPEN"
+      },
       "evidence_ids": [
         "SRC-MO-FORMS",
         "SRC-RM-CF7",
@@ -347,6 +788,37 @@
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-MO-FORMS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/libraries/abilities/src/packs/forms/class-forms-abilities.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-CF7",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/ContactForm7.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-WPFORMS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/WPForms.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Form fields/repeaters/required/choices and owned configuration survive plan/readback."
       ]
     },
     {
@@ -361,12 +833,43 @@
         "T3934",
         "T3935"
       ],
+      "task_statuses": {
+        "T3931": "OPEN",
+        "T3932": "OPEN",
+        "T3933": "OPEN",
+        "T3934": "OPEN",
+        "T3935": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-CF7",
         "SRC-RM-WPFORMS"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-CF7",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/ContactForm7.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-WPFORMS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/WPForms.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Object/field-level consent, masked previews, bounded export and deletion review are enforced."
       ]
     },
     {
@@ -381,11 +884,35 @@
         "T3939",
         "T3940"
       ],
+      "task_statuses": {
+        "T3936": "OPEN",
+        "T3937": "OPEN",
+        "T3938": "OPEN",
+        "T3939": "OPEN",
+        "T3940": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-WC-PRODUCT"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-WC-PRODUCT",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/woocommerce/class-create-product-variation.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "HPOS/applicable runtime and product/variation identity readback; disposable reversible canaries."
       ]
     },
     {
@@ -400,11 +927,35 @@
         "T3939",
         "T3940"
       ],
+      "task_statuses": {
+        "T3936": "OPEN",
+        "T3937": "OPEN",
+        "T3938": "OPEN",
+        "T3939": "OPEN",
+        "T3940": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-WC-ORDER"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-WC-ORDER",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/woocommerce/class-batch-update-orders.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "PII masking, current object authorization and per-field effects classify every operation."
       ]
     },
     {
@@ -419,12 +970,43 @@
         "T3939",
         "T3940"
       ],
+      "task_statuses": {
+        "T3936": "OPEN",
+        "T3937": "OPEN",
+        "T3938": "OPEN",
+        "T3939": "OPEN",
+        "T3940": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-WC-ORDER",
         "SRC-EASY-WC-WEBHOOK"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-WC-ORDER",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/woocommerce/class-batch-update-orders.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-WC-WEBHOOK",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/woocommerce/class-create-webhook.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Each effect has explicit risk/authority and honest non-reversible classification; no blanket commerce certification."
       ]
     },
     {
@@ -439,12 +1021,43 @@
         "T3944",
         "T3945"
       ],
+      "task_statuses": {
+        "T3941": "OPEN",
+        "T3942": "OPEN",
+        "T3943": "OPEN",
+        "T3944": "OPEN",
+        "T3945": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-EDITOR-LOCK",
         "SRC-RM-ELEMENTOR"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-EDITOR-LOCK",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/MCP/Support/Builder_Safety.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-ELEMENTOR",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/Elementor.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Fresh element IDs, editor locks, structural diffs and exact rendered readback."
       ]
     },
     {
@@ -459,12 +1072,43 @@
         "T3944",
         "T3945"
       ],
+      "task_statuses": {
+        "T3941": "OPEN",
+        "T3942": "OPEN",
+        "T3943": "OPEN",
+        "T3944": "OPEN",
+        "T3945": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-DIVI",
         "SRC-RM-EDITOR-LOCK"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-DIVI",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/Divi.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-EDITOR-LOCK",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/MCP/Support/Builder_Safety.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Dry-run replace/clone/library operations preserve format and regenerate identities."
       ]
     },
     {
@@ -479,12 +1123,43 @@
         "T3944",
         "T3945"
       ],
+      "task_statuses": {
+        "T3941": "OPEN",
+        "T3942": "OPEN",
+        "T3943": "OPEN",
+        "T3944": "OPEN",
+        "T3945": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-FSE",
         "SRC-MO-KADENCE"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-FSE",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/templates/class-update-template.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-MO-KADENCE",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/libraries/abilities/src/packs/kadence/class-kadence-write-engine.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Nested block structure, template/theme identity and reusable-block references verified."
       ]
     },
     {
@@ -499,12 +1174,43 @@
         "T3949",
         "T3950"
       ],
+      "task_statuses": {
+        "T3946": "OPEN",
+        "T3947": "OPEN",
+        "T3948": "OPEN",
+        "T3949": "OPEN",
+        "T3950": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-SEO",
         "SRC-EASY-SEO-HEAD"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-SEO",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/seo/seopress/class-seopress-update-title-desc.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-SEO-HEAD",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/seo/yoast/class-yoast-get-head.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-seo-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Provider native APIs and per-field ownership; title/meta/social/schema/robots/canonical readback."
       ]
     },
     {
@@ -519,12 +1225,43 @@
         "T3949",
         "T3950"
       ],
+      "task_statuses": {
+        "T3946": "OPEN",
+        "T3947": "OPEN",
+        "T3948": "OPEN",
+        "T3949": "OPEN",
+        "T3950": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-SEO-HEAD",
         "SRC-RM-REDIRECT"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-SEO-HEAD",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/seo/yoast/class-yoast-get-head.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-REDIRECT",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/Redirection.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-seo-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Rendered and stored semantics are compared on exact surface/language/cache generation."
       ]
     },
     {
@@ -539,11 +1276,35 @@
         "T3954",
         "T3955"
       ],
+      "task_statuses": {
+        "T3951": "OPEN",
+        "T3952": "OPEN",
+        "T3953": "OPEN",
+        "T3954": "OPEN",
+        "T3955": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-HISTORY"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-HISTORY",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/history/class-change-recorder.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Stable paging and per-object authorization reveal meaningful typed before/after differences."
       ]
     },
     {
@@ -558,12 +1319,43 @@
         "T3954",
         "T3955"
       ],
+      "task_statuses": {
+        "T3951": "OPEN",
+        "T3952": "OPEN",
+        "T3953": "OPEN",
+        "T3954": "OPEN",
+        "T3955": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-HISTORY",
         "SRC-EASY-REDACTION"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-HISTORY",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/history/class-change-recorder.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-REDACTION",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/history/class-change-redactor.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "No API key/token/private field in diff; retained/exported digest chain stays verifiable."
       ]
     },
     {
@@ -578,11 +1370,35 @@
         "T3959",
         "T3960"
       ],
+      "task_statuses": {
+        "T3956": "OPEN",
+        "T3957": "OPEN",
+        "T3958": "OPEN",
+        "T3959": "OPEN",
+        "T3960": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AI-WORKSPACE"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AI-WORKSPACE",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "ai-engine",
+          "path": "ai-engine/classes/modules/workspace.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Conversation ownership, tool arguments/diffs and approvals bind to live subject/revision."
       ]
     },
     {
@@ -597,11 +1413,35 @@
         "T3959",
         "T3960"
       ],
+      "task_statuses": {
+        "T3956": "OPEN",
+        "T3957": "OPEN",
+        "T3958": "OPEN",
+        "T3959": "OPEN",
+        "T3960": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AI-MODELS"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AI-MODELS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "ai-engine",
+          "path": "ai-engine/classes/engines/factory.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Per-request usage reservation, provider provenance and retry reconciliation."
       ]
     },
     {
@@ -616,12 +1456,43 @@
         "T3959",
         "T3960"
       ],
+      "task_statuses": {
+        "T3956": "OPEN",
+        "T3957": "OPEN",
+        "T3958": "OPEN",
+        "T3959": "OPEN",
+        "T3960": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AI-AUDIO-PRO",
         "SRC-AI-MEDIA-CLAIM"
       ],
       "evidence_classes": [
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AI-AUDIO-PRO",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "ai-engine",
+          "path": "ai-engine/readme.txt",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-AI-MEDIA-CLAIM",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "ai-engine",
+          "path": "ai-engine/readme.txt",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Generated content/assets are previews until approved desired-state publication; paid media evidence is separate."
       ]
     },
     {
@@ -636,11 +1507,35 @@
         "T3964",
         "T3965"
       ],
+      "task_statuses": {
+        "T3961": "OPEN",
+        "T3962": "OPEN",
+        "T3963": "OPEN",
+        "T3964": "OPEN",
+        "T3965": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AI-RAG-PRO"
       ],
       "evidence_classes": [
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AI-RAG-PRO",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "ai-engine",
+          "path": "ai-engine/readme.txt",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Source/chunk lineage, deletion, freshness, embeddings/model generation and grounded citations verified."
       ]
     },
     {
@@ -655,6 +1550,13 @@
         "T3964",
         "T3965"
       ],
+      "task_statuses": {
+        "T3961": "OPEN",
+        "T3962": "OPEN",
+        "T3963": "OPEN",
+        "T3964": "OPEN",
+        "T3965": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AI-FORMS-PRO",
         "SRC-AI-WORKSPACE"
@@ -662,6 +1564,30 @@
       "evidence_classes": [
         "BUNDLED_STATIC",
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AI-FORMS-PRO",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "ai-engine",
+          "path": "ai-engine/readme.txt",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-AI-WORKSPACE",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "ai-engine",
+          "path": "ai-engine/classes/modules/workspace.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Each tool call uses existing authority and every file/PII field is explicitly admitted."
       ]
     },
     {
@@ -676,12 +1602,43 @@
         "T3969",
         "T3970"
       ],
+      "task_statuses": {
+        "T3966": "OPEN",
+        "T3967": "OPEN",
+        "T3968": "OPEN",
+        "T3969": "OPEN",
+        "T3970": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-BACKUP",
         "SRC-RM-MIGRATION"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-BACKUP",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/UpdraftPlus.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-MIGRATION",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/Duplicator.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Exact package/root/restore epoch and protected receipt handoff; installer details masked."
       ]
     },
     {
@@ -696,11 +1653,35 @@
         "T3969",
         "T3970"
       ],
+      "task_statuses": {
+        "T3966": "OPEN",
+        "T3967": "OPEN",
+        "T3968": "OPEN",
+        "T3969": "OPEN",
+        "T3970": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-CACHE"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-CACHE",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/W3TotalCache.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Purge plan states targets/blast radius and fresh frontend readback."
       ]
     },
     {
@@ -715,6 +1696,13 @@
         "T3969",
         "T3970"
       ],
+      "task_statuses": {
+        "T3966": "OPEN",
+        "T3967": "OPEN",
+        "T3968": "OPEN",
+        "T3969": "OPEN",
+        "T3970": "OPEN"
+      },
       "evidence_ids": [
         "SRC-MO-SECURITY-CLAIMS",
         "SRC-RM-SECURITY"
@@ -722,6 +1710,30 @@
       "evidence_classes": [
         "BUNDLED_STATIC",
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-MO-SECURITY-CLAIMS",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/readme.txt",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-SECURITY",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/SolidSecurity.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Sensitive logs masked; ban/unban and security changes use exact review and self-lockout checks."
       ]
     },
     {
@@ -736,11 +1748,35 @@
         "T3969",
         "T3970"
       ],
+      "task_statuses": {
+        "T3966": "OPEN",
+        "T3967": "OPEN",
+        "T3968": "OPEN",
+        "T3969": "OPEN",
+        "T3970": "OPEN"
+      },
       "evidence_ids": [
         "SRC-RM-REDIRECT"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-RM-REDIRECT",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/Integrations/Redirection.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "No loops/open redirects; exact origin/target/status/bound scope readback."
       ]
     },
     {
@@ -755,11 +1791,35 @@
         "T3974",
         "T3975"
       ],
+      "task_statuses": {
+        "T3971": "OPEN",
+        "T3972": "OPEN",
+        "T3973": "OPEN",
+        "T3974": "OPEN",
+        "T3975": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-TERM"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-TERM",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/taxonomy/class-update-term.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Explicit source-language/parent/translation groups; dry-run counts and exact applied hierarchy readback."
       ]
     },
     {
@@ -774,12 +1834,43 @@
         "T3974",
         "T3975"
       ],
+      "task_statuses": {
+        "T3971": "OPEN",
+        "T3972": "OPEN",
+        "T3973": "OPEN",
+        "T3974": "OPEN",
+        "T3975": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-ACF",
         "SRC-RM-READBACK"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-ACF",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/acf/class-update-fields.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-READBACK",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/includes/MCP/Support/WriteVerifier.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Each field/object capability has schema, object permission, native readback and admitted risk."
       ]
     },
     {
@@ -794,12 +1885,43 @@
         "T3974",
         "T3975"
       ],
+      "task_statuses": {
+        "T3971": "OPEN",
+        "T3972": "OPEN",
+        "T3973": "OPEN",
+        "T3974": "OPEN",
+        "T3975": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-COMMUNITY",
         "SRC-EASY-EVENTS"
       ],
       "evidence_classes": [
         "BUNDLED_STATIC"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-COMMUNITY",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/buddypress/class-get-message-thread.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-EASY-EVENTS",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/includes/tools/events-calendar/class-create-event.php",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Private messages/members remain object-authorized; event timezones and pagination are explicit."
       ]
     },
     {
@@ -814,6 +1936,13 @@
         "T3979",
         "T3980"
       ],
+      "task_statuses": {
+        "T3976": "OPEN",
+        "T3977": "OPEN",
+        "T3978": "OPEN",
+        "T3979": "OPEN",
+        "T3980": "OPEN"
+      },
       "evidence_ids": [
         "SRC-MO-WRITE-GUARD",
         "SRC-RM-HEALTH"
@@ -821,6 +1950,30 @@
       "evidence_classes": [
         "BUNDLED_STATIC",
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-MO-WRITE-GUARD",
+          "kind": "BUNDLED_STATIC",
+          "package_id": "miniorange-secure-mcp-server",
+          "path": "miniorange-secure-mcp-server/libraries/abilities/src/class-ability-registrar.php",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-HEALTH",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/readme.txt",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Unknown artifact becomes structural candidate; only eligible canary/readback/rollback evidence can promote matching capability."
       ]
     },
     {
@@ -835,12 +1988,43 @@
         "T3979",
         "T3980"
       ],
+      "task_statuses": {
+        "T3976": "OPEN",
+        "T3977": "OPEN",
+        "T3978": "OPEN",
+        "T3979": "OPEN",
+        "T3980": "OPEN"
+      },
       "evidence_ids": [
         "SRC-EASY-ONBOARDING",
         "SRC-RM-HEALTH"
       ],
       "evidence_classes": [
         "CLAIMED_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-EASY-ONBOARDING",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "easy-mcp-ai",
+          "path": "easy-mcp-ai/readme.txt",
+          "runtime_verified": false
+        },
+        {
+          "id": "SRC-RM-HEALTH",
+          "kind": "CLAIMED_UNVERIFIED",
+          "package_id": "royal-mcp",
+          "path": "royal-mcp/readme.txt",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Initialize/tools/list same session/build; real browser routes/actions and at least three comparable frontend samples."
       ]
     },
     {
@@ -855,11 +2039,37 @@
         "T4004",
         "T4005"
       ],
+      "task_statuses": {
+        "T4001": "PARTIAL",
+        "T4002": "PARTIAL",
+        "T4003": "PARTIAL",
+        "T4004": "PARTIAL",
+        "T4005": "PARTIAL"
+      },
       "evidence_ids": [
         "SRC-AO-01"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-01",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Discover registered symbols, hooks, REST routes, Abilities, MCP descriptors, CPTs/taxonomies/meta, schemas, cron and admin pages through bounded trusted readers.",
+        "Implement unknown-plugin candidate packages and descriptive database/endpoint inventory without invoking unknown code, exposing settings secrets or creating writes.",
+        "Implement semantic pre/post graph diff and isolate removed/changed capabilities plus dependent workflows while preserving unrelated compatible reads."
       ]
     },
     {
@@ -874,11 +2084,37 @@
         "T4009",
         "T4010"
       ],
+      "task_statuses": {
+        "T4006": "PARTIAL",
+        "T4007": "PARTIAL",
+        "T4008": "PARTIAL",
+        "T4009": "PARTIAL",
+        "T4010": "PARTIAL"
+      },
       "evidence_ids": [
         "SRC-AO-02"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-02",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Implement confidence, contradictory/missing evidence, provenance and classifier-version traces; confidence and operation names are never safety proof.",
+        "Separate runtime-discovered facts from reviewed policy overlay; only admitted zero-effect/non-secret read recipes may auto-classify after actual conformance.",
+        "Implement owner review for new write/unknown/high-risk proposals and record scope/risk/authority differences without altering grants or mounts."
       ]
     },
     {
@@ -893,11 +2129,37 @@
         "T4014",
         "T4015"
       ],
+      "task_statuses": {
+        "T4011": "OPEN",
+        "T4012": "OPEN",
+        "T4013": "OPEN",
+        "T4014": "OPEN",
+        "T4015": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-03"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-03",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Implement schema-driven adapters only through already admitted typed executor strategies; discovered symbols/routes cannot become arbitrary invocation targets.",
+        "Implement manifest signature/version/capability/artifact/generation validation and static effect/egress/secret/cost checks before interpretation.",
+        "Expose manifest preview, supported strategy limits, rejected bindings and exact execution/readback provenance without generating or activating PHP."
       ]
     },
     {
@@ -912,11 +2174,37 @@
         "T4019",
         "T4020"
       ],
+      "task_statuses": {
+        "T4016": "OPEN",
+        "T4017": "OPEN",
+        "T4018": "OPEN",
+        "T4019": "OPEN",
+        "T4020": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-04"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-04",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Compile content/meta/taxonomy/media/SEO/translation/publication primitives into typed dependency DAGs with provider/capability resolution.",
+        "Implement plan pinning, exact object and input diffs, effect/permission aggregation, idempotency/fencing and compensation boundaries before approved execution.",
+        "Bind compiled workflows to existing WorkflowProvider/ContentJob services; provider replacement produces a new plan and invalidates affected approvals."
       ]
     },
     {
@@ -931,11 +2219,37 @@
         "T4024",
         "T4025"
       ],
+      "task_statuses": {
+        "T4021": "OPEN",
+        "T4022": "OPEN",
+        "T4023": "OPEN",
+        "T4024": "OPEN",
+        "T4025": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-05"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-05",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Compare object/field/semantic/error/latency/privacy/cost results using policy-defined sample counts, workload coverage and tolerances.",
+        "Require proven non-mutating/non-secret behavior and quota/cost authority before shadow execution; uncertain read effects prohibit sampling.",
+        "Issue generation-bound structural/read behavioral receipts and promote only existing eligible read exposure with no new grants/tool mounts."
       ]
     },
     {
@@ -950,11 +2264,37 @@
         "T4029",
         "T4030"
       ],
+      "task_statuses": {
+        "T4026": "OPEN",
+        "T4027": "OPEN",
+        "T4028": "OPEN",
+        "T4029": "OPEN",
+        "T4030": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-06"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-06",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Provision isolated fixtures, capture native pre-state, execute candidate operation once, read exact stored/emitted state and evaluate invariants.",
+        "Restore through the certified rollback strategy and prove exact original state including hooks/external effects; always record cleanup/outcome uncertainty.",
+        "Issue signed exact capability/artifact/schema/recipe/subject/environment/generation behavioral receipts with expiry and revocation."
       ]
     },
     {
@@ -969,11 +2309,37 @@
         "T4034",
         "T4035"
       ],
+      "task_statuses": {
+        "T4031": "OPEN",
+        "T4032": "OPEN",
+        "T4033": "OPEN",
+        "T4034": "OPEN",
+        "T4035": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-07"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-07",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Separate PHP engine releases from data policy, certification evidence and Skill/profile revisions with trusted compatible schema interpreters.",
+        "Implement exact artifact/capability/schema/site/environment binding, chain/key revocation, expiry, anti-replay/rollback protection and atomic registry activation.",
+        "Keep restrictive/equal non-authorizing refresh eligible for automation; risk downgrade, new authority, grants or activation eligibility require governed review."
       ]
     },
     {
@@ -988,11 +2354,37 @@
         "T4039",
         "T4040"
       ],
+      "task_statuses": {
+        "T4036": "OPEN",
+        "T4037": "OPEN",
+        "T4038": "OPEN",
+        "T4039": "OPEN",
+        "T4040": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-08"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-08",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-provider-discovery.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Distinguish managed drift, human-owned edits, provider drift and ambiguous conflict across profiles/bindings/workflows/schemas/SEO/settings/Skills.",
+        "Generate bounded repair plans for proven owned non-authorizing fields; preserve/rebase valid human deltas only inside explicit unlocked policy.",
+        "Route locked/ambiguous/security-sensitive changes to review; never overwrite human Skills, reset authority, resume observations or unfreeze spend by inference."
       ]
     },
     {
@@ -1007,11 +2399,37 @@
         "T4044",
         "T4045"
       ],
+      "task_statuses": {
+        "T4041": "OPEN",
+        "T4042": "OPEN",
+        "T4043": "OPEN",
+        "T4044": "OPEN",
+        "T4045": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-09"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-09",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-context.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Bind every admitted mutation outcome to current execution, readback, uncertainty and external effects using existing audit/journal services.",
+        "Expose Undo eligibility/expiry, preview, visual diff and exact governed compensation without creating a second execution or authority system.",
+        "Preserve redaction, tenant/object access, integrity, retention and durable receipt ordering across archive/export/restore."
       ]
     },
     {
@@ -1026,11 +2444,37 @@
         "T4049",
         "T4050"
       ],
+      "task_statuses": {
+        "T4046": "OPEN",
+        "T4047": "OPEN",
+        "T4048": "OPEN",
+        "T4049": "OPEN",
+        "T4050": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-10"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-10",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Classify no drift/read drift/changed reversible write/removed capability/authority or topology change/side channel with explicit isolated outcomes.",
+        "Compile exact bounded remediation/test/recertification plans under approved autonomy policy and preserve unrelated capabilities/session safety.",
+        "Verify registry/Skills/catalog/current eligible-grant projection and issue Update Acceptance Receipt; release rollback needs a preauthorized exact recovery plan."
       ]
     },
     {
@@ -1045,11 +2489,37 @@
         "T4054",
         "T4055"
       ],
+      "task_statuses": {
+        "T4051": "OPEN",
+        "T4052": "OPEN",
+        "T4053": "OPEN",
+        "T4054": "OPEN",
+        "T4055": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-11"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-11",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Bind observations to exact host/environment profile and trusted bounded probe provenance with expiry; unknown/missing values stay unknown.",
+        "Derive execution eligibility from actual prlimit plus admitted network sandbox capability without host-specific fallback code or binaries installation.",
+        "Expose one external host remediation action and a read-only recheck; host authority remains separate from WordPress/Staging write authority."
       ]
     },
     {
@@ -1064,11 +2534,37 @@
         "T4059",
         "T4060"
       ],
+      "task_statuses": {
+        "T4056": "OPEN",
+        "T4057": "OPEN",
+        "T4058": "OPEN",
+        "T4059": "OPEN",
+        "T4060": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-12"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-12",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-provider-gateway.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Generate provider setup/account/property/profile screens from reviewed field schemas and reuse encrypted secret handles and explicit account tests.",
+        "Implement contract-specific response/error/cost normalization, account-bound budgets, circuit breaking and uncertain-charge reconciliation without arbitrary HTTP.",
+        "Support configuration packs for Drive/SERP/analytics/research providers only through available reviewed protocol strategies; novel API behavior requires code review."
       ]
     },
     {
@@ -1083,11 +2579,37 @@
         "T4064",
         "T4065"
       ],
+      "task_statuses": {
+        "T4061": "PARTIAL",
+        "T4062": "OPEN",
+        "T4063": "OPEN",
+        "T4064": "OPEN",
+        "T4065": "OPEN"
+      },
       "evidence_ids": [
         "SRC-AO-13"
       ],
       "evidence_classes": [
         "USER_PROPOSAL_UNVERIFIED"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-AO-13",
+          "kind": "USER_PROPOSAL_UNVERIFIED",
+          "package_id": null,
+          "path": "source-adaptive-operations-proposal.ar.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-health-view.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Dispatch only safe non-authorizing already-policy-admitted remediation; require one explicit review/consent/host action for blocked plans.",
+        "Expose cause, scope, evidence, next step, user-owned conflict, attempt/readback/rollback history and capability-local blast radius.",
+        "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness."
       ]
     },
     {
@@ -1102,11 +2624,37 @@
         "T4069",
         "T4070"
       ],
+      "task_statuses": {
+        "T4066": "OPEN",
+        "T4067": "OPEN",
+        "T4068": "OPEN",
+        "T4069": "OPEN",
+        "T4070": "OPEN"
+      },
       "evidence_ids": [
         "SRC-ARCH-01"
       ],
       "evidence_classes": [
         "ARCHITECTURE_DERIVATION"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-ARCH-01",
+          "kind": "ARCHITECTURE_DERIVATION",
+          "package_id": null,
+          "path": "architecture-expansion.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Implement exact site/cohort/generation release-ring identities with site-local authority; no implicit Production ring.",
+        "Implement pilot-ring health thresholds, bounded cohorts, per-site receipts and partial rollback state.",
+        "Implement distributed rollout fencing/idempotency so duplicate workers cannot promote or rollback the same site twice."
       ]
     },
     {
@@ -1121,11 +2669,37 @@
         "T4074",
         "T4075"
       ],
+      "task_statuses": {
+        "T4071": "OPEN",
+        "T4072": "OPEN",
+        "T4073": "OPEN",
+        "T4074": "OPEN",
+        "T4075": "OPEN"
+      },
       "evidence_ids": [
         "SRC-ARCH-02"
       ],
       "evidence_classes": [
         "ARCHITECTURE_DERIVATION"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-ARCH-02",
+          "kind": "ARCHITECTURE_DERIVATION",
+          "package_id": null,
+          "path": "architecture-expansion.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-health-view.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Define automation SLOs over explicit eligible workload: repair success, false repair, MTTR, quarantine, rollback failure, intervention and cost.",
+        "Implement backpressure, queue isolation and circuit breaking for repeated self-heal failures.",
+        "Implement durable kill switch stopping L2-L4 automatic actions while preserving L0-L1 observation and governed manual paths."
       ]
     },
     {
@@ -1140,11 +2714,37 @@
         "T4079",
         "T4080"
       ],
+      "task_statuses": {
+        "T4076": "OPEN",
+        "T4077": "OPEN",
+        "T4078": "OPEN",
+        "T4079": "OPEN",
+        "T4080": "OPEN"
+      },
       "evidence_ids": [
         "SRC-ARCH-03"
       ],
       "evidence_classes": [
         "ARCHITECTURE_DERIVATION"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-ARCH-03",
+          "kind": "ARCHITECTURE_DERIVATION",
+          "package_id": null,
+          "path": "architecture-expansion.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Implement source-channel/hash/signer/revocation/dependency provenance for runtime/provider/policy artifacts.",
+        "Implement downgrade, mirror mismatch, dependency substitution and unexpected source detection with capability-local quarantine.",
+        "Expose provenance/revocation status in operator/update acceptance views with bounded remediation."
       ]
     },
     {
@@ -1159,11 +2759,37 @@
         "T4084",
         "T4085"
       ],
+      "task_statuses": {
+        "T4081": "OPEN",
+        "T4082": "OPEN",
+        "T4083": "OPEN",
+        "T4084": "OPEN",
+        "T4085": "OPEN"
+      },
       "evidence_ids": [
         "SRC-ARCH-04"
       ],
       "evidence_classes": [
         "ARCHITECTURE_DERIVATION"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-ARCH-04",
+          "kind": "ARCHITECTURE_DERIVATION",
+          "package_id": null,
+          "path": "architecture-expansion.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Implement versioned registry/policy/manifest migration DAGs with compatibility declarations and dry-run semantic diffs.",
+        "Support declared mixed-generation worker windows without dropping unknown fields or reinterpreting stale evidence.",
+        "Require governed review for migrations that lower risk, change authority semantics or make prior ineligible capability executable."
       ]
     },
     {
@@ -1178,11 +2804,37 @@
         "T4089",
         "T4090"
       ],
+      "task_statuses": {
+        "T4086": "OPEN",
+        "T4087": "OPEN",
+        "T4088": "OPEN",
+        "T4089": "OPEN",
+        "T4090": "OPEN"
+      },
       "evidence_ids": [
         "SRC-ARCH-05"
       ],
       "evidence_classes": [
         "ARCHITECTURE_DERIVATION"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-ARCH-05",
+          "kind": "ARCHITECTURE_DERIVATION",
+          "package_id": null,
+          "path": "architecture-expansion.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Implement deterministic disposable schema/property fuzz cases for boundary, malformed-response, contradictory annotation and hidden-effect conditions.",
+        "Implement differential compatibility fuzzing across certified and candidate versions without candidate output entering active responses.",
+        "Feed reproducible fuzz findings into policy/canary/quarantine evidence without automatic authority changes."
       ]
     },
     {
@@ -1197,14 +2849,40 @@
         "T4094",
         "T4095"
       ],
+      "task_statuses": {
+        "T4091": "OPEN",
+        "T4092": "OPEN",
+        "T4093": "OPEN",
+        "T4094": "OPEN",
+        "T4095": "OPEN"
+      },
       "evidence_ids": [
         "SRC-ARCH-06"
       ],
       "evidence_classes": [
         "ARCHITECTURE_DERIVATION"
+      ],
+      "evidence_sources": [
+        {
+          "id": "SRC-ARCH-06",
+          "kind": "ARCHITECTURE_DERIVATION",
+          "package_id": null,
+          "path": "architecture-expansion.md",
+          "runtime_verified": false
+        }
+      ],
+      "mad4b_foundation_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "runtime_parity_claimed": false,
+      "acceptance_requirements": [
+        "Implement restore-epoch detection across DB, files, runtime package, Site Profile and registry generations.",
+        "Rebuild current artifact/provider/host graphs and reconcile exact site-local grants/authority before writes return.",
+        "Implement external-effect reconciliation for actions not rewound by local restore and issue post-restore acceptance receipt."
       ]
     }
   ],
   "authorizing": false,
-  "summary_sha256": "1f2b0bae2082a6b071e4b13a8075fc49f05e2d389b3fffa210499d91ce51d019"
+  "summary_sha256": "86b9bbdc337f60909c2ac34d1fc869157e70c42d2debb5c8867d6799b031ca93"
 }
