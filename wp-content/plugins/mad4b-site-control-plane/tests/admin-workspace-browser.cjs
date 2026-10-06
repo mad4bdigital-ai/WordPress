@@ -21,6 +21,8 @@ assert(fixtureDir, 'A disposable fixture directory is required.');
       await page.route('**/*', route => { outbound += 1; return route.abort(); });
       await page.setContent(readFileSync(path.join(fixtureDir, `workspace-${locale}.html`), 'utf8'));
       check(await page.locator('html').getAttribute('dir') === (locale === 'ar' ? 'rtl' : 'ltr'), 'Direction follows the locale.');
+      check(await page.locator('.wrap > h1').textContent() === (locale === 'ar' ? 'مركز إجراءات MAD4B' : 'MAD4B Action Center'), 'The actual page heading uses the current catalog.');
+      check(await page.locator('label[for=mad4b-workspace-filter]').textContent() === (locale === 'ar' ? 'ابحث عن صفحة أو إعداد' : 'Find a page or setting'), 'Escaped navigation text uses the current catalog.');
       check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${locale}/${width}: no document overflow.`);
       const summary = page.locator('.mad4b-workspace-directory > summary');
       await summary.focus();
@@ -42,7 +44,10 @@ assert(fixtureDir, 'A disposable fixture directory is required.');
       check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${locale}/${width}: expanded navigation fits the viewport.`);
       if (width === 375 || width === 1440) {
         mkdirSync(path.join(fixtureDir, 'screenshots'), { recursive: true });
-        await page.screenshot({ path: path.join(fixtureDir, 'screenshots', `${locale}-${width}.png`), fullPage: false });
+        await page.screenshot({ path: path.join(fixtureDir, 'screenshots', `directory-${locale}-${width}.png`), fullPage: false });
+        await summary.click();
+        await page.locator('.wrap > h1').evaluate(node => node.scrollIntoView({ block: 'start' }));
+        await page.screenshot({ path: path.join(fixtureDir, 'screenshots', `action-center-${locale}-${width}.png`), fullPage: false });
       }
       await context.close();
     }

@@ -9,8 +9,8 @@ $GLOBALS['workspace_admin'] = true;
 $GLOBALS['workspace_ajax'] = false;
 $GLOBALS['workspace_assets'] = array();
 function __( $s, $domain = '' ) { return isset( $GLOBALS['workspace_i18n'][ $s ] ) ? $GLOBALS['workspace_i18n'][ $s ] : $s; }
-function esc_html__( $s, $domain = '' ) { return esc_html( $s ); }
-function esc_attr__( $s, $domain = '' ) { return esc_html( $s ); }
+function esc_html__( $s, $domain = '' ) { return esc_html( __( $s, $domain ) ); }
+function esc_attr__( $s, $domain = '' ) { return esc_attr( __( $s, $domain ) ); }
 function esc_html( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $s ) { return esc_html( $s ); }
 function esc_url( $s ) { return esc_html( $s ); }

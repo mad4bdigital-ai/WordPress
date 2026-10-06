@@ -44,11 +44,16 @@ No external fonts, runtime libraries or design-skill code are shipped.
   writes, grants, tool registration or outbound discovery. Arabic PO/MO readback
   and format placeholders must match.
 - `tests/admin-workspace-browser.cjs`: English/Arabic at 375/768/1024/1440px,
-  keyboard directory, search/empty/restore states, visible focus, no document
-  overflow, JavaScript-disabled navigation and zero network requests.
+  translated page headings and escaped navigation text, keyboard directory,
+  search/empty/restore states, visible focus, no document overflow,
+  JavaScript-disabled navigation and zero network requests. Directory and
+  Action Center screenshots are captured separately on mobile and desktop.
+- `tests/adaptive-search-provider-enrollment-runtime.php`: actual registered
+  setup links and feedback bound to the current revision, operation and session;
+  forged flags and stale receipts cannot manufacture successful feedback.
+  Hermetic render coverage also verifies blank secrets and no outbound request.
 - `tests/admin-pages-wordpress.php`: existing real disposable WordPress full-page
   matrix plus exact workspace coverage and forged provider-success denial.
-- `tests/adaptive-search-provider-enrollment-runtime.php`: hermetic provider-enrollment UI compatibility, blank secrets and read-only render coverage.
 - Exact-head feature-owned CI executes these suites and publishes visual fixtures
   and screenshots. Disposable fixtures are not live Staging browser acceptance.
 

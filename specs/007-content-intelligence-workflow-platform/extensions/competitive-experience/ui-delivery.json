@@ -78,7 +78,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php",
-      "sha256": "2846c88fcdcfac7e886a1c6d3b96a877b0fb628b0d462182523b49532f338dfa"
+      "sha256": "d36b8e39d5da3c20396b23f20adc5314c7b1c9a233a73112cde0b8867fdfd565"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py",
@@ -86,7 +86,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-browser.cjs",
-      "sha256": "2241dae41c19c0bcd12aecc02f4ee379cd1ed3b524c1c7912462abeeb5c1794f"
+      "sha256": "4475dbb12b57c3a599388cdb97fdb04354c405cb0930cb03671832122caf17fd"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
@@ -94,7 +94,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
-      "sha256": "f7deda256fcab34fe9ec923372f0a2fc2704718e7f557ada8491b0921f97aaf6"
+      "sha256": "3c58d093de3b47380ee21d22a2d30ed67f5becaad91484bde9918271f3ce1156"
     }
   ],
   "design_skill": {
