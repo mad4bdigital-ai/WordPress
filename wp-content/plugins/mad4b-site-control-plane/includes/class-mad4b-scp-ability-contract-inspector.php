@@ -84,7 +84,7 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$schema_digest = self::input_schema_sha256( $ability );
 		if ( '' === $schema_digest ) return new WP_Error( 'mad4b_chatgpt_projection_schema_invalid', 'Ability schema cannot be serialized.' );
 
-		$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-' . $lane, $ability_name ) : null;
+		$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_capability_descriptor( 'mad4b-' . $lane, $ability_name ) : null;
 		$breakglass = in_array( $lane, array( 'breakglass', 'developer-breakglass' ), true ) || in_array(
 			$ability_name,
 			array_merge(
