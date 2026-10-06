@@ -28,10 +28,23 @@ required = [
     "'candidates'",
     "'ambiguous_provider_capability_mapping'",
     "'resolve_provider_capability_mapping'",
+    "'runtime_eligibility_code'",
+    "'surface_violations'",
+    "'runtime_capability_prerequisite'",
+    "'provider_scope_prerequisite'",
+    "'provider_source_prerequisite'",
+    "'provider_source_policy'",
+    "'rollback_contract_certification'",
+    "'adapter_contract_defect'",
 ]
 for marker in required:
     if marker not in matrix:
         raise SystemExit(f'missing provider closure matrix invariant: {marker}')
+
+runtime_priority = matrix.index("if ( 'adapter_runtime_capability_not_eligible' === $surface_reason )")
+artifact_priority = matrix.index("elseif ( ! empty( $status['artifact_authority_required'] )")
+if runtime_priority > artifact_priority:
+    raise SystemExit('runtime capability prerequisite must take precedence over generic artifact authority diagnosis')
 
 for marker in [
     "'write_authority_state' => $write_authority_ready ? 'write_authority_current' : 'write_authority_reconciliation_required'",
