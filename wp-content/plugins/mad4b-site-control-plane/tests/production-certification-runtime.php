@@ -152,6 +152,20 @@ foreach ( $stages as $stage ) {
 	check( str_repeat( 'a', 40 ) === $row['candidate_identity']['source_commit_sha'], $stage . ' lost candidate binding' );
 	check( 64 === strlen( $row['producer_evidence_sha256'] ), $stage . ' evidence digest missing' );
 }
+$multi_authority = MAD4B_SCP_Production_Certification::execute( array( 'stage_id' => 'multi_authority_canary' ) );
+check( ! is_wp_error( $multi_authority ) && ! empty( $multi_authority['ready'] ), 'multi_authority_canary_not_ready_for_identity_readback' );
+$multi_evidence = isset( $multi_authority['producer_evidence'] ) && is_array( $multi_authority['producer_evidence'] ) ? $multi_authority['producer_evidence'] : array();
+check( 'oauth-authority:v1:test' === ( isset( $multi_evidence['authority_id'] ) ? $multi_evidence['authority_id'] : '' ), 'multi-authority canary lost canonical authority identity' );
+check( 'local' === ( isset( $multi_evidence['authority_type'] ) ? $multi_evidence['authority_type'] : '' ), 'multi-authority canary lost canonical authority type' );
+check( 'https://issuer.test' === ( isset( $multi_evidence['issuer'] ) ? $multi_evidence['issuer'] : '' ), 'multi-authority canary lost canonical issuer binding' );
+$expected_issuer_fingerprint = hash( 'sha256', 'oauth-issuer' . "\0" . 'https://issuer.test' );
+check(
+	isset( $multi_evidence['registry_issuer_fingerprint'] )
+	&& hash_equals( $expected_issuer_fingerprint, (string) $multi_evidence['registry_issuer_fingerprint'] )
+	&& isset( $multi_evidence['issuer_fingerprint'] )
+	&& hash_equals( $expected_issuer_fingerprint, (string) $multi_evidence['issuer_fingerprint'] ),
+	'multi-authority canary canonical issuer fingerprint drifted'
+);
 $session = MAD4B_SCP_Production_Certification::plan();
 check( ! is_wp_error( $session ) && 'mad4b.production-certification-session-plan.v1' === $session['contract'], 'certification session plan unavailable' );
 check( count( $stages ) === $session['local_evidence_count'] && 0 < $session['external_evidence_required_count'], 'certification session did not separate local and external evidence' );
