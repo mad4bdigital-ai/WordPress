@@ -246,18 +246,19 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 		$staged_indices = array_values( array_unique( array_filter( array_map( static function ( $row ) { return isset( $row['manifest_index'] ) ? (int) $row['manifest_index'] : -1; }, $rows ), static function ( $index ) { return $index >= 0; } ) ) );
 		sort( $staged_indices, SORT_NUMERIC );
 		$missing = $expected_count > 0 ? array_values( array_diff( range( 0, $expected_count - 1 ), $staged_indices ) ) : array();
-		$complete = $expected_count > 0 && empty( $missing );
+		$progress_known = $expected_count > 0;
+		$complete = $progress_known && empty( $missing );
 		$created = array_values( array_filter( $created ) ); sort( $created, SORT_NUMERIC ); sort( $attachments, SORT_NUMERIC );
 		$posts = get_posts( array(
 			'post_type' => 'any', 'post_status' => 'any', 'posts_per_page' => 2, 'fields' => 'ids',
 			'meta_key' => self::POST_MANIFEST_META, 'meta_value' => $manifest, 'no_found_rows' => true, 'suppress_filters' => true,
 		) );
 		$posts = array_values( array_unique( array_map( 'absint', (array) $posts ) ) );
-		$state = $posts ? 'bound' : ( $rows ? ( $complete ? 'staged_unbound' : 'staged_partial' ) : 'unknown' );
+		$state = $posts ? 'bound' : ( $rows ? ( $progress_known ? ( $complete ? 'staged_unbound' : 'staged_partial' ) : 'staged_unbound' ) : 'unknown' );
 		return array(
 			'contract' => self::CONTRACT, 'manifest_sha256' => $manifest, 'state' => $state,
 			'attachment_ids' => $attachments, 'created_for_manifest_attachment_ids' => $created,
-			'expected_item_count' => $expected_count, 'staged_item_count' => count( $staged_indices ), 'missing_manifest_indices' => $missing, 'complete' => $complete,
+			'expected_item_count' => $expected_count, 'staged_item_count' => count( $staged_indices ), 'missing_manifest_indices' => $missing, 'progress_known' => $progress_known, 'complete' => $complete,
 			'bound_post_ids' => $posts, 'recoverable' => in_array( $state, array( 'staged_partial', 'staged_unbound' ), true ),
 			'auto_delete' => false, 'cleanup_policy' => 'manual_only_after_reference_review',
 			'next_action' => 'staged_partial' === $state ? 'resume_remaining_media_imports' : ( 'staged_unbound' === $state ? 'rerun_media_binding_then_content_plan' : ( 'bound' === $state ? 'none' : 'inspect_manifest_identity' ) ),
@@ -287,7 +288,7 @@ final class MAD4B_SCP_Remote_Media_Recovery {
 			if ( is_wp_error( $status ) || ! in_array( $status['state'], array( 'staged_partial', 'staged_unbound' ), true ) ) continue;
 			$unbound[] = array(
 				'manifest_sha256' => $manifest, 'state' => $status['state'],
-				'attachment_count' => count( $status['attachment_ids'] ), 'expected_item_count' => $status['expected_item_count'], 'staged_item_count' => $status['staged_item_count'],
+				'attachment_count' => count( $status['attachment_ids'] ), 'expected_item_count' => $status['expected_item_count'], 'staged_item_count' => $status['staged_item_count'], 'progress_known' => $status['progress_known'],
 				'created_for_manifest_count' => count( $status['created_for_manifest_attachment_ids'] ),
 				'next_action' => $status['next_action'],
 			);

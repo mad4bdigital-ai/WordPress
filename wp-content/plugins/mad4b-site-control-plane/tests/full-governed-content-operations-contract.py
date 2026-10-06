@@ -724,4 +724,7 @@ for token in (
 assert "Partial manifest recovery state did not expose the exact resume action." in experience_runtime_smoke_src
 assert "Recovery overview did not surface partial manifests." in experience_runtime_smoke_src
 
+assert "progress_known" in remote_media_recovery_src
+assert "Legacy recovery rows were misclassified as partial manifests." in experience_runtime_smoke_src
+
 print("MAD4B full governed content operations contract: PASS")

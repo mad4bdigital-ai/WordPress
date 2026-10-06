@@ -492,6 +492,20 @@ try {
 	$check( in_array( $orphan_manifest_sha, $overview_manifests, true ) && $recovery_overview['created_unbound_attachment_count'] >= 1, 'Recovery overview did not surface created-but-unbound Media Library assets.' );
 	$check( in_array( $partial_manifest_sha, $overview_manifests, true ) && $recovery_overview['partial_manifest_count'] >= 1, 'Recovery overview did not surface partial manifests.' );
 
+	$legacy_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Legacy Recovery Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $legacy_attachment ), 'Unable to create legacy recovery fixture.' );
+	$legacy_attachment = (int) $legacy_attachment; $post_ids[] = $legacy_attachment;
+	$legacy_manifest_sha = hash( 'sha256', 'ci-legacy-recovery-manifest' );
+	$legacy_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $legacy_attachment, array(
+		'manifest_sha256' => $legacy_manifest_sha, 'manifest_index' => 0,
+		'import_plan_sha256' => hash( 'sha256', 'ci-legacy-recovery-plan' ), 'created_for_manifest' => true,
+	) );
+	$check( ! is_wp_error( $legacy_stage ), 'Unable to stage legacy recovery fixture.' );
+	$legacy_status = MAD4B_SCP_Remote_Media_Recovery::status( $legacy_manifest_sha );
+	$check( 'staged_unbound' === $legacy_status['state'] && empty( $legacy_status['progress_known'] ) && 0 === (int) $legacy_status['expected_item_count'], 'Legacy recovery rows were misclassified as partial manifests.' );
+
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
 	$check( $adapter instanceof MAD4B_SCP_Full_Content_Operations_Adapter, 'Full Content Operations adapter is unavailable.' );
 	$launch_next_request( 'r1' );
