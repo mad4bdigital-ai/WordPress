@@ -967,39 +967,21 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 	}
 
 	private static function database_tables() {
-		global $wpdb; $names=array();
-		if(is_object($wpdb)&&method_exists($wpdb,'tables')) $names=array_merge($names,(array)$wpdb->tables('all'));
-		if(class_exists('MAD4B_SCP_Schema')) $names=array_merge($names,array_values((array)MAD4B_SCP_Schema::tables()));
-		$names=array_values(array_unique(array_filter(array_map('strval',$names)))); sort($names,SORT_STRING); $out=array();
-		foreach(array_slice($names,0,self::MAX_ITEMS_PER_KIND) as $name) $out[]=array('id'=>$name,'kind'=>'database_table','schema_read'=>false,'row_values_read'=>false);
-		return $out;
+		global $wpdb; $names=is_object($wpdb)&&method_exists($wpdb,'tables')?(array)$wpdb->tables('all'):array(); if(class_exists('MAD4B_SCP_Schema')) $names=array_merge($names,array_values((array)MAD4B_SCP_Schema::tables()));
+		$names=array_values(array_unique(array_filter(array_map('strval',$names)))); sort($names,SORT_STRING); $out=array(); foreach(array_slice($names,0,self::MAX_ITEMS_PER_KIND) as $name) $out[]=array('id'=>$name,'kind'=>'database_table','schema_read'=>false,'row_values_read'=>false); return $out;
 	}
 
 	private static function index_rows( array $rows ) {
-		$out=array();
-		foreach($rows as $row) if(is_array($row)&&isset($row['id'])&&is_string($row['id'])&&''!==$row['id']) $out[$row['id']]=$row;
-		ksort($out,SORT_STRING); return $out;
+		$out=array(); foreach($rows as $row) if(is_array($row)&&isset($row['id'])&&is_string($row['id'])&&''!==$row['id']) $out[$row['id']]=$row; ksort($out,SORT_STRING); return $out;
 	}
-
 	private static function safe_row( array $row ) {
-		if(class_exists('MAD4B_SCP_Structural_Redaction')) return MAD4B_SCP_Structural_Redaction::redact($row,'runtime_evidence');
-		return $row;
+		return class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::redact($row,'runtime_evidence'):$row;
 	}
-
 	private static function digest( $contract, $value ) {
-		if(class_exists('MAD4B_SCP_Ability_Contract_Inspector')){
-			$d=MAD4B_SCP_Ability_Contract_Inspector::digest($contract,$value);
-			if(!is_wp_error($d)) return $d;
-		}
-		return hash('sha256',wp_json_encode(self::sort_value($value),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+		if(class_exists('MAD4B_SCP_Ability_Contract_Inspector')){ $d=MAD4B_SCP_Ability_Contract_Inspector::digest($contract,$value); if(!is_wp_error($d)) return $d; } return hash('sha256',wp_json_encode(self::sort_value($value),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
 	}
-
 	private static function sort_value( $value ) {
-		if(!is_array($value)) return $value;
-		$is_list=array_keys($value)===range(0,count($value)-1);
-		if(!$is_list) ksort($value,SORT_STRING);
-		foreach($value as $k=>$v) $value[$k]=self::sort_value($v);
-		return $value;
+		if(!is_array($value)) return $value; $is_list=array_keys($value)===range(0,count($value)-1); if(!$is_list) ksort($value,SORT_STRING); foreach($value as $k=>$v) $value[$k]=self::sort_value($v); return $value;
 	}
 }
 
