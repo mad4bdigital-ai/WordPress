@@ -6,8 +6,7 @@
         "level": "provider",
         "target": "elementor",
         "name": "elementor-dynamic-content",
-        "description": "Inspect Elementor templates, widgets, Dynamic Tags, conditions, and provider-backed dynamic-content bindings through MAD4B.",
-        "body": "1. Identify the exact Elementor document or template in scope.\n2. Inspect widget structure, Dynamic Tags, provider-backed fields, and display conditions.\n3. Prefer native Dynamic Tags over shortcode fallbacks when a provider source exists.\n4. Separate template assignment, query context, and provider data issues.\n5. Return broken bindings, available dynamic sources, evidence, and safe remediation.\n6. Do not perform mutation from this workflow."
+        "canonical_seed": true
       }
     ],
     "jetengine": [
@@ -15,8 +14,7 @@
         "level": "provider",
         "target": "jet-engine",
         "name": "jetengine-content-modeling",
-        "description": "Analyze JetEngine CPTs, meta fields, relations, listings, queries, and Dynamic Tags through MAD4B.",
-        "body": "1. Map CPT, taxonomy, meta-field, relation, listing, and query ownership.\n2. Inspect exact field keys and provider dependencies.\n3. Prefer JetEngine Dynamic Tags and provider-native relations over hard-coded shortcodes.\n4. Detect model drift, missing relations, stale query bindings, and rendering gaps.\n5. Return the canonical content model, evidence, and required changes without applying mutation."
+        "canonical_seed": true
       }
     ],
     "jetsmartfilters": [
