@@ -870,6 +870,25 @@ jobs:
               and os.environ.get('PR_NUMBER', '').strip() == '69'
               and os.environ.get('BASE_SHA', '').strip() == governance_apply_repair_expected_base
           )
+          integration_hub_boundary_repair_branch = 'gov/feature-007-integration-hub-boundary-20261006'
+          integration_hub_boundary_repair_expected_base = '3b66989d6f29c104e6f5cd4e7018766214ce8c84'
+          integration_hub_boundary_repair_expected_paths = {
+              '.github/mad4b-feature-boundary-grants.json',
+              '.github/workflows/mad4b-release-verdict.yml',
+              'tools/test_verify_feature_boundary.py',
+              'tools/verify_feature_boundary.py',
+          }
+          integration_hub_boundary_repair_bootstrap = (
+              os.environ.get('GITHUB_EVENT_NAME') == 'pull_request'
+              and os.environ.get('HEAD_BRANCH', '').strip() == integration_hub_boundary_repair_branch
+              and os.environ.get('PR_NUMBER', '').strip() == '260'
+              and os.environ.get('BASE_SHA', '').strip() == integration_hub_boundary_repair_expected_base
+          )
+          if integration_hub_boundary_repair_bootstrap and set(changed) != integration_hub_boundary_repair_expected_paths:
+              raise SystemExit(
+                  'integration-hub boundary repair changed-file set drift: '
+                  f'expected={sorted(integration_hub_boundary_repair_expected_paths)} actual={changed}'
+              )
           if governance_apply_repair_bootstrap and set(changed) != governance_apply_repair_expected_paths:
               raise SystemExit(
                   'governance-apply repair bootstrap changed-file set drift: '
@@ -931,6 +950,13 @@ jobs:
               required = ['Control-plane contract guard']
               mode = 'governance_apply_repair_bootstrap'
               artifact_required = False
+          elif integration_hub_boundary_repair_bootstrap:
+              # Exact one-PR root-of-trust repair for the Feature 007 Integration Hub.
+              # The changed-file set is fixed above. No runtime/package/live artifact is
+              # required because this PR only adjusts baseline boundary governance.
+              required = ['Repository governance policy', 'Repository feature boundary']
+              mode = 'integration_hub_boundary_repair_bootstrap'
+              artifact_required = False
           elif bootstrap_exception:
               required = [name for name in required if name != 'Repository feature boundary']
               mode = 'repository_governance_bootstrap'
@@ -958,6 +984,10 @@ jobs:
                   'governance_apply_repair_branch': governance_apply_repair_branch if governance_apply_repair_bootstrap else '',
                   'governance_apply_repair_expected_base': governance_apply_repair_expected_base if governance_apply_repair_bootstrap else '',
                   'governance_apply_repair_expected_paths': sorted(governance_apply_repair_expected_paths) if governance_apply_repair_bootstrap else [],
+                  'integration_hub_boundary_repair_bootstrap': integration_hub_boundary_repair_bootstrap,
+                  'integration_hub_boundary_repair_branch': integration_hub_boundary_repair_branch if integration_hub_boundary_repair_bootstrap else '',
+                  'integration_hub_boundary_repair_expected_base': integration_hub_boundary_repair_expected_base if integration_hub_boundary_repair_bootstrap else '',
+                  'integration_hub_boundary_repair_expected_paths': sorted(integration_hub_boundary_repair_expected_paths) if integration_hub_boundary_repair_bootstrap else [],
                   'context_authority_affecting': context_authority_affecting,
                   'release_evidence_affecting': release_evidence_affecting,
                   'critical_workflow_changes': critical_workflow_changes,
