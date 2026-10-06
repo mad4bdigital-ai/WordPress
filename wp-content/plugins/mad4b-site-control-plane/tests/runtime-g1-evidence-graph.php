@@ -225,6 +225,7 @@ check(in_array('contains_component',array_column($one['edges'],'relation'),true)
 check(in_array('bound_to_provider',array_column($one['edges'],'relation'),true),'ability provider edge missing');
 check(in_array('declares_schema',array_column($one['edges'],'relation'),true),'ability schema edge missing');
 check(isset($one['metrics']['elapsed_ms'],$one['metrics']['memory_delta_bytes'],$one['metrics']['within_soft_budget']),'graph performance metrics missing');
+check($one['edge_status']['observed_count']===$one['edge_status']['emitted_count'] && $one['edge_status']['trustworthy_for_impact']===true,'complete fixture edges were not trusted for impact');
 
 $encoded=json_encode($one);
 check(false===strpos($encoded,'api_secret'),'sensitive meta key leaked');
@@ -232,6 +233,14 @@ check(false===strpos($encoded,'SHOULD_NOT_LEAK') && false===strpos($encoded,'ALS
 check(false===strpos($encoded,'api_secret_cron'),'sensitive cron hook name leaked');
 check(false===strpos($encoded,'SHOULD_NOT_EXPOSE'),'hook callback identity leaked');
 check($one['nodes']['database_tables'][0]['schema_read']===false,'database schema was read');
+
+$status_tamper=$one; $status_tamper['collection_status']['hooks']['observed_count']=999;
+$status_tamper_result=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$status_tamper));
+check(is_wp_error($status_tamper_result) && 'mad4b_runtime_graph_generation_mismatch'===$status_tamper_result->get_error_code(),'collection completeness metadata was not generation-bound');
+
+$edge_tamper=$one; $edge_tamper['edge_status']['observed_count']=$edge_tamper['edge_status']['observed_count']+1;
+$edge_tamper_result=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$edge_tamper));
+check(is_wp_error($edge_tamper_result) && 'mad4b_runtime_graph_generation_mismatch'===$edge_tamper_result->get_error_code(),'edge completeness metadata was not generation-bound');
 
 $fabricated=$one; $fabricated['generation_sha256']=str_repeat('0',64);
 $bad_generation=MAD4B_SCP_Runtime_Evidence_Graph::diff(array('before'=>$fabricated));
@@ -291,6 +300,23 @@ $receipt=array(
 );
 $receipt['receipt_sha256']=MAD4B_SCP_Ability_Contract_Inspector::digest(MAD4B_SCP_Runtime_Policy_Classifier::CONFORMANCE_CONTRACT,$receipt);
 $GLOBALS['g1_conformance_receipt']=$receipt;
+
+$edge_method=new ReflectionMethod('MAD4B_SCP_Runtime_Evidence_Graph','edges');
+$edge_method->setAccessible(true);
+$edge_abilities=array();
+for($i=0;$i<5;$i++) $edge_abilities[]=array('id'=>'fixture/read-'.$i,'kind'=>'ability');
+$edge_operations=array();
+for($i=0;$i<256;$i++) $edge_operations[]=array(
+ 'id'=>'fixture/op-'.$i,'kind'=>'operation',
+ 'ability_refs'=>array('fixture/read-0','fixture/read-1','fixture/read-2','fixture/read-3','fixture/read-4'),
+);
+$edge_rows=$edge_method->invoke(null,array(
+ 'abilities'=>$edge_abilities,'providers'=>array(),'components'=>array(),'schemas'=>array(),
+ 'operations'=>$edge_operations,'mcp_descriptors'=>array(),
+));
+$edge_observed=new ReflectionProperty('MAD4B_SCP_Runtime_Evidence_Graph','last_edge_observed_count');
+$edge_observed->setAccessible(true);
+check(count($edge_rows)===1024 && $edge_observed->getValue()===1280,'edge collector did not preserve pre-truncation count');
 
 $safe=MAD4B_SCP_Runtime_Policy_Classifier::classify_features(array(
  'namespace'=>'mad4b','action'=>'inspect','schema_sha256'=>str_repeat('a',64),'output_schema_sha256'=>str_repeat('b',64),
