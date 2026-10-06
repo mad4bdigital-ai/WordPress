@@ -329,6 +329,10 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 				$resolved['row']
 			);
 		}
+		// Discovery may lazily materialize reviewed isolated native routes. Re-read
+		// the bounded transport status so this same inventory response reflects the
+		// post-discovery truth rather than a stale preflight snapshot.
+		if ( class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) ) $transport_status = MAD4B_SCP_JetEngine_MCP_Client::transport_status();
 		return array(
 			'contract' => self::CONTRACT,
 			'resolution_contract' => 'mad4b.jetengine-native-operation-resolution.v1',
