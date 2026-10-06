@@ -11,7 +11,9 @@ $check('mad4b_egress_tls_verification_required'===$code(MAD4B_SCP_Egress_Policy:
 $check('mad4b_egress_redirect_budget_exceeded'===$code(MAD4B_SCP_Egress_Policy::mark_request('oauth_discovery','https://auth.example.test/x','https://auth.example.test',array('redirection'=>1))),'redirect widening accepted');
 $check('mad4b_egress_authority_origin_drift'===$code(MAD4B_SCP_Egress_Policy::mark_request('oauth_jwks','https://keys.example.test/jwks','https://auth.example.test',array())),'origin drift accepted');
 $media_args=MAD4B_SCP_Egress_Policy::mark_request('remote_media_import','https://images.example.test/photo.jpg','https://images.example.test',array('timeout'=>5,'redirection'=>0));
+$inspect_args=MAD4B_SCP_Egress_Policy::mark_request('remote_media_inspect','https://images.example.test/photo.jpg','https://images.example.test',array('timeout'=>5,'redirection'=>0));
 $check(is_array($media_args)&&true===$media_args['sslverify']&&0===$media_args['redirection'],'remote media request hardening failed',$media_args);
+$check(is_array($inspect_args)&&true===$inspect_args['sslverify']&&0===$inspect_args['redirection'],'remote media inspection hardening failed',$inspect_args);
 $check('mad4b_egress_https_required'===$code(MAD4B_SCP_Egress_Policy::mark_request('remote_media_discovery','http://example.test/page','http://example.test',array())),'remote media HTTP accepted');
 $check(!MAD4B_SCP_Egress_Policy::proxy_host_allowed('proxy.local',array('other.local'))&&MAD4B_SCP_Egress_Policy::proxy_host_allowed('proxy.local',array('proxy.local')),'proxy trust failed');
 MAD4B_SCP_Egress_Policy::set_test_resolver(static function(){return array('93.184.216.34');});$check(false===MAD4B_SCP_Egress_Policy::enforce(false,$args,'https://auth.example.test/x'),'public DNS rejected');

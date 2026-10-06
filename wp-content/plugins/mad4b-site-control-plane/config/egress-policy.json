@@ -35,6 +35,12 @@
       "sslverify_required": true,
       "max_redirects": 0,
       "reject_unsafe_urls": true
+    },
+    "remote_media_inspect": {
+      "require_https": true,
+      "sslverify_required": true,
+      "max_redirects": 0,
+      "reject_unsafe_urls": true
     }
   }
 }
