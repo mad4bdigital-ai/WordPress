@@ -20,6 +20,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 	const SOFT_MEMORY_DELTA_BYTES = 16777216;
 
 	private static $request_cache = null;
+	private static $last_edge_observed_count = 0;
 
 	public static function boot() {
 		if ( function_exists( 'add_action' ) ) add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
@@ -114,10 +115,24 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 		$site = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
 			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
 			: array();
+		$observation_phase=array(
+			'wp_abilities_initialized'=>function_exists('did_action') ? did_action('wp_abilities_api_init') > 0 : null,
+			'rest_api_initialized'=>function_exists('did_action') ? did_action('rest_api_init') > 0 : null,
+		);
 		$edges = self::edges( $nodes );
+		$edge_status=array(
+			'observed_count'=>(int)self::$last_edge_observed_count,
+			'emitted_count'=>count($edges),
+			'max_edges'=>self::MAX_EDGES,
+			'truncated'=>(int)self::$last_edge_observed_count>count($edges),
+			'trustworthy_for_impact'=>(int)self::$last_edge_observed_count===count($edges),
+		);
 		$basis = array(
 			'contract'=>self::GENERATION_CONTRACT,
 			'site'=>$site,
+			'observation_phase'=>$observation_phase,
+			'collection_status'=>$collection_status,
+			'edge_status'=>$edge_status,
 			'nodes'=>$nodes,
 			'edges'=>$edges,
 		);
@@ -138,14 +153,12 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			'generation_contract'=>self::GENERATION_CONTRACT,
 			'generation_sha256'=>$generation,
 			'site_binding'=>$site,
-			'observation_phase'=>array(
-				'wp_abilities_initialized'=>function_exists('did_action') ? did_action('wp_abilities_api_init') > 0 : null,
-				'rest_api_initialized'=>function_exists('did_action') ? did_action('rest_api_init') > 0 : null,
-			),
+			'observation_phase'=>$observation_phase,
 			'nodes'=>$nodes,
 			'edges'=>$edges,
 			'counts'=>array_map('count',$nodes),
 			'edge_count'=>count($edges),
+			'edge_status'=>$edge_status,
 			'collection_status'=>$collection_status,
 			'complete_for_absence'=>$complete_for_absence,
 			'semantic_dimensions'=>array('provider','component','capability','operation','schema','precondition','effect','reversal','evidence'),
@@ -232,6 +245,8 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			'affected_operations'=>$impact['affected_operations'],
 			'affected_workflows'=>$impact['affected_workflows'],
 			'dependency_impacts'=>$impact['dependency_impacts'],
+			'impact_trustworthy'=>!empty($before['edge_status']['trustworthy_for_impact'])&&!empty($after['edge_status']['trustworthy_for_impact']),
+			'edge_status'=>array('before'=>$before['edge_status'],'after'=>$after['edge_status']),
 			'unrelated_compatible_read_count'=>$unrelated_reads,
 			'incomplete_kinds'=>$incomplete,
 			'comparison_trustworthy_for_absence'=>empty($uncertain_added)&&empty($uncertain_removed)&&empty($incomplete),
@@ -386,17 +401,36 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			$previous=isset($before_site[$field])?(string)$before_site[$field]:'';
 			if(''!==$current && !hash_equals($current,$previous)) return new WP_Error('mad4b_runtime_graph_cross_site_rejected','Runtime graph comparison is restricted to the same site and environment.');
 		}
-		$basis=array('contract'=>self::GENERATION_CONTRACT,'site'=>$before_site,'nodes'=>$snapshot['nodes'],'edges'=>$snapshot['edges']);
+		$observation_phase=isset($snapshot['observation_phase'])&&is_array($snapshot['observation_phase'])?$snapshot['observation_phase']:array();
+		$status=isset($snapshot['collection_status'])&&is_array($snapshot['collection_status'])?$snapshot['collection_status']:array();
+		$edge_status=isset($snapshot['edge_status'])&&is_array($snapshot['edge_status'])?$snapshot['edge_status']:array();
+		$basis=array(
+			'contract'=>self::GENERATION_CONTRACT,
+			'site'=>$before_site,
+			'observation_phase'=>$observation_phase,
+			'collection_status'=>$status,
+			'edge_status'=>$edge_status,
+			'nodes'=>$snapshot['nodes'],
+			'edges'=>$snapshot['edges'],
+		);
 		$expected=self::digest(self::GENERATION_CONTRACT,$basis);
 		$claimed=isset($snapshot['generation_sha256'])?(string)$snapshot['generation_sha256']:'';
 		if(1!==preg_match('/^[a-f0-9]{64}$/D',$claimed)||!hash_equals($expected,$claimed)) {
 			return new WP_Error('mad4b_runtime_graph_generation_mismatch','Before snapshot generation digest does not match its graph contents.');
 		}
-		$status=isset($snapshot['collection_status'])&&is_array($snapshot['collection_status'])?$snapshot['collection_status']:array();
 		foreach($allowed as $kind){
 			if(!isset($snapshot['nodes'][$kind])||!isset($status[$kind])||!is_array($status[$kind])) return new WP_Error('mad4b_runtime_graph_collection_status_missing','Before snapshot is missing collection completeness evidence.');
-			if((int)$status[$kind]['emitted_count']!==count($snapshot['nodes'][$kind])) return new WP_Error('mad4b_runtime_graph_collection_status_mismatch','Before snapshot collection counts do not match emitted graph nodes.');
+			$emitted=count($snapshot['nodes'][$kind]);
+			$observed=isset($status[$kind]['observed_count'])?(int)$status[$kind]['observed_count']:-1;
+			$declared_emitted=isset($status[$kind]['emitted_count'])?(int)$status[$kind]['emitted_count']:-1;
+			$truncated=!empty($status[$kind]['truncated']);
+			if($declared_emitted!==$emitted||$observed<$emitted||$truncated!==($observed>$emitted)) return new WP_Error('mad4b_runtime_graph_collection_status_mismatch','Before snapshot collection completeness evidence is inconsistent.');
 		}
+		$edge_emitted=count($snapshot['edges']);
+		$edge_observed=isset($edge_status['observed_count'])?(int)$edge_status['observed_count']:-1;
+		$edge_declared=isset($edge_status['emitted_count'])?(int)$edge_status['emitted_count']:-1;
+		$edge_truncated=!empty($edge_status['truncated']);
+		if($edge_declared!==$edge_emitted||$edge_observed<$edge_emitted||$edge_truncated!==($edge_observed>$edge_emitted)) return new WP_Error('mad4b_runtime_graph_edge_status_mismatch','Before snapshot edge completeness evidence is inconsistent.');
 		return true;
 	}
 
@@ -949,6 +983,7 @@ final class MAD4B_SCP_Runtime_Evidence_Graph {
 			}
 		}
 		usort($edges,static function($a,$b){return strcmp($a['from']."\0".$a['to']."\0".$a['relation'],$b['from']."\0".$b['to']."\0".$b['relation']);});
+		self::$last_edge_observed_count=count($edges);
 		return array_slice($edges,0,self::MAX_EDGES);
 	}
 
