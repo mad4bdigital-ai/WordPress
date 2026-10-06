@@ -479,6 +479,7 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 		if ( '' === $lane || 'none' === $lane ) $missing[] = 'execution_lane_missing_or_blocked';
 		if ( empty( $features['schema_sha256'] ) ) $missing[] = 'schema_digest_missing';
 		if ( ! $conformance ) $missing[] = 'actual_conformance_missing';
+		if ( empty( $features['execution_boundary_verified'] ) ) $missing[] = 'execution_boundary_unverified';
 
 		if ( true === $readonly && 'read' !== $lane ) $contradictions[] = 'readonly_annotation_conflicts_with_execution_lane';
 		if ( true === $readonly && 'declared_read_only' !== $effect ) $contradictions[] = 'readonly_annotation_conflicts_with_effect';
@@ -507,6 +508,7 @@ final class MAD4B_SCP_Runtime_Policy_Classifier {
 			&& $conformance
 			&& ! empty( $features['execution_eligible'] )
 			&& ! $breakglass
+			&& empty( $missing )
 			&& empty( $contradictions )
 		);
 
