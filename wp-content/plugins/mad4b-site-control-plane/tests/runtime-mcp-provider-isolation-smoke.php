@@ -61,75 +61,6 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'hostinger-ai-assistant/v1', '/jwt/token', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'hostinger-ai-assistant/v1', '/jwt/revoke', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'fluentform/v1', '/mcp/status', array( 'methods' => 'GET', 'callback' => $callback, 'permission_callback' => $permission ) );
-	register_rest_route( 'jet-engine/v1', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
-	register_rest_route( 'jet-engine/v1', '/mcp-tools', array(
-		'methods' => 'GET',
-		'callback' => function () {
-			return rest_ensure_response( array( 'tools' => array(
-				array(
-					'name' => 'resource-get-configuration',
-					'title' => 'Get JetEngine Configuration',
-					'description' => 'Retrieve the provider configuration.',
-					'annotations' => array( 'readOnlyHint' => true ),
-					'inputSchema' => array(),
-				),
-				array(
-					'name' => 'resource-get-website-config',
-					'title' => 'Get JetEngine Website Config',
-					'description' => 'Get JetEngine website config through the isolated native provider bridge.',
-					'annotations' => array( 'readOnlyHint' => true ),
-					'inputSchema' => array(),
-				),
-				array(
-					'name' => 'tool-add-meta-box',
-					'title' => 'Add Meta Box',
-					'description' => 'Create a meta box from configuration.',
-					'annotations' => array( 'readOnlyHint' => false ),
-					'inputSchema' => array( 'type' => 'object', 'additionalProperties' => true ),
-				),
-				array(
-					'name' => 'tool-add-query',
-					'title' => 'Add Query',
-					'description' => 'Create a JetEngine query.',
-					'annotations' => array( 'readOnlyHint' => false ),
-					'inputSchema' => array( 'type' => 'object', 'additionalProperties' => true ),
-				),
-				array(
-					'name' => 'tool-add-listing',
-					'title' => 'Add Listing',
-					'description' => 'Create a listing backed by a query.',
-					'annotations' => array( 'readOnlyHint' => false ),
-					'inputSchema' => array( 'type' => 'object', 'additionalProperties' => true ),
-				),
-				array(
-					'name' => 'resource-provider-error',
-					'title' => 'Provider Error Diagnostic Fixture',
-					'description' => 'Read-only fixture that returns a bounded provider error.',
-					'annotations' => array( 'readOnlyHint' => true ),
-					'inputSchema' => array(),
-				),
-			) ) );
-		},
-		'permission_callback' => $permission,
-	) );
-	register_rest_route( 'jet-engine/v1', '/mcp-tools/run/(?P<tool>[a-zA-Z0-9\-\/]+?)', array(
-		'methods' => 'POST',
-		'callback' => function ( $request ) {
-			$GLOBALS['mad4b_ci_jetengine_run_callback_reached'] = true;
-			if ( 'resource-provider-error' === (string) $request->get_param( 'tool' ) ) {
-				return new WP_Error( 'jetengine_fixture_provider_failure', 'Fixture provider failure.', array( 'status' => 409 ) );
-			}
-			return rest_ensure_response( array(
-				'ok' => true,
-				'tool' => (string) $request->get_param( 'tool' ),
-				'input' => (array) $request->get_param( 'input' ),
-			) );
-		},
-		'permission_callback' => $external_run_permission,
-		'args' => array(
-			'input' => array( 'type' => 'object', 'required' => false, 'default' => array() ),
-		),
-	) );
 	register_rest_route( 'hfe/v1', '/mcp-settings', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit/v1', '/mcp-proxy', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
@@ -191,25 +122,50 @@ if ( ! isset( $routes['/unknown-provider/v1/mcp-unreviewed'] ) ) {
 }
 
 $internal_transport = MAD4B_SCP_MCP_Provider_Isolation::internal_provider_transport_status( 'jetengine' );
-if ( empty( $internal_transport['registry_available'] ) || empty( $internal_transport['run_available'] ) || ! empty( $internal_transport['raw_routes_exposed'] ) ) {
-	mad4b_isolation_fail( 'JetEngine isolated provider handoff did not retain registry/run internally while keeping raw routes hidden.', $internal_transport );
+if ( ! empty( $internal_transport['registry_available'] ) || ! empty( $internal_transport['run_available'] ) || ! empty( $internal_transport['materialization_attempted'] ) ) {
+	mad4b_isolation_fail( 'JetEngine retained routes were materialized before discovery requested them.', $internal_transport );
 }
 if ( ! class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) ) {
 	mad4b_isolation_fail( 'JetEngine native client is unavailable for isolation handoff proof.' );
 }
-$transport = MAD4B_SCP_JetEngine_MCP_Client::transport_status();
-if ( ! empty( $transport['native_rest_registry_available'] ) || ! empty( $transport['native_rest_run_available'] ) ) {
-	mad4b_isolation_fail( 'Raw JetEngine native REST transport remained externally visible.', $transport );
-}
-if ( empty( $transport['isolated_native_rest_registry_available'] ) || empty( $transport['isolated_native_rest_run_available'] ) || 'isolated-native-rest-tools' !== $transport['preferred_transport'] || empty( $transport['available'] ) ) {
-	mad4b_isolation_fail( 'JetEngine isolated native transport is not available to the internal bridge.', $transport );
+$pre_discovery_transport = MAD4B_SCP_JetEngine_MCP_Client::transport_status();
+if ( ! empty( $pre_discovery_transport['available'] ) || ! empty( $pre_discovery_transport['isolated_materialization_attempted'] ) ) {
+	mad4b_isolation_fail( 'Passive JetEngine transport status unexpectedly materialized provider routes.', $pre_discovery_transport );
 }
 
 $native_bridge = class_exists( 'MAD4B_SCP_Adapter_Registry' ) ? MAD4B_SCP_Adapter_Registry::instance()->get( 'native-provider-bridge' ) : null;
 if ( ! ( $native_bridge instanceof MAD4B_SCP_Native_Provider_Bridge_Adapter ) ) {
 	mad4b_isolation_fail( 'Native Provider Bridge adapter is unavailable.' );
 }
+// Inventory is the first active discovery call. It must break the bootstrap
+// deadlock by materializing only the reviewed suppressed JetEngine routes.
 $inventory = $native_bridge->jetengine_inventory();
+$internal_transport = MAD4B_SCP_MCP_Provider_Isolation::internal_provider_transport_status( 'jetengine' );
+if ( empty( $internal_transport['registry_available'] ) || empty( $internal_transport['run_available'] ) || empty( $internal_transport['materialization_attempted'] ) || 'materialized_internal_only' !== ( isset( $internal_transport['materialization_state'] ) ? (string) $internal_transport['materialization_state'] : '' ) || ! empty( $internal_transport['raw_routes_exposed'] ) ) {
+	mad4b_isolation_fail( 'Discovery did not materialize the reviewed JetEngine registry/run routes internally.', $internal_transport );
+}
+if ( empty( $GLOBALS['mad4b_jetengine_rest_registration_callback_hit'] ) ) {
+	mad4b_isolation_fail( 'Discovery did not execute the captured reviewed JetEngine registration callback.' );
+}
+$transport = MAD4B_SCP_JetEngine_MCP_Client::transport_status();
+if ( ! empty( $transport['native_rest_registry_available'] ) || ! empty( $transport['native_rest_run_available'] ) ) {
+	mad4b_isolation_fail( 'Raw JetEngine native REST transport remained externally visible.', $transport );
+}
+if ( empty( $transport['isolated_native_rest_registry_available'] ) || empty( $transport['isolated_native_rest_run_available'] ) || 'isolated-native-rest-tools' !== $transport['preferred_transport'] || empty( $transport['available'] ) ) {
+	mad4b_isolation_fail( 'JetEngine isolated native transport is not available to the internal bridge after discovery materialization.', $transport );
+}
+if ( empty( $inventory['transport_status']['available'] ) || 'isolated-native-rest-tools' !== ( isset( $inventory['transport_status']['preferred_transport'] ) ? (string) $inventory['transport_status']['preferred_transport'] : '' ) ) {
+	mad4b_isolation_fail( 'JetEngine inventory returned stale pre-materialization transport status.', $inventory['transport_status'] ?? array() );
+}
+$routes_after_discovery = $rest->get_routes();
+foreach ( array(
+	'/jet-engine/v1/mcp',
+	'/jet-engine/v1/mcp-tools',
+	'/jet-engine/v1/mcp-tools/run/(?P<tool>[a-zA-Z0-9\\-\\/]+?)',
+) as $route ) {
+	if ( isset( $routes_after_discovery[ $route ] ) ) mad4b_isolation_fail( 'Internally materialized JetEngine route leaked back onto the public REST route map.', $route );
+}
+
 $operation_rows = array();
 foreach ( isset( $inventory['operations'] ) && is_array( $inventory['operations'] ) ? $inventory['operations'] : array() as $item ) {
 	if ( isset( $item['operation'] ) ) $operation_rows[ (string) $item['operation'] ] = $item;
