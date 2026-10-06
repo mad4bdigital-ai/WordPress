@@ -82,16 +82,36 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		if ( ! self::eligible() || is_admin() || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
 			|| class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$event = self::event();
-		if ( ( $event['build_stamp'] ?? '' ) !== self::stamp() ) self::enqueue();
+		if ( ( $event['build_stamp'] ?? '' ) !== self::stamp() ) self::enqueue( array( 'source' => 'build_stamp_drift' ) );
 	}
 
 	public static function on_plugin_update( $upgrader, $details ) {
-		if ( is_array( $details ) && 'plugin' === ( $details['type'] ?? '' ) ) self::enqueue();
+		if ( ! is_array( $details ) || 'plugin' !== ( $details['type'] ?? '' ) ) return;
+		$plugins = array();
+		if ( isset( $details['plugins'] ) && is_array( $details['plugins'] ) ) $plugins = $details['plugins'];
+		elseif ( isset( $details['plugin'] ) ) $plugins = array( $details['plugin'] );
+		$self = false;
+		foreach ( $plugins as $plugin ) if ( false !== strpos( (string) $plugin, 'mad4b-site-control-plane' ) ) { $self = true; break; }
+		self::enqueue( array( 'source' => 'wordpress_upgrader', 'self_plugin_update' => $self ) );
 	}
 
-	public static function enqueue( $unused = null ) {
+	public static function enqueue( $context = null ) {
 		if ( ! self::eligible() ) return false;
-		$event = array( 'event_id' => wp_generate_uuid4(), 'build_stamp' => self::stamp(), 'observed_at' => gmdate( 'c' ) );
+		$source = 'runtime_change';
+		$self_plugin_update = false;
+		if ( is_array( $context ) ) {
+			if ( isset( $context['source'] ) ) $source = sanitize_key( (string) $context['source'] );
+			$self_plugin_update = ! empty( $context['self_plugin_update'] );
+		} elseif ( is_string( $context ) && '' !== trim( $context ) ) {
+			$source = 'plugin_activation';
+		}
+		$event = array(
+			'event_id' => wp_generate_uuid4(),
+			'build_stamp' => self::stamp(),
+			'source' => $source,
+			'self_plugin_update' => $self_plugin_update,
+			'observed_at' => gmdate( 'c' ),
+		);
 		update_option( self::EVENT_OPTION, $event, false );
 		return self::schedule( 5 );
 	}
@@ -149,10 +169,41 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$generation = hash( 'sha256', (string) $identity['build_fingerprint'] . ':' . $profile_digest );
 			if ( ( $registry['core_enqueued_build'] ?? '' ) !== $identity['build_fingerprint'] && class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
 				$checkpoint = get_option( MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION, array() );
-				if ( ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
+				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
+				$continuation = class_exists( 'MAD4B_SCP_Post_Update_Continuation', false ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
+				$maintenance = MAD4B_SCP_Runtime_Maintenance_Lease::status();
+				$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false ) ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+				$source = isset( $event['source'] ) ? sanitize_key( (string) $event['source'] ) : 'runtime_change';
+				if ( 'self_update' === sanitize_key( (string) ( $checkpoint['source'] ?? '' ) ) ) $source = 'self_update';
+				elseif ( 'runtime_release_set' === sanitize_key( (string) ( $checkpoint['source'] ?? '' ) ) ) $source = 'runtime_release_set';
+				$auto_reconcile = class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', false ) ? MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( array(
+					'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+					'candidate_binding' => $binding,
+					'continuation' => $continuation,
+					'maintenance' => $maintenance,
+					'skills_pending' => empty( $skills['ready'] ),
+					'runtime_identity_complete' => ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] ),
+					'build_changed' => true,
+					'source' => $source,
+					'breakglass_enabled' => defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === MAD4B_MCP_BREAKGLASS_ENABLED,
+				) ) : array( 'decision' => 'REVIEW_REQUIRED', 'scenario_id' => 'registry_unavailable', 'mutation_allowed' => false );
+				$registry['auto_reconcile'] = $auto_reconcile;
+				$decision = isset( $auto_reconcile['decision'] ) ? (string) $auto_reconcile['decision'] : 'REVIEW_REQUIRED';
+				if ( 'SCHEDULE_PROBE' === $decision && ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
+					// This only queues the existing convergence worker. The worker can rebind
+					// only through Post_Update_Continuation after exact ZERO_DELTA proof.
 					$registry['core_convergence'] = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
+					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+				} elseif ( 'NO_OP' === $decision ) {
+					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+				} elseif ( 'DEFER' === $decision ) {
+					$registry['core_convergence'] = array( 'state' => 'DEFERRED', 'scenario_id' => $auto_reconcile['scenario_id'] ?? '', 'production_mutation' => false );
+					self::schedule( 30 );
+				} else {
+					$registry['core_convergence'] = array( 'state' => $decision, 'scenario_id' => $auto_reconcile['scenario_id'] ?? '', 'production_mutation' => false );
+					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
 				}
-				$registry['core_enqueued_build'] = $identity['build_fingerprint'];
 			}
 			$cursor = ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) && ( $registry['generation'] ?? '' ) === $generation ? (int) ( $registry['cursor'] ?? 0 ) : 0;
 			$epoch = 0 === $cursor ? wp_generate_uuid4() : ( $registry['observation_epoch'] ?? '' );
