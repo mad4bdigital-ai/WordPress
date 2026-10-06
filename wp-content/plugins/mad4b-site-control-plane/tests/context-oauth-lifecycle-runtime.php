@@ -617,10 +617,29 @@ mad4b_oauth_assert( 'EXTERNAL_ACTION_REQUIRED' === $rejected_grant->get_error_da
 mad4b_oauth_assert( $before_rejected_grant === get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array() ), 'Rejected OAuth tokens were persisted.' );
 mad4b_oauth_assert( false === strpos( json_encode( $rejected_grant->get_error_data() ), 'unsupported.invalid' ), 'Arbitrary provider scope text leaked into diagnostics.' );
 mad4b_oauth_assert( false === strpos( json_encode( $rejected_grant->get_error_data() ), 'NEVER_STORE' ), 'Rejected token leaked into diagnostics.' );
-$known_rejection = $persist_tokens->invoke( null, 'NEVER_STORE_ACCESS', 'NEVER_STORE_REFRESH', 3600, MAD4B_SCP_Google_Drive_Context::READ_SCOPE . ' https://www.googleapis.com/auth/userinfo.email', array(), 'read_only', MAD4B_SCP_Google_Drive_Context::auth_mode(), MAD4B_SCP_Google_Drive_Context::READ_SCOPE );
-mad4b_oauth_assert( is_wp_error( $known_rejection ) && array( 'https://www.googleapis.com/auth/userinfo.email' ) === $known_rejection->get_error_data()['unsupported_scopes'], 'Public unsupported Google scope was not identified.' );
+$identity_scope_set = implode( ' ', array(
+	MAD4B_SCP_Google_Drive_Context::READ_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::IDENTITY_OPENID_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::IDENTITY_EMAIL_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::IDENTITY_PROFILE_SCOPE,
+) );
+$identity_grant = $persist_tokens->invoke( null, 'IDENTITY_ACCESS', 'IDENTITY_REFRESH', 3600, $identity_scope_set, array(), 'read_only', 'dedicated_google', MAD4B_SCP_Google_Drive_Context::READ_SCOPE );
+mad4b_oauth_assert( ! is_wp_error( $identity_grant ), 'Google OIDC identity supplements must not be treated as Workspace capability escalation.', $identity_grant );
+mad4b_oauth_assert( 3 === count( $identity_grant['supplemental_identity_scopes'] ) && array() === $identity_grant['previously_granted_scopes'], 'Identity supplements must be separated from previously granted capability scopes.', $identity_grant );
+
+$managed_identity_grant = $persist_tokens->invoke( null, 'MANAGED_IDENTITY_ACCESS', 'MANAGED_IDENTITY_REFRESH', 3600, $identity_scope_set, array(), 'read_only', MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED, MAD4B_SCP_Google_Drive_Context::READ_SCOPE, array(
+	'scope_profile' => 'legacy',
+	'requested_scopes' => array( MAD4B_SCP_Google_Drive_Context::READ_SCOPE ),
+	'previously_granted_scopes' => array(),
+) );
+mad4b_oauth_assert( ! is_wp_error( $managed_identity_grant ), 'Managed broker grants must tolerate only the bounded provider identity supplement set.', $managed_identity_grant );
+
+$diagnostic_labels = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'scope_diagnostic_labels' );
+$diagnostic_labels->setAccessible( true );
+mad4b_oauth_assert( array( MAD4B_SCP_Google_Drive_Context::GMAIL_FULL_SCOPE ) === $diagnostic_labels->invoke( null, array( MAD4B_SCP_Google_Drive_Context::GMAIL_FULL_SCOPE ) ), 'Known Gmail full scope must remain transparent instead of becoming unknown_scope_sha256.' );
+
 $record_rejection = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'record_scope_rejection' );
-$record_rejection->setAccessible( true ); $record_rejection->invoke( null, $known_rejection );
+$record_rejection->setAccessible( true ); $record_rejection->invoke( null, $rejected_grant );
 $scope_evidence = MAD4B_SCP_Google_Drive_Context::scope_diagnostic_status();
 mad4b_oauth_assert( ! empty( $scope_evidence ) && false === $scope_evidence['tokens_persisted'] && false === $scope_evidence['authorizing'], 'Rejection evidence claimed token storage or authority.' );
 $sealed_scope_evidence = get_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION );
