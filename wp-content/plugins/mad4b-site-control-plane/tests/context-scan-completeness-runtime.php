@@ -367,13 +367,14 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] 
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::REGISTRY_REVISION_OPTION ] = 20;
 
 class MAD4B_SCP_Context_Provider_Gateway {
+	public static $complete = true;
 	public static function scan_source( $requested_source_id ) {
 		return array(
-			'complete' => true,
+			'complete' => self::$complete,
 			'scan_generation' => hash( 'sha256', 'brand-source-scan-regression' ),
 			'started_at' => '2026-09-28T04:01:00Z',
 			'completed_at' => '2026-09-28T04:01:01Z',
-			'truncation_reasons' => array(),
+			'truncation_reasons' => self::$complete ? array() : array( 'scan_time_budget', 'scan_queue_incomplete' ),
 			'assets' => array(
 				array(
 					'file_id' => 'drive-new-tone-of-voice',
@@ -414,4 +415,32 @@ $registered = array_values( array_filter( MAD4B_SCP_Context_Authority::assets(),
 } ) );
 mad4b_scan_assert( 1 === count( $registered ), 'End-to-end source scan apply must register the newly observed Drive asset exactly once.', $registered );
 
-echo "mad4b.site-control-plane.context-scan-completeness.runtime.v4: PASS\n";
+// Large provider inventories converge through exact partial checkpoints. Partial
+// checkpoints may add/reuse observed assets, but Context Authority never mints
+// absence evidence until one later provider scan is complete.
+MAD4B_SCP_Context_Provider_Gateway::$complete = false;
+$partial_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan( array( 'source_id' => $source_id ) );
+mad4b_scan_assert( ! is_wp_error( $partial_plan ) && empty( $partial_plan['scan_complete'] ), 'Partial provider inventory must remain explicit in scan planning.', $partial_plan );
+$partial_checkpoint = MAD4B_SCP_Brand_Context_Builder::source_scan_apply( array(
+	'source_id' => $source_id,
+	'expected_plan_sha256' => $partial_plan['plan_sha256'],
+	'expected_provider_inventory_digest' => $partial_plan['provider_inventory_digest'],
+	'expected_registry_revision' => $partial_plan['registry_revision'],
+) );
+mad4b_scan_assert( ! is_wp_error( $partial_checkpoint ), 'Exact partial source scan must checkpoint safely instead of deadlocking convergence.', $partial_checkpoint );
+mad4b_scan_assert( ! empty( $partial_checkpoint['checkpoint_applied'] ) && 'partial_checkpoint' === $partial_checkpoint['convergence_state'], 'Partial scan apply did not expose checkpoint convergence state.', $partial_checkpoint );
+mad4b_scan_assert( 'replan_source_scan' === $partial_checkpoint['next_action'], 'Partial scan apply did not request the next bounded convergence pass.', $partial_checkpoint );
+$checkpoint_source = MAD4B_SCP_Context_Authority::source( $source_id );
+mad4b_scan_assert( 'partial_scan' === $checkpoint_source['status'] && empty( $checkpoint_source['last_scan_complete'] ), 'Partial checkpoint was not persisted as non-authoritative partial source state.', $checkpoint_source );
+
+MAD4B_SCP_Context_Provider_Gateway::$complete = true;
+$converged_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan( array( 'source_id' => $source_id ) );
+$converged_apply = MAD4B_SCP_Brand_Context_Builder::source_scan_apply( array(
+	'source_id' => $source_id,
+	'expected_plan_sha256' => $converged_plan['plan_sha256'],
+	'expected_provider_inventory_digest' => $converged_plan['provider_inventory_digest'],
+	'expected_registry_revision' => $converged_plan['registry_revision'],
+) );
+mad4b_scan_assert( ! is_wp_error( $converged_apply ) && 'complete' === $converged_apply['convergence_state'] && 'none' === $converged_apply['next_action'], 'Checkpointed source scan did not converge after a complete provider pass.', $converged_apply );
+
+echo "mad4b.site-control-plane.context-scan-completeness.runtime.v5: PASS\n";

@@ -1538,18 +1538,24 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '' );
 		if ( is_wp_error( $result ) ) return $result;
 		$plan = $result['plan'];
-		if ( empty( $plan['scan_complete'] ) ) return new WP_Error( 'mad4b_context_source_scan_incomplete', 'Truncated/incomplete scans cannot mutate Context Authority.', array( 'truncation_reasons' => $plan['truncation_reasons'] ) );
 		foreach ( array( 'expected_plan_sha256' => 'plan_sha256', 'expected_provider_inventory_digest' => 'provider_inventory_digest' ) as $input_key => $plan_key ) {
 			$expected = strtolower( trim( (string) ( isset( $input[ $input_key ] ) ? $input[ $input_key ] : '' ) ) );
 			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( (string) $plan[ $plan_key ], $expected ) ) return new WP_Error( 'mad4b_context_source_scan_plan_stale', 'Context source inventory changed after scan planning.', array( 'field' => $plan_key ) );
 		}
 		$expected_revision = isset( $input['expected_registry_revision'] ) ? (int) $input['expected_registry_revision'] : -1;
 		if ( $expected_revision !== (int) $plan['registry_revision'] ) return new WP_Error( 'mad4b_context_source_scan_registry_stale', 'Context registry changed after scan planning.' );
-		return MAD4B_SCP_Context_Authority::replace_source_assets(
+		$applied = MAD4B_SCP_Context_Authority::replace_source_assets(
 			(string) $plan['source_id'],
 			isset( $result['scan']['assets'] ) && is_array( $result['scan']['assets'] ) ? $result['scan']['assets'] : array(),
 			$result['scan']
 		);
+		if ( is_wp_error( $applied ) ) return $applied;
+		$partial = empty( $plan['scan_complete'] );
+		$applied['checkpoint_applied'] = $partial;
+		$applied['convergence_state'] = $partial ? 'partial_checkpoint' : 'complete';
+		$applied['next_action'] = $partial ? 'replan_source_scan' : 'none';
+		$applied['planned_truncation_reasons'] = isset( $plan['truncation_reasons'] ) ? array_values( (array) $plan['truncation_reasons'] ) : array();
+		return $applied;
 	}
 
 	private static function materialization_identity( $input, $require_fresh_evidence = true ) {
