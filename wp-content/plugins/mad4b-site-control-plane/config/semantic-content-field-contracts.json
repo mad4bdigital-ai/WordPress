@@ -249,6 +249,61 @@
         "element_id",
         "expected_document_revision"
       ]
+    },
+    "mad4b/control-plane-native-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256"
+      ]
+    },
+    "mad4b/control-plane-upload-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "version",
+        "source_commit_sha",
+        "archive_sha256",
+        "build_fingerprint",
+        "package_manifest_digest",
+        "size_bytes",
+        "reason",
+        "expected_plan_sha256",
+        "package_base64"
+      ]
+    },
+    "mad4b/control-plane-bootstrap-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256",
+        "confirmation"
+      ]
+    },
+    "mad4b/runtime-release-set-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256",
+        "confirmation"
+      ]
+    },
+    "mad4b/runtime-release-set-bootstrap-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256",
+        "confirmation"
+      ]
     }
   }
 }

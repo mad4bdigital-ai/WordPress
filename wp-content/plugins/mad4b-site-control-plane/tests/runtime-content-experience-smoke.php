@@ -120,6 +120,8 @@ try {
 
 	$media_adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'media' );
 	$check( $media_adapter instanceof MAD4B_SCP_Media_Adapter, 'Media adapter is unavailable.' );
+	$remote_media_adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'remote-media' );
+	$check( $remote_media_adapter instanceof MAD4B_SCP_Remote_Media_Adapter, 'Remote Media adapter is unavailable.' );
 	$media_before = $media_adapter->get_media( array( 'attachment_id' => $image_one ) );
 	$check( ! is_wp_error( $media_before ) && 1600 === (int) $media_before['media']['width'] && 900 === (int) $media_before['media']['height'], 'Image technical metadata readback is incomplete.' );
 	$technical_sha = (string) $media_before['media']['metadata_sha256'];
@@ -142,6 +144,18 @@ try {
 	$check( 'Cairo Nile journey in Egypt' === $media_after['media']['alt'], 'Media alt readback mismatch.' );
 	$check( hash_equals( $technical_sha, (string) $media_after['media']['metadata_sha256'] ), 'Editorial metadata update unexpectedly changed generated attachment metadata.' );
 
+	$single_url_projection = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( 'ci_url', $image_one, array( 'kind' => 'image_id', 'storage' => 'url', 'max_items' => 1 ) );
+	$check( ! is_wp_error( $single_url_projection ) && wp_get_attachment_url( $image_one ) === $single_url_projection, 'Media URL storage projection failed.' );
+	$gallery_both_projection = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( 'ci_both', array( $image_one, $image_two ), array( 'kind' => 'image_gallery', 'storage' => 'id_url_items', 'max_items' => 12 ) );
+	$check( ! is_wp_error( $gallery_both_projection ) && $image_one === (int) $gallery_both_projection[0]['id'] && wp_get_attachment_url( $image_two ) === $gallery_both_projection[1]['url'], 'Media ID+URL gallery projection failed.' );
+	$json_both_projection = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( 'ci_json_both', array( $image_one, $image_two ), array( 'kind' => 'image_gallery', 'storage' => 'json_id_url_items', 'max_items' => 12 ) );
+	$check( is_string( $json_both_projection ) && false !== strpos( $json_both_projection, '"id":' . $image_one ), 'Media JSON ID+URL gallery projection failed.' );
+	$check( array( $image_one, $image_two ) === MAD4B_SCP_Content_Experience_Media_Storage::reference_ids( $json_both_projection, array( 'kind' => 'image_gallery', 'storage' => 'json_id_url_items' ) ), 'Media JSON ID+URL round-trip lost attachment identity.' );
+	$inferred_url = MAD4B_SCP_Content_Experience_Media_Storage::infer_spec( wp_get_attachment_url( $image_one ) );
+	$check( ! empty( $inferred_url['supported'] ) && 'url' === $inferred_url['spec']['storage'], 'Adaptive media schema inference did not recognize a local Media Library URL.' );
+	$inferred_both = MAD4B_SCP_Content_Experience_Media_Storage::infer_spec( $gallery_both_projection );
+	$check( ! empty( $inferred_both['supported'] ) && 'id_url_items' === $inferred_both['spec']['storage'], 'Adaptive media schema inference did not recognize ID+URL gallery storage.' );
+
 	// Least-privilege defaults are explicit and empty means empty, never "everything".
 	$default_plan = MAD4B_SCP_Content_Experience_Profiles::profile_plan( array(
 		'profile' => array( 'slug' => 'ci-default', 'post_type' => 'mad4b_ci_trip', 'label' => 'CI Default' ),
@@ -151,6 +165,183 @@ try {
 	$check( 'allowlist' === $default_plan['profile']['meta_mode'], 'Profile meta default is not fail-closed allowlist.' );
 	$check( 'allowlist' === $default_plan['profile']['taxonomy_mode'], 'Profile taxonomy default is not fail-closed allowlist.' );
 	$check( empty( $default_plan['profile']['taxonomies'] ), 'Empty taxonomy allowlist unexpectedly widened to all attached taxonomies.' );
+
+	$bootstrap = MAD4B_SCP_Content_Experience_Profiles::bootstrap_plan( array(
+		'post_type' => 'mad4b_ci_trip',
+		'profile_slug' => 'ci-bootstrap-trip',
+		'taxonomy_strategy' => 'public_assignable',
+	) );
+	$check( ! is_wp_error( $bootstrap ), 'Content Experience bootstrap planning failed.' );
+	$check( 'PROFILE_PROPOSED' === $bootstrap['state'] && empty( $bootstrap['mutation_performed'] ), 'Bootstrap plan must be read-only and proposed-only.' );
+	$check( in_array( 'mad4b_ci_region', $bootstrap['included_taxonomies'], true ), 'Bootstrap plan did not include the assignable public taxonomy.' );
+	$check( ! empty( $bootstrap['supports_featured_media'] ) && ! empty( $bootstrap['profile_plan']['profile']['featured_media'] ), 'Bootstrap plan did not infer thumbnail support.' );
+	$check( array() === $bootstrap['profile_plan']['profile']['meta_keys'] && array() === $bootstrap['profile_plan']['profile']['enabled_helpers'], 'Bootstrap plan widened meta/helper authority.' );
+	$check( MAD4B_SCP_Content_Experience_Profiles::PROFILE_APPLY_ABILITY === $bootstrap['profile_apply_ability'], 'Bootstrap plan did not hand off to the governed profile apply Ability.' );
+	$check( 'mad4b.content-experience-ingestion-workflow.v1' === $bootstrap['workflow_blueprint']['contract'], 'Bootstrap did not emit the versioned ingestion workflow blueprint.' );
+	$check( 'profile_apply_then_next_request' === $bootstrap['workflow_blueprint']['activation_barrier'], 'Proposed profile workflow omitted its next-request activation barrier.' );
+	$check( 'inspect_selected_media' === $bootstrap['workflow_blueprint']['steps'][1]['id'] && 'plan_media_manifest' === $bootstrap['workflow_blueprint']['steps'][3]['id'] && 'apply_media_import' === $bootstrap['workflow_blueprint']['steps'][4]['id'], 'Remote media workflow ordering drifted.' );
+	$check( ! empty( $bootstrap['workflow_blueprint']['failure_semantics']['publish_is_never_implicit'] ), 'Workflow blueprint lost explicit publish separation.' );
+	foreach ( array( 'remote_media_library_first', 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ) as $scenario ) {
+		$check( ! empty( $bootstrap['scenarios'][ $scenario ]['supported'] ), 'Bootstrap scenario missing: ' . $scenario );
+	}
+	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::BOOTSTRAP_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Bootstrap planner is not exposed on the read surface.' );
+
+	register_post_meta( 'mad4b_ci_trip', 'ci_registered_gallery', array( 'type' => 'array', 'single' => true, 'show_in_rest' => false ) );
+	$sample_post = wp_insert_post( array( 'post_type' => 'mad4b_ci_trip', 'post_status' => 'draft', 'post_title' => 'CI Media Schema Sample' ), true );
+	$check( ! is_wp_error( $sample_post ), 'Unable to create media-field inference sample.' );
+	$sample_post = (int) $sample_post; $post_ids[] = $sample_post;
+	update_post_meta( $sample_post, 'ci_sample_gallery', array( $image_one, $image_two ) );
+
+	$bootstrap_media = MAD4B_SCP_Content_Experience_Profiles::bootstrap_plan( array(
+		'post_type' => 'mad4b_ci_trip',
+		'profile_slug' => 'ci-bootstrap-media',
+		'media_meta_fields' => array(
+			'ci_gallery' => array( 'kind' => 'image_gallery', 'storage' => 'ids', 'max_items' => 12 ),
+		),
+	) );
+	$check( ! is_wp_error( $bootstrap_media ), 'Bootstrap explicit media mapping failed.' );
+	$check( in_array( 'ci_gallery', $bootstrap_media['profile_plan']['profile']['meta_keys'], true ), 'Bootstrap media mapping was not promoted into the profile meta allowlist.' );
+	$check( 'image_gallery' === $bootstrap_media['profile_plan']['profile']['media_meta_fields']['ci_gallery']['kind'], 'Bootstrap media mapping lost its typed image-gallery contract.' );
+	$candidate_keys = array_values( array_map( static function ( $row ) { return isset( $row['key'] ) ? (string) $row['key'] : ''; }, $bootstrap_media['media_field_candidates'] ) );
+	$check( in_array( 'ci_registered_gallery', $candidate_keys, true ), 'Registered media-like meta was not discovered.' );
+	$check( in_array( 'ci_sample_gallery', $candidate_keys, true ), 'Existing-content media meta inference did not discover an unregistered image gallery.' );
+
+	$remote_plan_unknown = $remote_media_adapter->remote_import_plan( array( 'source_url' => 'https://images.example.invalid/tour.jpg' ) );
+	$check( ! is_wp_error( $remote_plan_unknown ) && empty( $remote_plan_unknown['ready'] ) && in_array( 'rights_confirmation_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not fail closed on unknown rights.' );
+	$check( in_array( 'content_inspection_required', $remote_plan_unknown['blockers'], true ), 'Remote media plan did not require exact byte inspection before new import.' );
+	$remote_plan_missing_rights_evidence = $remote_media_adapter->remote_import_plan( array(
+		'source_url' => 'https://images.example.invalid/tour.jpg',
+		'rights_basis' => 'permission',
+		'expected_content_sha256' => str_repeat( 'a', 64 ),
+	) );
+	$check( ! is_wp_error( $remote_plan_missing_rights_evidence ) && in_array( 'rights_evidence_required', $remote_plan_missing_rights_evidence['blockers'], true ), 'Remote media plan accepted permission without traceable rights evidence.' );
+	$remote_plan_allowed = $remote_media_adapter->remote_import_plan( array(
+		'source_url' => 'https://images.example.invalid/tour.jpg',
+		'source_page_url' => 'https://example.invalid/tour',
+		'rights_basis' => 'permission',
+		'rights_note' => 'CI fixture',
+		'alt' => 'Nile cruise exterior',
+		'expected_content_sha256' => str_repeat( 'a', 64 ),
+		'expected_content_bytes' => 123456,
+		'expected_mime_type' => 'image/jpeg',
+		'expected_width' => 1600,
+		'expected_height' => 900,
+	) );
+	$check( ! is_wp_error( $remote_plan_allowed ) && ! empty( $remote_plan_allowed['ready'] ) && ! empty( $remote_plan_allowed['exact_content_locked'] ) && empty( $remote_plan_allowed['mutation_performed'] ), 'Remote media import planning is not exact/read-only.' );
+	foreach ( array( MAD4B_SCP_Remote_Media_Adapter::REMOTE_DISCOVER_ABILITY, MAD4B_SCP_Remote_Media_Adapter::REMOTE_INSPECT_ABILITY, MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_PLAN_ABILITY, MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY ) as $ability_name ) {
+		$check( wp_has_ability( $ability_name ), 'Remote media Ability is not registered: ' . $ability_name );
+	}
+
+	$remote_import_classification = MAD4B_SCP_Impact_Policy::classify( MAD4B_SCP_Remote_Media_Adapter::REMOTE_IMPORT_APPLY_ABILITY, 'media', array( 'rights_basis' => 'permission' ) );
+	$check( 'content_change' === $remote_import_classification['operation_type'] && 'medium' === $remote_import_classification['risk_tier'], 'Remote media import is not classified as a medium content change.' );
+	$check( ! empty( $remote_import_classification['approval_required'] ), 'Remote media import does not require exact-operation approval.' );
+	if ( 'staging' === $remote_import_classification['environment'] ) $check( 'ai_autonomous' === $remote_import_classification['approval_lane'], 'Staging remote media import is not eligible for the governed AI approval lane.' );
+
+	$srcset_method = new ReflectionMethod( 'MAD4B_SCP_Remote_Media_Adapter', 'best_srcset_url' );
+	$srcset_method->setAccessible( true );
+	$cloudinary_srcset = 'https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/sample.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/sample.jpg 1600w';
+	$check( false !== strpos( (string) $srcset_method->invoke( $remote_media_adapter, $cloudinary_srcset ), 'w_1600' ), 'Cloudinary comma-bearing srcset parsing did not preserve/select the largest candidate.' );
+
+	$extract_method = new ReflectionMethod( 'MAD4B_SCP_Remote_Media_Adapter', 'extract_remote_image_candidates' );
+	$extract_method->setAccessible( true );
+	$discovered_candidates = $extract_method->invoke(
+		$remote_media_adapter,
+		'<html><head><meta property="og:image" content="/hero.jpg"><script type="application/ld+json">{"image":{"contentUrl":"https://cdn.example.invalid/jsonld.jpg"}}</script></head><body><img src="/favicon-icon.png" width="32" height="32" alt="icon"><img srcset="https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_640/ship.jpg 640w, https://res.cloudinary.com/demo/image/upload/f_webp,c_fill,q_auto,w_1600/ship.jpg 1600w" alt="Cruise ship"></body></html>',
+		'https://example.invalid/trip',
+		10,
+		false
+	);
+	$check( ! is_wp_error( $discovered_candidates ) && count( $discovered_candidates ) >= 3, 'Remote media extraction did not include structured and responsive candidates.' );
+	$check( 'deprioritized' === end( $discovered_candidates )['likely_role'], 'Tiny utility image was not deprioritized by deterministic candidate scoring.' );
+
+	$remote_rights_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Remote Rights Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $remote_rights_attachment ), 'Unable to create remote-media rights fixture.' );
+	$remote_rights_attachment = (int) $remote_rights_attachment; $post_ids[] = $remote_rights_attachment;
+	$check( update_attached_file( $remote_rights_attachment, 'ci-remote-rights.jpg' ), 'Unable to bind remote-rights attachment file identity.' );
+	wp_update_attachment_metadata( $remote_rights_attachment, array( 'width' => 1400, 'height' => 900, 'file' => 'ci-remote-rights.jpg', 'filesize' => 11111 ) );
+	$remote_source_url = 'https://images.example.invalid/rights.jpg';
+	$remote_source_hash = hash( 'sha256', $remote_source_url );
+	$remote_content_hash = str_repeat( 'b', 64 );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_SOURCE_HASH_META, $remote_source_hash, false );
+	update_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_CONTENT_HASH_META, $remote_content_hash );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, array(
+		'contract' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
+		'source_url' => $remote_source_url,
+		'source_url_sha256' => $remote_source_hash,
+		'rights_basis' => 'permission',
+		'rights_note' => 'CI permission fixture',
+		'rights_reference' => '',
+		'license_expires_on' => '2099-12-31',
+		'content_sha256' => $remote_content_hash,
+	), false );
+	$remote_publish_guard = MAD4B_SCP_Remote_Media_Rights::publish_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
+	$check( ! is_wp_error( $remote_publish_guard ) && 1 === (int) $remote_publish_guard['remote_attachment_count'], 'Remote media publish provenance guard rejected a valid fixture.' );
+	$expired_provenance = get_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, true );
+	$expired_provenance['license_expires_on'] = '2020-01-01';
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, $expired_provenance, false );
+	$expired_guard = MAD4B_SCP_Remote_Media_Rights::publish_guard( $remote_rights_attachment, array(), array(), '2026-10-06' );
+	$check( is_wp_error( $expired_guard ) && 'mad4b_remote_media_publish_rights_expired' === $expired_guard->get_error_code(), 'Expired remote-media rights did not block publish.' );
+	delete_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META );
+	add_post_meta( $remote_rights_attachment, MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_META, array(
+		'contract' => MAD4B_SCP_Remote_Media_Adapter::REMOTE_PROVENANCE_CONTRACT,
+		'source_url' => $remote_source_url,
+		'source_url_sha256' => $remote_source_hash,
+		'rights_basis' => 'permission',
+		'rights_note' => 'CI permission fixture',
+		'rights_reference' => '',
+		'license_expires_on' => '2099-12-31',
+		'content_sha256' => $remote_content_hash,
+	), false );
+	$remote_state_one = MAD4B_SCP_Remote_Media_Rights::state_evidence( $remote_rights_attachment, array(), array() );
+	$check( ! is_wp_error( $remote_state_one ) && 1 === (int) $remote_state_one['remote_attachment_count'] && 64 === strlen( (string) $remote_state_one['remote_state_sha256'] ), 'Remote media state evidence did not bind the exact attachment/provenance identity.' );
+	$remote_state_two = MAD4B_SCP_Remote_Media_Rights::state_evidence( $remote_rights_attachment, array(), array() );
+	$check( ! is_wp_error( $remote_state_two ) && hash_equals( (string) $remote_state_one['remote_state_sha256'], (string) $remote_state_two['remote_state_sha256'] ), 'Remote media state evidence is not deterministic.' );
+
+	$remote_manifest_bad_role = $remote_media_adapter->remote_import_manifest_plan( array(
+		'items' => array(
+			array(
+				'binding_role' => 'mystery',
+				'import' => array(
+					'source_url' => $remote_source_url,
+					'rights_basis' => 'permission',
+					'rights_note' => 'CI permission fixture',
+					'expected_content_sha256' => $remote_content_hash,
+				),
+			),
+		),
+	) );
+	$check( is_wp_error( $remote_manifest_bad_role ) && 'mad4b_remote_media_manifest_binding_role_invalid' === $remote_manifest_bad_role->get_error_code(), 'Remote media manifest silently coerced an unsupported binding role.' );
+
+	$remote_manifest = $remote_media_adapter->remote_import_manifest_plan( array(
+		'items' => array(
+			array(
+				'binding_role' => 'featured',
+				'import' => array(
+					'source_url' => $remote_source_url,
+					'rights_basis' => 'permission',
+					'rights_note' => 'CI permission fixture',
+					'expected_content_sha256' => $remote_content_hash,
+				),
+			),
+		),
+	) );
+	$check( ! is_wp_error( $remote_manifest ) && ! empty( $remote_manifest['ready'] ) && 64 === strlen( (string) $remote_manifest['manifest_sha256'] ), 'Remote media manifest planning failed.' );
+	$check( 1 === (int) $remote_manifest['items'][0]['apply_input']['manifest_item_count'], 'Manifest execution input lost total item count.' );
+	$check( $remote_manifest['manifest_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_sha256'] && 0 === (int) $remote_manifest['items'][0]['apply_input']['manifest_index'], 'Manifest execution input lost exact manifest correlation.' );
+	$check( $remote_manifest['items'][0]['item_sha256'] === $remote_manifest['items'][0]['apply_input']['manifest_item_sha256'] && 'featured' === $remote_manifest['items'][0]['apply_input']['manifest_binding_role'], 'Manifest execution input lost exact item/role intent.' );
+	$tampered_manifest_apply = $remote_manifest['items'][0]['apply_input'];
+	$tampered_manifest_apply['manifest_item_sha256'] = str_repeat( 'f', 64 );
+	$tampered_manifest_result = $remote_media_adapter->remote_import_apply( $tampered_manifest_apply );
+	$check( is_wp_error( $tampered_manifest_result ) && 'mad4b_remote_media_manifest_item_drift' === $tampered_manifest_result->get_error_code(), 'Manifest-correlated import accepted tampered item intent.' );
+	$manifest_import = $remote_media_adapter->remote_import_apply( $remote_manifest['items'][0]['apply_input'] );
+	$check( ! is_wp_error( $manifest_import ) && ! empty( $manifest_import['verified'] ) && $remote_rights_attachment === (int) $manifest_import['attachment_id'], 'Manifest-correlated remote media reuse failed.' );
+	$check( isset( $manifest_import['recovery_stage']['manifest_sha256'] ) && hash_equals( (string) $remote_manifest['manifest_sha256'], (string) $manifest_import['recovery_stage']['manifest_sha256'] ), 'Successful import did not create durable recovery stage evidence.' );
+	$check( hash_equals( (string) $remote_manifest['items'][0]['item_sha256'], (string) $manifest_import['recovery_stage']['manifest_item_sha256'] ) && 'featured' === $manifest_import['recovery_stage']['manifest_binding_role'], 'Recovery stage lost reviewed manifest item/role intent.' );
+	$manifest_staged_status = MAD4B_SCP_Remote_Media_Recovery::status( $remote_manifest['manifest_sha256'] );
+	$check( ! is_wp_error( $manifest_staged_status ) && 'staged_unbound' === $manifest_staged_status['state'] && ! $manifest_staged_status['auto_delete'], 'Unbound manifest is not explicitly recoverable/non-deleting.' );
+	$check( ! empty( $manifest_staged_status['complete'] ) && 1 === (int) $manifest_staged_status['expected_item_count'] && empty( $manifest_staged_status['missing_manifest_indices'] ), 'Recovery status did not recognize a complete staged manifest.' );
 
 	$profile_input = array(
 		'slug' => 'ci-trip',
@@ -192,6 +383,128 @@ try {
 	$routes_v1 = $profile_v1['routes'];
 	$check( false !== strpos( $routes_v1['create_apply'], '-r1-create-apply' ), 'Mutation executor route is not generation-bound.' );
 	$check( 'mad4b/ci-trip-create-plan' === $routes_v1['create_plan'], 'Planner route should remain stable across profile generations.' );
+
+	$binding_plan = MAD4B_SCP_Content_Experience_Profiles::media_binding_plan( array(
+		'profile_slug' => 'ci-trip',
+		'items' => array(
+			array( 'attachment_id' => $image_one, 'binding_role' => 'featured' ),
+			array(
+				'attachment_id' => $image_two, 'binding_role' => 'gallery', 'target_field' => 'ci_gallery', 'usage_field' => 'ci_gallery_usage',
+				'usage' => array( 'role' => 'gallery', 'license' => 'licensed', 'license_expires_on' => '2099-12-31', 'source_url' => 'https://example.invalid/source-two' ),
+			),
+			array(
+				'attachment_id' => $image_one, 'binding_role' => 'gallery', 'target_field' => 'ci_gallery', 'usage_field' => 'ci_gallery_usage',
+				'usage' => array( 'role' => 'hero', 'license' => 'owned', 'source_url' => 'https://example.invalid/source-one' ),
+			),
+		),
+	) );
+	$check( ! is_wp_error( $binding_plan ) && $image_one === (int) $binding_plan['content_input_fragment']['featured_media_id'], 'Media binding planner did not preserve featured attachment identity.' );
+	$check( array( $image_two, $image_one ) === $binding_plan['content_input_fragment']['meta']['ci_gallery'], 'Media binding planner lost gallery ordering.' );
+	$check( array( $image_two, $image_one ) === array_column( $binding_plan['content_input_fragment']['meta']['ci_gallery_usage'], 'attachment_id' ), 'Media binding planner lost contextual usage ordering.' );
+	$check( ! empty( $binding_plan['binding_plan_sha256'] ) && empty( $binding_plan['mutation_performed'] ), 'Media binding plan lacks exact read-only identity.' );
+	$check( 64 === strlen( (string) $binding_plan['content_input_fragment']['expected_remote_media_state_sha256'] ) && hash_equals( (string) $binding_plan['remote_media_state']['remote_state_sha256'], (string) $binding_plan['content_input_fragment']['expected_remote_media_state_sha256'] ), 'Media binding planner did not hand off exact remote media state identity.' );
+	$check( in_array( MAD4B_SCP_Content_Experience_Profiles::MEDIA_BINDING_PLAN_ABILITY, MAD4B_SCP_Content_Experience_Profiles::ability_names( 'read' ), true ), 'Media binding planner is not on the fixed read surface.' );
+
+	$manifest_binding_plan = MAD4B_SCP_Content_Experience_Profiles::media_binding_plan( array(
+		'profile_slug' => 'ci-trip',
+		'manifest_sha256' => $remote_manifest['manifest_sha256'],
+		'manifest_item_count' => 1,
+		'items' => array(
+			array(
+				'attachment_id' => $remote_rights_attachment,
+				'binding_role' => 'featured',
+				'manifest_index' => 0,
+				'import_plan_sha256' => $manifest_import['plan_sha256'],
+				'manifest_item_sha256' => $remote_manifest['items'][0]['item_sha256'],
+			),
+		),
+	) );
+	$manifest_role_drift = MAD4B_SCP_Content_Experience_Profiles::media_binding_plan( array(
+		'profile_slug' => 'ci-trip',
+		'manifest_sha256' => $remote_manifest['manifest_sha256'],
+		'manifest_item_count' => 1,
+		'items' => array(
+			array(
+				'attachment_id' => $remote_rights_attachment,
+				'binding_role' => 'gallery',
+				'target_field' => 'ci_gallery',
+				'manifest_index' => 0,
+				'import_plan_sha256' => $manifest_import['plan_sha256'],
+				'manifest_item_sha256' => $remote_manifest['items'][0]['item_sha256'],
+			),
+		),
+	) );
+	$check( is_wp_error( $manifest_role_drift ) && 'mad4b_content_experience_media_binding_manifest_role_drift' === $manifest_role_drift->get_error_code(), 'Post binding accepted manifest role drift.' );
+	$check( ! is_wp_error( $manifest_binding_plan ), 'Manifest-aware post media binding plan failed.' );
+	$manifest_fragment = $manifest_binding_plan['content_input_fragment'];
+	$check( hash_equals( (string) $remote_manifest['manifest_sha256'], (string) $manifest_fragment['expected_media_manifest_sha256'] ), 'Binding plan did not hand off exact manifest identity.' );
+	$check( hash_equals( (string) $manifest_binding_plan['remote_media_recovery_receipt']['recovery_receipt_sha256'], (string) $manifest_fragment['expected_media_recovery_receipt_sha256'] ), 'Binding plan did not hand off exact recovery receipt.' );
+	$check( hash_equals( (string) $manifest_binding_plan['binding_state_sha256'], (string) $manifest_fragment['expected_media_binding_state_sha256'] ), 'Binding plan did not hand off exact content media binding identity.' );
+
+	$manifest_create_input = array_merge( array( 'post_title' => 'CI manifest-bound trip' ), $manifest_fragment );
+	$manifest_create_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'create', $manifest_create_input );
+	$check( ! is_wp_error( $manifest_create_plan ) && isset( $manifest_create_plan['remote_media_manifest_receipt']['recovery_receipt_sha256'] ), 'Content create plan lost manifest recovery evidence.' );
+	$manifest_create = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $manifest_create_input, array( 'plan_sha256' => $manifest_create_plan['plan_sha256'] ) ) );
+	$check( ! is_wp_error( $manifest_create ) && ! empty( $manifest_create['verified'] ) && ! empty( $manifest_create['recovery_binding'] ), 'Manifest-bound content create did not finish with verified recovery binding.' );
+	$manifest_post_id = (int) $manifest_create['post_id']; $post_ids[] = $manifest_post_id;
+	$manifest_bound_status = MAD4B_SCP_Remote_Media_Recovery::status( $remote_manifest['manifest_sha256'] );
+	$check( ! is_wp_error( $manifest_bound_status ) && 'bound' === $manifest_bound_status['state'] && in_array( $manifest_post_id, $manifest_bound_status['bound_post_ids'], true ), 'Manifest recovery status did not transition from staged to bound.' );
+
+	$orphan_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Recoverable Unbound Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $orphan_attachment ), 'Unable to create recoverable unbound media fixture.' );
+	$orphan_attachment = (int) $orphan_attachment; $post_ids[] = $orphan_attachment;
+	update_attached_file( $orphan_attachment, 'ci-recoverable-unbound.jpg' );
+	wp_update_attachment_metadata( $orphan_attachment, array( 'width' => 1000, 'height' => 700, 'file' => 'ci-recoverable-unbound.jpg', 'filesize' => 9000 ) );
+	$orphan_manifest_sha = hash( 'sha256', 'ci-recoverable-unbound-manifest' );
+	$orphan_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $orphan_attachment, array(
+		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0, 'manifest_item_count' => 1,
+		'import_plan_sha256' => hash( 'sha256', 'ci-recoverable-unbound-import-plan' ),
+		'provenance_event_sha256' => '', 'created_for_manifest' => true,
+	) );
+	$check( ! is_wp_error( $orphan_stage ), 'Unable to stage recoverable unbound attachment.' );
+	$orphan_status = MAD4B_SCP_Remote_Media_Recovery::status( $orphan_manifest_sha );
+	$check( 'staged_unbound' === $orphan_status['state'] && in_array( $orphan_attachment, $orphan_status['created_for_manifest_attachment_ids'], true ) && false === $orphan_status['auto_delete'], 'Recoverable orphan semantics are not explicit/non-destructive.' );
+	$orphan_retry = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $orphan_attachment, array(
+		'manifest_sha256' => $orphan_manifest_sha, 'manifest_index' => 0, 'manifest_item_count' => 1,
+		'import_plan_sha256' => hash( 'sha256', 'ci-recoverable-unbound-import-plan' ),
+		'provenance_event_sha256' => '', 'created_for_manifest' => false,
+	) );
+	$check( ! is_wp_error( $orphan_retry ) && ! empty( $orphan_retry['created_for_manifest'] ), 'Idempotent recovery retry lost created-for-manifest ownership.' );
+
+	$partial_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Partial Recovery Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $partial_attachment ), 'Unable to create partial recovery fixture.' );
+	$partial_attachment = (int) $partial_attachment; $post_ids[] = $partial_attachment;
+	$partial_manifest_sha = hash( 'sha256', 'ci-partial-recovery-manifest' );
+	$partial_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $partial_attachment, array(
+		'manifest_sha256' => $partial_manifest_sha, 'manifest_index' => 0, 'manifest_item_count' => 2,
+		'import_plan_sha256' => hash( 'sha256', 'ci-partial-recovery-plan' ), 'created_for_manifest' => true,
+	) );
+	$check( ! is_wp_error( $partial_stage ), 'Unable to stage partial recovery fixture.' );
+	$partial_status = MAD4B_SCP_Remote_Media_Recovery::status( $partial_manifest_sha );
+	$check( 'staged_partial' === $partial_status['state'] && array( 1 ) === $partial_status['missing_manifest_indices'] && 'resume_remaining_media_imports' === $partial_status['next_action'], 'Partial manifest recovery state did not expose the exact resume action.' );
+
+	$recovery_overview = MAD4B_SCP_Remote_Media_Recovery::status();
+	$overview_manifests = array_column( $recovery_overview['unbound_manifests'], 'manifest_sha256' );
+	$check( in_array( $orphan_manifest_sha, $overview_manifests, true ) && $recovery_overview['created_unbound_attachment_count'] >= 1, 'Recovery overview did not surface created-but-unbound Media Library assets.' );
+	$check( in_array( $partial_manifest_sha, $overview_manifests, true ) && $recovery_overview['partial_manifest_count'] >= 1, 'Recovery overview did not surface partial manifests.' );
+
+	$legacy_attachment = wp_insert_post( array(
+		'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'CI Legacy Recovery Image', 'post_mime_type' => 'image/jpeg',
+	), true );
+	$check( ! is_wp_error( $legacy_attachment ), 'Unable to create legacy recovery fixture.' );
+	$legacy_attachment = (int) $legacy_attachment; $post_ids[] = $legacy_attachment;
+	$legacy_manifest_sha = hash( 'sha256', 'ci-legacy-recovery-manifest' );
+	$legacy_stage = MAD4B_SCP_Remote_Media_Recovery::stage_attachment( $legacy_attachment, array(
+		'manifest_sha256' => $legacy_manifest_sha, 'manifest_index' => 0,
+		'import_plan_sha256' => hash( 'sha256', 'ci-legacy-recovery-plan' ), 'created_for_manifest' => true,
+	) );
+	$check( ! is_wp_error( $legacy_stage ), 'Unable to stage legacy recovery fixture.' );
+	$legacy_status = MAD4B_SCP_Remote_Media_Recovery::status( $legacy_manifest_sha );
+	$check( 'staged_unbound' === $legacy_status['state'] && empty( $legacy_status['progress_known'] ) && 0 === (int) $legacy_status['expected_item_count'], 'Legacy recovery rows were misclassified as partial manifests.' );
 
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'full-content-operations' );
 	$check( $adapter instanceof MAD4B_SCP_Full_Content_Operations_Adapter, 'Full Content Operations adapter is unavailable.' );
@@ -241,8 +554,12 @@ try {
 		'taxonomies' => array( 'mad4b_ci_region' => array( 'cairo' ) ),
 		'featured_media_id' => $image_one,
 	);
+	$expected_create_remote_state = MAD4B_SCP_Remote_Media_Rights::state_evidence( $image_one, $profile_v1['media_meta_fields'], $create_input['meta'] );
+	$check( ! is_wp_error( $expected_create_remote_state ), 'Unable to derive expected create remote-media state.' );
+	$create_input['expected_remote_media_state_sha256'] = (string) $expected_create_remote_state['remote_state_sha256'];
 	$create_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'create', $create_input );
 	$check( ! is_wp_error( $create_plan ) && ! empty( $create_plan['profile_snapshot']['authority_sha256'] ), 'Create plan lacks historical profile snapshot.' );
+	$check( isset( $create_plan['remote_media_state']['remote_state_sha256'] ) && 64 === strlen( (string) $create_plan['remote_media_state']['remote_state_sha256'] ), 'Create plan is not bound to remote media state evidence.' );
 	$create = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'create', array_merge( $create_input, array( 'plan_sha256' => $create_plan['plan_sha256'] ) ) );
 	$check( ! is_wp_error( $create ) && ! empty( $create['verified'] ) && ! empty( $create['post_id'] ), 'Dynamic create apply failed.' );
 	$post_id = (int) $create['post_id'];

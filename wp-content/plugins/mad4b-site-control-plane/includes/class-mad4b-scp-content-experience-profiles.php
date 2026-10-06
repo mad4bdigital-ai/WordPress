@@ -15,6 +15,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	const PROFILE_APPLY_ABILITY = 'mad4b/content-experience-profile-apply';
 	const PROFILE_CLONE_APPLY_ABILITY = 'mad4b/content-experience-profile-clone-apply';
 	const PROFILE_DELETE_APPLY_ABILITY = 'mad4b/content-experience-profile-delete-apply';
+	const BOOTSTRAP_PLAN_ABILITY = 'mad4b/content-experience-bootstrap-plan';
+	const MEDIA_BINDING_PLAN_ABILITY = 'mad4b/content-experience-media-binding-plan';
+	const BOOTSTRAP_PLAN_CONTRACT = 'mad4b.content-experience-bootstrap-plan.v1';
 	const MAX_PROFILES = 64;
 	const MAX_META_KEYS = 128;
 	const MAX_MEDIA_META_FIELDS = 32;
@@ -494,6 +497,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 					'can_assign' => current_user_can( isset( $taxonomy->cap->assign_terms ) ? $taxonomy->cap->assign_terms : 'edit_posts' ),
 				);
 			}
+			$configured_profiles = array();
+			foreach ( self::stored_profiles() as $stored_slug => $stored_profile ) if ( isset( $stored_profile['post_type'] ) && (string) $post_type === (string) $stored_profile['post_type'] ) $configured_profiles[] = (string) $stored_slug;
 			$items[] = array(
 				'post_type' => (string) $post_type,
 				'label' => (string) $object->label,
@@ -503,7 +508,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'hierarchical' => ! empty( $object->hierarchical ),
 				'can_create' => current_user_can( self::post_type_create_cap( $object ) ),
 				'can_publish' => current_user_can( self::post_type_publish_cap( $object ) ),
-				'suggested_profile_slug' => substr( sanitize_title( $post_type ), 0, 48 ),
+				'suggested_profile_slug' => trim( substr( preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) $post_type ) ), 0, 48 ), '-' ),
+				'configured_profile_slugs' => $configured_profiles,
+				'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
+				'media_field_candidates' => MAD4B_SCP_Content_Experience_Bootstrap::media_field_candidates( (string) $post_type, false ),
 				'taxonomies' => $taxonomies,
 			);
 		}
@@ -514,14 +522,31 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_catalog' => array_values( self::helper_catalog() ),
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'profile_configuration_required_before_routes_exist' => true,
+			'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
+			'supported_scenarios' => array( 'remote_media_library_first', 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ),
 			'safe_defaults' => array( 'meta_mode' => 'allowlist', 'taxonomy_mode' => 'allowlist', 'live_update_mode' => 'draft_first' ),
 			'mutation_performed' => false,
 		);
 	}
 
+	/**
+	 * Build a safe, non-authorizing profile proposal from the live post-type model.
+	 *
+	 * This intentionally does not infer business-specific meta keys or enable
+	 * external helpers. Those remain explicit operator decisions. The goal is to
+	 * remove expert-only boilerplate while preserving exact profile authority.
+	 */
+	public static function bootstrap_plan( $input = array() ) {
+		return MAD4B_SCP_Content_Experience_Bootstrap::plan( $input );
+	}
+
+	public static function media_binding_plan( $input = array() ) {
+		return MAD4B_SCP_Content_Experience_Media_Binding::plan( $input );
+	}
+
 	public static function ability_names( $surface ) {
 		$surface = sanitize_key( (string) $surface );
-		$read = array( 'mad4b/content-experience-discover', 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
+		$read = array( 'mad4b/content-experience-discover', self::BOOTSTRAP_PLAN_ABILITY, self::MEDIA_BINDING_PLAN_ABILITY, 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
 		$content = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
@@ -571,6 +596,11 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'post_parent' => array( 'type' => 'integer', 'minimum' => 0 ),
 			'menu_order' => array( 'type' => 'integer' ),
 			'featured_media_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+			'expected_remote_media_state_sha256' => self::sha_schema(),
+			'expected_media_manifest_sha256' => self::sha_schema(),
+			'expected_media_manifest_item_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50 ),
+			'expected_media_recovery_receipt_sha256' => self::sha_schema(),
+			'expected_media_binding_state_sha256' => self::sha_schema(),
 			'meta' => array( 'type' => 'object', 'additionalProperties' => self::json_schema() ),
 			'taxonomies' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'helpers' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -593,6 +623,35 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$definitions = array(
 			array( 'name' => 'mad4b/content-experience-discover', 'label' => 'Discover Content Experience Profiles', 'callback' => array( __CLASS__, 'discover' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array(
+				'name' => self::BOOTSTRAP_PLAN_ABILITY, 'label' => 'Plan Content Experience Bootstrap', 'callback' => array( __CLASS__, 'bootstrap_plan' ), 'permission' => $read,
+				'schema' => self::schema( array(
+					'post_type' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[a-zA-Z0-9_-]+$' ),
+					'profile_slug' => array( 'type' => 'string', 'maxLength' => 48 ),
+					'label' => array( 'type' => 'string', 'maxLength' => 200 ),
+					'taxonomy_strategy' => array( 'type' => 'string', 'enum' => array( 'none', 'public_assignable', 'all_assignable' ), 'default' => 'public_assignable' ),
+					'featured_media' => array( 'type' => 'boolean' ),
+					'creation_status' => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'private' ), 'default' => 'draft' ),
+					'live_update_mode' => array( 'type' => 'string', 'enum' => array( 'draft_first', 'direct' ), 'default' => 'draft_first' ),
+					'media_meta_fields' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'allow_protected_media_meta' => array( 'type' => 'boolean', 'default' => false ),
+					'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
+				), array( 'post_type' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+			),
+			array(
+				'name' => self::MEDIA_BINDING_PLAN_ABILITY, 'label' => 'Plan Content Experience Media Binding', 'callback' => array( __CLASS__, 'media_binding_plan' ), 'permission' => $read,
+				'schema' => self::schema( array(
+					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+					'manifest_sha256' => self::sha_schema(),
+					'manifest_item_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50 ),
+					'items' => array(
+						'type' => 'array', 'minItems' => 1, 'maxItems' => self::MAX_MEDIA_GALLERY_ITEMS,
+						'items' => array( 'type' => 'object', 'additionalProperties' => true ),
+					),
+				), array( 'profile_slug', 'items' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+			),
 			array( 'name' => 'mad4b/content-experience-profile-status', 'label' => 'Content Experience Profile Status', 'callback' => array( __CLASS__, 'profile_status' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array(
 				'name' => 'mad4b/content-experience-profile-plan', 'label' => 'Plan Content Experience Profile', 'callback' => array( __CLASS__, 'profile_plan' ), 'permission' => $read,
@@ -740,13 +799,14 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'brand_key_regex' => '(^|[_-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords|editor|html|wysiwyg)([_-]|$)',
 			'operational_fields' => array(
 				'post_id', 'expected_modified_gmt', 'post_name', 'post_parent', 'menu_order',
-				'featured_media_id', 'taxonomies', 'post_status', 'plan_sha256',
+				'featured_media_id', 'expected_remote_media_state_sha256', 'expected_media_manifest_sha256', 'expected_media_manifest_item_count', 'expected_media_recovery_receipt_sha256', 'expected_media_binding_state_sha256', 'taxonomies', 'post_status', 'plan_sha256',
 			),
 			'operational_key_regex' => '^(?:term_ids?|taxonomy|taxonomies|post_status|post_id|featured_media_id|menu_order|post_parent|expected_modified_gmt|plan_sha256|id|ids|uuid|hash|checksum|status|enabled|disabled|price|amount|count|order|priority|color|size|width|height|position|timestamp|date|url|path)$',
 			'root_operational_paths' => array(
 				'post_id', 'expected_modified_gmt',
 				'post_title', 'post_content', 'post_excerpt',
-				'post_name', 'post_parent', 'menu_order', 'featured_media_id',
+				'post_name', 'post_parent', 'menu_order', 'featured_media_id', 'expected_remote_media_state_sha256',
+				'expected_media_manifest_sha256', 'expected_media_manifest_item_count', 'expected_media_recovery_receipt_sha256', 'expected_media_binding_state_sha256',
 				'post_status', 'plan_sha256',
 				'meta.*', 'taxonomies.*', 'helpers.*',
 				'_mad4b_approval_ticket_id', '_mad4b_context_receipt',

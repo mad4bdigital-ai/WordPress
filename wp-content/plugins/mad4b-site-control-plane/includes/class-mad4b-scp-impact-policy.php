@@ -47,6 +47,9 @@ final class MAD4B_SCP_Impact_Policy {
 			} elseif ( in_array( $ability_name, array( 'mad4b/mutation-undo', 'context/rollback-materialized-brand-draft' ), true ) || false !== strpos( $ability_name, 'rollback' ) ) {
 				$operation_type = 'recovery';
 				$mutation_kind = 'rollback';
+			} elseif ( 'media/remote-import-apply' === $ability_name ) {
+				$operation_type = 'content_change';
+				$mutation_kind = 'create';
 			} elseif ( in_array( $ability_name, array( 'mad4b/content-update-post', 'mad4b/content-create-post', 'mad4b/content-apply-bundle' ), true ) ) {
 				$status = 'mad4b/content-apply-bundle' === $ability_name && isset( $input['post'] ) && is_array( $input['post'] ) && isset( $input['post']['post_status'] )
 					? sanitize_key( (string) $input['post']['post_status'] )
@@ -163,6 +166,7 @@ final class MAD4B_SCP_Impact_Policy {
 
 	public static function requires_approval( $ability_name, $provider = 'core', $input = null ) {
 		if ( 'mad4b/developer-workspace-apply' === (string) $ability_name ) return true;
+		if ( 'media/remote-import-apply' === (string) $ability_name ) return true;
 		$impact = self::impact_for( $ability_name, $provider, $input );
 		if ( in_array( $impact, array( 'high', 'exceptional' ), true ) ) return true;
 		return (bool) apply_filters( 'mad4b_scp_low_impact_requires_approval', false, $ability_name, $provider, $input );

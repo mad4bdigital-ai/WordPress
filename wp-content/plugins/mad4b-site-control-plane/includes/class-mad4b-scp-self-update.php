@@ -1438,7 +1438,16 @@ final class MAD4B_SCP_Self_Update {
 		if ( in_array( $code, array( 'mad4b_post_update_continuation_transport_unavailable', 'mad4b_post_update_continuation_foreign_transport_unreviewed', 'mad4b_post_update_continuation_write_side_channel_detected' ), true ) ) {
 			$message .= ' ' . __( 'The live MCP transport inventory must be verified before the update can proceed.', 'mad4b-site-control-plane' );
 		} elseif ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
-			$message .= ' ' . __( 'Governed write authority must be reconciled to the currently installed build before updating.', 'mad4b-site-control-plane' );
+			$current_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+				&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+				? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()
+				: array();
+			$current_authority_ready = is_array( $current_authority ) && ! empty( $current_authority['ready'] );
+			if ( $current_authority_ready ) {
+				$message = __( 'The previous MAD4B update attempt was blocked before installation, but current governed write authority is ready. No plugin files were changed. Retry the update using the current exact plan.', 'mad4b-site-control-plane' );
+			} else {
+				$message .= ' ' . __( 'Governed write authority must be reconciled to the currently installed build before updating.', 'mad4b-site-control-plane' );
+			}
 		} elseif ( isset( $_GET['mad4b_update_maintenance_state'] ) && '' !== sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) ) {
 			$message .= ' ' . __( 'Another governed maintenance operation is active; try again after it finishes.', 'mad4b-site-control-plane' );
 		}
