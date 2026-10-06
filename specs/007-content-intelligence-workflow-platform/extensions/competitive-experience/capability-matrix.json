@@ -10,7 +10,7 @@
       "phase": 0,
       "title": "Evidence and reproducible comparison",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3901",
         "T3902",
@@ -337,7 +337,7 @@
       "phase": 16,
       "title": "Runtime Candidate Graph v2",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4001",
         "T4002",
@@ -357,7 +357,7 @@
       "phase": 17,
       "title": "Semantic Classification Engine",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4006",
         "T4007",
@@ -748,7 +748,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Preserve four original uploaded packages and make their feature evidence reproducible.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "READ_ONLY",
       "task_ids": [
@@ -779,7 +779,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Compare capability semantics and usable journeys; track marketed, bundled and runtime states independently.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "READ_ONLY",
       "task_ids": [
@@ -1983,7 +1983,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement provenance-bound provider/component/capability/operation/schema/precondition/effect/reversal/evidence graph snapshots with immutable generation identities.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2015,7 +2015,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement deterministic evidence features for namespace/action/schema/annotations/capabilities/resources/effects/reversibility and a versioned Policy Proposal contract.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2366,7 +2366,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-health-view.php"
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
-      "delta": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "delta": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
       "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
@@ -2380,7 +2380,7 @@
       "acceptance": [
         "Dispatch only safe non-authorizing already-policy-admitted remediation; require one explicit review/consent/host action for blocked plans.",
         "Expose cause, scope, evidence, next step, user-owned conflict, attempt/readback/rollback history and capability-local blast radius.",
-        "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness."
+        "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness."
       ],
       "denial_cases": [
         "GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification."

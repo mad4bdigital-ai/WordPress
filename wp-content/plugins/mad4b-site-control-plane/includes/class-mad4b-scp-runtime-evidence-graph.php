@@ -1,0 +1,879 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+require_once __DIR__ . '/class-mad4b-scp-runtime-evidence-collectors.php';
+
+/**
+ * Provenance-bound, read-only runtime evidence graph.
+ *
+ * The graph only observes already-loaded/registered runtime structures and
+ * bounded plugin headers. It never executes discovered callbacks, unknown
+ * plugin code, REST routes or cron events and never creates authority.
+ */
+final class MAD4B_SCP_Runtime_Evidence_Graph {
+	const CONTRACT = 'mad4b.runtime-evidence-graph.v2';
+	const GENERATION_CONTRACT = 'mad4b.runtime-evidence-generation.v2';
+	const DIFF_CONTRACT = 'mad4b.runtime-evidence-graph-diff.v2';
+	const MAX_ITEMS_PER_KIND = 256;
+	const MAX_SYMBOLS = 256;
+	const MAX_EDGES = 1024;
+	const MAX_SNAPSHOT_BYTES = 2097152;
+	const SOFT_ELAPSED_MS = 1500;
+	const SOFT_MEMORY_DELTA_BYTES = 16777216;
+
+	private static $request_cache = null;
+	private static $last_edge_observed_count = 0;
+
+	public static function boot() {
+		if ( function_exists( 'add_action' ) ) add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
+	}
+
+	public static function register_abilities() {
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		self::register_read(
+			'mad4b/runtime-evidence-graph',
+			'Runtime Evidence Graph',
+			array( __CLASS__, 'snapshot' ),
+			array(
+				'type'=>'object',
+				'properties'=>array(
+					'refresh'=>array('type'=>'boolean','default'=>false),
+				),
+				'additionalProperties'=>false,
+			)
+		);
+		self::register_read(
+			'mad4b/runtime-evidence-graph-diff',
+			'Runtime Evidence Graph Diff',
+			array( __CLASS__, 'diff' ),
+			array(
+				'type'=>'object',
+				'properties'=>array(
+					'before'=>array('type'=>'object','additionalProperties'=>true),
+				),
+				'required'=>array('before'),
+				'additionalProperties'=>false,
+			)
+		);
+	}
+
+	private static function register_read( $name, $label, $callback, array $schema ) {
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
+		wp_register_ability( $name, array(
+			'label'=>$label,
+			'description'=>$label . ' from bounded structural runtime evidence. This ability is read-only and non-authorizing.',
+			'category'=>'mad4b-read',
+			'execute_callback'=>$callback,
+			'permission_callback'=>array('MAD4B_SCP_Policy','can_read'),
+			'input_schema'=>$schema,
+			'output_schema'=>array('type'=>'object','additionalProperties'=>true),
+			'meta'=>array(
+				'public'=>false,
+				'show_in_rest'=>false,
+				'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'read'),
+				'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true),
+			),
+		) );
+	}
+
+	public static function clear_request_cache() {
+		self::$request_cache = null;
+	}
+
+	public static function snapshot( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$refresh = ! empty( $input['refresh'] );
+		if ( ! $refresh && is_array( self::$request_cache ) ) {
+			$cached = self::$request_cache;
+			$cached['metrics']['cache_hit'] = true;
+			return $cached;
+		}
+
+		$started = microtime( true );
+		$memory_before = function_exists( 'memory_get_usage' ) ? memory_get_usage( true ) : 0;
+
+		$registry = self::collector_contracts();
+		$nodes = array();
+		$collection_status = array();
+		foreach ( $registry as $kind => $collector ) {
+			$method = isset( $collector['method'] ) ? (string) $collector['method'] : '';
+			$source = isset( $collector['source'] ) ? (string) $collector['source'] : '';
+			if ( '' === $method || ! method_exists( __CLASS__, $method ) ) {
+				$rows = array();
+			} elseif ( '' !== $source ) {
+				$source_rows = isset( $nodes[ $source ] ) && is_array( $nodes[ $source ] ) ? $nodes[ $source ] : array();
+				$rows = self::$method( $source_rows );
+			} else {
+				$rows = self::$method();
+			}
+			$rows = is_array( $rows ) ? $rows : array();
+			$limit = isset( $collector['max_items'] ) ? max( 1, min( self::MAX_ITEMS_PER_KIND, (int) $collector['max_items'] ) ) : self::MAX_ITEMS_PER_KIND;
+			usort( $rows, static function( $a, $b ) {
+				return strcmp( isset($a['id'])?(string)$a['id']:'', isset($b['id'])?(string)$b['id']:'' );
+			} );
+			$observed = self::collector_observed_count( $kind, $rows, $nodes );
+			$nodes[ $kind ] = array_slice( $rows, 0, $limit );
+			$source_complete = true;
+			if ( '' !== $source ) {
+				$source_complete = ! empty( $collection_status[ $source ]['trustworthy_for_absence'] );
+			}
+			$collection_status[ $kind ] = self::collection_status(
+				$kind,
+				count( $nodes[ $kind ] ),
+				$observed,
+				! $source_complete,
+				$limit
+			);
+			$collection_status[ $kind ]['collector_contract'] = array(
+				'collector_id'=>isset($collector['collector_id'])?(string)$collector['collector_id']:'',
+				'lifecycle_requirements'=>isset($collector['lifecycle_requirements'])&&is_array($collector['lifecycle_requirements'])?array_values($collector['lifecycle_requirements']):array(),
+				'sensitivity'=>isset($collector['sensitivity'])?(string)$collector['sensitivity']:'',
+				'provenance'=>isset($collector['provenance'])?(string)$collector['provenance']:'',
+				'budget'=>isset($collector['budget'])&&is_array($collector['budget'])?$collector['budget']:array(),
+				'completeness_semantics'=>isset($collector['completeness_semantics'])?(string)$collector['completeness_semantics']:'',
+			);
+			if ( '' !== $source ) {
+				$collection_status[ $kind ]['source_kind'] = $source;
+				$collection_status[ $kind ]['source_trustworthy_for_absence'] = $source_complete;
+			}
+		}
+		$site = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
+			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
+			: array();
+		$observation_phase=array(
+			'wp_abilities_initialized'=>function_exists('did_action') ? did_action('wp_abilities_api_init') > 0 : null,
+			'rest_api_initialized'=>function_exists('did_action') ? did_action('rest_api_init') > 0 : null,
+		);
+		$edges = self::edges( $nodes );
+		$edge_source_kinds=array('providers','components','abilities','schemas','operations','mcp_descriptors');
+		$edge_sources_complete=true;
+		foreach($edge_source_kinds as $edge_source_kind){
+			if(empty($collection_status[$edge_source_kind]['trustworthy_for_absence'])){$edge_sources_complete=false;break;}
+		}
+		$edge_status=array(
+			'observed_count'=>(int)self::$last_edge_observed_count,
+			'emitted_count'=>count($edges),
+			'max_edges'=>self::MAX_EDGES,
+			'truncated'=>(int)self::$last_edge_observed_count>count($edges),
+			'source_kinds'=>$edge_source_kinds,
+			'sources_complete'=>$edge_sources_complete,
+			'trustworthy_for_impact'=>(int)self::$last_edge_observed_count===count($edges)&&$edge_sources_complete,
+		);
+		$basis = array(
+			'contract'=>self::GENERATION_CONTRACT,
+			'site'=>$site,
+			'observation_phase'=>$observation_phase,
+			'collection_status'=>$collection_status,
+			'edge_status'=>$edge_status,
+			'nodes'=>$nodes,
+			'edges'=>$edges,
+		);
+		$generation = self::digest( self::GENERATION_CONTRACT, $basis );
+		$elapsed_ms = round( ( microtime( true ) - $started ) * 1000, 3 );
+		$memory_after = function_exists( 'memory_get_usage' ) ? memory_get_usage( true ) : $memory_before;
+		$memory_delta = max( 0, (int) $memory_after - (int) $memory_before );
+		$complete_for_absence = true;
+		foreach ( $collection_status as $status ) {
+			if ( empty( $status['trustworthy_for_absence'] ) ) {
+				$complete_for_absence = false;
+				break;
+			}
+		}
+
+		$snapshot = array(
+			'contract'=>self::CONTRACT,
+			'generation_contract'=>self::GENERATION_CONTRACT,
+			'generation_sha256'=>$generation,
+			'site_binding'=>$site,
+			'observation_phase'=>$observation_phase,
+			'nodes'=>$nodes,
+			'edges'=>$edges,
+			'counts'=>array_map('count',$nodes),
+			'edge_count'=>count($edges),
+			'edge_status'=>$edge_status,
+			'collection_status'=>$collection_status,
+			'complete_for_absence'=>$complete_for_absence,
+			'semantic_dimensions'=>array('provider','component','capability','operation','schema','precondition','effect','reversal','evidence'),
+			'discovery'=>array(
+				'callbacks_executed'=>false,
+				'unknown_plugin_code_executed'=>false,
+				'unknown_endpoints_invoked'=>false,
+				'secret_values_read'=>false,
+				'writes_performed'=>false,
+			),
+			'metrics'=>array(
+				'elapsed_ms'=>$elapsed_ms,
+				'memory_delta_bytes'=>$memory_delta,
+				'elapsed_budget_ms'=>self::SOFT_ELAPSED_MS,
+				'memory_delta_budget_bytes'=>self::SOFT_MEMORY_DELTA_BYTES,
+				'within_soft_budget'=>$elapsed_ms <= self::SOFT_ELAPSED_MS && $memory_delta <= self::SOFT_MEMORY_DELTA_BYTES,
+				'cache_hit'=>false,
+			),
+			'authorizing'=>false,
+			'mutation_performed'=>false,
+		);
+		self::$request_cache = $snapshot;
+		return $snapshot;
+	}
+
+	public static function diff( $input = array() ) {
+		$input = is_array($input) ? $input : array();
+		$before = isset($input['before']) && is_array($input['before']) ? $input['before'] : array();
+		$valid = self::validate_snapshot_envelope( $before );
+		if ( is_wp_error( $valid ) ) return $valid;
+
+		$after = self::snapshot( array( 'refresh'=>true ) );
+		if ( is_wp_error($after) ) return $after;
+		$before_nodes = isset($before['nodes']) && is_array($before['nodes']) ? $before['nodes'] : array();
+		$after_nodes = $after['nodes'];
+		$added=array(); $removed=array(); $changed=array(); $uncertain_added=array(); $uncertain_removed=array();
+		$kinds=array_values(array_unique(array_merge(array_keys($before_nodes),array_keys($after_nodes))));
+		sort($kinds,SORT_STRING);
+
+		foreach($kinds as $kind){
+			$b=self::index_rows(isset($before_nodes[$kind])&&is_array($before_nodes[$kind])?$before_nodes[$kind]:array());
+			$a=self::index_rows(isset($after_nodes[$kind])&&is_array($after_nodes[$kind])?$after_nodes[$kind]:array());
+			$before_complete=self::kind_trustworthy_for_absence($before,$kind);
+			$after_complete=self::kind_trustworthy_for_absence($after,$kind);
+			foreach($a as $id=>$row){
+				if(!isset($b[$id])) {
+					if($before_complete) $added[]=array('kind'=>$kind,'id'=>$id);
+					else $uncertain_added[]=array('kind'=>$kind,'id'=>$id);
+					continue;
+				}
+				$bd=self::digest('mad4b.runtime-evidence-node.v2',$b[$id]);
+				$ad=self::digest('mad4b.runtime-evidence-node.v2',$row);
+				if(!hash_equals($bd,$ad)) $changed[]=array('kind'=>$kind,'id'=>$id,'before_sha256'=>$bd,'after_sha256'=>$ad);
+			}
+			foreach($b as $id=>$row){
+				if(isset($a[$id])) continue;
+				if($after_complete) $removed[]=array('kind'=>$kind,'id'=>$id);
+				else $uncertain_removed[]=array('kind'=>$kind,'id'=>$id);
+			}
+		}
+
+		$impact=self::transitive_impact($before,$after,$removed,$changed);
+		$affected_read_ids=array_fill_keys($impact['affected_abilities'],true);
+		$unrelated_reads=0;
+		foreach(isset($after_nodes['abilities'])&&is_array($after_nodes['abilities'])?$after_nodes['abilities']:array() as $row){
+			if(!is_array($row)||empty($row['id'])||empty($row['readonly'])||'read'!==(isset($row['execution_lane'])?$row['execution_lane']:'')) continue;
+			if(!isset($affected_read_ids[(string)$row['id']])) $unrelated_reads++;
+		}
+		$incomplete=array();
+		foreach($after['collection_status'] as $kind=>$status) if(empty($status['trustworthy_for_absence'])) $incomplete[]=$kind;
+		sort($incomplete,SORT_STRING);
+
+		return array(
+			'contract'=>self::DIFF_CONTRACT,
+			'before_generation_sha256'=>(string)$before['generation_sha256'],
+			'after_generation_sha256'=>$after['generation_sha256'],
+			'site_binding_verified'=>true,
+			'added'=>$added,
+			'removed'=>$removed,
+			'changed'=>$changed,
+			'uncertain_added'=>$uncertain_added,
+			'uncertain_removed'=>$uncertain_removed,
+			'affected_abilities'=>$impact['affected_abilities'],
+			'affected_operations'=>$impact['affected_operations'],
+			'affected_workflows'=>$impact['affected_workflows'],
+			'dependency_impacts'=>$impact['dependency_impacts'],
+			'impact_trustworthy'=>!empty($before['edge_status']['trustworthy_for_impact'])&&!empty($after['edge_status']['trustworthy_for_impact']),
+			'edge_status'=>array('before'=>$before['edge_status'],'after'=>$after['edge_status']),
+			'unrelated_compatible_read_count'=>$unrelated_reads,
+			'incomplete_kinds'=>$incomplete,
+			'comparison_trustworthy_for_absence'=>empty($uncertain_added)&&empty($uncertain_removed)&&empty($incomplete),
+			'isolation_policy'=>'removed_or_changed_only_fail_closed',
+			'authorizing'=>false,
+			'mutation_performed'=>false,
+		);
+	}
+
+	private static function collector_contracts() {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::contracts( self::MAX_ITEMS_PER_KIND );
+	}
+
+	private static function collection_status( $kind, $emitted_count, $observed_count, $source_incomplete = false, $max_items = self::MAX_ITEMS_PER_KIND ) {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::collection_status(
+			$kind,
+			$emitted_count,
+			$observed_count,
+			$max_items,
+			$source_incomplete
+		);
+	}
+
+	private static function collector_observed_count( $kind, array $rows, array $nodes ) {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::observed_count( $kind, $rows, $nodes );
+	}
+
+	private static function kind_trustworthy_for_absence( array $snapshot, $kind ) {
+		return !empty($snapshot['collection_status'][$kind]['trustworthy_for_absence']);
+	}
+
+	private static function validate_snapshot_envelope( array $snapshot ) {
+		$encoded=wp_json_encode($snapshot,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+		if(!is_string($encoded)||strlen($encoded)>self::MAX_SNAPSHOT_BYTES) {
+			return new WP_Error('mad4b_runtime_graph_before_oversized','Before snapshot exceeds the bounded graph input limit.');
+		}
+		if(self::CONTRACT!==(isset($snapshot['contract'])?(string)$snapshot['contract']:'')) {
+			return new WP_Error('mad4b_runtime_graph_before_invalid','Before snapshot does not use the Runtime Candidate Graph v2 contract.');
+		}
+		if(self::GENERATION_CONTRACT!==(isset($snapshot['generation_contract'])?(string)$snapshot['generation_contract']:'')) {
+			return new WP_Error('mad4b_runtime_graph_generation_contract_invalid','Before snapshot generation contract is invalid.');
+		}
+		if(empty($snapshot['nodes'])||!is_array($snapshot['nodes'])||!isset($snapshot['edges'])||!is_array($snapshot['edges'])) {
+			return new WP_Error('mad4b_runtime_graph_before_shape_invalid','Before snapshot graph shape is invalid.');
+		}
+		if(count($snapshot['edges'])>self::MAX_EDGES) return new WP_Error('mad4b_runtime_graph_before_edges_unbounded','Before snapshot contains too many graph edges.');
+		$allowed=array_keys(self::collector_contracts());
+		foreach($snapshot['nodes'] as $kind=>$rows) {
+			if(!in_array((string)$kind,$allowed,true)||!is_array($rows)||count($rows)>self::MAX_ITEMS_PER_KIND) {
+				return new WP_Error('mad4b_runtime_graph_before_nodes_unbounded','Before snapshot node inventory is invalid or unbounded.');
+			}
+		}
+
+		$current_site=class_exists('MAD4B_SCP_Ability_Contract_Inspector')?MAD4B_SCP_Ability_Contract_Inspector::site_binding():array();
+		$before_site=isset($snapshot['site_binding'])&&is_array($snapshot['site_binding'])?$snapshot['site_binding']:array();
+		foreach(array('site_uuid','origin','environment') as $field){
+			$current=isset($current_site[$field])?(string)$current_site[$field]:'';
+			$previous=isset($before_site[$field])?(string)$before_site[$field]:'';
+			if(''!==$current && !hash_equals($current,$previous)) return new WP_Error('mad4b_runtime_graph_cross_site_rejected','Runtime graph comparison is restricted to the same site and environment.');
+		}
+		$observation_phase=isset($snapshot['observation_phase'])&&is_array($snapshot['observation_phase'])?$snapshot['observation_phase']:array();
+		$status=isset($snapshot['collection_status'])&&is_array($snapshot['collection_status'])?$snapshot['collection_status']:array();
+		$edge_status=isset($snapshot['edge_status'])&&is_array($snapshot['edge_status'])?$snapshot['edge_status']:array();
+		$basis=array(
+			'contract'=>self::GENERATION_CONTRACT,
+			'site'=>$before_site,
+			'observation_phase'=>$observation_phase,
+			'collection_status'=>$status,
+			'edge_status'=>$edge_status,
+			'nodes'=>$snapshot['nodes'],
+			'edges'=>$snapshot['edges'],
+		);
+		$expected=self::digest(self::GENERATION_CONTRACT,$basis);
+		$claimed=isset($snapshot['generation_sha256'])?(string)$snapshot['generation_sha256']:'';
+		if(1!==preg_match('/^[a-f0-9]{64}$/D',$claimed)||!hash_equals($expected,$claimed)) {
+			return new WP_Error('mad4b_runtime_graph_generation_mismatch','Before snapshot generation digest does not match its graph contents.');
+		}
+		foreach($allowed as $kind){
+			if(!isset($snapshot['nodes'][$kind])||!isset($status[$kind])||!is_array($status[$kind])) return new WP_Error('mad4b_runtime_graph_collection_status_missing','Before snapshot is missing collection completeness evidence.');
+			$emitted=count($snapshot['nodes'][$kind]);
+			$observed=isset($status[$kind]['observed_count'])?(int)$status[$kind]['observed_count']:-1;
+			$declared_emitted=isset($status[$kind]['emitted_count'])?(int)$status[$kind]['emitted_count']:-1;
+			$truncated=!empty($status[$kind]['truncated']);
+			if($declared_emitted!==$emitted||$observed<$emitted||$truncated!==($observed>$emitted)) return new WP_Error('mad4b_runtime_graph_collection_status_mismatch','Before snapshot collection completeness evidence is inconsistent.');
+			if(isset($status[$kind]['source_kind'])){
+				$source_kind=(string)$status[$kind]['source_kind'];
+				$source_complete=!empty($status[$source_kind]['trustworthy_for_absence']);
+				if(!array_key_exists('source_trustworthy_for_absence',$status[$kind])||(bool)$status[$kind]['source_trustworthy_for_absence']!==$source_complete) return new WP_Error('mad4b_runtime_graph_collection_source_status_mismatch','Before snapshot derived collection source completeness is inconsistent.');
+				if(!$source_complete&&!empty($status[$kind]['trustworthy_for_absence'])) return new WP_Error('mad4b_runtime_graph_collection_source_trust_invalid','Before snapshot derived collection cannot be more complete than its source.');
+			}
+		}
+		$edge_emitted=count($snapshot['edges']);
+		$edge_observed=isset($edge_status['observed_count'])?(int)$edge_status['observed_count']:-1;
+		$edge_declared=isset($edge_status['emitted_count'])?(int)$edge_status['emitted_count']:-1;
+		$edge_truncated=!empty($edge_status['truncated']);
+		if($edge_declared!==$edge_emitted||$edge_observed<$edge_emitted||$edge_truncated!==($edge_observed>$edge_emitted)) return new WP_Error('mad4b_runtime_graph_edge_status_mismatch','Before snapshot edge completeness evidence is inconsistent.');
+		$edge_sources_complete=true;
+		foreach(isset($edge_status['source_kinds'])&&is_array($edge_status['source_kinds'])?$edge_status['source_kinds']:array() as $source_kind){
+			if(empty($status[(string)$source_kind]['trustworthy_for_absence'])){$edge_sources_complete=false;break;}
+		}
+		if(!array_key_exists('sources_complete',$edge_status)||(bool)$edge_status['sources_complete']!==$edge_sources_complete) return new WP_Error('mad4b_runtime_graph_edge_source_status_mismatch','Before snapshot edge source completeness is inconsistent.');
+		$expected_edge_trust=!$edge_truncated&&$edge_sources_complete;
+		if(!array_key_exists('trustworthy_for_impact',$edge_status)||(bool)$edge_status['trustworthy_for_impact']!==$expected_edge_trust) return new WP_Error('mad4b_runtime_graph_edge_trust_mismatch','Before snapshot edge impact trust is inconsistent.');
+		return true;
+	}
+
+	private static function transitive_impact( array $before, array $after, array $removed, array $changed ) {
+		$seeds=array();
+		foreach(array_merge($removed,$changed) as $row){
+			if(!is_array($row)||empty($row['kind'])||empty($row['id'])) continue;
+			$prefix=self::kind_prefix($row['kind']);
+			if(''!==$prefix) $seeds[]=$prefix.':'.(string)$row['id'];
+		}
+		$seeds=array_values(array_unique($seeds));
+		$edges=array_merge(isset($before['edges'])&&is_array($before['edges'])?$before['edges']:array(),isset($after['edges'])&&is_array($after['edges'])?$after['edges']:array());
+		$reverse=array();
+		foreach($edges as $edge){
+			if(!is_array($edge)||empty($edge['from'])||empty($edge['to'])) continue;
+			$reverse[(string)$edge['to']][]=(string)$edge['from'];
+		}
+		$seen=array_fill_keys($seeds,true);
+		$queue=$seeds;
+		while($queue && count($seen)<self::MAX_EDGES*4){
+			$current=array_shift($queue);
+			foreach(isset($reverse[$current])&&is_array($reverse[$current])?$reverse[$current]:array() as $dependent){
+				if(isset($seen[$dependent])) continue;
+				$seen[$dependent]=true;
+				$queue[]=$dependent;
+			}
+		}
+		$abilities=array(); $operations=array(); $providers=array(); $plugins=array();
+		foreach(array_keys($seen) as $key){
+			if(0===strpos($key,'ability:')) $abilities[]=substr($key,8);
+			elseif(0===strpos($key,'operation:')) $operations[]=substr($key,10);
+			elseif(0===strpos($key,'provider:')) $providers[]=substr($key,9);
+			elseif(0===strpos($key,'plugin:')) $plugins[]=substr($key,7);
+		}
+		foreach(array(&$abilities,&$operations,&$providers,&$plugins) as &$items){$items=array_values(array_unique($items));sort($items,SORT_STRING);} unset($items);
+		$operation_rows=array_merge(isset($before['nodes']['operations'])&&is_array($before['nodes']['operations'])?$before['nodes']['operations']:array(),isset($after['nodes']['operations'])&&is_array($after['nodes']['operations'])?$after['nodes']['operations']:array());
+		$workflows=array();
+		foreach($operation_rows as $row){
+			if(!is_array($row)||empty($row['id'])||!in_array((string)$row['id'],$operations,true)) continue;
+			if(!empty($row['pipeline_profile'])) $workflows[]='pipeline:'.(string)$row['pipeline_profile'];
+		}
+		$workflows=array_values(array_unique($workflows)); sort($workflows,SORT_STRING);
+		$dependency_impacts=array();
+		if(class_exists('MAD4B_SCP_Dependency_Impact_Graph')&&method_exists('MAD4B_SCP_Dependency_Impact_Graph','inspect')){
+			foreach(array_slice($providers,0,32) as $provider){
+				$impact=MAD4B_SCP_Dependency_Impact_Graph::inspect(array('provider_id'=>$provider));
+				if(is_array($impact)) $dependency_impacts[]=self::safe_row($impact);
+			}
+			foreach(array_slice($plugins,0,32) as $plugin){
+				$impact=MAD4B_SCP_Dependency_Impact_Graph::inspect(array('plugin'=>$plugin));
+				if(is_array($impact)) $dependency_impacts[]=self::safe_row($impact);
+			}
+		}
+		return array(
+			'affected_abilities'=>$abilities,
+			'affected_operations'=>$operations,
+			'affected_workflows'=>$workflows,
+			'dependency_impacts'=>array_slice($dependency_impacts,0,64),
+		);
+	}
+
+	private static function kind_prefix( $kind ) {
+		$map=array(
+			'providers'=>'provider','components'=>'component','abilities'=>'ability','schemas'=>'schema','operations'=>'operation',
+			'plugins'=>'plugin','rest_routes'=>'rest','post_types'=>'post_type','taxonomies'=>'taxonomy','meta_keys'=>'meta',
+			'hooks'=>'hook','cron_hooks'=>'cron','admin_routes'=>'admin_route','mcp_descriptors'=>'mcp','symbols'=>'symbol','database_tables'=>'table',
+		);
+		return isset($map[$kind])?$map[$kind]:'';
+	}
+
+	private static function ability_names() {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::ability_names();
+	}
+
+	private static function abilities() {
+		$names=self::ability_names();
+		$out=array();
+		foreach(array_slice($names,0,self::MAX_ITEMS_PER_KIND) as $name){
+			if(!function_exists('wp_has_ability')||!wp_has_ability($name)) continue;
+			$descriptor=class_exists('MAD4B_SCP_Capability_Descriptor_Registry')?MAD4B_SCP_Capability_Descriptor_Registry::describe($name):null;
+			if(is_wp_error($descriptor)||!is_array($descriptor)) continue;
+			$ability=function_exists('wp_get_ability')?wp_get_ability($name):null;
+			$meta=is_object($ability)&&method_exists($ability,'get_meta')?$ability->get_meta():array();
+			$meta=is_array($meta)?$meta:array();
+			$annotations=isset($meta['annotations'])&&is_array($meta['annotations'])?$meta['annotations']:array();
+			$schema=is_object($ability)&&method_exists($ability,'get_input_schema')?$ability->get_input_schema():array();
+			$output_schema_declared=is_object($ability)&&method_exists($ability,'get_output_schema');
+			$output_schema=$output_schema_declared?$ability->get_output_schema():array();
+			$schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($schema,'ability_input_schema'):array('classification'=>'unknown','stats'=>array());
+			$output_schema_class=class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::classify($output_schema,'ability_output_schema'):array('classification'=>'unknown','stats'=>array());
+			$output_schema_sha256=self::digest('mad4b.ability-output-schema.v1',is_array($output_schema)?self::safe_row($output_schema):$output_schema);
+			$parts=explode('/',$name,2);
+			$mcp_meta=isset($meta['mcp'])&&is_array($meta['mcp'])?$meta['mcp']:array();
+			$resource_constraints_sha256='';
+			if(isset($mcp_meta['resource_constraints'])&&is_array($mcp_meta['resource_constraints'])){
+				$resource_constraints_sha256=self::digest('mad4b.runtime-resource-constraints.v1',self::safe_row($mcp_meta['resource_constraints']));
+			}
+			$out[]=array(
+				'id'=>$name,
+				'kind'=>'ability',
+				'namespace'=>isset($parts[0])?$parts[0]:'',
+				'action'=>isset($parts[1])?$parts[1]:'',
+				'category'=>isset($descriptor['category'])?(string)$descriptor['category']:'',
+				'required_capability'=>isset($mcp_meta['required_capability'])?sanitize_key((string)$mcp_meta['required_capability']):'',
+				'data_classification'=>isset($mcp_meta['data_classification'])?sanitize_key((string)$mcp_meta['data_classification']):'',
+				'resource_schema_version'=>isset($mcp_meta['resource_schema_version'])?substr((string)$mcp_meta['resource_schema_version'],0,64):'',
+				'resource_constraints_sha256'=>$resource_constraints_sha256,
+				'resource_values_exposed'=>false,
+				'privilege_inferred_from_resources'=>false,
+				'input_schema_sha256'=>isset($descriptor['input_schema_sha256'])?(string)$descriptor['input_schema_sha256']:'',
+				'output_schema_declared'=>$output_schema_declared,
+				'output_schema_sha256'=>$output_schema_declared?$output_schema_sha256:'',
+				'classification_sha256'=>isset($descriptor['classification_sha256'])?(string)$descriptor['classification_sha256']:'',
+				'descriptor_generation_sha256'=>isset($descriptor['descriptor_sha256'])?(string)$descriptor['descriptor_sha256']:'',
+				'readonly'=>!empty($descriptor['readonly']),
+				'readonly_declared'=>!empty($descriptor['readonly_declared']),
+				'execution_lane'=>isset($descriptor['execution_lane'])?(string)$descriptor['execution_lane']:'',
+				'execution_provider'=>isset($descriptor['execution_provider'])?(string)$descriptor['execution_provider']:'',
+				'execution_eligible'=>!empty($descriptor['execution_eligible']),
+				'execution_boundary_verified'=>!empty($descriptor['execution_boundary_verified']),
+				'breakglass'=>!empty($descriptor['breakglass']),
+				'reversible_contract'=>isset($meta['mcp']['mad4b_reversible_contract'])?(string)$meta['mcp']['mad4b_reversible_contract']:'',
+				'annotations'=>array(
+					'readonly'=>isset($annotations['readonly'])&&is_bool($annotations['readonly'])?$annotations['readonly']:null,
+					'destructive'=>isset($annotations['destructive'])&&is_bool($annotations['destructive'])?$annotations['destructive']:null,
+					'idempotent'=>isset($annotations['idempotent'])&&is_bool($annotations['idempotent'])?$annotations['idempotent']:null,
+				),
+				'schema_evidence_classification'=>isset($schema_class['classification'])?(string)$schema_class['classification']:'unknown',
+				'schema_secret_bearing'=>isset($schema_class['stats']['redacted']) && (int)$schema_class['stats']['redacted']>0,
+				'output_schema_evidence_classification'=>isset($output_schema_class['classification'])?(string)$output_schema_class['classification']:'unknown',
+				'output_schema_secret_bearing'=>isset($output_schema_class['stats']['redacted']) && (int)$output_schema_class['stats']['redacted']>0,
+				'effect_class'=>(!empty($descriptor['readonly'])&&'read'===(isset($descriptor['execution_lane'])?$descriptor['execution_lane']:''))?'declared_read_only':'mutation_or_unknown',
+				'mcp_surface'=>isset($meta['mcp']['surface'])?sanitize_key((string)$meta['mcp']['surface']):'',
+				'mcp_public'=>!empty($meta['mcp']['public']),
+				'preconditions'=>array(
+					'execution_eligible'=>!empty($descriptor['execution_eligible']),
+					'execution_boundary_verified'=>!empty($descriptor['execution_boundary_verified']),
+					'provider_bound'=>!empty($descriptor['execution_provider']),
+				),
+				'effect'=>array(
+					'class'=>(!empty($descriptor['readonly'])&&'read'===(isset($descriptor['execution_lane'])?$descriptor['execution_lane']:''))?'declared_read_only':'mutation_or_unknown',
+					'annotation_is_authority'=>false,
+				),
+				'reversal'=>array(
+					'contract'=>isset($meta['mcp']['mad4b_reversible_contract'])?(string)$meta['mcp']['mad4b_reversible_contract']:'',
+					'declared'=>!empty($meta['mcp']['mad4b_reversible_contract']),
+				),
+				'evidence'=>array(
+					'input_schema_sha256'=>isset($descriptor['input_schema_sha256'])?(string)$descriptor['input_schema_sha256']:'',
+					'output_schema_sha256'=>$output_schema_declared?$output_schema_sha256:'',
+					'classification_sha256'=>isset($descriptor['classification_sha256'])?(string)$descriptor['classification_sha256']:'',
+					'descriptor_generation_sha256'=>isset($descriptor['descriptor_sha256'])?(string)$descriptor['descriptor_sha256']:'',
+				),
+				'provenance'=>array('descriptor_contract'=>isset($descriptor['descriptor_contract'])?(string)$descriptor['descriptor_contract']:'','generation_contract'=>isset($descriptor['generation_contract'])?(string)$descriptor['generation_contract']:''),
+			);
+		}
+		return $out;
+	}
+
+	private static function schemas( array $abilities ) {
+		$out = array();
+		foreach ( $abilities as $row ) {
+			if ( ! is_array( $row ) || empty( $row['id'] ) ) continue;
+			$out[] = array(
+				'id' => 'ability:' . (string) $row['id'] . ':input',
+				'kind' => 'schema',
+				'owner_kind' => 'ability',
+				'owner_id' => (string) $row['id'],
+				'direction' => 'input',
+				'schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
+				'secret_bearing' => ! empty( $row['schema_secret_bearing'] ),
+				'values_read' => false,
+				'privilege_inferred' => false,
+			);
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
+			$out[] = array(
+				'id' => 'ability:' . (string) $row['id'] . ':output',
+				'kind' => 'schema',
+				'owner_kind' => 'ability',
+				'owner_id' => (string) $row['id'],
+				'direction' => 'output',
+				'schema_sha256' => isset( $row['output_schema_sha256'] ) ? (string) $row['output_schema_sha256'] : '',
+				'secret_bearing' => ! empty( $row['output_schema_secret_bearing'] ),
+				'values_read' => false,
+				'privilege_inferred' => false,
+			);
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
+		}
+		return $out;
+	}
+
+	private static function operations() {
+		$status = class_exists( 'MAD4B_SCP_Operation_Registry' ) && method_exists( 'MAD4B_SCP_Operation_Registry', 'status' )
+			? MAD4B_SCP_Operation_Registry::status()
+			: array();
+		if ( is_wp_error( $status ) || ! is_array( $status ) ) return array();
+
+		$rows = isset( $status['operations'] ) && is_array( $status['operations'] )
+			? $status['operations']
+			: array();
+
+		$out = array();
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$id = isset( $row['id'] ) ? (string) $row['id'] : '';
+			if ( '' === $id ) continue;
+
+			$refs = array();
+			foreach ( array( 'planner', 'executor', 'planner_ability', 'executor_ability', 'plan_ability', 'apply_ability', 'ability_name' ) as $field ) {
+				if ( empty( $row[ $field ] ) || ! is_string( $row[ $field ] ) || 'exact_executor_from_plan' === $row[ $field ] ) continue;
+				$refs[] = $row[ $field ];
+			}
+			$refs = array_values( array_unique( $refs ) );
+			sort( $refs, SORT_STRING );
+
+			$bound = method_exists( 'MAD4B_SCP_Operation_Registry', 'operation' )
+				? MAD4B_SCP_Operation_Registry::operation( $id )
+				: array();
+			if ( is_wp_error( $bound ) || ! is_array( $bound ) ) $bound = array();
+
+			$safe = self::safe_row( $row );
+			$out[] = array(
+				'id' => $id,
+				'kind' => 'operation',
+				'ability_refs' => $refs,
+				'pipeline_profile' => isset( $row['pipeline_profile'] ) ? sanitize_key( (string) $row['pipeline_profile'] ) : '',
+				'required_runtime' => ! array_key_exists( 'required_runtime', $row ) || true === $row['required_runtime'],
+				'preconditions' => array(
+					'planner_registered' => isset( $row['planner_registered'] ) ? $row['planner_registered'] : null,
+					'executor_registered' => isset( $row['executor_registered'] ) ? $row['executor_registered'] : null,
+					'descriptor_binding_ready' => isset( $row['descriptor_binding_ready'] ) ? (bool) $row['descriptor_binding_ready'] : ( isset( $bound['descriptor_binding_ready'] ) ? (bool) $bound['descriptor_binding_ready'] : null ),
+				),
+				'effect' => array(
+					'class' => 'governed_operation_pipeline',
+					'authority_inferred' => false,
+				),
+				'reversal' => array(
+					'declared' => ! empty( $row['reversible'] ) || ! empty( $row['reversal_contract'] ),
+					'contract' => isset( $row['reversal_contract'] ) ? (string) $row['reversal_contract'] : '',
+				),
+				'evidence' => array(
+					'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v2', $safe ),
+					'planner_descriptor_sha256' => isset( $bound['planner_descriptor_sha256'] ) ? (string) $bound['planner_descriptor_sha256'] : '',
+					'executor_descriptor_sha256' => isset( $bound['executor_descriptor_sha256'] ) ? (string) $bound['executor_descriptor_sha256'] : '',
+				),
+				'descriptor_sha256' => self::digest( 'mad4b.operation-graph-node.v2', $safe ),
+			);
+
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
+		}
+		return $out;
+	}
+
+	private static function providers() {
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) || ! method_exists( 'MAD4B_SCP_Provider_Contracts', 'all' ) ) return array();
+
+		$contracts = MAD4B_SCP_Provider_Contracts::all();
+		if ( ! is_array( $contracts ) ) return array();
+		ksort( $contracts, SORT_STRING );
+
+		$out = array();
+		foreach ( $contracts as $provider => $contract ) {
+			if ( ! is_string( $provider ) || '' === $provider || ! is_array( $contract ) ) continue;
+
+			$status = method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' )
+				? MAD4B_SCP_Provider_Contracts::runtime_status( $provider )
+				: array();
+			if ( ! is_array( $status ) ) $status = array();
+
+			$component_refs = array();
+			if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
+				foreach ( array_keys( $contract['components'] ) as $component_key ) {
+					$component_key = sanitize_key( (string) $component_key );
+					if ( '' !== $component_key ) $component_refs[] = $provider . ':' . $component_key;
+				}
+			} else {
+				$component_refs[] = $provider . ':primary';
+			}
+			sort( $component_refs, SORT_STRING );
+
+			$out[] = array(
+				'id' => $provider,
+				'kind' => 'provider',
+				'label' => isset( $status['label'] ) ? (string) $status['label'] : ( isset( $contract['label'] ) ? (string) $contract['label'] : $provider ),
+				'runtime_status' => isset( $status['status'] ) ? sanitize_key( (string) $status['status'] ) : 'unknown',
+				'runtime_contract_ok' => ! empty( $status['runtime_contract_ok'] ),
+				'certified_version' => isset( $status['certified_version'] ) ? (string) $status['certified_version'] : ( isset( $contract['version'] ) ? (string) $contract['version'] : '' ),
+				'installed_version' => isset( $status['installed_version'] ) ? (string) $status['installed_version'] : '',
+				'contract_mode' => isset( $status['contract_mode'] ) ? sanitize_key( (string) $status['contract_mode'] ) : ( isset( $contract['contract_mode'] ) ? sanitize_key( (string) $contract['contract_mode'] ) : '' ),
+				'certification_authority' => isset( $status['certification_authority'] ) ? sanitize_key( (string) $status['certification_authority'] ) : '',
+				'component_refs' => $component_refs,
+				'contract_sha256' => self::digest( 'mad4b.provider-contract-graph-node.v1', self::safe_row( $contract ) ),
+				'authority_inferred' => false,
+			);
+
+			if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break;
+		}
+		return $out;
+	}
+
+	private static function components() {
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) || ! method_exists( 'MAD4B_SCP_Provider_Contracts', 'all' ) ) return array();
+
+		$contracts = MAD4B_SCP_Provider_Contracts::all();
+		if ( ! is_array( $contracts ) ) return array();
+		ksort( $contracts, SORT_STRING );
+
+		$out = array();
+		foreach ( $contracts as $provider => $contract ) {
+			if ( ! is_string( $provider ) || '' === $provider || ! is_array( $contract ) ) continue;
+
+			$components = ! empty( $contract['components'] ) && is_array( $contract['components'] )
+				? $contract['components']
+				: array( 'primary' => $contract );
+			ksort( $components, SORT_STRING );
+
+			foreach ( $components as $component_key => $component ) {
+				if ( ! is_array( $component ) ) continue;
+				$key = sanitize_key( (string) $component_key );
+				if ( '' === $key ) continue;
+
+				$out[] = array(
+					'id' => $provider . ':' . $key,
+					'kind' => 'component',
+					'provider_ref' => $provider,
+					'label' => isset( $component['label'] ) ? (string) $component['label'] : $key,
+					'plugin_file' => isset( $component['plugin_file'] ) ? (string) $component['plugin_file'] : '',
+					'certified_version' => isset( $component['version'] ) ? (string) $component['version'] : '',
+					'archive_sha256' => isset( $component['archive_sha256'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/D', strtolower( (string) $component['archive_sha256'] ) )
+						? strtolower( (string) $component['archive_sha256'] )
+						: '',
+					'contract_sha256' => self::digest( 'mad4b.provider-component-graph-node.v1', self::safe_row( $component ) ),
+					'code_executed' => false,
+					'authority_inferred' => false,
+				);
+
+				if ( count( $out ) >= self::MAX_ITEMS_PER_KIND ) break 2;
+			}
+		}
+		return $out;
+	}
+
+	private static function plugins() {
+		if(!function_exists('get_plugins')) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$plugins=get_plugins(); if(!is_array($plugins)) $plugins=array(); ksort($plugins,SORT_STRING);
+		$active=(array)get_option('active_plugins',array()); $out=array();
+		foreach($plugins as $file=>$headers){
+			$headers=is_array($headers)?$headers:array();
+			$header=array('name'=>isset($headers['Name'])?(string)$headers['Name']:'','version'=>isset($headers['Version'])?(string)$headers['Version']:'','plugin_uri'=>isset($headers['PluginURI'])?(string)$headers['PluginURI']:'','author'=>isset($headers['Author'])?(string)$headers['Author']:'','license'=>isset($headers['License'])?(string)$headers['License']:'');
+			$out[]=array('id'=>(string)$file,'kind'=>'plugin','active'=>in_array($file,$active,true),'header_sha256'=>self::digest('mad4b.plugin-header.v1',$header),'header'=>$header,'candidate_package'=>array('state'=>'descriptive_only','unknown_code_executed'=>false,'authority_effect'=>'none'));
+			if(count($out)>=self::MAX_ITEMS_PER_KIND) break;
+		}
+		return $out;
+	}
+
+	private static function rest_routes() {
+		if(!function_exists('did_action')||did_action('rest_api_init')<=0||!function_exists('rest_get_server')) return array();
+		$routes=rest_get_server()->get_routes(); if(!is_array($routes)) return array(); ksort($routes,SORT_STRING); $out=array();
+		foreach($routes as $route=>$endpoints){
+			$methods=array();
+			foreach(is_array($endpoints)?$endpoints:array() as $endpoint){
+				if(!is_array($endpoint)) continue;
+				$m=isset($endpoint['methods'])?$endpoint['methods']:array();
+				if(is_string($m)) $m=array($m);
+				if(is_array($m)) foreach($m as $method=>$enabled) $methods[]=is_int($method)?strtoupper((string)$enabled):strtoupper((string)$method);
+			}
+			$methods=array_values(array_unique(array_filter($methods))); sort($methods,SORT_STRING);
+			$out[]=array('id'=>(string)$route,'kind'=>'rest_route','methods'=>$methods,'callbacks_executed'=>false,'authority_inferred_from_method'=>false);
+			if(count($out)>=self::MAX_ITEMS_PER_KIND) break;
+		}
+		return $out;
+	}
+
+	private static function post_types() {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::post_types( self::MAX_ITEMS_PER_KIND );
+	}
+
+	private static function taxonomies() {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::taxonomies( self::MAX_ITEMS_PER_KIND );
+	}
+
+	private static function meta_keys() {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::meta_keys( self::MAX_ITEMS_PER_KIND );
+	}
+
+	private static function hooks() {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::hooks( self::MAX_ITEMS_PER_KIND );
+	}
+
+	private static function cron_hooks() {
+		if(!function_exists('_get_cron_array')) return array();
+		$cron=_get_cron_array(); if(!is_array($cron)) return array();
+		$hooks=array();
+		foreach($cron as $timestamp=>$entries){
+			if(!is_array($entries)) continue;
+			foreach($entries as $hook=>$instances){
+				if(!isset($hooks[$hook])) $hooks[$hook]=array('instance_count'=>0,'next_timestamp'=>(int)$timestamp);
+				$hooks[$hook]['instance_count']+=is_array($instances)?count($instances):0;
+				$hooks[$hook]['next_timestamp']=min($hooks[$hook]['next_timestamp'],(int)$timestamp);
+			}
+		}
+		ksort($hooks,SORT_STRING); $out=array();
+		foreach($hooks as $hook=>$row){
+			$sensitive=class_exists('MAD4B_SCP_Structural_Redaction')&&MAD4B_SCP_Structural_Redaction::sensitive_key($hook);
+			$out[]=array(
+				'id'=>$sensitive?'cron:'.hash('sha256',(string)$hook):'cron:'.(string)$hook,
+				'kind'=>'cron_hook',
+				'name_redacted'=>$sensitive,
+				'instance_count'=>(int)$row['instance_count'],
+				'next_timestamp'=>(int)$row['next_timestamp'],
+				'arguments_read'=>false,
+			);
+			if(count($out)>=self::MAX_ITEMS_PER_KIND) break;
+		}
+		return $out;
+	}
+
+	private static function admin_routes() {
+		$rows=class_exists('MAD4B_SCP_Admin_Route_Registry')?MAD4B_SCP_Admin_Route_Registry::routes():array();
+		$out=array();
+		foreach(is_array($rows)?$rows:array() as $slug=>$row){
+			if(!is_array($row)) continue;
+			$id=is_string($slug)?$slug:(isset($row['slug'])?(string)$row['slug']:'');
+			if(''===$id) continue;
+			$out[]=array('id'=>$id,'kind'=>'admin_route','required_capability'=>isset($row['required_capability'])?(string)$row['required_capability']:'');
+		}
+		return array_slice($out,0,self::MAX_ITEMS_PER_KIND);
+	}
+
+	private static function mcp_descriptors( array $abilities ) {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::mcp_descriptors( $abilities, self::MAX_ITEMS_PER_KIND );
+	}
+
+	private static function edges( array $nodes ) {
+		$edges=array();
+		$ability_ids=array(); $provider_ids=array(); $component_ids=array();
+		foreach(isset($nodes['abilities'])&&is_array($nodes['abilities'])?$nodes['abilities']:array() as $row) if(is_array($row)&&!empty($row['id'])) $ability_ids[(string)$row['id']]=true;
+		foreach(isset($nodes['providers'])&&is_array($nodes['providers'])?$nodes['providers']:array() as $row) if(is_array($row)&&!empty($row['id'])) $provider_ids[(string)$row['id']]=true;
+		foreach(isset($nodes['components'])&&is_array($nodes['components'])?$nodes['components']:array() as $row) if(is_array($row)&&!empty($row['id'])) $component_ids[(string)$row['id']]=true;
+		foreach(isset($nodes['schemas'])&&is_array($nodes['schemas'])?$nodes['schemas']:array() as $row){
+			if(!is_array($row)||empty($row['id'])||empty($row['owner_id'])) continue;
+			$ability=(string)$row['owner_id'];
+			if(isset($ability_ids[$ability])) $edges[]=array('from'=>'ability:'.$ability,'to'=>'schema:'.(string)$row['id'],'relation'=>'declares_schema');
+		}
+		foreach(isset($nodes['providers'])&&is_array($nodes['providers'])?$nodes['providers']:array() as $row){
+			if(!is_array($row)||empty($row['id'])) continue;
+			foreach(isset($row['component_refs'])&&is_array($row['component_refs'])?$row['component_refs']:array() as $component){
+				if(isset($component_ids[$component])) $edges[]=array('from'=>'provider:'.(string)$row['id'],'to'=>'component:'.(string)$component,'relation'=>'contains_component');
+			}
+		}
+		foreach(isset($nodes['abilities'])&&is_array($nodes['abilities'])?$nodes['abilities']:array() as $row){
+			if(!is_array($row)||empty($row['id'])||empty($row['execution_provider'])) continue;
+			$provider=(string)$row['execution_provider'];
+			if(isset($provider_ids[$provider])) $edges[]=array('from'=>'ability:'.(string)$row['id'],'to'=>'provider:'.$provider,'relation'=>'bound_to_provider');
+		}
+		foreach(isset($nodes['operations'])&&is_array($nodes['operations'])?$nodes['operations']:array() as $row){
+			if(!is_array($row)||empty($row['id'])) continue;
+			foreach(isset($row['ability_refs'])&&is_array($row['ability_refs'])?$row['ability_refs']:array() as $ability){
+				if(isset($ability_ids[$ability])) $edges[]=array('from'=>'operation:'.(string)$row['id'],'to'=>'ability:'.(string)$ability,'relation'=>'uses_ability');
+			}
+		}
+		foreach(isset($nodes['mcp_descriptors'])&&is_array($nodes['mcp_descriptors'])?$nodes['mcp_descriptors']:array() as $row){
+			if(is_array($row)&&!empty($row['ability_name'])&&isset($ability_ids[(string)$row['ability_name']])) {
+				$edges[]=array('from'=>(string)$row['id'],'to'=>'ability:'.(string)$row['ability_name'],'relation'=>'describes_ability');
+			}
+		}
+		usort($edges,static function($a,$b){return strcmp($a['from']."\0".$a['to']."\0".$a['relation'],$b['from']."\0".$b['to']."\0".$b['relation']);});
+		self::$last_edge_observed_count=count($edges);
+		return array_slice($edges,0,self::MAX_EDGES);
+	}
+
+	private static function symbols() {
+		return MAD4B_SCP_Runtime_Evidence_Collectors::symbols( self::MAX_SYMBOLS );
+	}
+
+	private static function database_tables() {
+		global $wpdb; $names=is_object($wpdb)&&method_exists($wpdb,'tables')?(array)$wpdb->tables('all'):array(); if(class_exists('MAD4B_SCP_Schema')) $names=array_merge($names,array_values((array)MAD4B_SCP_Schema::tables()));
+		$names=array_values(array_unique(array_filter(array_map('strval',$names)))); sort($names,SORT_STRING); $out=array(); foreach(array_slice($names,0,self::MAX_ITEMS_PER_KIND) as $name) $out[]=array('id'=>$name,'kind'=>'database_table','schema_read'=>false,'row_values_read'=>false); return $out;
+	}
+
+	private static function index_rows( array $rows ) {
+		$out=array(); foreach($rows as $row) if(is_array($row)&&isset($row['id'])&&is_string($row['id'])&&''!==$row['id']) $out[$row['id']]=$row; ksort($out,SORT_STRING); return $out;
+	}
+	private static function safe_row( array $row ) {
+		return class_exists('MAD4B_SCP_Structural_Redaction')?MAD4B_SCP_Structural_Redaction::redact($row,'runtime_evidence'):$row;
+	}
+	private static function digest( $contract, $value ) {
+		if(class_exists('MAD4B_SCP_Ability_Contract_Inspector')){ $d=MAD4B_SCP_Ability_Contract_Inspector::digest($contract,$value); if(!is_wp_error($d)) return $d; } return hash('sha256',wp_json_encode(self::sort_value($value),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+	}
+	private static function sort_value( $value ) {
+		if(!is_array($value)) return $value; $is_list=array_keys($value)===range(0,count($value)-1); if(!$is_list) ksort($value,SORT_STRING); foreach($value as $k=>$v) $value[$k]=self::sort_value($v); return $value;
+	}
+}
+
+MAD4B_SCP_Runtime_Evidence_Graph::boot();

@@ -40,6 +40,126 @@
         "ui-delivery.json",
         "ui-delivery.md"
       ]
+    },
+    "T3901": {
+      "status": "PARTIAL",
+      "reason": "Reproducible archive verification, immutable package fingerprints and guarded packaged evidence are implemented; exact-head child CI remains an external integration invariant.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3902": {
+      "status": "PARTIAL",
+      "reason": "Capability comparison separates static evidence, marketed claims, MAD4B foundation and runtime-certified parity; representative external/runtime acceptance remains required where applicable.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3903": {
+      "status": "PARTIAL",
+      "reason": "Append-only evidence history v2 now provides generation chaining, fail-closed retention, previous-known-good pointers, drift alerts and acknowledgement lifecycle; live multi-generation acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3904": {
+      "status": "PARTIAL",
+      "reason": "Operator evidence view now supports search plus status, evidence-class, workstream and runtime-parity filters, expandable evidence, remaining-task reasons, acceptance gaps and history context; real browser acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3905": {
+      "status": "PARTIAL",
+      "reason": "Tamper, archive, evidence-resource, history-chain and documentation-only completion denials are CI-bound; exact-head child CI remains the terminal external integration gate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4001": {
+      "status": "PARTIAL",
+      "reason": "Runtime Candidate Graph v2 is provenance-bound with immutable generation, site/environment envelope, semantic dimensions, explicit edges and collector contract provenance; representative runtime acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4002": {
+      "status": "PARTIAL",
+      "reason": "Bounded structural discovery now declares per-collector lifecycle, sensitivity, provenance, budgets and completeness/truncation semantics while avoiding callback or endpoint execution; Staging acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4003": {
+      "status": "PARTIAL",
+      "reason": "Unknown-plugin candidates and descriptive database/endpoint inventory remain non-executing and non-secret, with bounded discovery and no row/schema reads; unknown-provider Staging acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4004": {
+      "status": "PARTIAL",
+      "reason": "Semantic graph diff validates the before envelope and propagates provider/component/ability/operation/workflow impact transitively using the existing dependency-impact foundation while isolating unrelated reads; Staging drift acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4005": {
+      "status": "PARTIAL",
+      "reason": "Fail-closed tests cover fabricated/cross-site/oversized snapshots, lifecycle ambiguity, truncation, sensitive cron names, unknown code and non-authorizing discovery; exact-head CI remains the external integration gate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4006": {
+      "status": "PARTIAL",
+      "reason": "Deterministic semantic features and versioned Policy Proposal contracts include input/output schema digests, capability/resource/effect/reversibility and provenance; live runtime acceptance remains separate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4007": {
+      "status": "PARTIAL",
+      "reason": "Confidence, missing/contradictory evidence, provenance, classifier version and conformance reasons are explicit and never treated as safety proof; Staging evidence remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4008": {
+      "status": "PARTIAL",
+      "reason": "Auto-classification is limited to conformance-bound zero-effect reads with non-secret input/output, acceptable data classification, capability/resource constraints and trusted artifact/generation-bound receipts; real conformance-source acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4009": {
+      "status": "PARTIAL",
+      "reason": "Owner review is append-only, audit-fail-closed, digest-verified, exact graph/proposal-bound and protected by expected-revision CAS plus token/revision fencing and readback; admin/browser concurrency acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4010": {
+      "status": "PARTIAL",
+      "reason": "Denials cover confidence-only promotion, unsafe GET, lying annotations, secret output, privileged reads, forged/untrusted/stale conformance and risk downgrade; exact-head CI remains the external integration gate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
     }
   },
   "documentation_only_completion_forbidden": true

@@ -124,7 +124,7 @@ class EvidenceDenials(unittest.TestCase):
     def test_checkbox_is_not_completion(self):
         path = self.root / "tasks.md"
         path.write_text(path.read_text().replace("- [ ] T3901", "- [x] T3901"))
-        self.rejects("task_status_missing_evidence")
+        self.rejects("task_status_checkbox_mismatch")
 
     def test_docs_only_done_even_with_ledger_regenerated(self):
         path = self.root / "tasks.md"
@@ -141,10 +141,27 @@ class EvidenceDenials(unittest.TestCase):
         self.change("ui-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
         self.rejects("ui_delivery_source_evidence_drift")
 
-    def test_unrelated_task_cannot_claim_ui_progress(self):
-        self.change("task-status.json", lambda d: d["overrides"].update(T3901={"status":"PARTIAL", "reason":"ui", "evidence_refs":["ui-delivery.json"]}))
+    def test_g1_task_cannot_bind_to_ui_delivery(self):
+        self.change("task-status.json", lambda d: d["overrides"].update(T3901={"status":"PARTIAL", "reason":"wrong slice", "evidence_refs":["ui-delivery.json"]}))
         (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
-        self.rejects("ui_delivery_boundary_or_progress_invalid")
+        self.rejects("g1_partial_task_missing_delivery_binding")
+
+    def test_unowned_partial_task_is_rejected(self):
+        self.change("task-status.json", lambda d: d["overrides"].update(T3911={"status":"PARTIAL", "reason":"wrong owner", "evidence_refs":["g1-delivery.json"]}))
+        (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
+        self.rejects("implementation_partial_task_owner_invalid")
+
+    def test_g1_cannot_claim_runtime_parity(self):
+        self.change("g1-delivery.json", lambda d: d.update(runtime_parity_claimed=True))
+        self.rejects("g1_delivery_boundary_or_progress_invalid")
+
+    def test_g1_cannot_claim_live_provider_acceptance(self):
+        self.change("g1-delivery.json", lambda d: d.update(live_provider_acceptance=True))
+        self.rejects("g1_delivery_boundary_or_progress_invalid")
+
+    def test_g1_source_hashes_are_required(self):
+        self.change("g1-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
+        self.rejects("g1_delivery_source_evidence_drift")
 
     def test_missing_ledger_regeneration(self):
         path = self.root / "tasks.md"
