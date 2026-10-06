@@ -52,8 +52,11 @@ Repository/runtime defects closed in this PR:
 - Write-runtime certification distinguishes an ungoverned direct write-schema leak from a reviewed fenced projection, while requiring the fixed `mad4b/write-discover`, `mad4b/write-info` and `mad4b/write-execute` transport on the same `mad4b-chatgpt` resource.
 - OAuth issuer identity is canonicalized once by the Resource Bridge. Multi-Authority Registry and Production certification reuse the same authority id/type and the same domain-separated issuer fingerprint, preventing the live `issuer_not_bound_to_registry` false negative.
 - Provider version drift is not treated as incompatibility. Capability-first recertification exposes automatic observation/structural reassessment but never automatic mutation probes, grants, mounts or high-risk promotion.
+- Runtime adapters now emit a candidate capability graph independently of the reviewed policy catalog. New adapter abilities become visible as `UNCLASSIFIED_FAIL_CLOSED`; the repository catalog acts as the semantic risk/reversibility/certification overlay and cannot create authority. This reduces hardcoded discovery pressure without making policy dynamic or unreviewed.
 - Reviewed isolated native-provider transports can materialize from the cataloged transport contract. JetEngine native reads and mutations now use the JetEngine provider identity; high-risk native schema writes remain behaviorally gated/fail-closed.
 - WP Import/Export exposes an exact behavioral-acceptance handoff (composite artifact, disposable saved job, import dry-run diff/rollback, export artifact ingest and signed operation receipt). Execution remains unmounted until that real evidence exists.
+- Search Profile observation state and provider-spend freeze state use dedicated revision-fenced controls with exact readback. Advanced JSON policy editing is explicitly unable to resume observations or unfreeze spend.
+- All MAD4B administrator pages expose Effective environment and Raw WordPress environment together; Site Profile remains the operational authority when they differ.
 
 Still external/deployment-governed, and therefore not repairable by repository code alone:
 - Developer execution needs host-provided `prlimit` plus `bubblewrap` or `unshare-net`; no unsandboxed fallback is allowed.
