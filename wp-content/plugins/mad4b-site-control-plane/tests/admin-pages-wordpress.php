@@ -5,7 +5,7 @@ require_once ABSPATH . 'wp-admin/includes/admin.php';
 set_current_screen( 'dashboard' );
 $GLOBALS['menu'] = array(); $GLOBALS['submenu'] = array(); $GLOBALS['admin_page_hooks'] = array(); $GLOBALS['_registered_pages'] = array();
 do_action( 'admin_menu' );
-$assertions = 0; $renders = 0; $requests = 0;
+$assertions = 0; $renders = 0; $requests = 0; $render_failures = array();
 $check = static function ( $ok, $message ) use ( &$assertions ) { ++$assertions; if ( ! $ok ) throw new RuntimeException( $message ); };
 $stop_http = static function () use ( &$requests ) { ++$requests; return new WP_Error( 'admin_smoke_outbound_denied', 'Ordinary page rendering must use local or cached evidence.' ); };
 add_filter( 'pre_http_request', $stop_http, PHP_INT_MAX );
@@ -47,13 +47,17 @@ $render = static function ( $slug, array $page, array $query ) use ( &$renders, 
 	}
 	return $html;
 };
+$probe_render = static function ( $slug, array $page, array $query ) use ( $render, &$render_failures ) {
+	try { return $render( $slug, $page, $query ); }
+	catch ( Throwable $error ) { $render_failures[] = $error->getMessage(); fwrite( STDERR, 'Admin page smoke: ' . $error->getMessage() . "\n" ); return ''; }
+};
 foreach ( $pages as $slug => $page ) {
 	foreach ( $page[2] as $tab ) {
 		$key = 'mad4b-search-intelligence' === $slug ? 'section' : ( 'mad4b-approval-decisions' === $slug ? 'view' : 'tab' );
-		$render( $slug, $page, array( $key => $tab ) );
-		$render( $slug, $page, array_merge( $malformed, array( $key => $tab ) ) );
+		$probe_render( $slug, $page, array( $key => $tab ) );
+		$probe_render( $slug, $page, array_merge( $malformed, array( $key => $tab ) ) );
 	}
-	$render( $slug, $page, array( 'tab' => array( 'invalid' ), 'view' => array( 'invalid' ), 'section' => array( 'invalid' ) ) );
+	$probe_render( $slug, $page, array( 'tab' => array( 'invalid' ), 'view' => array( 'invalid' ), 'section' => array( 'invalid' ) ) );
 }
 $_GET = array( 'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( 'test-page', 'saved', 'state-a' ) );
 $check( MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'state-a' ), 'Issued notice verifies exact actor/view.' );
@@ -79,8 +83,8 @@ $check( ! $saved['profile']['enabled'] && $saved['profile']['provider_policy']['
 $enrolled_profile = get_option( MAD4B_SCP_Site_Profile::OPTION );
 $authority = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION );
 foreach ( $pages['mad4b-search-intelligence'][2] as $section ) {
-	$render( 'mad4b-search-intelligence', $pages['mad4b-search-intelligence'], array( 'section' => $section ) );
-	$render( 'mad4b-search-intelligence', $pages['mad4b-search-intelligence'], array( 'section' => $section, 'profile_id' => 'disposable.admin.profile', 'mad4b_notice_receipt' => array( 'invalid' ) ) );
+	$probe_render( 'mad4b-search-intelligence', $pages['mad4b-search-intelligence'], array( 'section' => $section ) );
+	$probe_render( 'mad4b-search-intelligence', $pages['mad4b-search-intelligence'], array( 'section' => $section, 'profile_id' => 'disposable.admin.profile', 'mad4b_notice_receipt' => array( 'invalid' ) ) );
 }
 $check( $enrolled_profile === get_option( MAD4B_SCP_Site_Profile::OPTION ) && $authority === get_option( MAD4B_SCP_Staging_Write_Authority::OPTION ), 'Configured Search GET views preserve Site Profile and write authority.' );
 $check( 0 === $requests, 'All ordinary GET views make zero outbound requests.' );
@@ -99,5 +103,6 @@ foreach ( $pages as $slug => $page ) {
 wp_set_current_user( $admin_id ); remove_filter( 'wp_die_handler', $deny_die, PHP_INT_MAX );
 update_option( 'home', $old_home ); update_option( 'siteurl', $old_siteurl );
 if ( false === $before_profile ) delete_option( MAD4B_SCP_Site_Profile::OPTION ); else update_option( MAD4B_SCP_Site_Profile::OPTION, $before_profile );
+$check( ! $render_failures, 'All views must pass: ' . implode( ' | ', array_unique( $render_failures ) ) );
 remove_filter( 'pre_http_request', $stop_http, PHP_INT_MAX ); restore_error_handler();
 echo wp_json_encode( array( 'contract' => 'mad4b.admin-pages-disposable-evidence.v1', 'status' => 'PASS', 'page_count' => count( $pages ), 'renders' => $renders, 'assertions' => $assertions, 'outbound_requests' => $requests, 'evidence_class' => 'disposable_wordpress', 'live_browser_acceptance' => false, 'authorizing' => false ), JSON_UNESCAPED_SLASHES ) . "\n";

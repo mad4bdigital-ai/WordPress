@@ -24,7 +24,7 @@ final class MAD4B_SCP_Search_Context {
 		if ( ! isset( $raw['profile_id'] ) || ! MAD4B_SCP_Search_Contracts::id( $raw['profile_id'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_id_invalid' );
 		$out = array_replace_recursive( $p['defaults'], $raw );
 		// Lists are replaced, never merged by numeric index.
-		foreach ( $raw as $key => $v ) $out[ $key ] = is_array( $v ) ? self::merge( isset( $p['defaults'][ $key ] ) ? $p['defaults'][ $key ] : array(), $v ) : $v;
+		foreach ( $raw as $key => $v ) $out[ $key ] = is_array( $v ) ? self::merge( isset( $p['defaults'][ $key ] ) && is_array( $p['defaults'][ $key ] ) ? $p['defaults'][ $key ] : array(), $v ) : $v;
 		if ( ! is_bool( $out['enabled'] ) || ! is_array( $out['markets'] ) || count( $out['markets'] ) > 64 ) return MAD4B_SCP_Search_Contracts::error( 'profile_invalid' );
 		if ( ( isset( $out['brand_id'] ) && ( ! is_string( $out['brand_id'] ) || ( '' !== $out['brand_id'] && ! MAD4B_SCP_Search_Contracts::id( $out['brand_id'] ) ) ) ) || ! is_string( $out['objective'] ) || '' === trim( $out['objective'] ) || strlen( $out['objective'] ) > 256 ) return MAD4B_SCP_Search_Contracts::error( 'profile_invalid' );
 		foreach ( array( 'language_policy', 'surface_policy', 'provider_policy', 'budget_policy', 'refresh_policy', 'priority_policy', 'experiment_policy', 'overlays' ) as $field ) if ( ! is_array( $out[ $field ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_invalid' );
