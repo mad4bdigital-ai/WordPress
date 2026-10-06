@@ -764,6 +764,21 @@ final class MAD4B_SCP_Servers {
 		return null;
 	}
 
+	/**
+	 * Resolve structural provider identity for canonical Capability Descriptors.
+	 * Runtime mount/certification remains a separate live authorization gate.
+	 */
+	public static function provider_for_capability_descriptor( $server_id, $ability_name ) {
+		$server_id = sanitize_key( (string) $server_id );
+		$ability_name = (string) $ability_name;
+		if ( 'mad4b-write' === $server_id ) {
+			if ( in_array( $ability_name, self::core_write_candidates(), true ) && self::registered_mutation_ability( $ability_name ) ) return 'core';
+			$candidates = self::registered_adapter_write_candidates();
+			if ( isset( $candidates[ $ability_name ] ) && self::registered_mutation_ability( $ability_name ) ) return (string) $candidates[ $ability_name ];
+		}
+		return self::provider_for_ability( $server_id, $ability_name );
+	}
+
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
