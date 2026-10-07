@@ -2,6 +2,9 @@
 /** Actual worker regression: bounded slices, signatures, races and provider-local isolation. */
 define( 'ABSPATH', __DIR__ . '/' ); define( 'MAD4B_SCP_VERSION', 'fixture-94' );
 $GLOBALS['options'] = array(); $GLOBALS['scheduled'] = 0; $GLOBALS['writes'] = 0;
+function absint( $value ) { return abs( (int) $value ); }
+function is_admin() { return false; }
+function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function get_option( $key, $default = false ) { return $GLOBALS['options'][ $key ] ?? $default; }
 function update_option( $key, $value, $autoload = null ) { ++$GLOBALS['writes']; $GLOBALS['options'][ $key ] = $value; return true; }
 function wp_json_encode( $value ) { return json_encode( $value ); }
@@ -28,6 +31,20 @@ class MAD4B_SCP_Runtime_Maintenance_Lease {
 class MAD4B_SCP_Runtime_Convergence {
  const CHECKPOINT_OPTION = 'fixture_core_checkpoint'; static $calls = 0;
  static function mark_activation_pending() { ++self::$calls; return array( 'state' => 'pending' ); }
+}
+class MAD4B_SCP_Staging_Write_Authority {
+ static $stored_bound = false; static $match = false;
+ static function candidate_binding_status() {
+  return array(
+   'required' => true,
+   'stored_bound' => self::$stored_bound,
+   'match' => self::$match,
+   'current_source_commit_sha' => str_repeat( 'a', 40 ),
+   'current_build_fingerprint' => str_repeat( 'b', 64 ),
+   'current_package_manifest_digest' => str_repeat( 'c', 64 ),
+   'current_artifact_identity' => 'mad4b-site-control-plane-fixture',
+  );
+ }
 }
 class MAD4B_SCP_Schema { static function is_ready() { return true; } }
 class MAD4B_SCP_Skill_Provider_Discovery { static $calls = 0; static function reconcile() { ++self::$calls; return true; } }
@@ -58,6 +75,7 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
   ) );
  }
 }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-adaptive-runtime-convergence.php';
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
@@ -72,6 +90,20 @@ check( 'CANARY_REQUIRED' === $ready['providers']['alpha']['capabilities']['write
 check( 'ISOLATED' === $ready['providers']['alpha']['capabilities']['broken']['state'], 'Broken capability was not isolated' );
 check( ! $ready['authorizing'] && ! $ready['production_mutation'], 'Observation claimed authority' );
 check( 1 === MAD4B_SCP_Runtime_Convergence::$calls && 1 === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Core or Managed Skills convergence repeated across slices' );
+$core_registry = $GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION];
+check( ! empty( $core_registry['core_enqueued_generation'] ), 'Core convergence generation marker was not persisted across slices' );
+$event_before_probe = $GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION];
+MAD4B_SCP_Staging_Write_Authority::$stored_bound = true;
+MAD4B_SCP_Staging_Write_Authority::$match = false;
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::FALLBACK_PROBE_OPTION] = 0;
+$scheduled_before_probe = $GLOBALS['scheduled'];
+MAD4B_SCP_Adaptive_Runtime_Convergence::maybe_schedule();
+$fallback_event = $GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION];
+check( $event_before_probe['event_id'] !== $fallback_event['event_id'] && 'candidate_binding_probe' === $fallback_event['source'], 'Candidate-binding fallback probe did not wake the observer' );
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION] = $event_before_probe;
+$GLOBALS['scheduled'] = $scheduled_before_probe;
+MAD4B_SCP_Staging_Write_Authority::$stored_bound = false;
+MAD4B_SCP_Staging_Write_Authority::$match = false;
 // Read pages are deterministic and cannot combine two signed observations.
 $saved_registry = $GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION];
 $large_registry = $saved_registry;
