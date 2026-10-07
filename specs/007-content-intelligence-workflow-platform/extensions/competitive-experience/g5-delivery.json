@@ -1,0 +1,128 @@
+{
+  "contract": "mad4b.competitive-g5-delivery.v1",
+  "status": "REPOSITORY_G5_FOUNDATION_IMPLEMENTED_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 285,
+  "implementation_branch": "feat/007-g5-growth-seo-external-providers-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "cc8adae3a3d2b1409357d630a44d912c989484ac",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "provider_reference_contract": "mad4b.feature007-g5-provider-reference-profiles.v1",
+  "seo_family_contract": "mad4b.feature007-g5-seo-provider-family.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "runtime_parity_claimed": false,
+  "live_provider_acceptance": false,
+  "live_browser_acceptance": false,
+  "paid_provider_capture_performed": false,
+  "partial_task_ids": [
+    "T3926",
+    "T3927",
+    "T3928",
+    "T3929",
+    "T3930",
+    "T3946",
+    "T3947",
+    "T3948",
+    "T3949",
+    "T3950",
+    "T4056",
+    "T4057",
+    "T4058",
+    "T4059",
+    "T4060"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-external-providers.php",
+      "sha256": "ee45e689a6a2a9329269e07d8c27dfe420019d7dfad536b64f7d61f9d6a9cc2a"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-growth-evidence.php",
+      "sha256": "35d51212e3f9f2615c6e4047759e1563b7a8beb0508535f5606b6c35d9cf9f3f"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-provider-profiles.php",
+      "sha256": "69e6f479534efd0f6872a61e830ab914b7e0612ce010b7e294812d70c60fa201"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php",
+      "sha256": "7d461e84106187fd509f9f47d45657a2f38943e9aa82ba6e03bc776a844f5aff"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-acceptance.php",
+      "sha256": "ba2acb998c5ececa8fad01722c862b35a4f874becd56f6cff7302fba0aa523e5"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "36180462a1e12077410d71c1228cf82c91f1658a529e3780295d180ea35c6b9a"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-external-provider-contract.php",
+      "sha256": "ea11b279f128e4afd67568e7f326a8468ccfdb76fdc6f18e9946b4a80e7723a4"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-growth-evidence-runtime.php",
+      "sha256": "cbb5f19d7114cfab7d48013ce30756a807835b03356b3e466e7711dafcc6f45f"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-provider-profile-contract.php",
+      "sha256": "3f8f747bd073b50c0a9444afccf28a81ed696d72c11ec4f4f9cfcecb2d8ebd88"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-seo-provider-family-contract.php",
+      "sha256": "78e36a2f72ffd9a6329b6acf59ba086cc9185ffeaf220efc3963d3f28bc99f48"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-acceptance-contract.php",
+      "sha256": "1bea9241f30fd97a52942355cbc41d5b0640d8a2873dc1ba75e6b8c9c0ffbdce"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-registration-contract.php",
+      "sha256": "6920f6f14c798a9aa77901651b5295973d30d9cd5f2ebf1139127559c0fc7dfb"
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
+      "sha256": "63679b85906fdd36c5289b6587e5b707fa14d56a72a2bef04c1a61033fdde52c"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
+      "sha256": "b78470dd0d8d54b3d7c5b3bb515d878309ab6d7c9d3a026e3da3d98b2098c6f7"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "sha256": "2f3ca3b8254e2455b6ab175f0a6ffb5e2d10030db37216d79437f86e6cbd3350"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g5-delivery.md",
+      "sha256": "d524ff7c9b68e5332bc54cfbab2090c5afd841480fbb597a2e6cd80d4f581984"
+    }
+  ],
+  "acceptance_contracts": [
+    "generic_pinned_server_code_provider_framework_with_required_reference_profiles",
+    "ga4_search_console_semrush_se_ranking_ahrefs_and_existing_serp_mesh_coverage",
+    "reference_profiles_are_not_a_closed_vendor_allowlist",
+    "client_configuration_cannot_invent_provider_identity_or_protocol",
+    "credentials_and_secret_handles_are_never_echoed",
+    "new_scopes_require_external_consent",
+    "dimensional_provenance_sampling_cost_and_contradictions_fail_closed",
+    "six_provider_seo_preflight_without_presence_based_execution_inference",
+    "stored_rendered_language_cache_and_coexistence_gates_remain_required",
+    "seo_signal_never_becomes_content_mutation_authority",
+    "configuration_packs_cannot_create_generic_outbound_http",
+    "no_production_grants_mounts_or_paid_capture_from_repository_foundation"
+  ],
+  "remaining_acceptance": [
+    "Provider-native GA4, Search Console, Semrush, SE Ranking and Ahrefs adapters, persisted account tests and representative retained evidence capture.",
+    "Browser enrollment with account/property/profile selection and no credential disclosure.",
+    "Provider-native SEO schema/apply/readback where admitted plus public rendered acceptance across post, term and archive scopes.",
+    "Cross-provider semantic-equivalence certification before any normalized comparison across unlike sources.",
+    "Live consent revocation, budget exhaustion, uncertain-charge reconciliation, stale generation, contradictory source and provider outage acceptance.",
+    "SEO coexistence, language fallback, virtual archive, stale cache/head output and serialization-drift acceptance.",
+    "Exact-head child CI, cumulative Hub CI and representative Staging/provider/browser acceptance. Production remains unauthorized."
+  ]
+}
