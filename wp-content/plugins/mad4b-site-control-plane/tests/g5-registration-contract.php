@@ -21,12 +21,14 @@ class MAD4B_SCP_Admin_Route_Registry {
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g5-external-providers.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g5-growth-evidence.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g5-seo-provider-families.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g5-acceptance.php';
 
 MAD4B_SCP_G5_External_Providers::register_abilities();
 MAD4B_SCP_G5_Growth_Evidence::register_abilities();
 MAD4B_SCP_G5_SEO_Provider_Families::register_abilities();
+MAD4B_SCP_G5_Acceptance::register_ability();
 
-if ( 5 !== count( $GLOBALS['g5_registered'] ) ) throw new RuntimeException( 'G5 registration count drifted.' );
+if ( 6 !== count( $GLOBALS['g5_registered'] ) ) throw new RuntimeException( 'G5 registration count drifted.' );
 foreach ( $GLOBALS['g5_registered'] as $name => $definition ) {
 	if ( 'mad4b-admin' !== $definition['category'] || false !== $definition['meta']['public'] || false !== $definition['meta']['show_in_rest'] || false !== $definition['meta']['mcp']['public'] || 'admin' !== $definition['meta']['mcp']['surface'] ) throw new RuntimeException( 'G5 registration escaped private admin scope: ' . $name );
 	if ( false !== call_user_func( $definition['permission_callback'], array() ) ) throw new RuntimeException( 'Non-admin gained G5 access.' );
