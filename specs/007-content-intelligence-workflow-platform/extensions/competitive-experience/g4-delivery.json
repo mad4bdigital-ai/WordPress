@@ -65,6 +65,42 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
       "sha256": "ddc3992818ca18659a2ba883b52660f5f1e61627a18f573aa6a95efd67050f8a"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
+      "sha256": "4af4b16ecdcff71fb366540ad92f01146fd03bae3ab12ed3fb40de2e02079f51"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
+      "sha256": "d65c887850d7356c75aa2cb51bedc5ee1eafff6809e0677c3dbc433ff9f70006"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+      "sha256": "4b581c048fbd763ce7556fb7dc863dd58d6b0e034c4ba0f498d420b1e5749ff1"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json",
+      "sha256": "adf5ef3352eb7cec6407336bc2a9ae144a96fb7e72698b56da9140adfd231042"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php",
+      "sha256": "fb77e1f69ad55b0a65ac5fe5cc33786dc657f3ca795d9a2d2540e5163a224923"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php",
+      "sha256": "fbd676edd02ec43dd2b977aa6c56fe8307a23770077839ebdd44b2a71f2b0309"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+      "sha256": "ac994bc68e628e9e86fe267a22ac0aa146efd404320608944748c4c03ab5a97c"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-polylang-adapter.php",
+      "sha256": "ae6342790e35df2879afe3ab6a31891638d0d982b79a8560ad7730a672d8960d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php",
+      "sha256": "3f5d371e7fe790221906748b4bb1738ca59ae5cc3189fc85ae07489d52a5a341"
     }
   ],
   "test_paths": [
