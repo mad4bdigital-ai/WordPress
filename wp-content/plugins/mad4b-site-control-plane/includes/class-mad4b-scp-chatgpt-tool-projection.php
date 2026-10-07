@@ -718,7 +718,27 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$state = self::raw_state();
 		$effective = self::effective_projection_rows();
 		$catalog = array_values( array_unique( array_merge( MAD4B_SCP_Servers::chatgpt_base_tools(), array_keys( $effective ) ) ) );
-		$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $catalog, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog ) );
+		$preflight_error_code = '';
+		try {
+			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $catalog, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog ) );
+		} catch ( Throwable $error ) {
+			$preflight_error_code = 'mad4b_catalog_preflight_exception';
+			$preflight = array();
+		}
+		if ( is_wp_error( $preflight ) ) {
+			$preflight_error_code = (string) $preflight->get_error_code();
+			$preflight = array();
+		}
+		if ( ! is_array( $preflight ) ) {
+			$preflight_error_code = '' !== $preflight_error_code ? $preflight_error_code : 'mad4b_catalog_preflight_invalid';
+			$preflight = array();
+		}
+		if ( ! isset( $preflight['tools'] ) || ! is_array( $preflight['tools'] ) ) $preflight['tools'] = array();
+		if ( '' !== $preflight_error_code ) {
+			$preflight['state'] = 'degraded';
+			$preflight['error_code'] = $preflight_error_code;
+			$preflight['authorizing'] = false;
+		}
 		$recommendations = array();
 		if ( ! empty( $input['include_recommendations'] ) && class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) {
 			$recommendations = MAD4B_SCP_Projection_Hotset_Recommender::recommend(
@@ -756,6 +776,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'universe_count' => count( self::all_site_ability_names() ),
 			'binding_match' => self::binding_matches( $state ),
 			'catalog_preflight' => $preflight,
+			'catalog_preflight_error_code' => $preflight_error_code,
 			'budgets' => array(
 				'max_selected' => self::MAX_SELECTED,
 				'max_tools' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS,

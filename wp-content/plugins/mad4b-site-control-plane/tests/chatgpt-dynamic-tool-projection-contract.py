@@ -181,3 +181,6 @@ for marker in [
 ]:
     if marker not in (FENCE + ABILITIES):
         raise SystemExit("fixed-dispatch/projection isolation guard missing: " + marker)
+
+for token in ("catalog_preflight_error_code","mad4b_catalog_preflight_exception","is_wp_error( $preflight )"):
+    require(source, token, f"projection status fail-soft catalog preflight guard missing: {token}")
