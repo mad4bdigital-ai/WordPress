@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "dccb0889799eb255f0d64d6959d9687252801c5b",
-  "changed_file_count": 159,
+  "changed_file_count": 163,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -261,8 +261,20 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php"
       ]
+    },
+    {
+      "id": "g4-provider-family-foundation",
+      "semantic_unit": "G4 typed provider-family readiness/planning foundation for forms, commerce, builders, site operations and WordPress breadth",
+      "revert_boundary": "Revert PR #283 G4-specific delivery/runtime/test paths as one bounded non-authorizing slice; shared Hub/spec/bootstrap paths retain their existing owners.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g4-provider-families.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-provider-family-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "a77d7f5d2cd94787e389a5ed76378e78b57d92494701e2216030e6b27f54a3d1",
+  "changed_paths_sha256": "eac011893c8d75215674f486bd9c6a75bc2fbc0b654a04c1465b99bea9d68fe5",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
