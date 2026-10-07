@@ -1088,17 +1088,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 	private static function render_assets() {
 		$assets = MAD4B_SCP_Context_Authority::assets();
 		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
-		$authority_status = MAD4B_SCP_Context_Authority::status();
-		self::render_review_policy_panel();
-		echo '<div id="mad4b-context-review-feedback" class="mad4b-context-review-feedback" aria-live="polite"></div>';
 		if ( ! empty( $review_queue['items'] ) ) {
-			echo '<div class="mad4b-scp-panel mad4b-context-review-queue"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Context Review Queue', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Human Review is always available. When AI Agent Approval is enabled, the delegated agent may submit the same exact-bound decision through governed write authority. Stale evidence fails closed.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $review_queue['items'] ) ) . '</span></div><div class="mad4b-context-review-cards">';
-			foreach ( array_slice( $review_queue['items'], 0, 12 ) as $pending ) {
-				$asset_anchor = 'mad4b-context-asset-' . sanitize_html_class( (string) $pending['asset_id'] );
-				$queue_state = 'approved' === ( isset( $pending['review_status'] ) ? (string) $pending['review_status'] : '' ) && empty( $pending['review_binding_exact'] ) ? 'approved · binding refresh required' : ( isset( $pending['review_status'] ) ? (string) $pending['review_status'] : 'unreviewed' );
-				echo '<a class="mad4b-context-review-card" href="#' . esc_attr( $asset_anchor ) . '"><strong>' . esc_html( $pending['title'] ) . '</strong><span><code>' . esc_html( $pending['category'] ) . '</code> · ' . esc_html( $queue_state ) . ( ! empty( $pending['required'] ) ? ' · required' : '' ) . '</span><span>' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . ' →</span></a>';
-			}
-			echo '</div></div>';
+			echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'Review decisions moved to the Review workspace.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( sprintf( __( '%d item(s) are waiting.', 'mad4b-site-control-plane' ), count( $review_queue['items'] ) ) ) . ' <a class="button button-small" href="' . esc_url( self::tab_url( 'review' ) ) . '">' . esc_html__( 'Open Review', 'mad4b-site-control-plane' ) . '</a></p></div>';
 		}
 		self::render_repair_queue( $assets );
 		$mode_filter = isset( $_GET['mode_filter'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mode_filter' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
