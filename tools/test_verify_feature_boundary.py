@@ -320,7 +320,7 @@ def evidence_concurrency_key(workflow, sha, event, pr=276):
         "github.event.pull_request.number": str(pr or ""),
         "github.event.pull_request.number || github.ref": str(pr or "refs/heads/master"),
         "github.event_name": event,
-        "github.event.pull_request.head.sha || github.sha": sha,
+        "github.event.pull_request.head.sha || github.ref": sha if pr else "refs/heads/master",
     }
     return re.sub(
         r"\$\{\{\s*(.*?)\s*\}\}",
@@ -334,7 +334,8 @@ for workflow in evidence_workflows:
     assert current != evidence_concurrency_key(workflow, "b" * 40, "pull_request_target"), workflow
     assert current != evidence_concurrency_key(workflow, "b" * 40, "pull_request", pr=277), workflow
     assert current == evidence_concurrency_key(workflow, "b" * 40, "pull_request"), workflow
-    assert evidence_concurrency_key(workflow, "b" * 40, "push", pr=0) != evidence_concurrency_key(
+    # Preserve one master-push lane, including publishing jobs, across source heads.
+    assert evidence_concurrency_key(workflow, "b" * 40, "push", pr=0) == evidence_concurrency_key(
         workflow, "a" * 40, "push", pr=0
     ), workflow
 assert len({evidence_concurrency_key(workflow, "b" * 40, "pull_request") for workflow in evidence_workflows}) == len(evidence_workflows)
