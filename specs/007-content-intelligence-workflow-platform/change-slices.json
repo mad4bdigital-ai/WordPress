@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "e7b7f05c66c319396bba6ef032c6cbdd1d1e1a4e",
-  "changed_file_count": 129,
+  "changed_file_count": 134,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -197,8 +197,21 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-scope-delegation-runtime.php"
       ]
+    },
+    {
+      "id": "live-context-search-unique-closure",
+      "semantic_unit": "Bounded live Context/Search convergence, guided Search Profile administration, Brand Context builder and governed semantic-classification closure",
+      "revert_boundary": "Revert the PR #270 unique Context/Search runtime and focused contract tests as one bounded non-authorizing slice; shared admin, content-experience and provider/runtime ownership remains unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-configuration-semantic-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "bc4c2e998b181af5532c80aac9d9fd6a4fb01e7c806b584a3c40304199bb4eb4",
+  "changed_paths_sha256": "bfaf2ab35bab04a67b689f74210f464554b356c9cc1bbc9089a51965d39a4505",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
