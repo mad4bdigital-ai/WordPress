@@ -70,6 +70,10 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py",
       "sha256": "55f3ee7f699a16e353d3a065a98a22a8be7b386d305522b65a48f9fbfb6a79ef"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php",
+      "sha256": "da44ec94622273e0d719567c630ace602bd922851c6442381a280d94f9fbb7d0"
     }
   ],
   "spec_paths": [
