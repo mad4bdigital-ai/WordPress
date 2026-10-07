@@ -33,7 +33,7 @@ final class MAD4B_SCP_Admin_UI {
 		);
 	}
 
-	public static function snapshot( $agent_public_id = '', $section = 'overview', $mutation_id = '' ) {
+	public static function snapshot( $agent_public_id = '', $section = 'overview' ) {
 		global $wpdb;
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error( 'mad4b_admin_ui_capability_denied', 'Administrator capability is required to inspect control-plane governance.' );
@@ -108,10 +108,6 @@ final class MAD4B_SCP_Admin_UI {
 				ARRAY_A
 			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$snapshot['mutations'] = is_array( $rows ) ? $rows : array();
-			$mutation_id = trim( (string) $mutation_id );
-			if ( '' !== $mutation_id && class_exists( 'MAD4B_SCP_G2_Governance_Experience' ) ) {
-				$snapshot['recovery_preview'] = MAD4B_SCP_G2_Governance_Experience::recovery_preview( array( 'mutation_id' => $mutation_id, 'reason' => '' ) );
-			}
 			return $snapshot;
 		}
 
@@ -153,7 +149,10 @@ final class MAD4B_SCP_Admin_UI {
 
 		$mutation_id = isset( $_GET['mutation'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'mutation' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only inspection.
 		if ( '' !== $mutation_id && ! preg_match( '/^[A-Za-z0-9-]{36,64}$/', $mutation_id ) ) $mutation_id = '';
-		$snapshot = self::snapshot( $agent_public_id, $tab, $mutation_id );
+		$snapshot = self::snapshot( $agent_public_id, $tab );
+		if ( ! is_wp_error( $snapshot ) && 'mutations' === $tab && '' !== $mutation_id && class_exists( 'MAD4B_SCP_G2_Governance_Experience' ) ) {
+			$snapshot['recovery_preview'] = MAD4B_SCP_G2_Governance_Experience::recovery_preview( array( 'mutation_id' => $mutation_id, 'reason' => '' ) );
+		}
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html__( 'MAD4B Control Plane', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Read-only governance and runtime evidence. This screen does not grant authority, approve tickets, execute mutations, or perform undo.', 'mad4b-site-control-plane' ) . '</p>';
