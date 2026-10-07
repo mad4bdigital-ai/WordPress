@@ -21,6 +21,7 @@ $GLOBALS['g4_provider_rows']=array(
 	array('provider_id'=>'divi','family_id'=>'builders','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
 	array('provider_id'=>'kadence','family_id'=>'builders','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
 	array('provider_id'=>'wordpress-core','family_id'=>'builders','installed'=>true,'installed_version'=>'6.9','observed_plugin_identities'=>array(),'certification_state'=>'installed_version_unprofiled','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'wordpress-core','family_id'=>'wordpress-breadth','installed'=>true,'installed_version'=>'6.9','observed_plugin_identities'=>array(),'certification_state'=>'installed_version_unprofiled','adapter_registered'=>false,'read_surface_ready'=>false),
 	array('provider_id'=>'updraftplus','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
 	array('provider_id'=>'w3-total-cache','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
 	array('provider_id'=>'all-in-one-wp-migration','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
@@ -77,7 +78,16 @@ g4_assert(!$rows['gravityforms']['installed'] && false===$rows['wpforms']['obser
 g4_assert(isset($rows['advanced-custom-fields']) && !isset($rows['acf']),'ACF alias drift reappeared.');
 g4_assert(isset($rows['the-events-calendar']) && !isset($rows['events-calendar']),'Events Calendar alias drift reappeared.');
 g4_assert(isset($rows['all-in-one-wp-migration']) && !isset($rows['duplicator']),'Migration provider widened outside the G4 reviewed catalog.');
-$removed=$GLOBALS['g4_provider_rows'][20];unset($GLOBALS['g4_provider_rows'][20]);$GLOBALS['g4_provider_rows']=array_values($GLOBALS['g4_provider_rows']);
+$core_rows=array_values(array_filter($discovery['providers'],static function($row){return 'wordpress-core'===($row['provider_id']??'');}));
+$core_families=array_values(array_unique(array_map(static function($row){return $row['family']??'';},$core_rows)));sort($core_families);
+g4_assert(2===count($core_rows) && array('builders','wordpress-breadth')===$core_families,'Multi-family WordPress core identity was collapsed or rejected.');
+$removed=null;
+foreach($GLOBALS['g4_provider_rows'] as $index=>$row){if('the-events-calendar'===($row['provider_id']??'')){$removed=$row;unset($GLOBALS['g4_provider_rows'][$index]);break;}}
+$GLOBALS['g4_provider_rows']=array_values($GLOBALS['g4_provider_rows']);
+g4_assert(is_array($removed),'Events Calendar fixture row missing.');
 $blocked=MAD4B_SCP_Domain_Native_Providers::discovery();g4_assert(!$blocked['ready'] && 'domain_overlay_provider_not_in_g4_catalog'===$blocked['reason'],'Overlay provider missing from G4 catalog did not fail closed.');
 $GLOBALS['g4_provider_rows'][]=$removed;
+$duplicate=$GLOBALS['g4_provider_rows'][0];$GLOBALS['g4_provider_rows'][]=$duplicate;
+$blocked=MAD4B_SCP_Domain_Native_Providers::discovery();g4_assert(!$blocked['ready'] && 'g4_provider_duplicate'===$blocked['reason'],'Duplicate provider-family pair did not fail closed.');
+array_pop($GLOBALS['g4_provider_rows']);
 g4_done('native-read-bridges-runtime');
