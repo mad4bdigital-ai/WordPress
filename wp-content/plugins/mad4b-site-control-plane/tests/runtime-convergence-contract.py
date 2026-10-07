@@ -156,6 +156,16 @@ assert "if ( 'blocked' === $state ) return;" not in runtime
 
 assert "$checkpoint['retry_policy'] = 'explicit_resume_required';" in runtime
 
+assert "private static function worker_error_policy" in runtime
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error" in runtime
+assert "$checkpoint['auto_reconcile_decision'] = $decision;" in runtime
+assert "$checkpoint['auto_reconcile_policy_id']" in runtime
+assert "$checkpoint['auto_reconcile_policy_source']" in runtime
+assert "'DEFER' === $decision" in runtime
+assert "bounded_defer_exhausted" in runtime
+assert "hard_block_repair_required" in runtime
+assert "explicit_review_required" in runtime
+
 assert "$checkpoint['automatic_retry_allowed'] = false;" in runtime
 
 assert "'mad4b-approval-decisions' === $page" in runtime

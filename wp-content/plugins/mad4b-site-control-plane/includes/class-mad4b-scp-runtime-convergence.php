@@ -717,10 +717,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( 'blocked' === $state ) {
 			$last_error = isset( $checkpoint['last_error_code'] ) ? sanitize_key( (string) $checkpoint['last_error_code'] ) : '';
 			$retry_count = isset( $checkpoint['transient_retry_count'] ) ? absint( $checkpoint['transient_retry_count'] ) : 0;
-			if ( ! self::is_transient_error_code( $last_error ) || $retry_count >= self::MAX_TRANSIENT_RETRIES ) return;
+			$policy = self::worker_error_policy( $last_error );
+			$decision = isset( $policy['decision'] ) ? (string) $policy['decision'] : 'REVIEW_REQUIRED';
+			if ( 'DEFER' !== $decision || $retry_count >= self::MAX_TRANSIENT_RETRIES ) return;
 			$checkpoint['state'] = 'pending_safe_phases';
 			$checkpoint['retry_policy'] = 'automatic_bounded_retry';
 			$checkpoint['automatic_retry_allowed'] = true;
+			$checkpoint['auto_reconcile_decision'] = $decision;
+			$checkpoint['auto_reconcile_policy_id'] = isset( $policy['policy_id'] ) ? sanitize_key( (string) $policy['policy_id'] ) : '';
+			$checkpoint['auto_reconcile_policy_source'] = isset( $policy['policy_source'] ) ? sanitize_key( (string) $policy['policy_source'] ) : '';
 			$checkpoint['updated_at'] = gmdate( 'c' );
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			$state = 'pending_safe_phases';
@@ -859,6 +864,30 @@ final class MAD4B_SCP_Runtime_Convergence {
 		), true );
 	}
 
+	/**
+	 * Resolve worker disposition through the declarative auto-reconcile registry.
+	 * The fallback preserves the legacy retry contract if the registry is unavailable.
+	 */
+	private static function worker_error_policy( $error_code ) {
+		$error_code = sanitize_key( (string) $error_code );
+		if ( class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', false )
+			&& method_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', 'classify_worker_error' ) ) {
+			$policy = MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( $error_code );
+			if ( is_array( $policy ) && ! empty( $policy['decision'] ) ) return $policy;
+		}
+		return array(
+			'contract' => 'mad4b.auto-reconcile-scenarios.v1',
+			'error_code' => $error_code,
+			'decision' => self::is_transient_error_code( $error_code ) ? 'DEFER' : 'REVIEW_REQUIRED',
+			'policy_id' => self::is_transient_error_code( $error_code ) ? 'legacy_transient_fallback' : 'legacy_review_fallback',
+			'policy_source' => 'runtime_fallback',
+			'mutation_allowed' => false,
+			'authority_expansion_allowed' => false,
+			'zero_delta_required_for_rebind' => true,
+			'authorizing' => false,
+		);
+	}
+
 	public static function resume_safe_phases() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) ) return;
@@ -881,9 +910,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( is_wp_error( $result ) ) {
 			$error_code = sanitize_key( (string) $result->get_error_code() );
 			$retry_count = isset( $checkpoint['transient_retry_count'] ) ? absint( $checkpoint['transient_retry_count'] ) : 0;
-			if ( self::is_transient_error_code( $error_code ) && $retry_count < self::MAX_TRANSIENT_RETRIES ) {
+			$policy = self::worker_error_policy( $error_code );
+			$decision = isset( $policy['decision'] ) ? (string) $policy['decision'] : 'REVIEW_REQUIRED';
+			$checkpoint['last_error_code'] = $error_code;
+			$checkpoint['auto_reconcile_decision'] = $decision;
+			$checkpoint['auto_reconcile_policy_id'] = isset( $policy['policy_id'] ) ? sanitize_key( (string) $policy['policy_id'] ) : '';
+			$checkpoint['auto_reconcile_policy_source'] = isset( $policy['policy_source'] ) ? sanitize_key( (string) $policy['policy_source'] ) : '';
+			if ( 'DEFER' === $decision && $retry_count < self::MAX_TRANSIENT_RETRIES ) {
 				$checkpoint['state'] = 'pending_safe_phases';
-				$checkpoint['last_error_code'] = $error_code;
 				$checkpoint['transient_retry_count'] = $retry_count + 1;
 				$checkpoint['retry_policy'] = 'automatic_bounded_retry';
 				$checkpoint['automatic_retry_allowed'] = true;
@@ -893,9 +927,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 				return;
 			}
 			$checkpoint['state'] = 'blocked';
-			$checkpoint['last_error_code'] = $error_code;
 			$checkpoint['retry_policy'] = 'explicit_resume_required';
 			$checkpoint['automatic_retry_allowed'] = false;
+			$checkpoint['auto_reconcile_terminal_reason'] = 'DEFER' === $decision ? 'bounded_defer_exhausted' : ( 'HARD_BLOCK' === $decision ? 'hard_block_repair_required' : 'explicit_review_required' );
 			$checkpoint['updated_at'] = gmdate( 'c' );
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 		}

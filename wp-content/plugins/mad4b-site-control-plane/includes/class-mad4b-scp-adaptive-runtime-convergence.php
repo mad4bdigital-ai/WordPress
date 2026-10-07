@@ -160,11 +160,21 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	private static function note_failure( $code, $expected_event_id = '' ) {
 		$event = self::event();
 		if ( ( $event['event_id'] ?? '' ) !== $expected_event_id ) { self::schedule( 5 ); return; }
+		$code = sanitize_key( (string) $code );
+		$policy = class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', false )
+			&& method_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', 'classify_worker_error' )
+			? MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( $code )
+			: array( 'decision' => 'DEFER', 'policy_id' => 'adaptive_legacy_retry', 'policy_source' => 'adaptive_fallback' );
+		$decision = isset( $policy['decision'] ) ? (string) $policy['decision'] : 'REVIEW_REQUIRED';
 		$event['attempts'] = min( 6, (int) ( $event['attempts'] ?? 0 ) + 1 );
-		$event['failure_code'] = sanitize_key( $code );
-		$event['failure_state'] = $event['attempts'] < 6 ? 'RETRY_PENDING' : 'EXTERNAL_ACTION_REQUIRED';
+		$event['failure_code'] = $code;
+		$event['failure_decision'] = $decision;
+		$event['failure_policy_id'] = isset( $policy['policy_id'] ) ? sanitize_key( (string) $policy['policy_id'] ) : '';
+		$event['failure_policy_source'] = isset( $policy['policy_source'] ) ? sanitize_key( (string) $policy['policy_source'] ) : '';
+		$retryable = 'DEFER' === $decision && $event['attempts'] < 6;
+		$event['failure_state'] = $retryable ? 'RETRY_PENDING' : ( 'HARD_BLOCK' === $decision ? 'HARD_BLOCKED' : ( 'REVIEW_REQUIRED' === $decision ? 'REVIEW_REQUIRED' : 'EXTERNAL_ACTION_REQUIRED' ) );
 		update_option( self::EVENT_OPTION, $event, false );
-		if ( $event['attempts'] < 6 ) self::schedule( min( 300, 60 * $event['attempts'] ) );
+		if ( $retryable ) self::schedule( min( 300, 60 * $event['attempts'] ) );
 	}
 
 	/** Each state follows measured capability evidence, never a version comparison. */

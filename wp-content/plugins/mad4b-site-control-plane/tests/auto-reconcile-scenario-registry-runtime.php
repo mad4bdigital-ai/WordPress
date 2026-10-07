@@ -147,6 +147,10 @@ check( empty( $future_result['mutation_allowed'] ) && empty( $future_result['aut
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_post_update_continuation_release_untrusted' )['decision'], 'untrusted release must hard block' );
 check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_post_update_continuation_skills_certification_required' )['decision'], 'skills dependency must defer' );
 check( 'REVIEW_REQUIRED' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_observed_update_authority_delta' )['decision'], 'authority delta must require review' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_runtime_convergence_busy' )['decision'], 'runtime maintenance contention must dynamically defer' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_runtime_convergence_skills_persisted_identity_stale' )['decision'], 'current-build Skill certification lag must dynamically defer' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'installed_package_manifest_unverified' )['decision'], 'package readback race must remain bounded-defer rather than blind retry' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'runtime_observation_failed' )['decision'], 'observer transport/runtime failure must remain bounded-defer' );
 
 
 // Future signal providers can add evidence without overriding core safety signals.
