@@ -232,6 +232,45 @@ mad4b_review_assert( ! empty( $optional_initial ), 'Optional writer reference mu
 mad4b_review_assert( 'writer_reference' === $optional_initial['category'], 'Writer reference fixture must classify as writer_reference, not Brand Core.', $optional_initial );
 mad4b_review_assert( empty( $optional_initial['required'] ), 'Writer reference fixture must remain optional by default.', $optional_initial );
 
+$optional_raw_original = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ];
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['content_complete'] = false;
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['normalization_status'] = 'incomplete';
+$incomplete_review = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => $optional_initial['category'],
+			'authority_class' => $optional_initial['authority_class'],
+			'required' => false,
+			'quality_mode' => 'preserve',
+			'decision' => 'approve',
+		)
+	)
+);
+mad4b_review_assert( is_wp_error( $incomplete_review ), 'Incomplete normalized content must never be reviewable.', $incomplete_review );
+mad4b_review_assert( 'mad4b_context_review_content_incomplete' === $incomplete_review->get_error_code(), 'Incomplete Context review must expose the exact repair-first error.', $incomplete_review->get_error_code() );
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ] = $optional_raw_original;
+
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['classification_confidence'] = 0.42;
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['classification_source'] = 'automatic';
+$low_confidence_review = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => $optional_initial['category'],
+			'authority_class' => $optional_initial['authority_class'],
+			'required' => false,
+			'quality_mode' => 'preserve',
+			'decision' => 'approve',
+		)
+	)
+);
+mad4b_review_assert( is_wp_error( $low_confidence_review ), 'Low-confidence automatic classification must require explicit Human confirmation.', $low_confidence_review );
+mad4b_review_assert( 'mad4b_context_review_classification_confirmation_required' === $low_confidence_review->get_error_code(), 'Low-confidence Human Review denial must expose the exact confirmation error.', $low_confidence_review->get_error_code() );
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ] = $optional_raw_original;
+
 $optional_escalation_input = mad4b_review_exact_input(
 	$optional_asset_id,
 	array(
