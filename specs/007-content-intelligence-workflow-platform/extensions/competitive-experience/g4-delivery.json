@@ -64,7 +64,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "ddc3992818ca18659a2ba883b52660f5f1e61627a18f573aa6a95efd67050f8a"
+      "sha256": "d8dcfff40e72a068855eb1ac70e3273a4209ec7bc32fbf90aa260c8a66be4312"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
@@ -72,15 +72,15 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
-      "sha256": "d65c887850d7356c75aa2cb51bedc5ee1eafff6809e0677c3dbc433ff9f70006"
+      "sha256": "1cbdadb16fc9e86366667eface5206fc347e83aafb7f5c2a1b0b6f7a8cb394b6"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
-      "sha256": "4b581c048fbd763ce7556fb7dc863dd58d6b0e034c4ba0f498d420b1e5749ff1"
+      "sha256": "4c7dd395c80ee1a843462efa9912aacaed5c1c9bb0e36ac03c868996bb9f1e02"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json",
-      "sha256": "adf5ef3352eb7cec6407336bc2a9ae144a96fb7e72698b56da9140adfd231042"
+      "sha256": "a9ef86a1760026eba15343cc8dd97494e4b7b27342add99ea73ad5ed6cf86738"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php",
