@@ -62,11 +62,22 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		) );
 	}
 
+	private static function breakglass_enabled() {
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === MAD4B_MCP_BREAKGLASS_ENABLED ) return true;
+		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
+			? MAD4B_SCP_Staging_Write_Authority::persisted_status()
+			: array();
+		return ! empty( $authority['breakglass_included'] )
+			|| ! empty( $authority['breakglass_auto_enable'] )
+			|| ! empty( $authority['raw_sql_breakglass_enabled'] );
+	}
+
 	private static function eligible() {
 		return class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::configured()
 			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment() && MAD4B_SCP_Site_Profile::origin_enrolled()
 			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::managed_runtime_enabled()
-			&& ! ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === MAD4B_MCP_BREAKGLASS_ENABLED );
+			&& ! self::breakglass_enabled();
 	}
 
 	private static function stamp() {
@@ -160,7 +171,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$policy = class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', false )
 			&& method_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', 'classify_worker_error' )
 			? MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( $code )
-			: array( 'decision' => 'DEFER', 'policy_id' => 'adaptive_legacy_retry', 'policy_source' => 'adaptive_fallback' );
+			: array( 'decision' => 'REVIEW_REQUIRED', 'policy_id' => 'registry_unavailable', 'policy_source' => 'adaptive_fallback' );
 		$decision = isset( $policy['decision'] ) ? (string) $policy['decision'] : 'REVIEW_REQUIRED';
 		$event['attempts'] = min( 6, (int) ( $event['attempts'] ?? 0 ) + 1 );
 		$event['failure_code'] = $code;
@@ -231,7 +242,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 					'current_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
 					'stored_version' => trim( (string) get_option( 'mad4b_scp_version', '' ) ),
 					'source' => $source,
-					'breakglass_enabled' => defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === MAD4B_MCP_BREAKGLASS_ENABLED,
+					'breakglass_enabled' => self::breakglass_enabled(),
 				) ) : array( 'decision' => 'REVIEW_REQUIRED', 'scenario_id' => 'registry_unavailable', 'mutation_allowed' => false );
 				$registry['auto_reconcile'] = $auto_reconcile;
 				$decision = isset( $auto_reconcile['decision'] ) ? (string) $auto_reconcile['decision'] : 'REVIEW_REQUIRED';
