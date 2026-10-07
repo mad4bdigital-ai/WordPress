@@ -55,7 +55,7 @@ class MAD4B_SCP_Live_Acceptance_Observer {
   if ( self::$throw ) { MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); throw new RuntimeException( 'PRIVATE worker path' ); }
   if ( self::$race && 0 === self::$calls % 2 ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$event_race && 0 === self::$calls % 2 ) MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
-  return array( 'runtime_manifest_match' => self::$valid, 'build_fingerprint' => str_repeat( 'a', 64 ) );
+  return array( 'runtime_manifest_match' => self::$valid, 'source_commit_sha' => str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ), 'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture' );
  }
 }
 class MAD4B_SCP_Provider_Contracts { static function all() { return array_fill_keys( array( 'alpha', 'beta', 'gamma', 'delta', 'epsilon' ), array() ); } }
