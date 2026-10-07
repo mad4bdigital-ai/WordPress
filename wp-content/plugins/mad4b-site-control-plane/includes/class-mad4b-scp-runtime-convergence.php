@@ -1236,15 +1236,39 @@ final class MAD4B_SCP_Runtime_Convergence {
 				&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'prepare_observed_update' )
 				&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'observed_reconciliation_preflight' ) ) {
 				$trusted_target = MAD4B_SCP_Self_Update::observed_release_target();
+				$trust_path = 'master_release';
 				if ( is_wp_error( $trusted_target ) ) {
 					$preflight = self::observed_release_error_policy( $trusted_target );
 					$observed_continuation = $trusted_target;
 				} else {
 					$preflight = MAD4B_SCP_Post_Update_Continuation::observed_reconciliation_preflight( $trusted_target );
 				}
+
+				// A manually uploaded Integration-Hub candidate is intentionally not
+				// promoted to master-release trust. Instead, an old trusted runtime may
+				// have sealed a short-lived Staging operator witness during the exact
+				// WordPress upgrader lifecycle. The witness path still reuses the same
+				// ZERO_DELTA classifier and can mutate candidate binding only.
+				$witness_status = method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'operator_witness_status' )
+					? MAD4B_SCP_Post_Update_Continuation::operator_witness_status()
+					: array();
+				if ( ! empty( $witness_status['available'] )
+					&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'operator_witnessed_reconciliation_preflight' )
+					&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'prepare_operator_witnessed_update' ) ) {
+					$witness_preflight = MAD4B_SCP_Post_Update_Continuation::operator_witnessed_reconciliation_preflight();
+					if ( is_array( $witness_preflight ) ) {
+						$preflight = $witness_preflight;
+						$trust_path = 'staging_operator_witness';
+					}
+				}
 				$auto_reconciliation = self::reconciliation_decision( $signals, is_array( $preflight ) ? $preflight : array() );
-				if ( 'AUTO_REBIND' === ( $auto_reconciliation['disposition'] ?? '' ) && ! is_wp_error( $trusted_target ) ) {
-					$observed_continuation = MAD4B_SCP_Post_Update_Continuation::prepare_observed_update( $trusted_target, $lock );
+				$auto_reconciliation['trust_path'] = $trust_path;
+				if ( 'AUTO_REBIND' === ( $auto_reconciliation['disposition'] ?? '' ) ) {
+					if ( 'staging_operator_witness' === $trust_path ) {
+						$observed_continuation = MAD4B_SCP_Post_Update_Continuation::prepare_operator_witnessed_update( $lock );
+					} elseif ( ! is_wp_error( $trusted_target ) ) {
+						$observed_continuation = MAD4B_SCP_Post_Update_Continuation::prepare_observed_update( $trusted_target, $lock );
+					}
 					$continuation_status = MAD4B_SCP_Post_Update_Continuation::status();
 				}
 			} else {
