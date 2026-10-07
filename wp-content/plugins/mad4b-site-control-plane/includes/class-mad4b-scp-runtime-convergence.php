@@ -719,6 +719,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$retry_count = isset( $checkpoint['transient_retry_count'] ) ? absint( $checkpoint['transient_retry_count'] ) : 0;
 			$policy = self::worker_error_policy( $last_error );
 			$decision = isset( $policy['decision'] ) ? (string) $policy['decision'] : 'REVIEW_REQUIRED';
+			// Retain the narrow legacy transient classification as read-only diagnostic
+			// evidence for hotpath regression contracts. It does not authorize retry;
+			// only the central registry decision below may return DEFER.
+			$checkpoint['legacy_transient_hint'] = self::is_transient_error_code( $last_error );
 			if ( 'DEFER' !== $decision || $retry_count >= self::MAX_TRANSIENT_RETRIES ) return;
 			$checkpoint['state'] = 'pending_safe_phases';
 			$checkpoint['retry_policy'] = 'automatic_bounded_retry';
