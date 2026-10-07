@@ -1,67 +1,54 @@
-# G4 Delivery — Forms, Commerce, Builders, Site Operations and WordPress Breadth
+# Feature 007 G4 — Combined Repository Delivery Evidence
 
-Status: **Repository framework implemented; provider/live/browser acceptance pending.**
+Status: `REPOSITORY_G4_FOUNDATION_AND_PREFLIGHT_IMPLEMENTED_PROVIDER_ACCEPTANCE_PENDING`
 
-This slice establishes the typed, fail-closed planning and readiness foundation for G4. It does **not** claim provider execution parity, live acceptance, mutation readiness or Production authority.
+## Integration topology
+- Integration Hub: PR #258.
+- Canonical G4 integration PR: #283.
+- Subordinate WordPress-domain preflight child: #284.
+- Exact G4 starting Hub: `20552e34a75c601c247e36edc0dbc86ff4aa230a`.
+- Reviewed master ancestor: `dccb0889799eb255f0d64d6959d9687252801c5b`.
+- Required path: `#284 → #283 → #258 → master`.
+- PR #284 does not independently own or close the 25 G4 tasks.
 
-## Implemented repository foundation
+## Repository foundation implemented
+- Typed provider-family readiness and non-authorizing planning for Forms, Commerce, Builders, Site Operations and WordPress breadth.
+- Dynamic evidence reuse from Plugin Discovery, Adapter Registry and existing certified adapters.
+- PR #284 does not maintain a second provider identity catalog or plugin scanner: WordPress-domain discovery consumes the canonical G4 readiness projection from #283.
+- `wordpress-domain-catalog.json` is a non-authorizing domain overlay only; it can add prerequisites but cannot admit a provider missing from the G4 reviewed catalog.
+- Canonical provider identities are shared across both layers, including `advanced-custom-fields`, `the-events-calendar`, and `all-in-one-wp-migration`; alias drift fails closed.
+- Provider-owned WordPress domain preflight contracts plus independent native-read observations and bounded denial fixtures.
+- Existing Fluent Forms / JetFormBuilder, WooCommerce, Elementor, Polylang and LiteSpeed evidence is reused where exact contracts exist.
+- Domain preflight covers schema/permission/serialization boundaries without dispatching native mutation.
+- G4 runtime coverage executes on PHP 7.4 and PHP 8.3.
 
-- One typed provider-family catalog for CPFORMS, CPWC, CPBUILD, CPOPS and CPCORE.
-- Exact reviewed provider membership per family; unknown provider/family/operation fails closed.
-- Exact-version readiness projection through the existing certified provider contracts when available.
-- Runtime readiness reuses the existing Adapter Registry and Plugin Discovery instead of duplicating provider scanners.
-- Existing adapters such as Fluent Forms, JetFormBuilder, WooCommerce, Elementor, Polylang and LiteSpeed can surface read abilities, reversible declarations and live plugin identities while execution remains denied here.
-- Installed-but-unadapted providers remain explicit as adapter gaps instead of being inferred as supported.
-- Core WordPress is modeled explicitly as a core runtime, not as a fabricated plugin contract.
-- Read, sensitive-read, reviewed-write-plan, high-risk and irreversible-external-effect semantics are distinct.
-- Every plan is non-authorizing and reports that provider execution and mutation did not occur.
+## Task state
+Owned G4 tasks remain PARTIAL only: Forms T3931–T3935; Commerce T3936–T3940; Builders T3941–T3945; Site Operations T3966–T3970; WordPress Breadth T3971–T3975.
+No new DONE claim is made.
 
 ## Safety boundaries
-
-### Forms
-
-- Submission data is separate PII authority.
-- Export/delete require explicit review.
-- Deletion never claims undo.
-- Config mutation requires provider serialization and exact readback.
-
-### Commerce
-
-- Catalog, order/customer and financial surfaces are separate.
-- Order/customer reads require object-level authority and PII masking.
-- Stock plans require concurrency and hook-aware readback.
-- Refund/gateway work is an irreversible external/financial effect and remains manual-gated.
-
-### Builders
-
-- Elementor, Divi, Kadence and WordPress core are catalog data, not execution branches.
-- Structural changes require native schema, revision and editor-lock checks.
-- Clone plans require fresh IDs.
-- Template changes require explicit template-scope and dynamic-data leakage checks.
-
-### Site operations
-
-- Backup, cache, migration, security and redirect operations carry independent risk descriptors.
-- Restore is readiness-only here: no automatic restore and no replay of stale authority.
-- Migration inspection cannot disclose installers or credentials.
-- Cache purge requires blast-radius and egress bounds.
-- Security changes require self-lockout denial and reviewed handoff.
-
-### WordPress breadth
-
-- Core object inventory remains separate from optional provider surfaces.
-- WPML hierarchy plans require source language, parent identity, duplicate and translation-group evidence.
-- Media egress, hierarchy cycles and foreign-field ownership are explicit gates.
-- BuddyPress private messages require separate private authority.
-- Events require bounded pagination and timezone semantics.
+- `authorizing = false`.
+- `production_authorized = false`.
+- `runtime_parity_claimed = false`.
+- `live_provider_acceptance = false`.
+- `live_browser_acceptance = false`.
+- `native_mutation_dispatch_implemented = false`.
+- No generic shell, raw SQL, arbitrary outbound HTTP, automatic grants, automatic tool mounting or stale-authority replay.
+- Financial/payment/refund effects remain separately gated and never treated as reversible.
+- Private/PII surfaces remain under explicit scoped authority and masking rules.
+- Restore remains readiness-only and cannot replay stale authority.
+- Domain overlay metadata cannot widen G4 provider membership, family assignment, installation truth or runtime certification.
+- Domain discovery performs no independent `get_plugins()` scan; G4 readiness remains the single provider discovery source.
 
 ## Remaining acceptance
-
-- Implement provider-native inventory/schema/read adapters for the admitted families.
-- Implement exact provider-native plan/apply/readback where mutation is allowed.
-- Reuse G3 disposable canary machinery for eligible reversible G4 writes and prove cleanup/readback.
-- Add HPOS, editor-lock, provider serialization, WPML hierarchy and object-ownership runtime probes.
-- Add malicious upload/URL, redirect loop, stock concurrency, hook side-effect, private-message and role-escalation fault fixtures.
-- Complete exact-head child CI and governance.
-- Complete representative Staging provider and browser acceptance after merge into #258.
-- Production remains unauthorized.
+- Native provider schema/permission/serialization/readback for remaining catalogued providers.
+- Governed native apply only where provider-specific reversible contracts and exact authority exist.
+- WooCommerce HPOS/order/customer/stock/hook disposable canaries and financial-effect handoffs.
+- Divi/Kadence/Gutenberg/FSE native parity and rendered readback.
+- Backup/migration/cache/security/redirect native adapters and frontend/restore acceptance.
+- WPML/ACF/core/BuddyPress/Events Calendar native readers/serializers and persisted acceptance where applicable.
+- Real PII read/mask/consent/retention/export/delete acceptance.
+- Exact-head child CI, owner attestation and separate merge authorization before #284 integrates into #283.
+- Reconciled #283 cumulative CI/governance before any merge into #258.
+- Representative Staging/provider/browser acceptance remains separate.
+- Production and final #258 promotion remain unauthorized.

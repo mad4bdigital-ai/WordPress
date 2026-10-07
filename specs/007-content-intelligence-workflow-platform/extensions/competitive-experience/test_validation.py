@@ -209,6 +209,14 @@ class EvidenceDenials(unittest.TestCase):
         self.change("g4-delivery.json", lambda d: d.update(runtime_parity_claimed=True))
         self.rejects("g4_delivery_boundary_or_progress_invalid")
 
+    def test_g4_cannot_claim_native_mutation_dispatch(self):
+        self.change("g4-delivery.json", lambda d: d.update(native_mutation_dispatch_implemented=True))
+        self.rejects("g4_delivery_boundary_or_progress_invalid")
+
+    def test_g4_delivery_status_is_exact(self):
+        self.change("g4-delivery.json", lambda d: d.update(status="DONE"))
+        self.rejects("g4_delivery_boundary_or_progress_invalid")
+
     def test_g4_cannot_claim_live_provider_acceptance(self):
         self.change("g4-delivery.json", lambda d: d.update(live_provider_acceptance=True))
         self.rejects("g4_delivery_boundary_or_progress_invalid")

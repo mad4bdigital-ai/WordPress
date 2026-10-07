@@ -1,11 +1,14 @@
 {
   "contract": "mad4b.competitive-g4-delivery.v1",
-  "status": "REPOSITORY_G4_FOUNDATION_IMPLEMENTED_PROVIDER_ACCEPTANCE_PENDING",
+  "status": "REPOSITORY_G4_FOUNDATION_AND_PREFLIGHT_IMPLEMENTED_PROVIDER_ACCEPTANCE_PENDING",
   "integration_pr": 258,
   "implementation_pr": 283,
+  "subordinate_preflight_pr": 284,
   "implementation_branch": "feat/007-g4-forms-commerce-builders-siteops-breadth-20261007",
+  "subordinate_preflight_branch": "feat/007-g4-wordpress-domain-preflight-20261007",
   "integration_base": "spec/007-competitive-experience-20261006",
   "baseline_hub_head": "20552e34a75c601c247e36edc0dbc86ff4aa230a",
+  "reviewed_master_ancestor": "dccb0889799eb255f0d64d6959d9687252801c5b",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "provider_family_contract": "mad4b.g4-provider-family-catalog.v1",
   "authorizing": false,
@@ -13,6 +16,7 @@
   "runtime_parity_claimed": false,
   "live_provider_acceptance": false,
   "live_browser_acceptance": false,
+  "native_mutation_dispatch_implemented": false,
   "capability_ids": [
     "CE015",
     "CE016",
@@ -64,7 +68,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "d8dcfff40e72a068855eb1ac70e3273a4209ec7bc32fbf90aa260c8a66be4312"
+      "sha256": "a82bfc2cf298d2b1638592e530451c9841f5c37b6b1abac6785b5d6a312e98b1"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
@@ -101,12 +105,80 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php",
       "sha256": "0216bb51909a863a2ec8c7260a66571b27cdb83236fef7ce267ae7930d231ba8"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-domain-coverage.php",
+      "sha256": "cdcaa5041bb7c717fcf7eb7441e8db911c0ab29432bea4c3373867e943c74498"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-builders.php",
+      "sha256": "e8ea51cd19477b26f3b803389c3cbe33d4ca5c0907ec01a925508aa2a03e8022"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-commerce.php",
+      "sha256": "d05bda626fa2d7295a0818c1429d992b5922b2e1c9fd240057d57cdfb75a0903"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-contracts.php",
+      "sha256": "610d6f1ee6a97591cc0774bcd7d392761e93980622d866a46be1ce2c3ff792fb"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-forms.php",
+      "sha256": "0b075b2a54592fe5afaa190731e1fc27bd7f7131c56708998e9fdce76068baa3"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-native-providers.php",
+      "sha256": "2e75da8ad979a68e00ae7e92a535fc42c8bcf0acf5474477a60d50785859d4f9"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-site-operations.php",
+      "sha256": "f85503302cc11b7b59fbb6f40dd1d6807905fa02aca8f3537c873576a0fa1e5d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-wordpress.php",
+      "sha256": "4eadcaa6948d48dd421c4764c1da2807e4f2088bdbbc1acf06b0bfcb3942ac15"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json",
+      "sha256": "9fa66f8ee7b589648b5d532c093ee6838943b1c22b6b9c6854d5816c25e13272"
     }
   ],
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-provider-family-contract.php",
       "sha256": "b4f50ebc4a68f08148db7ed4e6dd610c4d71b74057e9209cf1524b93022dd79b"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-builders-contract.php",
+      "sha256": "83ec78538aeaf78551b3ab7cec547ff803a865da20a739170de5aa355d788fc7"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-commerce-contract.php",
+      "sha256": "8d8152c42124e10d4a89ef1fd82d179ff67d257af0a1317046fa787428b1e5cf"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-coverage-runtime.php",
+      "sha256": "680170ea667e8c47ef0d185dc94794a7313aa527d07c43dde15ad9e09e04df79"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-fixture.php",
+      "sha256": "2d3ebd257c689f1ca555db633c84993e7014ff98f37aa93718be39530802a181"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-forms-contract.php",
+      "sha256": "cb804cb3bf0a31f7773df4e532a3b098a5a0228189cd18e76eaf8f06eb7c48b8"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-native-read-bridges-runtime.php",
+      "sha256": "0d7b7602c6930668b50446b0e7a58e0364a45115f10db3abe195cbd79ffabbe7"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-site-operations-contract.php",
+      "sha256": "c7fb716795590e726233afe7a3792d29b2b604ffb6559aa552e4f0d7d2bc8c6e"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-wordpress-contract.php",
+      "sha256": "8d99baaa68d5f5dad04c5e1bfef7a5779da874821aac5c6ed2e364c66c16b9a5"
     }
   ],
   "spec_paths": [
@@ -116,23 +188,27 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "e36401835560970619198f9c66e2ae8db866cab4e03136298a90c67de4776edb"
+      "sha256": "e22de50d2d0d28491b4a9adf070c4dfaa875460cfc61b724f014be52e755405c"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "7380dbd2b67daf43c068ac25e8862b2128cdea7843aa54deaf8abe8aa9ddaf71"
+      "sha256": "b4425ab0949c88615165496d9d7b821d3a654c3387afd78d0f371a2e480bf515"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "4a006ae5c525fdcbff2faac0bd9a285917e751d4be1c1b35b20cec0055d5b171"
+      "sha256": "8b7e81a22a7dab0762a387af282e87b9083cc10cd89e27e37f08f224b384733e"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
-      "sha256": "814d6c322a7109a2ddca7af4418e73b53a16c793dcd362226a1b795cde844266"
+      "sha256": "fdcdc63a4de82d0e1b96851cbb49ffc8c5856ef35d2f90e1e5ea69f6745c43ce"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.md",
-      "sha256": "df6fe19e43c2456e8b646606ddf5a3d123d2053ccbfb47bcbba9c35e3453750f"
+      "sha256": "4c1e8d63f044443cd374f9c159ba300f7c04e3f97fbc105e6625955d778351f0"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
+      "sha256": "8bf650a96efcec16479b28f5c7716bd93ed551e13502ddc8016ad4f202e9cea5"
     }
   ],
   "acceptance_contracts": [
@@ -145,7 +221,18 @@
     "cache_redirect_media_egress_and_blast_radius_bounds",
     "wpml_source_language_parent_duplicate_translation_group_evidence",
     "no_generic_shell_raw_sql_arbitrary_http_grants_mounts_or_production_authority",
-    "all_g4_plans_are_non_authorizing_and_execution_false"
+    "all_g4_plans_are_non_authorizing_and_execution_false",
+    "compiled_provider_owned_schema_inspection_permission_and_serialization",
+    "private_admin_non_authorizing_inventory_plan_and_observation",
+    "exact_runtime_artifact_descriptor_target_state_actor_expiry_binding",
+    "governed_canonical_read_child_only_no_mutation_dispatch",
+    "complete_bounded_graph_cycles_orphans_parent_language_translation_identity",
+    "independent_private_field_masks_consent_and_financial_effect_gates",
+    "narrow_cache_backup_redirect_security_scope_and_restore_epoch",
+    "no_raw_provider_values_diagnostics_or_approved_receipt",
+    "no_plugin_presence_or_fixture_runtime_acceptance_inference",
+    "wordpress_domain_overlay_cannot_widen_g4_provider_identity",
+    "wordpress_domain_discovery_reuses_g4_readiness_without_duplicate_plugin_scanner"
   ],
   "remaining_acceptance": [
     "Provider-native discovery, inventory, schema and exact-version runtime probes for each admitted G4 family.",
@@ -155,6 +242,12 @@
     "Backup/cache/migration/security/redirect provider adapters including restore, loop, purge-blast-radius and self-lockout fault fixtures.",
     "WordPress/WPML/ACF/BuddyPress/Events object ownership, multilingual hierarchy, private data and malicious media URL denial fixtures.",
     "Exact-head child CI and governance, then cumulative Hub CI and representative Staging/browser acceptance.",
-    "Production remains unauthorized."
+    "Production remains unauthorized.",
+    "Exact-head technical CI, owner attestation, separate child merge authorization and cumulative Hub CI.",
+    "Native provider contract, schema, permission, serialization and readback implementation for all remaining domain capabilities; metadata bridges do not establish writable or private-record coverage.",
+    "Native guarded apply, disposable Staging canaries, stock/order/hook concurrency, independent financial/external effects, rendered/frontend readback and exact rollback/uncertainty acceptance.",
+    "Real PII read/mask/consent/retention/export/delete and optional-provider readiness; actual Divi/Kadence/FSE/operational/WPML/ACF/BuddyPress/Events Calendar acceptance.",
+    "Independent operator/browser/RTL/persisted readback through the established process; no direct live WordPress connection from this window.",
+    "G5–G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
   ]
 }

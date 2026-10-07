@@ -67,7 +67,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "d8dcfff40e72a068855eb1ac70e3273a4209ec7bc32fbf90aa260c8a66be4312"
+      "sha256": "a82bfc2cf298d2b1638592e530451c9841f5c37b6b1abac6785b5d6a312e98b1"
     }
   ],
   "test_paths": [
@@ -95,7 +95,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
-      "sha256": "4f7b9dd869ee8dece2d4da70dda5ce46a3959865af9090e4c358ce73928af8c2"
+      "sha256": "8bf650a96efcec16479b28f5c7716bd93ed551e13502ddc8016ad4f202e9cea5"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g2-delivery.md",
@@ -103,19 +103,19 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "7380dbd2b67daf43c068ac25e8862b2128cdea7843aa54deaf8abe8aa9ddaf71"
+      "sha256": "b4425ab0949c88615165496d9d7b821d3a654c3387afd78d0f371a2e480bf515"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "e36401835560970619198f9c66e2ae8db866cab4e03136298a90c67de4776edb"
+      "sha256": "e22de50d2d0d28491b4a9adf070c4dfaa875460cfc61b724f014be52e755405c"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
-      "sha256": "814d6c322a7109a2ddca7af4418e73b53a16c793dcd362226a1b795cde844266"
+      "sha256": "fdcdc63a4de82d0e1b96851cbb49ffc8c5856ef35d2f90e1e5ea69f6745c43ce"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "4a006ae5c525fdcbff2faac0bd9a285917e751d4be1c1b35b20cec0055d5b171"
+      "sha256": "8b7e81a22a7dab0762a387af282e87b9083cc10cd89e27e37f08f224b384733e"
     }
   ],
   "acceptance_contracts": [
