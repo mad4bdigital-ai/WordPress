@@ -124,7 +124,9 @@ final class MAD4B_SCP_G2_Governance_Experience {
 
 		$identity_state = 'unavailable';
 		$same_agent = false;
-		if ( class_exists( 'MAD4B_SCP_Identity_Context' ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			$blockers[] = 'identity_runtime_unavailable';
+		} else {
 			$identity = MAD4B_SCP_Identity_Context::current();
 			if ( ! is_wp_error( $identity ) ) {
 				$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
