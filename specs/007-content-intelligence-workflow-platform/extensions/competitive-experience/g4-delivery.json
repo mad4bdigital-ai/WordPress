@@ -144,7 +144,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
-      "sha256": "825b994a5bb07ab384c0b71d8c240951447dc8e4f3b220dc00a89c839da56eb5"
+      "sha256": "8bf650a96efcec16479b28f5c7716bd93ed551e13502ddc8016ad4f202e9cea5"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
@@ -181,5 +181,6 @@
     "Real PII read/mask/consent/retention/export/delete and optional-provider readiness; actual Divi/Kadence/FSE/operational/WPML/ACF/BuddyPress/Events Calendar acceptance.",
     "Independent operator/browser/RTL/persisted readback through the established process; no direct live WordPress connection from this window.",
     "G5–G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
-  ]
+  ],
+  "implementation_pr": 284
 }

@@ -57,5 +57,6 @@
   "g3_delivery": "g3-delivery.json",
   "g3_implementation_pr": 282,
   "g4_implementation_branch": "feat/007-g4-wordpress-domain-preflight-20261007",
-  "g4_delivery": "g4-delivery.json"
+  "g4_delivery": "g4-delivery.json",
+  "g4_implementation_pr": 284
 }
