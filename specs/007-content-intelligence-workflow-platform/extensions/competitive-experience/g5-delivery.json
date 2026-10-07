@@ -82,6 +82,10 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-registration-contract.php",
       "sha256": "8a912d89a1e9e749c3b9100aa164e5eeb6f99c121613d6a995f196adc06feae5"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "sha256": "f4201599dde42939d838b53ee72d7eb8ef0f46d06a9693ff41a0d835de2ef795"
     }
   ],
   "spec_paths": [
@@ -115,7 +119,8 @@
     "stored_rendered_language_cache_and_coexistence_gates_remain_required",
     "seo_signal_never_becomes_content_mutation_authority",
     "configuration_packs_cannot_create_generic_outbound_http",
-    "no_production_grants_mounts_or_paid_capture_from_repository_foundation"
+    "no_production_grants_mounts_or_paid_capture_from_repository_foundation",
+    "growth_provider_admin_route_has_disposable_wordpress_smoke_coverage"
   ],
   "remaining_acceptance": [
     "Provider-native GA4, Search Console, Semrush, SE Ranking and Ahrefs adapters, persisted account tests and representative retained evidence capture.",

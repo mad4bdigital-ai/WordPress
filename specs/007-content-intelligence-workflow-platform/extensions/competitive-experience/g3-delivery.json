@@ -113,11 +113,11 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "b4425ab0949c88615165496d9d7b821d3a654c3387afd78d0f371a2e480bf515"
+      "sha256": "b78470dd0d8d54b3d7c5b3bb515d878309ab6d7c9d3a026e3da3d98b2098c6f7"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "e22de50d2d0d28491b4a9adf070c4dfaa875460cfc61b724f014be52e755405c"
+      "sha256": "63679b85906fdd36c5289b6587e5b707fa14d56a72a2bef04c1a61033fdde52c"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
@@ -125,7 +125,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "8b7e81a22a7dab0762a387af282e87b9083cc10cd89e27e37f08f224b384733e"
+      "sha256": "2f3ca3b8254e2455b6ab175f0a6ffb5e2d10030db37216d79437f86e6cbd3350"
     }
   ],
   "acceptance_contracts": [

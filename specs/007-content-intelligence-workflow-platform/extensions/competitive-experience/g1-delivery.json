@@ -37,11 +37,11 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
-      "sha256": "5b072cf5d7bae16dcda70c5326383e83a6ebcee885184fbdfd005354f9b505fc"
+      "sha256": "73f1ff29f59c36abfc3555bd8eccf6e2a60fe4ae38fce9e313530e4194e6baf9"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
-      "sha256": "025183a8cb54efa35e99b1af17e23bc76d315b56c4968fff698f9d630c00318d"
+      "sha256": "1d4e0cc1a20ddf5da6eff62a9090731d6e21d7343aabcd84eeafd99e3c099e52"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
@@ -85,7 +85,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
-      "sha256": "b99055adb86b52a9adfdd292c30aac1cc77e07b8bee3e69d49d6962d2416f5f9"
+      "sha256": "419412a13fc4b2d5c0eeec9dbf8c01628fbe3558d9734603c4c89b5c2d9d7539"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
@@ -101,11 +101,11 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "b4425ab0949c88615165496d9d7b821d3a654c3387afd78d0f371a2e480bf515"
+      "sha256": "b78470dd0d8d54b3d7c5b3bb515d878309ab6d7c9d3a026e3da3d98b2098c6f7"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "e22de50d2d0d28491b4a9adf070c4dfaa875460cfc61b724f014be52e755405c"
+      "sha256": "63679b85906fdd36c5289b6587e5b707fa14d56a72a2bef04c1a61033fdde52c"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
@@ -117,7 +117,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "8b7e81a22a7dab0762a387af282e87b9083cc10cd89e27e37f08f224b384733e"
+      "sha256": "2f3ca3b8254e2455b6ab175f0a6ffb5e2d10030db37216d79437f86e6cbd3350"
     }
   ],
   "acceptance_contracts": [
