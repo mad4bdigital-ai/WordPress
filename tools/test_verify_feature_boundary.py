@@ -299,6 +299,47 @@ with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode
 assert ordinary["mode"] == "non_feature_branch"
 assert ordinary["owner_attestation_required"] is False
 
+# A retry of a stale head must not evict exact-head release evidence. Separate
+# pull_request and pull_request_target evidence for the same candidate as well.
+evidence_workflows = [
+    "mad4b-context-authority.yml",
+    "mad4b-site-control-plane.yml",
+    "feature-007-critical-kernel.yml",
+    "mad4b-live-acceptance-evidence.yml",
+    "mad4b-control-plane-package.yml",
+    "mad4b-feature-boundary-root.yml",
+    "mad4b-release-verdict.yml",
+    "mad4b-repository-governance.yml",
+]
+
+def evidence_concurrency_key(workflow, sha, event, pr=276):
+    text = (HERE.parent / ".github/workflows" / workflow).read_text(encoding="utf-8")
+    group = re.search(r"^  group: (.+)$", text, re.M)
+    assert group is not None, "missing evidence concurrency group: " + workflow
+    contexts = {
+        "github.event.pull_request.number": str(pr or ""),
+        "github.event.pull_request.number || github.ref": str(pr or "refs/heads/master"),
+        "github.event_name": event,
+        "github.event.pull_request.head.sha || github.ref": sha if pr else "refs/heads/master",
+    }
+    return re.sub(
+        r"\$\{\{\s*(.*?)\s*\}\}",
+        lambda match: contexts[match.group(1)],
+        group.group(1),
+    ).lower()
+
+for workflow in evidence_workflows:
+    current = evidence_concurrency_key(workflow, "b" * 40, "pull_request")
+    assert current != evidence_concurrency_key(workflow, "a" * 40, "pull_request"), workflow
+    assert current != evidence_concurrency_key(workflow, "b" * 40, "pull_request_target"), workflow
+    assert current != evidence_concurrency_key(workflow, "b" * 40, "pull_request", pr=277), workflow
+    assert current == evidence_concurrency_key(workflow, "b" * 40, "pull_request"), workflow
+    # Preserve one master-push lane, including publishing jobs, across source heads.
+    assert evidence_concurrency_key(workflow, "b" * 40, "push", pr=0) == evidence_concurrency_key(
+        workflow, "a" * 40, "push", pr=0
+    ), workflow
+assert len({evidence_concurrency_key(workflow, "b" * 40, "pull_request") for workflow in evidence_workflows}) == len(evidence_workflows)
+
 # Release Verdict and Critical Kernel must agree on the path universe that
 # requires the schema critical check. Critical workflow files are governance
 # inputs: they must self-certify on pull requests, but they must not promote a
