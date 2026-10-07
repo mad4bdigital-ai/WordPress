@@ -269,6 +269,27 @@ $low_confidence_review = MAD4B_SCP_Context_Authority::review_asset(
 );
 mad4b_review_assert( is_wp_error( $low_confidence_review ), 'Low-confidence automatic classification must require explicit Human confirmation.', $low_confidence_review );
 mad4b_review_assert( 'mad4b_context_review_classification_confirmation_required' === $low_confidence_review->get_error_code(), 'Low-confidence Human Review denial must expose the exact confirmation error.', $low_confidence_review->get_error_code() );
+$low_confidence_revision_before_confirmation = MAD4B_SCP_Context_Authority::registry_revision();
+$confirmed_low_confidence_review = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => $optional_initial['category'],
+			'authority_class' => $optional_initial['authority_class'],
+			'required' => false,
+			'classification_confirmed' => true,
+			'quality_mode' => 'preserve',
+			'decision' => 'approve',
+		)
+	)
+);
+mad4b_review_assert( ! is_wp_error( $confirmed_low_confidence_review ), 'Explicit Human classification confirmation must unlock the exact content decision.', $confirmed_low_confidence_review );
+mad4b_review_assert( 'human' === ( isset( $confirmed_low_confidence_review['classification_source'] ) ? $confirmed_low_confidence_review['classification_source'] : '' ), 'Confirmed low-confidence classification must become Human-owned.', $confirmed_low_confidence_review );
+mad4b_review_assert( 1.0 === ( isset( $confirmed_low_confidence_review['classification_confidence'] ) ? (float) $confirmed_low_confidence_review['classification_confidence'] : 0.0 ), 'Confirmed low-confidence classification must become exact Human confidence.', $confirmed_low_confidence_review );
+mad4b_review_assert( 'approved' === ( isset( $confirmed_low_confidence_review['review_status'] ) ? $confirmed_low_confidence_review['review_status'] : '' ), 'Confirmed low-confidence review must commit the requested exact decision.', $confirmed_low_confidence_review );
+mad4b_review_assert( isset( $confirmed_low_confidence_review['review_binding']['registry_revision_after'] ) && $low_confidence_revision_before_confirmation + 1 === (int) $confirmed_low_confidence_review['review_binding']['registry_revision_after'], 'Review result must return the exact next registry revision for sequential batch chaining.', $confirmed_low_confidence_review );
+mad4b_review_assert( ! empty( $confirmed_low_confidence_review['review_binding']['authority_manifest_after'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $confirmed_low_confidence_review['review_binding']['authority_manifest_after'] ), 'Review result must return the exact next authority manifest for sequential batch chaining.', $confirmed_low_confidence_review );
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ] = $optional_raw_original;
 
 $optional_escalation_input = mad4b_review_exact_input(
