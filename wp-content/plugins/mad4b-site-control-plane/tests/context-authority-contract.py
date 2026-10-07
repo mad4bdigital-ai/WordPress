@@ -551,10 +551,14 @@ require(admin, "Quality and authority are separate", "quality/authority UX guida
 require(admin, "Normalization support", "normalization support matrix UX")
 require(admin, "Use automatic score", "automatic quality score review UX")
 require(admin, "Manual override", "manual quality override UX")
-require(admin, "Context Review Queue", "visible combined Context review queue UX")
-require(admin, "Approval Mode", "Human and AI approval mode panel")
+require(admin, "Governance controls", "progressive Human governance controls in Review inbox")
+require(admin, "These controls are for Human Review only.", "Human-vs-AI governance boundary copy")
+require(admin, "Task attachments cannot be promoted into site-wide Brand Authority.", "task-only authority boundary copy")
+require(admin, "Required review", "visible Required-first Context review inbox UX")
+require(admin, "Optional review", "separate Optional Context review inbox UX")
+require(admin, "Approval workflow", "Human and AI approval workflow panel")
 require(admin, "Human Approval", "Human approval mode remains visible")
-require(admin, "AI Agent Approval", "AI Agent approval mode is visible beside Human")
+require(admin, "Human + AI", "AI Agent approval mode is visible beside Human")
 require(admin, "ACTION_SAVE_REVIEW_POLICY", "review policy admin action")
 require(admin, "confirm_ai_review_delegation", "explicit AI delegation confirmation UX")
 require(admin, "ai_agent_public_id", "exact delegated AI Agent selector")
@@ -568,7 +572,7 @@ require(admin, "check_ajax_referer( $action, '_wpnonce', false )", "Human Review
 require(admin, "current_user_can( 'manage_options' )", "Human Review admin capability enforcement")
 require(admin, "Human review is pending.", "Source Folders Human Review discovery CTA")
 require(admin, "Quality evidence does not replace Human Review.", "Quality Human Review discovery CTA")
-require(admin, "Open Human Review Queue", "cross-tab Human Review queue navigation")
+require(admin, "Open Review Workspace", "cross-tab Review workspace navigation")
 require(admin, "Exact Context content marked as needing changes.", "decision-aware needs-changes AJAX response")
 require(admin, "Exact Context content rejected.", "decision-aware rejection AJAX response")
 require(admin, "review_status' => $review_state", "AJAX review state response")
@@ -587,18 +591,19 @@ require(admin, "expected_registry_revision", "admin registry revision review bin
 require(admin, "expected_authority_manifest_fingerprint", "admin authority fingerprint review binding")
 require(admin, "required_scope_confirmed", "admin required Context escalation confirmation")
 require(admin, "may change site-wide Brand Context requirements", "required-set shift/reduction confirmation UX")
-require(admin, "mad4b-context-review-cell", "sticky review action UX")
+require(admin, "mad4b-context-inbox-item", "operational review inbox item UX")
 require(admin, "refreshReviewPanels", "AJAX review readback refresh")
 
 review_submit = admin.split('var form=event.target.closest(".mad4b-context-review-form")', 1)[1].split('var form=event.target.closest(".mad4b-context-ajax-form")', 1)[0]
 if review_submit.index("var body=new URLSearchParams(new FormData(form));") > review_submit.index("controls.forEach(function(control){control.disabled=true;});"):
     raise AssertionError("review AJAX serializes after controls are disabled; disabled exact-review evidence would be omitted")
 
-review_table = admin.split("foreach ( $assets as $asset )", 1)[1].split("private static function render_repair_queue", 1)[0]
-task_guard = review_table.index("if ( 'governed' !== ( isset( $asset['source_mode'] )")
-review_form_nonce = review_table.index("wp_nonce_field( self::ACTION_REVIEW_ASSET )")
-if task_guard > review_form_nonce:
-    raise AssertionError("task-local Human Review guard must run before rendering the review form")
+review_helper = admin.split("private static function render_review_inbox_item", 1)[1].split("private static function render_review()", 1)[0]
+require(review_helper, "wp_nonce_field( self::ACTION_REVIEW_ASSET )", "Review inbox exact Human Review form")
+assets_body = admin.split("private static function render_assets()", 1)[1].split("private static function render_repair_queue", 1)[0]
+require(assets_body, "Human Review is intentionally unavailable for task-only Context", "task-local Human Review denial in compact Assets action")
+if "mad4b-context-review-form" in assets_body:
+    raise AssertionError("Assets inventory must not render Human Review forms; review belongs in the Review workspace")
 
 require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
