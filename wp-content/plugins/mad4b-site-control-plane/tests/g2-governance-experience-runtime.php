@@ -93,7 +93,24 @@ final class MAD4B_SCP_Governance_Abilities {
 		return array(
 			'agent' => array( 'public_id' => '11111111-1111-4111-8111-111111111111', 'label' => 'Fixture Agent' ),
 			'effective' => array(
-				array( 'server_id' => 'mad4b-admin', 'ability' => 'mad4b/audit-storage-status', 'decision' => 'allow' ),
+				array(
+					'grant_ids' => array( 77 ),
+					'server_id' => 'mad4b-admin',
+					'ability' => 'mad4b/audit-storage-status',
+					'provider' => 'core',
+					'grant' => 'allow',
+					'scope' => 'not_simulated',
+					'mounted' => true,
+					'provider_matches_mount' => true,
+					'provider_runtime' => array( 'state' => 'n/a' ),
+					'impact' => 'low',
+					'approval_required' => false,
+					'resource_schema_version' => '1',
+					'resource_constraints' => array( 'post_id' => 42 ),
+					'constraint_state' => 'unresolved_without_target',
+					'decision' => 'allowed',
+					'effective' => true,
+				),
 			),
 			'allowed_count' => 1,
 			'conditional_count' => 0,
@@ -215,6 +232,9 @@ $access = MAD4B_SCP_G2_Governance_Experience::agent_access_workspace(
 g2_check( 1 === $access['allowed_count'] && false === $access['permission_apply_available_here'], 'Access workspace authority boundary drifted.' );
 g2_check( 'bbbbbbbbbbbb…' === $access['subjects'][0]['fingerprint_hint'], 'Subject fingerprint was not redacted.' );
 g2_check( false === $access['subjects'][0]['raw_identifier_exposed'], 'Raw subject identifier exposure detected.' );
+g2_check( ! isset( $access['effective_access'][0]['grant_ids'] ) && ! isset( $access['effective_access'][0]['resource_constraints'] ), 'Access workspace exposed raw grant internals.' );
+g2_check( false === $access['effective_access'][0]['raw_grant_ids_exposed'] && false === $access['effective_access'][0]['raw_resource_constraints_exposed'], 'Access workspace redaction flags drifted.' );
+g2_check( 64 === strlen( $access['effective_access'][0]['resource_constraints_sha256'] ), 'Access workspace resource constraint digest missing.' );
 
 $consent = MAD4B_SCP_G2_Governance_Experience::consent_profile_status( array( 'client_hint' => 'fixture' ) );
 g2_check( false === $consent['generic_full_access_supported'] && true === $consent['new_scopes_require_external_consent'], 'Consent boundary drifted.' );
