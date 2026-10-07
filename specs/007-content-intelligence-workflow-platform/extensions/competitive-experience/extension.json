@@ -49,5 +49,8 @@
   "implementation_branch": "feat/007-admin-workspace-ui-20261006",
   "ui_delivery": "ui-delivery.json",
   "g1_implementation_branch": "feat/007-g1-evidence-runtime-graph-semantic-classifier-20261006",
-  "g1_delivery": "g1-delivery.json"
+  "g1_delivery": "g1-delivery.json",
+  "g2_implementation_branch": "feat/007-g2-recovery-identity-consent-history-r2-20261007",
+  "g2_implementation_pr": 277,
+  "g2_delivery": "g2-delivery.json"
 }

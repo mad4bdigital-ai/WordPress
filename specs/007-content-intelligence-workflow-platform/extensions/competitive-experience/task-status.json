@@ -160,6 +160,166 @@
         "g1-delivery.json",
         "g1-delivery.md"
       ]
+    },
+    "T3911": {
+      "status": "PARTIAL",
+      "reason": "Recovery preview now exposes exact target, before/after digests, expiry, verification and a plan digest without rollback payload disclosure; broader provider-specific reversal descriptors remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3912": {
+      "status": "PARTIAL",
+      "reason": "Preview evaluates expiry, recoverability, subject/agent binding and current post-state drift while keeping execution unavailable; atomic single-use recovery execution remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3913": {
+      "status": "PARTIAL",
+      "reason": "Exact before/after hashes and post-state readback are surfaced for the supported core post path; typed provider-specific metadata/taxonomy/builder readback remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3914": {
+      "status": "PARTIAL",
+      "reason": "Governance UI now explains recovery blockers, readback state, expiry and non-execution boundaries; richer irreversible-side-effect and reconciliation UX remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3915": {
+      "status": "PARTIAL",
+      "reason": "Repository denial contract forbids mutation calls, grant changes and rollback payload exposure from the G2 read-only surface; live concurrency/stale-provider/partial-rollback acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3916": {
+      "status": "PARTIAL",
+      "reason": "Per-agent workspace now composes exact effective grants, redacted subject bindings, environment/server constraints and recent activity without alternate authority.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3917": {
+      "status": "PARTIAL",
+      "reason": "G2 now combines exact effective-access projection with a reviewed authority-reduction planner bound to agent revision, exact target state and plan SHA-256; richer permission-editor UI, per-object conflict explanations and live role-demotion/deletion invalidation remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3918": {
+      "status": "PARTIAL",
+      "reason": "Reviewed plan/apply/readback is implemented for authority-reducing changes only: disable agent, disable subject and revoke an exact allow grant. Apply requires exact plan SHA-256, expected revision where applicable, explicit confirmation, post-change readback and append-only audit; authority expansion, grant creation, enable/restore and inferred grants are intentionally unsupported. Live concurrency and Staging acceptance remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3919": {
+      "status": "PARTIAL",
+      "reason": "My Access projection now reports redacted subjects/effective access/activity and the reviewed reduction workflow supports disable-agent, disable-subject and exact allow-grant revoke journeys. Real token/session revocation, last-session detail, browser UX and live audit attribution acceptance remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3920": {
+      "status": "PARTIAL",
+      "reason": "Static and runtime contracts deny wildcard/automatic grants, authority expansion, enable/restore paths and stale plan application while preserving exact-grant boundaries. Live wrong-subject/resource/issuer/server, stale-grant, role-promotion shortcut and automatic-mount denials remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3921": {
+      "status": "PARTIAL",
+      "reason": "Read-only and reviewed-step-up consent presets are explicit, exceptional scopes are excluded, and generic full access is denied; real external consent acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3922": {
+      "status": "PARTIAL",
+      "reason": "Consent projection is generation-digested and declares request-time scope/subject revalidation requirements; end-to-end tools/list and tools/call generation enforcement remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3923": {
+      "status": "PARTIAL",
+      "reason": "Projection requires external re-consent for new scopes and reports revocation/rotation capabilities without bypass; real revoked/expired/rotated session acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3924": {
+      "status": "PARTIAL",
+      "reason": "Client compatibility projection exposes PKCE, bounded client profiles, refresh/revocation and no dynamic registration exposure; real client initialize/list/call acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3925": {
+      "status": "PARTIAL",
+      "reason": "Repository contracts deny generic full access and hidden scope expansion; refresh replay, foreign Origin, resource/audience drift and stale-generation live denials remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3951": {
+      "status": "PARTIAL",
+      "reason": "Bounded server-side mutation history search supports agent, ability, object, status, date and stable before-id paging with site-local scope evidence.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3952": {
+      "status": "PARTIAL",
+      "reason": "History exposes redacted before/after integrity hashes and changed-state evidence without raw private content; richer typed field-level visual diffs remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3953": {
+      "status": "PARTIAL",
+      "reason": "History links mutation, parent mutation, request, approval, verification and recovery eligibility evidence; complete audit/execution/readback receipt graph remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3954": {
+      "status": "PARTIAL",
+      "reason": "History emits a portable export digest and audit retention/storage evidence while explicitly reporting legal-hold support as unavailable; governed legal-hold lifecycle remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3955": {
+      "status": "PARTIAL",
+      "reason": "Repository contracts forbid rollback payloads, secrets/tokens and rollback authority from history; live unauthorized/mixed-site/private-object/truncated-snapshot denials remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
     }
   },
   "documentation_only_completion_forbidden": true

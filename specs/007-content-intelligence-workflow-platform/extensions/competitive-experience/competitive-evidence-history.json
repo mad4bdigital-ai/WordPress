@@ -5,9 +5,9 @@
     "policy": "append_only_fail_closed",
     "silent_pruning": false
   },
-  "current_generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
-  "current_entry_sha256": "cc1b5c26741aa43df20d379b4bb9e4b0cec38f47c3ffdfc117aa089049b8f50e",
-  "previous_known_good_generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
+  "current_generation_sha256": "11853e2b59d310d1cf53b2e726bd09065a0c3d85a097ce8895d5d4f098687d24",
+  "current_entry_sha256": "e638c14f6a3ce47f8e0222011c5d3572e0545992a6dd3252a6d466452945197a",
+  "previous_known_good_generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
   "alerts": [
     {
       "alert_id": "drift-385762c5d046ce9b",
@@ -19,6 +19,17 @@
       "state": "acknowledged",
       "authorizing": false,
       "alert_sha256": "435eb266aaca42483df865c60489b7c9c68f682103dca5c1cb1acaf3d49d3b76"
+    },
+    {
+      "alert_id": "drift-11853e2b59d310d1",
+      "revision": 3,
+      "generation_sha256": "11853e2b59d310d1cf53b2e726bd09065a0c3d85a097ce8895d5d4f098687d24",
+      "reasons": [
+        "task"
+      ],
+      "state": "open",
+      "authorizing": false,
+      "alert_sha256": "50f0a4e466e5d1113947c3fc54549bf001d9a75e34cfb5da871fa65e35a349c2"
     }
   ],
   "acknowledgements": [
@@ -81,6 +92,31 @@
       },
       "authorizing": false,
       "entry_sha256": "cc1b5c26741aa43df20d379b4bb9e4b0cec38f47c3ffdfc117aa089049b8f50e"
+    },
+    {
+      "revision": 3,
+      "generation_sha256": "11853e2b59d310d1cf53b2e726bd09065a0c3d85a097ce8895d5d4f098687d24",
+      "previous_generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
+      "previous_entry_sha256": "cc1b5c26741aa43df20d379b4bb9e4b0cec38f47c3ffdfc117aa089049b8f50e",
+      "source_generation": "fa615ba998fade31d180d10cb4d30472b38b7d8237349d8c3c21002e6e0128ba",
+      "task_generation": "fe8445ef280c5e707369510631705503d2134e37fff356f634c44acaa648b13b",
+      "matrix_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+      "summary_sha256": "c38f5de7844c63fc6dc6bf61e66b2572c5aec60dca0b19a7a09c61c21c8d424a",
+      "package_fingerprints": {
+        "ai-engine": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+        "easy-mcp-ai": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+        "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+        "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
+      },
+      "state": "drifted",
+      "drift_flags": {
+        "source": false,
+        "task": true,
+        "matrix": false,
+        "packages": false
+      },
+      "authorizing": false,
+      "entry_sha256": "e638c14f6a3ce47f8e0222011c5d3572e0545992a6dd3252a6d466452945197a"
     }
   ],
   "authorizing": false

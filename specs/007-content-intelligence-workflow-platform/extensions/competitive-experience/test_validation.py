@@ -147,7 +147,7 @@ class EvidenceDenials(unittest.TestCase):
         self.rejects("g1_partial_task_missing_delivery_binding")
 
     def test_unowned_partial_task_is_rejected(self):
-        self.change("task-status.json", lambda d: d["overrides"].update(T3911={"status":"PARTIAL", "reason":"wrong owner", "evidence_refs":["g1-delivery.json"]}))
+        self.change("task-status.json", lambda d: d["overrides"].update(T3926={"status":"PARTIAL", "reason":"wrong owner", "evidence_refs":["g1-delivery.json"]}))
         (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
         self.rejects("implementation_partial_task_owner_invalid")
 
@@ -162,6 +162,26 @@ class EvidenceDenials(unittest.TestCase):
     def test_g1_source_hashes_are_required(self):
         self.change("g1-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
         self.rejects("g1_delivery_source_evidence_drift")
+
+    def test_g2_task_cannot_bind_to_g1_delivery(self):
+        self.change("task-status.json", lambda d: d["overrides"].update(T3911={"status":"PARTIAL", "reason":"wrong slice", "evidence_refs":["g1-delivery.json"]}))
+        (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
+        self.rejects("g2_partial_task_missing_delivery_binding")
+
+    def test_g2_cannot_claim_runtime_parity(self):
+        if (self.root / "g2-delivery.json").exists():
+            self.change("g2-delivery.json", lambda d: d.update(runtime_parity_claimed=True))
+            self.rejects("g2_delivery_boundary_or_progress_invalid")
+
+    def test_g2_cannot_claim_live_browser_acceptance(self):
+        if (self.root / "g2-delivery.json").exists():
+            self.change("g2-delivery.json", lambda d: d.update(live_browser_acceptance=True))
+            self.rejects("g2_delivery_boundary_or_progress_invalid")
+
+    def test_g2_source_hashes_are_required(self):
+        if (self.root / "g2-delivery.json").exists():
+            self.change("g2-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
+            self.rejects("g2_delivery_source_evidence_drift")
 
     def test_missing_ledger_regeneration(self):
         path = self.root / "tasks.md"

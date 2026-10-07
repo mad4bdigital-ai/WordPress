@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "2ba70bc189b78e9a8b2d24d5e6ae826bfc1bbc4f0a1bbbdf490c70954c5c7011",
+  "status_source_sha256": "46d52c48d0f6477e8eb11df07804fd3d741ac3a01fe9da5e22484acde37fbdf4",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 155,
-    "PARTIAL": 20,
+    "OPEN": 135,
+    "PARTIAL": 40,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -134,135 +134,180 @@
       "phase": 2,
       "priority": "P0",
       "summary": "Implement operation-to-reversal descriptors with affected object/field identities, receipt digests, expiry and per-capability rollback eligibility.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Recovery preview now exposes exact target, before/after digests, expiry, verification and a plan digest without rollback payload disclosure; broader provider-specific reversal descriptors remain pending."
     },
     {
       "task_id": "T3912",
       "phase": 2,
       "priority": "P0",
       "summary": "Implement a previewable Undo action over existing governed reversal plans with live drift/revision/subject checks and single-use claim semantics.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Preview evaluates expiry, recoverability, subject/agent binding and current post-state drift while keeping execution unavailable; atomic single-use recovery execution remains pending."
     },
     {
       "task_id": "T3913",
       "phase": 2,
       "priority": "P0",
       "summary": "Implement exact before/after readback and uncertainty states for deletion, metadata, taxonomy, menus, SEO and supported builder operations.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Exact before/after hashes and post-state readback are surfaced for the supported core post path; typed provider-specific metadata/taxonomy/builder readback remains pending."
     },
     {
       "task_id": "T3914",
       "phase": 2,
       "priority": "P0",
       "summary": "Expose recent changes, expected restoration, non-reversible effects, expired evidence and reconciliation blockers without presenting every write as undoable.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Governance UI now explains recovery blockers, readback state, expiry and non-execution boundaries; richer irreversible-side-effect and reconciliation UX remains pending."
     },
     {
       "task_id": "T3915",
       "phase": 2,
       "priority": "P0",
       "summary": "GATE Prove undo concurrency, stale postconditions, missing evidence, permission revocation, partial rollback and external irreversible effects fail safely.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Repository denial contract forbids mutation calls, grant changes and rollback payload exposure from the G2 read-only surface; live concurrency/stale-provider/partial-rollback acceptance remains pending."
     },
     {
       "task_id": "T3916",
       "phase": 3,
       "priority": "P0",
       "summary": "Implement named agent/client to subject/role/transport/object/risk projections over existing enrolled identities without creating alternate authority.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Per-agent workspace now composes exact effective grants, redacted subject bindings, environment/server constraints and recent activity without alternate authority."
     },
     {
       "task_id": "T3917",
       "phase": 3,
       "priority": "P0",
       "summary": "Implement permission-editor previews and per-object capability conflict explanations with role demotion/deletion and NHI suspension invalidation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "G2 now combines exact effective-access projection with a reviewed authority-reduction planner bound to agent revision, exact target state and plan SHA-256; richer permission-editor UI, per-object conflict explanations and live role-demotion/deletion invalidation remain pending."
     },
     {
       "task_id": "T3918",
       "phase": 3,
       "priority": "P0",
       "summary": "Implement reviewed plan/apply/readback for eligible permission changes; no default wildcard, new authority or candidate/grant expansion by inference.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Reviewed plan/apply/readback is implemented for authority-reducing changes only: disable agent, disable subject and revoke an exact allow grant. Apply requires exact plan SHA-256, expected revision where applicable, explicit confirmation, post-change readback and append-only audit; authority expansion, grant creation, enable/restore and inferred grants are intentionally unsupported. Live concurrency and Staging acceptance remain pending."
     },
     {
       "task_id": "T3919",
       "phase": 3,
       "priority": "P0",
       "summary": "Expose per-agent My Access, token/session/last activity, audit attribution, disable and revoke journeys with redacted identity details.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "My Access projection now reports redacted subjects/effective access/activity and the reviewed reduction workflow supports disable-agent, disable-subject and exact allow-grant revoke journeys. Real token/session revocation, last-session detail, browser UX and live audit attribution acceptance remain pending."
     },
     {
       "task_id": "T3920",
       "phase": 3,
       "priority": "P0",
       "summary": "GATE Deny weak read/exist writers, wrong subject/resource/issuer/server, stale grants, role promotion shortcuts and automatic tool mounting.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Static and runtime contracts deny wildcard/automatic grants, authority expansion, enable/restore paths and stale plan application while preserving exact-grant boundaries. Live wrong-subject/resource/issuer/server, stale-grant, role-promotion shortcut and automatic-mount denials remain pending."
     },
     {
       "task_id": "T3921",
       "phase": 4,
       "priority": "P0",
       "summary": "Implement categorized per-capability consent presets for read-only and reviewed defaults with explicit object/risk/scope differences.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Read-only and reviewed-step-up consent presets are explicit, exceptional scopes are excluded, and generic full access is denied; real external consent acceptance remains pending."
     },
     {
       "task_id": "T3922",
       "phase": 4,
       "priority": "P0",
       "summary": "Implement schema/generation-bound inventory and request-time scope/subject revalidation on both tools/list and tools/call.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Consent projection is generation-digested and declares request-time scope/subject revalidation requirements; end-to-end tools/list and tools/call generation enforcement remains pending."
     },
     {
       "task_id": "T3923",
       "phase": 4,
       "priority": "P0",
       "summary": "Implement external re-consent preparation for newly requested scopes, revocation, rotation and session expiration without consent bypass.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Projection requires external re-consent for new scopes and reports revocation/rotation capabilities without bypass; real revoked/expired/rotated session acceptance remains pending."
     },
     {
       "task_id": "T3924",
       "phase": 4,
       "priority": "P0",
       "summary": "Expose client-specific setup for Streamable HTTP, PKCE/DCR policy and session/Origin restrictions while preserving a bounded discoverable catalog.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Client compatibility projection exposes PKCE, bounded client profiles, refresh/revocation and no dynamic registration exposure; real client initialize/list/call acceptance remains pending."
     },
     {
       "task_id": "T3925",
       "phase": 4,
       "priority": "P0",
       "summary": "GATE Certify refresh replay, revoked identity, foreign Origin, token audience/resource drift and stale catalog generations; never offer generic full access.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Repository contracts deny generic full access and hidden scope expansion; refresh replay, foreign Origin, resource/audience drift and stale-generation live denials remain pending."
     },
     {
       "task_id": "T3926",
@@ -494,45 +539,60 @@
       "phase": 10,
       "priority": "P0",
       "summary": "Implement object/actor/client/token/date/operation search over redacted before/after change receipts with stable bounded paging.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Bounded server-side mutation history search supports agent, ability, object, status, date and stable before-id paging with site-local scope evidence."
     },
     {
       "task_id": "T3952",
       "phase": 10,
       "priority": "P0",
       "summary": "Implement visual diffs for content, typed metadata, taxonomy, builder structure and settings without exposing secrets or private content.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "History exposes redacted before/after integrity hashes and changed-state evidence without raw private content; richer typed field-level visual diffs remain pending."
     },
     {
       "task_id": "T3953",
       "phase": 10,
       "priority": "P0",
       "summary": "Implement links between audit history, execution/readback, approval and eligible reversal receipts while keeping history distinct from rollback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "History links mutation, parent mutation, request, approval, verification and recovery eligibility evidence; complete audit/execution/readback receipt graph remains pending."
     },
     {
       "task_id": "T3954",
       "phase": 10,
       "priority": "P0",
       "summary": "Implement governed retention/export with tenant/object authorization, legal hold, integrity digests and proof of missing/truncated evidence.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "History emits a portable export digest and audit retention/storage evidence while explicitly reporting legal-hold support as unavailable; governed legal-hold lifecycle remains pending."
     },
     {
       "task_id": "T3955",
       "phase": 10,
       "priority": "P0",
       "summary": "GATE Prove unauthorized history reads, revoked actors, mixed sites, partial snapshots and secret/token diffs cannot leak or create rollback authority.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ],
+      "reason": "Repository contracts forbid rollback payloads, secrets/tokens and rollback authority from history; live unauthorized/mixed-site/private-object/truncated-snapshot denials remain pending."
     },
     {
       "task_id": "T3956",
