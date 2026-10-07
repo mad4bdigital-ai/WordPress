@@ -15,6 +15,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/mutation-planning-semantics-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-configuration-semantic-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/jetengine-native-diagnostics-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/jetengine-rest-lifecycle-diagnostics-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/jetengine-features-api-branch-diagnostics-contract.py'
@@ -60,6 +63,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py
+      - name: Verify governed configuration semantic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/governed-configuration-semantic-contract.py
       - name: Verify mutation planning semantics contract
         shell: bash
         run: |
