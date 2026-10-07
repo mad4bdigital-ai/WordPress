@@ -196,7 +196,7 @@ foreach ( array( 'healthy', 'baseline_missing', 'baseline_expired', 'production'
 		'skills_pending' => 'DEFER',
 		'active_permit' => 'DEFER',
 		'schema_changed' => 'REVIEW_REQUIRED',
-		'grant_drift' => 'REVIEW_REQUIRED',
+		'grant_drift' => 'HARD_BLOCK',
 		'profile_drift' => 'REVIEW_REQUIRED',
 		'transport_drift' => 'REVIEW_REQUIRED',
 		'integrity_failed' => 'HARD_BLOCK',
