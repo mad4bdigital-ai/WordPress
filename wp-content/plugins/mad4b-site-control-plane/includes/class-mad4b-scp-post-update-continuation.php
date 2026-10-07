@@ -134,12 +134,16 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			return new WP_Error( 'mad4b_operator_witness_site_profile_drift', 'Site Profile changed before the replacement witness could be sealed.' );
 		}
 
-		$target = self::current_identity();
-		if ( is_wp_error( $target ) ) return $target;
 		$physical = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
-		if ( empty( $physical['runtime_manifest_match'] ) || ! self::identity_matches( $target, $physical ) ) {
-			return new WP_Error( 'mad4b_operator_witness_package_integrity_required', 'The replacement package must pass full physical manifest verification before a witness is recorded.' );
+		$mismatch = isset( $physical['provenance_mismatch'] ) && is_array( $physical['provenance_mismatch'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $physical['provenance_mismatch'] ) ) )
+			: array();
+		$restart_version_boundary_only = 1 === count( $mismatch ) && 'control_plane_version_mismatch' === $mismatch[0];
+		if ( empty( $physical['manifest_valid'] ) || ( empty( $physical['runtime_manifest_match'] ) && ! $restart_version_boundary_only ) ) {
+			return new WP_Error( 'mad4b_operator_witness_package_integrity_required', 'The replacement package must pass full file and manifest verification before a witness is recorded.' );
 		}
+		$target = self::target_identity( is_array( $physical ) ? $physical : array() );
+		if ( is_wp_error( $target ) ) return $target;
 
 		$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
 		$stored = self::bounded_binding( is_array( $binding ) ? $binding : array() );
@@ -167,6 +171,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'origin' => $current_origin,
 			'profile_revision' => $current_profile_revision,
 			'profile_digest' => $current_profile_digest,
+			'physical_verification_basis' => $restart_version_boundary_only ? 'full_manifest_pre_restart_version_boundary' : 'full_runtime_manifest_match',
 			'zero_delta_required' => true,
 			'mutation_class' => 'candidate_binding_only',
 			'production_allowed' => false,
