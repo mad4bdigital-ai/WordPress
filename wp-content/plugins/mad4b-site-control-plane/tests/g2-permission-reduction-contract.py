@@ -23,6 +23,8 @@ for ability in ("mad4b/agent-permission-plan", "mad4b/agent-permission-apply"):
 require("APPLY_AUTHORITY_REDUCTION", "explicit_confirmation_missing")
 require("plan_sha256", "plan_binding_missing")
 require("expected_revision", "revision_binding_missing")
+require("resource_constraints_sha256", "grant_constraint_plan_binding_missing")
+require("'current_status'", "subject_status_plan_binding_missing")
 require("'authority_expansion' => false", "authority_expansion_boundary_missing")
 require("'grant_creation_allowed' => false", "grant_creation_boundary_missing")
 require("'enable_or_restore_allowed' => false", "enable_restore_boundary_missing")
