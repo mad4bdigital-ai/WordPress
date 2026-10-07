@@ -17,6 +17,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 	const CONTRACT = 'mad4b.post-update-continuation.v1';
 	const OPTION = 'mad4b_scp_post_update_continuation_v1';
 	const TTL = 900;
+	const OPERATOR_WITNESS_OPTION = 'mad4b_scp_operator_witnessed_replacement_v1';
+	const OPERATOR_WITNESS_CONTRACT = 'mad4b.operator-witnessed-replacement.v1';
+	const OPERATOR_WITNESS_TTL = 1800;
 	const CLASS_ZERO = 'ZERO_DELTA_CONTINUATION';
 	const CLASS_REVIEW = 'REVIEW_REQUIRED_DELTA';
 	const CLASS_HARD = 'HARD_BLOCK_DELTA';
@@ -49,6 +52,256 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$permit['expired'] = isset( $permit['expires_at'] ) && absint( $permit['expires_at'] ) < time();
 		$permit['mutation_performed'] = false;
 		return $permit;
+	}
+
+
+	private static function operator_witness_seal( array $witness ) {
+		unset( $witness['seal'] );
+		return hash_hmac( 'sha256', self::digest( $witness ), wp_salt( 'auth' ) );
+	}
+
+	private static function operator_witness_valid( $witness ) {
+		if ( ! is_array( $witness ) || self::OPERATOR_WITNESS_CONTRACT !== ( isset( $witness['contract'] ) ? (string) $witness['contract'] : '' ) ) return false;
+		if ( empty( $witness['seal'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) $witness['seal'] ) ) return false;
+		if ( ! hash_equals( self::operator_witness_seal( $witness ), (string) $witness['seal'] ) ) return false;
+		$created = isset( $witness['created_at'] ) ? (int) $witness['created_at'] : 0;
+		$expires = isset( $witness['expires_at'] ) ? (int) $witness['expires_at'] : 0;
+		if ( $created < 1 || $expires <= time() || $expires <= $created || $expires - $created > self::OPERATOR_WITNESS_TTL ) return false;
+		if ( empty( $witness['witness_id'] ) || empty( $witness['target_identity'] ) || ! is_array( $witness['target_identity'] ) ) return false;
+		if ( empty( $witness['previous_binding'] ) || ! is_array( $witness['previous_binding'] ) ) return false;
+		if ( empty( $witness['baseline_digest'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) $witness['baseline_digest'] ) ) return false;
+		if ( empty( $witness['actor_wp_user_id'] ) || empty( $witness['site_uuid'] ) || empty( $witness['profile_digest'] ) ) return false;
+		if ( empty( $witness['zero_delta_required'] ) || ! empty( $witness['production_allowed'] ) || ! empty( $witness['breakglass_allowed'] ) || ! empty( $witness['grant_mutation_allowed'] ) ) return false;
+		$target = self::target_identity( $witness['target_identity'] );
+		if ( is_wp_error( $target ) ) return false;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			if ( empty( $witness['previous_binding'][ $field ] ) ) return false;
+		}
+		return true;
+	}
+
+	public static function operator_witness_status() {
+		$witness = get_option( self::OPERATOR_WITNESS_OPTION, array() );
+		$valid = self::operator_witness_valid( $witness );
+		if ( ! is_array( $witness ) ) $witness = array();
+		return array(
+			'contract' => self::OPERATOR_WITNESS_CONTRACT,
+			'state' => $valid ? 'available' : ( empty( $witness ) ? 'absent' : 'invalid_or_expired' ),
+			'available' => $valid,
+			'witness_id' => $valid && isset( $witness['witness_id'] ) ? (string) $witness['witness_id'] : '',
+			'source' => $valid && isset( $witness['source'] ) ? sanitize_key( (string) $witness['source'] ) : '',
+			'target_identity' => $valid && isset( $witness['target_identity'] ) ? $witness['target_identity'] : array(),
+			'expires_at' => $valid && isset( $witness['expires_at'] ) ? (int) $witness['expires_at'] : 0,
+			'zero_delta_required' => true,
+			'mutation_performed' => false,
+			'authorizing' => false,
+			'production_mutation' => false,
+		);
+	}
+
+	/**
+	 * Record a Staging-only operator witness after WordPress replaced this plugin.
+	 *
+	 * The currently executing PHP code is the pre-replacement trusted runtime.
+	 * This method does not bind authority and cannot create grants. It only seals
+	 * the new physical package identity to the pre-existing healthy authority
+	 * baseline and the same enrolled administrator who initiated the replacement.
+	 */
+	public static function record_operator_witnessed_replacement( $source = 'wordpress_upgrader' ) {
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : '';
+		if ( 'staging' !== $environment ) return new WP_Error( 'mad4b_operator_witness_staging_only', 'Operator-witnessed replacement is Staging-only.' );
+		if ( self::breakglass_enabled() ) return new WP_Error( 'mad4b_operator_witness_breakglass_excluded', 'Operator-witnessed replacement is disabled while Breakglass is enabled.' );
+
+		$baseline = get_option( self::BASELINE_OPTION, array() );
+		if ( ! self::baseline_valid( $baseline ) ) return new WP_Error( 'mad4b_operator_witness_baseline_required', 'A current sealed healthy authority baseline is required before a manual replacement can be witnessed.' );
+		$user_id = function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0;
+		$baseline_user = isset( $baseline['actor']['wp_user_id'] ) ? (int) $baseline['actor']['wp_user_id'] : 0;
+		$user = $user_id > 0 && function_exists( 'get_userdata' ) ? get_userdata( $user_id ) : false;
+		if ( $user_id < 1 || $baseline_user < 1 || $user_id !== $baseline_user || ! $user
+			|| ! user_can( $user, 'manage_options' ) || ! user_can( $user, 'update_plugins' )
+			|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
+			return new WP_Error( 'mad4b_operator_witness_actor_mismatch', 'The manual replacement must be performed by the same enrolled administrator captured by the healthy baseline.' );
+		}
+
+		$current_site_uuid = strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() );
+		$current_origin = untrailingslashit( (string) MAD4B_SCP_Site_Profile::current_origin() );
+		$current_profile_digest = strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() );
+		$current_profile_revision = (int) MAD4B_SCP_Site_Profile::revision();
+		if ( ! hash_equals( (string) ( $baseline['site']['site_uuid'] ?? '' ), $current_site_uuid )
+			|| ! hash_equals( (string) ( $baseline['site']['origin'] ?? '' ), $current_origin )
+			|| ! hash_equals( (string) ( $baseline['site']['profile_digest'] ?? '' ), $current_profile_digest )
+			|| (int) ( $baseline['site']['profile_revision'] ?? -1 ) !== $current_profile_revision ) {
+			return new WP_Error( 'mad4b_operator_witness_site_profile_drift', 'Site Profile changed before the replacement witness could be sealed.' );
+		}
+
+		$target = self::current_identity();
+		if ( is_wp_error( $target ) ) return $target;
+		$physical = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		if ( empty( $physical['runtime_manifest_match'] ) || ! self::identity_matches( $target, $physical ) ) {
+			return new WP_Error( 'mad4b_operator_witness_package_integrity_required', 'The replacement package must pass full physical manifest verification before a witness is recorded.' );
+		}
+
+		$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
+		$stored = self::bounded_binding( is_array( $binding ) ? $binding : array() );
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			if ( empty( $baseline['previous_binding'][ $field ] ) || empty( $stored[ $field ] ) || ! hash_equals( (string) $baseline['previous_binding'][ $field ], (string) $stored[ $field ] ) ) {
+				return new WP_Error( 'mad4b_operator_witness_previous_binding_changed', 'Stored candidate binding changed since the healthy baseline was captured.' );
+			}
+		}
+		if ( self::identity_matches( $baseline['previous_binding'], $target ) ) {
+			return new WP_Error( 'mad4b_operator_witness_no_package_change', 'The installed package still matches the previously bound candidate.' );
+		}
+
+		$source = sanitize_key( (string) $source );
+		if ( ! in_array( $source, array( 'wordpress_upgrader', 'manual_replacement', 'plugin_upload' ), true ) ) $source = 'wordpress_upgrader';
+		$witness = array(
+			'contract' => self::OPERATOR_WITNESS_CONTRACT,
+			'witness_id' => wp_generate_uuid4(),
+			'source' => $source,
+			'target_identity' => $target,
+			'previous_binding' => $baseline['previous_binding'],
+			'baseline_digest' => self::digest( $baseline ),
+			'actor_wp_user_id' => $user_id,
+			'actor_match_basis' => 'baseline_wp_user_plus_enrollment',
+			'site_uuid' => $current_site_uuid,
+			'origin' => $current_origin,
+			'profile_revision' => $current_profile_revision,
+			'profile_digest' => $current_profile_digest,
+			'zero_delta_required' => true,
+			'mutation_class' => 'candidate_binding_only',
+			'production_allowed' => false,
+			'breakglass_allowed' => false,
+			'grant_mutation_allowed' => false,
+			'authorizing' => false,
+			'created_at' => time(),
+			'expires_at' => time() + self::OPERATOR_WITNESS_TTL,
+		);
+		$witness['seal'] = self::operator_witness_seal( $witness );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			$audit = MAD4B_SCP_Audit::record( 'mad4b/post-update-continuation-operator-witnessed-replacement', array(
+				'contract' => self::OPERATOR_WITNESS_CONTRACT,
+				'witness_id' => $witness['witness_id'],
+				'source' => $source,
+				'target_identity' => $target,
+				'previous_binding' => $baseline['previous_binding'],
+				'baseline_digest' => $witness['baseline_digest'],
+				'actor_wp_user_id' => $user_id,
+				'zero_delta_required' => true,
+				'mutation_performed' => false,
+				'production_mutation' => false,
+				'breakglass' => false,
+			), 'ok' );
+			if ( is_wp_error( $audit ) ) return $audit;
+		}
+		update_option( self::OPERATOR_WITNESS_OPTION, $witness, false );
+		if ( function_exists( 'wp_cache_delete' ) ) { wp_cache_delete( self::OPERATOR_WITNESS_OPTION, 'options' ); wp_cache_delete( 'notoptions', 'options' ); }
+		$stored_witness = get_option( self::OPERATOR_WITNESS_OPTION, array() );
+		if ( ! self::operator_witness_valid( $stored_witness ) || ! hash_equals( (string) $witness['seal'], (string) ( $stored_witness['seal'] ?? '' ) ) ) {
+			return new WP_Error( 'mad4b_operator_witness_readback_failed', 'Operator replacement witness did not persist exactly.' );
+		}
+		return self::operator_witness_status();
+	}
+
+	private static function operator_witness_matches_permit( array $permit ) {
+		$release = isset( $permit['release'] ) && is_array( $permit['release'] ) ? $permit['release'] : array();
+		$witness = isset( $release['operator_witness'] ) && is_array( $release['operator_witness'] ) ? $release['operator_witness'] : array();
+		if ( 'staging_operator_witnessed_replacement' !== ( isset( $release['trust_role'] ) ? (string) $release['trust_role'] : '' ) || ! self::operator_witness_valid( $witness ) ) return false;
+		if ( empty( $permit['target_identity'] ) || ! self::identity_matches( $witness['target_identity'], $permit['target_identity'] ) ) return false;
+		if ( empty( $permit['previous_binding'] ) || ! self::identity_matches( $witness['previous_binding'], $permit['previous_binding'] ) ) return false;
+		if ( empty( $permit['baseline_digest'] ) || ! hash_equals( (string) $witness['baseline_digest'], (string) $permit['baseline_digest'] ) ) return false;
+		if ( (int) $witness['actor_wp_user_id'] !== (int) ( $permit['actor']['wp_user_id'] ?? 0 ) ) return false;
+		if ( ! hash_equals( (string) $witness['site_uuid'], (string) ( $permit['site']['site_uuid'] ?? '' ) )
+			|| ! hash_equals( (string) $witness['origin'], (string) ( $permit['site']['origin'] ?? '' ) )
+			|| ! hash_equals( (string) $witness['profile_digest'], (string) ( $permit['site']['profile_digest'] ?? '' ) )
+			|| (int) $witness['profile_revision'] !== (int) ( $permit['site']['profile_revision'] ?? -1 ) ) return false;
+		$physical = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		return ! empty( $physical['runtime_manifest_match'] ) && self::identity_matches( $permit['target_identity'], $physical );
+	}
+
+	private static function permit_package_trusted( array $permit ) {
+		$release = isset( $permit['release'] ) && is_array( $permit['release'] ) ? $permit['release'] : array();
+		if ( self::release_trusted( $release ) ) return true;
+		return 'operator_witnessed_manual_replacement' === ( isset( $permit['channel'] ) ? (string) $permit['channel'] : '' )
+			&& self::operator_witness_matches_permit( $permit );
+	}
+
+	public static function prepare_operator_witnessed_update( $lease_token = '' ) {
+		$fence = class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ? MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, 'runtime_convergence' ) : new WP_Error( 'mad4b_post_update_continuation_lease_required', 'Convergence maintenance lease is required.' );
+		if ( is_wp_error( $fence ) ) return $fence;
+		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_operator_witness_staging_only', 'Operator-witnessed continuation is Staging-only.' );
+		if ( self::breakglass_enabled() ) return new WP_Error( 'mad4b_operator_witness_breakglass_excluded', 'Operator-witnessed continuation is disabled while Breakglass is enabled.' );
+
+		$witness = get_option( self::OPERATOR_WITNESS_OPTION, array() );
+		if ( ! self::operator_witness_valid( $witness ) ) return new WP_Error( 'mad4b_operator_witness_missing_or_expired', 'A current sealed operator replacement witness is required.' );
+		$baseline = get_option( self::BASELINE_OPTION, array() );
+		if ( ! self::baseline_valid( $baseline ) || ! hash_equals( (string) $witness['baseline_digest'], self::digest( $baseline ) ) ) {
+			return new WP_Error( 'mad4b_operator_witness_baseline_changed', 'The sealed authority baseline changed or expired after the replacement was witnessed.' );
+		}
+		$target = self::current_identity();
+		if ( is_wp_error( $target ) || ! self::identity_matches( $witness['target_identity'], $target ) ) return new WP_Error( 'mad4b_operator_witness_target_drift', 'Installed package identity changed after the replacement witness was recorded.' );
+		$physical = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( empty( $physical['runtime_manifest_match'] ) || ! self::identity_matches( $target, $physical ) ) return new WP_Error( 'mad4b_operator_witness_package_integrity_required', 'Full package manifest verification is required before continuation.' );
+
+		$current = self::read_permit();
+		if ( self::permit_active( $current, true ) || ( is_array( $current ) && 'executing' === ( $current['state'] ?? '' ) ) ) return new WP_Error( 'mad4b_post_update_continuation_active_permit_exists', 'Another continuation is already active.' );
+		$release = array(
+			'trust_role' => 'staging_operator_witnessed_replacement',
+			'master_release' => false,
+			'operator_witness' => $witness,
+		);
+		$permit = array(
+			'contract' => self::CONTRACT,
+			'permit_id' => wp_generate_uuid4(),
+			'generation' => (int) ( is_array( $current ) ? ( $current['generation'] ?? 0 ) : 0 ) + 1,
+			'state' => 'pending_convergence',
+			'classification' => self::CLASS_ZERO,
+			'classification_reasons' => array(),
+			'channel' => 'operator_witnessed_manual_replacement',
+			'target_identity' => $target,
+			'release' => $release,
+			'site' => $baseline['site'],
+			'actor' => $baseline['actor'],
+			'previous_binding' => $baseline['previous_binding'],
+			'write_snapshot' => $baseline['write_snapshot'],
+			'transport_snapshot' => $baseline['transport_snapshot'],
+			'write_contract_fingerprint' => $baseline['write_contract_fingerprint'],
+			'baseline_digest' => self::digest( $baseline ),
+			'authority_delta' => 'zero_required',
+			'mutation_class' => 'candidate_binding_only',
+			'production_allowed' => false,
+			'breakglass_allowed' => false,
+			'one_time' => true,
+			'consumed' => false,
+			'claimed' => false,
+			'created_at' => gmdate( 'c' ),
+			'expires_at' => time() + self::TTL,
+			'ttl_seconds' => self::TTL,
+		);
+		$permit['update_plan_sha256'] = self::digest( array(
+			'contract' => 'mad4b.operator-witnessed-rebind-intent.v1',
+			'target' => $target,
+			'witness_id' => $witness['witness_id'],
+			'baseline_digest' => $permit['baseline_digest'],
+		) );
+		$delta = self::classify_current_delta( $permit );
+		if ( self::CLASS_ZERO !== $delta['classification'] ) {
+			return new WP_Error( 'mad4b_operator_witness_authority_delta', 'Operator-witnessed carry-forward requires identical contracts, grants, actor, transport and Site Profile.', array(
+				'classification' => $delta['classification'],
+				'reasons' => $delta['reasons'],
+				'operation_state' => 'EXTERNAL_ACTION_REQUIRED',
+			) );
+		}
+		$permit['permit_digest'] = self::permit_digest( $permit );
+		$permit['permit_seal'] = self::permit_seal( $permit );
+		$audit = self::audit( 'operator-witness-authorized', $permit, array(
+			'witness_id' => $witness['witness_id'],
+			'trust_role' => 'staging_operator_witnessed_replacement',
+			'mutation_performed' => false,
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		if ( ! self::replace_permit( $current, $permit ) ) return new WP_Error( 'mad4b_operator_witness_permit_raced', 'Continuation changed before the operator witness could be claimed.' );
+		delete_option( self::OPERATOR_WITNESS_OPTION );
+		return self::status();
 	}
 
 	public static function prepare( array $target, $channel, $update_plan_sha256 = '', $lease_token = '' ) {
@@ -579,7 +832,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$current_identity_result = self::current_identity();
 		$current_identity = is_wp_error( $current_identity_result ) ? array( 'available' => false ) : $current_identity_result;
 		if ( is_wp_error( $current_identity_result ) || ! self::identity_matches( $permit['target_identity'], $current_identity_result ) ) $hard[] = 'package_identity_mismatch';
-		if ( ! self::release_trusted( isset( $permit['release'] ) ? $permit['release'] : array() ) ) $hard[] = 'release_trust_invalid';
+		if ( ! self::permit_package_trusted( $permit ) ) $hard[] = 'release_trust_invalid';
 
 		$site = isset( $permit['site'] ) && is_array( $permit['site'] ) ? $permit['site'] : array();
 		$current_revision = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::revision() : 0;
