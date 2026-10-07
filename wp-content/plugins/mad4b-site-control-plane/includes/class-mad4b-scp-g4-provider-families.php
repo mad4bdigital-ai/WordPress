@@ -180,13 +180,14 @@ final class MAD4B_SCP_G4_Provider_Families {
 		}
 
 		$selected = '' === $family_id ? $families : array( $family_id => $families[ $family_id ] );
+		$runtime_evidence = self::runtime_evidence_snapshot();
 		$rows = array();
 		$provider_found = '' === $provider_id;
 		foreach ( $selected as $id => $family ) {
 			foreach ( $family['providers'] as $provider ) {
 				if ( '' !== $provider_id && $provider_id !== $provider['provider_id'] ) continue;
 				$provider_found = true;
-				$rows[] = self::provider_readiness( $id, $family, $provider );
+				$rows[] = self::provider_readiness( $id, $family, $provider, $runtime_evidence );
 			}
 		}
 		if ( ! $provider_found ) return new WP_Error( 'mad4b_g4_provider_unknown_for_family', 'Provider is not admitted for the selected G4 family.' );
@@ -277,7 +278,27 @@ final class MAD4B_SCP_G4_Provider_Families {
 		return false;
 	}
 
-	private static function provider_readiness( $family_id, array $family, array $provider ) {
+	private static function runtime_evidence_snapshot() {
+		$registry = null;
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			if ( is_object( $registry ) && method_exists( $registry, 'register_defaults' ) ) $registry->register_defaults();
+		}
+		$coverage = array();
+		if ( class_exists( 'MAD4B_SCP_Plugin_Discovery' ) && method_exists( 'MAD4B_SCP_Plugin_Discovery', 'coverage' ) ) {
+			$value = MAD4B_SCP_Plugin_Discovery::coverage();
+			if ( is_array( $value ) ) $coverage = $value;
+		}
+		return array(
+			'adapter_registry' => $registry,
+			'plugin_coverage' => $coverage,
+			'provider_execution_performed' => false,
+			'mutation_performed' => false,
+			'authorizing' => false,
+		);
+	}
+
+	private static function provider_readiness( $family_id, array $family, array $provider, array $runtime_evidence = array() ) {
 		$id = $provider['provider_id'];
 		$kind = $provider['kind'];
 		$adapter_ids = isset( $provider['adapter_ids'] ) && is_array( $provider['adapter_ids'] ) ? $provider['adapter_ids'] : array();
@@ -300,9 +321,8 @@ final class MAD4B_SCP_G4_Provider_Families {
 			$installed = true;
 			$state = 'core_runtime';
 		} else {
-			if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
-				$registry = MAD4B_SCP_Adapter_Registry::instance();
-				if ( is_object( $registry ) && method_exists( $registry, 'register_defaults' ) ) $registry->register_defaults();
+			$registry = isset( $runtime_evidence['adapter_registry'] ) && is_object( $runtime_evidence['adapter_registry'] ) ? $runtime_evidence['adapter_registry'] : null;
+			if ( is_object( $registry ) ) {
 				foreach ( $adapter_ids as $candidate_id ) {
 					$adapter = is_object( $registry ) && method_exists( $registry, 'get' ) ? $registry->get( $candidate_id ) : null;
 					if ( ! is_object( $adapter ) ) continue;
@@ -327,8 +347,8 @@ final class MAD4B_SCP_G4_Provider_Families {
 				}
 			}
 
-			if ( class_exists( 'MAD4B_SCP_Plugin_Discovery' ) && method_exists( 'MAD4B_SCP_Plugin_Discovery', 'coverage' ) ) {
-				$coverage = MAD4B_SCP_Plugin_Discovery::coverage();
+			$coverage = isset( $runtime_evidence['plugin_coverage'] ) && is_array( $runtime_evidence['plugin_coverage'] ) ? $runtime_evidence['plugin_coverage'] : array();
+			if ( ! empty( $coverage ) ) {
 				$plugins = isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array();
 				foreach ( $plugins as $plugin ) {
 					if ( ! is_array( $plugin ) ) continue;
