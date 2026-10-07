@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "c3aabef67663be82f69731cc8ec3ef45d0e3496ec35737c9c09d8de352e50884",
+  "status_source_sha256": "a6add03672e66109ee2f287e6f8d7d5df2eaace08cd4dbfc5a41e0ad3788d2ac",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 115,
-    "PARTIAL": 60,
+    "OPEN": 90,
+    "PARTIAL": 85,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -359,135 +359,180 @@
       "phase": 6,
       "priority": "P1",
       "summary": "Implement a typed forms family with CF7, WPForms, Gravity Forms, Fluent Forms and JetFormBuilder adapter/version discovery.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Typed forms family/provider catalog and exact version-readiness projection are implemented; provider-native discovery adapters and live version acceptance remain pending."
     },
     {
       "task_id": "T3932",
       "phase": 6,
       "priority": "P1",
       "summary": "Implement form inventory/schema/config reads and governed configuration plan/apply with provider-owned serialization and readback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Reviewed configuration-plan semantics, provider serialization and exact-readback prerequisites are modeled; provider-native apply executors remain pending."
     },
     {
       "task_id": "T3933",
       "phase": 6,
       "priority": "P1",
       "summary": "Implement submission access as separate object/field-level PII authority with redaction, pagination, retention and export/delete review.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Submission operations are separated into sensitive PII authority with redaction, pagination, retention and reviewed export/delete gates; real submission adapters remain pending."
     },
     {
       "task_id": "T3934",
       "phase": 6,
       "priority": "P1",
       "summary": "Expose forms and submission readiness separately, including Flamingo/premium/runtime prerequisites and safe previews.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Forms readiness distinguishes profiled, installed-unprofiled and unavailable providers without claiming execution; provider-specific submission/runtime prerequisite probes remain pending."
     },
     {
       "task_id": "T3935",
       "phase": 6,
       "priority": "P1",
       "summary": "GATE Certify secret/PII denial, upload path/egress restrictions, nested/repeatable fields, unavailable providers and non-reversible deletion policies.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Fail-closed operation catalog encodes PII separation, irreversible deletion and no-undo boundaries; provider-specific nested/upload/egress denial fixtures and live certification remain pending."
     },
     {
       "task_id": "T3936",
       "phase": 7,
       "priority": "P1",
       "summary": "Implement independently classified commerce contracts for catalog/variations/attributes, order/customer/coupon, reporting and fulfillment surfaces.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Commerce operations are independently typed across catalog, private order/customer and financial surfaces; provider-native object executors remain pending."
     },
     {
       "task_id": "T3937",
       "phase": 7,
       "priority": "P1",
       "summary": "Implement read-first commerce discovery with HPOS/runtime compatibility, object-level access, customer PII masking and bounded pagination.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Read-first commerce readiness, bounded pagination and customer/order PII masking requirements are explicit; HPOS/object-level runtime reads remain pending."
     },
     {
       "task_id": "T3938",
       "phase": 7,
       "priority": "P1",
       "summary": "Implement disposable canaries for admitted reversible catalog/batch edits with inventory, stock, tax and hook-aware exact readback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Catalog/stock write plans require disposable canary, concurrency and hook-aware exact readback; WooCommerce canary execution remains pending."
     },
     {
       "task_id": "T3939",
       "phase": 7,
       "priority": "P1",
       "summary": "Expose separate gates for shipping/tax/gateways/webhooks, notifications, refunds and payment effects; irreversible financial effects never claim undo.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Refund/gateway effects are classified irreversible external effects with explicit financial gates and no undo claim; shipping/tax/webhook/notification executors remain pending."
     },
     {
       "task_id": "T3940",
       "phase": 7,
       "priority": "P1",
       "summary": "GATE Prove duplicate requests, concurrent stock/order changes, unexpected hooks, PII access and payment/refund side effects cannot auto-promote capabilities.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Concurrency, hook, PII and financial-effect denials are encoded in the typed plan boundary; provider fault fixtures and Staging acceptance remain pending."
     },
     {
       "task_id": "T3941",
       "phase": 8,
       "priority": "P1",
       "summary": "Implement typed builder contracts for Elementor, Divi 4/5, Kadence and WordPress Gutenberg/FSE without provider branches in the core.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Typed builder family covers Elementor, Divi, Kadence and WordPress core without execution branches in the planner; provider-native adapters remain pending."
     },
     {
       "task_id": "T3942",
       "phase": 8,
       "priority": "P1",
       "summary": "Implement outline/tree/schema/template inspection and structural clone/diff planning with active editor-lock and current revision checks.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Builder tree/clone planning requires native schema, revision and editor-lock checks; concrete provider tree readers and lock probes remain pending."
     },
     {
       "task_id": "T3943",
       "phase": 8,
       "priority": "P1",
       "summary": "Implement admitted text/image/widget/template operations with fresh IDs, provider serialization, desired-state bounds and exact semantic readback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Content/template mutation plans require fresh IDs/ownership/readback boundaries; provider serialization and exact apply executors remain pending."
     },
     {
       "task_id": "T3944",
       "phase": 8,
       "priority": "P1",
       "summary": "Expose compact previews, blocked nodes, unsupported formats, proposed clone changes, rollback availability and approved execution receipts.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Plan output exposes operation risk, provider readiness, required gates and non-execution truth; richer visual diff/rollback UX remains pending."
     },
     {
       "task_id": "T3945",
       "phase": 8,
       "priority": "P1",
       "summary": "GATE Certify malformed trees, nested blocks/shortcodes, stale editors, ID collisions, template scope, dynamic data leakage and partial rollback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Template scope, dynamic-data leakage and partial-rollback constraints are fail-closed plan requirements; malformed-tree/ID-collision provider fixtures remain pending."
     },
     {
       "task_id": "T3946",
@@ -689,90 +734,120 @@
       "phase": 13,
       "priority": "P1",
       "summary": "Implement adapter families for backup/cache/migration/security/redirect providers with read inventory first and independent operation risk descriptors.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Typed site-operations family covers backup, cache, migration, security and redirects with independent risk descriptors; provider adapters remain pending."
     },
     {
       "task_id": "T3967",
       "phase": 13,
       "priority": "P1",
       "summary": "Implement governed backup trigger/restore readiness and migration artifact inspection without installer/credential disclosure or automatic restore.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Backup inventory/trigger and restore-readiness semantics explicitly deny automatic restore, installer/credential disclosure and stale-authority replay; live provider integration remains pending."
     },
     {
       "task_id": "T3968",
       "phase": 13,
       "priority": "P1",
       "summary": "Implement bounded cache purge and redirect planning with URL/path egress constraints, cache/readback evidence and loop detection.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Cache purge and redirect plans require blast-radius, URL/path egress, readback and loop-detection constraints; provider-native apply remains pending."
     },
     {
       "task_id": "T3969",
       "phase": 13,
       "priority": "P1",
       "summary": "Expose security status/lockouts/logs with PII masks and reviewed ban/restore/change handoffs; host installation remains an external action.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Security reads require PII masking and reviewed security changes require self-lockout denial/external host handoff; provider-specific log/change adapters remain pending."
     },
     {
       "task_id": "T3970",
       "phase": 13,
       "priority": "P1",
       "summary": "GATE Prove archive/installer path abuse, restore time-travel, redirect loops, purge blast radius, lockout self-denial and external effects remain capability-local.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Archive/restore/redirect/purge/security external-effect boundaries are encoded fail-closed; destructive fault fixtures and Staging acceptance remain pending."
     },
     {
       "task_id": "T3971",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement a coverage inventory for posts/pages/CPTs/terms/users/comments/media/menus/revisions/ACF and currently uncovered object operations.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "WordPress breadth catalog separates core/object inventory from optional provider surfaces with bounded pagination and field ownership; full object-operation inventory remains pending."
     },
     {
       "task_id": "T3972",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement WPML/generic language taxonomy-hierarchy dry-run diff with explicit source language, parent identity, duplicates and translation-group evidence.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Multilingual taxonomy/hierarchy diff requires source language, parent identity, duplicates and translation-group evidence; WPML/native dry-run implementation remains pending."
     },
     {
       "task_id": "T3973",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement bounded admitted hierarchy/metadata/menu/media changes with no role escalation, cross-language corruption or foreign field ownership overwrite.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Hierarchy/media/menu mutation plans require cycle/egress/ownership/readback protections and do not allow role escalation; exact executors remain pending."
     },
     {
       "task_id": "T3974",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement optional BuddyPress and Events Calendar adapters with private-message/member/event access and bounded pagination/timezone semantics.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "BuddyPress and Events Calendar are optional typed providers with private-message/timezone semantics; applicability probes and live adapters remain pending."
     },
     {
       "task_id": "T3975",
       "phase": 14,
       "priority": "P1",
       "summary": "GATE Certify hierarchy cycles, orphan translations, license/domain mismatch handoffs, private messages, malicious media URLs and user capability escalation denial.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Private authority, malicious-media egress and hierarchy safeguards are encoded; orphan/license/domain/user-escalation denial fixtures and live acceptance remain pending."
     },
     {
       "task_id": "T3976",
@@ -1453,7 +1528,7 @@
       "task_id": "T4061",
       "phase": 28,
       "priority": "P0",
-      "summary": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "summary": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
       "status": "PARTIAL",
       "evidence_refs": [
         "ui-delivery.json",
@@ -1483,7 +1558,7 @@
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
-      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness.",
+      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""
