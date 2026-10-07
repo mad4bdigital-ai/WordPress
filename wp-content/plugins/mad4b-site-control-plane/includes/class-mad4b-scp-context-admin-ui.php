@@ -243,7 +243,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 			isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array(),
 			$scan
 		);
-		self::redirect_result( $result, 'assets', ! empty( $scan['truncated'] ) ? 'source_scanned_truncated' : 'source_scanned' );
+		$return_tab = isset( $_POST['return_tab'] ) ? sanitize_key( wp_unslash( $_POST['return_tab'] ) ) : 'assets';
+		if ( ! in_array( $return_tab, array( 'sources', 'review', 'assets' ), true ) ) $return_tab = 'assets';
+		self::redirect_result( $result, $return_tab, ! empty( $scan['truncated'] ) ? 'source_scanned_truncated' : 'source_scanned' );
 	}
 
 	public static function handle_remove_source() {
@@ -345,6 +347,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'overview' => __( 'Overview', 'mad4b-site-control-plane' ),
 			'google-drive' => __( 'Google Drive', 'mad4b-site-control-plane' ),
 			'sources' => __( 'Source Folders', 'mad4b-site-control-plane' ),
+			'review' => __( 'Review', 'mad4b-site-control-plane' ),
 			'assets' => __( 'Assets', 'mad4b-site-control-plane' ),
 			'quality' => __( 'Quality', 'mad4b-site-control-plane' ),
 			'intelligence' => __( 'Intelligence', 'mad4b-site-control-plane' ),
@@ -359,6 +362,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( 'overview' === $tab ) self::render_overview();
 		if ( 'google-drive' === $tab ) self::render_google_drive();
 		if ( 'sources' === $tab ) self::render_sources();
+		if ( 'review' === $tab ) self::render_review();
 		if ( 'assets' === $tab ) self::render_assets();
 		if ( 'quality' === $tab ) self::render_quality();
 		if ( 'intelligence' === $tab ) self::render_intelligence();
@@ -376,7 +380,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			array( 'label' => 'Brand Profile', 'detail' => ! empty( $profile ) ? (string) $profile['brand_name'] : 'Name the brand context', 'state' => ! empty( $profile ) ? 'complete' : 'pending' ),
 			array( 'label' => 'Google Drive', 'detail' => ! empty( $google['connected'] ) ? ( ( $google['account_email'] ? $google['account_email'] . ' · ' : '' ) . ( ! empty( $google['write_available'] ) ? 'Read + Write' : 'Read-only' ) ) : 'Connect a Google account', 'state' => ! empty( $google['connected'] ) ? 'complete' : 'pending', 'url' => self::tab_url( 'google-drive' ) ),
 			array( 'label' => 'Source Folder', 'detail' => $status['governed_source_count'] ? $status['governed_source_count'] . ' governed source(s)' : 'Choose a governed folder', 'state' => $status['governed_source_count'] ? 'complete' : 'pending', 'url' => self::tab_url( 'sources' ) ),
-			array( 'label' => 'Context Ready', 'detail' => $status['ready'] ? 'Mandatory context is ready' : 'Scan and review assets', 'state' => $status['ready'] ? 'complete' : 'attention', 'url' => self::tab_url( 'assets' ) ),
+			array( 'label' => 'Context Ready', 'detail' => $status['ready'] ? 'Mandatory context is ready' : 'Resolve review and source-scan blockers', 'state' => $status['ready'] ? 'complete' : 'attention', 'url' => self::tab_url( 'review' ) ),
 		);
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::stages( $stages );
 		$pending_required_reviews = isset( $review_queue['counts']['required_pending'] ) ? (int) $review_queue['counts']['required_pending'] : 0;
@@ -384,7 +388,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$legacy_unbound_reviews = isset( $review_queue['counts']['legacy_unbound'] ) ? (int) $review_queue['counts']['legacy_unbound'] : 0;
 		$actionable_reviews = $pending_required_reviews + $content_changed_reviews + $legacy_unbound_reviews;
 		if ( $actionable_reviews > 0 && class_exists( 'MAD4B_SCP_Admin_Experience' ) ) {
-			MAD4B_SCP_Admin_Experience::next_step( __( 'Human review required', 'mad4b-site-control-plane' ), sprintf( __( '%1$d Context asset(s) need an exact-content human decision or binding refresh before Brand Context can become ready.', 'mad4b-site-control-plane' ), $actionable_reviews ), 'attention', self::tab_url( 'assets', array( 'review_filter' => 'needs_review' ) ), __( 'Review required assets', 'mad4b-site-control-plane' ) );
+			MAD4B_SCP_Admin_Experience::next_step( __( 'Human review required', 'mad4b-site-control-plane' ), sprintf( __( '%1$d Context asset(s) need an exact-content human decision or binding refresh before Brand Context can become ready.', 'mad4b-site-control-plane' ), $actionable_reviews ), 'attention', self::tab_url( 'review' ), __( 'Open review workspace', 'mad4b-site-control-plane' ) );
 		}
 		$quality = null === $status['average_quality_score'] ? 'Not scored' : $status['average_quality_score'] . '/100';
 		$cards = array(
