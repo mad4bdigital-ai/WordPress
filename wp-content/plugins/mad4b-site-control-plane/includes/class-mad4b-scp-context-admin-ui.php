@@ -493,9 +493,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 		echo '<div class="mad4b-scp-panel mad4b-google-primary-signin" id="mad4b-google-primary-signin"><h2>' . esc_html__( 'Connect Google', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( ! empty( $connection['connected'] ) ) {
-			echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'Google is connected.', 'mad4b-site-control-plane' ) . '</strong>';
+			$refresh_required = ! empty( $connection['refresh_required'] );
+			$token_healthy = ! empty( $connection['token_healthy'] );
+			$connection_notice_class = $refresh_required || ! $token_healthy ? 'notice-warning' : 'notice-success';
+			echo '<div class="notice ' . esc_attr( $connection_notice_class ) . ' inline"><p><strong>' . esc_html( $refresh_required ? __( 'Google is connected — refresh needed.', 'mad4b-site-control-plane' ) : __( 'Google is connected.', 'mad4b-site-control-plane' ) ) . '</strong>';
 			if ( ! empty( $connection['account_email'] ) ) echo ' · ' . esc_html( $connection['account_email'] );
-			echo '</p></div>';
+			echo '</p>';
+			if ( $refresh_required ) echo '<p class="description">' . esc_html__( 'The stored connection remains valid and does not require reconnect. The next provider request may refresh the access token using the saved grant.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '</div>';
 
 			if ( ! empty( $grants['incremental_consent_required'] ) ) {
 				$pending_scope_count = isset( $grants['missing_scope_count'] ) ? (int) $grants['missing_scope_count'] : 0;
@@ -671,9 +676,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 			return;
 		}
 		$access_label = ! empty( $connection['write_available'] ) ? __( 'Read + Write', 'mad4b-site-control-plane' ) : __( 'Read-only', 'mad4b-site-control-plane' );
-		echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'Connected', 'mad4b-site-control-plane' ) . '</strong>';
+		$refresh_required = ! empty( $connection['refresh_required'] );
+		$token_healthy = ! empty( $connection['token_healthy'] );
+		$connection_notice_class = $refresh_required || ! $token_healthy ? 'notice-warning' : 'notice-success';
+		echo '<div class="notice ' . esc_attr( $connection_notice_class ) . ' inline"><p><strong>' . esc_html( $refresh_required ? __( 'Connected — refresh needed', 'mad4b-site-control-plane' ) : __( 'Connected', 'mad4b-site-control-plane' ) ) . '</strong>';
 		if ( $connection['account_email'] ) echo ' · ' . esc_html( $connection['account_email'] );
-		echo ' · ' . esc_html( $access_label ) . '</p></div>';
+		echo ' · ' . esc_html( $access_label ) . '</p>';
+		if ( $refresh_required ) echo '<p class="description"><code>refresh_required</code> · ' . esc_html__( 'Reconnect is not required unless token refresh fails or the provider revokes the grant.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '</div>';
 		if ( empty( $connection['write_available'] ) ) {
 			echo '<div class="mad4b-scp-next-step is-attention"><p><strong>' . esc_html__( 'Need to repair or recreate Drive assets?', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Upgrade OAuth to read + write. This grants provider capability only; mutations still require governed approval.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
