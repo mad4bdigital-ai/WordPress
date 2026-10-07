@@ -9,6 +9,9 @@ This slice establishes the typed, fail-closed planning and readiness foundation 
 - One typed provider-family catalog for CPFORMS, CPWC, CPBUILD, CPOPS and CPCORE.
 - Exact reviewed provider membership per family; unknown provider/family/operation fails closed.
 - Exact-version readiness projection through the existing certified provider contracts when available.
+- Runtime readiness reuses the existing Adapter Registry and Plugin Discovery instead of duplicating provider scanners.
+- Existing adapters such as Fluent Forms, JetFormBuilder, WooCommerce, Elementor, Polylang and LiteSpeed can surface read abilities, reversible declarations and live plugin identities while execution remains denied here.
+- Installed-but-unadapted providers remain explicit as adapter gaps instead of being inferred as supported.
 - Core WordPress is modeled explicitly as a core runtime, not as a fabricated plugin contract.
 - Read, sensitive-read, reviewed-write-plan, high-risk and irreversible-external-effect semantics are distinct.
 - Every plan is non-authorizing and reports that provider execution and mutation did not occur.
