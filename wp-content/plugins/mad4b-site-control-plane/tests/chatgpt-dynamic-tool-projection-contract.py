@@ -175,6 +175,9 @@ for marker in [
 for marker in [
     "STATUS_DEFAULT_LIMIT",
     "STATUS_MAX_LIMIT",
+    "STATUS_MAX_PREFLIGHT_TOOLS",
+    "STATUS_MAX_PREFLIGHT_FAILURES",
+    "catalog_preflight_details",
     "include_abilities",
     "include_preflight_details",
     "expected_snapshot",
