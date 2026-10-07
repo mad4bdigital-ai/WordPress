@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "06be874cadd3822b7868536b7d04805864f908da",
-  "changed_file_count": 134,
+  "changed_file_count": 139,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -210,8 +210,21 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-configuration-semantic-contract.py"
       ]
+    },
+    {
+      "id": "g2-recovery-identity-consent-history",
+      "semantic_unit": "Read-only G2 recovery preview, per-agent access, granular consent/client evidence and governed history repository slice",
+      "revert_boundary": "Revert PR #277 G2-specific runtime/UI/delivery/test paths as one bounded non-authorizing slice; shared Hub files retain their existing owners.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g2-delivery.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g2-delivery.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "bfaf2ab35bab04a67b689f74210f464554b356c9cc1bbc9089a51965d39a4505",
+  "changed_paths_sha256": "ac42708b913d864af7d45204af9ede0576263a9346dff88cd1faa0d921440f2d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
