@@ -100,3 +100,42 @@ assert "'registry_decision' =>" in runtime
 assert "'registry_reason' =>" in runtime
 assert "private static function select_reconciliation_scenario" not in runtime
 assert "private static function reconciliation_signals" not in runtime
+
+# Runtime decision combination must make registry safety decisions binding.
+for marker in [
+    "private static function combine_reconciliation_disposition",
+    "'HARD_BLOCK' === $registry_decision || 'HARD_BLOCK' === $preflight_disposition",
+    "'REVIEW_REQUIRED' === $registry_decision || 'REVIEW_REQUIRED' === $preflight_disposition",
+    "'DEFER' === $registry_decision || 'DEFER' === $preflight_disposition",
+    "'SCHEDULE_PROBE' === $registry_decision",
+    "'decision_combination_policy' => 'registry_safety_ceiling_then_exact_zero_delta_preflight'",
+    "'preflight_disposition' => $preflight_disposition",
+]:
+    assert marker in runtime, f"central decision ceiling missing: {marker}"
+
+# Runtime context must not hard-code Breakglass false; persisted governed authority
+# is bounded read-only evidence and any enabled exceptional gate blocks auto-reconcile.
+for marker in [
+    "MAD4B_SCP_Staging_Write_Authority::persisted_status()",
+    "$persisted_authority['breakglass_included']",
+    "$persisted_authority['breakglass_auto_enable']",
+    "$persisted_authority['raw_sql_breakglass_enabled']",
+    "'breakglass_enabled' => (bool) $breakglass_enabled",
+]:
+    assert marker in runtime, f"runtime breakglass evidence missing: {marker}"
+
+# Authority-affecting external signals are core-reserved and cannot be removed by
+# extension filters.
+for marker in [
+    "core_external_signal_keys",
+    "'grant_inventory_drift'",
+    "'write_contract_drift'",
+    "'site_profile_drift'",
+    "'actor_identity_drift'",
+    "'transport_contract_drift'",
+    "'baseline_expired'",
+    "'untrusted_package'",
+    "'continuation_conflict'",
+    "'concurrent_permit'",
+]:
+    assert marker in registry, f"reserved authority signal missing: {marker}"
