@@ -206,6 +206,7 @@ $recovery = MAD4B_SCP_G2_Governance_Experience::recovery_preview(
 g2_check( is_array( $recovery ) && true === $recovery['eligible_by_repository_evidence'], 'Recovery fixture should be preview-eligible.' );
 g2_check( 'after_state_match' === $recovery['readback_state'], 'Recovery preview did not bind current readback.' );
 g2_check( false === $recovery['execution_available_here'] && false === $recovery['rollback_payload_exposed'], 'Recovery preview widened execution or payload exposure.' );
+g2_check( ! isset( $recovery['approval_ticket_id'] ) && 64 === strlen( $recovery['approval_ticket_sha256'] ), 'Recovery preview exposed raw approval ticket identifier.' );
 g2_check( 64 === strlen( $recovery['plan_sha256'] ), 'Recovery plan digest missing.' );
 
 $access = MAD4B_SCP_G2_Governance_Experience::agent_access_workspace(
@@ -225,6 +226,7 @@ foreach ( $consent['presets'] as $preset ) {
 $history = MAD4B_SCP_G2_Governance_Experience::change_history_search( array( 'limit' => 25 ) );
 g2_check( 1 === $history['count'] && false === $history['history_is_rollback_authority'], 'History rollback boundary drifted.' );
 g2_check( false === $history['rollback_payload_exposed'] && false === $history['secret_or_token_values_exposed'], 'History exposed protected values.' );
+g2_check( ! isset( $history['items'][0]['evidence']['approval_ticket_id'] ) && 64 === strlen( $history['items'][0]['evidence']['approval_ticket_sha256'] ), 'History exposed raw approval ticket identifier.' );
 g2_check( 'cccccccccccc…' === $history['items'][0]['subject']['fingerprint_hint'], 'History subject fingerprint was not redacted.' );
 g2_check( 64 === strlen( $history['export_sha256'] ) && true === $history['audit_chain_ready'], 'History evidence integrity missing.' );
 
