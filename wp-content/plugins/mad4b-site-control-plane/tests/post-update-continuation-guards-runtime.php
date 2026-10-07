@@ -12,11 +12,21 @@ function maybe_serialize( $value ) { return serialize( $value ); }
 function maybe_unserialize( $value ) { return unserialize( $value ); }
 function wp_cache_delete( $key, $group ) {}
 function add_option( $key, $value, $unused = '', $autoload = false ) { if ( isset( $GLOBALS['wpdb']->value ) ) return false; $GLOBALS['wpdb']->value = serialize( $value ); return true; }
-function get_option( $key, $default = null ) { if ( 'mad4b_scp_staging_authority_baseline_v1' === $key ) return $GLOBALS['baseline_option'] ?? $default; return isset( $GLOBALS['wpdb']->value ) ? unserialize( $GLOBALS['wpdb']->value ) : $default; }
-function update_option( $key, $value, $autoload = null ) { if ( 'mad4b_scp_staging_authority_baseline_v1' !== $key ) throw new RuntimeException( 'Unexpected observed-authority option write' ); $GLOBALS['baseline_option'] = $value; return true; }
-function get_userdata( $id ) { return $id === 1 ? (object) array( 'ID' => 1 ) : false; }
+function get_option( $key, $default = null ) {
+ if ( 'mad4b_scp_staging_authority_baseline_v1' === $key ) return $GLOBALS['baseline_option'] ?? $default;
+ if ( 'mad4b_scp_operator_witnessed_replacement_v1' === $key ) return $GLOBALS['operator_witness_option'] ?? $default;
+ return isset( $GLOBALS['wpdb']->value ) ? unserialize( $GLOBALS['wpdb']->value ) : $default;
+}
+function update_option( $key, $value, $autoload = null ) {
+ if ( 'mad4b_scp_staging_authority_baseline_v1' === $key ) { $GLOBALS['baseline_option'] = $value; return true; }
+ if ( 'mad4b_scp_operator_witnessed_replacement_v1' === $key ) { $GLOBALS['operator_witness_option'] = $value; return true; }
+ throw new RuntimeException( 'Unexpected observed-authority option write: ' . $key );
+}
+function delete_option( $key ) { if ( 'mad4b_scp_operator_witnessed_replacement_v1' === $key ) { unset( $GLOBALS['operator_witness_option'] ); return true; } return false; }
+function get_current_user_id() { return isset( $GLOBALS['current_user_id'] ) ? (int) $GLOBALS['current_user_id'] : 1; }
+function get_userdata( $id ) { return in_array( (int) $id, array( 1, 2 ), true ) ? (object) array( 'ID' => (int) $id ) : false; }
 function user_can( $user, $capability ) { return ! $GLOBALS['actor_revoked']; }
-$GLOBALS['uuid'] = 0; $GLOBALS['actor_revoked'] = false;
+$GLOBALS['uuid'] = 0; $GLOBALS['actor_revoked'] = false; $GLOBALS['current_user_id'] = 1;
 class FixtureDB {
 	public $options = 'wp_options'; public $value; public $reject_cas = false; public $in_transaction = false;
 	public function prepare( $sql, ...$args ) { return array( $sql, $args ); }
@@ -68,7 +78,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-post-update-continuation.php';
 function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
 function setup_fixture() {
-	$GLOBALS['wpdb']->value = null; unset( $GLOBALS['baseline_option'] ); $GLOBALS['schema_changed'] = false; $GLOBALS['integrity_failed'] = false; $GLOBALS['wpdb']->reject_cas = false; $GLOBALS['actor_revoked'] = false;
+	$GLOBALS['wpdb']->value = null; unset( $GLOBALS['baseline_option'], $GLOBALS['operator_witness_option'] ); $GLOBALS['current_user_id'] = 1; $GLOBALS['schema_changed'] = false; $GLOBALS['integrity_failed'] = false; $GLOBALS['wpdb']->reject_cas = false; $GLOBALS['actor_revoked'] = false;
 	MAD4B_SCP_Identity_Context::$cron = false; $GLOBALS['risk_changed'] = false; $GLOBALS['descriptor_throws'] = false;
 	MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_MCP_Peer_Governance::$tools = 'stable'; MAD4B_SCP_Site_Profile::$environment = 'staging'; MAD4B_SCP_Site_Profile::$revision = 2; MAD4B_SCP_Site_Profile::$uuid = 'site'; MAD4B_SCP_Audit::$fail_consumption = false; MAD4B_SCP_Skill_Runtime_Certification::$current = true; MAD4B_SCP_Staging_Write_Authority::$injected_drift = '';
 	$plan = array( 'eligible' => true, 'current_ready' => true, 'agent_present' => true, 'read_only' => true, 'agent_public_id' => 'agent', 'write_tool_count' => 2, 'exact_grants_existing' => 2, 'write_inventory_fingerprint' => str_repeat( 'e', 64 ), 'grant_rows_fingerprint' => str_repeat( 'f', 64 ), 'persisted_grant_records_fingerprint' => str_repeat( 'b', 64 ) );
@@ -150,7 +160,66 @@ foreach ( array( 'healthy', 'schema', 'risk', 'descriptor', 'expired', 'tampered
  check( is_array( $result ) && MAD4B_SCP_Staging_Write_Authority::$binding['match'], 'Zero-delta manual update did not converge' );
  check( is_wp_error( MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( 'lease' ) ), 'Observed update permit replayed' );
 }
+
 echo "Observed manual update convergence guards: PASS\n";
+
+// Operator-witnessed Staging replacement: the old runtime may witness a
+// WordPress upload, but the new runtime still has to prove ZERO_DELTA before
+// candidate binding can move. The witness never grants or changes authority.
+function witness_fixture( $case = 'healthy' ) {
+ $target = setup_fixture();
+ $baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' );
+ check( is_array( $baseline ) && 'OBSERVED' === $baseline['state'], 'Witness baseline was not captured: ' . $case );
+ MAD4B_SCP_Live_Acceptance_Observer::$identity = $target;
+ foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) MAD4B_SCP_Staging_Write_Authority::$binding['current_' . $key] = $target[$key];
+ MAD4B_SCP_Staging_Write_Authority::$binding['match'] = false;
+ return $target;
+}
+
+$target = witness_fixture();
+$witness = MAD4B_SCP_Post_Update_Continuation::record_operator_witnessed_replacement( 'wordpress_upgrader' );
+check( is_array( $witness ) && ! empty( $witness['available'] ), 'Healthy WordPress replacement was not witnessed' );
+$preflight = MAD4B_SCP_Post_Update_Continuation::operator_witnessed_reconciliation_preflight();
+check( is_array( $preflight ) && 'AUTO_REBIND' === $preflight['disposition'], 'Healthy operator witness was not ZERO_DELTA eligible' );
+$prepared = MAD4B_SCP_Post_Update_Continuation::prepare_operator_witnessed_update( 'lease' );
+check( is_array( $prepared ) && ! empty( $prepared['active'] ), 'Healthy operator witness did not create a one-time continuation' );
+$result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( 'lease' );
+check( is_array( $result ) && 'completed' === $result['state'] && 0 === $result['grant_changes'], 'Operator-witnessed replacement did not bind candidate only' );
+check( MAD4B_SCP_Staging_Write_Authority::$binding['match'], 'Operator-witnessed replacement left candidate binding stale' );
+check( is_wp_error( MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( 'lease' ) ), 'Operator witness continuation replayed' );
+check( empty( $GLOBALS['operator_witness_option'] ), 'Consumed operator witness was not removed' );
+
+foreach ( array( 'actor', 'expired', 'profile', 'grant', 'transport', 'production', 'integrity', 'concurrent' ) as $case ) {
+ $target = witness_fixture( $case );
+ if ( 'actor' === $case ) $GLOBALS['current_user_id'] = 2;
+ $witness = MAD4B_SCP_Post_Update_Continuation::record_operator_witnessed_replacement( 'wordpress_upgrader' );
+ if ( 'actor' === $case ) {
+  check( is_wp_error( $witness ), 'Different administrator created an operator witness' );
+  check( ! MAD4B_SCP_Staging_Write_Authority::$binding['match'], 'Actor mismatch moved candidate binding' );
+  continue;
+ }
+ check( is_array( $witness ) && ! empty( $witness['available'] ), 'Witness setup failed: ' . $case );
+ if ( 'expired' === $case ) {
+  $GLOBALS['operator_witness_option']['expires_at'] = time() - 1;
+  $seal = new ReflectionMethod( 'MAD4B_SCP_Post_Update_Continuation', 'operator_witness_seal' ); $seal->setAccessible( true );
+  $GLOBALS['operator_witness_option']['seal'] = $seal->invoke( null, $GLOBALS['operator_witness_option'] );
+ }
+ if ( 'profile' === $case ) MAD4B_SCP_Site_Profile::$revision++;
+ if ( 'grant' === $case ) MAD4B_SCP_Staging_Write_Authority::$plan['persisted_grant_records_fingerprint'] = 'changed';
+ if ( 'transport' === $case ) MAD4B_SCP_MCP_Peer_Governance::$tools = 'witness-transport-drift';
+ if ( 'production' === $case ) MAD4B_SCP_Site_Profile::$environment = 'production';
+ if ( 'integrity' === $case ) $GLOBALS['integrity_failed'] = true;
+ if ( 'concurrent' === $case ) {
+  $p = array( 'contract' => MAD4B_SCP_Post_Update_Continuation::CONTRACT, 'state' => 'pending_convergence', 'expires_at' => time() + 300, 'permit_id' => 'foreign' );
+  $GLOBALS['wpdb']->value = serialize( $p );
+ }
+ $calls = MAD4B_SCP_Staging_Write_Authority::$calls;
+ $preflight = MAD4B_SCP_Post_Update_Continuation::operator_witnessed_reconciliation_preflight();
+ check( is_array( $preflight ) && 'AUTO_REBIND' !== $preflight['disposition'], 'Unsafe witness auto-rebind accepted: ' . $case );
+ check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls, 'Unsafe witness reached binding primitive: ' . $case );
+ check( ! MAD4B_SCP_Staging_Write_Authority::$binding['match'], 'Unsafe witness changed candidate binding: ' . $case );
+}
+echo "Operator-witnessed replacement convergence guards: PASS\n";
 
 // Read-only auto-reconciliation preflight is centrally classified and cannot
 // create authority.  Scenario discovery may grow independently, but only an
