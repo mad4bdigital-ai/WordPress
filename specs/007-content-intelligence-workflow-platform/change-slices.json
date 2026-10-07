@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "dccb0889799eb255f0d64d6959d9687252801c5b",
-  "changed_file_count": 155,
+  "changed_file_count": 159,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -248,6 +248,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g3-registration-contract.php",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g3-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g3-delivery.md"
+      ]
+    },
+    {
+      "id": "context-operational-review-followup",
+      "semantic_unit": "Context human review workspace and persisted approval readback after G3 integration",
+      "revert_boundary": "Revert Context review UI and its persisted acceptance checks together with the related Context authority changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php"
       ]
     }
   ],
