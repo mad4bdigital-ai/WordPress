@@ -755,6 +755,16 @@ MAD4B_SCP_Agent_Registry::$grant_enabled = true;
 $policy_ready = MAD4B_SCP_Context_Authority::ai_review_policy_status();
 mad4b_review_assert( ! empty( $policy_ready['ready'] ) && ! empty( $policy_ready['exact_grant_ready'] ), 'AI review policy must become ready only after exact grant evidence.', $policy_ready );
 
+$ai_raw_original = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ];
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_confidence'] = 0.42;
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_source'] = 'automatic';
+$low_confidence_ai_revision = MAD4B_SCP_Context_Authority::registry_revision();
+$low_confidence_ai_review = MAD4B_SCP_Context_Authority::review_asset_by_agent( mad4b_ai_review_input( $asset_id ) );
+mad4b_review_assert( is_wp_error( $low_confidence_ai_review ), 'Delegated AI must not approve low-confidence automatic classification.', $low_confidence_ai_review );
+mad4b_review_assert( 'mad4b_context_ai_review_classification_confirmation_required' === $low_confidence_ai_review->get_error_code(), 'Low-confidence AI denial must expose the exact Human-confirmation requirement.', $low_confidence_ai_review->get_error_code() );
+mad4b_review_assert( $low_confidence_ai_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Denied low-confidence AI review must not advance registry revision.' );
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ] = $ai_raw_original;
+
 MAD4B_SCP_Identity_Context::$mode = 'wrong';
 $wrong_identity_revision = MAD4B_SCP_Context_Authority::registry_revision();
 $wrong_identity_review = MAD4B_SCP_Context_Authority::review_asset_by_agent( mad4b_ai_review_input( $asset_id ) );
