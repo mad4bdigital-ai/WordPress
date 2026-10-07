@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-wpml-response-contract-${{ github.event.pull_request.number || github.ref }}
+  group: mad4b-wpml-response-contract-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
