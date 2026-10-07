@@ -58,6 +58,14 @@ $rollback_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $rollback );
 check( 'rollback_or_reinstall' === $rollback_result['scenario_id'], 'rollback/reinstall must classify explicitly' );
 check( 'SCHEDULE_PROBE' === $rollback_result['decision'], 'rollback/reinstall must remain ZERO_DELTA-probe only' );
 
+$fallback = $base;
+$fallback['current_version'] = '';
+$fallback['stored_version'] = '';
+$fallback['source'] = 'candidate_binding_probe';
+$fallback_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $fallback );
+check( 'SCHEDULE_PROBE' === $fallback_result['decision'], 'candidate-binding fallback must schedule only a ZERO_DELTA probe when versions are not comparable' );
+check( empty( $fallback_result['mutation_allowed'] ) && ! empty( $fallback_result['zero_delta_required_for_rebind'] ), 'candidate-binding fallback widened authority' );
+
 foreach ( array( 'grant_inventory_drift', 'write_contract_drift', 'site_profile_drift', 'actor_identity_drift', 'transport_contract_drift', 'baseline_expired' ) as $signal ) {
 	$authority_drift = $base;
 	$authority_drift['signals'] = array( $signal => true );
