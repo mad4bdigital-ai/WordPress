@@ -1864,6 +1864,25 @@ final class MAD4B_SCP_Context_Admin_UI {
 				}
 			});
 			document.addEventListener("click",function(event){
+				var requiredButton=event.target.closest("[data-mad4b-select-required]");
+				if(requiredButton){
+					event.preventDefault();
+					document.querySelectorAll(".mad4b-context-review-select").forEach(function(input){
+						var article=input.closest(".mad4b-context-inbox-item");
+						input.checked=!input.disabled&&article&&article.dataset.mad4bReviewRequired==="1";
+					});
+					return;
+				}
+				var confidenceButton=event.target.closest("[data-mad4b-select-high-confidence]");
+				if(confidenceButton){
+					event.preventDefault();
+					document.querySelectorAll(".mad4b-context-review-select").forEach(function(input){
+						var article=input.closest(".mad4b-context-inbox-item");
+						input.checked=!input.disabled&&article&&parseFloat(article.dataset.mad4bReviewConfidence||"0")>=0.70;
+					});
+				}
+			});
+			document.addEventListener("click",function(event){
 				var decisionButton=event.target.closest("[data-mad4b-review-decision]");
 				if(!decisionButton)return;
 				var form=decisionButton.closest(".mad4b-context-review-form");
