@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "06be874cadd3822b7868536b7d04805864f908da",
-  "changed_file_count": 140,
+  "changed_file_count": 143,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -213,19 +213,22 @@
     },
     {
       "id": "g2-recovery-identity-consent-history",
-      "semantic_unit": "Read-only G2 recovery preview, per-agent access, granular consent/client evidence and governed history repository slice",
-      "revert_boundary": "Revert PR #277 G2-specific runtime/UI/delivery/test paths as one bounded non-authorizing slice; shared Hub files retain their existing owners.",
+      "semantic_unit": "G2 recovery preview, per-agent access, reviewed authority reduction, granular consent/client evidence and governed history repository slice",
+      "revert_boundary": "Revert PR #277 G2-specific runtime/UI/delivery/permission/test paths as one bounded slice; shared Hub files retain their existing owners and no authority-expansion path is introduced.",
       "certification": "exact_head",
       "path_globs": [
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g2-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g2-delivery.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-permission-changes.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php"
       ]
     }
   ],
-  "changed_paths_sha256": "2a66706028525af2f24b9f3f913414f39268a00d4e50759d0d4708a00720296e",
+  "changed_paths_sha256": "ad13f3a40f369f585ec4c6e4051c0b63b9ec925799d20cfb552254a89e29507d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
