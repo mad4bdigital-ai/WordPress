@@ -1,6 +1,7 @@
 <?php
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'MAD4B_SCP_VERSION', 'fixture' );
+define( 'ARRAY_A', 'ARRAY_A' );
 
 $GLOBALS['g2_abilities'] = array();
 function add_action() { return true; }
