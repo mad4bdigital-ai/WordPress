@@ -172,6 +172,10 @@ for token in [
     assert token in runtime_convergence, f"missing centralized auto-reconciliation runtime token: {token}"
 
 assert "mad4b_scp_auto_reconciliation_scenarios" not in runtime_convergence
+assert "private static function combine_reconciliation_disposition" in runtime_convergence
+assert "registry_safety_ceiling_then_exact_zero_delta_preflight" in runtime_convergence
+assert "MAD4B_SCP_Staging_Write_Authority::persisted_status()" in runtime_convergence
+assert "'breakglass_enabled' => (bool) $breakglass_enabled" in runtime_convergence
 assert "mad4b_scp_auto_reconcile_scenarios" in scenario_registry
 for scenario in (
     "manual_or_same_version_package_drift",
