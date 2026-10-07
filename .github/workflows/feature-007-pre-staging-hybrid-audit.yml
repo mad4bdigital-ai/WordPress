@@ -140,6 +140,13 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-heartbeat-runtime.php
 
+      - name: Auto-Reconcile registry safety and worker policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-runtime.php
+
       - name: Competitive Experience G1 runtime evidence and semantic classifier
         shell: bash
         run: |
