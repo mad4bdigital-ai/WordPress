@@ -217,7 +217,12 @@ final class MAD4B_SCP_G4_Provider_Families {
 		if ( is_wp_error( $readiness ) ) return $readiness;
 		$provider = $readiness['providers'][0];
 		$gates = array_values( $operation['requires'] );
-		if ( 'not_profiled' === $provider['certification_state'] ) $gates[] = 'provider_profile_certification';
+		$certification_state = isset( $provider['certification_state'] ) ? sanitize_key( (string) $provider['certification_state'] ) : 'not_profiled';
+		if ( ! in_array( $certification_state, array( 'certified_exact_version', 'core_runtime' ), true ) ) {
+			$gates[] = 'provider_profile_certification';
+			if ( 'installed_version_unprofiled' === $certification_state ) $gates[] = 'provider_exact_version_certification';
+			if ( empty( $provider['installed'] ) ) $gates[] = 'provider_runtime_presence';
+		}
 		if ( in_array( $operation['risk'], array( 'high_risk_explicit_gate', 'irreversible_external_effect' ), true ) ) $gates[] = 'explicit_impact_approval';
 		if ( ! empty( $operation['mutation'] ) ) $gates[] = 'exact_plan_apply_readback';
 		if ( ! empty( $operation['irreversible'] ) ) $gates[] = 'irreversible_effect_disclosure';
