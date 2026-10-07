@@ -7,6 +7,7 @@ function update_option( $key, $value, $autoload = null ) { ++$GLOBALS['writes'];
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function wp_salt( $scheme ) { return 'test-secret'; }
 function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( $value ) ); }
+function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function wp_generate_uuid4() { return bin2hex( random_bytes( 16 ) ); }
 function wp_next_scheduled( $hook ) { return $GLOBALS['scheduled']; }
 function wp_unschedule_event( ...$args ) { $GLOBALS['scheduled'] = 0; }
@@ -38,7 +39,13 @@ class MAD4B_SCP_Live_Acceptance_Observer {
   if ( self::$throw ) { MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); throw new RuntimeException( 'PRIVATE worker path' ); }
   if ( self::$race && 0 === self::$calls % 2 ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$event_race && 0 === self::$calls % 2 ) MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
-  return array( 'runtime_manifest_match' => self::$valid, 'build_fingerprint' => str_repeat( 'a', 64 ) );
+  return array(
+   'runtime_manifest_match' => self::$valid,
+   'source_commit_sha' => str_repeat( '1', 40 ),
+   'build_fingerprint' => str_repeat( 'a', 64 ),
+   'package_manifest_digest' => str_repeat( 'c', 64 ),
+   'artifact_identity' => 'mad4b-site-control-plane-fixture-' . str_repeat( '1', 40 ),
+  );
  }
 }
 class MAD4B_SCP_Provider_Contracts { static function all() { return array_fill_keys( array( 'alpha', 'beta', 'gamma', 'delta', 'epsilon' ), array() ); } }
@@ -58,6 +65,7 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
   ) );
  }
 }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-adaptive-runtime-convergence.php';
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
