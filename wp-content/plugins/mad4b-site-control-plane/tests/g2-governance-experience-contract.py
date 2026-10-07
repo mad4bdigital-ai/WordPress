@@ -39,6 +39,9 @@ require(runtime, "'wildcard_grants_allowed' => false", "wildcard_grants_must_be_
 require(runtime, "'history_is_rollback_authority' => false", "history_must_not_equal_rollback")
 require(runtime, "'rollback_payload_exposed' => false", "rollback_payload_must_stay_private")
 require(runtime, "'secret_or_token_values_exposed' => false", "history_secret_redaction_missing")
+require(runtime, "'approval_ticket_sha256'", "approval_ticket_digest_missing")
+if "'approval_ticket_id' =>" in runtime:
+    raise SystemExit("raw_approval_ticket_identifier_exposed")
 require(runtime, "'execution_available_here' => false", "recovery_preview_must_not_execute")
 
 for forbidden in (
