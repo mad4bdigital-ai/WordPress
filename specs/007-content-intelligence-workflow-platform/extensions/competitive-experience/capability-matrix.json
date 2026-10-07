@@ -48,7 +48,7 @@
       "phase": 2,
       "title": "User-facing undo and verified readback",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3911",
         "T3912",
@@ -68,7 +68,7 @@
       "phase": 3,
       "title": "NHI and per-agent permissions",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3916",
         "T3917",
@@ -88,7 +88,7 @@
       "phase": 4,
       "title": "Granular OAuth and client compatibility",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3921",
         "T3922",
@@ -210,7 +210,7 @@
       "phase": 10,
       "title": "Visual change history and evidence export",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3951",
         "T3952",
@@ -907,7 +907,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Provide understandable reverse preview and eligibility above the existing governed reversal service.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -938,7 +938,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Unify typed stored/emitted readback and reconciliation before retry across object/provider operations.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -969,7 +969,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Expose agent/role/object/risk/transport permissions while reusing existing authority and exact grants.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1000,7 +1000,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Explain conflicting scopes/roles and bind requests/audit to the current client and subject.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1031,7 +1031,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Expose read-only and reviewed defaults with explicit selected capability/object/risk scope differences.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1062,7 +1062,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Test real client initialize/list/call, PKCE/refresh/revocation/session/Origin semantics independently of transport availability.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1494,7 +1494,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Expose bounded object/actor/client/date history rather than requiring audit payload interpretation.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "READ_ONLY",
       "task_ids": [
@@ -1525,7 +1525,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Preserve evidence integrity while redacting secret/PII fields and supporting governed exports.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
