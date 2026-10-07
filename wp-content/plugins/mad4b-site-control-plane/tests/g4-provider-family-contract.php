@@ -104,7 +104,11 @@ final class MAD4B_SCP_Adapter_Registry {
 }
 
 final class MAD4B_SCP_Plugin_Discovery {
+	private static $coverage_calls = 0;
+	public static function reset_calls() { self::$coverage_calls = 0; }
+	public static function coverage_calls() { return self::$coverage_calls; }
 	public static function coverage() {
+		++self::$coverage_calls;
 		return array(
 			'plugins' => array(
 				array( 'plugin_file' => 'fluentform/fluentform.php', 'slug' => 'fluentform', 'name' => 'Fluent Forms', 'version' => '6.1.0', 'active' => true, 'network_active' => false, 'adapter_id' => 'fluentforms', 'family' => 'fluentforms', 'coverage_state' => 'read_only_supported', 'functional_coverage' => array( 'state' => 'read_ready_write_blocked' ) ),
@@ -137,6 +141,11 @@ foreach ( array( 'forms', 'commerce', 'builders', 'site-operations', 'wordpress-
 mad4b_g4_assert( false === $catalog['authorizing'], 'catalog cannot authorize' );
 mad4b_g4_assert( false === $catalog['global_boundaries']['production_authorized'], 'Production must remain unauthorized' );
 mad4b_g4_assert( false === $catalog['global_boundaries']['generic_outbound_http_allowed'], 'generic outbound HTTP must remain denied' );
+
+MAD4B_SCP_Plugin_Discovery::reset_calls();
+$all_forms = MAD4B_SCP_G4_Provider_Families::readiness( array( 'family_id' => 'forms' ) );
+mad4b_g4_assert( ! is_wp_error( $all_forms ) && 5 === $all_forms['provider_count'], 'forms readiness must cover the five reviewed providers' );
+mad4b_g4_assert( 1 === MAD4B_SCP_Plugin_Discovery::coverage_calls(), 'plugin discovery must be snapshotted once per readiness request, not once per provider' );
 
 $forms_delete = $catalog['families']['forms']['operations']['submission_delete_plan'];
 mad4b_g4_assert( 'high_risk_explicit_gate' === $forms_delete['risk'], 'submission deletion must be high risk' );
