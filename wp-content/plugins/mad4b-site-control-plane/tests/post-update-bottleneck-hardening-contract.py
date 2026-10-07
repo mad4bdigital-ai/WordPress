@@ -152,11 +152,15 @@ print("mad4b.post-update-bottleneck-hardening.v2: PASS")
 # Dynamic auto-reconciliation coverage.
 runtime_convergence = (ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 continuation = (ROOT / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
-required_runtime_tokens = [
-    "mad4b_scp_auto_reconciliation_scenarios",
-    "manual_package_replacement",
-    "trusted_rollback_or_reinstall",
-    "governed_self_update_restart",
+scenario_registry = (ROOT / "includes" / "class-mad4b-scp-auto-reconcile-scenarios.php").read_text(encoding="utf-8")
+
+# Runtime Convergence consumes the central registry; it must not define a
+# second scenario universe or a second extension filter.
+for token in [
+    "MAD4B_SCP_Auto_Reconcile_Scenarios::registry",
+    "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate",
+    "central_reconciliation_scenario",
+    "reconciliation_context",
     "build_provenance_drift",
     "MAD4B_SCP_BOOT_PROVENANCE_SHA256",
     "mad4b_scp_boot_provenance_sha256",
@@ -164,21 +168,37 @@ required_runtime_tokens = [
     "mutation_class' => 'candidate_binding_only",
     "production_allowed' => false",
     "breakglass_allowed' => false",
-]
-for token in required_runtime_tokens:
-    assert token in runtime_convergence, f"missing dynamic auto-reconciliation contract token: {token}"
+]:
+    assert token in runtime_convergence, f"missing centralized auto-reconciliation runtime token: {token}"
+
+assert "mad4b_scp_auto_reconciliation_scenarios" not in runtime_convergence
+assert "mad4b_scp_auto_reconcile_scenarios" in scenario_registry
+for scenario in (
+    "manual_or_same_version_package_drift",
+    "trusted_reinstall_or_rollback_probe",
+    "native_or_release_set_continuation",
+    "same_version_package_replacement",
+    "forward_package_update",
+    "rollback_or_reinstall",
+):
+    assert scenario in scenario_registry, f"missing central auto-reconciliation scenario: {scenario}"
 
 # Extension descriptors are data-only selectors. They may add scenarios but
 # cannot provide executors or override the central authority envelope.
-assert "apply_filters( 'mad4b_scp_auto_reconciliation_scenarios', $scenarios )" in runtime_convergence
-assert "foreach ( array( 'all', 'any', 'none' ) as $bucket )" in runtime_convergence
-assert "'authority_delta' => 'zero_required'" in runtime_convergence
-assert "'mutation_class' => 'candidate_binding_only'" in runtime_convergence
-assert "'production_allowed' => false" in runtime_convergence
-assert "'breakglass_allowed' => false" in runtime_convergence
-registry_body = runtime_convergence.split("public static function reconciliation_scenario_registry()", 1)[1].split("private static function select_reconciliation_scenario", 1)[0]
-for forbidden in ("executor", "execute_callback", "mutation_allowed", "grant_mutation_allowed", "subject_mutation_allowed", "agent_mutation_allowed"):
-    assert forbidden not in registry_body, f"scenario registry unexpectedly accepts authority field: {forbidden}"
+assert "apply_filters( 'mad4b_scp_auto_reconcile_scenarios', array() )" in scenario_registry
+for token in (
+    "'mutation_allowed' => false",
+    "'authority_expansion_allowed' => false",
+    "'zero_delta_required_for_rebind' => true",
+    "MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind",
+):
+    assert token in scenario_registry, f"central scenario registry missing invariant: {token}"
+
+compat_view = runtime_convergence.split("public static function reconciliation_scenario_registry()", 1)[1].split("private static function reconciliation_context", 1)[0]
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::registry" in compat_view
+assert "apply_filters(" not in compat_view
+for forbidden in ("execute_callback", "grant_mutation_allowed", "subject_mutation_allowed", "agent_mutation_allowed"):
+    assert forbidden not in compat_view, f"compatibility view unexpectedly accepts authority field: {forbidden}"
 
 assert "observed_reconciliation_preflight" in continuation
 for token in [
