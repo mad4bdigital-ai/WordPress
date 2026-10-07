@@ -10,24 +10,82 @@ final class MAD4B_SCP_Domain_Native_Providers {
 	}
 
 	public static function discovery() {
-		$path = MAD4B_SCP_DIR . 'config/wordpress-domain-catalog.json';
-		if ( ! is_readable( $path ) || filesize( $path ) > 32768 || ! function_exists( 'get_plugins' ) ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array() );
-		$catalog = json_decode( file_get_contents( $path ), true );
-		if ( ! is_array( $catalog ) || 'mad4b.wordpress-domain-discovery-catalog.v1' !== ( $catalog['contract'] ?? '' ) || false !== ( $catalog['authorizing'] ?? null ) || ! is_array( $catalog['providers'] ?? null ) || count( $catalog['providers'] ) > 64 ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array() );
-		$plugins = get_plugins();
-		if ( ! is_array( $plugins ) || count( $plugins ) > 512 ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array() );
-		$rows = array();
-		foreach ( $catalog['providers'] as $record ) {
-			if ( ! is_array( $record ) || ! MAD4B_SCP_Domain_Contracts::identifier( $record['provider_id'] ?? null ) || ! is_array( $record['plugin_files'] ?? null ) || count( $record['plugin_files'] ) > 8 ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array() );
-			$observed = array();
-			foreach ( $record['plugin_files'] as $file ) {
-				if ( ! is_string( $file ) || is_wp_error( MAD4B_SCP_Domain_Site_Operations::path( $file, false ) ) ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array() );
-				if ( ! isset( $plugins[ $file ] ) ) continue;
-				$observed[] = array( 'plugin_file'=>$file, 'version'=>sanitize_text_field( (string) ( $plugins[ $file ]['Version'] ?? '' ) ), 'active'=>( function_exists( 'is_plugin_active' ) && is_plugin_active( $file ) ) || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $file ) ) );
-			}
-			$rows[] = array( 'provider_id'=>$record['provider_id'], 'family'=>$record['family'] ?? '', 'observed_plugins'=>$observed, 'installed'=>(bool) $observed, 'prerequisites'=>$record['prerequisites'] ?? array(), 'form_and_submission_readiness_independent'=>true, 'plan_contract_inferred'=>false, 'runtime_certification_inferred'=>false, 'execution_supported'=>false );
+		if ( ! class_exists( 'MAD4B_SCP_G4_Provider_Families' ) || ! method_exists( 'MAD4B_SCP_G4_Provider_Families', 'readiness' ) ) {
+			return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'g4_provider_readiness_unavailable' );
 		}
-		return array( 'ready'=>true, 'complete'=>true, 'complete_scope'=>'declared_plugin_files_only', 'provider_absence_certified'=>false, 'providers'=>$rows, 'catalog_is_authority'=>false );
+		$readiness = MAD4B_SCP_G4_Provider_Families::readiness( array() );
+		if ( is_wp_error( $readiness ) || ! is_array( $readiness ) || ! is_array( $readiness['providers'] ?? null ) || count( $readiness['providers'] ) > 64 ) {
+			return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'g4_provider_readiness_invalid' );
+		}
+
+		$path = MAD4B_SCP_DIR . 'config/wordpress-domain-catalog.json';
+		if ( ! is_readable( $path ) || filesize( $path ) > 32768 ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'domain_overlay_unavailable' );
+		$overlay = json_decode( file_get_contents( $path ), true );
+		if ( ! is_array( $overlay ) || 'mad4b.wordpress-domain-overlay.v1' !== ( $overlay['contract'] ?? '' ) || false !== ( $overlay['authorizing'] ?? null ) || ! is_array( $overlay['overlays'] ?? null ) || count( $overlay['overlays'] ) > 64 ) {
+			return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'domain_overlay_invalid' );
+		}
+
+		$extras = array();
+		foreach ( $overlay['overlays'] as $record ) {
+			$id = is_array( $record ) ? ( $record['provider_id'] ?? '' ) : '';
+			$prerequisites = is_array( $record ) ? ( $record['prerequisites'] ?? null ) : null;
+			if ( ! MAD4B_SCP_Domain_Contracts::identifier( $id ) || isset( $extras[ $id ] ) || ! is_array( $prerequisites ) || count( $prerequisites ) > 16 ) {
+				return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'domain_overlay_provider_invalid' );
+			}
+			foreach ( $prerequisites as $value ) {
+				if ( ! is_string( $value ) || ! MAD4B_SCP_Domain_Contracts::identifier( $value ) ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'domain_overlay_prerequisite_invalid' );
+			}
+			$extras[ $id ] = array_values( $prerequisites );
+		}
+
+		$rows = array();
+		$known = array();
+		foreach ( $readiness['providers'] as $provider ) {
+			if ( ! is_array( $provider ) || ! MAD4B_SCP_Domain_Contracts::identifier( $provider['provider_id'] ?? null ) || ! MAD4B_SCP_Domain_Contracts::identifier( $provider['family_id'] ?? null ) ) {
+				return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'g4_provider_row_invalid' );
+			}
+			$id = $provider['provider_id'];
+			if ( isset( $known[ $id ] ) ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'g4_provider_duplicate' );
+			$known[ $id ] = true;
+			$observed = array();
+			foreach ( (array) ( $provider['observed_plugin_identities'] ?? array() ) as $identity ) {
+				if ( ! is_array( $identity ) || count( $observed ) >= 20 ) continue;
+				$observed[] = array(
+					'plugin_file'=>sanitize_text_field( (string) ( $identity['plugin_file'] ?? '' ) ),
+					'slug'=>sanitize_key( (string) ( $identity['slug'] ?? '' ) ),
+					'version'=>sanitize_text_field( (string) ( $identity['version'] ?? '' ) ),
+					'active'=>! empty( $identity['active'] ) || ! empty( $identity['network_active'] ),
+				);
+			}
+			$rows[] = array(
+				'provider_id'=>$id,
+				'family'=>$provider['family_id'],
+				'observed_plugins'=>$observed,
+				'installed'=>! empty( $provider['installed'] ),
+				'installed_version'=>sanitize_text_field( (string) ( $provider['installed_version'] ?? '' ) ),
+				'certification_state'=>sanitize_key( (string) ( $provider['certification_state'] ?? '' ) ),
+				'adapter_registered'=>! empty( $provider['adapter_registered'] ),
+				'read_surface_ready'=>! empty( $provider['read_surface_ready'] ),
+				'prerequisites'=>$extras[ $id ] ?? array(),
+				'form_and_submission_readiness_independent'=>true,
+				'plan_contract_inferred'=>false,
+				'runtime_certification_inferred'=>false,
+				'execution_supported'=>false,
+			);
+		}
+		$orphans = array_values( array_diff( array_keys( $extras ), array_keys( $known ) ) );
+		if ( $orphans ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'domain_overlay_provider_not_in_g4_catalog', 'orphan_provider_ids'=>$orphans );
+		return array(
+			'ready'=>true,
+			'complete'=>true,
+			'complete_scope'=>'g4_reviewed_provider_catalog',
+			'provider_absence_certified'=>false,
+			'providers'=>$rows,
+			'catalog_is_authority'=>false,
+			'identity_source'=>'mad4b.g4-provider-readiness.v1',
+			'overlay_contract'=>'mad4b.wordpress-domain-overlay.v1',
+			'duplicate_plugin_scanner'=>false,
+		);
 	}
 
 	public static function native_objects() {
