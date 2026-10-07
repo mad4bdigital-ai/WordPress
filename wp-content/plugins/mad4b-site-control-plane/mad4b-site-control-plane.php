@@ -124,6 +124,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-diff.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-provider-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-declarative-adapter-manifest.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wordpress-domain-coverage.php';
+require_once MAD4B_SCP_DIR . 'includes/domains/class-mad4b-scp-domain-native-providers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-recovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-jobs.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-intent-registry.php';

@@ -53,6 +53,10 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-polylang-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-domain-coverage.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/domains/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g4-*.php'
 
 permissions:
   contents: read
@@ -332,4 +336,11 @@ jobs:
           php -l "$PLUGIN/includes/class-mad4b-scp-g4-provider-families.php"
           php -l "$PLUGIN/mad4b-site-control-plane.php"
           php "$PLUGIN/tests/g4-provider-family-contract.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-wordpress-domain-coverage.php"
+          for source in "$PLUGIN"/includes/domains/*.php; do php -l "$source"; done
+          for domain in forms commerce builders site-operations wordpress; do
+            php "$PLUGIN/tests/g4-$domain-contract.php"
+          done
+          php "$PLUGIN/tests/g4-domain-coverage-runtime.php"
+          php "$PLUGIN/tests/g4-native-read-bridges-runtime.php"
 

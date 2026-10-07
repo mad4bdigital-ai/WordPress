@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "e36401835560970619198f9c66e2ae8db866cab4e03136298a90c67de4776edb",
+  "status_source_sha256": "e22de50d2d0d28491b4a9adf070c4dfaa875460cfc61b724f014be52e755405c",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
@@ -364,7 +364,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Typed forms family plus dynamic Adapter Registry/Plugin Discovery readiness is implemented; existing Fluent Forms and JetFormBuilder read adapters are reused with exact plugin/version identity, while CF7/WPForms/Gravity provider-native adapters and broader version certification remain pending."
+      "reason": "Bounded native plugin/version inventory, independent prerequisites and installed typed provider registration exist. Full CF7/WPForms/Gravity/Fluent/JetFormBuilder native definition/version integration remains pending."
     },
     {
       "task_id": "T3932",
@@ -376,7 +376,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Existing Fluent Forms/JetFormBuilder inventory and metadata reads are surfaced through runtime readiness, and G4 requires provider serialization/exact readback for config mutation; provider-native governed configuration apply executors remain pending."
+      "reason": "Provider-owned schemas and serialization facts feed exact generation/object preflight plans; canonical native metadata reads are bridged. Native form configuration serialization/apply/readback remains pending."
     },
     {
       "task_id": "T3933",
@@ -388,7 +388,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Submission operations are separated into sensitive PII authority with redaction, pagination, retention and reviewed export/delete gates; real submission adapters remain pending."
+      "reason": "Independent submission object/field/consent/mask/retention preflight gates and bounded requests exist. Actual provider entry reads, PII masking, export/delete review and dispatch remain pending."
     },
     {
       "task_id": "T3934",
@@ -400,7 +400,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Forms readiness now distinguishes exact certified, read-ready-uncertified, runtime-absent and installed-adapter-missing states without exposing submission values; Flamingo/premium/submission prerequisite probes remain pending."
+      "reason": "Definition metadata and entry prerequisites remain independent; unsupported/premium/absent definition contracts fail closed. Native Flamingo/premium readiness and safe real submission preview acceptance remain pending."
     },
     {
       "task_id": "T3935",
@@ -412,7 +412,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Fail-closed operation catalog encodes PII separation, irreversible deletion and no-undo boundaries; provider-specific nested/upload/egress denial fixtures and live certification remain pending."
+      "reason": "Hermetic denial fixtures cover secrets, nested/repeat IDs, choices, upload policy, absent definitions and irreversible deletion planning. Actual native form/entry/upload/egress acceptance remains pending."
     },
     {
       "task_id": "T3936",
@@ -424,7 +424,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "WooCommerce is linked to its existing governed product adapter with read and reversible product-update contracts while catalog/order/customer/reporting/fulfillment surfaces remain independently classified and broader commerce coverage remains pending."
+      "reason": "Typed catalog/private/financial contracts separate commerce effects; the existing certified product read is bridged. Variations, attributes, orders/customers/coupons/reporting/fulfillment provider implementations remain pending."
     },
     {
       "task_id": "T3937",
@@ -436,7 +436,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "WooCommerce read readiness is projected from the live adapter and plugin identity; HPOS, order/customer object-level access, PII masking and bounded pagination acceptance remain pending."
+      "reason": "Exact object/field/mask/pagination/HPOS prerequisites fail closed; product identity/read permission is checked through canonical governance. Actual HPOS/order store compatibility and native PII read acceptance remain pending."
     },
     {
       "task_id": "T3938",
@@ -448,7 +448,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "The existing WooCommerce reversible product contract is detected and can satisfy rollback-surface discovery for admitted catalog work, but disposable stock/tax/batch canaries, hook-aware exact readback and concurrency coverage remain pending."
+      "reason": "Unique bounded catalog batches bind parent/revision and per-field stock/hook gates; no native batch mutation is dispatched. Disposable provider inventory/tax/hook canaries and exact readback remain pending."
     },
     {
       "task_id": "T3939",
@@ -460,7 +460,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Refund/gateway effects are classified irreversible external effects with explicit financial gates and no undo claim; shipping/tax/webhook/notification executors remain pending."
+      "reason": "Shipping/tax/gateway/webhook/notification/refund/payment proposals carry independent explicit gates and no automatic execution/undo. Native financial/private effects and owner-gated acceptance remain pending."
     },
     {
       "task_id": "T3940",
@@ -472,7 +472,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Concurrency, hook, PII and financial-effect denials are encoded in the typed plan boundary; provider fault fixtures and Staging acceptance remain pending."
+      "reason": "Fixtures deny duplicate products, foreign parents, stale revisions, stock races, hook uncertainty, PII leaks and payment effects through catalog scope. Real concurrency/native-hook/payment acceptance remains pending."
     },
     {
       "task_id": "T3941",
@@ -484,7 +484,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Elementor is linked to the existing structural adapter with read/reversible contracts while Divi, Kadence and WordPress core remain typed peers without provider branches in the G4 planner; non-Elementor adapters and parity remain pending."
+      "reason": "Typed provider format/serialization contracts and dynamic plugin coverage are registered without vendor branches in the shared planner. Full Divi4/Divi5/Kadence/FSE native readers and serializers remain pending."
     },
     {
       "task_id": "T3942",
@@ -496,7 +496,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Existing Elementor document/tree/validation/compare capabilities are projected as runtime read support and structural mutations remain gated by revision/editor-lock requirements; Divi/Kadence/Gutenberg tree readers and cross-builder diff acceptance remain pending."
+      "reason": "Canonical Elementor native tree outline observation and bounded structural preflight bind parent IDs, lock/revision and template scope. Full native controls/template/clone structural diff and live lock acceptance remain pending."
     },
     {
       "task_id": "T3943",
@@ -508,7 +508,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Existing Elementor reversible structural operations provide concrete provider-native serialization/readback evidence for one builder; admitted text/image/widget/template operations across the remaining builders and fresh-ID canaries remain pending."
+      "reason": "Typed node/control schema and allocated fresh clone-ID gates exist; unproven control mutations fail closed. Provider-owned text/image/widget/template serialization, dispatch and rendered readback remain pending."
     },
     {
       "task_id": "T3944",
@@ -520,7 +520,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Plan output exposes operation risk, provider readiness, required gates and non-execution truth; richer visual diff/rollback UX remains pending."
+      "reason": "Plans and observational readback never create approved receipts or infer rollback from history. Compact rendered previews, governed native clone/undo and exact approved receipt acceptance remain pending."
     },
     {
       "task_id": "T3945",
@@ -532,7 +532,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Template scope, dynamic-data leakage and partial-rollback constraints are fail-closed plan requirements; malformed-tree/ID-collision provider fixtures remain pending."
+      "reason": "Fixtures cover tree cycles/orphans, unsupported formats/controls, stale/locked editors, clone-ID collisions, template scope and secret leakage. Real mixed-shortcode/block providers and partial rollback acceptance remain pending."
     },
     {
       "task_id": "T3946",
@@ -739,7 +739,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Site-operations family now reuses the existing LiteSpeed status/purge adapter through dynamic readiness while UpdraftPlus, W3 Total Cache, All-in-One Migration, Wordfence and Redirection remain typed but unadapted or uncertified providers."
+      "reason": "Bounded typed backup/cache/migration/security/redirect inventory and independent preflight risk families exist. Actual native operational provider capabilities and site inventory acceptance remain pending."
     },
     {
       "task_id": "T3967",
@@ -751,7 +751,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Backup inventory/trigger and restore-readiness semantics explicitly deny automatic restore, installer/credential disclosure and stale-authority replay; live provider integration remains pending."
+      "reason": "Exact artifact path/hash/restore epoch/protected-receipt preflight denies archive aliases and installer credentials; restore readiness cannot execute a restore. Native artifact inspection/backup triggering and restore convergence remain pending."
     },
     {
       "task_id": "T3968",
@@ -763,7 +763,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "LiteSpeed contributes an existing same-site bounded purge path, while G4 still requires explicit blast-radius/readback evidence and provider-native redirect planning with loop detection for the broader cache/redirect family."
+      "reason": "Bounded cache targets and same-origin redirect paths require scope/readback; complete graphs deny loops, aliases and global purge widening. Native cache/redirect mutation and frontend readback remain pending."
     },
     {
       "task_id": "T3969",
@@ -775,7 +775,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Security reads require PII masking and reviewed security changes require self-lockout denial/external host handoff; provider-specific log/change adapters remain pending."
+      "reason": "Masked security diagnostics/review handoffs require local object scope and prevent self-lockout; no ban or host installation is dispatched. Actual native logs/redaction/lockout/restore review acceptance remains pending."
     },
     {
       "task_id": "T3970",
@@ -787,7 +787,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Archive/restore/redirect/purge/security external-effect boundaries are encoded fail-closed; destructive fault fixtures and Staging acceptance remain pending."
+      "reason": "Fixtures deny archive path abuse, old restore epochs, redirects/loops, cache blast radius, self-lockout and external capability inference. Real provider archive/installer/restore/purge/security acceptance remains pending."
     },
     {
       "task_id": "T3971",
@@ -799,7 +799,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "WordPress breadth catalog separates core/object inventory from optional provider surfaces with bounded pagination and field ownership; full object-operation inventory remains pending."
+      "reason": "Runtime CPT/taxonomy collectors report bounded completeness and native object kinds without exposing values or admitting uncovered objects. Full users/comments/media/menus/revisions/ACF native object schema coverage remains pending."
     },
     {
       "task_id": "T3972",
@@ -811,7 +811,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Generic language coverage now reuses the existing Polylang read/reversible language-assignment adapter; WPML/generic taxonomy-hierarchy dry-run diff with source language, parent identity, duplicates and translation-group evidence remains pending."
+      "reason": "Explicit source language, parent identity, existing ancestry, translation group and object authority guard bounded hierarchy proposals. Native WPML/generic language resolvers, dry-run diffs and exact readback remain pending."
     },
     {
       "task_id": "T3973",
@@ -823,7 +823,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Existing Polylang reversible assignment demonstrates one bounded language mutation surface, while hierarchy/metadata/menu/media changes still require field ownership, cycle/egress protections, exact readback and no cross-language corruption."
+      "reason": "Provider-owned field/effect/schema gates prevent sensitive roles, foreign fields, object ownership and unsafe media URL changes. Actual hierarchy/meta/menu/media providers and bounded governed dispatch remain pending."
     },
     {
       "task_id": "T3974",
@@ -835,7 +835,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "BuddyPress and Events Calendar are optional typed providers with private-message/timezone semantics; applicability probes and live adapters remain pending."
+      "reason": "Optional private collections require availability, object masks, bounded pagination and exact timezone. Native BuddyPress/Events Calendar integration and actual private-object acceptance remain pending."
     },
     {
       "task_id": "T3975",
@@ -847,7 +847,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Private authority, malicious-media egress and hierarchy safeguards are encoded; orphan/license/domain/user-escalation denial fixtures and live acceptance remain pending."
+      "reason": "Fixtures deny ancestry cycles/orphans, cross-language/group ambiguity, role escalation, unsafe media URLs, missing optional providers and private communications. Native licensing handoffs and provider live acceptance remain pending."
     },
     {
       "task_id": "T3976",
@@ -1528,7 +1528,7 @@
       "task_id": "T4061",
       "phase": 28,
       "priority": "P0",
-      "summary": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "summary": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
       "status": "PARTIAL",
       "evidence_refs": [
         "ui-delivery.json",
@@ -1558,7 +1558,7 @@
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
-      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
+      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""
