@@ -18,7 +18,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: mad4b-feature-boundary-root-${{ github.event.pull_request.number }}
+  group: mad4b-feature-boundary-root-${{ github.event.pull_request.number }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
