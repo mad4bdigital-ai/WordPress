@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "fb79efc0b2eb82165a80996ace175c07821af4fb284ed5cc1b83cfddb7ce904a",
+  "status_source_sha256": "e36401835560970619198f9c66e2ae8db866cab4e03136298a90c67de4776edb",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
