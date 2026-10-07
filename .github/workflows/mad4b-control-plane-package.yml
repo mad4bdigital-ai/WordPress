@@ -39,9 +39,9 @@ permissions:
   artifact-metadata: write
 
 concurrency:
-  # Keep one active package run per PR/ref. A newer exact-head candidate cancels
-  # superseded package work instead of allowing stale runs to remain live.
-  group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}
+  # Deduplicate runs for the same source and event. An older head or a different
+  # evidence event must not cancel the package checks of the current candidate.
+  group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
