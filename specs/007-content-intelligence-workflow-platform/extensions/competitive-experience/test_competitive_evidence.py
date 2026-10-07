@@ -67,7 +67,8 @@ assert history["contract"] == m.HISTORY_CONTRACT
 assert history["retention"]["max_entries"] == m.MAX_HISTORY_ENTRIES
 assert len(history["entries"]) >= 2, "append-only history was reset"
 assert history["entries"][-1]["revision"] == len(history["entries"])
-assert history["previous_known_good_generation_sha256"] == history["entries"][-2]["generation_sha256"]
+prior_known = [r["generation_sha256"] for r in history["entries"][:-1] if r["state"] == "known_good"]
+assert history["previous_known_good_generation_sha256"] == (prior_known[-1] if prior_known else "")
 assert history["alerts"] and history["alerts"][-1]["generation_sha256"] == s["generation_sha256"]
 assert history["alerts"][-1]["state"] in {"open", "acknowledged"}
 if history["alerts"][-1]["state"] == "acknowledged":
@@ -75,6 +76,7 @@ if history["alerts"][-1]["state"] == "acknowledged":
 assert history["current_generation_sha256"] == s["generation_sha256"]
 assert history["entries"][-1]["summary_sha256"] == summary["summary_sha256"]
 assert history["current_entry_sha256"] == history["entries"][-1]["entry_sha256"]
+assert m.next_history(history, s, summary) == history, "same generation appended or cleared its drift alert"
 
 with tempfile.TemporaryDirectory() as temp:
     tampered = deepcopy(history)
@@ -94,6 +96,12 @@ future_summary = m.operator_summary(future)
 next_history = m.next_history(history, future, future_summary)
 assert next_history["entries"][-1]["state"] == "drifted"
 assert next_history["alerts"][-1]["state"] == "open"
+assert next_history["previous_known_good_generation_sha256"] == history["previous_known_good_generation_sha256"]
+try:
+    m.next_history(next_history, s, summary)
+    raise AssertionError("old generation replay was appended")
+except ValueError as error:
+    assert str(error) == "history_generation_replay"
 prior_known = [r["generation_sha256"] for r in next_history["entries"][:-1] if r.get("state") == "known_good"]
 expected_previous_known_good = prior_known[-1] if prior_known else ""
 acknowledged = m.acknowledge_history_alert(next_history, next_history["alerts"][-1]["alert_id"], "owner-test")

@@ -37,11 +37,11 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
-      "sha256": "03cc6d2c60f6cee8794ed30cc2b087a5e3b89aa2259b30a197f6bc050cd071fd"
+      "sha256": "3533e11c6bf39aca70638190f2a1ffe819ee8ecbf5de61591b52f8c62c04f0de"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
-      "sha256": "693e4c66a6194b903a0c85b2722785dbe54a689b5fb50eb4d316aacb09ec5eb7"
+      "sha256": "683ea1ce4d323cdb8d5e06529244a0984d3745e725eb0462e34ce9bf880bd6fb"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
@@ -81,19 +81,19 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
-      "sha256": "b1d52149a8a9f1ba4fa4cf23fdfa2b2902f968f2b609e2c04c6b4ebb0bf641e2"
+      "sha256": "678c15013e4a0182031997d324e83f512764cb14528dc06e27fd842c976a2b00"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
-      "sha256": "3a70d380ce10955424c432124fce7cb7dd489b0eab0ffe89b861548f3630b017"
+      "sha256": "a6fb89fb3367acf7b43ec318e387f54681f0956409fd5096f53513fa4843a4f2"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
-      "sha256": "921f38b0bf4dd7a1dad050d88f951274f750578b7dfe95edfbf2895519b06767"
+      "sha256": "d4388bf57662dc24e89c19d9ef555689fedf4c9e17b5ee703220c2e63fe2a9cf"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
-      "sha256": "87771fc1860165254004df4fec3a90d09dde6c450b6402a525e93167943c1c7a"
+      "sha256": "804785a9bc76231f2daa689ef4704971c2b50fe3759a8877695dfff150d9a127"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
@@ -101,23 +101,23 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "aae8c4d592bd26b175a88de6e036fd794e34dbb9282df823cd387b9229c7af9e"
+      "sha256": "9cd8f84a0983a151e62cfed73de7c5def3b4045e80c3f5ec07cf361ece9f8ae9"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "46d52c48d0f6477e8eb11df07804fd3d741ac3a01fe9da5e22484acde37fbdf4"
+      "sha256": "c3aabef67663be82f69731cc8ec3ef45d0e3496ec35737c9c09d8de352e50884"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-      "sha256": "da225a32dbad820b084f0fed80fc7ce9816d39cf1c092bd00012b7656e59e06e"
+      "sha256": "89599f2ca1690c4e6c38b7fe7070bf0f7931a4032a75a0a8e62016c1843a0b5b"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
-      "sha256": "785d42b387d0af240502d808ac2f862bd9ca9c916d5f899cdd19513b8b97fbc8"
+      "sha256": "a8bf5b843f4b431e86d81e2b0292720eae336fbd772191eda934acddc5cf2688"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "04dcab94f704d0a1db87d7f4bc0f3076cb5143ea983109719de99d1aa6841396"
+      "sha256": "8b468b06da3130dd7ee488fb3fd42517b74c28b6e2a1b4e4ce1d6878710588dc"
     }
   ],
   "acceptance_contracts": [

@@ -2,6 +2,8 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+require_once __DIR__ . '/class-mad4b-scp-reversible-canary-certification.php';
+
 /**
  * Governed execution wrapper for high-risk provider capabilities in CANARY.
  *
@@ -75,6 +77,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 				'expected_canary_basis_digest' => $digest,
 				'expected_behavioral_evidence_digest' => $digest,
 				'target_input' => array( 'type' => 'object', 'additionalProperties' => true, 'default' => array() ),
+				'certification_recipe' => array( 'type' => 'object', 'additionalProperties' => true ),
 			),
 			'required' => array(
 				'provider_id',
@@ -198,16 +201,27 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 		$attempt = self::audit( $audit_base, 'attempt' );
 		if ( is_wp_error( $attempt ) ) return new WP_Error( 'mad4b_provider_canary_audit_preflight_failed', 'Canary execution is denied because the append-only attempt evidence could not be persisted.', array( 'reason_code' => $attempt->get_error_code() ) );
 
-		try {
-			$result = $context['adapter']->execute_canary( $context['target_ability'], $context['target_input'] );
-		} catch ( Throwable $error ) {
-			$failure = new WP_Error( 'mad4b_provider_canary_adapter_exception', 'Provider canary adapter threw before a verified result was available.' );
-			self::audit( array_merge( $audit_base, array( 'reason_code' => $failure->get_error_code(), 'error_type' => get_class( $error ) ) ), 'failure' );
-			return $failure;
-		}
-		if ( is_wp_error( $result ) ) {
-			self::audit( array_merge( $audit_base, array( 'reason_code' => $result->get_error_code() ) ), 'failure' );
-			return $result;
+		$certification_receipt = array();
+		if ( isset( $input['certification_recipe'] ) && is_array( $input['certification_recipe'] ) ) {
+			$certified = MAD4B_SCP_Reversible_Canary_Certification::execute( $context, $input['certification_recipe'] );
+			if ( is_wp_error( $certified ) ) {
+				self::audit( array_merge( $audit_base, array( 'reason_code' => $certified->get_error_code(), 'blind_retry_allowed' => false ) ), 'failure' );
+				return $certified;
+			}
+			$result = $certified['provider_result'];
+			$certification_receipt = $certified['receipt'];
+		} else {
+			try {
+				$result = $context['adapter']->execute_canary( $context['target_ability'], $context['target_input'] );
+			} catch ( Throwable $error ) {
+				$failure = new WP_Error( 'mad4b_provider_canary_adapter_exception', 'Provider canary adapter threw before a verified result was available.' );
+				self::audit( array_merge( $audit_base, array( 'reason_code' => $failure->get_error_code(), 'error_type' => get_class( $error ) ) ), 'failure' );
+				return $failure;
+			}
+			if ( is_wp_error( $result ) ) {
+				self::audit( array_merge( $audit_base, array( 'reason_code' => $result->get_error_code() ) ), 'failure' );
+				return $result;
+			}
 		}
 
 		$observation = self::observe_result( $context['adapter'], $context['target_ability'], $result );
@@ -224,6 +238,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 				'authorizing' => false,
 				'activation_granted' => false,
 				'promotion_granted' => false,
+				'reversible_certification_receipt' => $certification_receipt,
 			)
 		);
 		$evidence['evidence_digest'] = self::stable_digest( $evidence );
@@ -251,6 +266,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 			'target_result_disclosure' => 'adapter_safe_summary_only',
 			'execution_audit' => $audit_meta,
 			'activation_stage_after_execution' => 'canary',
+			'reversible_certification_receipt' => $certification_receipt,
 			'promotion_granted' => false,
 		);
 	}

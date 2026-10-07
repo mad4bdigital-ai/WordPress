@@ -123,6 +123,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-projection-hotset-recomme
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-diff.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-provider-contract.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-declarative-adapter-manifest.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-recovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-jobs.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-intent-registry.php';
@@ -164,6 +165,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-eligib
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-health-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-traits.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-execution-binding.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-shadow-read.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-callback-order.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-provider-plan.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-addon-registry.php';
@@ -178,6 +180,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-impact-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-impact-binding.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization-decision-graph.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-crypto-profile.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-certification-pack-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-receipt.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';

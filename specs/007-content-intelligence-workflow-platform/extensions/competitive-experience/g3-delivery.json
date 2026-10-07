@@ -1,0 +1,148 @@
+{
+  "contract": "mad4b.competitive-g3-delivery.v1",
+  "status": "REPOSITORY_G3_CORE_IMPLEMENTED_LIVE_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_branch": "feat/007-g3-adapters-shadow-canary-packs-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "a6e39275009e7db32b0c4c8623886acd1a48e170",
+  "reviewed_master_ancestor": "dccb0889799eb255f0d64d6959d9687252801c5b",
+  "detached_seed_sha": "b93968a29ccb3060453b9ff84a22a7aac3ef2e21",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "authorizing": false,
+  "production_authorized": false,
+  "runtime_parity_claimed": false,
+  "live_provider_acceptance": false,
+  "live_browser_acceptance": false,
+  "capability_ids": [
+    "CE043",
+    "CE045",
+    "CE046",
+    "CE047"
+  ],
+  "partial_task_ids": [
+    "T4011",
+    "T4012",
+    "T4013",
+    "T4014",
+    "T4015",
+    "T4021",
+    "T4022",
+    "T4023",
+    "T4024",
+    "T4025",
+    "T4026",
+    "T4027",
+    "T4028",
+    "T4029",
+    "T4030",
+    "T4031",
+    "T4032",
+    "T4033",
+    "T4034",
+    "T4035"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-declarative-adapter-manifest.php",
+      "sha256": "b72eb108e3b35565ff86bc64ed3d14ce03b34c77fbe1afd78626f805290e4b43"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-shadow-read.php",
+      "sha256": "d3dc0a11cad6cde00676800a71d2437181c577953d52a6589314fcfb0c8c375f"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-canary-certification.php",
+      "sha256": "6ac53335f60436e1a43a8f88241523264fe600fe5cf6d9826fb419b878656053"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-certification-pack-registry.php",
+      "sha256": "68a39cd5c4ba39e7818b39f6d74354ec065423fb264f02e715b9e7d1eedb4874"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php",
+      "sha256": "eb103b5c75e3b8a1d77950744a5024494d2ade34e3d9967a4809d545ee2d8a22"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json",
+      "sha256": "33148fa02ef14781413c7f280675545c2f8bac87c0dd3e49eea504e9bd7c61b8"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "8784ce80af3b9b58cb81aa1a653a0783e7f2f4275e9d13fbec5c3e4ef17f1d7b"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/declarative-adapter-manifest-contract.php",
+      "sha256": "471acd11d1392680b39ea49fa96bf9a52d9f6c271cd20a5ff43de57b6124f96f"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/provider-shadow-read-contract.php",
+      "sha256": "a8f5a189cfa6f3b58c873da37bd893e8d1aa17dfbedcc30c0b80f6bda243b91b"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/reversible-canary-certification-contract.php",
+      "sha256": "260085550e834e00868e09b4f40f89407dae256cc59f4e522bb20d71b4f3337c"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/certification-pack-registry-contract.php",
+      "sha256": "d14f033f297bffea6c939d7f3f3daed498172fd0c7ca8603e8d62abda0190dcc"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py",
+      "sha256": "41afc74c0c6989fbbe750bd3a16f70a375e3b0ec26c88a1ec5685fc3bd84085f"
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
+      "sha256": "678c15013e4a0182031997d324e83f512764cb14528dc06e27fd842c976a2b00"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
+      "sha256": "804785a9bc76231f2daa689ef4704971c2b50fe3759a8877695dfff150d9a127"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g3-delivery.md",
+      "sha256": "994b2bc059c69fde34fb44bc0650047305958d21fb34e3f0fe94c522a62dd047"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
+      "sha256": "9cd8f84a0983a151e62cfed73de7c5def3b4045e80c3f5ec07cf361ece9f8ae9"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
+      "sha256": "c3aabef67663be82f69731cc8ec3ef45d0e3496ec35737c9c09d8de352e50884"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
+      "sha256": "a8bf5b843f4b431e86d81e2b0292720eae336fbd772191eda934acddc5cf2688"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "sha256": "8b468b06da3130dd7ee488fb3fd42517b74c28b6e2a1b4e4ce1d6878710588dc"
+    }
+  ],
+  "acceptance_contracts": [
+    "signed_non_authorizing_manifest_plan_with_admitted_strategy_and_input_schema",
+    "no_generated_code_arbitrary_symbol_generic_http_grants_or_mounts",
+    "purpose_specific_certification_pack_and_behavioral_evidence_crypto_profiles",
+    "bounded_exact_input_zero_effect_nonsecret_governed_shadow_reads",
+    "active_output_only_candidate_output_discarded_generation_bound_receipt",
+    "signed_exact_staging_subject_input_disposable_target_l3_canary_recipe",
+    "existing_one_time_canary_authority_single_execution_finally_cleanup",
+    "exact_native_state_and_effect_restoration_no_uncertain_receipt_or_blind_retry",
+    "typed_signed_pack_schema_artifact_site_environment_generation_restore_binding",
+    "only_proven_monotonic_non_authorizing_policy_refresh_eligible",
+    "bounded_locked_lineage_and_retained_revocation_tombstones_fail_closed_on_overflow"
+  ],
+  "remaining_acceptance": [
+    "Exact-head child CI, owner attestation, separate merge authorization and post-merge cumulative Hub CI.",
+    "Real provider manifest strategy/schema/effect/readback/rollback integration and actual signing-key trust/expiry/rotation/revocation.",
+    "Staging shadow workload coverage, field comparators, independent samples, privacy, zero effects and real quotas/cost; existing read exposure receipt consumption.",
+    "Staging disposable fixture provisioning and exact one-time canary authority; hooks/external-effect cleanup, cancellation, drift and uncertainty readback.",
+    "Live pack database locking, concurrent activation/revocation, corruption, expired active state, key revocation and replay after restore; per-type interpreter/consumer integration.",
+    "Relevant operator/browser/RTL journeys and independent persisted readback; no direct WordPress connection from this development window.",
+    "G4–G9 and final frozen release closure remain pending before #258 is release-ready; Production remains unauthorized."
+  ]
+}
