@@ -197,3 +197,6 @@ for marker in [
     "'ability_contract_scan_count' => $returned",
 ]:
     require(marker in PROJECTION, f"bounded projection status invariant missing: {marker}")
+
+for token in ("catalog_preflight_error_code","mad4b_catalog_preflight_exception","is_wp_error( $catalog_preflight )"):
+    require(token in PROJECTION, f"projection status fail-soft catalog preflight guard missing: {token}")
