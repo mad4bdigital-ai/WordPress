@@ -1941,11 +1941,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 			document.addEventListener("submit",function(event){
 				var form=event.target.closest("#mad4b-context-batch-form");
 				if(!form)return;
-				var selected=document.querySelectorAll('.mad4b-context-review-select:checked:not(:disabled)');
+				var selected=document.querySelectorAll(".mad4b-context-review-select:checked:not(:disabled)");
 				if(!selected.length){event.preventDefault();window.alert("Select at least one reviewable Context asset.");return;}
 				var submitter=event.submitter;
 				var decision=submitter&&submitter.name==="decision"?submitter.value:"approve";
-				var note=form.querySelector('input[name="review_note"]');
+				var note=form.querySelector("input[name=review_note]");
 				if(decision!=="approve"&&(!note||!note.value.trim())){event.preventDefault();window.alert("A batch note is required for Request changes and Reject.");return;}
 				var label=decision==="approve"?"approve":(decision==="needs_changes"?"request changes for":"reject");
 				if(!window.confirm("Confirm "+label+" for "+selected.length+" selected Context asset(s)?\n\nThe server verifies the entire bundle first, then refreshes exact bindings between decisions."))event.preventDefault();
