@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "a6add03672e66109ee2f287e6f8d7d5df2eaace08cd4dbfc5a41e0ad3788d2ac",
+  "status_source_sha256": "fb79efc0b2eb82165a80996ace175c07821af4fb284ed5cc1b83cfddb7ce904a",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
@@ -364,7 +364,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Typed forms family/provider catalog and exact version-readiness projection are implemented; provider-native discovery adapters and live version acceptance remain pending."
+      "reason": "Typed forms family plus dynamic Adapter Registry/Plugin Discovery readiness is implemented; existing Fluent Forms and JetFormBuilder read adapters are reused with exact plugin/version identity, while CF7/WPForms/Gravity provider-native adapters and broader version certification remain pending."
     },
     {
       "task_id": "T3932",
@@ -376,7 +376,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Reviewed configuration-plan semantics, provider serialization and exact-readback prerequisites are modeled; provider-native apply executors remain pending."
+      "reason": "Existing Fluent Forms/JetFormBuilder inventory and metadata reads are surfaced through runtime readiness, and G4 requires provider serialization/exact readback for config mutation; provider-native governed configuration apply executors remain pending."
     },
     {
       "task_id": "T3933",
@@ -400,7 +400,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Forms readiness distinguishes profiled, installed-unprofiled and unavailable providers without claiming execution; provider-specific submission/runtime prerequisite probes remain pending."
+      "reason": "Forms readiness now distinguishes exact certified, read-ready-uncertified, runtime-absent and installed-adapter-missing states without exposing submission values; Flamingo/premium/submission prerequisite probes remain pending."
     },
     {
       "task_id": "T3935",
@@ -424,7 +424,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Commerce operations are independently typed across catalog, private order/customer and financial surfaces; provider-native object executors remain pending."
+      "reason": "WooCommerce is linked to its existing governed product adapter with read and reversible product-update contracts while catalog/order/customer/reporting/fulfillment surfaces remain independently classified and broader commerce coverage remains pending."
     },
     {
       "task_id": "T3937",
@@ -436,7 +436,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Read-first commerce readiness, bounded pagination and customer/order PII masking requirements are explicit; HPOS/object-level runtime reads remain pending."
+      "reason": "WooCommerce read readiness is projected from the live adapter and plugin identity; HPOS, order/customer object-level access, PII masking and bounded pagination acceptance remain pending."
     },
     {
       "task_id": "T3938",
@@ -448,7 +448,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Catalog/stock write plans require disposable canary, concurrency and hook-aware exact readback; WooCommerce canary execution remains pending."
+      "reason": "The existing WooCommerce reversible product contract is detected and can satisfy rollback-surface discovery for admitted catalog work, but disposable stock/tax/batch canaries, hook-aware exact readback and concurrency coverage remain pending."
     },
     {
       "task_id": "T3939",
@@ -484,7 +484,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Typed builder family covers Elementor, Divi, Kadence and WordPress core without execution branches in the planner; provider-native adapters remain pending."
+      "reason": "Elementor is linked to the existing structural adapter with read/reversible contracts while Divi, Kadence and WordPress core remain typed peers without provider branches in the G4 planner; non-Elementor adapters and parity remain pending."
     },
     {
       "task_id": "T3942",
@@ -496,7 +496,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Builder tree/clone planning requires native schema, revision and editor-lock checks; concrete provider tree readers and lock probes remain pending."
+      "reason": "Existing Elementor document/tree/validation/compare capabilities are projected as runtime read support and structural mutations remain gated by revision/editor-lock requirements; Divi/Kadence/Gutenberg tree readers and cross-builder diff acceptance remain pending."
     },
     {
       "task_id": "T3943",
@@ -508,7 +508,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Content/template mutation plans require fresh IDs/ownership/readback boundaries; provider serialization and exact apply executors remain pending."
+      "reason": "Existing Elementor reversible structural operations provide concrete provider-native serialization/readback evidence for one builder; admitted text/image/widget/template operations across the remaining builders and fresh-ID canaries remain pending."
     },
     {
       "task_id": "T3944",
@@ -739,7 +739,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Typed site-operations family covers backup, cache, migration, security and redirects with independent risk descriptors; provider adapters remain pending."
+      "reason": "Site-operations family now reuses the existing LiteSpeed status/purge adapter through dynamic readiness while UpdraftPlus, W3 Total Cache, All-in-One Migration, Wordfence and Redirection remain typed but unadapted or uncertified providers."
     },
     {
       "task_id": "T3967",
@@ -763,7 +763,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Cache purge and redirect plans require blast-radius, URL/path egress, readback and loop-detection constraints; provider-native apply remains pending."
+      "reason": "LiteSpeed contributes an existing same-site bounded purge path, while G4 still requires explicit blast-radius/readback evidence and provider-native redirect planning with loop detection for the broader cache/redirect family."
     },
     {
       "task_id": "T3969",
@@ -811,7 +811,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Multilingual taxonomy/hierarchy diff requires source language, parent identity, duplicates and translation-group evidence; WPML/native dry-run implementation remains pending."
+      "reason": "Generic language coverage now reuses the existing Polylang read/reversible language-assignment adapter; WPML/generic taxonomy-hierarchy dry-run diff with source language, parent identity, duplicates and translation-group evidence remains pending."
     },
     {
       "task_id": "T3973",
@@ -823,7 +823,7 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ],
-      "reason": "Hierarchy/media/menu mutation plans require cycle/egress/ownership/readback protections and do not allow role escalation; exact executors remain pending."
+      "reason": "Existing Polylang reversible assignment demonstrates one bounded language mutation surface, while hierarchy/metadata/menu/media changes still require field ownership, cycle/egress protections, exact readback and no cross-language corruption."
     },
     {
       "task_id": "T3974",
