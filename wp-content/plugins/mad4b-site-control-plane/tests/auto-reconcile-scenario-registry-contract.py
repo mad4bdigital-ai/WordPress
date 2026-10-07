@@ -47,7 +47,19 @@ assert "FALLBACK_PROBE_INTERVAL = 300" in adaptive
 assert "candidate_binding_fallback_drift" in adaptive
 assert "'source' => 'candidate_binding_probe'" in adaptive
 assert "core_enqueued_generation" in adaptive
-assert "Persist the generation-bound core decision before provider slicing" in adaptive
+# The signed generation checkpoint must be stored and validated before any
+# provider slice. Check the safety ordering, which survives comment changes.
+checkpoint_start = adaptive.index("if ( $core_checkpoint_dirty ) {")
+provider_start = adaptive.index("$catalog = MAD4B_SCP_Provider_Contracts::all();", checkpoint_start)
+checkpoint = adaptive[checkpoint_start:provider_start]
+seal = checkpoint.index("$registry['seal'] = self::seal( $registry );")
+lease = checkpoint.index("MAD4B_SCP_Runtime_Maintenance_Lease::refresh(")
+persist = checkpoint.index("update_option( self::OPTION, $registry, false );")
+readback = checkpoint.index("$core_readback = get_option( self::OPTION, array() );")
+validation = checkpoint.index("self::valid_registry( $core_readback )")
+assert seal < lease < persist < readback < validation
+assert "hash_equals( (string) $generation" in checkpoint
+assert "self::schedule( 60 ); return;" in checkpoint
 assert "plugins.php" in adaptive and "update.php" in adaptive and "plugin-install.php" in adaptive
 assert "$admin_lifecycle" in adaptive
 assert "( is_admin() && ! $admin_lifecycle )" in adaptive
@@ -55,7 +67,6 @@ assert "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate" in adaptive
 assert "MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error" in adaptive
 assert "failure_decision" in adaptive and "failure_policy_id" in adaptive and "failure_policy_source" in adaptive
 assert "MAD4B_SCP_Runtime_Convergence::mark_activation_pending()" in adaptive
-assert "This only queues the existing convergence worker" in adaptive
 assert "'SCHEDULE_PROBE' === $decision" in adaptive
 assert "'DEFER' === $decision" in adaptive
 assert "'NO_OP' === $decision" in adaptive
@@ -156,3 +167,23 @@ assert "'decision' => 'REVIEW_REQUIRED'" in runtime
 assert "'policy_id' => 'registry_unavailable'" in runtime
 assert "legacy_transient_fallback" not in runtime
 assert "legacy_review_fallback" not in runtime
+# Retain the central worker-policy coverage from retired PR #262 in this
+# already-owned contract instead of reviving its stale test files.
+assert "private static function worker_error_policy" in runtime
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error" in runtime
+assert "$checkpoint['auto_reconcile_decision'] = $decision;" in runtime
+assert "$checkpoint['auto_reconcile_policy_id']" in runtime
+assert "$checkpoint['auto_reconcile_policy_source']" in runtime
+assert "'DEFER' === $decision" in runtime
+assert "bounded_defer_exhausted" in runtime
+assert "hard_block_repair_required" in runtime
+assert "explicit_review_required" in runtime
+schedule_start = runtime.index("public static function maybe_schedule_pending()")
+schedule_end = runtime.index("private static function convergence_trigger_allowed()", schedule_start)
+schedule = runtime[schedule_start:schedule_end]
+assert "self::worker_error_policy( $last_error )" in schedule
+assert "'DEFER' !== $decision" in schedule
+assert "auto_reconcile_policy_id" in schedule
+assert "auto_reconcile_policy_source" in schedule
+
+print("auto-reconcile scenario registry contract: PASS")
