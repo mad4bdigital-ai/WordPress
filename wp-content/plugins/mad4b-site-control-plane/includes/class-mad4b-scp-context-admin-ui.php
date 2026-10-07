@@ -907,20 +907,26 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$agents = self::review_agent_options();
 		$mode = isset( $policy['mode'] ) ? (string) $policy['mode'] : 'human_only';
 		$configured_agent = isset( $policy['ai_agent_public_id'] ) ? (string) $policy['ai_agent_public_id'] : '';
-		$write_mounted = class_exists( 'MAD4B_SCP_Servers' ) && in_array( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY, MAD4B_SCP_Servers::write_tools(), true );
-		$cataloged = class_exists( 'MAD4B_SCP_Servers' ) && in_array( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY, MAD4B_SCP_Servers::external_write_tools(), true );
+		$agent_label = '';
+		foreach ( $agents as $agent ) {
+			if ( isset( $agent['public_id'] ) && hash_equals( $configured_agent, (string) $agent['public_id'] ) ) {
+				$agent_label = isset( $agent['label'] ) ? (string) $agent['label'] : '';
+				break;
+			}
+		}
+		$ai_ready = 'human_and_ai' === $mode && ! empty( $status['ready'] );
+		$mode_label = 'human_and_ai' === $mode ? ( $ai_ready ? 'Human + AI · AI ready' : 'Human + AI · AI blocked' ) : 'Human only';
 
-		echo '<div id="mad4b-context-review-policy" class="mad4b-scp-panel mad4b-context-review-policy"><div class="mad4b-context-review-policy-head"><div><h2>' . esc_html__( 'Approval Mode', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Human approval always remains available. AI Agent approval is an optional additive Staging delegation for exact-bound review decisions only.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-badge">' . esc_html( 'human_and_ai' === $mode ? 'Human + AI' : 'Human only' ) . '</span></div>';
-		echo '<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-review-policy"' . MAD4B_SCP_Admin_Settings_Persistence::view_attributes( 'context-review-policy', array(
+		echo '<div id="mad4b-context-review-policy" class="mad4b-scp-panel mad4b-context-review-policy"><div class="mad4b-context-review-policy-head"><div><h2>' . esc_html__( 'Approval workflow', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Human approval always remains available. Delegated AI review is additive, Staging-only and exact-bound.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-badge">' . esc_html( $mode_label ) . '</span></div>';
+		echo '<form class="mad4b-context-review-policy-form" data-mad4b-original-mode="' . esc_attr( $mode ) . '" data-mad4b-original-agent="' . esc_attr( $configured_agent ) . '"' . MAD4B_SCP_Admin_Settings_Persistence::view_attributes( 'context-review-policy', array(
 			'revision' => (int) ( $context_profile['revision'] ?? 0 ), 'mode' => $mode, 'ai_agent_public_id' => $configured_agent,
 		) ) . ' method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SAVE_REVIEW_POLICY );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_REVIEW_POLICY ) . '">';
 		echo '<div class="mad4b-context-approval-mode-grid">';
-		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_only"' . checked( $mode, 'human_only', false ) . '> <strong>' . esc_html__( 'Human Approval', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Administrator reviews exact content in this screen. This path is always available and can override or replace later AI decisions.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_and_ai"' . checked( $mode, 'human_and_ai', false ) . '> <strong>' . esc_html__( 'AI Agent Approval', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Adds one exact-agent governed review path. The AI can approve, reject, or request changes, but cannot change category, authority, Required scope, source mode, or quality policy.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '</div>';
-		echo '<div class="mad4b-context-ai-review-settings">';
+		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_only"' . checked( $mode, 'human_only', false ) . '> <strong>' . esc_html__( 'Human Approval', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Review exact content directly in this workspace.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_and_ai"' . checked( $mode, 'human_and_ai', false ) . '> <strong>' . esc_html__( 'Human + AI', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Adds the canonical Site Profile agent as an exact-bound review path. Governance metadata remains human-controlled.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '</div><div class="mad4b-context-ai-review-settings">';
 		echo '<label><strong>' . esc_html__( 'Delegated AI Agent', 'mad4b-site-control-plane' ) . '</strong><select name="ai_agent_public_id"><option value="">' . esc_html__( 'Select the canonical Site Profile agent', 'mad4b-site-control-plane' ) . '</option>';
 		foreach ( $agents as $agent ) {
 			$label = (string) $agent['label'];
@@ -928,14 +934,21 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<option value="' . esc_attr( $agent['public_id'] ) . '"' . selected( $configured_agent, $agent['public_id'], false ) . '>' . esc_html( $label ) . '</option>';
 		}
 		echo '</select></label>';
-		echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="confirm_ai_review_delegation" value="1" data-mad4b-one-time-confirm> ' . esc_html__( 'One-time confirmation: I explicitly delegate exact Context review decisions to the selected AI Agent. This confirmation intentionally resets after save/reload; the persisted mode and selected Agent are shown above. Exact grant reconciliation remains separate.', 'mad4b-site-control-plane' ) . '</label>';
+		if ( $ai_ready ) echo '<div class="notice notice-success inline mad4b-context-delegation-active"><p><strong>' . esc_html__( 'Delegation active', 'mad4b-site-control-plane' ) . ' ✓</strong> ' . esc_html__( 'Future changes to the delegated agent require a new explicit confirmation.', 'mad4b-site-control-plane' ) . '</p></div>';
+		echo '<label class="mad4b-context-required-confirm mad4b-context-delegation-confirmation' . ( $ai_ready ? ' is-hidden' : '' ) . '"><input type="checkbox" name="confirm_ai_review_delegation" value="1" data-mad4b-one-time-confirm> ' . esc_html__( 'Confirm this change to delegated AI review authority.', 'mad4b-site-control-plane' ) . '</label>';
 		echo '<div class="mad4b-context-ai-review-status">';
-		echo '<span><strong>' . esc_html__( 'Stable catalog', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( $cataloged ? 'present' : 'not registered' ) . '</span>';
-		echo '<span><strong>' . esc_html__( 'Runtime write mount', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( $write_mounted ? 'eligible' : 'blocked until delegation' ) . '</span>';
-		echo '<span><strong>' . esc_html__( 'Exact grant', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( ! empty( $status['exact_grant_ready'] ) ? 'ready' : 'not reconciled' ) . '</span>';
-		echo '<span><strong>' . esc_html__( 'Production', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html__( 'not authorized', 'mad4b-site-control-plane' ) . '</span>';
+		echo '<span><strong>' . esc_html__( 'Delegation', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( $ai_ready ? 'Active ✓' : ( 'human_and_ai' === $mode ? 'Blocked' : 'Not enabled' ) ) . '</span>';
+		echo '<span><strong>' . esc_html__( 'Agent', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( '' !== $agent_label ? $agent_label : ( $configured_agent ? 'Configured' : 'Not selected' ) ) . '</span>';
+		echo '<span><strong>' . esc_html__( 'Exact grant', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( ! empty( $status['exact_grant_ready'] ) ? 'Ready ✓' : 'Not reconciled' ) . '</span>';
+		echo '<span><strong>' . esc_html__( 'Review execution', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( ! empty( $status['ready'] ) ? 'Ready ✓' : 'Blocked' ) . '</span>';
+		echo '<span><strong>' . esc_html__( 'Production', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html__( 'Disabled', 'mad4b-site-control-plane' ) . '</span>';
 		echo '</div>';
 		if ( ! empty( $status['blockers'] ) && 'human_and_ai' === $mode ) echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'AI path blockers:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', array_map( 'sanitize_key', $status['blockers'] ) ) ) . '</code></p>';
+		echo '<details class="mad4b-context-advanced-governance"><summary>' . esc_html__( 'Advanced governance details', 'mad4b-site-control-plane' ) . '</summary><dl>';
+		echo '<dt>' . esc_html__( 'Ability', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) . '</code></dd>';
+		echo '<dt>' . esc_html__( 'Catalog eligibility', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( ! empty( $status['catalog_eligible'] ) ? 'eligible' : 'not eligible' ) . '</dd>';
+		echo '<dt>' . esc_html__( 'State source', 'mad4b-site-control-plane' ) . '</dt><dd><code>ai_review_policy_status()</code></dd></dl>';
+		echo '<p class="description">' . esc_html__( 'Execution readiness is derived from the authoritative review policy and exact grant state, not from static server catalog membership.', 'mad4b-site-control-plane' ) . '</p></details>';
 		echo '<div class="mad4b-context-review-policy-feedback mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>';
 		submit_button( __( 'Save Approval Mode', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 		echo '</div></form></div>';
