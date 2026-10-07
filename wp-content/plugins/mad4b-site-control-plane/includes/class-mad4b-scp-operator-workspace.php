@@ -131,6 +131,7 @@ final class MAD4B_SCP_Operator_Workspace {
 		self::setup_path();
 		self::external_notices();
 		self::capabilities( $adaptive );
+		if ( class_exists( 'MAD4B_SCP_Competitive_Evidence' ) ) MAD4B_SCP_Competitive_Evidence::render_operator_view();
 		self::autonomy_reference();
 		echo '<details class="mad4b-evidence-details"><summary>' . esc_html__( 'Technical evidence', 'mad4b-site-control-plane' ) . '</summary><p>' . esc_html__( 'This view reports evidence and grants no new access.', 'mad4b-site-control-plane' ) . '</p><ul>';
 		foreach ( array_slice( isset( $snapshot['reasons'] ) && is_array( $snapshot['reasons'] ) ? $snapshot['reasons'] : array(), 0, 32 ) as $reason ) if ( is_string( $reason ) ) echo '<li><code><bdi>' . esc_html( $reason ) . '</bdi></code></li>';

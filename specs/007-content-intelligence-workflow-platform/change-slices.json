@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
-  "reviewed_base_sha": "7e53f19e04c82e5893aaf97d9251cfbb6a8a77b6",
-  "changed_file_count": 61,
+  "reviewed_base_sha": "e7b7f05c66c319396bba6ef032c6cbdd1d1e1a4e",
+  "changed_file_count": 103,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -97,8 +97,66 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php"
       ]
+    },
+    {
+      "id": "g1-evidence-runtime-graph-classifier",
+      "semantic_unit": "Reproducible competitive evidence, bounded runtime candidate graph, semantic policy proposals and evidence-only owner review",
+      "revert_boundary": "Revert G1 evidence snapshot, runtime graph/classifier services and their exact tests as one non-authorizing implementation slice.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
+        "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-collectors.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-conformance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php"
+      ]
+    },
+    {
+      "id": "content-experience-remote-media-runtime",
+      "semantic_unit": "Governed CPT-agnostic content experience bootstrap, provider adapters, remote media ingestion, provenance, rights, egress and recovery runtime",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/UNIVERSAL-WORDPRESS-OPERATIONS.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-remote-media-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-manifest.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-planning.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-rights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-storage.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-profiles.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-media-manifest.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-media-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-media-rights.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-experience-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-release-set-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py"
+      ],
+      "certification": "exact_head",
+      "revert_boundary": "Revert PR #266 content-experience and remote-media runtime/config/tests as one bounded slice; existing G0/G1 specification and admin workspace ownership remains unchanged."
     }
   ],
-  "changed_paths_sha256": "bd9e8737c387ee3a7f54bc8eef6c2a171dea259d130d777901f47058282685dc",
+  "changed_paths_sha256": "f96a0f2727b30a8e2fdd3a35277a11bc8b3e4f75486413fa54be6725079bb4cd",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

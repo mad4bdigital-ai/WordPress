@@ -16,6 +16,12 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php'
 
 permissions:
   contents: read
@@ -180,6 +186,17 @@ jobs:
 
       - name: Reject unsafe competitor evidence and false extension completion
         run: python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py
+
+      - name: Verify Competitive Experience G1 evidence and classifier contracts
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py
+          python wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php
+          php -l wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php
+          test -z "$(php wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php)"
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php
 
       - name: Enforce bulk closure hardening contract
         run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py

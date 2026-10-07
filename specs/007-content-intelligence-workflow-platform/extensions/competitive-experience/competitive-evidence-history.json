@@ -1,0 +1,87 @@
+{
+  "contract": "mad4b.competitive-evidence-history.v2",
+  "retention": {
+    "max_entries": 64,
+    "policy": "append_only_fail_closed",
+    "silent_pruning": false
+  },
+  "current_generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
+  "current_entry_sha256": "cc1b5c26741aa43df20d379b4bb9e4b0cec38f47c3ffdfc117aa089049b8f50e",
+  "previous_known_good_generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
+  "alerts": [
+    {
+      "alert_id": "drift-385762c5d046ce9b",
+      "revision": 2,
+      "generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
+      "reasons": [
+        "task"
+      ],
+      "state": "acknowledged",
+      "authorizing": false,
+      "alert_sha256": "435eb266aaca42483df865c60489b7c9c68f682103dca5c1cb1acaf3d49d3b76"
+    }
+  ],
+  "acknowledgements": [
+    {
+      "ack_revision": 1,
+      "alert_id": "drift-385762c5d046ce9b",
+      "generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
+      "actor": "g1-repository-hardening",
+      "authorizing": false,
+      "ack_sha256": "cf636dadc16525128cb46fdde2a443e853ac0653db627fa6d8082defae58f88e"
+    }
+  ],
+  "entries": [
+    {
+      "revision": 1,
+      "generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
+      "previous_generation_sha256": "",
+      "source_generation": "fa615ba998fade31d180d10cb4d30472b38b7d8237349d8c3c21002e6e0128ba",
+      "task_generation": "0042404f776e5299a386b5aa005dcff3f33568e6f42cb5f4757a8bf5b2501d94",
+      "matrix_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+      "summary_sha256": "434604177eb02fbb6f7a590ecb1bc9d92a00ca767ce4d313fc195c70c3e79bc1",
+      "package_fingerprints": {
+        "ai-engine": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+        "easy-mcp-ai": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+        "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+        "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
+      },
+      "authorizing": false,
+      "previous_entry_sha256": "",
+      "state": "known_good",
+      "drift_flags": {
+        "source": false,
+        "task": false,
+        "matrix": false,
+        "packages": false
+      },
+      "entry_sha256": "c64ae544b9e2dc0179f12ce68e5a8623bc100791592710232f39f0a94d5816a7"
+    },
+    {
+      "revision": 2,
+      "generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
+      "previous_generation_sha256": "28fcd294965d402623daeb0ec8449df846525ce4a7eb5672d238b9c3a656467f",
+      "previous_entry_sha256": "c64ae544b9e2dc0179f12ce68e5a8623bc100791592710232f39f0a94d5816a7",
+      "source_generation": "fa615ba998fade31d180d10cb4d30472b38b7d8237349d8c3c21002e6e0128ba",
+      "task_generation": "c13c54fb60dab82a470f685b2a0b95e1bf89494c3b5b7efae0fdc954f217438e",
+      "matrix_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+      "summary_sha256": "702168233e50421fb27913c1b40e8c885013cab047a086b145f225efaa91bdd7",
+      "package_fingerprints": {
+        "ai-engine": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+        "easy-mcp-ai": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+        "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+        "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
+      },
+      "state": "known_good",
+      "drift_flags": {
+        "source": false,
+        "task": true,
+        "matrix": false,
+        "packages": false
+      },
+      "authorizing": false,
+      "entry_sha256": "cc1b5c26741aa43df20d379b4bb9e4b0cec38f47c3ffdfc117aa089049b8f50e"
+    }
+  ],
+  "authorizing": false
+}

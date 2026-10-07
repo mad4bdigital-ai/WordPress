@@ -148,7 +148,7 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     if (feature.get("contract") != "mad4b.competitive-experience-extension.v1"
             or feature.get("authorizing") is not False or feature.get("production_authorized") is not False
             or feature.get("release_closure_included") is not False
-            or feature.get("status") not in {"SPEC_BACKLOG_ONLY", "UI_IMPLEMENTATION_IN_PROGRESS"}):
+            or feature.get("status") not in {"SPEC_BACKLOG_ONLY", "UI_IMPLEMENTATION_IN_PROGRESS", "IMPLEMENTATION_IN_PROGRESS"}):
         raise ValueError("extension_must_be_optional_spec_backlog_non_authorizing")
     if (feature.get("required_phase_count"), feature.get("task_count"), feature.get("capability_count")) != (35, 175, 59):
         raise ValueError("extension_inventory_metadata_mismatch")
@@ -221,33 +221,74 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     if {r["task_id"] for r in ledger["tasks"]} != expected_tasks or any(r["status"] not in {"OPEN", "PARTIAL"} for r in ledger["tasks"]):
         raise ValueError("optional_backlog_cannot_claim_runtime_completion")
     partial = {r["task_id"] for r in ledger["tasks"] if r["status"] == "PARTIAL"}
+    ui_partial_ids = {"T3906", "T3907", "T3908", "T3909", "T4061"}
+    g1_partial_ids = {f"T390{i}" for i in range(1, 6)} | {f"T40{i:02}" for i in range(1, 11)}
+    supported_partial_ids = ui_partial_ids | g1_partial_ids
+    if partial - supported_partial_ids:
+        raise ValueError("implementation_partial_task_owner_invalid:" + ",".join(sorted(partial - supported_partial_ids)))
+
+    ui_partial = partial & ui_partial_ids
+    g1_partial = partial & g1_partial_ids
     if partial:
-        if feature.get("status") != "UI_IMPLEMENTATION_IN_PROGRESS":
-            raise ValueError("ui_progress_requires_implementation_state")
-        delivery = load(root, "ui-delivery.json")
-        if (delivery.get("contract") != "mad4b.competitive-admin-ui-delivery.v1"
-                or delivery.get("authorizing") is not False or delivery.get("production_authorized") is not False
-                or delivery.get("live_browser_acceptance") is not False or delivery.get("runtime_parity_claimed") is not False
-                or set(delivery.get("partial_task_ids", [])) != partial
-                or not partial <= {"T3906", "T3907", "T3908", "T3909", "T4061"}
-                or not delivery.get("remaining_acceptance")):
-            raise ValueError("ui_delivery_boundary_or_progress_invalid")
-        for group in ("code_paths", "test_paths"):
-            paths = delivery.get(group, [])
-            if not paths:
-                raise ValueError("ui_delivery_requires_code_and_tests")
-            for entry in paths:
-                path = entry.get("path", "")
-                if not path.startswith("wp-content/plugins/mad4b-site-control-plane/") or ".." in PurePosixPath(path).parts:
-                    raise ValueError("ui_delivery_path_outside_plugin")
-                source = repo / path
-                if source.is_symlink() or not source.is_file() or digest(source.read_bytes()) != entry.get("sha256"):
-                    raise ValueError("ui_delivery_source_evidence_drift")
-        for row in ledger["tasks"]:
-            if row["status"] == "PARTIAL" and "ui-delivery.json" not in row["evidence_refs"]:
-                raise ValueError("ui_partial_task_missing_delivery_binding")
+        if feature.get("status") not in {"UI_IMPLEMENTATION_IN_PROGRESS", "IMPLEMENTATION_IN_PROGRESS"}:
+            raise ValueError("implementation_progress_requires_implementation_state")
+
+        if ui_partial:
+            delivery = load(root, "ui-delivery.json")
+            if (delivery.get("contract") != "mad4b.competitive-admin-ui-delivery.v1"
+                    or delivery.get("authorizing") is not False or delivery.get("production_authorized") is not False
+                    or delivery.get("live_browser_acceptance") is not False or delivery.get("runtime_parity_claimed") is not False
+                    or set(delivery.get("partial_task_ids", [])) != ui_partial
+                    or not delivery.get("remaining_acceptance")):
+                raise ValueError("ui_delivery_boundary_or_progress_invalid")
+            for group in ("code_paths", "test_paths"):
+                paths = delivery.get(group, [])
+                if not paths:
+                    raise ValueError("ui_delivery_requires_code_and_tests")
+                for entry in paths:
+                    path = entry.get("path", "")
+                    if not path.startswith("wp-content/plugins/mad4b-site-control-plane/") or ".." in PurePosixPath(path).parts:
+                        raise ValueError("ui_delivery_path_outside_plugin")
+                    source = repo / path
+                    if source.is_symlink() or not source.is_file() or digest(source.read_bytes()) != entry.get("sha256"):
+                        raise ValueError("ui_delivery_source_evidence_drift")
+            for row in ledger["tasks"]:
+                if row["task_id"] in ui_partial and "ui-delivery.json" not in row["evidence_refs"]:
+                    raise ValueError("ui_partial_task_missing_delivery_binding:" + row["task_id"])
+
+        if g1_partial:
+            delivery = load(root, "g1-delivery.json")
+            if (delivery.get("contract") != "mad4b.competitive-g1-delivery.v1"
+                    or delivery.get("authorizing") is not False or delivery.get("production_authorized") is not False
+                    or delivery.get("runtime_parity_claimed") is not False or delivery.get("live_provider_acceptance") is not False
+                    or delivery.get("live_browser_acceptance") is not False
+                    or delivery.get("exact_head_binding") != "supplied_by_ci_not_embedded_in_commit"
+                    or set(delivery.get("partial_task_ids", [])) != g1_partial
+                    or not delivery.get("remaining_acceptance")):
+                raise ValueError("g1_delivery_boundary_or_progress_invalid")
+            if set(delivery.get("capability_ids", [])) != {"CE001", "CE002", "CE041", "CE042"}:
+                raise ValueError("g1_delivery_capability_scope_invalid")
+            groups = (
+                ("code_paths", "wp-content/plugins/mad4b-site-control-plane/"),
+                ("test_paths", "wp-content/plugins/mad4b-site-control-plane/"),
+                ("spec_paths", "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/"),
+            )
+            for group, prefix in groups:
+                paths = delivery.get(group, [])
+                if not paths:
+                    raise ValueError("g1_delivery_requires_code_tests_and_spec")
+                for entry in paths:
+                    path = entry.get("path", "")
+                    if not path.startswith(prefix) or ".." in PurePosixPath(path).parts:
+                        raise ValueError("g1_delivery_path_outside_scope:" + group)
+                    source = repo / path
+                    if source.is_symlink() or not source.is_file() or digest(source.read_bytes()) != entry.get("sha256"):
+                        raise ValueError("g1_delivery_source_evidence_drift:" + path)
+            for row in ledger["tasks"]:
+                if row["task_id"] in g1_partial and "g1-delivery.json" not in row["evidence_refs"]:
+                    raise ValueError("g1_partial_task_missing_delivery_binding:" + row["task_id"])
     elif feature.get("status") != "SPEC_BACKLOG_ONLY":
-        raise ValueError("ui_implementation_state_without_progress")
+        raise ValueError("implementation_state_without_progress")
     phases = set(range(35))
     for name in ("tasks.md", "plan.md"):
         found = {int(x) for x in re.findall(r"^## Phase (\d+)\b", local_file(root, name).read_text(), re.MULTILINE)}
