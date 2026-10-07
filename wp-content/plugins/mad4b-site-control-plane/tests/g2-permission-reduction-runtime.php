@@ -25,6 +25,8 @@ $GLOBALS['g2_perm_grants'] = array(
 		'ability_name' => 'mad4b/audit-storage-status',
 		'provider' => 'core',
 		'environment' => 'staging',
+		'resource_schema_version' => 'v1',
+		'resource_constraints' => '{"post_id":42}',
 	),
 );
 $GLOBALS['g2_perm_audit'] = array();
@@ -167,6 +169,17 @@ $grantInput = array(
 );
 $grantPlan = MAD4B_SCP_G2_Permission_Changes::plan( $grantInput );
 g2p_check( is_array( $grantPlan ) && true === $grantPlan['eligible'], 'Grant revoke plan should be eligible.' );
+g2p_check( 64 === strlen( $grantPlan['target']['resource_constraints_sha256'] ), 'Grant constraint digest missing from plan.' );
+
+$GLOBALS['g2_perm_grants'][55]['resource_constraints'] = '{"post_id":43}';
+$staleGrantApply = $grantInput;
+$staleGrantApply['plan_sha256'] = $grantPlan['plan_sha256'];
+$staleGrantApply['confirmation'] = MAD4B_SCP_G2_Permission_Changes::CONFIRMATION;
+$staleGrantResult = MAD4B_SCP_G2_Permission_Changes::apply( $staleGrantApply );
+g2p_check( is_wp_error( $staleGrantResult ) && 'mad4b_g2_permission_plan_drift' === $staleGrantResult->get_error_code(), 'Grant target drift must invalidate reviewed plan.' );
+g2p_check( isset( $GLOBALS['g2_perm_grants'][55] ), 'Stale reviewed plan must not revoke grant.' );
+
+$grantPlan = MAD4B_SCP_G2_Permission_Changes::plan( $grantInput );
 $grantInput['plan_sha256'] = $grantPlan['plan_sha256'];
 $grantInput['confirmation'] = MAD4B_SCP_G2_Permission_Changes::CONFIRMATION;
 $grantApply = MAD4B_SCP_G2_Permission_Changes::apply( $grantInput );
