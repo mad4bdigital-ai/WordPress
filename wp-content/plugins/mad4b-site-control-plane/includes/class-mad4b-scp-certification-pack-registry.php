@@ -24,7 +24,7 @@ final class MAD4B_SCP_Certification_Pack_Registry {
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		$category = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::CAT_READ : 'mad4b-read';
+		$category = 'mad4b-admin';
 		foreach ( array(
 			'mad4b/certification-pack-preview'=>array('Preview Certification Pack','preview'),
 			'mad4b/certification-pack-registry-status'=>array('Certification Pack Registry Status','status'),

@@ -21,7 +21,7 @@ final class MAD4B_SCP_Provider_Shadow_Read {
 
 	public static function register_ability() {
 		if ( ! function_exists( 'wp_register_ability' ) || ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/provider-shadow-read-run' ) ) ) return;
-		$category = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::CAT_READ : 'mad4b-read';
+		$category = 'mad4b-admin';
 		wp_register_ability( 'mad4b/provider-shadow-read-run', array(
 			'label' => 'Run Bounded Provider Shadow Read',
 			'description' => 'Compare an exact active governed read path with a candidate read path while returning only the active raw result.',
