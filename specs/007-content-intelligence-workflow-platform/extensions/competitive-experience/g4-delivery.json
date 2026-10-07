@@ -60,7 +60,7 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g4-provider-families.php",
-      "sha256": "1045974943a7507fc1d9e3c0c9d8df9bc07c9b8672c15c3c753b7c40807f26e0"
+      "sha256": "41f22a5a5c68b69f1227d0c17da9678222b18503865e8b29da4112ea449a136c"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -106,7 +106,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-provider-family-contract.php",
-      "sha256": "03ea990310c616b3698f3259de0b4bcfd0e6c5ec50d32070b1a30859fe435a3a"
+      "sha256": "d2a1867cc1d7dddf4f38683045466cddbc955051d7531a8415326e6248427a34"
     }
   ],
   "spec_paths": [
