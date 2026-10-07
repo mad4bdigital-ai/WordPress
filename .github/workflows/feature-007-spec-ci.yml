@@ -22,6 +22,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py'
 
 permissions:
   contents: read
@@ -197,6 +200,12 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php
           test -z "$(php wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php)"
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php
+
+      - name: Verify Competitive Experience G2 governance contracts
+        run: |
+          python wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php
 
       - name: Enforce bulk closure hardening contract
         run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
