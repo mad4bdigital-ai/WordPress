@@ -29,6 +29,19 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-declarative-adapter-manifest.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-shadow-read.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-canary-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-certification-pack-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/declarative-adapter-manifest-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-shadow-read-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/reversible-canary-certification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/certification-pack-registry-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g3-registration-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py'
 
 permissions:
   contents: read
@@ -238,3 +251,40 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py
 
+  g3-runtime:
+    name: Feature 007 G3 runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify G3 contracts and existing canary compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          for service in declarative-adapter-manifest provider-shadow-read reversible-canary-certification certification-pack-registry provider-canary-execution; do
+            php -l "$PLUGIN/includes/class-mad4b-scp-$service.php"
+          done
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          for contract in declarative-adapter-manifest provider-shadow-read reversible-canary-certification certification-pack-registry g3-registration provider-canary-execution provider-canary-authorization-finalization provider-canary-authorization-surface; do
+            php "$PLUGIN/tests/$contract-contract.php"
+          done
+          python3 "$PLUGIN/tests/receipt-crypto-profile-contract.py"

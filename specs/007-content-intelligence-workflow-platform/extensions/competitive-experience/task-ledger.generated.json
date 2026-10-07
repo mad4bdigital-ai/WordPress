@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "46d52c48d0f6477e8eb11df07804fd3d741ac3a01fe9da5e22484acde37fbdf4",
+  "status_source_sha256": "c3aabef67663be82f69731cc8ec3ef45d0e3496ec35737c9c09d8de352e50884",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 135,
-    "PARTIAL": 40,
+    "OPEN": 115,
+    "PARTIAL": 60,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -944,45 +944,60 @@
       "phase": 18,
       "priority": "P0",
       "summary": "Implement immutable declarative manifest schemas for bindings/input/output/preconditions/effects/readback/rollback and explicit reviewed executor IDs.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Signed immutable manifest v1 and bounded schemas are implemented; provider-specific bindings and migration acceptance remain pending."
     },
     {
       "task_id": "T4012",
       "phase": 18,
       "priority": "P0",
       "summary": "Implement schema-driven adapters only through already admitted typed executor strategies; discovered symbols/routes cannot become arbitrary invocation targets.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Interpreter produces a non-authorizing typed plan over admitted strategy IDs; real execution/readback integration remains pending."
     },
     {
       "task_id": "T4013",
       "phase": 18,
       "priority": "P0",
       "summary": "Implement manifest signature/version/capability/artifact/generation validation and static effect/egress/secret/cost checks before interpretation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Purpose-specific signature, artifact, descriptor, generation and input/effect/cost checks are implemented; live provider and key-revocation acceptance remain pending."
     },
     {
       "task_id": "T4014",
       "phase": 18,
       "priority": "P0",
       "summary": "Expose manifest preview, supported strategy limits, rejected bindings and exact execution/readback provenance without generating or activating PHP.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Private admin preview reports typed plan provenance without dispatch; operator browser acceptance remains pending."
     },
     {
       "task_id": "T4015",
       "phase": 18,
       "priority": "P0",
       "summary": "GATE Reject arbitrary function/class/route names, eval/shell/PHP, generic HTTP, malicious templates and undeclared external or authority effects.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Executable tokens, arbitrary bindings and invalid schema/signature inputs are rejected by contract fixtures; adversarial real provider acceptance remains pending."
     },
     {
       "task_id": "T4016",
@@ -1034,135 +1049,180 @@
       "phase": 20,
       "priority": "P0",
       "summary": "Implement bounded dual-read shadow recipes over current certified and candidate paths with candidate results excluded from the user-facing active result.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Bounded exact-input dual-read runner returns active output only and discards candidate output; real provider workload acceptance remains pending."
     },
     {
       "task_id": "T4022",
       "phase": 20,
       "priority": "P0",
       "summary": "Compare object/field/semantic/error/latency/privacy/cost results using policy-defined sample counts, workload coverage and tolerances.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Canonical semantics, errors, latency, privacy and explicit zero-cost sampling are compared under bounded workload policy; field-level provider comparators and real quotas remain pending."
     },
     {
       "task_id": "T4023",
       "phase": 20,
       "priority": "P0",
       "summary": "Require proven non-mutating/non-secret behavior and quota/cost authority before shadow execution; uncertain read effects prohibit sampling.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Signed zero-effect/non-secret claims, certified read descriptors and governed child execution are required; actual provider effect and quota proof remains pending."
     },
     {
       "task_id": "T4024",
       "phase": 20,
       "priority": "P0",
       "summary": "Issue generation-bound structural/read behavioral receipts and promote only existing eligible read exposure with no new grants/tool mounts.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Generation-bound signed comparison receipts report eligibility without grants, mounts or promotion; integration with existing certified read exposure remains pending."
     },
     {
       "task_id": "T4025",
       "phase": 20,
       "priority": "P0",
       "summary": "GATE Reject insufficient/correlated/stale samples, hidden external cost/effect, private-field leakage, mismatched objects and inconsistent candidate results.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Contract fixtures reject mismatched inputs, private output, invalid sample bounds, stale generations and denied child authority; real provider denial acceptance remains pending."
     },
     {
       "task_id": "T4026",
       "phase": 21,
       "priority": "P0",
       "summary": "Implement explicit autonomy L3 canary admission tied to pre-existing Staging authority, approved recipe, exact disposable target and bounded effect/cost.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Existing governed canary wrapper admits exact signed L3 Staging site, subject, input and disposable-target bindings; live one-time authority acceptance remains pending."
     },
     {
       "task_id": "T4027",
       "phase": 21,
       "priority": "P0",
       "summary": "Provision isolated fixtures, capture native pre-state, execute candidate operation once, read exact stored/emitted state and evaluate invariants.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Adapter opt-in captures native target/state/effects and invokes one canary operation; real isolated fixture provisioning and invariant coverage remain pending."
     },
     {
       "task_id": "T4028",
       "phase": 21,
       "priority": "P0",
       "summary": "Restore through the certified rollback strategy and prove exact original state including hooks/external effects; always record cleanup/outcome uncertainty.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Cleanup executes in finally and exact state/effect readback is required; real hook/external-effect restoration and cancellation acceptance remain pending."
     },
     {
       "task_id": "T4029",
       "phase": 21,
       "priority": "P0",
       "summary": "Issue signed exact capability/artifact/schema/recipe/subject/environment/generation behavioral receipts with expiry and revocation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Signed receipt binds current build, artifact, contract, recipe, subject, environment, generation and restore epoch; real signing/revocation consumer acceptance remains pending."
     },
     {
       "task_id": "T4030",
       "phase": 21,
       "priority": "P0",
       "summary": "GATE Prove stale authority, shared/live targets, financial effects, evidence failure, incomplete restoration and cancellation never auto-promote or blindly retry.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Exception, generation drift, production, foreign subject and failed cleanup fixtures prohibit receipts and blind retry; real authority/cancellation denials remain pending."
     },
     {
       "task_id": "T4031",
       "phase": 22,
       "priority": "P0",
       "summary": "Implement independently versioned signed immutable packs for policy overlays, manifests, acceptance/rollback recipes, Skills/profiles and provider evidence.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Typed signed immutable pack envelopes and bounded registry are implemented; per-type provider interpreters and key lifecycle acceptance remain pending."
     },
     {
       "task_id": "T4032",
       "phase": 22,
       "priority": "P0",
       "summary": "Separate PHP engine releases from data policy, certification evidence and Skill/profile revisions with trusted compatible schema interpreters.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Data pack versions remain separate from PHP releases and preview/status do not activate executors; runtime consumer integration remains pending."
     },
     {
       "task_id": "T4033",
       "phase": 22,
       "priority": "P0",
       "summary": "Implement exact artifact/capability/schema/site/environment binding, chain/key revocation, expiry, anti-replay/rollback protection and atomic registry activation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Artifact/schema/site/environment/generation/restore bindings, revocation tombstones, monotonic versions and locked registry writes are implemented; live concurrent install/restore acceptance remains pending."
     },
     {
       "task_id": "T4034",
       "phase": 22,
       "priority": "P0",
       "summary": "Keep restrictive/equal non-authorizing refresh eligible for automation; risk downgrade, new authority, grants or activation eligibility require governed review.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Only proven monotonic restrictive/equal policy overlays are auto-refresh eligible; mislabeled or authority-bearing payloads require governed review and consumer acceptance remains pending."
     },
     {
       "task_id": "T4035",
       "phase": 22,
       "priority": "P0",
       "summary": "GATE Reject tampered/unsigned/revoked/expired/foreign packs, incompatible interpreters, stale artifacts, partial install and replay after restore.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ],
+      "reason": "Tamper, schema, replay, revoked, stale, foreign and retention overflow denials are contract-tested; live database/key/restore adversarial acceptance remains pending."
     },
     {
       "task_id": "T4036",
@@ -1393,7 +1453,7 @@
       "task_id": "T4061",
       "phase": 28,
       "priority": "P0",
-      "summary": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "summary": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
       "status": "PARTIAL",
       "evidence_refs": [
         "ui-delivery.json",
@@ -1423,7 +1483,7 @@
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
-      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
+      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""

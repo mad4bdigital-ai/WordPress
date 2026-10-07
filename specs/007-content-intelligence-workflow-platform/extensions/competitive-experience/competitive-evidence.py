@@ -214,11 +214,17 @@ def history_entry(snapshot, summary, revision, previous_generation="", previous_
 def next_history(history, snapshot, summary):
     history = deepcopy(history)
     entries = history.get("entries", [])
-    if len(entries) >= MAX_HISTORY_ENTRIES:
-        raise ValueError("history_retention_full")
     previous = entries[-1] if entries else {}
     previous_generation = previous.get("generation_sha256", "")
     previous_entry = previous.get("entry_sha256", "")
+    if previous_generation == snapshot["generation_sha256"]:
+        if previous.get("summary_sha256") != summary["summary_sha256"]:
+            raise ValueError("history_same_generation_summary_drift")
+        return history
+    if any(row.get("generation_sha256") == snapshot["generation_sha256"] for row in entries):
+        raise ValueError("history_generation_replay")
+    if len(entries) >= MAX_HISTORY_ENTRIES:
+        raise ValueError("history_retention_full")
     current_packages = {p["id"]: p["sha256"] for p in snapshot["packages"]}
     drift_flags = {
         "source": bool(previous) and previous.get("source_generation") != snapshot["source_generation"],
@@ -250,7 +256,7 @@ def next_history(history, snapshot, summary):
         }
         alert["alert_sha256"] = sha(alert)
         history["alerts"].append(alert)
-    known = [r for r in entries if r.get("state") == "known_good"]
+    known = [r for r in entries[:-1] if r.get("state") == "known_good"]
     history["previous_known_good_generation_sha256"] = known[-1]["generation_sha256"] if known else ""
     return history
 

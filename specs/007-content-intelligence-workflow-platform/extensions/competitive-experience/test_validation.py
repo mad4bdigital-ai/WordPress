@@ -183,6 +183,23 @@ class EvidenceDenials(unittest.TestCase):
             self.change("g2-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
             self.rejects("g2_delivery_source_evidence_drift")
 
+    def test_g3_task_cannot_bind_to_g2_delivery(self):
+        self.change("task-status.json", lambda d: d["overrides"].update(T4011={"status":"PARTIAL", "reason":"wrong slice", "evidence_refs":["g2-delivery.json"]}))
+        (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
+        self.rejects("g3_partial_task_missing_delivery_binding")
+
+    def test_g3_cannot_claim_runtime_parity(self):
+        self.change("g3-delivery.json", lambda d: d.update(runtime_parity_claimed=True))
+        self.rejects("g3_delivery_boundary_or_progress_invalid")
+
+    def test_g3_cannot_claim_live_provider_acceptance(self):
+        self.change("g3-delivery.json", lambda d: d.update(live_provider_acceptance=True))
+        self.rejects("g3_delivery_boundary_or_progress_invalid")
+
+    def test_g3_source_hashes_are_required(self):
+        self.change("g3-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
+        self.rejects("g3_delivery_source_evidence_drift")
+
     def test_missing_ledger_regeneration(self):
         path = self.root / "tasks.md"
         path.write_text(path.read_text().replace("reproducible artifact", "reproducible changed artifact", 1))

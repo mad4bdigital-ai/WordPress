@@ -378,7 +378,7 @@
       "phase": 18,
       "title": "Declarative Adapter Manifest",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4011",
         "T4012",
@@ -419,7 +419,7 @@
       "phase": 20,
       "title": "Shadow Certification for Reads",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4021",
         "T4022",
@@ -439,7 +439,7 @@
       "phase": 21,
       "title": "Reversible Canary Engine",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4026",
         "T4027",
@@ -460,7 +460,7 @@
       "phase": 22,
       "title": "Versioned Runtime Registry and Certification Packs",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4031",
         "T4032",
@@ -2047,7 +2047,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement immutable declarative manifest schemas for bindings/input/output/preconditions/effects/readback/rollback and explicit reviewed executor IDs.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2111,7 +2111,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement bounded dual-read shadow recipes over current certified and candidate paths with candidate results excluded from the user-facing active result.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2143,7 +2143,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement explicit autonomy L3 canary admission tied to pre-existing Staging authority, approved recipe, exact disposable target and bounded effect/cost.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2175,7 +2175,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement independently versioned signed immutable packs for policy overlays, manifests, acceptance/rollback recipes, Skills/profiles and provider evidence.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
