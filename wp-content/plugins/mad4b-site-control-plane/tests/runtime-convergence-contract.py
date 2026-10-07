@@ -170,4 +170,55 @@ assert "$_SERVER['REQUEST_URI']" in runtime
 
 assert "rest_get_url_prefix()" in runtime
 
+
+auto_reconcile_registry = json.loads((PLUGIN / "config/runtime-auto-reconcile-scenarios.json").read_text(encoding="utf-8"))
+assert auto_reconcile_registry["contract"] == "mad4b.runtime-auto-reconcile-scenarios.v1"
+assert auto_reconcile_registry["default_decision"] == "review_required"
+auto_scenarios = {row["id"]: row for row in auto_reconcile_registry["scenarios"]}
+assert auto_scenarios["trusted_candidate_binding_drift"]["decision"] == "auto_if_zero_delta"
+assert auto_scenarios["trusted_candidate_binding_drift"]["requires_trusted_release"] is True
+assert auto_scenarios["trusted_candidate_binding_drift"]["requires_zero_delta"] is True
+assert auto_scenarios["trusted_candidate_binding_drift"]["authority_expansion_allowed"] is False
+assert auto_scenarios["trusted_candidate_binding_drift"]["production_allowed"] is False
+assert auto_scenarios["trusted_candidate_binding_drift"]["breakglass_allowed"] is False
+assert auto_scenarios["runtime_metadata_drift"]["decision"] == "auto_safe_phases"
+assert auto_scenarios["unbound_candidate_requires_review"]["decision"] == "review_required"
+assert auto_scenarios["unknown_runtime_drift"]["trigger_reasons"] == ["*"]
+
+assert "AUTO_RECONCILE_REGISTRY_CONTRACT" in runtime
+assert "runtime-auto-reconcile-scenarios.json" in runtime
+assert "mad4b_scp_runtime_auto_reconcile_scenarios" in runtime
+assert "mark_post_install_probe" in runtime
+assert "upgrader_process_complete" in runtime
+assert "POST_INSTALL_PROBE_OPTION" in runtime
+assert "candidate_binding_drift" in runtime
+assert "candidate_binding_unbound" in runtime
+assert "auto_reconcile_scenario" in runtime
+assert "auto_reconcile_decision" in runtime
+assert "auto_if_zero_delta" in runtime
+assert "requires_trusted_release" in runtime
+assert "requires_zero_delta" in runtime
+assert "downgraded_by_central_policy" in runtime
+assert "'authority_expansion_allowed' => false" in runtime
+assert "'production_allowed' => false" in runtime
+assert "'breakglass_allowed' => false" in runtime
+
+auto_registry_fn = runtime.split("private static function auto_reconcile_registry()", 1)[1].split("private static function classify_auto_reconcile_scenario", 1)[0]
+assert "apply_filters( 'mad4b_scp_runtime_auto_reconcile_scenarios'" in auto_registry_fn
+assert "'auto_if_zero_delta' === $decision" in auto_registry_fn
+assert "! $requires_trusted_release" in auto_registry_fn
+assert "! $requires_zero_delta" in auto_registry_fn
+assert "$authority_expansion_allowed" in auto_registry_fn
+assert "$production_allowed" in auto_registry_fn
+assert "$breakglass_allowed" in auto_registry_fn
+assert "$decision = 'review_required'" in auto_registry_fn
+
+drift_detector = runtime.split("private static function detect_lightweight_runtime_drift()", 1)[1].split("private static function schedule_resume(", 1)[0]
+assert "candidate_binding_probe_allowed" in drift_detector
+assert "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()" in drift_detector
+assert "'candidate_binding_drift'" in drift_detector
+assert "'candidate_binding_unbound'" in drift_detector
+assert "post_install_probe_present" in drift_detector
+assert "post_install_probe_consumable" in drift_detector
+
 print("runtime convergence contract: PASS")
