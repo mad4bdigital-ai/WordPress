@@ -130,6 +130,7 @@ final class MAD4B_SCP_G2_Permission_Changes {
 				'subject_type' => $normalized['subject_type'],
 				'subject_fingerprint_hint' => substr( $normalized['subject_fingerprint'], 0, 12 ) . '…',
 				'subject_binding_sha256' => hash( 'sha256', $normalized['subject_type'] . ':' . $normalized['subject_fingerprint'] ),
+				'current_status' => is_array( $binding ) ? (string) $binding['status'] : 'missing',
 				'expected_status' => 'disabled',
 			);
 			$readback_contract = 'subject_binding_disabled_for_same_agent';
@@ -143,6 +144,7 @@ final class MAD4B_SCP_G2_Permission_Changes {
 			else {
 				if ( 'allow' !== (string) $grant['effect'] ) $blockers[] = 'grant_is_not_allow';
 				if ( '' !== $normalized['server_id'] && $normalized['server_id'] !== (string) $grant['server_id'] ) $blockers[] = 'grant_server_mismatch';
+				$constraints = isset( $grant['resource_constraints'] ) ? (string) $grant['resource_constraints'] : '';
 				$target = array(
 					'grant_id' => (int) $grant['id'],
 					'server_id' => (string) $grant['server_id'],
@@ -150,6 +152,8 @@ final class MAD4B_SCP_G2_Permission_Changes {
 					'provider' => (string) $grant['provider'],
 					'environment' => (string) $grant['environment'],
 					'effect' => (string) $grant['effect'],
+					'resource_schema_version' => isset( $grant['resource_schema_version'] ) ? (string) $grant['resource_schema_version'] : '',
+					'resource_constraints_sha256' => hash( 'sha256', $constraints ),
 				);
 			}
 			$readback_contract = 'exact_allow_grant_absent';
