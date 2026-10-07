@@ -16,6 +16,8 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	const CRON_HOOK = 'mad4b_scp_adaptive_runtime_observe';
 	const ABILITY = 'mad4b/adaptive-runtime-status';
 	const SLICE_SIZE = 3;
+	const FALLBACK_PROBE_OPTION = 'mad4b_scp_adaptive_runtime_probe_v1';
+	const FALLBACK_PROBE_INTERVAL = 300;
 	private static $booted = false;
 
 	public static function boot() {
@@ -78,6 +80,21 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		return is_array( $event ) ? $event : array();
 	}
 
+	private static function candidate_binding_fallback_drift() {
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' ) ) return false;
+		$last_probe = absint( get_option( self::FALLBACK_PROBE_OPTION, 0 ) );
+		if ( $last_probe > 0 && $last_probe > time() - self::FALLBACK_PROBE_INTERVAL ) return false;
+		update_option( self::FALLBACK_PROBE_OPTION, time(), false );
+		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+		if ( ! is_array( $binding ) || empty( $binding['required'] ) || empty( $binding['stored_bound'] ) || ! empty( $binding['match'] ) ) return false;
+		$current_complete = 1 === preg_match( '/^[a-f0-9]{40}$/', strtolower( trim( (string) ( $binding['current_source_commit_sha'] ?? '' ) ) ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_build_fingerprint'] ?? '' ) ) ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_package_manifest_digest'] ?? '' ) ) ) )
+			&& '' !== trim( (string) ( $binding['current_artifact_identity'] ?? '' ) );
+		return $current_complete;
+	}
+
 	public static function maybe_schedule() {
 		$admin_lifecycle = false;
 		if ( is_admin() ) {
@@ -90,7 +107,15 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		if ( ! self::eligible() || ( is_admin() && ! $admin_lifecycle ) || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
 			|| class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$event = self::event();
-		if ( ( $event['build_stamp'] ?? '' ) !== self::stamp() ) self::enqueue( array( 'source' => 'build_stamp_drift' ) );
+		if ( ( $event['build_stamp'] ?? '' ) !== self::stamp() ) {
+			self::enqueue( array( 'source' => 'build_stamp_drift' ) );
+			return;
+		}
+		// Fallback for same-version/manual replacements where the upgrader hook was
+		// missed and filesystem timestamps are preserved. This is a bounded read-only
+		// probe; the worker still requires exact package proof and ZERO_DELTA before
+		// Post_Update_Continuation can rebind authority.
+		if ( self::candidate_binding_fallback_drift() ) self::enqueue( array( 'source' => 'candidate_binding_probe' ) );
 	}
 
 	public static function on_plugin_update( $upgrader, $details ) {
@@ -175,7 +200,8 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$previous = get_option( self::OPTION, array() );
 			$registry = self::valid_registry( $previous ) ? $previous : array( 'providers' => array() );
 			$generation = hash( 'sha256', (string) $identity['build_fingerprint'] . ':' . $profile_digest );
-			if ( ( $registry['core_enqueued_build'] ?? '' ) !== $identity['build_fingerprint'] && class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
+			$core_checkpoint_dirty = false;
+			if ( ( $registry['core_enqueued_generation'] ?? '' ) !== $generation && class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
 				$checkpoint = get_option( MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION, array() );
 				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
@@ -203,20 +229,58 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				if ( 'SCHEDULE_PROBE' === $decision && ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
 					// This only queues the existing convergence worker. The worker can rebind
 					// only through Post_Update_Continuation after exact ZERO_DELTA proof.
-					$registry['core_convergence'] = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
-					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+					$core_result = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
+					$registry['core_convergence'] = is_wp_error( $core_result )
+						? array( 'state' => 'DEFERRED', 'error_code' => sanitize_key( (string) $core_result->get_error_code() ), 'production_mutation' => false )
+						: $core_result;
+					if ( ! is_wp_error( $core_result ) ) {
+						$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+						$registry['core_enqueued_generation'] = $generation;
+						$core_checkpoint_dirty = true;
+					} else {
+						self::schedule( 30 );
+					}
 				} elseif ( 'NO_OP' === $decision ) {
 					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+					$registry['core_enqueued_generation'] = $generation;
+					$core_checkpoint_dirty = true;
 				} elseif ( 'DEFER' === $decision ) {
 					$registry['core_convergence'] = array( 'state' => 'DEFERRED', 'scenario_id' => $auto_reconcile['scenario_id'] ?? '', 'production_mutation' => false );
 					self::schedule( 30 );
 				} else {
 					$registry['core_convergence'] = array( 'state' => $decision, 'scenario_id' => $auto_reconcile['scenario_id'] ?? '', 'production_mutation' => false );
 					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+					$registry['core_enqueued_generation'] = $generation;
+					$core_checkpoint_dirty = true;
 				}
 			}
 			$cursor = ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) && ( $registry['generation'] ?? '' ) === $generation ? (int) ( $registry['cursor'] ?? 0 ) : 0;
 			$epoch = 0 === $cursor ? wp_generate_uuid4() : ( $registry['observation_epoch'] ?? '' );
+			if ( $core_checkpoint_dirty ) {
+				// Persist the generation-bound core decision before provider slicing. A
+				// lease loss/yield after this point may replay provider observations, but
+				// cannot enqueue Core runtime convergence twice for one generation.
+				$registry = array_merge( $registry, array(
+					'contract' => self::CONTRACT,
+					'generation' => $generation,
+					'profile_digest' => $profile_digest,
+					'build_stamp' => self::stamp(),
+					'event_id' => $event['event_id'] ?? '',
+					'observation_epoch' => $epoch,
+					'cursor' => $cursor,
+					'state' => 'OBSERVING',
+					'observed_at' => gmdate( 'c' ),
+					'authorizing' => false,
+				) );
+				unset( $registry['seal'] );
+				$registry['seal'] = self::seal( $registry );
+				if ( is_wp_error( MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lock, 'adaptive_runtime_observation' ) ) ) { self::schedule( 60 ); return; }
+				update_option( self::OPTION, $registry, false );
+				$core_readback = get_option( self::OPTION, array() );
+				if ( ! self::valid_registry( $core_readback )
+					|| ! hash_equals( (string) $generation, (string) ( $core_readback['core_enqueued_generation'] ?? '' ) ) ) { self::schedule( 60 ); return; }
+			}
+
 			$catalog = MAD4B_SCP_Provider_Contracts::all();
 			$providers = array_values( array_filter( array_keys( $catalog ), array( 'MAD4B_SCP_Provider_Compatibility_Certification', 'supports_provider' ) ) ); sort( $providers, SORT_STRING );
 			$registry['providers'] = array_intersect_key( $registry['providers'], array_flip( $providers ) );
