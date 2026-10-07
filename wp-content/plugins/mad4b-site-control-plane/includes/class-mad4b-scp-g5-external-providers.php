@@ -23,7 +23,7 @@ final class MAD4B_SCP_G5_External_Providers {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 32 );
-		add_action( 'admin_menu', array( __CLASS__, 'menu' ), 32 );
+		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 32 );
 	}
 
 	public static function register_abilities() {
@@ -191,3 +191,6 @@ final class MAD4B_SCP_G5_External_Providers {
 		echo '</div>';
 	}
 }
+
+// Declare the admin route without bypassing shared parent ordering or permissions.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_G5_External_Providers::PAGE_SLUG, 'manage_options' );
