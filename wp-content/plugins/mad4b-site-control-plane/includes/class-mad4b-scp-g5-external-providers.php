@@ -118,7 +118,11 @@ final class MAD4B_SCP_G5_External_Providers {
 				'effects' => array( 'retained_aggregate_read' ), 'authorizing' => false,
 			);
 		}
-		return array( 'contract' => self::CONTRACT, 'providers' => $items, 'search_mesh' => self::search_inventory(), 'registered_adapter_count' => count( $items ), 'configuration_save_performs_network' => false, 'paid_execution_performed' => false, 'secret_values_included' => false, 'secret_handles_included' => false, 'authority_created' => false, 'authorizing' => false );
+		$search_mesh = self::search_inventory();
+		$reference_profiles = class_exists( 'MAD4B_SCP_G5_Provider_Profiles', false )
+			? MAD4B_SCP_G5_Provider_Profiles::coverage( $items, $search_mesh )
+			: array();
+		return array( 'contract' => self::CONTRACT, 'providers' => $items, 'reference_profiles' => $reference_profiles, 'search_mesh' => $search_mesh, 'registered_adapter_count' => count( $items ), 'configuration_save_performs_network' => false, 'paid_execution_performed' => false, 'secret_values_included' => false, 'secret_handles_included' => false, 'authority_created' => false, 'authorizing' => false );
 	}
 
 	/** Reuse Search descriptors and secret status; never call prepare/execute/probe on GET. */

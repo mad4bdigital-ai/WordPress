@@ -335,11 +335,11 @@ jobs:
         run: |
           set -euo pipefail
           PLUGIN=wp-content/plugins/mad4b-site-control-plane
-          for source in g5-external-providers g5-growth-evidence g5-seo-provider-families; do
+          for source in g5-external-providers g5-growth-evidence g5-provider-profiles g5-seo-provider-families g5-acceptance; do
             php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
           done
           php -l "$PLUGIN/mad4b-site-control-plane.php"
-          for contract in g5-external-provider-contract g5-growth-evidence-runtime g5-seo-provider-family-contract g5-registration-contract; do
+          for contract in g5-external-provider-contract g5-growth-evidence-runtime g5-provider-profile-contract g5-seo-provider-family-contract g5-acceptance-contract g5-registration-contract; do
             php "$PLUGIN/tests/$contract.php"
           done
           python3 "$PLUGIN/tests/admin-route-registry-contract.py"
