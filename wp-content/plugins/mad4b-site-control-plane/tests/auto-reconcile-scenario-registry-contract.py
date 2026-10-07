@@ -139,3 +139,20 @@ for marker in [
     "'concurrent_permit'",
 ]:
     assert marker in registry, f"reserved authority signal missing: {marker}"
+
+# Adaptive and Runtime fallback behavior must fail closed when the central
+# classifier is unavailable; no legacy blind-retry path may become authority.
+for marker in [
+    "private static function breakglass_enabled",
+    "MAD4B_SCP_Staging_Write_Authority::persisted_status()",
+    "&& ! self::breakglass_enabled()",
+    "'breakglass_enabled' => self::breakglass_enabled()",
+    "'decision' => 'REVIEW_REQUIRED', 'policy_id' => 'registry_unavailable'",
+]:
+    assert marker in adaptive, f"adaptive fail-closed reconcile guard missing: {marker}"
+assert "adaptive_legacy_retry" not in adaptive
+
+assert "'decision' => 'REVIEW_REQUIRED'" in runtime
+assert "'policy_id' => 'registry_unavailable'" in runtime
+assert "legacy_transient_fallback" not in runtime
+assert "legacy_review_fallback" not in runtime
