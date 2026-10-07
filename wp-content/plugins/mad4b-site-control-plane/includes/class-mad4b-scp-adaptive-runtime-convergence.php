@@ -115,13 +115,27 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	}
 
 	public static function on_plugin_update( $upgrader, $details ) {
+		unset( $upgrader );
 		if ( ! is_array( $details ) || 'plugin' !== ( $details['type'] ?? '' ) ) return;
 		$plugins = array();
 		if ( isset( $details['plugins'] ) && is_array( $details['plugins'] ) ) $plugins = $details['plugins'];
 		elseif ( isset( $details['plugin'] ) ) $plugins = array( $details['plugin'] );
 		$self = false;
 		foreach ( $plugins as $plugin ) if ( false !== strpos( (string) $plugin, 'mad4b-site-control-plane' ) ) { $self = true; break; }
-		self::enqueue( array( 'source' => 'wordpress_upgrader', 'self_plugin_update' => $self ) );
+
+		$context = array( 'source' => 'wordpress_upgrader', 'self_plugin_update' => $self );
+		if ( $self && class_exists( 'MAD4B_SCP_Post_Update_Continuation', false )
+			&& method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'record_operator_witnessed_replacement' ) ) {
+			$witness = MAD4B_SCP_Post_Update_Continuation::record_operator_witnessed_replacement( 'wordpress_upgrader' );
+			if ( is_wp_error( $witness ) ) {
+				$context['operator_witness_state'] = 'unavailable';
+				$context['operator_witness_error_code'] = sanitize_key( (string) $witness->get_error_code() );
+			} else {
+				$context['operator_witness_state'] = isset( $witness['state'] ) ? sanitize_key( (string) $witness['state'] ) : 'available';
+				$context['operator_witness_id'] = isset( $witness['witness_id'] ) ? (string) $witness['witness_id'] : '';
+			}
+		}
+		self::enqueue( $context );
 	}
 
 	public static function enqueue( $context = null ) {
@@ -139,6 +153,9 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			'build_stamp' => self::stamp(),
 			'source' => $source,
 			'self_plugin_update' => $self_plugin_update,
+			'operator_witness_state' => is_array( $context ) && isset( $context['operator_witness_state'] ) ? sanitize_key( (string) $context['operator_witness_state'] ) : '',
+			'operator_witness_id' => is_array( $context ) && isset( $context['operator_witness_id'] ) ? substr( sanitize_text_field( (string) $context['operator_witness_id'] ), 0, 64 ) : '',
+			'operator_witness_error_code' => is_array( $context ) && isset( $context['operator_witness_error_code'] ) ? sanitize_key( (string) $context['operator_witness_error_code'] ) : '',
 			'observed_at' => gmdate( 'c' ),
 		);
 		update_option( self::EVENT_OPTION, $event, false );
