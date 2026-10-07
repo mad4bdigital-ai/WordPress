@@ -30,6 +30,7 @@ $GLOBALS['g2_perm_grants'] = array(
 	),
 );
 $GLOBALS['g2_perm_audit'] = array();
+$GLOBALS['g2_perm_environment'] = 'staging';
 
 function add_action() { return true; }
 function current_user_can() { return true; }
@@ -39,6 +40,7 @@ function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_-]
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function wp_get_environment_type() { return $GLOBALS['g2_perm_environment']; }
 
 class WP_Error {
 	private $code;
@@ -139,8 +141,19 @@ $base = array(
 );
 $plan = MAD4B_SCP_G2_Permission_Changes::plan( $base );
 g2p_check( is_array( $plan ) && true === $plan['eligible'], 'Disable-agent plan should be eligible.' );
+g2p_check( 'staging' === $plan['environment'] && false === $plan['production_authorized'], 'Plan environment boundary drifted.' );
 g2p_check( false === $plan['authority_expansion'] && false === $plan['grant_creation_allowed'] && false === $plan['enable_or_restore_allowed'], 'Plan widened authority.' );
 g2p_check( 64 === strlen( $plan['plan_sha256'] ), 'Plan digest missing.' );
+
+$GLOBALS['g2_perm_environment'] = 'production';
+$productionPlan = MAD4B_SCP_G2_Permission_Changes::plan( $base );
+$productionApply = $base;
+$productionApply['plan_sha256'] = $productionPlan['plan_sha256'];
+$productionApply['confirmation'] = MAD4B_SCP_G2_Permission_Changes::CONFIRMATION;
+$productionResult = MAD4B_SCP_G2_Permission_Changes::apply( $productionApply );
+g2p_check( is_wp_error( $productionResult ) && 'mad4b_g2_permission_environment_denied' === $productionResult->get_error_code(), 'Production authority reduction must fail closed.' );
+g2p_check( 'enabled' === $GLOBALS['g2_perm_agents'][ $base['agent_public_id'] ]['status'], 'Production denial mutated agent.' );
+$GLOBALS['g2_perm_environment'] = 'staging';
 
 $bad = $base;
 $bad['plan_sha256'] = str_repeat( '0', 64 );
