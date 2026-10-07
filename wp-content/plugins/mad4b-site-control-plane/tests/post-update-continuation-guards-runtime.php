@@ -51,7 +51,18 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease { public static $lost = false; p
 final class MAD4B_SCP_Servers { public static function expected_server_ids() { return array( 'mad4b-chatgpt', 'mad4b-write' ); } }
 final class MAD4B_SCP_MCP_Peer_Governance { public static $tools = 'stable'; public static function status() { return array( 'inventory_ready' => true, 'blockers' => array(), 'transport_inventory_fingerprint' => hash( 'sha256', self::$tools ), 'foreign_transport_inventory' => array() ); } }
 final class MAD4B_SCP_Identity_Context { public static $cron = false; public static function current() { return self::$cron ? array() : array( 'authenticated' => true, 'auth_method' => 'oauth2_bearer', 'wp_user_id' => 1, 'subject_fingerprint' => str_repeat( 'a', 64 ), 'issuer_fingerprint' => str_repeat( 'b', 64 ), 'client_fingerprint' => str_repeat( 'c', 64 ), 'session_fingerprint' => str_repeat( 'd', 64 ) ); } }
-final class MAD4B_SCP_Live_Acceptance_Observer { public static $identity; public static function build_provenance_status() { return array_merge( self::$identity, array( 'runtime_manifest_match' => empty( $GLOBALS['integrity_failed'] ) ) ); } public static function build_provenance_identity_status() { return array_merge( self::$identity, array( 'identity_ready' => true ) ); } }
+final class MAD4B_SCP_Live_Acceptance_Observer {
+ public static $identity;
+ public static function build_provenance_status() {
+  $boundary = ! empty( $GLOBALS['version_boundary'] );
+  return array_merge( self::$identity, array(
+   'manifest_valid' => empty( $GLOBALS['integrity_failed'] ),
+   'runtime_manifest_match' => empty( $GLOBALS['integrity_failed'] ) && ! $boundary,
+   'provenance_mismatch' => $boundary ? array( 'control_plane_version_mismatch' ) : ( empty( $GLOBALS['integrity_failed'] ) ? array() : array( 'runtime_file_mismatch:test' ) ),
+  ) );
+ }
+ public static function build_provenance_identity_status() { return array_merge( self::$identity, array( 'identity_ready' => true ) ); }
+}
 final class MAD4B_SCP_Skill_Runtime_Certification { public static $current = true; public static function persisted_status() { return array_merge( MAD4B_SCP_Live_Acceptance_Observer::$identity, array( 'ready' => true, 'build_identity_current' => self::$current ) ); } }
 final class MAD4B_SCP_Audit { public static $fail_consumption = false; public static function record( $ability, $row, $status, $join = false ) { if ( strpos( $ability, '-consumed' ) !== false ) { if ( ! $join || ! $GLOBALS['wpdb']->in_transaction ) throw new RuntimeException( 'Consumption audit must join candidate transaction' ); if ( self::$fail_consumption ) return new WP_Error( 'audit_failed' ); } return true; } }
 final class MAD4B_SCP_Staging_Write_Candidate_Binding { public static function audit_binding_snapshot( array $binding ) { $out = array(); foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) $out[ $key ] = $binding['stored_' . $key]; return $out; } }
@@ -78,7 +89,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-post-update-continuation.php';
 function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
 function setup_fixture() {
-	$GLOBALS['wpdb']->value = null; unset( $GLOBALS['baseline_option'], $GLOBALS['operator_witness_option'] ); $GLOBALS['current_user_id'] = 1; $GLOBALS['schema_changed'] = false; $GLOBALS['integrity_failed'] = false; $GLOBALS['wpdb']->reject_cas = false; $GLOBALS['actor_revoked'] = false;
+	$GLOBALS['wpdb']->value = null; unset( $GLOBALS['baseline_option'], $GLOBALS['operator_witness_option'] ); $GLOBALS['current_user_id'] = 1; $GLOBALS['schema_changed'] = false; $GLOBALS['integrity_failed'] = false; $GLOBALS['version_boundary'] = false; $GLOBALS['wpdb']->reject_cas = false; $GLOBALS['actor_revoked'] = false;
 	MAD4B_SCP_Identity_Context::$cron = false; $GLOBALS['risk_changed'] = false; $GLOBALS['descriptor_throws'] = false;
 	MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_MCP_Peer_Governance::$tools = 'stable'; MAD4B_SCP_Site_Profile::$environment = 'staging'; MAD4B_SCP_Site_Profile::$revision = 2; MAD4B_SCP_Site_Profile::$uuid = 'site'; MAD4B_SCP_Audit::$fail_consumption = false; MAD4B_SCP_Skill_Runtime_Certification::$current = true; MAD4B_SCP_Staging_Write_Authority::$injected_drift = '';
 	$plan = array( 'eligible' => true, 'current_ready' => true, 'agent_present' => true, 'read_only' => true, 'agent_public_id' => 'agent', 'write_tool_count' => 2, 'exact_grants_existing' => 2, 'write_inventory_fingerprint' => str_repeat( 'e', 64 ), 'grant_rows_fingerprint' => str_repeat( 'f', 64 ), 'persisted_grant_records_fingerprint' => str_repeat( 'b', 64 ) );
@@ -177,6 +188,12 @@ function witness_fixture( $case = 'healthy' ) {
 }
 
 $target = witness_fixture();
+$GLOBALS['version_boundary'] = true;
+$boundary_witness = MAD4B_SCP_Post_Update_Continuation::record_operator_witnessed_replacement( 'wordpress_upgrader' );
+check( is_array( $boundary_witness ) && ! empty( $boundary_witness['available'] ), 'Version-boundary replacement was not witnessed after full file-manifest verification' );
+check( 'full_manifest_pre_restart_version_boundary' === $GLOBALS['operator_witness_option']['physical_verification_basis'], 'Version-boundary witness lost its physical verification basis' );
+unset( $GLOBALS['operator_witness_option'] );
+$GLOBALS['version_boundary'] = false;
 $witness = MAD4B_SCP_Post_Update_Continuation::record_operator_witnessed_replacement( 'wordpress_upgrader' );
 check( is_array( $witness ) && ! empty( $witness['available'] ), 'Healthy WordPress replacement was not witnessed' );
 $preflight = MAD4B_SCP_Post_Update_Continuation::operator_witnessed_reconciliation_preflight();
