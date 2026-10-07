@@ -170,27 +170,6 @@ for marker in [
 ]:
     require(marker in PROJECTION, f"exact resulting catalog preflight missing: {marker}")
 
-
-# Projection status must stay transport-bounded as the site Ability universe grows.
-for marker in [
-    "STATUS_DEFAULT_LIMIT",
-    "STATUS_MAX_LIMIT",
-    "STATUS_MAX_PREFLIGHT_TOOLS",
-    "STATUS_MAX_PREFLIGHT_FAILURES",
-    "catalog_preflight_details",
-    "include_abilities",
-    "include_preflight_details",
-    "expected_snapshot",
-    "status_snapshot",
-    "bounded_preflight_summary",
-    "bounded_preflight_details",
-    "mad4b_chatgpt_projection_status_page_stale",
-    "'page' => array(",
-    "'preflight_details_included'",
-]:
-    require(marker in PROJECTION, f"bounded projection status invariant missing: {marker}")
-require("'runtime_class_provenance' => $preflight['runtime_class_provenance']" not in PROJECTION, "projection status leaked unbounded raw preflight provenance")
-
 print("mad4b.chatgpt-dynamic-tool-projection.v1: PASS")
 
 # Fixed dispatch is an independently governed child operation. Projection
@@ -202,3 +181,18 @@ for marker in [
 ]:
     if marker not in (FENCE + ABILITIES):
         raise SystemExit("fixed-dispatch/projection isolation guard missing: " + marker)
+
+
+# Status is summary-first and deep work is explicit/bounded.
+for marker in [
+    "'detail' => array( 'type' => 'string', 'enum' => array( 'summary', 'page' )",
+    "'ability_limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 25",
+    "'include_catalog_preflight' => array( 'type' => 'boolean', 'default' => false )",
+    "'include_universe_count' => array( 'type' => 'boolean', 'default' => false )",
+    "'bounded_status' => true",
+    "'status_policy' => 'summary_first_opt_in_deep_scan'",
+    "'catalog_preflight_performed' => $include_preflight",
+    "'universe_scan_performed' => $include_universe",
+    "'ability_contract_scan_count' => $returned",
+]:
+    require(marker in PROJECTION, f"bounded projection status invariant missing: {marker}")

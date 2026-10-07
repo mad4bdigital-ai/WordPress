@@ -66,10 +66,6 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-conformance.php",
       "sha256": "d3c6ec87595d6bce0ed94d97de6a4e4d98dc2e5c83fa002c62cc8470283e4644"
-    },
-    {
-      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "2e3528678646ab0da6339855780dab882df193594a908d8431a10c00dd829c12"
     }
   ],
   "test_paths": [

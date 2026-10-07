@@ -111,10 +111,6 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			self::enqueue( array( 'source' => 'build_stamp_drift' ) );
 			return;
 		}
-		// Fallback for same-version/manual replacements where the upgrader hook was
-		// missed and filesystem timestamps are preserved. This is a bounded read-only
-		// probe; the worker still requires exact package proof and ZERO_DELTA before
-		// Post_Update_Continuation can rebind authority.
 		if ( self::candidate_binding_fallback_drift() ) self::enqueue( array( 'source' => 'candidate_binding_probe' ) );
 	}
 
@@ -207,10 +203,13 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 			if ( empty( $identity['runtime_manifest_match'] ) || empty( $identity['build_fingerprint'] ) ) { self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' ); return; }
 			$profile_digest = MAD4B_SCP_Site_Profile::profile_digest();
-			$previous = get_option( self::OPTION, array() );
+			$previous_raw = get_option( self::OPTION, null );
+			$previous_had_value = null !== $previous_raw;
+			$previous = is_array( $previous_raw ) ? $previous_raw : array();
 			$registry = self::valid_registry( $previous ) ? $previous : array( 'providers' => array() );
 			$generation = hash( 'sha256', (string) $identity['build_fingerprint'] . ':' . $profile_digest );
 			$core_checkpoint_dirty = false;
+			$core_checkpoint_seal = '';
 			if ( ( $registry['core_enqueued_generation'] ?? '' ) !== $generation && class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
 				$checkpoint = get_option( MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION, array() );
 				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
@@ -237,8 +236,6 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				$registry['auto_reconcile'] = $auto_reconcile;
 				$decision = isset( $auto_reconcile['decision'] ) ? (string) $auto_reconcile['decision'] : 'REVIEW_REQUIRED';
 				if ( 'SCHEDULE_PROBE' === $decision && ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
-					// This only queues the existing convergence worker. The worker can rebind
-					// only through Post_Update_Continuation after exact ZERO_DELTA proof.
 					$core_result = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
 					$registry['core_convergence'] = is_wp_error( $core_result )
 						? array( 'state' => 'DEFERRED', 'error_code' => sanitize_key( (string) $core_result->get_error_code() ), 'production_mutation' => false )
@@ -247,9 +244,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 						$registry['core_enqueued_build'] = $identity['build_fingerprint'];
 						$registry['core_enqueued_generation'] = $generation;
 						$core_checkpoint_dirty = true;
-					} else {
-						self::schedule( 30 );
-					}
+					} else self::schedule( 30 );
 				} elseif ( 'NO_OP' === $decision ) {
 					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
 					$registry['core_enqueued_generation'] = $generation;
@@ -267,9 +262,6 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$cursor = ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) && ( $registry['generation'] ?? '' ) === $generation ? (int) ( $registry['cursor'] ?? 0 ) : 0;
 			$epoch = 0 === $cursor ? wp_generate_uuid4() : ( $registry['observation_epoch'] ?? '' );
 			if ( $core_checkpoint_dirty ) {
-				// Persist the generation-bound core decision before provider slicing. A
-				// lease loss/yield after this point may replay provider observations, but
-				// cannot enqueue Core runtime convergence twice for one generation.
 				$registry = array_merge( $registry, array(
 					'contract' => self::CONTRACT,
 					'generation' => $generation,
@@ -289,6 +281,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				$core_readback = get_option( self::OPTION, array() );
 				if ( ! self::valid_registry( $core_readback )
 					|| ! hash_equals( (string) $generation, (string) ( $core_readback['core_enqueued_generation'] ?? '' ) ) ) { self::schedule( 60 ); return; }
+				$core_checkpoint_seal = isset( $core_readback['seal'] ) ? (string) $core_readback['seal'] : '';
 			}
 
 			$catalog = MAD4B_SCP_Provider_Contracts::all();
@@ -338,7 +331,21 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$postflight = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 			if ( ! self::eligible() || MAD4B_SCP_Site_Profile::profile_digest() !== $profile_digest
 				|| empty( $postflight['runtime_manifest_match'] ) || ( $postflight['build_fingerprint'] ?? '' ) !== $identity['build_fingerprint']
-				|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) { self::schedule( 5 ); return; }
+				|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) {
+				// If this worker persisted only its generation checkpoint before a race was
+				// detected, restore the exact prior value only while that checkpoint is
+				// still the current value. Never overwrite a concurrent writer.
+				if ( '' !== $core_checkpoint_seal ) {
+					$persisted = get_option( self::OPTION, null );
+					if ( is_array( $persisted ) && isset( $persisted['seal'] )
+						&& hash_equals( $core_checkpoint_seal, (string) $persisted['seal'] ) ) {
+						if ( $previous_had_value ) update_option( self::OPTION, $previous_raw, false );
+						elseif ( function_exists( 'delete_option' ) ) delete_option( self::OPTION );
+					}
+				}
+				self::schedule( 5 );
+				return;
+			}
 			$registry = array_merge( $registry, array( 'contract' => self::CONTRACT, 'generation' => $generation, 'profile_digest' => $profile_digest, 'build_stamp' => self::stamp(),
 				'event_id' => $event['event_id'] ?? '', 'observation_epoch' => $epoch, 'cursor' => $pending ? $cursor : 0, 'state' => $pending ? 'OBSERVING' : 'OBSERVED', 'observed_at' => gmdate( 'c' ), 'authorizing' => false ) );
 			unset( $registry['seal'] ); $registry['seal'] = self::seal( $registry );

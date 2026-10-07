@@ -51,6 +51,8 @@ assert "plugins.php" in adaptive and "update.php" in adaptive and "plugin-instal
 assert "$admin_lifecycle" in adaptive
 assert "( is_admin() && ! $admin_lifecycle )" in adaptive
 assert "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate" in adaptive
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error" in adaptive
+assert "failure_decision" in adaptive and "failure_policy_id" in adaptive and "failure_policy_source" in adaptive
 assert "MAD4B_SCP_Runtime_Convergence::mark_activation_pending()" in adaptive
 assert "This only queues the existing convergence worker" in adaptive
 assert "'SCHEDULE_PROBE' === $decision" in adaptive
