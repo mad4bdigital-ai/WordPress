@@ -51,7 +51,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-permission-changes.php",
-      "sha256": "b70bd3ef08cf1cc2af0b1c89e4024ae29413230d0d1dcd16c5074110c3ce5483"
+      "sha256": "255ffd7addfccc56dff947f8e7387fd467e6d5a0120265840a47a933de14058d"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php",
@@ -81,11 +81,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
-      "sha256": "4c1a82257f7ea57c404571a73c666e8da1fd53d4917b9e7d7f487270aa7f3827"
+      "sha256": "2c3297989ae1df487bc15d5082ade9758973c7f334996cd05ffaeb6ef85baa8d"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php",
-      "sha256": "b8cf94c0c6c41a68d33c0b7e6ea207ceed2a9d9e6c9053536bb90a79b024b8cf"
+      "sha256": "220553d23d62285ee21c1e7c434bfb1a50285ecde316bfca7d1ba76e073bad1e"
     }
   ],
   "spec_paths": [
@@ -125,6 +125,7 @@
     "reviewed_authority_reduction_plan_sha_revision_confirmation_readback_audit",
     "authority_reduction_only_disable_agent_disable_subject_revoke_exact_allow_grant",
     "no_authority_expansion_grant_creation_enable_restore_or_automatic_mount",
+    "production_permission_apply_denied_fail_closed",
     "explicit_readonly_and_reviewed_step_up_consent_presets",
     "new_scope_requires_external_reconsent",
     "no_generic_full_access_consent",
