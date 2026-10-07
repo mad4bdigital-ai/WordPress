@@ -128,7 +128,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-native-providers.php",
-      "sha256": "2214afecc9f79390bf8d7559623c5c5019ca7f943c0df132292169e78e804898"
+      "sha256": "2e75da8ad979a68e00ae7e92a535fc42c8bcf0acf5474477a60d50785859d4f9"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-site-operations.php",
@@ -170,7 +170,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-native-read-bridges-runtime.php",
-      "sha256": "2aa72de2d122bb4127ef7cead0654d47e2089f4b66f1260d8230884a6d60a882"
+      "sha256": "0d7b7602c6930668b50446b0e7a58e0364a45115f10db3abe195cbd79ffabbe7"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-site-operations-contract.php",
