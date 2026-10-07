@@ -954,6 +954,69 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</div></form></div>';
 	}
 
+	private static function ai_review_handoff_payload( array $asset, array $authority_status ) {
+		return array(
+			'contract' => 'mad4b.context-ai-review-handoff.v1',
+			'ability' => MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY,
+			'evidence' => array(
+				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
+				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
+				'required' => ! empty( $asset['required'] ),
+				'quality_score' => isset( $asset['quality_score'] ) ? $asset['quality_score'] : null,
+				'content_excerpt' => isset( $asset['content_excerpt'] ) ? (string) $asset['content_excerpt'] : '',
+				'content_complete' => ! empty( $asset['content_complete'] ),
+				'normalization_status' => isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : '',
+			),
+			'allowed_decisions' => array( 'approve', 'needs_changes', 'reject' ),
+			'write_input_template' => array(
+				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+				'decision' => '<approve|needs_changes|reject>',
+				'expected_content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+				'expected_registry_revision' => isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision(),
+				'expected_authority_manifest_fingerprint' => isset( $authority_status['authority_manifest_fingerprint'] ) ? (string) $authority_status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint(),
+				'review_note' => '<concise rationale>',
+			),
+			'instruction' => 'Review only the exact evidence above. Choose one allowed decision, explain the rationale briefly, then execute mad4b/context-ai-review with the exact-bound write input. Stop on any stale-evidence or binding error.',
+		);
+	}
+
+	private static function render_review_inbox_item( array $asset, array $authority_status, $ai_ready ) {
+		$asset_id = isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '';
+		$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
+		$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
+		$human_quality_override = ! empty( $quality['human_override'] );
+		$payload_id = 'mad4b-ai-handoff-' . sanitize_html_class( substr( $asset_id, 0, 16 ) );
+		echo '<article id="mad4b-review-asset-' . esc_attr( sanitize_html_class( $asset_id ) ) . '" class="mad4b-context-inbox-item' . ( ! empty( $asset['required'] ) ? ' is-required' : '' ) . '">';
+		echo '<div class="mad4b-context-inbox-head"><div><strong>' . esc_html( isset( $asset['title'] ) ? $asset['title'] : 'Context asset' ) . '</strong><div class="mad4b-context-inbox-meta"><code>' . esc_html( isset( $asset['category'] ) ? $asset['category'] : '' ) . '</code> · ' . esc_html( ! empty( $asset['required'] ) ? 'required' : 'optional' ) . ' · ' . esc_html( null === ( $asset['quality_score'] ?? null ) ? 'quality —' : 'quality ' . (string) $asset['quality_score'] ) . '</div></div><span class="mad4b-context-badge">' . esc_html( $review_status ) . '</span></div>';
+		if ( ! empty( $asset['content_excerpt'] ) ) echo '<p class="mad4b-context-inbox-excerpt">' . esc_html( (string) $asset['content_excerpt'] ) . '</p>';
+		if ( empty( $asset['content_complete'] ) || ( isset( $asset['normalization_status'] ) && 'ready' !== (string) $asset['normalization_status'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Source issue:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : 'content_incomplete' ) . '</code></p></div>';
+		}
+		echo '<form class="mad4b-context-review-form mad4b-context-inbox-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( self::ACTION_REVIEW_ASSET );
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset_id ) . '">';
+		echo '<input type="hidden" name="category" value="' . esc_attr( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) . '"><input type="hidden" name="authority_class" value="' . esc_attr( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) . '">';
+		if ( ! empty( $asset['required'] ) ) echo '<input type="hidden" name="required" value="1">';
+		echo '<input type="hidden" name="quality_mode" value="' . esc_attr( $human_quality_override ? 'manual' : 'automatic' ) . '">';
+		if ( $human_quality_override && isset( $asset['quality_score'] ) ) echo '<input type="hidden" name="quality_score" value="' . esc_attr( (string) $asset['quality_score'] ) . '">';
+		echo '<input type="hidden" name="expected_content_hash" value="' . esc_attr( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '">';
+		echo '<input type="hidden" name="expected_registry_revision" value="' . esc_attr( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision() ) ) . '">';
+		echo '<input type="hidden" name="expected_authority_manifest_fingerprint" value="' . esc_attr( isset( $authority_status['authority_manifest_fingerprint'] ) ? (string) $authority_status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ) . '"><input type="hidden" name="decision" value="approve">';
+		echo '<label class="mad4b-context-inbox-note"><span class="screen-reader-text">' . esc_html__( 'Review note', 'mad4b-site-control-plane' ) . '</span><textarea name="review_note" rows="2" maxlength="1000" placeholder="' . esc_attr__( 'Rationale required for Needs changes or Reject.', 'mad4b-site-control-plane' ) . '"></textarea></label>';
+		echo '<div class="mad4b-context-review-inline-feedback" aria-live="polite"></div><div class="mad4b-context-review-actions">';
+		echo '<button type="submit" class="button button-primary" data-mad4b-review-decision="approve">' . esc_html__( 'Approve', 'mad4b-site-control-plane' ) . '</button>';
+		echo '<button type="submit" class="button" data-mad4b-review-decision="needs_changes">' . esc_html__( 'Needs changes', 'mad4b-site-control-plane' ) . '</button>';
+		echo '<button type="submit" class="button button-link-delete" data-mad4b-review-decision="reject">' . esc_html__( 'Reject', 'mad4b-site-control-plane' ) . '</button>';
+		if ( $ai_ready ) {
+			$handoff = self::ai_review_handoff_payload( $asset, $authority_status );
+			echo '<button type="button" class="button" data-mad4b-copy-ai-handoff="' . esc_attr( $payload_id ) . '">' . esc_html__( 'Prepare AI review', 'mad4b-site-control-plane' ) . '</button>';
+			echo '<textarea id="' . esc_attr( $payload_id ) . '" class="mad4b-context-ai-handoff-payload" hidden readonly>' . esc_textarea( wp_json_encode( $handoff, JSON_UNESCAPED_SLASHES ) ) . '</textarea>';
+		}
+		echo '</div></form></article>';
+	}
+
 	private static function render_assets() {
 		$assets = MAD4B_SCP_Context_Authority::assets();
 		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
