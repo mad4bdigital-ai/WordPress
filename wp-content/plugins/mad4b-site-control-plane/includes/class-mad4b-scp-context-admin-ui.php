@@ -341,6 +341,108 @@ final class MAD4B_SCP_Context_Admin_UI {
 		self::redirect_result( $result, 'review', 'asset_review_saved' );
 	}
 
+	public static function handle_review_batch() {
+		self::require_admin_request( self::ACTION_REVIEW_BATCH );
+		$raw_ids = isset( $_POST['asset_ids'] ) && is_array( $_POST['asset_ids'] ) ? wp_unslash( $_POST['asset_ids'] ) : array();
+		$asset_ids = array();
+		foreach ( array_slice( $raw_ids, 0, 50 ) as $raw_id ) {
+			$asset_id = strtolower( trim( sanitize_text_field( (string) $raw_id ) ) );
+			if ( preg_match( '/^[a-f0-9]{64}$/', $asset_id ) ) $asset_ids[ $asset_id ] = $asset_id;
+		}
+		$asset_ids = array_values( $asset_ids );
+		if ( empty( $asset_ids ) ) {
+			self::redirect_result( new WP_Error( 'mad4b_context_batch_review_empty', 'Select at least one reviewable Context asset.' ), 'review', '' );
+		}
+
+		$decision = sanitize_key( isset( $_POST['decision'] ) ? wp_unslash( $_POST['decision'] ) : 'approve' );
+		if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) {
+			self::redirect_result( new WP_Error( 'mad4b_context_batch_review_decision_invalid', 'Batch review decision must be approve, needs_changes, or reject.' ), 'review', '' );
+		}
+		$review_note = substr( trim( sanitize_text_field( isset( $_POST['review_note'] ) ? wp_unslash( $_POST['review_note'] ) : '' ) ), 0, 1000 );
+		if ( 'approve' !== $decision && '' === $review_note ) {
+			self::redirect_result( new WP_Error( 'mad4b_context_batch_review_note_required', 'Batch Needs changes and Reject decisions require a review note.' ), 'review', '' );
+		}
+
+		$queue = MAD4B_SCP_Context_Authority::review_queue();
+		$pending = array();
+		foreach ( isset( $queue['items'] ) && is_array( $queue['items'] ) ? $queue['items'] : array() as $item ) {
+			if ( is_array( $item ) && ! empty( $item['asset_id'] ) ) $pending[ (string) $item['asset_id'] ] = true;
+		}
+
+		// Verify the entire bundle before the first write. Exact content hashes are
+		// pinned here; registry/authority bindings are refreshed between decisions.
+		$snapshot = array();
+		foreach ( $asset_ids as $asset_id ) {
+			if ( empty( $pending[ $asset_id ] ) ) {
+				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_asset_not_pending', 'One selected Context asset is no longer pending review.', array( 'asset_id' => $asset_id ) ), 'review', '' );
+			}
+			$asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
+			if ( empty( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) {
+				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_asset_ineligible', 'One selected Context asset is not a governed review target.', array( 'asset_id' => $asset_id ) ), 'review', '' );
+			}
+			$normalization_status = isset( $asset['normalization_status'] ) ? sanitize_key( (string) $asset['normalization_status'] ) : ( ! empty( $asset['content_complete'] ) ? 'ready' : 'incomplete' );
+			if ( empty( $asset['content_complete'] ) || ! in_array( $normalization_status, array( 'ready', 'reused' ), true ) ) {
+				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_content_incomplete', 'Batch review cannot include incomplete source content. Repair or rescan it first.', array( 'asset_id' => $asset_id, 'normalization_status' => $normalization_status ) ), 'review', '' );
+			}
+			$classification_confidence = isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0;
+			$classification_source = isset( $asset['classification_source'] ) ? sanitize_key( (string) $asset['classification_source'] ) : '';
+			if ( $classification_confidence < 0.60 && 'human' !== $classification_source ) {
+				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_classification_confirmation_required', 'Batch review excludes low-confidence automatic classification. Confirm that asset individually first.', array( 'asset_id' => $asset_id, 'classification_confidence' => $classification_confidence ) ), 'review', '' );
+			}
+			$content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $content_hash ) ) {
+				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_content_hash_invalid', 'One selected Context asset has no exact content hash.' ), 'review', '' );
+			}
+			$snapshot[ $asset_id ] = $content_hash;
+		}
+
+		$completed = array();
+		foreach ( $snapshot as $asset_id => $content_hash ) {
+			$current = MAD4B_SCP_Context_Authority::asset( $asset_id );
+			$current_hash = isset( $current['content_hash'] ) ? strtolower( trim( (string) $current['content_hash'] ) ) : '';
+			if ( empty( $current ) || ! hash_equals( $content_hash, $current_hash ) ) {
+				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_content_drift', 'Batch review stopped because source content changed after bundle verification.', array( 'asset_id' => $asset_id, 'completed_asset_ids' => $completed ) ), 'review', '' );
+			}
+			$result = MAD4B_SCP_Context_Authority::review_asset(
+				$asset_id,
+				array(
+					'category' => isset( $current['category'] ) ? (string) $current['category'] : '',
+					'authority_class' => isset( $current['authority_class'] ) ? (string) $current['authority_class'] : '',
+					'required' => ! empty( $current['required'] ),
+					'required_scope_confirmed' => false,
+					'classification_confirmed' => false,
+					'quality_mode' => 'preserve',
+					'quality_score' => '',
+					'decision' => $decision,
+					'review_note' => $review_note,
+					'expected_content_hash' => $content_hash,
+					'expected_registry_revision' => MAD4B_SCP_Context_Authority::registry_revision(),
+					'expected_authority_manifest_fingerprint' => MAD4B_SCP_Context_Authority::authority_manifest_fingerprint(),
+				)
+			);
+			if ( is_wp_error( $result ) ) {
+				$data = $result->get_error_data();
+				$data = is_array( $data ) ? $data : array();
+				$data['completed_asset_ids'] = $completed;
+				self::redirect_result( new WP_Error( $result->get_error_code(), $result->get_error_message(), $data ), 'review', '' );
+			}
+			$completed[] = $asset_id;
+		}
+
+		self::redirect_result(
+			array(
+				'contract' => 'mad4b.context-human-review-batch.v1',
+				'decision' => $decision,
+				'count' => count( $completed ),
+				'asset_ids' => $completed,
+				'refresh_binding_after_each_decision' => true,
+				'stale_evidence_action' => 'stop_and_refresh',
+			),
+			'review',
+			'batch_review_saved'
+		);
+	}
+
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ) );
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::styles();
@@ -1587,6 +1689,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'source_scanned' => __( 'Source scan completed and Context assets were refreshed.', 'mad4b-site-control-plane' ),
 			'source_scanned_truncated' => __( 'Source scan was partial. Seen assets were refreshed, but unseen assets were not marked unavailable. Narrow the folder or increase certified coverage before using absence as evidence.', 'mad4b-site-control-plane' ),
 			'asset_review_saved' => __( 'Asset classification and quality review saved and the Context fingerprint was refreshed.', 'mad4b-site-control-plane' ),
+			'batch_review_saved' => __( 'Selected Context reviews were committed sequentially with exact binding refresh between decisions.', 'mad4b-site-control-plane' ),
 			'review_policy_saved' => __( 'Context approval mode saved. Grant reconciliation remains explicit and separate.', 'mad4b-site-control-plane' ),
 			'source_removed' => __( 'Source and its indexed assets were removed. Google Drive content was not changed.', 'mad4b-site-control-plane' ),
 		);
