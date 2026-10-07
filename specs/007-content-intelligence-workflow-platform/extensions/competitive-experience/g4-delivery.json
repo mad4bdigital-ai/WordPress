@@ -116,11 +116,11 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "ae9b106a4876df9a0aa118e14f170289911c966ad5927c008479dce89fcaaebf"
+      "sha256": "e36401835560970619198f9c66e2ae8db866cab4e03136298a90c67de4776edb"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "8064081ae1336d3f87b2aa32549556d753259bd8f4efe369633785349d198f16"
+      "sha256": "34a23e02e0c0b1ac53258e28acdb856558984e187c5d7b27358af2ff4cc3cc25"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
