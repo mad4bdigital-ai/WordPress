@@ -14,6 +14,9 @@ Status: `REPOSITORY_G4_FOUNDATION_AND_PREFLIGHT_IMPLEMENTED_PROVIDER_ACCEPTANCE_
 ## Repository foundation implemented
 - Typed provider-family readiness and non-authorizing planning for Forms, Commerce, Builders, Site Operations and WordPress breadth.
 - Dynamic evidence reuse from Plugin Discovery, Adapter Registry and existing certified adapters.
+- PR #284 does not maintain a second provider identity catalog or plugin scanner: WordPress-domain discovery consumes the canonical G4 readiness projection from #283.
+- `wordpress-domain-catalog.json` is a non-authorizing domain overlay only; it can add prerequisites but cannot admit a provider missing from the G4 reviewed catalog.
+- Canonical provider identities are shared across both layers, including `advanced-custom-fields`, `the-events-calendar`, and `all-in-one-wp-migration`; alias drift fails closed.
 - Provider-owned WordPress domain preflight contracts plus independent native-read observations and bounded denial fixtures.
 - Existing Fluent Forms / JetFormBuilder, WooCommerce, Elementor, Polylang and LiteSpeed evidence is reused where exact contracts exist.
 - Domain preflight covers schema/permission/serialization boundaries without dispatching native mutation.
@@ -34,6 +37,8 @@ No new DONE claim is made.
 - Financial/payment/refund effects remain separately gated and never treated as reversible.
 - Private/PII surfaces remain under explicit scoped authority and masking rules.
 - Restore remains readiness-only and cannot replay stale authority.
+- Domain overlay metadata cannot widen G4 provider membership, family assignment, installation truth or runtime certification.
+- Domain discovery performs no independent `get_plugins()` scan; G4 readiness remains the single provider discovery source.
 
 ## Remaining acceptance
 - Native provider schema/permission/serialization/readback for remaining catalogued providers.
