@@ -57,6 +57,7 @@ for marker in [
 ]:
     require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
 require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
+require("provider_for_capability_descriptor" in INSPECTOR, "canonical Ability inspection still depends on transient runtime mount eligibility")
 
 # A pre-tool denial must arm the final callback seal requirement before any
 # same-priority filter can overwrite the returned WP_Error.

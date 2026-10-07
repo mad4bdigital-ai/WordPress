@@ -634,6 +634,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 					'creation_status' => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'private' ), 'default' => 'draft' ),
 					'live_update_mode' => array( 'type' => 'string', 'enum' => array( 'draft_first', 'direct' ), 'default' => 'draft_first' ),
 					'media_meta_fields' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'media_resolution_strategy' => array( 'type' => 'string', 'enum' => array( 'manual', 'provider_declared_compatible' ), 'default' => 'manual' ),
 					'allow_protected_media_meta' => array( 'type' => 'boolean', 'default' => false ),
 					'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
 				), array( 'post_type' ) ),
