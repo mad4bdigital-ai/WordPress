@@ -1131,94 +1131,30 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo ' <span class="mad4b-scp-muted">' . esc_html( sprintf( __( 'Showing %1$d of %2$d assets', 'mad4b-site-control-plane' ), count( $assets ), count( $all_assets ) ) ) . '</span></form>';
 		if ( ! $all_assets ) { echo '<p>' . esc_html__( 'Scan a source folder to discover assets.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
 		if ( ! $assets ) { echo '<p>' . esc_html__( 'No assets match the current filters.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
-		$authorities = MAD4B_SCP_Context_Authority::authority_classes();
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Normalization</th><th>Status</th><th>Actionability</th><th>Review</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>' . esc_html__( 'Asset', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Classification', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Quality', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Review', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Issue', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Action', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
 		foreach ( $assets as $asset ) {
-			$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
 			$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
 			$review_exact = 'approved' === $review_status && ! empty( $asset['reviewed_content_hash'] ) && ! empty( $asset['content_hash'] ) && hash_equals( (string) $asset['content_hash'], (string) $asset['reviewed_content_hash'] );
-			echo '<tr id="mad4b-context-asset-' . esc_attr( sanitize_html_class( (string) $asset['asset_id'] ) ) . '"><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( $asset['path'] ) . '</span></td>';
-			echo '<td>' . esc_html( $asset['source_mode'] ) . '</td><td><code>' . esc_html( $asset['category'] ) . '</code></td><td>' . esc_html( $asset['authority_class'] ) . '</td>';
-			echo '<td>' . esc_html( ! empty( $asset['required'] ) ? 'yes' : 'no' ) . '</td>';
-			$quality_profile = isset( $quality['profile'] ) ? (string) $quality['profile'] : 'legacy';
-			$quality_confidence = isset( $quality['confidence'] ) ? (float) $quality['confidence'] : null;
-			echo '<td><strong>' . esc_html( null === $asset['quality_score'] ? '—' : (string) $asset['quality_score'] . '/100' ) . '</strong>';
-			echo '<br><span class="mad4b-context-badge">' . esc_html( $quality_profile ) . '</span>';
-			echo '<br><span class="mad4b-scp-muted">' . esc_html( isset( $quality['mode'] ) ? $quality['mode'] : '' );
-			if ( null !== $quality_confidence ) echo ' · ' . esc_html( number_format_i18n( $quality_confidence * 100, 0 ) . '% score confidence' );
-			echo '</span></td>';
-			echo '<td>' . esc_html( number_format_i18n( (float) $asset['classification_confidence'] * 100, 0 ) . '%' ) . '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['classification_source'] ) ? $asset['classification_source'] : '' ) . '</span></td>';
 			$normalization_status = isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : ( ! empty( $asset['content_complete'] ) ? 'ready' : 'unknown' );
-			$normalization_reason = isset( $asset['normalization_reason'] ) ? (string) $asset['normalization_reason'] : '';
-			echo '<td><strong>' . esc_html( $normalization_status ) . '</strong>';
-			if ( $normalization_reason ) echo '<br><span class="mad4b-scp-muted">' . esc_html( $normalization_reason ) . '</span>';
-			echo '</td>';
-			echo '<td><strong>' . esc_html( $asset['status'] ) . '</strong>';
-			if ( 'unavailable' === $asset['status'] ) {
-				$source_policy = MAD4B_SCP_Context_Authority::source_write_policy( $asset['source_id'] );
-				$repair_allowed = MAD4B_SCP_Context_Authority::source_allows_write( $asset['source_id'], 'recreate' );
-				echo '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['availability_reason'] ) ? $asset['availability_reason'] : 'not_seen_in_latest_scan' ) . '</span>';
-				if ( $repair_allowed ) echo '<div class="mad4b-context-repair-hint"><code>context/recreate-drive-asset</code><br><span>' . esc_html__( 'Repair path available through governed approval.', 'mad4b-site-control-plane' ) . '</span></div>';
-				else echo '<div class="mad4b-context-repair-hint"><span>' . esc_html( sprintf( __( 'Source policy %s blocks recreation.', 'mad4b-site-control-plane' ), $source_policy ) ) . '</span></div>';
-			}
-			echo '</td>';
-			$write_capabilities = MAD4B_SCP_Google_Drive_Context::asset_write_capabilities( $asset['asset_id'] );
-			echo '<td><div class="mad4b-context-actionability">';
-			if ( ! empty( $write_capabilities['update'] ) ) echo '<code>context/update-drive-asset</code><br><span class="mad4b-scp-muted">' . esc_html__( 'Reversible text update · governed approval required.', 'mad4b-site-control-plane' ) . '</span>';
-			elseif ( ! empty( $write_capabilities['recreate'] ) ) echo '<code>context/recreate-drive-asset</code><br><span class="mad4b-scp-muted">' . esc_html__( 'Reversible missing-asset recreation · governed approval required.', 'mad4b-site-control-plane' ) . '</span>';
-			else {
-				echo '<strong>' . esc_html__( 'No direct mutation', 'mad4b-site-control-plane' ) . '</strong>';
-				if ( ! empty( $write_capabilities['blockers'] ) ) echo '<br><span class="mad4b-scp-muted">' . esc_html( implode( ' · ', array_map( 'sanitize_key', $write_capabilities['blockers'] ) ) ) . '</span>';
-			}
-			echo '</div></td>';
-			if ( 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) {
-				echo '<td class="mad4b-context-review-cell"><span class="mad4b-context-review-state">' . esc_html__( 'task-local · read-only', 'mad4b-site-control-plane' ) . '</span><span class="mad4b-scp-muted">' . esc_html__( 'Human Review is intentionally unavailable for task-only Context. Task attachments cannot be promoted into site-wide Brand Authority.', 'mad4b-site-control-plane' ) . '</span></td></tr>';
-				continue;
-			}
-			echo '<td class="mad4b-context-review-cell"><span class="mad4b-context-review-state is-' . esc_attr( sanitize_html_class( $review_status ) ) . '">' . esc_html( $review_exact ? 'approved · exact' : $review_status ) . '</span><details><summary class="button button-small">' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-			wp_nonce_field( self::ACTION_REVIEW_ASSET );
-			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';
-			echo '<input type="hidden" name="expected_content_hash" value="' . esc_attr( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '">';
-			echo '<input type="hidden" name="expected_registry_revision" value="' . esc_attr( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision() ) ) . '">';
-			echo '<input type="hidden" name="expected_authority_manifest_fingerprint" value="' . esc_attr( isset( $authority_status['authority_manifest_fingerprint'] ) ? (string) $authority_status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ) . '">';
-			echo '<input type="hidden" name="decision" value="approve">';
-			echo '<div class="mad4b-context-review-evidence"><strong>' . esc_html__( 'Exact review evidence', 'mad4b-site-control-plane' ) . '</strong>';
-			if ( ! empty( $asset['content_excerpt'] ) ) echo '<p>' . esc_html( (string) $asset['content_excerpt'] ) . '</p>';
-			echo '<dl><dt>' . esc_html__( 'Content hash', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '</code></dd>';
-			echo '<dt>' . esc_html__( 'Registry revision', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : 0 ) ) . '</code></dd>';
-			echo '<dt>' . esc_html__( 'Last synced', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '—' ) . '</dd></dl>';
-			$automatic_classification = isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array();
-			if ( $automatic_classification ) {
-				echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Automatic suggestion:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $automatic_classification['category'] ) ? (string) $automatic_classification['category'] : '' ) . '</code> · ' . esc_html( isset( $automatic_classification['authority_class'] ) ? (string) $automatic_classification['authority_class'] : '' );
-				if ( isset( $automatic_classification['confidence'] ) ) echo ' · ' . esc_html( number_format_i18n( (float) $automatic_classification['confidence'] * 100, 0 ) . '%' );
-				echo '</p>';
-			}
-			echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Effective decision:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) . '</code> · ' . esc_html( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) . '</p></div>';
-			echo '<label><strong>' . esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
-			foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['category'], $key, false ) . '>' . esc_html( $label ) . '</option>';
-			echo '</select></label>';
-			echo '<label><strong>' . esc_html__( 'Authority', 'mad4b-site-control-plane' ) . '</strong><select name="authority_class">';
-			foreach ( $authorities as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['authority_class'], $key, false ) . '>' . esc_html( $label ) . '</option>';
-			echo '</select></label>';
-			echo '<label><input type="checkbox" name="required" value="1"' . checked( ! empty( $asset['required'] ), true, false ) . '> ' . esc_html__( 'Required context', 'mad4b-site-control-plane' ) . '</label>';
-			echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="required_scope_confirmed" value="1"> ' . esc_html__( 'I confirm any change to Required context or the category of an already-required asset may change site-wide Brand Context requirements.', 'mad4b-site-control-plane' ) . '</label>';
-			$human_quality_override = ! empty( $quality['human_override'] );
-			$automatic_quality_score = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $quality['automatic_score'] ) ? (int) $quality['automatic_score'] : null );
-			echo '<fieldset class="mad4b-context-quality-mode"><legend><strong>' . esc_html__( 'Quality score', 'mad4b-site-control-plane' ) . '</strong></legend>';
-			echo '<label><input type="radio" name="quality_mode" value="automatic"' . checked( $human_quality_override, false, false ) . '> ' . esc_html__( 'Use automatic score', 'mad4b-site-control-plane' );
-			if ( null !== $automatic_quality_score ) echo ' <strong>(' . esc_html( (string) $automatic_quality_score . '/100' ) . ')</strong>';
-			echo '<span>' . esc_html__( 'Recommended. Uses the current scoring profile and updates naturally when the source changes.', 'mad4b-site-control-plane' ) . '</span></label>';
-			echo '<label><input type="radio" name="quality_mode" value="manual"' . checked( $human_quality_override, true, false ) . '> ' . esc_html__( 'Manual override', 'mad4b-site-control-plane' ) . '<span>' . esc_html__( 'Use only when a reviewer has a documented reason to replace the automatic score.', 'mad4b-site-control-plane' ) . '</span></label>';
-			echo '<input type="number" min="0" max="100" name="quality_score" value="' . esc_attr( $human_quality_override && isset( $asset['quality_score'] ) ? (string) $asset['quality_score'] : '' ) . '" placeholder="' . esc_attr( null === $automatic_quality_score ? '0–100' : (string) $automatic_quality_score ) . '">';
-			echo '</fieldset>';
-			echo '<label><strong>' . esc_html__( 'Review note', 'mad4b-site-control-plane' ) . '</strong><textarea name="review_note" rows="3" maxlength="1000" placeholder="' . esc_attr__( 'Required for rejection, requested changes, governance changes, or manual quality overrides.', 'mad4b-site-control-plane' ) . '"></textarea></label>';
-			echo '<div class="mad4b-context-review-inline-feedback" aria-live="polite"></div>';
-			echo '<div class="mad4b-context-review-actions">';
-			echo '<button type="submit" class="button button-primary" data-mad4b-review-decision="approve">' . esc_html__( 'Approve exact content', 'mad4b-site-control-plane' ) . '</button>';
-			echo '<button type="submit" class="button" data-mad4b-review-decision="needs_changes">' . esc_html__( 'Needs changes', 'mad4b-site-control-plane' ) . '</button>';
-			echo '<button type="submit" class="button button-link-delete" data-mad4b-review-decision="reject">' . esc_html__( 'Reject exact content', 'mad4b-site-control-plane' ) . '</button>';
-			echo '</div>';
-			echo '</form></details></td></tr>';
+			$availability_status = isset( $asset['status'] ) ? (string) $asset['status'] : 'ready';
+			$issue = 'ready' !== $normalization_status ? $normalization_status : ( 'ready' !== $availability_status ? $availability_status : '—' );
+			echo '<tr id="mad4b-context-asset-' . esc_attr( sanitize_html_class( (string) $asset['asset_id'] ) ) . '"><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['path'] ) ? $asset['path'] : '' ) . '</span></td>';
+			echo '<td><code>' . esc_html( isset( $asset['category'] ) ? $asset['category'] : '' ) . '</code><br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['authority_class'] ) ? $asset['authority_class'] : '' ) . ( ! empty( $asset['required'] ) ? ' · required' : ' · optional' ) . '</span></td>';
+			$classification_confidence = isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0;
+			echo '<td><strong>' . esc_html( null === ( $asset['quality_score'] ?? null ) ? '—' : (string) $asset['quality_score'] . '/100' ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( number_format_i18n( $classification_confidence * 100, 0 ) . '% classification confidence' ) . '</span></td>';
+			echo '<td><span class="mad4b-context-review-state is-' . esc_attr( sanitize_html_class( $review_status ) ) . '">' . esc_html( $review_exact ? 'approved · exact' : $review_status ) . '</span></td>';
+			echo '<td><strong>' . esc_html( $issue ) . '</strong>';
+			if ( ! empty( $asset['normalization_reason'] ) ) echo '<br><span class="mad4b-scp-muted">' . esc_html( (string) $asset['normalization_reason'] ) . '</span>';
+			if ( 'unavailable' === $availability_status && ! empty( $asset['availability_reason'] ) ) echo '<br><span class="mad4b-scp-muted">' . esc_html( (string) $asset['availability_reason'] ) . '</span>';
+			echo '</td><td>';
+			$needs_review = 'governed' === ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) && ! $review_exact;
+			if ( $needs_review ) echo '<a class="button button-small" href="' . esc_url( self::tab_url( 'review' ) . '#mad4b-review-asset-' . sanitize_html_class( (string) $asset['asset_id'] ) ) . '">' . esc_html__( 'Review', 'mad4b-site-control-plane' ) . '</a> ';
+			echo '<details class="mad4b-context-asset-details"><summary>' . esc_html__( 'Governance details', 'mad4b-site-control-plane' ) . '</summary><dl>';
+			echo '<dt>' . esc_html__( 'Mode', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['source_mode'] ) ? $asset['source_mode'] : '' ) . '</code></dd>';
+			echo '<dt>' . esc_html__( 'Content hash', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['content_hash'] ) ? $asset['content_hash'] : '' ) . '</code></dd>';
+			echo '<dt>' . esc_html__( 'Normalization', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( $normalization_status ) . '</code></dd>';
+			echo '<dt>' . esc_html__( 'Last synced', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( isset( $asset['last_synced_at'] ) && $asset['last_synced_at'] ? $asset['last_synced_at'] : '—' ) . '</dd>';
+			echo '</dl></details></td></tr>';
 		}
 		echo '</tbody></table></div></div>';
 	}
