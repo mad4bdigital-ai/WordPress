@@ -804,6 +804,8 @@ mad4b_review_assert( 'ai_agent' === $ai_approval['review_actor_type'], 'AI appro
 mad4b_review_assert( MAD4B_SCP_Agent_Registry::$configured_public_id === $ai_approval['review_agent_public_id'], 'AI approval must bind the configured agent public ID.', $ai_approval );
 mad4b_review_assert( 0 === (int) $ai_approval['reviewed_by'], 'AI approval must not impersonate a WordPress user.', $ai_approval );
 mad4b_review_assert( hash_equals( (string) $ai_approval['content_hash'], (string) $ai_approval['reviewed_content_hash'] ), 'AI approval must bind exactly to current content hash.', $ai_approval );
+mad4b_review_assert( isset( $ai_approval['review_binding']['registry_revision_after'] ) && (int) $ai_approval['review_binding']['registry_revision_after'] === MAD4B_SCP_Context_Authority::registry_revision(), 'AI review must return the committed next registry revision for sequential exact-bound review.', $ai_approval );
+mad4b_review_assert( ! empty( $ai_approval['review_binding']['authority_manifest_after'] ) && hash_equals( (string) $ai_approval['review_binding']['authority_manifest_after'], MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ), 'AI review must return the committed next authority manifest for sequential exact-bound review.', $ai_approval );
 mad4b_review_assert( $before_ai_governance['category'] === $ai_approval['category'], 'AI review must not change category.', $ai_approval );
 mad4b_review_assert( $before_ai_governance['authority_class'] === $ai_approval['authority_class'], 'AI review must not change authority class.', $ai_approval );
 mad4b_review_assert( $before_ai_governance['required'] === ! empty( $ai_approval['required'] ), 'AI review must not change Required scope.', $ai_approval );
