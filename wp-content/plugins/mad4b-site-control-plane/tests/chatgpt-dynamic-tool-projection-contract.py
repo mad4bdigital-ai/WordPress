@@ -57,6 +57,7 @@ for marker in [
 ]:
     require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
 require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
+require("provider_for_capability_descriptor" in INSPECTOR, "canonical Ability inspection still depends on transient runtime mount eligibility")
 
 # A pre-tool denial must arm the final callback seal requirement before any
 # same-priority filter can overwrite the returned WP_Error.
@@ -181,3 +182,21 @@ for marker in [
 ]:
     if marker not in (FENCE + ABILITIES):
         raise SystemExit("fixed-dispatch/projection isolation guard missing: " + marker)
+
+
+# Status is summary-first and deep work is explicit/bounded.
+for marker in [
+    "'detail' => array( 'type' => 'string', 'enum' => array( 'summary', 'page' )",
+    "'ability_limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 25",
+    "'include_catalog_preflight' => array( 'type' => 'boolean', 'default' => false )",
+    "'include_universe_count' => array( 'type' => 'boolean', 'default' => false )",
+    "'bounded_status' => true",
+    "'status_policy' => 'summary_first_opt_in_deep_scan'",
+    "'catalog_preflight_performed' => $include_preflight",
+    "'universe_scan_performed' => $include_universe",
+    "'ability_contract_scan_count' => $returned",
+]:
+    require(marker in PROJECTION, f"bounded projection status invariant missing: {marker}")
+
+for token in ("catalog_preflight_error_code","mad4b_catalog_preflight_exception","is_wp_error( $catalog_preflight )"):
+    require(token in PROJECTION, f"projection status fail-soft catalog preflight guard missing: {token}")
