@@ -226,6 +226,41 @@ $fixture_state = array(
 );
 update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 
+$bounded_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array( 'limit' => 1, 'offset' => 0 ) );
+if ( is_wp_error( $bounded_status ) ) $fail( 'Bounded projection status failed.', $bounded_status->get_error_code() );
+if ( 1 !== (int) ( $bounded_status['stored_count'] ?? -1 )
+	|| count( $bounded_status['abilities'] ?? array() ) > 1
+	|| empty( $bounded_status['page']['snapshot'] )
+	|| 64 !== strlen( (string) $bounded_status['page']['snapshot'] )
+	|| ! array_key_exists( 'tool_count', $bounded_status['catalog_preflight'] ?? array() )
+	|| array_key_exists( 'runtime_class_provenance', $bounded_status['catalog_preflight'] ?? array() ) ) {
+	$fail( 'Projection status default page is not bounded.', $bounded_status );
+}
+$summary_only = MAD4B_SCP_ChatGPT_Tool_Projection::status( array( 'include_abilities' => false ) );
+if ( is_wp_error( $summary_only ) || ! empty( $summary_only['abilities'] ) || ! empty( $summary_only['page']['abilities_included'] ) ) {
+	$fail( 'Projection status summary-only mode returned Ability rows.', $summary_only );
+}
+$detail_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array( 'include_preflight_details' => true, 'limit' => 1 ) );
+if ( is_wp_error( $detail_status )
+	|| empty( $detail_status['page']['preflight_details_included'] )
+	|| ! array_key_exists( 'tools', $detail_status['catalog_preflight_details'] ?? array() )
+	|| count( $detail_status['catalog_preflight_details']['tools'] ?? array() ) > MAD4B_SCP_ChatGPT_Tool_Projection::STATUS_MAX_PREFLIGHT_TOOLS
+	|| count( $detail_status['catalog_preflight_details']['failures'] ?? array() ) > MAD4B_SCP_ChatGPT_Tool_Projection::STATUS_MAX_PREFLIGHT_FAILURES ) {
+	$fail( 'Projection status detail mode is not bounded.', $detail_status );
+}
+$snapshot_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array(
+	'limit' => 1,
+	'expected_snapshot' => (string) $bounded_status['page']['snapshot'],
+) );
+if ( is_wp_error( $snapshot_status ) ) $fail( 'Projection status rejected its current snapshot.', $snapshot_status->get_error_code() );
+$stale_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array(
+	'limit' => 1,
+	'expected_snapshot' => str_repeat( '0', 64 ),
+) );
+if ( ! is_wp_error( $stale_status ) || 'mad4b_chatgpt_projection_status_page_stale' !== $stale_status->get_error_code() ) {
+	$fail( 'Projection status paging accepted a stale snapshot.', $stale_status );
+}
+
 try {
 	// Certification shares the projection's exact schema/classification and
 	// callback fence proof, without executing the selected mutation.

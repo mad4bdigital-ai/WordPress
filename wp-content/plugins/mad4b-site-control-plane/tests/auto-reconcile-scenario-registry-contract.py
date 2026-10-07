@@ -76,3 +76,12 @@ for signal in (
     "source_candidate_binding_probe",
 ):
     assert signal in registry
+
+# Dynamic extension points are additive and fail closed.
+assert "mad4b_scp_auto_reconcile_signals" in registry
+assert "mad4b_scp_auto_reconcile_worker_error_policies" in registry
+assert "MAX_EXTENSION_SIGNALS" in registry
+assert "MAX_EXTENSION_ERROR_POLICIES" in registry
+assert "bounded_extension_context" in registry
+assert "core_worker_error_decision" in registry
+assert "extension_worker_error_decision" in registry
