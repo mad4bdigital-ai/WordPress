@@ -344,8 +344,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 	public static function handle_review_batch() {
 		self::require_admin_request( self::ACTION_REVIEW_BATCH );
 		$raw_ids = isset( $_POST['asset_ids'] ) && is_array( $_POST['asset_ids'] ) ? wp_unslash( $_POST['asset_ids'] ) : array();
+		if ( count( $raw_ids ) > 50 ) {
+			self::redirect_result( new WP_Error( 'mad4b_context_batch_review_limit_exceeded', 'Batch review supports at most 50 selected Context assets per exact-bound request.' ), 'review', '' );
+		}
 		$asset_ids = array();
-		foreach ( array_slice( $raw_ids, 0, 50 ) as $raw_id ) {
+		foreach ( $raw_ids as $raw_id ) {
+			if ( ! is_scalar( $raw_id ) ) continue;
 			$asset_id = strtolower( trim( sanitize_text_field( (string) $raw_id ) ) );
 			if ( preg_match( '/^[a-f0-9]{64}$/', $asset_id ) ) $asset_ids[ $asset_id ] = $asset_id;
 		}
@@ -363,8 +367,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::redirect_result( new WP_Error( 'mad4b_context_batch_review_note_required', 'Batch Needs changes and Reject decisions require a review note.' ), 'review', '' );
 		}
 
-		$expected_batch_registry_revision = isset( $_POST['expected_batch_registry_revision'] ) ? (int) wp_unslash( $_POST['expected_batch_registry_revision'] ) : -1;
-		$expected_batch_authority_manifest = strtolower( trim( sanitize_text_field( isset( $_POST['expected_batch_authority_manifest_fingerprint'] ) ? wp_unslash( $_POST['expected_batch_authority_manifest_fingerprint'] ) : '' ) ) );
+		$raw_expected_batch_registry_revision = isset( $_POST['expected_batch_registry_revision'] ) && is_scalar( $_POST['expected_batch_registry_revision'] ) ? wp_unslash( $_POST['expected_batch_registry_revision'] ) : '';
+		$raw_expected_batch_authority_manifest = isset( $_POST['expected_batch_authority_manifest_fingerprint'] ) && is_scalar( $_POST['expected_batch_authority_manifest_fingerprint'] ) ? wp_unslash( $_POST['expected_batch_authority_manifest_fingerprint'] ) : '';
+		$expected_batch_registry_revision = preg_match( '/^\d+$/', (string) $raw_expected_batch_registry_revision ) ? (int) $raw_expected_batch_registry_revision : -1;
+		$expected_batch_authority_manifest = strtolower( trim( sanitize_text_field( (string) $raw_expected_batch_authority_manifest ) ) );
 		$current_batch_registry_revision = MAD4B_SCP_Context_Authority::registry_revision();
 		$current_batch_authority_manifest = MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
 		if ( $expected_batch_registry_revision < 0 || $expected_batch_registry_revision !== $current_batch_registry_revision ) {
@@ -401,7 +407,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( $classification_confidence < 0.60 && 'human' !== $classification_source ) {
 				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_classification_confirmation_required', 'Batch review excludes low-confidence automatic classification. Confirm that asset individually first.', array( 'asset_id' => $asset_id, 'classification_confidence' => $classification_confidence ) ), 'review', '' );
 			}
-			$rendered_hash = isset( $raw_hashes[ $asset_id ] ) ? strtolower( trim( sanitize_text_field( (string) $raw_hashes[ $asset_id ] ) ) ) : '';
+			$rendered_hash = isset( $raw_hashes[ $asset_id ] ) && is_scalar( $raw_hashes[ $asset_id ] ) ? strtolower( trim( sanitize_text_field( (string) $raw_hashes[ $asset_id ] ) ) ) : '';
 			$current_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 			if ( ! preg_match( '/^[a-f0-9]{64}$/', $rendered_hash ) || ! preg_match( '/^[a-f0-9]{64}$/', $current_hash ) ) {
 				self::redirect_result( new WP_Error( 'mad4b_context_batch_review_content_hash_invalid', 'One selected Context asset has no exact rendered content hash.' ), 'review', '' );
