@@ -4,6 +4,7 @@ Status: **repository core implemented; live acceptance pending**
 
 Integration target: PR #258 (`spec/007-competitive-experience-20261006`)
 Implementation branch: `feat/007-g3-adapters-shadow-canary-packs-20261007`
+Implementation PR: #282
 Baseline Hub head: `a6e39275009e7db32b0c4c8623886acd1a48e170`
 Reviewed master ancestor: `dccb0889799eb255f0d64d6959d9687252801c5b`
 
@@ -30,7 +31,7 @@ All twenty tasks are **PARTIAL**. The extension ledger becomes 60 PARTIAL, 115 O
 
 ## Verification
 
-CI runs exact-head PHP 7.4 and 8.3 contract fixtures for manifest, shadow, reversible canary and pack registry, plus existing canary execution/authorization and crypto profile compatibility. Extension validation binds all PARTIAL tasks to code, tests and spec digests and rejects false parity or live-acceptance claims. Existing G1/G2 evidence hashes are refreshed after the cumulative ledger snapshot is regenerated; previous history entries and acknowledgements are preserved.
+CI runs exact-head PHP 7.4 and 8.3 contract fixtures for manifest, shadow, reversible canary and pack registry, plus ability registration against the actual Servers class, existing canary execution/authorization and crypto profile compatibility. Registration uses the existing private admin category without assuming undefined server constants. Extension validation binds all PARTIAL tasks to code, tests and spec digests and rejects false parity or live-acceptance claims. Existing G1/G2 evidence hashes are refreshed after the cumulative ledger snapshot is regenerated; previous history entries and acknowledgements are preserved.
 
 ## Remaining acceptance
 

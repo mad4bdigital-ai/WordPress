@@ -54,5 +54,6 @@
   "g2_implementation_pr": 277,
   "g2_delivery": "g2-delivery.json",
   "g3_implementation_branch": "feat/007-g3-adapters-shadow-canary-packs-20261007",
-  "g3_delivery": "g3-delivery.json"
+  "g3_delivery": "g3-delivery.json",
+  "g3_implementation_pr": 282
 }

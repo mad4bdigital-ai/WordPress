@@ -40,6 +40,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-shadow-read-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/reversible-canary-certification-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/certification-pack-registry-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g3-registration-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py'
 
 permissions:
   contents: read
@@ -282,8 +284,7 @@ jobs:
             php -l "$PLUGIN/includes/class-mad4b-scp-$service.php"
           done
           php -l "$PLUGIN/mad4b-site-control-plane.php"
-          for contract in declarative-adapter-manifest provider-shadow-read reversible-canary-certification certification-pack-registry provider-canary-execution provider-canary-authorization-finalization provider-canary-authorization-surface; do
+          for contract in declarative-adapter-manifest provider-shadow-read reversible-canary-certification certification-pack-registry g3-registration provider-canary-execution provider-canary-authorization-finalization provider-canary-authorization-surface; do
             php "$PLUGIN/tests/$contract-contract.php"
           done
           python3 "$PLUGIN/tests/receipt-crypto-profile-contract.py"
-

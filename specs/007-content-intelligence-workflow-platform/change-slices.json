@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "dccb0889799eb255f0d64d6959d9687252801c5b",
-  "changed_file_count": 154,
+  "changed_file_count": 155,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -245,11 +245,12 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/reversible-canary-certification-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/certification-pack-registry-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g3-registration-contract.php",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g3-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g3-delivery.md"
       ]
     }
   ],
-  "changed_paths_sha256": "4ad23bd0038937902a6aa57d4f6d8a815fe2ea85551bb57fc9e4beff5d521f37",
+  "changed_paths_sha256": "0e9beecd4b2734b65c9b22bcf607f2eb090b7a73d6fb6cee534ce8b6d3daff23",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

@@ -2,6 +2,7 @@
   "contract": "mad4b.competitive-g3-delivery.v1",
   "status": "REPOSITORY_G3_CORE_IMPLEMENTED_LIVE_ACCEPTANCE_PENDING",
   "integration_pr": 258,
+  "implementation_pr": 282,
   "implementation_branch": "feat/007-g3-adapters-shadow-canary-packs-20261007",
   "integration_base": "spec/007-competitive-experience-20261006",
   "baseline_hub_head": "a6e39275009e7db32b0c4c8623886acd1a48e170",
@@ -91,6 +92,10 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py",
       "sha256": "41afc74c0c6989fbbe750bd3a16f70a375e3b0ec26c88a1ec5685fc3bd84085f"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g3-registration-contract.php",
+      "sha256": "0f8db8a7f4c43b2c330f36c76882d9e5d29314aabbb204bc95c29b69fded0834"
     }
   ],
   "spec_paths": [
@@ -100,11 +105,11 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
-      "sha256": "804785a9bc76231f2daa689ef4704971c2b50fe3759a8877695dfff150d9a127"
+      "sha256": "4f7b9dd869ee8dece2d4da70dda5ce46a3959865af9090e4c358ce73928af8c2"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g3-delivery.md",
-      "sha256": "994b2bc059c69fde34fb44bc0650047305958d21fb34e3f0fe94c522a62dd047"
+      "sha256": "a25a30c67b3858d8984b43db93ebd11c547f3718c9601c9c347d6d6523991f03"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
