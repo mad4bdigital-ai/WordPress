@@ -744,6 +744,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		}
 
 		$effective = array();
+		$catalog_preflight_error_code = '';
 		$catalog_preflight = array(
 			'performed' => false,
 			'reason' => 'not_requested',
@@ -753,11 +754,30 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( $include_preflight ) {
 			$effective = self::effective_projection_rows();
 			$catalog = array_values( array_unique( array_merge( MAD4B_SCP_Servers::chatgpt_base_tools(), array_keys( $effective ) ) ) );
-			$catalog_preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight(
-				$catalog,
-				MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog )
-			);
-			if ( is_array( $catalog_preflight ) ) $catalog_preflight['performed'] = true;
+			try {
+				$catalog_preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight(
+					$catalog,
+					MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog )
+				);
+			} catch ( Throwable $error ) {
+				$catalog_preflight_error_code = 'mad4b_catalog_preflight_exception';
+				$catalog_preflight = array();
+			}
+			if ( is_wp_error( $catalog_preflight ) ) {
+				$catalog_preflight_error_code = (string) $catalog_preflight->get_error_code();
+				$catalog_preflight = array();
+			}
+			if ( ! is_array( $catalog_preflight ) ) {
+				$catalog_preflight_error_code = '' !== $catalog_preflight_error_code ? $catalog_preflight_error_code : 'mad4b_catalog_preflight_invalid';
+				$catalog_preflight = array();
+			}
+			if ( ! isset( $catalog_preflight['tools'] ) || ! is_array( $catalog_preflight['tools'] ) ) $catalog_preflight['tools'] = array();
+			$catalog_preflight['performed'] = true;
+			if ( '' !== $catalog_preflight_error_code ) {
+				$catalog_preflight['state'] = 'degraded';
+				$catalog_preflight['error_code'] = $catalog_preflight_error_code;
+				$catalog_preflight['authorizing'] = false;
+			}
 		}
 
 		$stored = array();
@@ -829,6 +849,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'universe_count_exact' => $include_universe,
 			'binding_match' => $binding_match,
 			'catalog_preflight' => $catalog_preflight,
+			'catalog_preflight_error_code' => $catalog_preflight_error_code,
 			'catalog_preflight_performed' => $include_preflight,
 			'universe_scan_performed' => $include_universe,
 			'ability_contract_scan_count' => $returned,
