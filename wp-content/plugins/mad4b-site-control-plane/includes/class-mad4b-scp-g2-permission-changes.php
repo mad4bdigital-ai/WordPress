@@ -159,8 +159,10 @@ final class MAD4B_SCP_G2_Permission_Changes {
 			$readback_contract = 'exact_allow_grant_absent';
 		}
 
+		$environment = self::effective_environment();
 		$basis = array(
 			'contract' => 'mad4b.agent-permission-reduction-plan.v1',
+			'environment' => $environment,
 			'agent_public_id' => (string) $agent['public_id'],
 			'agent_revision' => (int) $agent['revision'],
 			'operation' => $normalized['operation'],
@@ -171,6 +173,7 @@ final class MAD4B_SCP_G2_Permission_Changes {
 			'authority_expansion' => false,
 			'grant_creation_allowed' => false,
 			'enable_or_restore_allowed' => false,
+			'production_authorized' => false,
 			'automatic_tool_mounts_allowed' => false,
 			'authorizing' => false,
 			'mutation_performed' => false,
@@ -194,6 +197,14 @@ final class MAD4B_SCP_G2_Permission_Changes {
 		if ( empty( $plan['eligible'] ) ) return new WP_Error( 'mad4b_g2_permission_plan_blocked', 'Permission reduction plan has blockers.', array( 'blockers' => $plan['blockers'] ) );
 		if ( ! hash_equals( (string) $plan['plan_sha256'], $expected_plan ) ) {
 			return new WP_Error( 'mad4b_g2_permission_plan_drift', 'Permission reduction plan changed since review.' );
+		}
+		$environment = self::effective_environment();
+		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) {
+			return new WP_Error(
+				'mad4b_g2_permission_environment_denied',
+				'G2 authority-reduction apply is limited to non-Production certified environments.',
+				array( 'environment' => $environment, 'production_authorized' => false )
+			);
 		}
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array();
 		if ( empty( $audit_status['ready'] ) ) return new WP_Error( 'mad4b_g2_permission_audit_unavailable', 'Append-only audit storage must be ready before authority reduction.' );
@@ -249,6 +260,8 @@ final class MAD4B_SCP_G2_Permission_Changes {
 
 		return array(
 			'contract' => 'mad4b.agent-permission-reduction-apply.v1',
+			'environment' => $environment,
+			'production_authorized' => false,
 			'operation' => $normalized['operation'],
 			'agent_public_id' => $normalized['agent_public_id'],
 			'plan_sha256' => $expected_plan,
@@ -295,6 +308,15 @@ final class MAD4B_SCP_G2_Permission_Changes {
 		);
 		$readback['readback_sha256'] = hash( 'sha256', wp_json_encode( $readback, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		return $readback;
+	}
+
+	private static function effective_environment() {
+		if ( class_exists( 'MAD4B_SCP_Environment' ) && method_exists( 'MAD4B_SCP_Environment', 'effective' ) ) {
+			return sanitize_key( (string) MAD4B_SCP_Environment::effective() );
+		}
+		return function_exists( 'wp_get_environment_type' )
+			? sanitize_key( (string) wp_get_environment_type() )
+			: 'unknown';
 	}
 
 	private static function normalize_input( $input ) {
