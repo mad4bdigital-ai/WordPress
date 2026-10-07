@@ -1119,7 +1119,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<article id="mad4b-review-asset-' . esc_attr( sanitize_html_class( $asset_id ) ) . '" class="mad4b-context-inbox-item' . ( ! empty( $asset['required'] ) ? ' is-required' : '' ) . '"' .
 			' data-mad4b-review-asset-id="' . esc_attr( $asset_id ) . '" data-mad4b-review-required="' . esc_attr( ! empty( $asset['required'] ) ? '1' : '0' ) . '" data-mad4b-review-confidence="' . esc_attr( (string) $classification_confidence ) . '">';
 		echo '<div class="mad4b-context-inbox-head"><div class="mad4b-context-inbox-title">';
-		echo '<label class="mad4b-context-review-select-wrap"><input type="checkbox" class="mad4b-context-review-select" value="' . esc_attr( $asset_id ) . '"' . ( $needs_classification ? ' disabled' : '' ) . '> <span class="screen-reader-text">' . esc_html__( 'Select asset for batch review', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label class="mad4b-context-review-select-wrap"><input type="checkbox" class="mad4b-context-review-select" name="asset_ids[]" form="mad4b-context-batch-form" value="' . esc_attr( $asset_id ) . '"' . ( $needs_classification ? ' disabled' : '' ) . '> <span class="screen-reader-text">' . esc_html__( 'Select asset for batch review', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '<div><strong>' . esc_html( isset( $asset['title'] ) ? $asset['title'] : 'Context asset' ) . '</strong>';
 		if ( $duplicate_title ) echo ' <span class="mad4b-context-badge is-warning">' . esc_html__( 'Duplicate title', 'mad4b-site-control-plane' ) . '</span>';
 		if ( $needs_classification ) echo ' <span class="mad4b-context-badge is-warning">' . esc_html__( 'Classification check', 'mad4b-site-control-plane' ) . '</span>';
@@ -1142,7 +1142,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<input type="hidden" name="expected_authority_manifest_fingerprint" value="' . esc_attr( isset( $authority_status['authority_manifest_fingerprint'] ) ? (string) $authority_status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ) . '"><input type="hidden" name="decision" value="approve">';
 
 		if ( $needs_classification ) {
-			echo '<div class="notice notice-warning inline mad4b-context-classification-gate"><p><strong>' . esc_html__( 'Confirm classification before review.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Confidence is below 60%. Review the category and authority first; the content decision stays exact-bound and is committed in the same transaction.', 'mad4b-site-control-plane' ) . '</p><button type="button" class="button" data-mad4b-confirm-classification>' . esc_html__( 'Confirm classification', 'mad4b-site-control-plane' ) . '</button></div>';
+			echo '<div class="notice notice-warning inline mad4b-context-classification-gate"><p><strong>' . esc_html__( 'Confirm classification before review.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Confidence is below 60%. Review the category and authority first; the content decision stays exact-bound and is committed in the same transaction.', 'mad4b-site-control-plane' ) . '</p><label><input type="checkbox" name="classification_confirmed" value="1" required> ' . esc_html__( 'I reviewed this low-confidence classification and confirm the category and authority for this exact decision.', 'mad4b-site-control-plane' ) . '</label></div>';
 		}
 		echo '<details class="mad4b-context-review-governance"' . ( $needs_classification ? ' open' : '' ) . '><summary>' . esc_html__( 'Governance controls', 'mad4b-site-control-plane' ) . '</summary>';
 		echo '<p class="description">' . esc_html__( 'These controls are for Human Review only. The delegated AI path can decide the exact content review state, but cannot change category, authority, Required scope, source mode, or quality policy.', 'mad4b-site-control-plane' ) . '</p>';
@@ -1171,9 +1171,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 		echo '<label class="mad4b-context-inbox-note"><span class="screen-reader-text">' . esc_html__( 'Review note', 'mad4b-site-control-plane' ) . '</span><textarea name="review_note" rows="2" maxlength="1000" placeholder="' . esc_attr__( 'Rationale required for Needs changes, Reject, governance changes, or manual quality overrides.', 'mad4b-site-control-plane' ) . '"></textarea></label>';
 		echo '<div class="mad4b-context-review-inline-feedback" aria-live="polite"></div><div class="mad4b-context-review-actions">';
-		echo '<button type="submit" class="button button-primary" data-mad4b-review-decision="approve"' . ( $needs_classification ? ' disabled' : '' ) . '>' . esc_html__( 'Approve exact content', 'mad4b-site-control-plane' ) . '</button>';
-		echo '<button type="submit" class="button" data-mad4b-review-decision="needs_changes"' . ( $needs_classification ? ' disabled' : '' ) . '>' . esc_html__( 'Needs changes', 'mad4b-site-control-plane' ) . '</button>';
-		echo '<button type="submit" class="button button-link-delete" data-mad4b-review-decision="reject"' . ( $needs_classification ? ' disabled' : '' ) . '>' . esc_html__( 'Reject exact content', 'mad4b-site-control-plane' ) . '</button>';
+		echo '<button type="submit" class="button button-primary" data-mad4b-review-decision="approve">' . esc_html__( 'Approve exact content', 'mad4b-site-control-plane' ) . '</button>';
+		echo '<button type="submit" class="button" data-mad4b-review-decision="needs_changes">' . esc_html__( 'Needs changes', 'mad4b-site-control-plane' ) . '</button>';
+		echo '<button type="submit" class="button button-link-delete" data-mad4b-review-decision="reject">' . esc_html__( 'Reject exact content', 'mad4b-site-control-plane' ) . '</button>';
 		if ( $ai_ready && ! $needs_classification ) {
 			$handoff = self::ai_review_handoff_payload( $asset, $authority_status );
 			echo '<button type="button" class="button" data-mad4b-copy-ai-handoff="' . esc_attr( $payload_id ) . '">' . esc_html__( 'Prepare AI review', 'mad4b-site-control-plane' ) . '</button>';
@@ -1275,13 +1275,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div id="mad4b-context-review-feedback" class="mad4b-context-review-feedback" aria-live="polite"></div>';
 
 		if ( $reviewable ) {
-			echo '<div class="mad4b-scp-panel mad4b-context-batch-toolbar"><div><h2>' . esc_html__( 'Batch review', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Batch actions are sequential, not blind. Every asset uses its current exact binding, the Review workspace refreshes after each decision, and processing stops on stale evidence.', 'mad4b-site-control-plane' ) . '</p></div><div class="mad4b-context-batch-actions">';
+			echo '<form id="mad4b-context-batch-form" class="mad4b-scp-panel mad4b-context-batch-toolbar" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( self::ACTION_REVIEW_BATCH );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_BATCH ) . '">';
+			echo '<div><h2>' . esc_html__( 'Batch review', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'The server verifies the full bundle before the first write, then commits decisions sequentially with a fresh registry revision and authority binding before each asset. It stops on stale evidence.', 'mad4b-site-control-plane' ) . '</p></div><div class="mad4b-context-batch-actions">';
 			echo '<button type="button" class="button" data-mad4b-select-required>' . esc_html__( 'Select all required', 'mad4b-site-control-plane' ) . '</button>';
 			echo '<button type="button" class="button" data-mad4b-select-high-confidence>' . esc_html__( 'Select high-confidence assets', 'mad4b-site-control-plane' ) . '</button>';
-			echo '<button type="button" class="button button-primary" data-mad4b-batch-decision="approve">' . esc_html__( 'Approve selected', 'mad4b-site-control-plane' ) . '</button>';
-			echo '<button type="button" class="button" data-mad4b-batch-decision="needs_changes">' . esc_html__( 'Request changes', 'mad4b-site-control-plane' ) . '</button>';
-			if ( $ai_ready ) echo '<button type="button" class="button" data-mad4b-copy-selected-ai>' . esc_html__( 'Send selected to AI Review', 'mad4b-site-control-plane' ) . '</button>';
-			echo '</div><label class="mad4b-context-batch-note"><strong>' . esc_html__( 'Batch note', 'mad4b-site-control-plane' ) . '</strong><input type="text" maxlength="1000" data-mad4b-batch-note placeholder="' . esc_attr__( 'Required for Request changes; optional for approval.', 'mad4b-site-control-plane' ) . '"></label><div class="mad4b-context-batch-feedback" aria-live="polite"></div></div>';
+			echo '<button type="submit" name="decision" value="approve" class="button button-primary">' . esc_html__( 'Approve selected', 'mad4b-site-control-plane' ) . '</button>';
+			echo '<button type="submit" name="decision" value="needs_changes" class="button">' . esc_html__( 'Request changes', 'mad4b-site-control-plane' ) . '</button>';
+			echo '<button type="submit" name="decision" value="reject" class="button button-link-delete">' . esc_html__( 'Reject selected', 'mad4b-site-control-plane' ) . '</button>';
+			echo '</div><label class="mad4b-context-batch-note"><strong>' . esc_html__( 'Batch note', 'mad4b-site-control-plane' ) . '</strong><input type="text" name="review_note" maxlength="1000" placeholder="' . esc_attr__( 'Required for Request changes and Reject; optional for approval.', 'mad4b-site-control-plane' ) . '"></label><div class="mad4b-context-batch-feedback" aria-live="polite"></div></form>';
 		}
 
 		echo '<section id="mad4b-required-review-inbox" class="mad4b-scp-panel mad4b-context-review-queue"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Blocking readiness — Required', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'These exact decisions clear the mandatory review blocker when bindings remain current.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $required ) ) . '</span></div>';
