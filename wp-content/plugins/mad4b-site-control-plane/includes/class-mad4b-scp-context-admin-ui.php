@@ -1017,6 +1017,74 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</div></form></article>';
 	}
 
+	private static function render_review() {
+		$status = MAD4B_SCP_Context_Authority::status();
+		$assets = MAD4B_SCP_Context_Authority::assets();
+		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
+		$sources = MAD4B_SCP_Context_Authority::sources();
+		$ai_status = MAD4B_SCP_Context_Authority::ai_review_policy_status();
+		$ai_ready = ! empty( $ai_status['ready'] );
+		$assets_by_id = array();
+		foreach ( $assets as $asset ) {
+			if ( is_array( $asset ) && ! empty( $asset['asset_id'] ) ) $assets_by_id[ (string) $asset['asset_id'] ] = $asset;
+		}
+		$required = array();
+		$optional = array();
+		foreach ( isset( $review_queue['items'] ) && is_array( $review_queue['items'] ) ? $review_queue['items'] : array() as $pending ) {
+			$asset_id = isset( $pending['asset_id'] ) ? (string) $pending['asset_id'] : '';
+			$asset = isset( $assets_by_id[ $asset_id ] ) ? $assets_by_id[ $asset_id ] : $pending;
+			if ( ! empty( $asset['required'] ) ) $required[] = $asset;
+			else $optional[] = $asset;
+		}
+		$normalized = 0;
+		foreach ( $assets as $asset ) {
+			if ( is_array( $asset ) && ! empty( $asset['content_complete'] ) && 'ready' === ( isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : 'ready' ) ) ++$normalized;
+		}
+		$blockers = isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? $status['blockers'] : array();
+		$scan_incomplete = in_array( 'governed_context_source_scan_incomplete', $blockers, true );
+
+		echo '<div class="mad4b-scp-panel mad4b-context-readiness"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Context readiness', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Resolve only the blockers that prevent governed Context from becoming ready.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $blockers ) ) . ' ' . esc_html__( 'blockers', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div class="mad4b-context-readiness-grid">';
+		echo '<div class="mad4b-context-readiness-card ' . ( empty( $required ) ? 'is-complete' : 'is-attention' ) . '"><strong>' . esc_html__( 'Required review', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html( sprintf( __( '%d required asset(s) waiting', 'mad4b-site-control-plane' ), count( $required ) ) ) . '</span><a class="button button-primary" href="#mad4b-required-review-inbox">' . esc_html__( 'Review required assets', 'mad4b-site-control-plane' ) . '</a></div>';
+		echo '<div class="mad4b-context-readiness-card ' . ( $scan_incomplete ? 'is-attention' : 'is-complete' ) . '"><strong>' . esc_html__( 'Source health', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html( sprintf( __( '%1$d / %2$d assets normalized', 'mad4b-site-control-plane' ), $normalized, count( $assets ) ) ) . '</span><span>' . esc_html( $scan_incomplete ? __( 'Source scan: Partial', 'mad4b-site-control-plane' ) : __( 'Source scan: Complete', 'mad4b-site-control-plane' ) ) . '</span>';
+		if ( $scan_incomplete ) {
+			foreach ( $sources as $source ) {
+				if ( ! is_array( $source ) || 'governed' !== ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) ) continue;
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+				wp_nonce_field( self::ACTION_SCAN_SOURCE );
+				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '"><input type="hidden" name="return_tab" value="review">';
+				submit_button( __( 'Resume source scan', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+				echo '</form>';
+				break;
+			}
+		}
+		echo '</div></div>';
+		if ( $blockers ) {
+			echo '<details class="mad4b-context-blocker-details"><summary>' . esc_html__( 'Exact blocker codes', 'mad4b-site-control-plane' ) . '</summary><ul>';
+			foreach ( $blockers as $blocker ) echo '<li><code>' . esc_html( $blocker ) . '</code></li>';
+			echo '</ul></details>';
+		}
+		echo '</div>';
+
+		self::render_review_policy_panel();
+		echo '<div id="mad4b-context-review-feedback" class="mad4b-context-review-feedback" aria-live="polite"></div>';
+
+		echo '<section id="mad4b-required-review-inbox" class="mad4b-scp-panel mad4b-context-review-queue"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Required review', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'These decisions directly clear the mandatory review blocker when their exact bindings remain current.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $required ) ) . '</span></div>';
+		if ( $ai_ready && $required ) {
+			$batch = array();
+			foreach ( $required as $asset ) $batch[] = self::ai_review_handoff_payload( $asset, $status );
+			echo '<div class="mad4b-context-ai-batch"><div><strong>' . esc_html__( 'Delegated AI review handoff is ready.', 'mad4b-site-control-plane' ) . '</strong><p>' . esc_html__( 'The handoff contains exact hashes, registry revision and authority fingerprint. Preparing it does not approve or mutate content; the delegated agent must review and execute the governed ability.', 'mad4b-site-control-plane' ) . '</p></div><button type="button" class="button button-primary" data-mad4b-copy-ai-handoff="mad4b-ai-required-batch">' . esc_html( sprintf( __( 'Prepare AI review handoff (%d)', 'mad4b-site-control-plane' ), count( $required ) ) ) . '</button><textarea id="mad4b-ai-required-batch" class="mad4b-context-ai-handoff-payload" hidden readonly>' . esc_textarea( wp_json_encode( array( 'contract' => 'mad4b.context-ai-review-batch-handoff.v1', 'items' => $batch ), JSON_UNESCAPED_SLASHES ) ) . '</textarea></div>';
+		}
+		if ( empty( $required ) ) echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'No required review is pending.', 'mad4b-site-control-plane' ) . '</strong></p></div>';
+		else foreach ( $required as $asset ) self::render_review_inbox_item( $asset, $status, $ai_ready );
+		echo '</section>';
+
+		echo '<details class="mad4b-scp-panel mad4b-context-optional-review"><summary><strong>' . esc_html__( 'Optional review', 'mad4b-site-control-plane' ) . '</strong> <span class="mad4b-context-badge">' . esc_html( (string) count( $optional ) . '</span></summary><p class="description">' . esc_html__( 'Optional assets do not have the same priority as Required context. Review them independently without obscuring the mandatory path.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( empty( $optional ) ) echo '<p>' . esc_html__( 'No optional review is pending.', 'mad4b-site-control-plane' ) . '</p>';
+		else foreach ( $optional as $asset ) self::render_review_inbox_item( $asset, $status, $ai_ready );
+		echo '</details>';
+	}
+
 	private static function render_assets() {
 		$assets = MAD4B_SCP_Context_Authority::assets();
 		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
