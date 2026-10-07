@@ -364,6 +364,8 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
                     or delivery.get("authorizing") is not False or delivery.get("production_authorized") is not False
                     or delivery.get("runtime_parity_claimed") is not False or delivery.get("live_provider_acceptance") is not False
                     or delivery.get("live_browser_acceptance") is not False
+                    or delivery.get("native_mutation_dispatch_implemented") is not False
+                    or delivery.get("status") != "REPOSITORY_G4_FOUNDATION_AND_PREFLIGHT_IMPLEMENTED_PROVIDER_ACCEPTANCE_PENDING"
                     or delivery.get("exact_head_binding") != "supplied_by_ci_not_embedded_in_commit"
                     or delivery.get("provider_family_contract") != "mad4b.g4-provider-family-catalog.v1"
                     or set(delivery.get("partial_task_ids", [])) != g4_partial
