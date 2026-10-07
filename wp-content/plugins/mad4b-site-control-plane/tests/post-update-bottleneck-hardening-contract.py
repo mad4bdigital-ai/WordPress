@@ -147,3 +147,63 @@ for text in (runtime, schema, lease, reconnect, resilience):
 assert "blind_mutation_replay_after_transport_reinitialize' => false" in reconnect
 
 print("mad4b.post-update-bottleneck-hardening.v2: PASS")
+
+
+# Dynamic auto-reconciliation coverage.
+runtime_convergence = (ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
+continuation = (ROOT / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
+required_runtime_tokens = [
+    "mad4b_scp_auto_reconciliation_scenarios",
+    "manual_package_replacement",
+    "trusted_rollback_or_reinstall",
+    "governed_self_update_restart",
+    "build_provenance_drift",
+    "MAD4B_SCP_BOOT_PROVENANCE_SHA256",
+    "mad4b_scp_boot_provenance_sha256",
+    "authority_delta' => 'zero_required",
+    "mutation_class' => 'candidate_binding_only",
+    "production_allowed' => false",
+    "breakglass_allowed' => false",
+]
+for token in required_runtime_tokens:
+    assert token in runtime_convergence, f"missing dynamic auto-reconciliation contract token: {token}"
+
+# Extension descriptors are data-only selectors. They may add scenarios but
+# cannot provide executors or override the central authority envelope.
+assert "apply_filters( 'mad4b_scp_auto_reconciliation_scenarios', $scenarios )" in runtime_convergence
+assert "foreach ( array( 'all', 'any', 'none' ) as $bucket )" in runtime_convergence
+assert "'authority_delta' => 'zero_required'" in runtime_convergence
+assert "'mutation_class' => 'candidate_binding_only'" in runtime_convergence
+assert "'production_allowed' => false" in runtime_convergence
+assert "'breakglass_allowed' => false" in runtime_convergence
+registry_body = runtime_convergence.split("public static function reconciliation_scenario_registry()", 1)[1].split("private static function select_reconciliation_scenario", 1)[0]
+for forbidden in ("executor", "execute_callback", "mutation_allowed", "grant_mutation_allowed", "subject_mutation_allowed", "agent_mutation_allowed"):
+    assert forbidden not in registry_body, f"scenario registry unexpectedly accepts authority field: {forbidden}"
+
+assert "observed_reconciliation_preflight" in continuation
+for token in [
+    "$result['disposition'] = 'AUTO_REBIND'",
+    "$result['disposition'] = 'REVIEW_REQUIRED'",
+    "'disposition' => 'HARD_BLOCK'",
+    "$result['disposition'] = 'DEFER'",
+    "'grant_mutation_allowed' => false",
+    "'subject_mutation_allowed' => false",
+    "'agent_mutation_allowed' => false",
+]:
+    assert token in continuation, f"missing fail-closed observed reconciliation token: {token}"
+
+
+# Observed-release auto-reconciliation retries only transient dependencies.
+runtime_convergence = (ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
+for token in [
+    "private static function observed_release_error_policy",
+    "mad4b_observed_release_identity_mismatch",
+    "mad4b_observed_release_integrity_required",
+    "_(?:pointer|manifest)_fetch_failed",
+    "mad4b_self_update_manifest_not_cached",
+    "automatic_bounded_reconciliation_retry",
+    "explicit_review_after_retry_exhaustion",
+    "bounded_retry_exhausted",
+    "MAX_TRANSIENT_RETRIES",
+]:
+    assert token in runtime_convergence, f"missing observed-release retry policy token: {token}"

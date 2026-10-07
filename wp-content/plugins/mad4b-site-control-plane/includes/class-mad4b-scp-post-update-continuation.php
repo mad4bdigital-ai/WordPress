@@ -287,6 +287,134 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		return self::status();
 	}
 
+
+	/**
+	 * Read-only preflight for automatic observed-package reconciliation.
+	 *
+	 * This method never creates a permit and never mutates grants, subjects,
+	 * agents or candidate binding.  It reuses the exact continuation delta
+	 * classifier so future scenario discovery cannot weaken ZERO_DELTA.
+	 */
+	public static function observed_reconciliation_preflight( array $trusted_target ) {
+		$result = array(
+			'contract' => 'mad4b.observed-reconciliation-preflight.v1',
+			'disposition' => 'HARD_BLOCK',
+			'eligible' => false,
+			'reasons' => array(),
+			'authority_delta' => 'zero_required',
+			'mutation_class' => 'candidate_binding_only',
+			'production_allowed' => false,
+			'breakglass_allowed' => false,
+			'grant_mutation_allowed' => false,
+			'subject_mutation_allowed' => false,
+			'agent_mutation_allowed' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'retryable' => false,
+			'retry_after_seconds' => 0,
+		);
+
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: '';
+		if ( 'staging' !== $environment ) {
+			$result['reasons'][] = 'production_or_environment_changed';
+			return $result;
+		}
+		if ( self::breakglass_enabled() ) {
+			$result['reasons'][] = 'breakglass_excluded';
+			return $result;
+		}
+
+		$target = self::target_identity( $trusted_target );
+		if ( is_wp_error( $target ) ) {
+			$result['reasons'][] = sanitize_key( (string) $target->get_error_code() );
+			return $result;
+		}
+		$release = self::release_identity( $trusted_target );
+		if ( is_wp_error( $release ) ) {
+			$result['reasons'][] = sanitize_key( (string) $release->get_error_code() );
+			return $result;
+		}
+		if ( ! self::identity_matches( $target, self::current_identity() ) ) {
+			$result['reasons'][] = 'package_identity_mismatch';
+			return $result;
+		}
+
+		$physical = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status()
+			: array();
+		if ( empty( $physical['runtime_manifest_match'] ) || ! self::identity_matches( $target, $physical ) ) {
+			$result['reasons'][] = 'package_integrity_unverified';
+			return $result;
+		}
+
+		$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array();
+		if ( empty( $binding['required'] ) || ! empty( $binding['match'] ) ) {
+			$result['disposition'] = 'NO_OP';
+			$result['eligible'] = true;
+			$result['reasons'][] = empty( $binding['required'] ) ? 'candidate_binding_not_required' : 'candidate_binding_already_current';
+			return $result;
+		}
+
+		$baseline = get_option( self::BASELINE_OPTION, array() );
+		if ( ! self::baseline_valid( $baseline ) ) {
+			$result['disposition'] = 'REVIEW_REQUIRED';
+			$result['reasons'][] = 'sealed_baseline_missing_or_expired';
+			return $result;
+		}
+
+		$current = self::read_permit();
+		if ( self::permit_active( $current, true ) || ( is_array( $current ) && 'executing' === ( $current['state'] ?? '' ) ) ) {
+			$result['disposition'] = 'DEFER';
+			$result['reasons'][] = 'continuation_already_active';
+			return $result;
+		}
+
+		$preview = array(
+			'target_identity' => $target,
+			'release' => $release,
+			'site' => $baseline['site'],
+			'actor' => $baseline['actor'],
+			'previous_binding' => $baseline['previous_binding'],
+			'write_snapshot' => $baseline['write_snapshot'],
+			'transport_snapshot' => $baseline['transport_snapshot'],
+			'write_contract_fingerprint' => $baseline['write_contract_fingerprint'],
+		);
+		$delta = self::classify_current_delta( $preview );
+		$result['classification'] = isset( $delta['classification'] ) ? (string) $delta['classification'] : self::CLASS_HARD;
+		$result['reasons'] = isset( $delta['reasons'] ) && is_array( $delta['reasons'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $delta['reasons'] ) ) )
+			: array( 'delta_classification_unavailable' );
+
+		if ( self::CLASS_HARD === $result['classification'] ) {
+			$result['disposition'] = 'HARD_BLOCK';
+			return $result;
+		}
+		if ( self::CLASS_REVIEW === $result['classification'] ) {
+			$result['disposition'] = 'REVIEW_REQUIRED';
+			return $result;
+		}
+
+		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status()
+			: array();
+		if ( empty( $skills['ready'] ) || empty( $skills['build_identity_current'] ) || ! self::identity_matches( $target, $skills ) ) {
+			$result['disposition'] = 'DEFER';
+			$result['reasons'] = array( 'current_build_skill_certification_pending' );
+			$result['retryable'] = true;
+			$result['retry_after_seconds'] = 15;
+			return $result;
+		}
+
+		$result['disposition'] = 'AUTO_REBIND';
+		$result['eligible'] = true;
+		$result['reasons'] = array();
+		return $result;
+	}
+
 	private static function baseline_seal( array $baseline ) { unset( $baseline['seal'] ); return hash_hmac( 'sha256', self::digest( $baseline ), wp_salt( 'auth' ) ); }
 	private static function baseline_valid( $baseline ) {
 		return is_array( $baseline ) && self::BASELINE_CONTRACT === ( $baseline['contract'] ?? '' ) && is_string( $baseline['seal'] ?? null ) && preg_match( '/^[a-f0-9]{64}$/D', $baseline['seal'] )
