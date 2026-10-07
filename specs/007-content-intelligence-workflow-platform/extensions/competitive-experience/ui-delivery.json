@@ -20,7 +20,7 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php",
-      "sha256": "3c82c83ea1ae588bdf7d4bf54695be642ee9e67b56a9d88fc753c584de7eae3c"
+      "sha256": "ac7fcc2f1595690d92c6a46ea5fc1d95d86804e282cf417846b6937e5f8a9b4f"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
