@@ -369,6 +369,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-write-runtime-certificati
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g2-governance-experience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
 MAD4B_SCP_Admin_Experience::boot();
@@ -474,6 +475,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_REST_Compatibility', 'register_ability' ), 36 );
 	add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'register_ability' ), 37 );
 	MAD4B_SCP_Governance_Abilities::boot();
+	MAD4B_SCP_G2_Governance_Experience::boot();
 	MAD4B_SCP_Skill_Abilities::boot();
 	MAD4B_SCP_Skills_Adapter::boot();
 	MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
