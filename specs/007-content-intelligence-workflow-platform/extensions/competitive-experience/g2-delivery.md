@@ -5,7 +5,7 @@ Status: **repository implementation in progress; live acceptance pending**
 Integration target: PR #258 (`spec/007-competitive-experience-20261006`)  
 Implementation PR: #277  
 Implementation branch: `feat/007-g2-recovery-identity-consent-history-r2-20261007`  
-Baseline Hub head: `8e7ed830405072425ea9bb069629acab08fb722a`
+Baseline Hub head: `a9561e6aae09743c5de42e003640c9695f293af8`
 
 ## Scope
 
@@ -32,9 +32,11 @@ All G2 tasks remain **PARTIAL**. No task is marked DONE by repository code alone
 
 - Adds a read-only per-agent workspace composed over the existing exact-grant authority model.
 - Shows effective access, conditional/denied outcomes, bounded redacted subject bindings and recent mutation activity.
-- Does not create, widen, revoke or infer grants.
-- Does not mount discovered tools automatically.
-- Permission plan/apply and disable/revoke operational journeys remain pending.
+- Does not create, widen or infer grants and does not mount discovered tools automatically.
+- Adds a reviewed authority-reduction plan/apply/readback workflow for exactly three operations: disable agent, disable subject, and revoke one exact allow grant.
+- Apply is bound to the reviewed plan SHA-256, agent revision where applicable, explicit `APPLY_AUTHORITY_REDUCTION` confirmation, post-change readback and append-only audit.
+- The reduction workflow intentionally cannot grant authority, create agents, bind/enable subjects, restore authority, or auto-mount tools.
+- Live session/token invalidation, browser journeys and concurrency acceptance remain pending.
 
 ### Consent / client compatibility
 
@@ -62,14 +64,14 @@ All G2 tasks remain **PARTIAL**. No task is marked DONE by repository code alone
   - Consent & Clients
   - Change History
 - Recovery remains preview-only.
-- The new G2 tools are private, admin-only and read-only.
+- G2 inspection tools are private, admin-only and read-only. The permission apply tool is also private/admin-only but is explicitly destructive and authority-reducing; its paired plan tool remains read-only.
 
 ## Safety boundaries preserved
 
 - no Production authority;
 - no Breakglass widening;
 - no raw SQL or generic shell;
-- no new mutation execution ability;
+- no authority-expanding mutation ability; the only new write path reduces existing authority;
 - no automatic grants;
 - no wildcard grants or wildcard scope presets;
 - no automatic discovery-to-tool mounting;
@@ -84,7 +86,7 @@ All G2 tasks remain **PARTIAL**. No task is marked DONE by repository code alone
 
 1. Complete exact-head child CI for PR #277.
 2. Prove the recovery readback/uncertainty path against representative Staging mutations, including drift and stale/expired evidence.
-3. Prove live subject, role, grant and session invalidation; add reviewed permission plan/apply/readback only where existing authority explicitly permits it.
+3. Prove live subject, role, exact-grant and session invalidation for the implemented reviewed authority-reduction plan/apply/readback flow, including stale revision/plan, concurrent changes and audit/readback failure behavior.
 4. Prove external OAuth/MCP initialize, tools/list, tools/call, PKCE, refresh rotation, revocation, Origin/resource/audience and stale-generation denials.
 5. Prove browser journeys for recovery, My Access, consent and history.
 6. Extend visual diffs to certified typed fields/providers without exposing secrets/private content.
