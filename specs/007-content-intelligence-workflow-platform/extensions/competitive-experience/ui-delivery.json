@@ -67,10 +67,6 @@
       "sha256": "46fcb38c734d626bb0f9b0c607dfdb2bfa05e8631888aa0ad733c9e7ab898d64"
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "f5669e0171d54cb4b4ee403edbd395dd5fc45dd733d83edcd1fcd4d17bdffee0"
-    },
-    {
       "path": "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
       "sha256": "567a4054af6e8b3c6589cbdb2cd938f9e139503a1d4243fa276df9d7d89a4ce3"
     },
