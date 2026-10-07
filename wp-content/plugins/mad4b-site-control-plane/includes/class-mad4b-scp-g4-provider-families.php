@@ -57,11 +57,11 @@ final class MAD4B_SCP_G4_Provider_Families {
 					'family' => 'CPFORMS',
 					'capability_ids' => array( 'CE015', 'CE016' ),
 					'providers' => array(
-						self::provider( 'contact-form-7', 'plugin' ),
-						self::provider( 'wpforms', 'plugin' ),
-						self::provider( 'gravityforms', 'plugin' ),
-						self::provider( 'fluentforms', 'plugin' ),
-						self::provider( 'jetformbuilder', 'plugin' ),
+						self::provider( 'contact-form-7', 'plugin', array(), array( 'contact-form-7' ) ),
+						self::provider( 'wpforms', 'plugin', array(), array( 'wpforms-lite', 'wpforms' ) ),
+						self::provider( 'gravityforms', 'plugin', array(), array( 'gravityforms' ) ),
+						self::provider( 'fluentforms', 'plugin', array( 'fluentforms' ), array( 'fluentform', 'fluentformpro' ) ),
+						self::provider( 'jetformbuilder', 'plugin', array( 'jetformbuilder' ), array( 'jetformbuilder', 'jet-form-builder' ) ),
 					),
 					'operations' => array(
 						'discover' => self::operation( 'read', 'public_configuration', false, false, false, array() ),
@@ -76,7 +76,7 @@ final class MAD4B_SCP_G4_Provider_Families {
 				'commerce' => array(
 					'family' => 'CPWC',
 					'capability_ids' => array( 'CE017', 'CE018', 'CE019' ),
-					'providers' => array( self::provider( 'woocommerce', 'plugin' ) ),
+					'providers' => array( self::provider( 'woocommerce', 'plugin', array( 'woocommerce' ), array( 'woocommerce' ) ) ),
 					'operations' => array(
 						'discover' => self::operation( 'read', 'public_configuration', false, false, false, array( 'hpos_compatibility' ) ),
 						'catalog_read' => self::operation( 'read', 'commerce_catalog', false, false, false, array( 'bounded_pagination' ) ),
@@ -92,9 +92,9 @@ final class MAD4B_SCP_G4_Provider_Families {
 					'family' => 'CPBUILD',
 					'capability_ids' => array( 'CE020', 'CE021', 'CE022' ),
 					'providers' => array(
-						self::provider( 'elementor', 'plugin' ),
-						self::provider( 'divi', 'plugin' ),
-						self::provider( 'kadence', 'plugin' ),
+						self::provider( 'elementor', 'plugin', array( 'elementor' ), array( 'elementor', 'elementor-pro' ) ),
+						self::provider( 'divi', 'plugin', array(), array( 'divi-builder', 'divi' ) ),
+						self::provider( 'kadence', 'plugin', array(), array( 'kadence-blocks', 'kadence-pro' ) ),
 						self::provider( 'wordpress-core', 'core' ),
 					),
 					'operations' => array(
@@ -109,11 +109,12 @@ final class MAD4B_SCP_G4_Provider_Families {
 					'family' => 'CPOPS',
 					'capability_ids' => array( 'CE032', 'CE033', 'CE034', 'CE035' ),
 					'providers' => array(
-						self::provider( 'updraftplus', 'plugin' ),
-						self::provider( 'w3-total-cache', 'plugin' ),
-						self::provider( 'all-in-one-wp-migration', 'plugin' ),
-						self::provider( 'wordfence', 'plugin' ),
-						self::provider( 'redirection', 'plugin' ),
+						self::provider( 'updraftplus', 'plugin', array(), array( 'updraftplus' ) ),
+						self::provider( 'w3-total-cache', 'plugin', array(), array( 'w3-total-cache' ) ),
+						self::provider( 'all-in-one-wp-migration', 'plugin', array(), array( 'all-in-one-wp-migration' ) ),
+						self::provider( 'wordfence', 'plugin', array(), array( 'wordfence' ) ),
+						self::provider( 'redirection', 'plugin', array(), array( 'redirection' ) ),
+						self::provider( 'litespeed', 'plugin', array( 'litespeed' ), array( 'litespeed-cache' ) ),
 					),
 					'operations' => array(
 						'discover' => self::operation( 'read', 'site_operations', false, false, false, array() ),
@@ -132,10 +133,11 @@ final class MAD4B_SCP_G4_Provider_Families {
 					'capability_ids' => array( 'CE036', 'CE037', 'CE038' ),
 					'providers' => array(
 						self::provider( 'wordpress-core', 'core' ),
-						self::provider( 'wpml', 'plugin' ),
-						self::provider( 'advanced-custom-fields', 'plugin' ),
-						self::provider( 'buddypress', 'plugin' ),
-						self::provider( 'the-events-calendar', 'plugin' ),
+						self::provider( 'wpml', 'plugin', array(), array( 'sitepress-multilingual-cms', 'wpml-string-translation', 'wpml-translation-management' ) ),
+						self::provider( 'polylang', 'plugin', array( 'polylang' ), array( 'polylang', 'polylang-pro' ) ),
+						self::provider( 'advanced-custom-fields', 'plugin', array(), array( 'advanced-custom-fields', 'advanced-custom-fields-pro' ) ),
+						self::provider( 'buddypress', 'plugin', array(), array( 'buddypress' ) ),
+						self::provider( 'the-events-calendar', 'plugin', array(), array( 'the-events-calendar' ) ),
 					),
 					'operations' => array(
 						'discover' => self::operation( 'read', 'wordpress_objects', false, false, false, array() ),
@@ -220,9 +222,12 @@ final class MAD4B_SCP_G4_Provider_Families {
 		$certification_state = isset( $provider['certification_state'] ) ? sanitize_key( (string) $provider['certification_state'] ) : 'not_profiled';
 		if ( ! in_array( $certification_state, array( 'certified_exact_version', 'core_runtime' ), true ) ) {
 			$gates[] = 'provider_profile_certification';
-			if ( 'installed_version_unprofiled' === $certification_state ) $gates[] = 'provider_exact_version_certification';
+			if ( in_array( $certification_state, array( 'installed_version_unprofiled', 'provider_contract_drift', 'adapter_read_ready_uncertified' ), true ) ) $gates[] = 'provider_exact_version_certification';
 			if ( empty( $provider['installed'] ) ) $gates[] = 'provider_runtime_presence';
 		}
+		if ( in_array( $operation['risk'], array( 'read', 'sensitive_read' ), true ) && empty( $provider['read_surface_ready'] ) && 'core' !== $provider['provider_kind'] ) $gates[] = 'provider_read_adapter_required';
+		if ( ! empty( $operation['mutation'] ) && empty( $provider['adapter_registered'] ) && 'core' !== $provider['provider_kind'] ) $gates[] = 'provider_native_executor_required';
+		if ( ! empty( $operation['mutation'] ) && empty( $operation['irreversible'] ) && empty( $provider['reversible_surface_declared'] ) && 'core' !== $provider['provider_kind'] ) $gates[] = 'reversible_contract_required';
 		if ( in_array( $operation['risk'], array( 'high_risk_explicit_gate', 'irreversible_external_effect' ), true ) ) $gates[] = 'explicit_impact_approval';
 		if ( ! empty( $operation['mutation'] ) ) $gates[] = 'exact_plan_apply_readback';
 		if ( ! empty( $operation['irreversible'] ) ) $gates[] = 'irreversible_effect_disclosure';
@@ -247,10 +252,12 @@ final class MAD4B_SCP_G4_Provider_Families {
 		);
 	}
 
-	private static function provider( $provider_id, $kind ) {
+	private static function provider( $provider_id, $kind, array $adapter_ids = array(), array $plugin_slugs = array() ) {
 		return array(
 			'provider_id' => sanitize_key( $provider_id ),
 			'kind' => sanitize_key( $kind ),
+			'adapter_ids' => array_values( array_unique( array_filter( array_map( 'sanitize_key', $adapter_ids ) ) ) ),
+			'plugin_slugs' => array_values( array_unique( array_filter( array_map( 'sanitize_key', $plugin_slugs ) ) ) ),
 		);
 	}
 
@@ -273,22 +280,113 @@ final class MAD4B_SCP_G4_Provider_Families {
 	private static function provider_readiness( $family_id, array $family, array $provider ) {
 		$id = $provider['provider_id'];
 		$kind = $provider['kind'];
+		$adapter_ids = isset( $provider['adapter_ids'] ) && is_array( $provider['adapter_ids'] ) ? $provider['adapter_ids'] : array();
+		$plugin_slugs = isset( $provider['plugin_slugs'] ) && is_array( $provider['plugin_slugs'] ) ? $provider['plugin_slugs'] : array();
 		$version = '';
 		$certified_versions = array();
-		$state = 'not_profiled';
+		$state = 'not_observed';
 		$installed = false;
+		$adapter_registered = false;
+		$adapter_available = false;
+		$adapter_id = '';
+		$read_abilities = array();
+		$reversible_contracts = array();
+		$adapter_certification = array();
+		$plugin_identities = array();
+		$provider_contract = array();
 
 		if ( 'core' === $kind && 'wordpress-core' === $id ) {
 			$version = function_exists( 'get_bloginfo' ) ? trim( (string) get_bloginfo( 'version' ) ) : '';
 			$installed = true;
 			$state = 'core_runtime';
-		} elseif ( class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
-			$contract = MAD4B_SCP_Provider_Contracts::get( $id );
-			if ( ! empty( $contract ) ) {
-				$version = (string) MAD4B_SCP_Provider_Contracts::installed_version( $id );
-				$certified_versions = MAD4B_SCP_Provider_Contracts::certified_versions( $id );
-				$installed = '' !== $version;
-				$state = $installed && in_array( $version, $certified_versions, true ) ? 'certified_exact_version' : ( $installed ? 'installed_version_unprofiled' : 'profile_available_not_observed' );
+		} else {
+			if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+				$registry = MAD4B_SCP_Adapter_Registry::instance();
+				if ( is_object( $registry ) && method_exists( $registry, 'register_defaults' ) ) $registry->register_defaults();
+				foreach ( $adapter_ids as $candidate_id ) {
+					$adapter = is_object( $registry ) && method_exists( $registry, 'get' ) ? $registry->get( $candidate_id ) : null;
+					if ( ! is_object( $adapter ) ) continue;
+					$adapter_registered = true;
+					$adapter_id = sanitize_key( (string) $candidate_id );
+					$status_value = method_exists( $adapter, 'status' ) ? $adapter->status() : array();
+					$status = is_array( $status_value ) ? $status_value : array();
+					$adapter_available = method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : ! empty( $status['available'] );
+					if ( '' === $version && ! empty( $status['version'] ) ) $version = sanitize_text_field( (string) $status['version'] );
+					$abilities = isset( $status['abilities'] ) && is_array( $status['abilities'] ) ? $status['abilities'] : ( method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array() );
+					$read_abilities = isset( $abilities['read'] ) && is_array( $abilities['read'] ) ? array_values( array_unique( array_filter( array_map( 'strval', $abilities['read'] ) ) ) ) : array();
+					$reversible_contracts = isset( $status['reversible_contracts'] ) && is_array( $status['reversible_contracts'] ) ? $status['reversible_contracts'] : ( method_exists( $adapter, 'reversible_contracts' ) ? $adapter->reversible_contracts() : array() );
+					$cert = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
+					$adapter_certification = array(
+						'provider' => isset( $cert['provider'] ) ? sanitize_key( (string) $cert['provider'] ) : '',
+						'status' => isset( $cert['status'] ) ? sanitize_key( (string) $cert['status'] ) : '',
+						'installed_version' => isset( $cert['installed_version'] ) ? sanitize_text_field( (string) $cert['installed_version'] ) : '',
+						'certified_version' => isset( $cert['certified_version'] ) ? sanitize_text_field( (string) $cert['certified_version'] ) : '',
+						'runtime_contract_ok' => ! empty( $cert['runtime_contract_ok'] ),
+					);
+					break;
+				}
+			}
+
+			if ( class_exists( 'MAD4B_SCP_Plugin_Discovery' ) && method_exists( 'MAD4B_SCP_Plugin_Discovery', 'coverage' ) ) {
+				$coverage = MAD4B_SCP_Plugin_Discovery::coverage();
+				$plugins = isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array();
+				foreach ( $plugins as $plugin ) {
+					if ( ! is_array( $plugin ) ) continue;
+					$slug = isset( $plugin['slug'] ) ? sanitize_key( (string) $plugin['slug'] ) : '';
+					$observed_adapter = isset( $plugin['adapter_id'] ) ? sanitize_key( (string) $plugin['adapter_id'] ) : '';
+					$observed_family = isset( $plugin['family'] ) ? sanitize_key( (string) $plugin['family'] ) : '';
+					$matches = in_array( $slug, $plugin_slugs, true ) || in_array( $observed_adapter, $adapter_ids, true ) || ( '' !== $observed_family && hash_equals( $id, $observed_family ) );
+					if ( ! $matches ) continue;
+					$identity = array(
+						'plugin_file' => isset( $plugin['plugin_file'] ) ? sanitize_text_field( (string) $plugin['plugin_file'] ) : '',
+						'slug' => $slug,
+						'name' => isset( $plugin['name'] ) ? sanitize_text_field( (string) $plugin['name'] ) : '',
+						'version' => isset( $plugin['version'] ) ? sanitize_text_field( (string) $plugin['version'] ) : '',
+						'active' => ! empty( $plugin['active'] ),
+						'network_active' => ! empty( $plugin['network_active'] ),
+						'coverage_state' => isset( $plugin['coverage_state'] ) ? sanitize_key( (string) $plugin['coverage_state'] ) : '',
+						'functional_state' => isset( $plugin['functional_coverage']['state'] ) ? sanitize_key( (string) $plugin['functional_coverage']['state'] ) : '',
+					);
+					$plugin_identities[] = $identity;
+					$installed = true;
+					if ( '' === $version && '' !== $identity['version'] ) $version = $identity['version'];
+					if ( count( $plugin_identities ) >= 20 ) break;
+				}
+			}
+
+			if ( $adapter_available ) $installed = true;
+
+			if ( class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+				$contract = MAD4B_SCP_Provider_Contracts::get( $id );
+				if ( ! empty( $contract ) ) {
+					$certified_versions = MAD4B_SCP_Provider_Contracts::certified_versions( $id );
+					if ( method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' ) ) {
+						$runtime = MAD4B_SCP_Provider_Contracts::runtime_status( $id, null );
+						$provider_contract = is_array( $runtime ) ? array(
+							'provider' => isset( $runtime['provider'] ) ? sanitize_key( (string) $runtime['provider'] ) : $id,
+							'status' => isset( $runtime['status'] ) ? sanitize_key( (string) $runtime['status'] ) : '',
+							'installed_version' => isset( $runtime['installed_version'] ) ? sanitize_text_field( (string) $runtime['installed_version'] ) : '',
+							'certified_version' => isset( $runtime['certified_version'] ) ? sanitize_text_field( (string) $runtime['certified_version'] ) : '',
+							'runtime_contract_ok' => ! empty( $runtime['runtime_contract_ok'] ),
+						) : array();
+						if ( '' === $version && ! empty( $provider_contract['installed_version'] ) ) $version = $provider_contract['installed_version'];
+						if ( ! empty( $provider_contract['installed_version'] ) ) $installed = true;
+						if ( ! empty( $provider_contract['runtime_contract_ok'] ) && 'certified' === $provider_contract['status'] ) $state = 'certified_exact_version';
+						elseif ( $installed && in_array( $provider_contract['status'], array( 'version_drift', 'component_drift' ), true ) ) $state = 'provider_contract_drift';
+						elseif ( $installed ) $state = 'installed_version_unprofiled';
+						else $state = 'profile_available_not_observed';
+					} else {
+						if ( '' === $version ) $version = (string) MAD4B_SCP_Provider_Contracts::installed_version( $id );
+						$installed = $installed || '' !== $version;
+						$state = $installed && in_array( $version, $certified_versions, true ) ? 'certified_exact_version' : ( $installed ? 'installed_version_unprofiled' : 'profile_available_not_observed' );
+					}
+				}
+			}
+
+			if ( 'not_observed' === $state ) {
+				if ( $adapter_available && ! empty( $read_abilities ) ) $state = 'adapter_read_ready_uncertified';
+				elseif ( $adapter_registered ) $state = 'adapter_registered_runtime_absent';
+				elseif ( $installed ) $state = 'installed_adapter_missing';
 			}
 		}
 
@@ -299,11 +397,24 @@ final class MAD4B_SCP_G4_Provider_Families {
 			'provider_kind' => $kind,
 			'installed' => $installed,
 			'installed_version' => $version,
+			'observed_plugin_identities' => $plugin_identities,
 			'certified_versions' => array_values( $certified_versions ),
 			'certification_state' => $state,
+			'provider_contract' => $provider_contract,
+			'adapter_id' => $adapter_id,
+			'adapter_registered' => $adapter_registered,
+			'adapter_runtime_available' => $adapter_available,
+			'adapter_read_abilities' => $read_abilities,
+			'adapter_read_ability_count' => count( $read_abilities ),
+			'read_surface_ready' => $adapter_available && ! empty( $read_abilities ),
+			'reversible_contracts' => $reversible_contracts,
+			'reversible_surface_declared' => ! empty( $reversible_contracts ),
+			'adapter_certification' => $adapter_certification,
 			'capability_ids' => $family['capability_ids'],
 			'operation_ids' => array_keys( $family['operations'] ),
 			'execution_admitted' => false,
+			'provider_execution_performed' => false,
+			'mutation_performed' => false,
 			'authority_created' => false,
 			'authorizing' => false,
 		);
