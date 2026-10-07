@@ -121,11 +121,11 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
-      "sha256": "033493d465cabf69a879c21dfd3fb167dbfc750b50cc17f37f4da4735ad9efb6"
+      "sha256": "fdcdc63a4de82d0e1b96851cbb49ffc8c5856ef35d2f90e1e5ea69f6745c43ce"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "4a006ae5c525fdcbff2faac0bd9a285917e751d4be1c1b35b20cec0055d5b171"
+      "sha256": "8b7e81a22a7dab0762a387af282e87b9083cc10cd89e27e37f08f224b384733e"
     }
   ],
   "acceptance_contracts": [
