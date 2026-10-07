@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 adaptive = (ROOT / "includes/class-mad4b-scp-adaptive-runtime-convergence.php").read_text(encoding="utf-8")
 registry = (ROOT / "includes/class-mad4b-scp-auto-reconcile-scenarios.php").read_text(encoding="utf-8")
+runtime = (ROOT / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 
 assert "class-mad4b-scp-auto-reconcile-scenarios.php" in main
 assert "mad4b.auto-reconcile-scenarios.v1" in registry
@@ -87,3 +88,13 @@ assert "MAX_EXTENSION_ERROR_POLICIES" in registry
 assert "bounded_extension_context" in registry
 assert "core_worker_error_decision" in registry
 assert "extension_worker_error_decision" in registry
+
+# Runtime Convergence must consume the central registry rather than define a
+# second scenario universe or a second extension filter.
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::registry" in runtime
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate" in runtime
+assert "central_reconciliation_scenario" in runtime
+assert "reconciliation_context" in runtime
+assert "mad4b_scp_auto_reconciliation_scenarios" not in runtime
+assert "'registry_decision' =>" in runtime
+assert "'registry_reason' =>" in runtime
