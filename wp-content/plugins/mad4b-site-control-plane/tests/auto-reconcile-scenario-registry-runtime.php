@@ -7,11 +7,13 @@ if ( ! function_exists( 'sanitize_text_field' ) ) {
 	function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 }
 $GLOBALS['mad4b_auto_reconcile_filter'] = null;
+$GLOBALS['mad4b_auto_reconcile_signal_filter'] = null;
+$GLOBALS['mad4b_auto_reconcile_worker_filter'] = null;
 if ( ! function_exists( 'apply_filters' ) ) {
-	function apply_filters( $tag, $value ) {
-		if ( 'mad4b_scp_auto_reconcile_scenarios' === $tag && is_callable( $GLOBALS['mad4b_auto_reconcile_filter'] ) ) {
-			return call_user_func( $GLOBALS['mad4b_auto_reconcile_filter'], $value );
-		}
+	function apply_filters( $tag, $value, ...$args ) {
+		if ( 'mad4b_scp_auto_reconcile_scenarios' === $tag && is_callable( $GLOBALS['mad4b_auto_reconcile_filter'] ) ) return call_user_func( $GLOBALS['mad4b_auto_reconcile_filter'], $value );
+		if ( 'mad4b_scp_auto_reconcile_signals' === $tag && is_callable( $GLOBALS['mad4b_auto_reconcile_signal_filter'] ) ) return call_user_func( $GLOBALS['mad4b_auto_reconcile_signal_filter'], $value, $args[0] ?? array() );
+		if ( 'mad4b_scp_auto_reconcile_worker_error_policies' === $tag && is_callable( $GLOBALS['mad4b_auto_reconcile_worker_filter'] ) ) return call_user_func( $GLOBALS['mad4b_auto_reconcile_worker_filter'], $value );
 		return $value;
 	}
 }
@@ -136,14 +138,68 @@ $GLOBALS['mad4b_auto_reconcile_filter'] = static function ( $rows ) {
 	) );
 	return $rows;
 };
-$future = $base;
+// Use a converged core context so the capped extension row is actually selected.
+$future = $match;
 $future['signals'] = array( 'custom_future_signal' => true );
 $future_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $future );
+check( 'extension_attempts_unsafe_mutation' === $future_result['scenario_id'], 'unknown-decision fixture must select the extension scenario' );
 check( 'REVIEW_REQUIRED' === $future_result['decision'], 'unknown extension decision must collapse to review' );
 check( empty( $future_result['mutation_allowed'] ) && empty( $future_result['authority_expansion_allowed'] ), 'extension cannot relax central safety' );
+$future_drift = $base;
+$future_drift['signals'] = array( 'custom_future_signal' => true );
+check( 'forward_package_update' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $future_drift )['scenario_id'], 'capped extension priority cannot shadow a core package-update scenario' );
 
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_post_update_continuation_release_untrusted' )['decision'], 'untrusted release must hard block' );
 check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_post_update_continuation_skills_certification_required' )['decision'], 'skills dependency must defer' );
 check( 'REVIEW_REQUIRED' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_observed_update_authority_delta' )['decision'], 'authority delta must require review' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_runtime_convergence_busy' )['decision'], 'runtime maintenance contention must dynamically defer' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_runtime_convergence_skills_persisted_identity_stale' )['decision'], 'current-build Skill certification lag must dynamically defer' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'installed_package_manifest_unverified' )['decision'], 'package readback race must remain bounded-defer rather than blind retry' );
+check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'runtime_observation_failed' )['decision'], 'observer transport/runtime failure must remain bounded-defer' );
+
+// Future signal providers can add evidence without overriding core safety signals.
+$GLOBALS['mad4b_auto_reconcile_filter'] = static function ( $rows ) {
+	return array( array( 'id' => 'extension_future_dependency', 'priority' => 840, 'signals_all' => array( 'future_dependency_ready' ), 'decision' => 'SCHEDULE_PROBE' ) );
+};
+$GLOBALS['mad4b_auto_reconcile_signal_filter'] = static function ( $signals, $context ) {
+	$signals['future_dependency_ready'] = true;
+	$signals['environment_production'] = false;
+	$signals['breakglass_enabled'] = false;
+	check( isset( $context['candidate_binding']['required'] ), 'bounded extension context missing candidate binding summary' );
+	return $signals;
+};
+$extension_context = $match;
+$extension_context['environment'] = 'staging';
+$extension_context['breakglass_enabled'] = false;
+$extension_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $extension_context );
+check( 'extension_future_dependency' === $extension_result['scenario_id'], 'dynamic signal provider must activate additive scenario' );
+check( 'SCHEDULE_PROBE' === $extension_result['decision'], 'dynamic extension scenario must remain probe-only' );
+check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $production )['decision'], 'extension signal provider cannot erase Production hard block' );
+check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $breakglass )['decision'], 'extension signal provider cannot erase Breakglass hard block' );
+$protected_untrusted = $base;
+$protected_untrusted['signals'] = array( 'untrusted_package' => true );
+$GLOBALS['mad4b_auto_reconcile_signal_filter'] = static function ( $signals, $context ) {
+	$signals['untrusted_package'] = false;
+	$signals['grant_inventory_drift'] = false;
+	return $signals;
+};
+check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $protected_untrusted )['decision'], 'extension signal provider cannot erase untrusted-package hard block evidence' );
+
+$GLOBALS['mad4b_auto_reconcile_filter'] = null;
+$GLOBALS['mad4b_auto_reconcile_signal_filter'] = null;
+$GLOBALS['mad4b_auto_reconcile_worker_filter'] = static function ( $rows ) {
+	return array(
+		array( 'id' => 'future_dependency_wait', 'error_codes' => array( 'mad4b_future_dependency_wait' ), 'decision' => 'DEFER' ),
+		array( 'id' => 'hostile_core_downgrade', 'error_codes' => array( 'mad4b_post_update_continuation_release_untrusted' ), 'decision' => 'NO_OP' ),
+		array( 'id' => 'unsafe_unknown_decision', 'error_codes' => array( 'mad4b_future_unsafe' ), 'decision' => 'AUTO_MUTATE' )
+	);
+};
+$future_worker = MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_future_dependency_wait' );
+check( 'DEFER' === $future_worker['decision'] && 'extension' === $future_worker['policy_source'], 'future worker error policy must be dynamically classifiable' );
+$core_worker = MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_post_update_continuation_release_untrusted' );
+check( 'HARD_BLOCK' === $core_worker['decision'] && 'core' === $core_worker['policy_source'], 'extension worker policy cannot downgrade core hard block' );
+$unsafe_worker = MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_future_unsafe' );
+check( 'REVIEW_REQUIRED' === $unsafe_worker['decision'], 'unsafe extension worker decision must collapse to review' );
+$GLOBALS['mad4b_auto_reconcile_worker_filter'] = null;
 
 echo "AUTO_RECONCILE_SCENARIO_REGISTRY_RUNTIME: PASS\n";
