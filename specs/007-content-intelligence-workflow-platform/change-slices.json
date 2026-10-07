@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "e7b7f05c66c319396bba6ef032c6cbdd1d1e1a4e",
-  "changed_file_count": 103,
+  "changed_file_count": 115,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -155,8 +155,28 @@
       ],
       "certification": "exact_head",
       "revert_boundary": "Revert PR #266 content-experience and remote-media runtime/config/tests as one bounded slice; existing G0/G1 specification and admin workspace ownership remains unchanged."
+    },
+    {
+      "id": "runtime-auto-reconcile-projection",
+      "semantic_unit": "Fail-closed Staging runtime auto-reconciliation, bounded ChatGPT projection status and exact post-update convergence guards",
+      "revert_boundary": "Revert the PR #267 auto-reconcile/projection runtime classes and focused tests as one bounded non-authorizing slice; existing G0/G1/content-experience ownership remains unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-auto-reconcile-scenarios.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-continuation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-dynamic-tool-projection-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-bottleneck-hardening-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "f96a0f2727b30a8e2fdd3a35277a11bc8b3e4f75486413fa54be6725079bb4cd",
+  "changed_paths_sha256": "18e7d132bf9c913c954ac44b569cb618812514e90db214cf4d136d0960d11b95",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
