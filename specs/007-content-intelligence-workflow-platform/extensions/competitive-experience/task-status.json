@@ -480,6 +480,206 @@
         "g3-delivery.json",
         "g3-delivery.md"
       ]
+    },
+    "T3931": {
+      "status": "PARTIAL",
+      "reason": "Bounded native plugin/version inventory, independent prerequisites and installed typed provider registration exist. Full CF7/WPForms/Gravity/Fluent/JetFormBuilder native definition/version integration remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3932": {
+      "status": "PARTIAL",
+      "reason": "Provider-owned schemas and serialization facts feed exact generation/object preflight plans; canonical native metadata reads are bridged. Native form configuration serialization/apply/readback remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3933": {
+      "status": "PARTIAL",
+      "reason": "Independent submission object/field/consent/mask/retention preflight gates and bounded requests exist. Actual provider entry reads, PII masking, export/delete review and dispatch remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3934": {
+      "status": "PARTIAL",
+      "reason": "Definition metadata and entry prerequisites remain independent; unsupported/premium/absent definition contracts fail closed. Native Flamingo/premium readiness and safe real submission preview acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3935": {
+      "status": "PARTIAL",
+      "reason": "Hermetic denial fixtures cover secrets, nested/repeat IDs, choices, upload policy, absent definitions and irreversible deletion planning. Actual native form/entry/upload/egress acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3936": {
+      "status": "PARTIAL",
+      "reason": "Typed catalog/private/financial contracts separate commerce effects; the existing certified product read is bridged. Variations, attributes, orders/customers/coupons/reporting/fulfillment provider implementations remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3937": {
+      "status": "PARTIAL",
+      "reason": "Exact object/field/mask/pagination/HPOS prerequisites fail closed; product identity/read permission is checked through canonical governance. Actual HPOS/order store compatibility and native PII read acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3938": {
+      "status": "PARTIAL",
+      "reason": "Unique bounded catalog batches bind parent/revision and per-field stock/hook gates; no native batch mutation is dispatched. Disposable provider inventory/tax/hook canaries and exact readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3939": {
+      "status": "PARTIAL",
+      "reason": "Shipping/tax/gateway/webhook/notification/refund/payment proposals carry independent explicit gates and no automatic execution/undo. Native financial/private effects and owner-gated acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3940": {
+      "status": "PARTIAL",
+      "reason": "Fixtures deny duplicate products, foreign parents, stale revisions, stock races, hook uncertainty, PII leaks and payment effects through catalog scope. Real concurrency/native-hook/payment acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3941": {
+      "status": "PARTIAL",
+      "reason": "Typed provider format/serialization contracts and dynamic plugin coverage are registered without vendor branches in the shared planner. Full Divi4/Divi5/Kadence/FSE native readers and serializers remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3942": {
+      "status": "PARTIAL",
+      "reason": "Canonical Elementor native tree outline observation and bounded structural preflight bind parent IDs, lock/revision and template scope. Full native controls/template/clone structural diff and live lock acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3943": {
+      "status": "PARTIAL",
+      "reason": "Typed node/control schema and allocated fresh clone-ID gates exist; unproven control mutations fail closed. Provider-owned text/image/widget/template serialization, dispatch and rendered readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3944": {
+      "status": "PARTIAL",
+      "reason": "Plans and observational readback never create approved receipts or infer rollback from history. Compact rendered previews, governed native clone/undo and exact approved receipt acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3945": {
+      "status": "PARTIAL",
+      "reason": "Fixtures cover tree cycles/orphans, unsupported formats/controls, stale/locked editors, clone-ID collisions, template scope and secret leakage. Real mixed-shortcode/block providers and partial rollback acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3966": {
+      "status": "PARTIAL",
+      "reason": "Bounded typed backup/cache/migration/security/redirect inventory and independent preflight risk families exist. Actual native operational provider capabilities and site inventory acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3967": {
+      "status": "PARTIAL",
+      "reason": "Exact artifact path/hash/restore epoch/protected-receipt preflight denies archive aliases and installer credentials; restore readiness cannot execute a restore. Native artifact inspection/backup triggering and restore convergence remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3968": {
+      "status": "PARTIAL",
+      "reason": "Bounded cache targets and same-origin redirect paths require scope/readback; complete graphs deny loops, aliases and global purge widening. Native cache/redirect mutation and frontend readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3969": {
+      "status": "PARTIAL",
+      "reason": "Masked security diagnostics/review handoffs require local object scope and prevent self-lockout; no ban or host installation is dispatched. Actual native logs/redaction/lockout/restore review acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3970": {
+      "status": "PARTIAL",
+      "reason": "Fixtures deny archive path abuse, old restore epochs, redirects/loops, cache blast radius, self-lockout and external capability inference. Real provider archive/installer/restore/purge/security acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3971": {
+      "status": "PARTIAL",
+      "reason": "Runtime CPT/taxonomy collectors report bounded completeness and native object kinds without exposing values or admitting uncovered objects. Full users/comments/media/menus/revisions/ACF native object schema coverage remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3972": {
+      "status": "PARTIAL",
+      "reason": "Explicit source language, parent identity, existing ancestry, translation group and object authority guard bounded hierarchy proposals. Native WPML/generic language resolvers, dry-run diffs and exact readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3973": {
+      "status": "PARTIAL",
+      "reason": "Provider-owned field/effect/schema gates prevent sensitive roles, foreign fields, object ownership and unsafe media URL changes. Actual hierarchy/meta/menu/media providers and bounded governed dispatch remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3974": {
+      "status": "PARTIAL",
+      "reason": "Optional private collections require availability, object masks, bounded pagination and exact timezone. Native BuddyPress/Events Calendar integration and actual private-object acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3975": {
+      "status": "PARTIAL",
+      "reason": "Fixtures deny ancestry cycles/orphans, cross-language/group ambiguity, role escalation, unsafe media URLs, missing optional providers and private communications. Native licensing handoffs and provider live acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
     }
   },
   "documentation_only_completion_forbidden": true

@@ -1,0 +1,218 @@
+{
+  "contract": "mad4b.wordpress-domain-discovery-catalog.v1",
+  "authorizing": false,
+  "runtime_certification_inferred": false,
+  "providers": [
+    {
+      "provider_id": "contact-form-7",
+      "family": "forms",
+      "plugin_files": [
+        "contact-form-7/wp-contact-form-7.php"
+      ],
+      "prerequisites": [
+        "form_definition_contract",
+        "flamingo_required_independently_for_entries"
+      ]
+    },
+    {
+      "provider_id": "wpforms",
+      "family": "forms",
+      "plugin_files": [
+        "wpforms-lite/wpforms.php",
+        "wpforms/wpforms.php"
+      ],
+      "prerequisites": [
+        "native_serialization",
+        "premium_entries_contract_independent"
+      ]
+    },
+    {
+      "provider_id": "gravityforms",
+      "family": "forms",
+      "plugin_files": [
+        "gravityforms/gravityforms.php"
+      ],
+      "prerequisites": [
+        "exact_version_and_native_schema",
+        "independent_private_entry_authority"
+      ]
+    },
+    {
+      "provider_id": "fluentforms",
+      "family": "forms",
+      "plugin_files": [
+        "fluentform/fluentform.php",
+        "fluentformpro/fluentformpro.php"
+      ],
+      "prerequisites": [
+        "metadata_read_is_not_native_definition_acceptance",
+        "entries_readiness_independent"
+      ]
+    },
+    {
+      "provider_id": "jetformbuilder",
+      "family": "forms",
+      "plugin_files": [
+        "jetformbuilder/jet-form-builder.php"
+      ],
+      "prerequisites": [
+        "native_block_definition_contract",
+        "entry_storage_readiness_independent"
+      ]
+    },
+    {
+      "provider_id": "woocommerce",
+      "family": "commerce",
+      "plugin_files": [
+        "woocommerce/woocommerce.php"
+      ],
+      "prerequisites": [
+        "catalog_vs_order_store_independent",
+        "hpos_and_stock_hooks_acceptance",
+        "financial_effect_review_separate"
+      ]
+    },
+    {
+      "provider_id": "elementor",
+      "family": "builders",
+      "plugin_files": [
+        "elementor/elementor.php",
+        "elementor-pro/elementor-pro.php"
+      ],
+      "prerequisites": [
+        "native_controls_and_serialization",
+        "revision_editor_lock",
+        "rendered_readback_and_exact_rollback"
+      ]
+    },
+    {
+      "provider_id": "divi",
+      "family": "builders",
+      "plugin_files": [
+        "divi-builder/divi-builder.php"
+      ],
+      "prerequisites": [
+        "theme_provider_discovery_separate",
+        "divi4_shortcode_vs_divi5_block_contracts"
+      ]
+    },
+    {
+      "provider_id": "kadence",
+      "family": "builders",
+      "plugin_files": [
+        "kadence-blocks/kadence-blocks.php",
+        "kadence-blocks-pro/kadence-blocks-pro.php"
+      ],
+      "prerequisites": [
+        "registered_blocks_and_template_scope"
+      ]
+    },
+    {
+      "provider_id": "updraftplus",
+      "family": "site-operations",
+      "plugin_files": [
+        "updraftplus/updraftplus.php"
+      ],
+      "prerequisites": [
+        "protected_receipts",
+        "exact_artifact_root",
+        "restore_epoch_and_separate_restore_authority"
+      ]
+    },
+    {
+      "provider_id": "duplicator",
+      "family": "site-operations",
+      "plugin_files": [
+        "duplicator/duplicator.php",
+        "duplicator-pro/duplicator-pro.php"
+      ],
+      "prerequisites": [
+        "no_installer_credentials",
+        "archive_path_admission",
+        "no_automatic_restore"
+      ]
+    },
+    {
+      "provider_id": "litespeed",
+      "family": "site-operations",
+      "plugin_files": [
+        "litespeed-cache/litespeed-cache.php"
+      ],
+      "prerequisites": [
+        "bounded_cache_targets",
+        "independent_frontend_readback"
+      ]
+    },
+    {
+      "provider_id": "wordfence",
+      "family": "site-operations",
+      "plugin_files": [
+        "wordfence/wordfence.php"
+      ],
+      "prerequisites": [
+        "masked_logs",
+        "object_scope",
+        "no_self_lockout"
+      ]
+    },
+    {
+      "provider_id": "redirection",
+      "family": "site-operations",
+      "plugin_files": [
+        "redirection/redirection.php"
+      ],
+      "prerequisites": [
+        "complete_redirect_graph",
+        "same_origin_scope",
+        "frontend_cache_readback"
+      ]
+    },
+    {
+      "provider_id": "wpml",
+      "family": "wordpress-breadth",
+      "plugin_files": [
+        "sitepress-multilingual-cms/sitepress.php"
+      ],
+      "prerequisites": [
+        "explicit_source_language",
+        "parent_and_translation_group_identity",
+        "license_repair_external_handoff"
+      ]
+    },
+    {
+      "provider_id": "acf",
+      "family": "wordpress-breadth",
+      "plugin_files": [
+        "advanced-custom-fields/acf.php",
+        "advanced-custom-fields-pro/acf.php"
+      ],
+      "prerequisites": [
+        "native_field_owner_and_schema",
+        "no_sensitive_user_metadata"
+      ]
+    },
+    {
+      "provider_id": "buddypress",
+      "family": "wordpress-breadth",
+      "plugin_files": [
+        "buddypress/bp-loader.php"
+      ],
+      "prerequisites": [
+        "private_object_and_field_authority",
+        "no_private_communication_export"
+      ]
+    },
+    {
+      "provider_id": "events-calendar",
+      "family": "wordpress-breadth",
+      "plugin_files": [
+        "the-events-calendar/the-events-calendar.php"
+      ],
+      "prerequisites": [
+        "bounded_paging",
+        "exact_provider_timezone",
+        "object_authority"
+      ]
+    }
+  ]
+}

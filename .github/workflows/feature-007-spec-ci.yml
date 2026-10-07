@@ -42,6 +42,10 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/certification-pack-registry-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g3-registration-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-domain-coverage.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/domains/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g4-*.php'
 
 permissions:
   contents: read
@@ -288,3 +292,40 @@ jobs:
             php "$PLUGIN/tests/$contract-contract.php"
           done
           python3 "$PLUGIN/tests/receipt-crypto-profile-contract.py"
+
+  g4-runtime:
+    name: Feature 007 G4 domain preflight (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify typed domain denial and observation contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-wordpress-domain-coverage.php"
+          for source in "$PLUGIN"/includes/domains/*.php; do php -l "$source"; done
+          for domain in forms commerce builders site-operations wordpress; do
+            php "$PLUGIN/tests/g4-$domain-contract.php"
+          done
+          php "$PLUGIN/tests/g4-domain-coverage-runtime.php"
+          php "$PLUGIN/tests/g4-native-read-bridges-runtime.php"

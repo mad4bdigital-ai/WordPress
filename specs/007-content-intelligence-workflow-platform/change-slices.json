@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "dccb0889799eb255f0d64d6959d9687252801c5b",
-  "changed_file_count": 159,
+  "changed_file_count": 178,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -261,8 +261,35 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php"
       ]
+    },
+    {
+      "id": "g4-wordpress-domain-preflight-foundation",
+      "semantic_unit": "Provider-owned typed domain preflight, exact native read observation and hermetic denial acceptance; no mutation dispatch or live acceptance claims",
+      "revert_boundary": "Revert G4 private observation/planner services, discovery catalog, fixtures and delivery evidence together; reviewed prior providers and runtime authority remain separate.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.md",
+        "wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-domain-coverage.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-builders.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-commerce.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-forms.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-native-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-site-operations.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-builders-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-commerce-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-coverage-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-fixture.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-forms-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-native-read-bridges-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-site-operations-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g4-wordpress-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "a77d7f5d2cd94787e389a5ed76378e78b57d92494701e2216030e6b27f54a3d1",
+  "changed_paths_sha256": "050ba46cd1a465e6f3de6e10809eec604aa9bcee82711764f6fb0bcbaa7f359d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

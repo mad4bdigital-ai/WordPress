@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "c3aabef67663be82f69731cc8ec3ef45d0e3496ec35737c9c09d8de352e50884",
+  "status_source_sha256": "e22de50d2d0d28491b4a9adf070c4dfaa875460cfc61b724f014be52e755405c",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 115,
-    "PARTIAL": 60,
+    "OPEN": 90,
+    "PARTIAL": 85,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -359,135 +359,180 @@
       "phase": 6,
       "priority": "P1",
       "summary": "Implement a typed forms family with CF7, WPForms, Gravity Forms, Fluent Forms and JetFormBuilder adapter/version discovery.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Bounded native plugin/version inventory, independent prerequisites and installed typed provider registration exist. Full CF7/WPForms/Gravity/Fluent/JetFormBuilder native definition/version integration remains pending."
     },
     {
       "task_id": "T3932",
       "phase": 6,
       "priority": "P1",
       "summary": "Implement form inventory/schema/config reads and governed configuration plan/apply with provider-owned serialization and readback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Provider-owned schemas and serialization facts feed exact generation/object preflight plans; canonical native metadata reads are bridged. Native form configuration serialization/apply/readback remains pending."
     },
     {
       "task_id": "T3933",
       "phase": 6,
       "priority": "P1",
       "summary": "Implement submission access as separate object/field-level PII authority with redaction, pagination, retention and export/delete review.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Independent submission object/field/consent/mask/retention preflight gates and bounded requests exist. Actual provider entry reads, PII masking, export/delete review and dispatch remain pending."
     },
     {
       "task_id": "T3934",
       "phase": 6,
       "priority": "P1",
       "summary": "Expose forms and submission readiness separately, including Flamingo/premium/runtime prerequisites and safe previews.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Definition metadata and entry prerequisites remain independent; unsupported/premium/absent definition contracts fail closed. Native Flamingo/premium readiness and safe real submission preview acceptance remain pending."
     },
     {
       "task_id": "T3935",
       "phase": 6,
       "priority": "P1",
       "summary": "GATE Certify secret/PII denial, upload path/egress restrictions, nested/repeatable fields, unavailable providers and non-reversible deletion policies.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Hermetic denial fixtures cover secrets, nested/repeat IDs, choices, upload policy, absent definitions and irreversible deletion planning. Actual native form/entry/upload/egress acceptance remains pending."
     },
     {
       "task_id": "T3936",
       "phase": 7,
       "priority": "P1",
       "summary": "Implement independently classified commerce contracts for catalog/variations/attributes, order/customer/coupon, reporting and fulfillment surfaces.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Typed catalog/private/financial contracts separate commerce effects; the existing certified product read is bridged. Variations, attributes, orders/customers/coupons/reporting/fulfillment provider implementations remain pending."
     },
     {
       "task_id": "T3937",
       "phase": 7,
       "priority": "P1",
       "summary": "Implement read-first commerce discovery with HPOS/runtime compatibility, object-level access, customer PII masking and bounded pagination.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Exact object/field/mask/pagination/HPOS prerequisites fail closed; product identity/read permission is checked through canonical governance. Actual HPOS/order store compatibility and native PII read acceptance remain pending."
     },
     {
       "task_id": "T3938",
       "phase": 7,
       "priority": "P1",
       "summary": "Implement disposable canaries for admitted reversible catalog/batch edits with inventory, stock, tax and hook-aware exact readback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Unique bounded catalog batches bind parent/revision and per-field stock/hook gates; no native batch mutation is dispatched. Disposable provider inventory/tax/hook canaries and exact readback remain pending."
     },
     {
       "task_id": "T3939",
       "phase": 7,
       "priority": "P1",
       "summary": "Expose separate gates for shipping/tax/gateways/webhooks, notifications, refunds and payment effects; irreversible financial effects never claim undo.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Shipping/tax/gateway/webhook/notification/refund/payment proposals carry independent explicit gates and no automatic execution/undo. Native financial/private effects and owner-gated acceptance remain pending."
     },
     {
       "task_id": "T3940",
       "phase": 7,
       "priority": "P1",
       "summary": "GATE Prove duplicate requests, concurrent stock/order changes, unexpected hooks, PII access and payment/refund side effects cannot auto-promote capabilities.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Fixtures deny duplicate products, foreign parents, stale revisions, stock races, hook uncertainty, PII leaks and payment effects through catalog scope. Real concurrency/native-hook/payment acceptance remains pending."
     },
     {
       "task_id": "T3941",
       "phase": 8,
       "priority": "P1",
       "summary": "Implement typed builder contracts for Elementor, Divi 4/5, Kadence and WordPress Gutenberg/FSE without provider branches in the core.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Typed provider format/serialization contracts and dynamic plugin coverage are registered without vendor branches in the shared planner. Full Divi4/Divi5/Kadence/FSE native readers and serializers remain pending."
     },
     {
       "task_id": "T3942",
       "phase": 8,
       "priority": "P1",
       "summary": "Implement outline/tree/schema/template inspection and structural clone/diff planning with active editor-lock and current revision checks.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Canonical Elementor native tree outline observation and bounded structural preflight bind parent IDs, lock/revision and template scope. Full native controls/template/clone structural diff and live lock acceptance remain pending."
     },
     {
       "task_id": "T3943",
       "phase": 8,
       "priority": "P1",
       "summary": "Implement admitted text/image/widget/template operations with fresh IDs, provider serialization, desired-state bounds and exact semantic readback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Typed node/control schema and allocated fresh clone-ID gates exist; unproven control mutations fail closed. Provider-owned text/image/widget/template serialization, dispatch and rendered readback remain pending."
     },
     {
       "task_id": "T3944",
       "phase": 8,
       "priority": "P1",
       "summary": "Expose compact previews, blocked nodes, unsupported formats, proposed clone changes, rollback availability and approved execution receipts.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Plans and observational readback never create approved receipts or infer rollback from history. Compact rendered previews, governed native clone/undo and exact approved receipt acceptance remain pending."
     },
     {
       "task_id": "T3945",
       "phase": 8,
       "priority": "P1",
       "summary": "GATE Certify malformed trees, nested blocks/shortcodes, stale editors, ID collisions, template scope, dynamic data leakage and partial rollback.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Fixtures cover tree cycles/orphans, unsupported formats/controls, stale/locked editors, clone-ID collisions, template scope and secret leakage. Real mixed-shortcode/block providers and partial rollback acceptance remain pending."
     },
     {
       "task_id": "T3946",
@@ -689,90 +734,120 @@
       "phase": 13,
       "priority": "P1",
       "summary": "Implement adapter families for backup/cache/migration/security/redirect providers with read inventory first and independent operation risk descriptors.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Bounded typed backup/cache/migration/security/redirect inventory and independent preflight risk families exist. Actual native operational provider capabilities and site inventory acceptance remain pending."
     },
     {
       "task_id": "T3967",
       "phase": 13,
       "priority": "P1",
       "summary": "Implement governed backup trigger/restore readiness and migration artifact inspection without installer/credential disclosure or automatic restore.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Exact artifact path/hash/restore epoch/protected-receipt preflight denies archive aliases and installer credentials; restore readiness cannot execute a restore. Native artifact inspection/backup triggering and restore convergence remain pending."
     },
     {
       "task_id": "T3968",
       "phase": 13,
       "priority": "P1",
       "summary": "Implement bounded cache purge and redirect planning with URL/path egress constraints, cache/readback evidence and loop detection.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Bounded cache targets and same-origin redirect paths require scope/readback; complete graphs deny loops, aliases and global purge widening. Native cache/redirect mutation and frontend readback remain pending."
     },
     {
       "task_id": "T3969",
       "phase": 13,
       "priority": "P1",
       "summary": "Expose security status/lockouts/logs with PII masks and reviewed ban/restore/change handoffs; host installation remains an external action.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Masked security diagnostics/review handoffs require local object scope and prevent self-lockout; no ban or host installation is dispatched. Actual native logs/redaction/lockout/restore review acceptance remains pending."
     },
     {
       "task_id": "T3970",
       "phase": 13,
       "priority": "P1",
       "summary": "GATE Prove archive/installer path abuse, restore time-travel, redirect loops, purge blast radius, lockout self-denial and external effects remain capability-local.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Fixtures deny archive path abuse, old restore epochs, redirects/loops, cache blast radius, self-lockout and external capability inference. Real provider archive/installer/restore/purge/security acceptance remains pending."
     },
     {
       "task_id": "T3971",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement a coverage inventory for posts/pages/CPTs/terms/users/comments/media/menus/revisions/ACF and currently uncovered object operations.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Runtime CPT/taxonomy collectors report bounded completeness and native object kinds without exposing values or admitting uncovered objects. Full users/comments/media/menus/revisions/ACF native object schema coverage remains pending."
     },
     {
       "task_id": "T3972",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement WPML/generic language taxonomy-hierarchy dry-run diff with explicit source language, parent identity, duplicates and translation-group evidence.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Explicit source language, parent identity, existing ancestry, translation group and object authority guard bounded hierarchy proposals. Native WPML/generic language resolvers, dry-run diffs and exact readback remain pending."
     },
     {
       "task_id": "T3973",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement bounded admitted hierarchy/metadata/menu/media changes with no role escalation, cross-language corruption or foreign field ownership overwrite.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Provider-owned field/effect/schema gates prevent sensitive roles, foreign fields, object ownership and unsafe media URL changes. Actual hierarchy/meta/menu/media providers and bounded governed dispatch remain pending."
     },
     {
       "task_id": "T3974",
       "phase": 14,
       "priority": "P1",
       "summary": "Implement optional BuddyPress and Events Calendar adapters with private-message/member/event access and bounded pagination/timezone semantics.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Optional private collections require availability, object masks, bounded pagination and exact timezone. Native BuddyPress/Events Calendar integration and actual private-object acceptance remain pending."
     },
     {
       "task_id": "T3975",
       "phase": 14,
       "priority": "P1",
       "summary": "GATE Certify hierarchy cycles, orphan translations, license/domain mismatch handoffs, private messages, malicious media URLs and user capability escalation denial.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ],
+      "reason": "Fixtures deny ancestry cycles/orphans, cross-language/group ambiguity, role escalation, unsafe media URLs, missing optional providers and private communications. Native licensing handoffs and provider live acceptance remain pending."
     },
     {
       "task_id": "T3976",
