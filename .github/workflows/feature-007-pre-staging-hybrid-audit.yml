@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}
+  group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -139,6 +139,13 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-heartbeat-runtime.php
+
+      - name: Auto-Reconcile registry safety and worker policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-runtime.php
 
       - name: Competitive Experience G1 runtime evidence and semantic classifier
         shell: bash

@@ -16,6 +16,9 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 	const DECISION_DEFER = 'DEFER';
 	const DECISION_REVIEW = 'REVIEW_REQUIRED';
 	const DECISION_HARD_BLOCK = 'HARD_BLOCK';
+	const MAX_EXTENSION_SCENARIOS = 50;
+	const MAX_EXTENSION_SIGNALS = 64;
+	const MAX_EXTENSION_ERROR_POLICIES = 50;
 
 	private static function builtins() {
 		return array(
@@ -49,7 +52,7 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 		$extensions = array();
 		if ( function_exists( 'apply_filters' ) ) {
 			$filtered = apply_filters( 'mad4b_scp_auto_reconcile_scenarios', array() );
-			if ( is_array( $filtered ) ) $extensions = array_slice( $filtered, 0, 50 );
+			if ( is_array( $filtered ) ) $extensions = array_slice( $filtered, 0, self::MAX_EXTENSION_SCENARIOS );
 		}
 		$core_ids = array();
 		$rows = array();
@@ -157,6 +160,67 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 		);
 	}
 
+	/** Extensions may contribute new signals, but can never override a core signal. */
+	private static function extension_signals( array $context, array $reserved ) {
+		$extra = isset( $context['signals'] ) && is_array( $context['signals'] ) ? $context['signals'] : array();
+		if ( function_exists( 'apply_filters' ) ) {
+			$filtered = apply_filters( 'mad4b_scp_auto_reconcile_signals', $extra, self::bounded_extension_context( $context ) );
+			if ( is_array( $filtered ) ) $extra = $filtered;
+		}
+		$reserved_map = array_fill_keys( $reserved, true );
+		$out = array();
+		foreach ( array_slice( $extra, 0, self::MAX_EXTENSION_SIGNALS, true ) as $key => $enabled ) {
+			if ( ! is_string( $key ) ) continue;
+			$key = sanitize_key( $key );
+			if ( '' === $key || isset( $reserved_map[ $key ] ) ) continue;
+			$out[ $key ] = (bool) $enabled;
+		}
+		return $out;
+	}
+
+	private static function bounded_extension_context( array $context ) {
+		$binding = isset( $context['candidate_binding'] ) && is_array( $context['candidate_binding'] ) ? $context['candidate_binding'] : array();
+		$continuation = isset( $context['continuation'] ) && is_array( $context['continuation'] ) ? $context['continuation'] : array();
+		$maintenance = isset( $context['maintenance'] ) && is_array( $context['maintenance'] ) ? $context['maintenance'] : array();
+		return array(
+			'environment' => sanitize_key( isset( $context['environment'] ) ? (string) $context['environment'] : '' ),
+			'source' => sanitize_key( isset( $context['source'] ) ? (string) $context['source'] : '' ),
+			'current_version' => substr( sanitize_text_field( isset( $context['current_version'] ) ? (string) $context['current_version'] : '' ), 0, 64 ),
+			'stored_version' => substr( sanitize_text_field( isset( $context['stored_version'] ) ? (string) $context['stored_version'] : '' ), 0, 64 ),
+			'runtime_identity_complete' => ! empty( $context['runtime_identity_complete'] ),
+			'build_changed' => ! empty( $context['build_changed'] ),
+			'skills_pending' => ! empty( $context['skills_pending'] ),
+			'breakglass_enabled' => ! empty( $context['breakglass_enabled'] ),
+			'candidate_binding' => array(
+				'required' => ! empty( $binding['required'] ),
+				'stored_bound' => ! empty( $binding['stored_bound'] ),
+				'match' => ! empty( $binding['match'] ),
+			),
+			'continuation' => array(
+				'active' => ! empty( $continuation['active'] ),
+				'state' => sanitize_key( isset( $continuation['state'] ) ? (string) $continuation['state'] : '' ),
+			),
+			'maintenance' => array(
+				'active' => ! empty( $maintenance['active'] ),
+				'owner' => sanitize_key( isset( $maintenance['owner'] ) ? (string) $maintenance['owner'] : '' ),
+			),
+		);
+	}
+
+	private static function core_external_signal_keys() {
+		return array(
+			'grant_inventory_drift',
+			'write_contract_drift',
+			'site_profile_drift',
+			'actor_identity_drift',
+			'transport_contract_drift',
+			'baseline_expired',
+			'untrusted_package',
+			'continuation_conflict',
+			'concurrent_permit',
+		);
+	}
+
 	private static function signals( array $context ) {
 		$environment = sanitize_key( isset( $context['environment'] ) ? (string) $context['environment'] : '' );
 		$binding = isset( $context['candidate_binding'] ) && is_array( $context['candidate_binding'] ) ? $context['candidate_binding'] : array();
@@ -206,17 +270,13 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'source_native_self_update' => 'self_update' === $source,
 			'source_release_set' => 'runtime_release_set' === $source,
 		);
-		if ( isset( $context['signals'] ) && is_array( $context['signals'] ) ) {
-			foreach ( array_slice( $context['signals'], 0, 50, true ) as $key => $enabled ) {
-				$key = sanitize_key( (string) $key );
-				if ( '' !== $key && ! array_key_exists( $key, $signals ) ) $signals[ $key ] = (bool) $enabled;
-			}
-		}
+		$core_external = isset( $context['signals'] ) && is_array( $context['signals'] ) ? $context['signals'] : array();
+		foreach ( self::core_external_signal_keys() as $key ) $signals[ $key ] = ! empty( $core_external[ $key ] );
+		foreach ( self::extension_signals( $context, array_keys( $signals ) ) as $key => $enabled ) $signals[ $key ] = $enabled;
 		return $signals;
 	}
 
-	public static function classify_worker_error( $error_code ) {
-		$code = sanitize_key( (string) $error_code );
+	private static function core_worker_error_decision( $code ) {
 		$hard = array(
 			'mad4b_observed_update_package_integrity_required',
 			'mad4b_observed_update_target_mismatch',
@@ -236,6 +296,13 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'mad4b_post_update_continuation_lease_required',
 			'mad4b_post_update_continuation_not_claimed',
 			'mad4b_post_update_continuation_skills_certification_required',
+			'mad4b_runtime_convergence_busy',
+			'mad4b_runtime_convergence_lock_failed',
+			'mad4b_runtime_convergence_skills_readback_failed',
+			'mad4b_runtime_convergence_skills_persist_failed',
+			'mad4b_runtime_convergence_skills_persisted_identity_stale',
+			'installed_package_manifest_unverified',
+			'runtime_observation_failed',
 		);
 		$review = array(
 			'mad4b_observed_update_authority_delta',
@@ -251,17 +318,49 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'mad4b_post_update_continuation_target_drift',
 			'mad4b_post_update_continuation_write_snapshot_unavailable',
 		);
-		$decision = in_array( $code, $hard, true ) ? self::DECISION_HARD_BLOCK
-			: ( in_array( $code, $defer, true ) ? self::DECISION_DEFER
-				: ( in_array( $code, $review, true ) ? self::DECISION_REVIEW : self::DECISION_REVIEW ) );
+		if ( in_array( $code, $hard, true ) ) return array( 'decision' => self::DECISION_HARD_BLOCK, 'policy_id' => 'core_hard_block', 'source' => 'core' );
+		if ( in_array( $code, $defer, true ) ) return array( 'decision' => self::DECISION_DEFER, 'policy_id' => 'core_defer', 'source' => 'core' );
+		if ( in_array( $code, $review, true ) ) return array( 'decision' => self::DECISION_REVIEW, 'policy_id' => 'core_review', 'source' => 'core' );
+		return null;
+	}
+
+	private static function extension_worker_error_decision( $code ) {
+		$rows = array();
+		if ( function_exists( 'apply_filters' ) ) {
+			$filtered = apply_filters( 'mad4b_scp_auto_reconcile_worker_error_policies', array() );
+			if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, self::MAX_EXTENSION_ERROR_POLICIES );
+		}
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) || empty( $row['id'] ) ) continue;
+			$codes = isset( $row['error_codes'] ) && is_array( $row['error_codes'] ) ? $row['error_codes'] : array();
+			$normalized = array();
+			foreach ( array_slice( $codes, 0, 50 ) as $candidate ) {
+				$candidate = sanitize_key( (string) $candidate );
+				if ( '' !== $candidate ) $normalized[ $candidate ] = true;
+			}
+			if ( ! isset( $normalized[ $code ] ) ) continue;
+			$decision = isset( $row['decision'] ) ? strtoupper( sanitize_text_field( (string) $row['decision'] ) ) : self::DECISION_REVIEW;
+			if ( ! in_array( $decision, array( self::DECISION_DEFER, self::DECISION_REVIEW, self::DECISION_HARD_BLOCK ), true ) ) $decision = self::DECISION_REVIEW;
+			return array( 'decision' => $decision, 'policy_id' => sanitize_key( (string) $row['id'] ), 'source' => 'extension' );
+		}
+		return array( 'decision' => self::DECISION_REVIEW, 'policy_id' => 'default_review', 'source' => 'default' );
+	}
+
+	public static function classify_worker_error( $error_code ) {
+		$code = sanitize_key( (string) $error_code );
+		$policy = self::core_worker_error_decision( $code );
+		if ( ! is_array( $policy ) ) $policy = self::extension_worker_error_decision( $code );
 		return array(
 			'contract' => self::CONTRACT,
 			'error_code' => $code,
-			'decision' => $decision,
+			'decision' => $policy['decision'],
+			'policy_id' => $policy['policy_id'],
+			'policy_source' => $policy['source'],
 			'mutation_allowed' => false,
 			'authority_expansion_allowed' => false,
 			'zero_delta_required_for_rebind' => true,
 			'authorizing' => false,
 		);
 	}
+
 }
