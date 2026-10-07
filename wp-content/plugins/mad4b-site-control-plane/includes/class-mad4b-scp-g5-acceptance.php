@@ -33,6 +33,7 @@ final class MAD4B_SCP_G5_Acceptance {
 	public static function adversarial_matrix() {
 		return array(
 			'missing_external_consent' => 'blocked',
+			'payload_read_before_scope_authorization' => 'denied',
 			'mixed_currency_or_window' => 'blocked',
 			'partial_or_sampled_evidence' => 'blocked',
 			'budget_exhausted_or_uncertain_charge' => 'blocked',

@@ -50,7 +50,8 @@ final class MAD4B_G5_Test_Adapter implements MAD4B_SCP_G5_Stored_Observation_Ada
 	public function setup_fields() { return array( 'property' => array( 'label' => 'Property', 'kind' => 'property', 'required' => true, 'max_length' => 191 ) ); }
 	public function authorize_read( array $scope ) { return true; }
 	public function consent_status( array $scope ) { return array(); }
-	public function read_observation( $observation_id ) { return array(); }
+	public function observation_scope( $observation_id ) { return array( 'account_ref' => str_repeat( 'd', 64 ), 'property_ref' => 'property-1', 'tenant_ref' => str_repeat( 'e', 64 ), 'site_uuid' => 'site-g5', 'capability_id' => 'analytics-report' ); }
+	public function read_observation( $observation_id, array $authorized_scope ) { return array(); }
 }
 
 function mad4b_g5_ext_assert( $condition, $message ) {

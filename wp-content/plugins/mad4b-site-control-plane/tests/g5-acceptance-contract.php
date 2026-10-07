@@ -17,6 +17,7 @@ function g5_accept_assert( $condition, $message ) {
 $status = MAD4B_SCP_G5_Acceptance::status();
 g5_accept_assert( 15 === count( $status['task_ids'] ), 'G5 task ownership must remain exact' );
 g5_accept_assert( 'blocked' === $status['adversarial_matrix']['budget_exhausted_or_uncertain_charge'], 'uncertain charge must fail closed' );
+g5_accept_assert( 'denied' === $status['adversarial_matrix']['payload_read_before_scope_authorization'], 'payload reads must require authorized metadata scope first' );
 g5_accept_assert( 'blocked' === $status['adversarial_matrix']['unknown_protocol_or_client_defined_provider'], 'unknown protocol/provider identity must fail closed' );
 g5_accept_assert( 'preserve_and_review' === $status['adversarial_matrix']['seo_provider_coexistence_conflict'], 'SEO coexistence must preserve and review conflicts' );
 g5_accept_assert( 'denied' === $status['adversarial_matrix']['signal_driven_content_mutation'], 'growth signal cannot authorize content mutation' );

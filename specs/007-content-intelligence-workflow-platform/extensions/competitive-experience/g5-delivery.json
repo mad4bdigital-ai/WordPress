@@ -35,11 +35,11 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-external-providers.php",
-      "sha256": "ee45e689a6a2a9329269e07d8c27dfe420019d7dfad536b64f7d61f9d6a9cc2a"
+      "sha256": "daaa30ed4d555305f95dcc73d412eed509d8c832f343f3abb53bcb3dd3b2e4c1"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-growth-evidence.php",
-      "sha256": "35d51212e3f9f2615c6e4047759e1563b7a8beb0508535f5606b6c35d9cf9f3f"
+      "sha256": "6297d7b2c06ee45836c853e84877c17718cf2674727ba37399a2e19b4fedbb01"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-provider-profiles.php",
@@ -51,7 +51,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-acceptance.php",
-      "sha256": "ba2acb998c5ececa8fad01722c862b35a4f874becd56f6cff7302fba0aa523e5"
+      "sha256": "7975873d1caed4eb613a19586eb8370386537d051bea7640de54898f9e60d637"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -61,11 +61,11 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-external-provider-contract.php",
-      "sha256": "ea11b279f128e4afd67568e7f326a8468ccfdb76fdc6f18e9946b4a80e7723a4"
+      "sha256": "57015f1ddffa94140f2190ed72c7662f2c1f051bf0ea4585c57cc1aaec2b3c35"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-growth-evidence-runtime.php",
-      "sha256": "cbb5f19d7114cfab7d48013ce30756a807835b03356b3e466e7711dafcc6f45f"
+      "sha256": "4ffd3c3f75df2363e03ce7b9ccea25f8e749c3686106f43c5de3d58faa7ee807"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-provider-profile-contract.php",
@@ -77,7 +77,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-acceptance-contract.php",
-      "sha256": "1bea9241f30fd97a52942355cbc41d5b0640d8a2873dc1ba75e6b8c9c0ffbdce"
+      "sha256": "aedff2c9cc81b83f05864d91f7f4ca67ad1ac634e47aaecf62328a939a73194a"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-registration-contract.php",
@@ -109,6 +109,7 @@
     "client_configuration_cannot_invent_provider_identity_or_protocol",
     "credentials_and_secret_handles_are_never_echoed",
     "new_scopes_require_external_consent",
+    "observation_scope_authorized_before_retained_payload_read",
     "dimensional_provenance_sampling_cost_and_contradictions_fail_closed",
     "six_provider_seo_preflight_without_presence_based_execution_inference",
     "stored_rendered_language_cache_and_coexistence_gates_remain_required",

@@ -7,7 +7,8 @@ interface MAD4B_SCP_G5_Stored_Observation_Adapter {
 	public function setup_fields();
 	public function authorize_read( array $scope );
 	public function consent_status( array $scope );
-	public function read_observation( $observation_id );
+	public function observation_scope( $observation_id );
+	public function read_observation( $observation_id, array $authorized_scope );
 }
 
 /**

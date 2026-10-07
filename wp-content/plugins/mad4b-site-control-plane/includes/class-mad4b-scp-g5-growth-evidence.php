@@ -48,13 +48,18 @@ final class MAD4B_SCP_G5_Growth_Evidence {
 		try {
 			$d = $adapter->descriptor(); $guard = MAD4B_SCP_G5_External_Providers::descriptor_guard( $adapter, $d );
 			if ( is_wp_error( $guard ) ) return $guard;
-			$row = $adapter->read_observation( $ref['observation_id'] );
-			if ( is_wp_error( $row ) || ! is_array( $row ) ) return self::error( 'observation_unavailable' );
-			$scope = self::scope( $row, $d ); if ( is_wp_error( $scope ) ) return $scope;
+			// Resolve only metadata needed for authorization before the retained payload is touched.
+			$scope_meta = $adapter->observation_scope( $ref['observation_id'] );
+			if ( is_wp_error( $scope_meta ) || ! is_array( $scope_meta ) ) return self::error( 'observation_scope_unavailable' );
+			$scope = self::scope_value( $scope_meta, $d ); if ( is_wp_error( $scope ) ) return $scope;
 			// Revalidation occurs for every row. An admin role does not replace private provider consent.
 			if ( true !== $adapter->authorize_read( $scope ) ) return self::error( 'observation_access_denied' );
 			$consent = $adapter->consent_status( $scope );
 			if ( ! is_array( $consent ) || ! is_int( $consent['expires_at'] ?? null ) || $consent['expires_at'] <= time() || ! is_array( $consent['granted_scopes'] ?? null ) || array_diff( $d['required_scopes'], $consent['granted_scopes'] ) || ( $consent['account_ref'] ?? null ) !== $scope['account_ref'] || ( $consent['property_ref'] ?? null ) !== $scope['property_ref'] || ( $consent['tenant_ref'] ?? null ) !== $scope['tenant_ref'] || ( $consent['generation_sha256'] ?? null ) !== $d['generation_sha256'] ) return self::error( 'external_consent_required' );
+			$row = $adapter->read_observation( $ref['observation_id'], $scope );
+			if ( is_wp_error( $row ) || ! is_array( $row ) ) return self::error( 'observation_unavailable' );
+			$row_scope = self::scope( $row, $d ); if ( is_wp_error( $row_scope ) ) return $row_scope;
+			if ( ! hash_equals( MAD4B_SCP_G5_External_Providers::digest( $scope ), MAD4B_SCP_G5_External_Providers::digest( $row_scope ) ) ) return self::error( 'observation_scope_changed' );
 			$normalized = self::normalize( $row, $d, $scope, $ref['observation_id'] );
 			if ( is_wp_error( $normalized ) ) return $normalized;
 			// Recheck current descriptor and subject after retained evidence access.
@@ -68,7 +73,12 @@ final class MAD4B_SCP_G5_Growth_Evidence {
 
 	private static function scope( array $row, array $d ) {
 		$s = $row['scope'] ?? null;
-		if ( ! is_array( $s ) || array_diff( array_keys( $s ), array( 'account_ref', 'property_ref', 'tenant_ref', 'site_uuid', 'capability_id' ) ) || ( $s['account_ref'] ?? null ) !== $d['account_ref'] || ( $s['tenant_ref'] ?? null ) !== $d['tenant_ref'] || ( $s['site_uuid'] ?? null ) !== $d['site_uuid'] || ! in_array( $s['property_ref'] ?? null, $d['property_refs'], true ) || ! in_array( $s['capability_id'] ?? null, $d['capability_ids'], true ) ) return self::error( 'observation_scope_mismatch' );
+		if ( ! is_array( $s ) ) return self::error( 'observation_scope_mismatch' );
+		return self::scope_value( $s, $d );
+	}
+
+	private static function scope_value( array $s, array $d ) {
+		if ( array_diff( array_keys( $s ), array( 'account_ref', 'property_ref', 'tenant_ref', 'site_uuid', 'capability_id' ) ) || ( $s['account_ref'] ?? null ) !== $d['account_ref'] || ( $s['tenant_ref'] ?? null ) !== $d['tenant_ref'] || ( $s['site_uuid'] ?? null ) !== $d['site_uuid'] || ! in_array( $s['property_ref'] ?? null, $d['property_refs'], true ) || ! in_array( $s['capability_id'] ?? null, $d['capability_ids'], true ) ) return self::error( 'observation_scope_mismatch' );
 		return $s;
 	}
 
