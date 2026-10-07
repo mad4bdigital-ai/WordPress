@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "9532e0fb407509f835f23e83d595331f2a8ac5fbb7ad71803d2ac7ce31f94f53",
+  "status_source_sha256": "46d52c48d0f6477e8eb11df07804fd3d741ac3a01fe9da5e22484acde37fbdf4",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
@@ -211,7 +211,7 @@
         "g2-delivery.json",
         "g2-delivery.md"
       ],
-      "reason": "Existing exact access simulation plus G2 workspace exposes conditional/denied outcomes and bounded subjects; reviewed permission-editor plan/apply conflict UX remains pending."
+      "reason": "G2 now combines exact effective-access projection with a reviewed authority-reduction planner bound to agent revision, exact target state and plan SHA-256; richer permission-editor UI, per-object conflict explanations and live role-demotion/deletion invalidation remain pending."
     },
     {
       "task_id": "T3918",
@@ -223,7 +223,7 @@
         "g2-delivery.json",
         "g2-delivery.md"
       ],
-      "reason": "No permission mutation surface was added; exact-grant foundations and readback projection are reused while reviewed plan/apply/readback for eligible permission changes remains pending."
+      "reason": "Reviewed plan/apply/readback is implemented for authority-reducing changes only: disable agent, disable subject and revoke an exact allow grant. Apply requires exact plan SHA-256, expected revision where applicable, explicit confirmation, post-change readback and append-only audit; authority expansion, grant creation, enable/restore and inferred grants are intentionally unsupported. Live concurrency and Staging acceptance remain pending."
     },
     {
       "task_id": "T3919",
@@ -235,7 +235,7 @@
         "g2-delivery.json",
         "g2-delivery.md"
       ],
-      "reason": "My Access-style projection now reports redacted subject bindings, effective access and mutation activity; disable/revoke session journeys and live attribution acceptance remain pending."
+      "reason": "My Access projection now reports redacted subjects/effective access/activity and the reviewed reduction workflow supports disable-agent, disable-subject and exact allow-grant revoke journeys. Real token/session revocation, last-session detail, browser UX and live audit attribution acceptance remain pending."
     },
     {
       "task_id": "T3920",
@@ -247,7 +247,7 @@
         "g2-delivery.json",
         "g2-delivery.md"
       ],
-      "reason": "Static contracts preserve no wildcard grants, no automatic tool mounts and no mutation authority from the workspace; live wrong-subject/resource/server and stale-grant denials remain pending."
+      "reason": "Static and runtime contracts deny wildcard/automatic grants, authority expansion, enable/restore paths and stale plan application while preserving exact-grant boundaries. Live wrong-subject/resource/issuer/server, stale-grant, role-promotion shortcut and automatic-mount denials remain pending."
     },
     {
       "task_id": "T3921",
