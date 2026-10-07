@@ -866,6 +866,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 				&& ! empty( $identity['build_fingerprint'] )
 				&& ! empty( $identity['package_manifest_digest'] );
 		}
+		$persisted_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
+			? MAD4B_SCP_Staging_Write_Authority::persisted_status()
+			: array();
+		$breakglass_enabled = ! empty( $persisted_authority['breakglass_included'] )
+			|| ! empty( $persisted_authority['breakglass_auto_enable'] )
+			|| ! empty( $persisted_authority['raw_sql_breakglass_enabled'] );
 		return array(
 			'environment' => sanitize_key( (string) $environment ),
 			'source' => $source,
@@ -880,7 +887,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'build_changed' => ! empty( $reasons['build_provenance_drift'] )
 				|| ( ! empty( $binding['required'] ) && ! empty( $binding['stored_bound'] ) && empty( $binding['match'] ) ),
 			'skills_pending' => false,
-			'breakglass_enabled' => false,
+			'breakglass_enabled' => (bool) $breakglass_enabled,
 			'signals' => isset( $checkpoint['auto_reconcile_signals'] ) && is_array( $checkpoint['auto_reconcile_signals'] )
 				? $checkpoint['auto_reconcile_signals']
 				: array(),
@@ -965,17 +972,47 @@ final class MAD4B_SCP_Runtime_Convergence {
 		return $result;
 	}
 
+	private static function combine_reconciliation_disposition( $registry_decision, $preflight_disposition ) {
+		$registry_decision = strtoupper( sanitize_key( (string) $registry_decision ) );
+		$preflight_disposition = strtoupper( sanitize_key( (string) $preflight_disposition ) );
+		$preflight_allowed = array( 'NO_OP', 'AUTO_REBIND', 'DEFER', 'REVIEW_REQUIRED', 'HARD_BLOCK' );
+		if ( ! in_array( $preflight_disposition, $preflight_allowed, true ) ) $preflight_disposition = 'HARD_BLOCK';
+
+		// Either side may tighten the result. The registry is the scenario-policy
+		// ceiling; exact ZERO_DELTA preflight may authorize AUTO_REBIND only when
+		// the registry explicitly selected SCHEDULE_PROBE.
+		if ( 'HARD_BLOCK' === $registry_decision || 'HARD_BLOCK' === $preflight_disposition ) return 'HARD_BLOCK';
+		if ( 'REVIEW_REQUIRED' === $registry_decision || 'REVIEW_REQUIRED' === $preflight_disposition ) return 'REVIEW_REQUIRED';
+		if ( 'DEFER' === $registry_decision || 'DEFER' === $preflight_disposition ) return 'DEFER';
+		if ( 'NO_OP' === $registry_decision ) return 'NO_OP';
+		if ( 'SCHEDULE_PROBE' === $registry_decision ) return $preflight_disposition;
+		return 'REVIEW_REQUIRED';
+	}
+
 	private static function reconciliation_decision( array $context, array $preflight = array() ) {
 		$scenario = self::central_reconciliation_scenario( $context );
-		$disposition = isset( $preflight['disposition'] ) ? strtoupper( sanitize_key( (string) $preflight['disposition'] ) ) : 'DEFER';
-		$allowed = array( 'NO_OP', 'AUTO_REBIND', 'DEFER', 'REVIEW_REQUIRED', 'HARD_BLOCK' );
-		if ( ! in_array( $disposition, $allowed, true ) ) $disposition = 'HARD_BLOCK';
+		$registry_decision = isset( $scenario['decision'] ) ? strtoupper( sanitize_key( (string) $scenario['decision'] ) ) : 'REVIEW_REQUIRED';
+		$preflight_disposition = isset( $preflight['disposition'] ) ? strtoupper( sanitize_key( (string) $preflight['disposition'] ) ) : 'DEFER';
+		$disposition = self::combine_reconciliation_disposition( $registry_decision, $preflight_disposition );
+		$registry_reason = isset( $scenario['reason'] ) ? sanitize_key( (string) $scenario['reason'] ) : 'central_registry';
+		$reasons = isset( $preflight['reasons'] ) && is_array( $preflight['reasons'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $preflight['reasons'] ) ) )
+			: array();
+		if ( '' !== $registry_reason ) $reasons[] = 'registry_' . $registry_reason;
+		$reasons = array_values( array_unique( $reasons ) );
+		$retryable = 'DEFER' === $disposition
+			&& ( ! empty( $preflight['retryable'] ) || 'DEFER' === $registry_decision );
+		$retry_after_seconds = $retryable
+			? max( 5, min( 300, absint( isset( $preflight['retry_after_seconds'] ) && $preflight['retry_after_seconds'] ? $preflight['retry_after_seconds'] : 15 ) ) )
+			: 0;
 		return array(
 			'contract' => 'mad4b.auto-reconciliation-decision.v1',
 			'scenario_id' => isset( $scenario['scenario_id'] ) ? (string) $scenario['scenario_id'] : 'unclassified',
-			'registry_decision' => isset( $scenario['decision'] ) ? (string) $scenario['decision'] : 'REVIEW_REQUIRED',
-			'registry_reason' => isset( $scenario['reason'] ) ? sanitize_key( (string) $scenario['reason'] ) : 'central_registry',
+			'registry_decision' => $registry_decision,
+			'registry_reason' => $registry_reason,
+			'preflight_disposition' => $preflight_disposition,
 			'disposition' => $disposition,
+			'decision_combination_policy' => 'registry_safety_ceiling_then_exact_zero_delta_preflight',
 			'authority_delta' => 'zero_required',
 			'mutation_class' => 'candidate_binding_only',
 			'production_allowed' => false,
@@ -983,9 +1020,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'grant_mutation_allowed' => false,
 			'subject_mutation_allowed' => false,
 			'agent_mutation_allowed' => false,
-			'reasons' => isset( $preflight['reasons'] ) && is_array( $preflight['reasons'] ) ? array_values( array_unique( array_map( 'sanitize_key', $preflight['reasons'] ) ) ) : array(),
-			'retryable' => ! empty( $preflight['retryable'] ),
-			'retry_after_seconds' => ! empty( $preflight['retryable'] ) ? max( 5, min( 300, absint( $preflight['retry_after_seconds'] ?? 15 ) ) ) : 0,
+			'reasons' => $reasons,
+			'retryable' => $retryable,
+			'retry_after_seconds' => $retry_after_seconds,
 			'dynamic_registry' => true,
 			'extension_filter' => 'mad4b_scp_auto_reconcile_scenarios',
 			'read_only' => true,
