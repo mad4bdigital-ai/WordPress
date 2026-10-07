@@ -167,6 +167,19 @@ required_runtime_tokens = [
 ]
 for token in required_runtime_tokens:
     assert token in runtime_convergence, f"missing dynamic auto-reconciliation contract token: {token}"
+
+# Extension descriptors are data-only selectors. They may add scenarios but
+# cannot provide executors or override the central authority envelope.
+assert "apply_filters( 'mad4b_scp_auto_reconciliation_scenarios', $scenarios )" in runtime_convergence
+assert "foreach ( array( 'all', 'any', 'none' ) as $bucket )" in runtime_convergence
+assert "'authority_delta' => 'zero_required'" in runtime_convergence
+assert "'mutation_class' => 'candidate_binding_only'" in runtime_convergence
+assert "'production_allowed' => false" in runtime_convergence
+assert "'breakglass_allowed' => false" in runtime_convergence
+registry_body = runtime_convergence.split("public static function reconciliation_scenario_registry()", 1)[1].split("private static function select_reconciliation_scenario", 1)[0]
+for forbidden in ("executor", "execute_callback", "mutation_allowed", "grant_mutation_allowed", "subject_mutation_allowed", "agent_mutation_allowed"):
+    assert forbidden not in registry_body, f"scenario registry unexpectedly accepts authority field: {forbidden}"
+
 assert "observed_reconciliation_preflight" in continuation
 for token in [
     "$result['disposition'] = 'AUTO_REBIND'",
