@@ -227,12 +227,41 @@ final class MAD4B_SCP_G2_Governance_Experience {
 			ARRAY_A
 		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
+		$redacted_effective = array();
+		foreach ( isset( $effective['effective'] ) && is_array( $effective['effective'] ) ? $effective['effective'] : array() as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$constraints = isset( $row['resource_constraints'] ) && is_array( $row['resource_constraints'] ) ? $row['resource_constraints'] : array();
+			$constraint_digest = empty( $constraints )
+				? ''
+				: hash( 'sha256', wp_json_encode( $constraints, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+			$redacted_effective[] = array(
+				'server_id' => isset( $row['server_id'] ) ? sanitize_key( (string) $row['server_id'] ) : '',
+				'ability' => isset( $row['ability'] ) ? (string) $row['ability'] : '',
+				'provider' => isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '',
+				'grant' => isset( $row['grant'] ) ? sanitize_key( (string) $row['grant'] ) : '',
+				'scope' => isset( $row['scope'] ) ? sanitize_key( (string) $row['scope'] ) : '',
+				'mounted' => ! empty( $row['mounted'] ),
+				'provider_matches_mount' => ! empty( $row['provider_matches_mount'] ),
+				'provider_runtime' => isset( $row['provider_runtime'] ) && is_array( $row['provider_runtime'] ) ? $row['provider_runtime'] : array(),
+				'impact' => isset( $row['impact'] ) ? sanitize_key( (string) $row['impact'] ) : '',
+				'approval_required' => ! empty( $row['approval_required'] ),
+				'resource_schema_version' => isset( $row['resource_schema_version'] ) ? sanitize_text_field( (string) $row['resource_schema_version'] ) : '',
+				'constraint_state' => isset( $row['constraint_state'] ) ? sanitize_key( (string) $row['constraint_state'] ) : '',
+				'resource_constraints_present' => ! empty( $constraints ),
+				'resource_constraints_sha256' => $constraint_digest,
+				'decision' => isset( $row['decision'] ) ? sanitize_key( (string) $row['decision'] ) : '',
+				'effective' => ! empty( $row['effective'] ),
+				'raw_grant_ids_exposed' => false,
+				'raw_resource_constraints_exposed' => false,
+			);
+		}
+
 		return array(
 			'contract' => 'mad4b.agent-access-workspace.v1',
 			'agent' => isset( $effective['agent'] ) ? $effective['agent'] : array(),
 			'subjects' => $redacted_subjects,
 			'subject_count_returned' => count( $redacted_subjects ),
-			'effective_access' => isset( $effective['effective'] ) ? $effective['effective'] : array(),
+			'effective_access' => $redacted_effective,
 			'allowed_count' => isset( $effective['allowed_count'] ) ? (int) $effective['allowed_count'] : 0,
 			'conditional_count' => isset( $effective['conditional_count'] ) ? (int) $effective['conditional_count'] : 0,
 			'denied_count' => isset( $effective['denied_count'] ) ? (int) $effective['denied_count'] : 0,
