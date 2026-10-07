@@ -236,7 +236,10 @@ maybe_converge = method_body(
 assert "convergence_trigger_allowed()" in maybe_converge
 assert maybe_converge.index("convergence_trigger_allowed()") < maybe_converge.index("get_option( self::CHECKPOINT_OPTION")
 assert "if ( 'blocked' === $state ) {" in maybe_converge
-assert "self::is_transient_error_code( $last_error )" in maybe_converge
+assert "self::worker_error_policy( $last_error )" in maybe_converge
+assert "'DEFER' !== $decision" in maybe_converge
+assert "auto_reconcile_policy_id" in maybe_converge
+assert "auto_reconcile_policy_source" in maybe_converge
 assert "pending_safe_phases" in maybe_converge
 assert "automatic_bounded_retry" in maybe_converge
 
