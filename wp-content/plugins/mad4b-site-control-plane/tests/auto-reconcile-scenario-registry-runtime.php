@@ -171,6 +171,14 @@ check( 'extension_future_dependency' === $extension_result['scenario_id'], 'dyna
 check( 'SCHEDULE_PROBE' === $extension_result['decision'], 'dynamic extension scenario must remain probe-only' );
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $production )['decision'], 'extension signal provider cannot erase Production hard block' );
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $breakglass )['decision'], 'extension signal provider cannot erase Breakglass hard block' );
+$protected_untrusted = $base;
+$protected_untrusted['signals'] = array( 'untrusted_package' => true );
+$GLOBALS['mad4b_auto_reconcile_signal_filter'] = static function ( $signals, $context ) {
+	$signals['untrusted_package'] = false;
+	$signals['grant_inventory_drift'] = false;
+	return $signals;
+};
+check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $protected_untrusted )['decision'], 'extension signal provider cannot erase untrusted-package hard block evidence' );
 
 $GLOBALS['mad4b_auto_reconcile_filter'] = null;
 $GLOBALS['mad4b_auto_reconcile_signal_filter'] = null;
