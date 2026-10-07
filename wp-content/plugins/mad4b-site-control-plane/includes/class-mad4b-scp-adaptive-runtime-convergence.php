@@ -89,8 +89,8 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 		if ( ! is_array( $binding ) || empty( $binding['required'] ) || empty( $binding['stored_bound'] ) || ! empty( $binding['match'] ) ) return false;
 		$current_complete = 1 === preg_match( '/^[a-f0-9]{40}$/', strtolower( trim( (string) ( $binding['current_source_commit_sha'] ?? '' ) ) ) )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_build_fingerprint'] ?? '' ) ) )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_package_manifest_digest'] ?? '' ) ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_build_fingerprint'] ?? '' ) ) ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_package_manifest_digest'] ?? '' ) ) ) )
 			&& '' !== trim( (string) ( $binding['current_artifact_identity'] ?? '' ) );
 		return $current_complete;
 	}
