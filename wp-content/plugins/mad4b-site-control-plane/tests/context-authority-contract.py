@@ -59,6 +59,7 @@ require(authority, "authorized_assets_from_records", "asset-authorized read proj
 require(authority, "self::raw_assets()", "mutation paths preserve raw asset siblings")
 require(authority, "self::raw_sources()", "mutation paths preserve raw source siblings")
 require(authority, "classification_confidence", "classification confidence")
+require(authority, "core brand identity", "All Royal Egypt-style core brand identity classification")
 require(authority, "authority_class", "authority class")
 require(authority, "quality_score", "quality score")
 require(authority, "mad4b.context-quality-score.v2", "quality scoring v2 contract")
