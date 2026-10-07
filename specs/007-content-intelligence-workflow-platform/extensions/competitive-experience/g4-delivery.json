@@ -1,0 +1,124 @@
+{
+  "contract": "mad4b.competitive-g4-delivery.v1",
+  "status": "REPOSITORY_G4_FOUNDATION_IMPLEMENTED_PROVIDER_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 283,
+  "implementation_branch": "feat/007-g4-forms-commerce-builders-siteops-breadth-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "20552e34a75c601c247e36edc0dbc86ff4aa230a",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "provider_family_contract": "mad4b.g4-provider-family-catalog.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "runtime_parity_claimed": false,
+  "live_provider_acceptance": false,
+  "live_browser_acceptance": false,
+  "capability_ids": [
+    "CE015",
+    "CE016",
+    "CE017",
+    "CE018",
+    "CE019",
+    "CE020",
+    "CE021",
+    "CE022",
+    "CE032",
+    "CE033",
+    "CE034",
+    "CE035",
+    "CE036",
+    "CE037",
+    "CE038"
+  ],
+  "partial_task_ids": [
+    "T3931",
+    "T3932",
+    "T3933",
+    "T3934",
+    "T3935",
+    "T3936",
+    "T3937",
+    "T3938",
+    "T3939",
+    "T3940",
+    "T3941",
+    "T3942",
+    "T3943",
+    "T3944",
+    "T3945",
+    "T3966",
+    "T3967",
+    "T3968",
+    "T3969",
+    "T3970",
+    "T3971",
+    "T3972",
+    "T3973",
+    "T3974",
+    "T3975"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g4-provider-families.php",
+      "sha256": "434a27ca2922b3de949617dfa2528c137a8d75bcb8acd09177bf2c6b88d16c2b"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "ddc3992818ca18659a2ba883b52660f5f1e61627a18f573aa6a95efd67050f8a"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-provider-family-contract.php",
+      "sha256": "88484c60a26a0b5fc4063ba705ec6aae67f946599ddf002ad642c59c3809f4d1"
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
+      "sha256": "3de0340d738487667e2dd71bc1811cbbbf1d449cda2a87e693ced21280c3e20a"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
+      "sha256": "ae9b106a4876df9a0aa118e14f170289911c966ad5927c008479dce89fcaaebf"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
+      "sha256": "8064081ae1336d3f87b2aa32549556d753259bd8f4efe369633785349d198f16"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "sha256": "a837aa98feab85b4e029fdf765dbf4af56bf9bd4aed209657cf72ad6bd2a3d2b"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
+      "sha256": "8865339ba71cf8d2dc5341c1866322edf4aaee466cc481d01a3754f3a2eb7895"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.md",
+      "sha256": "1dcb55c7b84d1f746375fedb64fb1fd9261671c7357ec9ac309019eb401df3f2"
+    }
+  ],
+  "acceptance_contracts": [
+    "typed_exact_provider_family_membership_and_unknown_provider_fail_closed",
+    "provider_version_readiness_uses_existing_certified_contracts_without_execution",
+    "submission_customer_order_private_message_sensitive_authority_separation",
+    "refund_gateway_and_other_financial_effects_never_claim_undo",
+    "restore_is_readiness_only_and_never_replays_stale_authority",
+    "builder_revision_editor_lock_template_scope_and_dynamic_data_leakage_gates",
+    "cache_redirect_media_egress_and_blast_radius_bounds",
+    "wpml_source_language_parent_duplicate_translation_group_evidence",
+    "no_generic_shell_raw_sql_arbitrary_http_grants_mounts_or_production_authority",
+    "all_g4_plans_are_non_authorizing_and_execution_false"
+  ],
+  "remaining_acceptance": [
+    "Provider-native discovery, inventory, schema and exact-version runtime probes for each admitted G4 family.",
+    "Provider-native plan/apply/readback executors for admitted reversible mutations; exact authority and impact approval remain separate.",
+    "WooCommerce HPOS/object-level/stock/hook canaries and explicit external financial-effect handoffs.",
+    "Elementor/Divi/Kadence/Gutenberg tree serialization, editor-lock, fresh-ID and semantic-readback acceptance.",
+    "Backup/cache/migration/security/redirect provider adapters including restore, loop, purge-blast-radius and self-lockout fault fixtures.",
+    "WordPress/WPML/ACF/BuddyPress/Events object ownership, multilingual hierarchy, private data and malicious media URL denial fixtures.",
+    "Exact-head child CI and governance, then cumulative Hub CI and representative Staging/browser acceptance.",
+    "Production remains unauthorized."
+  ]
+}
