@@ -1265,6 +1265,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 				}
 			)
 		);
+		$ai_required = array_values(
+			array_filter(
+				$required,
+				static function ( $asset ) {
+					$confidence = isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0;
+					$source = isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '';
+					return $confidence >= 0.60 || 'human' === $source;
+				}
+			)
+		);
 
 		$governed_asset_count = 0;
 		$normalized = 0;
@@ -1323,10 +1333,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 		}
 
 		echo '<section id="mad4b-required-review-inbox" class="mad4b-scp-panel mad4b-context-review-queue"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Blocking readiness — Required', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'These exact decisions clear the mandatory review blocker when bindings remain current.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $required ) ) . '</span></div>';
-		if ( $ai_ready && $required ) {
+		if ( $ai_ready && $ai_required ) {
 			$batch = array();
-			foreach ( $required as $asset ) $batch[] = self::ai_review_handoff_payload( $asset, $status );
-			echo '<div class="mad4b-context-ai-batch"><div><strong>' . esc_html__( 'Delegated AI review handoff is ready.', 'mad4b-site-control-plane' ) . '</strong><p>' . esc_html__( 'The handoff contains exact hashes, registry revision and authority fingerprint. Preparing it does not approve or mutate content.', 'mad4b-site-control-plane' ) . '</p></div><button type="button" class="button button-primary" data-mad4b-copy-ai-handoff="mad4b-ai-required-batch">' . esc_html( sprintf( __( 'Review required with AI (%d)', 'mad4b-site-control-plane' ), count( $required ) ) ) . '</button><textarea id="mad4b-ai-required-batch" class="mad4b-context-ai-handoff-payload" hidden readonly>' . esc_textarea( wp_json_encode( array( 'contract' => 'mad4b.context-ai-review-batch-handoff.v1', 'refresh_binding_after_each_decision' => true, 'stale_evidence_action' => 'stop_and_refresh', 'items' => $batch ), JSON_UNESCAPED_SLASHES ) ) . '</textarea></div>';
+			foreach ( $ai_required as $asset ) $batch[] = self::ai_review_handoff_payload( $asset, $status );
+			echo '<div class="mad4b-context-ai-batch"><div><strong>' . esc_html__( 'Delegated AI review handoff is ready.', 'mad4b-site-control-plane' ) . '</strong><p>' . esc_html__( 'The handoff contains exact hashes, registry revision and authority fingerprint. Low-confidence assets are excluded until Human classification confirmation.', 'mad4b-site-control-plane' ) . '</p>';
+			if ( count( $ai_required ) < count( $required ) ) echo '<p class="mad4b-scp-muted">' . esc_html( sprintf( __( '%d required asset(s) excluded from AI review pending Human classification confirmation.', 'mad4b-site-control-plane' ), count( $required ) - count( $ai_required ) ) ) . '</p>';
+			echo '</div><button type="button" class="button button-primary" data-mad4b-copy-ai-handoff="mad4b-ai-required-batch">' . esc_html( sprintf( __( 'Review required with AI (%d)', 'mad4b-site-control-plane' ), count( $ai_required ) ) ) . '</button><textarea id="mad4b-ai-required-batch" class="mad4b-context-ai-handoff-payload" hidden readonly>' . esc_textarea( wp_json_encode( array( 'contract' => 'mad4b.context-ai-review-batch-handoff.v1', 'scope' => 'required_eligible', 'refresh_binding_after_each_decision' => true, 'stale_evidence_action' => 'stop_and_refresh', 'items' => $batch ), JSON_UNESCAPED_SLASHES ) ) . '</textarea></div>';
 		}
 		if ( empty( $required ) ) echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'No required review is pending.', 'mad4b-site-control-plane' ) . '</strong></p></div>';
 		else foreach ( $required as $asset ) {
