@@ -43,6 +43,7 @@ require(runtime, "'approval_ticket_sha256'", "approval_ticket_digest_missing")
 if "'approval_ticket_id' =>" in runtime:
     raise SystemExit("raw_approval_ticket_identifier_exposed")
 require(runtime, "'execution_available_here' => false", "recovery_preview_must_not_execute")
+require(runtime, "'identity_runtime_unavailable'", "recovery_preview_identity_runtime_must_fail_closed")
 
 for forbidden in (
     "MAD4B_SCP_Agent_Registry::grant_ability(",
