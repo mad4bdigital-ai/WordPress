@@ -124,6 +124,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-diff.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-provider-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-declarative-adapter-manifest.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wordpress-domain-coverage.php';
+require_once MAD4B_SCP_DIR . 'includes/domains/class-mad4b-scp-domain-native-providers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-recovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-jobs.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-intent-registry.php';
@@ -157,6 +159,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g4-provider-families.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-runtime-convergence.php';

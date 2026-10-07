@@ -431,7 +431,9 @@ for relative in pr_concurrency_workflows:
         block.append(line)
     concurrency = '\n'.join(block)
     require(concurrency, 'github.event.pull_request.number || github.ref', f'pr-workflow-stable-concurrency-{relative}')
-    require(concurrency, 'cancel-in-progress: true', f'pr-workflow-cancel-superseded-{relative}')
-    forbid(concurrency, 'github.event.pull_request.head.sha', f'pr-workflow-no-sha-concurrency-{relative}')
+    require(concurrency, 'cancel-in-progress: true', f'pr-workflow-cancel-duplicates-{relative}')
+    if 'github.event.pull_request.head.sha' in concurrency or 'github.sha' in concurrency:
+        require(concurrency, 'github.event.pull_request.head.sha || github.ref', f'pr-workflow-exact-source-concurrency-{relative}')
+        require(concurrency, 'github.event_name', f'pr-workflow-event-isolation-{relative}')
 
 print('mad4b.site-control-plane.spec-consistency.v11: PASS')

@@ -51,7 +51,7 @@ permissions:
 # runners. Cancellation changes scheduling only; the surviving run still checks
 # out and verifies the exact current head before executing the full matrix.
 concurrency:
-  group: mad4b-provider-compatibility-${{ github.event.pull_request.number || github.ref }}
+  group: mad4b-provider-compatibility-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
