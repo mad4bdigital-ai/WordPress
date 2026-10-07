@@ -112,7 +112,7 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
-      "sha256": "3de0340d738487667e2dd71bc1811cbbbf1d449cda2a87e693ced21280c3e20a"
+      "sha256": "b13fc5974d70d18abb579366373559cae0d4c46aa69240a413896d580d23aabf"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
@@ -120,19 +120,19 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "34a23e02e0c0b1ac53258e28acdb856558984e187c5d7b27358af2ff4cc3cc25"
+      "sha256": "7380dbd2b67daf43c068ac25e8862b2128cdea7843aa54deaf8abe8aa9ddaf71"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "a837aa98feab85b4e029fdf765dbf4af56bf9bd4aed209657cf72ad6bd2a3d2b"
+      "sha256": "4a006ae5c525fdcbff2faac0bd9a285917e751d4be1c1b35b20cec0055d5b171"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
-      "sha256": "8865339ba71cf8d2dc5341c1866322edf4aaee466cc481d01a3754f3a2eb7895"
+      "sha256": "814d6c322a7109a2ddca7af4418e73b53a16c793dcd362226a1b795cde844266"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.md",
-      "sha256": "4b35824d664e1a7a2010632aa56f960ea4b6c75b0b0e3ed54067d3f8f45a2bc3"
+      "sha256": "df6fe19e43c2456e8b646606ddf5a3d123d2053ccbfb47bcbba9c35e3453750f"
     }
   ],
   "acceptance_contracts": [
