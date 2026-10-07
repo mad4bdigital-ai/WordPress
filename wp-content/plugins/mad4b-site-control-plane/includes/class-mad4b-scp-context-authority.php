@@ -1665,8 +1665,16 @@ final class MAD4B_SCP_Context_Authority {
 			$context_fingerprint_after = self::context_fingerprint( $records, $sources );
 			$review_event = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? 'mad4b/context-asset-ai-review' : 'mad4b/context-asset-review';
 			$review_contract = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? self::AI_REVIEW_CONTRACT : self::HUMAN_REVIEW_CONTRACT;
+			$public_asset = $asset;
+			$public_asset['review_binding'] = array(
+				'registry_revision_before' => $registry_revision_before,
+				'registry_revision_after' => $registry_revision_before + 1,
+				'authority_manifest_before' => $authority_manifest_before,
+				'authority_manifest_after' => $authority_manifest_after,
+				'content_hash' => $current_content_hash,
+			);
 			$result = self::audited_registry_result(
-				$asset,
+				$public_asset,
 				$review_event,
 				array(
 					'contract' => $review_contract,
@@ -1722,7 +1730,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( is_wp_error( $result ) ) return $result;
 			if ( $generated_brand_asset && 'approve' === $decision && class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
 				$job_transition = MAD4B_SCP_Brand_Context_Builder::complete_generation_job_for_asset( $asset );
-				$result['generation_job_transition'] = is_wp_error( $job_transition )
+				$result['result']['generation_job_transition'] = is_wp_error( $job_transition )
 					? array( 'ready' => false, 'error_code' => $job_transition->get_error_code() )
 					: array( 'ready' => true, 'job' => isset( $job_transition['job'] ) ? $job_transition['job'] : array() );
 			}
