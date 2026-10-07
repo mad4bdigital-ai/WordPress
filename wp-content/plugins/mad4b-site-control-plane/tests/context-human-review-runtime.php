@@ -638,18 +638,20 @@ mad4b_review_assert( 'reject' === $optional_reject['review_decision'], 'Reject d
 mad4b_review_assert( ! empty( $optional_reject['review_note'] ), 'Rejected content must retain reviewer rationale.', $optional_reject );
 
 $review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
-mad4b_review_assert( 5 === count( $review_events ), 'Three primary approvals plus needs-changes and rejection must each emit one audit event.', $review_events );
-mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
-mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
-mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[2] );
-mad4b_review_assert( 'needs_changes' === $review_events[3]['data']['decision'] && 'needs_changes' === $review_events[3]['data']['review_status'], 'Needs-changes review audit must preserve exact decision semantics.', $review_events[3] );
-mad4b_review_assert( 'reject' === $review_events[4]['data']['decision'] && 'rejected' === $review_events[4]['data']['review_status'], 'Rejected review audit must preserve exact decision semantics.', $review_events[4] );
-mad4b_review_assert( ! empty( $review_events[3]['data']['review_note'] ) && ! empty( $review_events[4]['data']['review_note'] ), 'Non-approve review audit evidence must retain reviewer rationale.', array( $review_events[3], $review_events[4] ) );
-mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $review_events[0]['data']['contract'], 'Human review audit must use the v2 exact-review contract.', $review_events[0] );
-mad4b_review_assert( ! empty( $review_events[0]['data']['expected_content_hash'] ) && $review_events[0]['data']['expected_content_hash'] === $review_events[0]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[0] );
-mad4b_review_assert( (int) $review_events[0]['data']['registry_revision_after'] === (int) $review_events[0]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[0] );
-mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'] ), 'Already-required Brand Core review must not be mislabeled as a scope escalation.', $review_events[0] );
-mad4b_review_assert( 'wp_admin' === $review_events[0]['data']['actor_type'] && 42 === (int) $review_events[0]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[0] );
-mad4b_review_assert( ! empty( $review_events[0]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[0] );
+mad4b_review_assert( 6 === count( $review_events ), 'Low-confidence Human confirmation, three primary approvals, needs-changes and rejection must each emit one audit event.', $review_events );
+mad4b_review_assert( ! empty( $review_events[0]['data']['low_confidence_classification'] ) && ! empty( $review_events[0]['data']['classification_confirmed'] ), 'Low-confidence Human confirmation must be explicit in append-only review audit evidence.', $review_events[0] );
+mad4b_review_assert( 0.42 === (float) $review_events[0]['data']['previous_classification_confidence'], 'Low-confidence Human confirmation audit must preserve the automatic confidence that required confirmation.', $review_events[0] );
+mad4b_review_assert( 'manual' === $review_events[1]['data']['quality_mode'], 'First primary review audit must record manual quality mode.', $review_events[1] );
+mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Second primary review audit must record automatic quality mode.', $review_events[2] );
+mad4b_review_assert( 'automatic' === $review_events[3]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[3] );
+mad4b_review_assert( 'needs_changes' === $review_events[4]['data']['decision'] && 'needs_changes' === $review_events[4]['data']['review_status'], 'Needs-changes review audit must preserve exact decision semantics.', $review_events[4] );
+mad4b_review_assert( 'reject' === $review_events[5]['data']['decision'] && 'rejected' === $review_events[5]['data']['review_status'], 'Rejected review audit must preserve exact decision semantics.', $review_events[5] );
+mad4b_review_assert( ! empty( $review_events[4]['data']['review_note'] ) && ! empty( $review_events[5]['data']['review_note'] ), 'Non-approve review audit evidence must retain reviewer rationale.', array( $review_events[4], $review_events[5] ) );
+mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $review_events[1]['data']['contract'], 'Human review audit must use the v2 exact-review contract.', $review_events[1] );
+mad4b_review_assert( ! empty( $review_events[1]['data']['expected_content_hash'] ) && $review_events[1]['data']['expected_content_hash'] === $review_events[1]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[1] );
+mad4b_review_assert( (int) $review_events[1]['data']['registry_revision_after'] === (int) $review_events[1]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[1] );
+mad4b_review_assert( empty( $review_events[1]['data']['required_scope_escalated'] ), 'Already-required Brand Core review must not be mislabeled as a scope escalation.', $review_events[1] );
+mad4b_review_assert( 'wp_admin' === $review_events[1]['data']['actor_type'] && 42 === (int) $review_events[1]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[1] );
+mad4b_review_assert( ! empty( $review_events[1]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[1] );
 
 echo "mad4b.site-control-plane.context-human-review.runtime.v12: PASS\n";
