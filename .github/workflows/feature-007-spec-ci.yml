@@ -25,6 +25,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php'
 
 permissions:
   contents: read
@@ -206,6 +207,7 @@ jobs:
           python wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php
 
       - name: Enforce bulk closure hardening contract
         run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
