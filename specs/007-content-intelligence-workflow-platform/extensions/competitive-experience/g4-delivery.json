@@ -84,29 +84,29 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php",
-      "sha256": "fb77e1f69ad55b0a65ac5fe5cc33786dc657f3ca795d9a2d2540e5163a224923"
+      "sha256": "9e878eb73a87292c364715120ebb2be50406bf01a57af60b92349ac1d82ce5e3"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php",
-      "sha256": "fbd676edd02ec43dd2b977aa6c56fe8307a23770077839ebdd44b2a71f2b0309"
+      "sha256": "1ffa7df66a34326975394c8845a8f7d1a66ac206aa36661d258d6d91cfa81368"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
-      "sha256": "ac994bc68e628e9e86fe267a22ac0aa146efd404320608944748c4c03ab5a97c"
+      "sha256": "a211b1671fccd6a67c18d998f9d30e45dc7de2a50aec3acf69b2272c3271ba94"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-polylang-adapter.php",
-      "sha256": "ae6342790e35df2879afe3ab6a31891638d0d982b79a8560ad7730a672d8960d"
+      "sha256": "2a7de1ca27b86585e0e9dad596b1635d9c18d677c12c3a3435a956763a62d2bd"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php",
-      "sha256": "3f5d371e7fe790221906748b4bb1738ca59ae5cc3189fc85ae07489d52a5a341"
+      "sha256": "0216bb51909a863a2ec8c7260a66571b27cdb83236fef7ce267ae7930d231ba8"
     }
   ],
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-provider-family-contract.php",
-      "sha256": "d2a1867cc1d7dddf4f38683045466cddbc955051d7531a8415326e6248427a34"
+      "sha256": "b4f50ebc4a68f08148db7ed4e6dd610c4d71b74057e9209cf1524b93022dd79b"
     }
   ],
   "spec_paths": [
