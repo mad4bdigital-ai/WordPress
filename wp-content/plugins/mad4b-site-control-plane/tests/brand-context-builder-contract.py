@@ -479,3 +479,39 @@ for marker in [
         raise SystemExit("Google OAuth health contract missing marker: " + marker)
 if "'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! empty( $token['refresh_token'] ) )" in drive:
     raise SystemExit("Google OAuth health must not treat an expired access token plus refresh-token presence as healthy")
+
+# Governed configuration semantic classification must distinguish operational
+# configuration/review metadata from brand-bearing content text.
+semantic_catalog = json.loads((cp / "config" / "semantic-content-field-contracts.json").read_text(encoding="utf-8"))
+semantic_abilities = semantic_catalog.get("abilities", {})
+for ability, required_paths in {
+    "context/source-scan-apply": {
+        "source_id", "expected_plan_sha256", "expected_registry_revision", "expected_provider_inventory_digest",
+    },
+    "mad4b/context-ai-review": {
+        "asset_id", "decision", "review_note", "expected_content_hash",
+        "expected_registry_revision", "expected_authority_manifest_fingerprint",
+    },
+}.items():
+    row = semantic_abilities.get(ability)
+    if not isinstance(row, dict) or row.get("mode") != "exact_paths" or row.get("brand_paths") != []:
+        raise SystemExit("governed configuration semantic classification missing/unsafe: " + ability)
+    if not required_paths.issubset(set(row.get("operational_paths", []))):
+        raise SystemExit("governed configuration operational paths incomplete: " + ability)
+
+for ability, provider in (
+    ("mad4b/content-experience-profile-apply", "content_experience"),
+    ("mad4b/search-profile-apply", "search_intelligence"),
+):
+    row = semantic_abilities.get(ability)
+    if not isinstance(row, dict) or row.get("provider") != provider or row.get("mode") != "object_fields":
+        raise SystemExit("governed configuration profile semantic contract missing: " + ability)
+    if row.get("container_path") != "profile" or row.get("brand_fields") != [] or row.get("operational_key_regex") != ".*":
+        raise SystemExit("governed configuration profile semantic contract unsafe/incomplete: " + ability)
+
+core_create = semantic_abilities.get("mad4b/content-create-post", {})
+for brand_path in ("post_title", "post_content", "post_excerpt"):
+    if brand_path not in core_create.get("brand_paths", []):
+        raise SystemExit("core content brand-bearing classification regressed: " + brand_path)
+
+print("mad4b.brand-context-builder.semantic-configuration.v1: PASS")
