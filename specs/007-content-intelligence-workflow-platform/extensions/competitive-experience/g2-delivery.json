@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.competitive-g2-delivery.v1",
-  "status": "REPOSITORY_G2_READONLY_SLICE_IMPLEMENTED_ACCEPTANCE_PENDING",
+  "status": "REPOSITORY_G2_CORE_IMPLEMENTED_LIVE_ACCEPTANCE_PENDING",
   "integration_pr": 258,
   "implementation_pr": 277,
   "implementation_branch": "feat/007-g2-recovery-identity-consent-history-r2-20261007",
   "integration_base": "spec/007-competitive-experience-20261006",
-  "baseline_hub_head": "8e7ed830405072425ea9bb069629acab08fb722a",
+  "baseline_hub_head": "a9561e6aae09743c5de42e003640c9695f293af8",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "authorizing": false,
   "production_authorized": false,
@@ -47,7 +47,11 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php",
-      "sha256": "5cbf24857974860b88b1666ed3512edb5f06eb6897b59674a65c98b6b56b37af"
+      "sha256": "b09b1266818c97eeb07014fe401662beb253f2e3b9189ec82990f7b570a86e58"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-permission-changes.php",
+      "sha256": "8f28a09b95e9ccff491198929714faf1e87f8d21d161b41d86833f4551ef8315"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php",
@@ -59,21 +63,29 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
-      "sha256": "09ea28a6f8b1556901ecb59a28eb79f500dd1beb4f05649f502d94d520e06420"
+      "sha256": "702692c37bca2c1050cf46e021381d578281f5d2ababda0721c59f4166c1adb8"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "51b21b35b85f0a02fb8dce57f035b467b15f9da60ce0e8b8843a934f32ae532a"
+      "sha256": "1c8990b2d3d656a0816dff13d2d341896a821910d49fa76d98077a7d1379204d"
     }
   ],
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py",
-      "sha256": "55f3ee7f699a16e353d3a065a98a22a8be7b386d305522b65a48f9fbfb6a79ef"
+      "sha256": "eca6b597a9c9c9a60942b237deca7e08489e6c129089f56bf3ef2ce779c132cb"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php",
-      "sha256": "da44ec94622273e0d719567c630ace602bd922851c6442381a280d94f9fbb7d0"
+      "sha256": "1cb419feb57830711c7d57ddba2fd95e785a470c65955eb6b8787b5dcd21870a"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
+      "sha256": "7e3d7e5f722fdba8e31cf7fa30fc4a76ecc3c80b0f4c48856184354991bb359a"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php",
+      "sha256": "451798705634d87bf8774b4ece3d4ca9597fa3edff874f664e7d928aa815d577"
     }
   ],
   "spec_paths": [
@@ -87,15 +99,15 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g2-delivery.md",
-      "sha256": "5edf9edfa1fb1d2eb085a00d58ffc632f5ff5c017af8a2106d65c4b95250d417"
+      "sha256": "811c882d0e0e0303df9cb28298a01a8dfe566abd2f7defbbb1ca68ee91364086"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "027cfada9006ade72cd1c6bb289ed2c9a9a3d54ffd058f3233e625e6971727c0"
+      "sha256": "aae8c4d592bd26b175a88de6e036fd794e34dbb9282df823cd387b9229c7af9e"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "9532e0fb407509f835f23e83d595331f2a8ac5fbb7ad71803d2ac7ce31f94f53"
+      "sha256": "46d52c48d0f6477e8eb11df07804fd3d741ac3a01fe9da5e22484acde37fbdf4"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
@@ -110,7 +122,9 @@
     "receipt_backed_readonly_recovery_preview_without_rollback_payload",
     "current_state_drift_and_expiry_fail_closed",
     "redacted_per_agent_effective_access_projection",
-    "no_wildcard_or_automatic_grant_projection",
+    "reviewed_authority_reduction_plan_sha_revision_confirmation_readback_audit",
+    "authority_reduction_only_disable_agent_disable_subject_revoke_exact_allow_grant",
+    "no_authority_expansion_grant_creation_enable_restore_or_automatic_mount",
     "explicit_readonly_and_reviewed_step_up_consent_presets",
     "new_scope_requires_external_reconsent",
     "no_generic_full_access_consent",
@@ -122,9 +136,9 @@
   "remaining_acceptance": [
     "Complete all exact-head repository checks for PR #277 and preserve exact-head governance.",
     "Staging recovery acceptance must prove drift, expiry, stale evidence, wrong subject and uncertain external-effect behavior without replaying consumed approvals.",
-    "Reviewed permission plan/apply/readback remains pending and may only reuse existing explicit authority; no wildcard or inferred grants are permitted.",
+    "Staging authority-reduction acceptance must prove disable-agent, disable-subject and exact allow-grant revoke under stale revision/plan, concurrent changes, readback failure and audit failure conditions; no authority-expanding operation is in scope.",
     "External OAuth/MCP acceptance must prove initialize, tools/list, tools/call, PKCE, refresh rotation, revocation, Origin/resource/audience and stale-generation denials.",
-    "Browser acceptance must exercise Recovery, My Access, Consent & Clients and Change History on representative Staging state.",
+    "Browser acceptance must exercise Recovery, My Access, reviewed authority reduction, Consent & Clients and Change History on representative Staging state.",
     "Provider-aware typed visual diffs and governed legal-hold lifecycle remain pending before those capabilities can be claimed complete.",
     "After G2 child merge, cumulative Integration Hub CI and post-merge Staging acceptance are still required; Production remains unauthorized."
   ]
