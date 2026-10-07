@@ -174,7 +174,7 @@ final class MAD4B_SCP_G2_Governance_Experience {
 			'undo_expires_at' => (string) $record['undo_expires_at'],
 			'verification_code' => (string) $record['verification_code'],
 			'error_code' => (string) $record['error_code'],
-			'approval_ticket_id' => (string) $record['approval_ticket_id'],
+			'approval_ticket_sha256' => '' === (string) $record['approval_ticket_id'] ? '' : hash( 'sha256', (string) $record['approval_ticket_id'] ),
 			'identity_state' => $identity_state,
 			'same_agent' => $same_agent,
 			'readback_state' => $readback_state,
@@ -377,7 +377,7 @@ final class MAD4B_SCP_G2_Governance_Experience {
 					'raw_private_content_exposed' => false,
 				),
 				'evidence' => array(
-					'approval_ticket_id' => (string) $row['approval_ticket_id'],
+					'approval_ticket_sha256' => '' === (string) $row['approval_ticket_id'] ? '' : hash( 'sha256', (string) $row['approval_ticket_id'] ),
 					'verification_code' => (string) $row['verification_code'],
 					'error_code' => (string) $row['error_code'],
 					'reversible' => ! empty( $row['reversible'] ),
