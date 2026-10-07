@@ -149,9 +149,16 @@ for marker in [
     "mad4b-settings-ajax-form",
     "data-mad4b-settings-feedback",
     "data-mad4b-one-time-confirm",
-    "intentionally resets after save/reload",
+    "mad4b-context-delegation-confirmation is-hidden",
+    "data-mad4b-original-mode",
+    "data-mad4b-original-agent",
+    "syncDelegationConfirmation",
+    "Future changes to the delegated agent require a new explicit confirmation.",
 ]:
     assert marker in context_admin, marker
+
+assert "intentionally resets after save/reload" not in context_admin
+assert "needs=!!(changed&&mode&&mode.value===\"human_and_ai\")" in context_admin
 
 for marker in [
     "private static function clear_option_read_cache( $name, $aggressive = false )",
