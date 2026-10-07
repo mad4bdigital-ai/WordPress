@@ -304,6 +304,52 @@
         "expected_plan_sha256",
         "confirmation"
       ]
+    },
+    "context/source-scan-apply": {
+      "provider": "context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "source_id",
+        "expected_plan_sha256",
+        "expected_registry_revision",
+        "expected_provider_inventory_digest"
+      ]
+    },
+    "mad4b/context-ai-review": {
+      "provider": "context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "asset_id",
+        "decision",
+        "review_note",
+        "expected_content_hash",
+        "expected_registry_revision",
+        "expected_authority_manifest_fingerprint"
+      ]
+    },
+    "mad4b/content-experience-profile-apply": {
+      "provider": "content_experience",
+      "mode": "object_fields",
+      "container_path": "profile",
+      "brand_fields": [],
+      "operational_key_regex": ".*",
+      "root_operational_paths": [
+        "expected_revision",
+        "plan_sha256"
+      ]
+    },
+    "mad4b/search-profile-apply": {
+      "provider": "search_intelligence",
+      "mode": "object_fields",
+      "container_path": "profile",
+      "brand_fields": [],
+      "operational_key_regex": ".*",
+      "root_operational_paths": [
+        "expected_revision",
+        "plan_sha256"
+      ]
     }
   }
 }
