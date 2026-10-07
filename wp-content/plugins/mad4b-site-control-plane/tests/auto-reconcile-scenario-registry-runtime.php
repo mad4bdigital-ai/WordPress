@@ -138,11 +138,16 @@ $GLOBALS['mad4b_auto_reconcile_filter'] = static function ( $rows ) {
 	) );
 	return $rows;
 };
-$future = $base;
+// Use a converged core context so the capped extension row is actually selected.
+$future = $match;
 $future['signals'] = array( 'custom_future_signal' => true );
 $future_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $future );
+check( 'extension_attempts_unsafe_mutation' === $future_result['scenario_id'], 'unknown-decision fixture must select the extension scenario' );
 check( 'REVIEW_REQUIRED' === $future_result['decision'], 'unknown extension decision must collapse to review' );
 check( empty( $future_result['mutation_allowed'] ) && empty( $future_result['authority_expansion_allowed'] ), 'extension cannot relax central safety' );
+$future_drift = $base;
+$future_drift['signals'] = array( 'custom_future_signal' => true );
+check( 'forward_package_update' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $future_drift )['scenario_id'], 'capped extension priority cannot shadow a core package-update scenario' );
 
 check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_post_update_continuation_release_untrusted' )['decision'], 'untrusted release must hard block' );
 check( 'DEFER' === MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( 'mad4b_post_update_continuation_skills_certification_required' )['decision'], 'skills dependency must defer' );
