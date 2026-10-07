@@ -1544,11 +1544,49 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if(!response.ok)throw new Error("Review saved, but the refreshed Context view could not be loaded.");
 				var html=await response.text();
 				var doc=new DOMParser().parseFromString(html,"text/html");
-				["#mad4b-context-review-policy",".mad4b-context-review-queue",".mad4b-context-assets-panel"].forEach(function(selector){
+				[".mad4b-context-readiness","#mad4b-context-review-policy","#mad4b-required-review-inbox",".mad4b-context-optional-review",".mad4b-context-assets-panel"].forEach(function(selector){
 					var current=document.querySelector(selector), next=doc.querySelector(selector);
 					if(current&&next)current.replaceWith(next); else if(current&&!next)current.remove();
 				});
+				document.querySelectorAll(".mad4b-context-review-policy-form").forEach(syncDelegationConfirmation);
 			}
+			function syncDelegationConfirmation(form){
+				if(!form)return;
+				var mode=form.querySelector("input[name=review_mode]:checked");
+				var agent=form.querySelector("select[name=ai_agent_public_id]");
+				var confirmation=form.querySelector(".mad4b-context-delegation-confirmation");
+				if(!confirmation)return;
+				var changed=(mode?mode.value:"")!==(form.dataset.mad4bOriginalMode||"")||(agent?agent.value:"")!==(form.dataset.mad4bOriginalAgent||"");
+				var needs=!!(changed&&mode&&mode.value==="human_and_ai");
+				confirmation.classList.toggle("is-hidden",!needs);
+				var checkbox=confirmation.querySelector("input[type=checkbox]");
+				if(checkbox){checkbox.required=needs;if(!needs)checkbox.checked=false;}
+			}
+			document.querySelectorAll(".mad4b-context-review-policy-form").forEach(syncDelegationConfirmation);
+			document.addEventListener("change",function(event){
+				var form=event.target.closest(".mad4b-context-review-policy-form");
+				if(form)syncDelegationConfirmation(form);
+			});
+			document.addEventListener("click",async function(event){
+				var copyButton=event.target.closest("[data-mad4b-copy-ai-handoff]");
+				if(!copyButton)return;
+				event.preventDefault();
+				var payload=document.getElementById(copyButton.getAttribute("data-mad4b-copy-ai-handoff")||"");
+				if(!payload)return;
+				var value=payload.value||payload.textContent||"";
+				try{
+					if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(value);
+					else{
+						var helper=document.createElement("textarea");
+						helper.value=value;document.body.appendChild(helper);helper.select();document.execCommand("copy");helper.remove();
+					}
+					var box=document.getElementById("mad4b-context-review-feedback");
+					if(box){box.className="mad4b-context-review-feedback notice notice-success inline";box.innerHTML="<p>Exact AI review handoff copied. The delegated agent can now review and execute the governed ability.</p>";}
+				}catch(error){
+					var box=document.getElementById("mad4b-context-review-feedback");
+					if(box){box.className="mad4b-context-review-feedback notice notice-error inline";box.innerHTML="<p>AI review handoff could not be copied.</p>";}
+				}
+			});
 			document.addEventListener("click",function(event){
 				var decisionButton=event.target.closest("[data-mad4b-review-decision]");
 				if(!decisionButton)return;
