@@ -39,14 +39,18 @@ final class MAD4B_SCP_Domain_Native_Providers {
 		}
 
 		$rows = array();
-		$known = array();
+		$known_pairs = array();
+		$known_providers = array();
 		foreach ( $readiness['providers'] as $provider ) {
 			if ( ! is_array( $provider ) || ! MAD4B_SCP_Domain_Contracts::identifier( $provider['provider_id'] ?? null ) || ! MAD4B_SCP_Domain_Contracts::identifier( $provider['family_id'] ?? null ) ) {
 				return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'g4_provider_row_invalid' );
 			}
 			$id = $provider['provider_id'];
-			if ( isset( $known[ $id ] ) ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'g4_provider_duplicate' );
-			$known[ $id ] = true;
+			$family_id = $provider['family_id'];
+			$pair = $family_id . ':' . $id;
+			if ( isset( $known_pairs[ $pair ] ) ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'g4_provider_duplicate' );
+			$known_pairs[ $pair ] = true;
+			$known_providers[ $id ] = true;
 			$observed = array();
 			foreach ( (array) ( $provider['observed_plugin_identities'] ?? array() ) as $identity ) {
 				if ( ! is_array( $identity ) || count( $observed ) >= 20 ) continue;
@@ -59,7 +63,7 @@ final class MAD4B_SCP_Domain_Native_Providers {
 			}
 			$rows[] = array(
 				'provider_id'=>$id,
-				'family'=>$provider['family_id'],
+				'family'=>$family_id,
 				'observed_plugins'=>$observed,
 				'installed'=>! empty( $provider['installed'] ),
 				'installed_version'=>sanitize_text_field( (string) ( $provider['installed_version'] ?? '' ) ),
@@ -73,7 +77,7 @@ final class MAD4B_SCP_Domain_Native_Providers {
 				'execution_supported'=>false,
 			);
 		}
-		$orphans = array_values( array_diff( array_keys( $extras ), array_keys( $known ) ) );
+		$orphans = array_values( array_diff( array_keys( $extras ), array_keys( $known_providers ) ) );
 		if ( $orphans ) return array( 'ready'=>false, 'complete'=>false, 'providers'=>array(), 'reason'=>'domain_overlay_provider_not_in_g4_catalog', 'orphan_provider_ids'=>$orphans );
 		return array(
 			'ready'=>true,
