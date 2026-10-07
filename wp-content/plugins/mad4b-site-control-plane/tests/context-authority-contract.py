@@ -116,6 +116,23 @@ require(authority, "MAD4B_SCP_Site_Profile::agent_slug()", "AI review canonical 
 require(authority, "method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )", "AI review partial Site Profile environment guard")
 require(authority, "method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' )", "AI review partial Site Profile agent guard")
 require(admin, "method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' )", "AI selector partial Site Profile guard")
+require(admin, "'review' => __( 'Review'", "dedicated Context Review workspace tab")
+require(admin, "private static function render_review()", "operational Context Review workspace")
+require(admin, "Required review", "Required-first review inbox")
+require(admin, "Optional review", "separate Optional review inbox")
+require(admin, "Resume source scan", "source-health repair CTA")
+require(admin, "Review execution", "authoritative AI review execution state")
+require(admin, "Delegation active", "persisted delegation success state")
+require(admin, "mad4b.context-ai-review-handoff.v1", "exact delegated AI review handoff")
+require(admin, "Prepare AI review handoff", "batch AI review handoff CTA")
+require(admin, "ai_review_policy_status()", "authoritative AI policy status source")
+if "Stable catalog" in admin or "Runtime write mount" in admin or "blocked until delegation" in admin:
+    raise AssertionError("Context Review primary UI must not derive AI execution state from static server catalog membership")
+assets_body = admin.split("private static function render_assets()", 1)[1].split("private static function render_repair_queue", 1)[0]
+if "render_review_policy_panel()" in assets_body or "Context Review Queue" in assets_body:
+    raise AssertionError("Assets inventory must not duplicate the operational Review workspace")
+require(admin, "esc_html__( 'Classification'", "simplified Assets inventory table")
+require(admin, "Governance details", "progressive disclosure for advanced asset diagnostics")
 require(write_authority, "method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )", "AI delegation partial Site Profile environment guard")
 require(write_authority, "method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' )", "AI delegation partial Site Profile agent guard")
 require(authority, "MAD4B_SCP_Agent_Registry::resolve_agent", "AI review authenticated agent resolution")
