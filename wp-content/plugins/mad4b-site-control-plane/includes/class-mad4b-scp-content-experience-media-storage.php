@@ -135,6 +135,7 @@ final class MAD4B_SCP_Content_Experience_Media_Storage {
 				return self::single_url_id( $value );
 			case 'urls':
 				if ( self::looks_like_id_list( $value ) ) return self::id_list( $value );
+				if ( is_string( $value ) ) return self::url_list_ids( '' === trim( $value ) ? array() : preg_split( '/\s*,\s*/', trim( $value ) ) );
 				return self::url_list_ids( $value );
 			case 'csv_urls':
 				if ( self::looks_like_id_list( $value ) ) return self::id_list( $value );

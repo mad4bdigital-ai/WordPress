@@ -718,14 +718,36 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$state = self::raw_state();
 		$effective = self::effective_projection_rows();
 		$catalog = array_values( array_unique( array_merge( MAD4B_SCP_Servers::chatgpt_base_tools(), array_keys( $effective ) ) ) );
-		$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $catalog, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog ) );
+		try {
+			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $catalog, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog ) );
+		} catch ( Throwable $e ) {
+			$preflight = array(
+				'ready' => false,
+				'degraded' => true,
+				'tools' => array(),
+				'failures' => array(
+					array(
+						'stage' => 'catalog_preflight',
+						'error_class' => 'Runtime',
+						'error_code' => 'mcp_catalog_preflight_exception',
+						'failing_ability' => '',
+					),
+				),
+				'blocker' => 'mcp_catalog_preflight_exception',
+				'runtime_class_provenance' => array(),
+			);
+		}
 		$recommendations = array();
 		if ( ! empty( $input['include_recommendations'] ) && class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ) ) {
-			$recommendations = MAD4B_SCP_Projection_Hotset_Recommender::recommend(
-				isset( $input['recommendation_quota'] ) ? absint( $input['recommendation_quota'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA,
-				isset( $input['recommendation_hours'] ) ? absint( $input['recommendation_hours'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS
-			);
-			if ( is_wp_error( $recommendations ) ) $recommendations = array( 'error_code' => $recommendations->get_error_code(), 'authorizing' => false );
+			try {
+				$recommendations = MAD4B_SCP_Projection_Hotset_Recommender::recommend(
+					isset( $input['recommendation_quota'] ) ? absint( $input['recommendation_quota'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA,
+					isset( $input['recommendation_hours'] ) ? absint( $input['recommendation_hours'] ) : MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS
+				);
+				if ( is_wp_error( $recommendations ) ) $recommendations = array( 'error_code' => $recommendations->get_error_code(), 'authorizing' => false );
+			} catch ( Throwable $e ) {
+				$recommendations = array( 'error_code' => 'projection_hotset_recommendation_exception', 'authorizing' => false );
+			}
 		}
 		$stored = array();
 		foreach ( $state['abilities'] as $ability_name => $row ) {

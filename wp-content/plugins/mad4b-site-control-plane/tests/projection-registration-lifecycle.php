@@ -34,7 +34,8 @@ class MAD4B_SCP_Execution_Fence {
 }
 class MAD4B_SCP_Servers {
  static function chatgpt_base_tools() { return array(); } static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
- static function core_tools( $server ) { return array(); } static function provider_for_ability( $server, $ability ) { return 'fixture'; }
+ static function core_tools( $server ) { return array(); } static function provider_for_ability( $server, $ability ) { return 'runtime-fixture'; }
+ static function provider_for_capability_descriptor( $server, $ability ) { return 'fixture'; }
 }
 class Ability {
  protected $execute_callback; protected $permission_callback;

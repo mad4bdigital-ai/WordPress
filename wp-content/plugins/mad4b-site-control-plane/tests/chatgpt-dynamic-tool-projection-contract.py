@@ -57,6 +57,7 @@ for marker in [
 ]:
     require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
 require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
+require("provider_for_capability_descriptor" in INSPECTOR, "canonical Ability inspection still depends on transient runtime mount eligibility")
 
 # A pre-tool denial must arm the final callback seal requirement before any
 # same-priority filter can overwrite the returned WP_Error.
@@ -66,6 +67,15 @@ for marker in [
     "mad4b_projection_execution_fence_unavailable",
 ]:
     require(marker in PROJECTION, f"final projected execution latch missing: {marker}")
+
+# Projection status is diagnostic and must degrade structurally instead of
+# surfacing connector-level internal errors when optional diagnostics throw.
+for marker in [
+    "mcp_catalog_preflight_exception",
+    "projection_hotset_recommendation_exception",
+    "catch ( Throwable $e )",
+]:
+    require(marker in PROJECTION, f"projection status exception boundary missing: {marker}")
 
 # Projection is schema-pinned and exact-plan fenced.
 for marker in [
