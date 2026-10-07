@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "e7b7f05c66c319396bba6ef032c6cbdd1d1e1a4e",
-  "changed_file_count": 115,
+  "changed_file_count": 129,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -175,8 +175,30 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php"
       ]
+    },
+    {
+      "id": "live-runtime-unique-closure",
+      "semantic_unit": "Structural provider identity, transport-only write dispatch, provider-compatible media resolution, brand classification and OAuth diagnostic revision closure",
+      "revert_boundary": "Revert the PR #271 unique live-runtime closure files and focused tests as one bounded non-authorizing slice; existing content-experience and auto-reconcile ownership remains unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ability-contract-inspector-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/projection-registration-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-scope-delegation-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "18e7d132bf9c913c954ac44b569cb618812514e90db214cf4d136d0960d11b95",
+  "changed_paths_sha256": "bc4c2e998b181af5532c80aac9d9fd6a4fb01e7c806b584a3c40304199bb4eb4",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

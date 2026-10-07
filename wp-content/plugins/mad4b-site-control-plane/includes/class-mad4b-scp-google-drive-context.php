@@ -19,6 +19,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const DEDICATED_CONFIG_OPTION = 'mad4b_scp_google_drive_dedicated_oauth_config_v1';
 	const TOKEN_OPTION = 'mad4b_scp_google_drive_oauth_token_v1';
 	const SCOPE_DIAGNOSTIC_OPTION = 'mad4b_scp_google_scope_diagnostic_v1';
+	const SCOPE_DIAGNOSTIC_RULE_REVISION = 2;
 	const SCOPE_DIAGNOSTIC_CONTRACT = 'mad4b.google-scope-rejection.v1';
 	const AUTH_MODE_OPTION = 'mad4b_scp_google_drive_auth_mode_v1';
 	const AUTH_MODE_CONTRACT = 'mad4b.google-drive-auth-mode.v1';
@@ -3137,6 +3138,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$data['observed_at'] = time();
 		$data['expires_at'] = time() + 86400;
 		$data['error_code'] = sanitize_key( $error->get_error_code() );
+		$data['rule_revision'] = self::SCOPE_DIAGNOSTIC_RULE_REVISION;
 		$data['seal'] = hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) );
 		self::write_option( self::SCOPE_DIAGNOSTIC_OPTION, $data );
 	}
@@ -3147,7 +3149,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! is_array( $data ) || self::SCOPE_DIAGNOSTIC_CONTRACT !== ( $data['contract'] ?? '' ) || ! is_string( $data['seal'] ?? null ) || ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return array();
 		$seal = $data['seal']; unset( $data['seal'] );
 		$grants = self::workspace_grants_status();
-		if ( ! hash_equals( hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) ), $seal )
+		if ( ! isset( $data['rule_revision'] ) || self::SCOPE_DIAGNOSTIC_RULE_REVISION !== (int) $data['rule_revision']
+			|| ! hash_equals( hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) ), $seal )
 			|| ( $data['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid()
 			|| ( $data['auth_mode'] ?? '' ) !== self::auth_mode()
 			|| ( $data['grant_sha256'] ?? '' ) !== $grants['grant_sha256']

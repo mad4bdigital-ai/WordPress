@@ -83,6 +83,19 @@ for marker in [
 ]:
     if marker not in write_schema:
         raise SystemExit("write dispatcher transport schema is missing reviewed governance field: " + marker)
+
+for marker in [
+    "if ( 'mad4b/write-execute' === (string) $name )",
+    "$mcp_meta['surface'] = 'write-dispatch';",
+    "$mcp_meta['generic_remote_admin'] = false;",
+    "$mcp_meta['breakglass_allowed'] = false;",
+]:
+    if marker not in abilities:
+        raise SystemExit("write-execute transport-only registration invariant missing: " + marker)
+
+staging_write_authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
+if "array( 'enrollment', 'developer-dispatch', 'write-dispatch' )" not in staging_write_authority:
+    raise SystemExit("governed write augmentation no longer exempts the write dispatcher transport surface")
 if "private function schema( array $properties" not in abilities or "'additionalProperties' => false" not in abilities:
     raise SystemExit("write dispatcher must retain the shared top-level additionalProperties=false schema boundary")
 

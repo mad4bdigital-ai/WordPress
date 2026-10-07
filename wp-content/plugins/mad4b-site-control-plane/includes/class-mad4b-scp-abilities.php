@@ -214,6 +214,16 @@ final class MAD4B_SCP_Abilities {
 
 	private function add( $name, $label, $category, $method, $permission, $input, $mcp_public, $readonly, $destructive, $idempotent ) {
 		$mcp_meta = array( 'public' => false, 'type' => 'tool' );
+		// write-execute is the compact authenticated transport dispatcher. It
+		// validates one exact prepared target/schema but is not itself the
+		// provider mutation authorization boundary. The nested target owns NHI,
+		// approval, budget, policy, commit-guard and audit.
+		if ( 'mad4b/write-execute' === (string) $name ) {
+			$mcp_meta['surface'] = 'write-dispatch';
+			$mcp_meta['generic_remote_admin'] = false;
+			$mcp_meta['production_mutation_allowed'] = false;
+			$mcp_meta['breakglass_allowed'] = false;
+		}
 		if ( in_array( (string) $name, array( 'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute' ), true ) ) {
 			$mcp_meta['surface'] = 'developer-dispatch';
 			$mcp_meta['generic_remote_admin'] = false;

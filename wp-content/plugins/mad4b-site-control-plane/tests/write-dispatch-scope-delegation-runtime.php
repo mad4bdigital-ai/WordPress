@@ -147,6 +147,24 @@ $readonly_input = $valid;
 $readonly_input['ability_name'] = $readonly;
 mad4b_assert( false === $helper->invoke( null, 'mad4b-chatgpt', $readonly_input ), 'readonly=true target must fail closed.' );
 
+$dispatcher_registration = array(
+    'execute_callback' => static function () { return true; },
+    'input_schema' => $schema,
+    'meta' => array(
+        'annotations' => array( 'readonly' => false ),
+        'mcp' => array( 'surface' => 'write-dispatch' ),
+    ),
+);
+$dispatcher_augmented = MAD4B_SCP_Staging_Write_Authority::augment_write_ability( $dispatcher_registration, 'mad4b/write-execute' );
+mad4b_assert(
+    empty( $dispatcher_augmented['meta']['mcp']['mad4b_governed_write_authority'] ),
+    'write-execute must stay transport-only and must not acquire the governed target execution boundary.'
+);
+mad4b_assert(
+    'write-dispatch' === $dispatcher_augmented['meta']['mcp']['surface'],
+    'write-execute must preserve its explicit write-dispatch surface identity.'
+);
+
 $dispatcher = new MAD4B_SCP_Abilities();
 $capture = new ReflectionMethod( 'MAD4B_SCP_Abilities', 'capture_write_dispatch_governance_envelope' );
 $capture->setAccessible( true );
