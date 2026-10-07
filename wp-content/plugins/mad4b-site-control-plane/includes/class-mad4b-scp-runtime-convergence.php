@@ -23,6 +23,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 	const LOCK_TTL = 300;
 	const MAX_TRANSIENT_RETRIES = 5;
 	const POST_UPDATE_QUIET_SECONDS = 20;
+	const AUTO_RECONCILE_REGISTRY_CONTRACT = 'mad4b.runtime-auto-reconcile-scenarios.v1';
+	const AUTO_RECONCILE_REGISTRY_FILE = 'config/runtime-auto-reconcile-scenarios.json';
+	const POST_INSTALL_PROBE_OPTION = 'mad4b_scp_runtime_reconcile_probe_v1';
+	const POST_INSTALL_PROBE_TTL = 3600;
 
 	private static $booted = false;
 	private static $abilities_registered = false;
@@ -111,6 +115,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 12 );
 		add_action( self::CRON_HOOK, array( __CLASS__, 'resume_safe_phases' ) );
+		add_action( 'upgrader_process_complete', array( __CLASS__, 'mark_post_install_probe' ), 20, 2 );
 		add_action( 'init', array( __CLASS__, 'maybe_schedule_pending' ), 40 );
 	}
 
@@ -679,6 +684,156 @@ final class MAD4B_SCP_Runtime_Convergence {
 			: new WP_Error( 'mad4b_runtime_convergence_checkpoint_block_failed', 'Self-update convergence checkpoint could not be quarantined.' );
 	}
 
+	/**
+	 * Persist only a bounded post-install probe intent. The update request can be
+	 * executing the previously loaded runtime, so it must never reconcile or bind
+	 * authority in-place. The next request running the new package performs the
+	 * exact identity and zero-delta checks.
+	 */
+	public static function mark_post_install_probe( $upgrader, $hook_extra ) {
+		unset( $upgrader );
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' );
+		if ( 'staging' !== $environment || ! is_array( $hook_extra ) ) return;
+		$type = isset( $hook_extra['type'] ) ? sanitize_key( (string) $hook_extra['type'] ) : '';
+		$action = isset( $hook_extra['action'] ) ? sanitize_key( (string) $hook_extra['action'] ) : '';
+		if ( 'plugin' !== $type || ! in_array( $action, array( 'install', 'update' ), true ) ) return;
+		$targets = array();
+		if ( ! empty( $hook_extra['plugin'] ) ) $targets[] = (string) $hook_extra['plugin'];
+		if ( ! empty( $hook_extra['plugins'] ) && is_array( $hook_extra['plugins'] ) ) $targets = array_merge( $targets, $hook_extra['plugins'] );
+		$targets = array_values( array_unique( array_filter( array_map( 'strval', $targets ) ) ) );
+		$current_plugin = defined( 'MAD4B_SCP_FILE' ) && function_exists( 'plugin_basename' ) ? plugin_basename( MAD4B_SCP_FILE ) : 'mad4b-site-control-plane/mad4b-site-control-plane.php';
+		$matches = false;
+		foreach ( $targets as $target ) {
+			if ( hash_equals( $current_plugin, (string) $target ) || 0 === strpos( (string) $target, 'mad4b-site-control-plane/' ) ) { $matches = true; break; }
+		}
+		if ( ! $matches ) return;
+		$intent = array(
+			'contract' => self::AUTO_RECONCILE_REGISTRY_CONTRACT,
+			'state' => 'pending_probe',
+			'source' => 'wordpress_' . $action,
+			'reason' => 'plugin_package_replaced',
+			'created_at' => time(),
+			'expires_at' => time() + self::POST_INSTALL_PROBE_TTL,
+			'production_mutation' => false,
+		);
+		update_option( self::POST_INSTALL_PROBE_OPTION, $intent, false );
+	}
+
+	private static function post_install_probe() {
+		$probe = get_option( self::POST_INSTALL_PROBE_OPTION, array() );
+		if ( ! is_array( $probe ) || self::AUTO_RECONCILE_REGISTRY_CONTRACT !== ( isset( $probe['contract'] ) ? (string) $probe['contract'] : '' ) ) return array();
+		$expires = isset( $probe['expires_at'] ) ? absint( $probe['expires_at'] ) : 0;
+		if ( $expires < time() ) return array();
+		return $probe;
+	}
+
+	private static function consume_post_install_probe() {
+		delete_option( self::POST_INSTALL_PROBE_OPTION );
+	}
+
+	private static function candidate_binding_probe_allowed() {
+		if ( ! empty( self::post_install_probe() ) ) return true;
+		return defined( 'WP_CLI' ) && constant( 'WP_CLI' );
+	}
+
+	private static function auto_reconcile_registry() {
+		static $registry = null;
+		if ( is_array( $registry ) ) return $registry;
+		$registry = array(
+			'contract' => self::AUTO_RECONCILE_REGISTRY_CONTRACT,
+			'default_decision' => 'review_required',
+			'scenarios' => array(),
+			'registry_ready' => false,
+		);
+		$path = defined( 'MAD4B_SCP_DIR' ) ? rtrim( (string) MAD4B_SCP_DIR, "/\\\\" ) . '/' . self::AUTO_RECONCILE_REGISTRY_FILE : '';
+		if ( '' !== $path && is_file( $path ) && is_readable( $path ) && ! is_link( $path ) ) {
+			$raw = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$decoded = is_string( $raw ) ? json_decode( $raw, true ) : null;
+			if ( is_array( $decoded ) && self::AUTO_RECONCILE_REGISTRY_CONTRACT === ( isset( $decoded['contract'] ) ? (string) $decoded['contract'] : '' ) ) {
+				$registry['default_decision'] = isset( $decoded['default_decision'] ) ? sanitize_key( (string) $decoded['default_decision'] ) : 'review_required';
+				$registry['scenarios'] = isset( $decoded['scenarios'] ) && is_array( $decoded['scenarios'] ) ? $decoded['scenarios'] : array();
+				$registry['registry_ready'] = true;
+			}
+		}
+		if ( function_exists( 'apply_filters' ) ) $registry['scenarios'] = apply_filters( 'mad4b_scp_runtime_auto_reconcile_scenarios', $registry['scenarios'] );
+		$allowed_decisions = array( 'no_op', 'auto_safe_phases', 'auto_if_zero_delta', 'defer', 'review_required', 'hard_block' );
+		$normalized = array();
+		foreach ( is_array( $registry['scenarios'] ) ? $registry['scenarios'] : array() as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
+			if ( '' === $id ) continue;
+			$decision = isset( $row['decision'] ) ? sanitize_key( (string) $row['decision'] ) : 'review_required';
+			if ( ! in_array( $decision, $allowed_decisions, true ) ) $decision = 'review_required';
+			$reasons = array();
+			foreach ( isset( $row['trigger_reasons'] ) && is_array( $row['trigger_reasons'] ) ? $row['trigger_reasons'] : array() as $reason ) {
+				$reason = '*' === (string) $reason ? '*' : sanitize_key( (string) $reason );
+				if ( '' !== $reason ) $reasons[] = $reason;
+			}
+			$requires_trusted_release = ! empty( $row['requires_trusted_release'] );
+			$requires_zero_delta = ! empty( $row['requires_zero_delta'] );
+			$authority_expansion_allowed = ! empty( $row['authority_expansion_allowed'] );
+			$production_allowed = ! empty( $row['production_allowed'] );
+			$breakglass_allowed = ! empty( $row['breakglass_allowed'] );
+			$downgraded = false;
+			if ( 'auto_if_zero_delta' === $decision && ( ! $requires_trusted_release || ! $requires_zero_delta || $authority_expansion_allowed || $production_allowed || $breakglass_allowed ) ) {
+				$decision = 'review_required';
+				$downgraded = true;
+			}
+			if ( 'auto_safe_phases' === $decision && ( $authority_expansion_allowed || $production_allowed || $breakglass_allowed ) ) {
+				$decision = 'review_required';
+				$downgraded = true;
+			}
+			$origins = array_values( array_unique( array_filter( array_map( 'sanitize_key', isset( $row['supported_origins'] ) && is_array( $row['supported_origins'] ) ? $row['supported_origins'] : array() ) ) ) );
+			$normalized[] = array(
+				'id' => $id,
+				'priority' => max( -10000, min( 10000, isset( $row['priority'] ) ? (int) $row['priority'] : 0 ) ),
+				'trigger_reasons' => array_values( array_unique( $reasons ) ),
+				'decision' => $decision,
+				'requires_trusted_release' => $requires_trusted_release,
+				'requires_zero_delta' => $requires_zero_delta,
+				'authority_expansion_allowed' => false,
+				'production_allowed' => false,
+				'breakglass_allowed' => false,
+				'supported_origins' => $origins,
+				'downgraded_by_central_policy' => $downgraded,
+			);
+		}
+		usort( $normalized, static function ( $a, $b ) { return (int) $b['priority'] <=> (int) $a['priority']; } );
+		$registry['scenarios'] = $normalized;
+		if ( ! in_array( $registry['default_decision'], $allowed_decisions, true ) ) $registry['default_decision'] = 'review_required';
+		return $registry;
+	}
+
+	private static function classify_auto_reconcile_scenario( array $reasons, $source = '' ) {
+		$reasons = array_values( array_unique( array_filter( array_map( 'sanitize_key', $reasons ) ) ) );
+		$source = sanitize_key( (string) $source );
+		$registry = self::auto_reconcile_registry();
+		foreach ( $registry['scenarios'] as $scenario ) {
+			$triggers = isset( $scenario['trigger_reasons'] ) && is_array( $scenario['trigger_reasons'] ) ? $scenario['trigger_reasons'] : array();
+			$wildcard = in_array( '*', $triggers, true );
+			$matched = $wildcard || ! empty( array_intersect( $reasons, $triggers ) );
+			if ( ! $matched ) continue;
+			$scenario['contract'] = self::AUTO_RECONCILE_REGISTRY_CONTRACT;
+			$scenario['source'] = $source;
+			$scenario['matched_reasons'] = $wildcard ? $reasons : array_values( array_intersect( $reasons, $triggers ) );
+			$scenario['central_policy_enforced'] = true;
+			return $scenario;
+		}
+		return array(
+			'contract' => self::AUTO_RECONCILE_REGISTRY_CONTRACT,
+			'id' => 'default_review',
+			'decision' => isset( $registry['default_decision'] ) ? $registry['default_decision'] : 'review_required',
+			'source' => $source,
+			'matched_reasons' => $reasons,
+			'requires_trusted_release' => true,
+			'requires_zero_delta' => true,
+			'authority_expansion_allowed' => false,
+			'production_allowed' => false,
+			'breakglass_allowed' => false,
+			'central_policy_enforced' => true,
+		);
+	}
+
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' );
@@ -727,22 +882,35 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) {
 			$detected = self::detect_lightweight_runtime_drift();
+			if ( empty( $detected['detected'] ) && ! empty( $detected['post_install_probe_consumable'] ) ) self::consume_post_install_probe();
 			if ( ! empty( $detected['detected'] ) && ! empty( $detected['identity_complete'] ) ) {
+				$scenario = isset( $detected['scenario'] ) && is_array( $detected['scenario'] ) ? $detected['scenario'] : self::classify_auto_reconcile_scenario( $detected['reasons'], 'lightweight_runtime_drift_detector' );
+				$decision = isset( $scenario['decision'] ) ? sanitize_key( (string) $scenario['decision'] ) : 'review_required';
+				$automatic = in_array( $decision, array( 'auto_safe_phases', 'auto_if_zero_delta' ), true );
+				$blocked = 'hard_block' === $decision;
 				$checkpoint = array(
 					'contract' => self::CONTRACT,
-					'state' => 'pending_safe_phases',
-					'source' => 'lightweight_runtime_drift_detector',
+					'state' => $blocked ? 'blocked' : ( $automatic ? 'pending_safe_phases' : 'pending_manual_resume' ),
+					'source' => 'runtime_auto_reconcile',
 					'target_identity' => $detected['identity'],
 					'drift_reasons' => $detected['reasons'],
+					'auto_reconcile_scenario' => $scenario,
+					'auto_reconcile_decision' => $decision,
+					'automatic_retry_allowed' => $automatic,
 					'created_at' => gmdate( 'c' ),
 					'updated_at' => gmdate( 'c' ),
 					'production_mutation' => false,
 				);
+				if ( ! $automatic ) $checkpoint['resume_blocker'] = 'auto_reconcile_' . $decision;
+				if ( $blocked ) $checkpoint['last_error_code'] = 'auto_reconcile_hard_block';
 				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
-				$state = 'pending_safe_phases';
+				if ( ! empty( $detected['post_install_probe_present'] ) ) self::consume_post_install_probe();
+				$state = $checkpoint['state'];
+				if ( ! $automatic ) return;
 			}
 		}
 		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) return;
+		if ( is_array( $checkpoint ) && isset( $checkpoint['auto_reconcile_decision'] ) && ! in_array( sanitize_key( (string) $checkpoint['auto_reconcile_decision'] ), array( 'auto_safe_phases', 'auto_if_zero_delta' ), true ) ) return;
 		if ( ! self::schedule_resume() && is_array( $checkpoint ) ) {
 			$checkpoint['state'] = 'pending_manual_resume';
 			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
@@ -803,37 +971,67 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$schema_version = class_exists( 'MAD4B_SCP_Schema' ) ? (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) : 0;
 		$expected_schema = class_exists( 'MAD4B_SCP_Schema' ) ? (int) MAD4B_SCP_Schema::VERSION : 0;
 		$reasons = array();
+		$probe = self::post_install_probe();
+		$binding = array();
+		$binding_probe_performed = false;
 		if ( '' !== $current_version && ! hash_equals( $current_version, $stored_version ) ) $reasons[] = 'plugin_version_drift';
 		if ( $expected_schema > 0 && $schema_version < $expected_schema ) $reasons[] = 'schema_version_drift';
 
-		// The common no-drift path is options/constants only: no file read, REST
-		// initialization, provider discovery, schema probe or database repair.
+		// Same-version package replacement is invisible to the legacy version/schema
+		// detector. A durable upgrader intent (or explicit WP-CLI lifecycle) permits
+		// exactly one bounded candidate identity probe on the new runtime.
+		if ( self::candidate_binding_probe_allowed() && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' ) ) {
+			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+			$binding_probe_performed = true;
+			if ( ! empty( $binding['required'] ) && ! empty( $binding['stored_bound'] ) && empty( $binding['match'] ) ) $reasons[] = 'candidate_binding_drift';
+			elseif ( ! empty( $binding['required'] ) && empty( $binding['stored_bound'] ) ) $reasons[] = 'candidate_binding_unbound';
+		}
+
+		// The common no-drift path remains options/constants only. Candidate identity
+		// is probed only after a durable package-replacement intent or explicit CLI.
 		if ( empty( $reasons ) ) {
 			return array(
 				'detected' => false,
 				'reasons' => array(),
 				'identity' => array(),
 				'identity_complete' => false,
-				'option_reads_only' => true,
-				'bounded_provenance_file_read' => false,
+				'option_reads_only' => ! $binding_probe_performed,
+				'bounded_provenance_file_read' => $binding_probe_performed,
+				'candidate_binding_probe_performed' => $binding_probe_performed,
+				'post_install_probe_present' => ! empty( $probe ),
+				'post_install_probe_consumable' => ! empty( $probe ),
 				'filesystem_scan_performed' => false,
 				'database_schema_probe_performed' => false,
 			);
 		}
 
-		// Only observed drift justifies one bounded provenance-file read so the
-		// queued convergence job can be exact-build fenced.
-		$identity = self::current_identity();
+		$identity = array();
+		if ( $binding_probe_performed ) {
+			$identity = self::bounded_identity( array(
+				'version' => $current_version,
+				'source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? $binding['current_source_commit_sha'] : '',
+				'build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? $binding['current_build_fingerprint'] : '',
+				'package_manifest_digest' => isset( $binding['current_package_manifest_digest'] ) ? $binding['current_package_manifest_digest'] : '',
+				'artifact_identity' => isset( $binding['current_artifact_identity'] ) ? $binding['current_artifact_identity'] : '',
+			) );
+		}
+		if ( empty( $identity['source_commit_sha'] ) || empty( $identity['build_fingerprint'] ) || empty( $identity['package_manifest_digest'] ) ) $identity = self::current_identity();
 		$identity_complete = ! empty( $identity['source_commit_sha'] )
 			&& ! empty( $identity['build_fingerprint'] )
 			&& ! empty( $identity['package_manifest_digest'] );
+		$source = ! empty( $probe['source'] ) ? sanitize_key( (string) $probe['source'] ) : 'lightweight_runtime_drift_detector';
+		$scenario = self::classify_auto_reconcile_scenario( $reasons, $source );
 		return array(
 			'detected' => true,
-			'reasons' => $reasons,
+			'reasons' => array_values( array_unique( $reasons ) ),
 			'identity' => $identity,
 			'identity_complete' => $identity_complete,
+			'scenario' => $scenario,
 			'option_reads_only' => false,
 			'bounded_provenance_file_read' => true,
+			'candidate_binding_probe_performed' => $binding_probe_performed,
+			'post_install_probe_present' => ! empty( $probe ),
+			'post_install_probe_consumable' => false,
 			'filesystem_scan_performed' => false,
 			'database_schema_probe_performed' => false,
 		);
