@@ -476,6 +476,27 @@ $status = MAD4B_SCP_ChatGPT_Tool_Projection::status();
 if ( empty( $status['read_only'] ) || ! empty( $status['mutation_performed'] ) || ! empty( $status['projection_changes_authority'] ) ) {
 	$fail( 'Projection status changed its non-authorizing read boundary.', $status );
 }
+if ( empty( $status['bounded_status'] )
+	|| 'summary' !== (string) ( $status['status_mode'] ?? '' )
+	|| ! empty( $status['catalog_preflight_performed'] )
+	|| ! empty( $status['universe_scan_performed'] )
+	|| ! empty( $status['full_projection_scan_performed'] )
+	|| ! empty( $status['abilities'] )
+	|| 0 !== (int) ( $status['ability_contract_scan_count'] ?? -1 ) ) {
+	$fail( 'Projection summary status performed an unbounded scan.', $status );
+}
+$page_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array(
+	'detail' => 'page',
+	'ability_limit' => 1,
+	'ability_offset' => 0,
+) );
+if ( 'page' !== (string) ( $page_status['status_mode'] ?? '' )
+	|| count( $page_status['abilities'] ?? array() ) > 1
+	|| (int) ( $page_status['ability_contract_scan_count'] ?? 0 ) > 1
+	|| ! empty( $page_status['universe_scan_performed'] )
+	|| ! empty( $page_status['catalog_preflight_performed'] ) ) {
+	$fail( 'Projection paged status exceeded its bounded inspection budget.', $page_status );
+}
 
 fwrite(
 	STDOUT,

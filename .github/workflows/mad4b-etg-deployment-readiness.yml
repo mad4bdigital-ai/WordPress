@@ -24,7 +24,7 @@ env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
-  group: mad4b-etg-deployment-readiness-${{ github.event.pull_request.number || github.ref }}
+  group: mad4b-etg-deployment-readiness-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
