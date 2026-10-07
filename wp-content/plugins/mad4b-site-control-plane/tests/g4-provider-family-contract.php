@@ -19,14 +19,16 @@ function get_bloginfo( $show ) { return '7.1.2'; }
 
 class MAD4B_SCP_Provider_Contracts {
 	public static function get( $provider ) {
-		if ( in_array( $provider, array( 'fluentforms', 'woocommerce', 'elementor', 'wpml' ), true ) ) return array( 'provider' => $provider );
+		if ( in_array( $provider, array( 'fluentforms', 'woocommerce', 'elementor', 'wpml', 'wpforms', 'w3-total-cache' ), true ) ) return array( 'provider' => $provider );
 		return array();
 	}
 	public static function installed_version( $provider ) {
-		$versions = array( 'fluentforms' => '6.1.0', 'woocommerce' => '10.2.1', 'elementor' => '3.31.0', 'wpml' => '4.8.0' );
+		$versions = array( 'fluentforms' => '6.1.0', 'woocommerce' => '10.2.1', 'elementor' => '3.31.0', 'wpml' => '4.8.0', 'w3-total-cache' => '2.8.0' );
 		return isset( $versions[ $provider ] ) ? $versions[ $provider ] : '';
 	}
 	public static function certified_versions( $provider ) {
+		if ( 'wpforms' === $provider ) return array( '1.9.0' );
+		if ( 'w3-total-cache' === $provider ) return array( '2.7.0' );
 		$version = self::installed_version( $provider );
 		return '' === $version ? array() : array( $version );
 	}
@@ -94,6 +96,26 @@ mad4b_g4_assert( false === $plan['authorizing'], 'planning cannot authorize' );
 mad4b_g4_assert( in_array( 'explicit_impact_approval', $plan['required_gates'], true ), 'high-risk plan requires explicit impact approval' );
 mad4b_g4_assert( in_array( 'irreversible_effect_disclosure', $plan['required_gates'], true ), 'irreversible plan requires disclosure' );
 mad4b_g4_assert( in_array( 'exact_plan_apply_readback', $plan['required_gates'], true ), 'mutation plan requires exact plan/apply/readback' );
+
+$unprofiled = MAD4B_SCP_G4_Provider_Families::plan( array(
+	'family_id' => 'site-operations',
+	'provider_id' => 'w3-total-cache',
+	'operation_id' => 'cache_purge_plan',
+) );
+mad4b_g4_assert( ! is_wp_error( $unprofiled ), 'installed unprofiled provider must produce a bounded non-executing plan' );
+mad4b_g4_assert( in_array( 'provider_profile_certification', $unprofiled['required_gates'], true ), 'unprofiled installed provider requires profile certification' );
+mad4b_g4_assert( in_array( 'provider_exact_version_certification', $unprofiled['required_gates'], true ), 'unprofiled installed version requires exact-version certification' );
+mad4b_g4_assert( false === $unprofiled['execution_ready'], 'unprofiled provider plan cannot become execution ready' );
+
+$missing_runtime = MAD4B_SCP_G4_Provider_Families::plan( array(
+	'family_id' => 'forms',
+	'provider_id' => 'wpforms',
+	'operation_id' => 'schema_read',
+) );
+mad4b_g4_assert( ! is_wp_error( $missing_runtime ), 'profiled but absent provider must produce a bounded non-executing plan' );
+mad4b_g4_assert( in_array( 'provider_profile_certification', $missing_runtime['required_gates'], true ), 'absent provider cannot inherit certification readiness' );
+mad4b_g4_assert( in_array( 'provider_runtime_presence', $missing_runtime['required_gates'], true ), 'absent provider requires runtime presence' );
+mad4b_g4_assert( false === $missing_runtime['execution_ready'], 'absent provider plan cannot become execution ready' );
 
 $bad_plan = MAD4B_SCP_G4_Provider_Families::plan( array(
 	'family_id' => 'builders',
