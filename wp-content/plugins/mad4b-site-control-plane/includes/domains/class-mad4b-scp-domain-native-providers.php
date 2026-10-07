@@ -65,7 +65,7 @@ final class MAD4B_SCP_Domain_Native_Read_Provider extends MAD4B_SCP_Domain_Provi
 		$meta = $ability->get_meta();
 		if ( true !== ( $meta['annotations']['readonly'] ?? null ) || true === ( $meta['annotations']['destructive'] ?? false ) ) return MAD4B_SCP_Domain_Contracts::error( 'native_read_effect' );
 		$result = MAD4B_SCP_Execution_Fence::with_governed_child( $this->row[4], $target, static function () use ( $ability, $target ) { return $ability->execute( $target ); }, 'wordpress_domain_read' );
-		if ( is_wp_error( $result ) || ! is_array( $result ) || is_wp_error( MAD4B_SCP_Domain_Contracts::bounded( $result ) ) ) return MAD4B_SCP_Domain_Contracts::error( 'native_read_denied_or_bound' );
+		if ( is_wp_error( $result ) || ! is_array( $result ) || is_wp_error( MAD4B_SCP_Domain_Contracts::bounded( $result, true ) ) ) return MAD4B_SCP_Domain_Contracts::error( 'native_read_denied_or_bound' );
 		$facts = array();
 		switch ( $this->row[3] ) {
 			case 'commerce_catalog':
@@ -75,9 +75,10 @@ final class MAD4B_SCP_Domain_Native_Read_Provider extends MAD4B_SCP_Domain_Provi
 				$facts = array( 'runtime_compatible'=>true, 'hpos_compatible'=>false, 'hooks_bounded'=>false, 'objects'=>array(), 'mutation_hook_acceptance_pending'=>true );
 				break;
 			case 'builder_tree':
-				if ( ( $result['post_id'] ?? null ) !== $target[ $this->row[5] ] || ! is_array( $result['elements'] ?? null ) ) return MAD4B_SCP_Domain_Contracts::error( 'native_document_identity' );
+				if ( ( $result['post_id'] ?? null ) !== $target[ $this->row[5] ] || ! MAD4B_SCP_Domain_Contracts::sha( $result['sha256'] ?? null ) || ! is_array( $result['elements'] ?? null ) ) return MAD4B_SCP_Domain_Contracts::error( 'native_document_identity' );
 				$nodes = array(); $types = array();
 				$valid = self::outline( $result['elements'], '', $nodes, $types, 0 ); if ( is_wp_error( $valid ) ) return $valid;
+				$valid = MAD4B_SCP_Domain_Contracts::hierarchy( $nodes ); if ( is_wp_error( $valid ) ) return $valid;
 				$locked = ! function_exists( 'wp_check_post_lock' ) || (bool) wp_check_post_lock( $target[ $this->row[5] ] );
 				$facts = array( 'native_format'=>'elementor_tree', 'serialization_contract'=>true, 'revision_current'=>true, 'editor_locked'=>$locked, 'template_scope_authorized'=>current_user_can( 'edit_post', $target[ $this->row[5] ] ), 'allowed_node_types'=>array_keys( $types ), 'current_ids'=>array_column( $nodes, 'id' ), 'allocated_clone_ids'=>array(), 'control_contracts'=>array() );
 				$result = array( 'post_id'=>$result['post_id'], 'native_sha256'=>$result['sha256'] ?? '', 'outline'=>$nodes );

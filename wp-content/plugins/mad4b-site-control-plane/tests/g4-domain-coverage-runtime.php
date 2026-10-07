@@ -48,5 +48,7 @@ foreach($GLOBALS['g4_abilities'] as $definition){g4_assert('mad4b-admin'===$defi
 foreach(array('form_config','form_submissions','commerce_catalog','commerce_private','commerce_financial','builder_tree','operations_backup','operations_cache','operations_redirect','operations_security','wordpress_hierarchy','wordpress_object','wordpress_private_collection') as $profile){g4_deny($profile,array(),array(),'provider_fact_types');}
 g4_assert(is_wp_error(MAD4B_SCP_Domain_Contracts::bounded(array('value'=>1.5))),'Ambiguous floating-point hash material was accepted.');
 g4_assert(is_wp_error(MAD4B_SCP_Domain_Contracts::bounded(array('value'=>"hidden\u{202E}text"))),'Hidden bidi control entered canonical hash material.');
+g4_assert(is_wp_error(MAD4B_SCP_Domain_Contracts::bounded(array("hidden\u{202E}key"=>'value'))),'Hidden bidi key entered canonical hash material.');
+g4_assert(''===MAD4B_SCP_Domain_Contracts::digest(array('value'=>1.5)),'Native source float exception widened canonical digest material.');
 g4_assert(MAD4B_SCP_Domain_Contracts::digest(array('a'=>1,'b'=>2))===MAD4B_SCP_Domain_Contracts::digest(array('b'=>2,'a'=>1)),'Object hash changed under key order.');
 g4_done('domain-coverage-runtime');

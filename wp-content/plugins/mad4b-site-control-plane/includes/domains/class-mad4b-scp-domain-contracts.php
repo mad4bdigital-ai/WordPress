@@ -22,24 +22,28 @@ final class MAD4B_SCP_Domain_Contracts {
 		return true;
 	}
 
-	public static function bounded( $value ) {
+	public static function bounded( $value, $native_source = false ) {
 		$nodes = 0;
-		$valid = self::walk( $value, 0, $nodes );
+		$valid = self::walk( $value, 0, $nodes, $native_source );
 		if ( is_wp_error( $valid ) ) return $valid;
 		$json = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return is_string( $json ) && strlen( $json ) <= self::MAX_BYTES ? true : self::error( 'payload_bound' );
 	}
 
-	private static function walk( $value, $depth, &$nodes ) {
+	private static function walk( $value, $depth, &$nodes, $native_source ) {
 		if ( ++$nodes > self::MAX_NODES || $depth > self::MAX_DEPTH ) return self::error( 'structure_bound' );
 		if ( is_array( $value ) ) {
 			foreach ( $value as $key => $child ) {
 				if ( ! is_int( $key ) && ( ! is_string( $key ) || strlen( $key ) > 191 ) ) return self::error( 'key_invalid' );
-				$valid = self::walk( $child, $depth + 1, $nodes );
+				if ( is_string( $key ) && ( preg_match( '//u', $key ) !== 1 || preg_match( '/[\x00-\x1F\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2069}\x{FEFF}]/u', $key ) ) ) return self::error( 'key_invalid' );
+				$valid = self::walk( $child, $depth + 1, $nodes, $native_source );
 				if ( is_wp_error( $valid ) ) return $valid;
 			}
 			return true;
 		}
+		// Finite native numeric settings are reduced by a reviewed projector before hashing.
+		// Plan inputs and canonical digest material retain the strict float denial.
+		if ( is_float( $value ) && $native_source && is_finite( $value ) ) return true;
 		if ( ! is_null( $value ) && ! is_bool( $value ) && ! is_int( $value ) && ! is_string( $value ) ) return self::error( 'non_json_value' );
 		if ( is_string( $value ) && ( strlen( $value ) > 32768 || preg_match( '/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $value ) || preg_match( '//u', $value ) !== 1 || preg_match( '/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2069}\x{FEFF}]/u', $value ) ) ) return self::error( 'string_invalid' );
 		return true;

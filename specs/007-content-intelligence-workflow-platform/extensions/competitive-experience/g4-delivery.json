@@ -72,7 +72,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-contracts.php",
-      "sha256": "8c31594554922a992414507819f784ed54156ec2f7ada8f0fd0730906e189508"
+      "sha256": "610d6f1ee6a97591cc0774bcd7d392761e93980622d866a46be1ce2c3ff792fb"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-forms.php",
@@ -80,7 +80,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-native-providers.php",
-      "sha256": "bc617b0074ffcdc0fa61e52dc796553fa1cdf0fab849bca0da37baa84a87c997"
+      "sha256": "19b3d23626cb83ef78c32a077a048e61884804bc4ce06e6413922d959ed05498"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-site-operations.php",
@@ -110,7 +110,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-coverage-runtime.php",
-      "sha256": "303b62a5cf808754be246cbdaebb32c4a267da3de4d85693ce9a509ff1bdd518"
+      "sha256": "680170ea667e8c47ef0d185dc94794a7313aa527d07c43dde15ad9e09e04df79"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-fixture.php",
@@ -122,7 +122,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-native-read-bridges-runtime.php",
-      "sha256": "8d1a2448f4ceb8831bbecec2417315681d87f12d6c12b0c6c8242bf894dc9f14"
+      "sha256": "6c2bbda58e8f36dc96b62daa306771a6a20490c3663ccc12f182867976d2735e"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-site-operations-contract.php",
