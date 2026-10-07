@@ -296,7 +296,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				)
 			);
 		}
-		self::redirect_result( $result, 'assets', 'review_policy_saved' );
+		self::redirect_result( $result, 'review', 'review_policy_saved' );
 	}
 
 	public static function handle_review_asset() {
@@ -1127,6 +1127,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$blockers = isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? $status['blockers'] : array();
 		$scan_incomplete = in_array( 'governed_context_source_scan_incomplete', $blockers, true );
 
+		echo '<div id="mad4b-context-review-workspace">';
 		echo '<div class="mad4b-scp-panel mad4b-context-readiness"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Context readiness', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Resolve only the blockers that prevent governed Context from becoming ready.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $blockers ) ) . ' ' . esc_html__( 'blockers', 'mad4b-site-control-plane' ) . '</span></div>';
 		echo '<div class="mad4b-context-readiness-grid">';
 		echo '<div class="mad4b-context-readiness-card ' . ( empty( $required ) ? 'is-complete' : 'is-attention' ) . '"><strong>' . esc_html__( 'Required review', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html( sprintf( __( '%d required asset(s) waiting', 'mad4b-site-control-plane' ), count( $required ) ) ) . '</span><a class="button button-primary" href="#mad4b-required-review-inbox">' . esc_html__( 'Review required assets', 'mad4b-site-control-plane' ) . '</a></div>';
@@ -1221,6 +1222,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 			foreach ( $ai_eligible as $asset ) $all_batch[] = self::ai_review_handoff_payload( $asset, $status );
 			echo '<div class="mad4b-scp-panel mad4b-context-ai-all"><strong>' . esc_html__( 'AI review all eligible pending assets', 'mad4b-site-control-plane' ) . '</strong><p>' . esc_html__( 'Low-confidence and incomplete assets are excluded until a human confirms classification or source repair succeeds.', 'mad4b-site-control-plane' ) . '</p><button type="button" class="button" data-mad4b-copy-ai-handoff="mad4b-ai-all-batch">' . esc_html( sprintf( __( 'Prepare AI review: all eligible (%d)', 'mad4b-site-control-plane' ), count( $ai_eligible ) ) ) . '</button><textarea id="mad4b-ai-all-batch" class="mad4b-context-ai-handoff-payload" hidden readonly>' . esc_textarea( wp_json_encode( array( 'contract' => 'mad4b.context-ai-review-batch-handoff.v1', 'scope' => 'all_eligible_pending', 'refresh_binding_after_each_decision' => true, 'stale_evidence_action' => 'stop_and_refresh', 'items' => $all_batch ), JSON_UNESCAPED_SLASHES ) ) . '</textarea></div>';
 		}
+		echo '</div>';
+
 	}
 
 	private static function render_assets() {
@@ -1698,10 +1701,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if(!response.ok)throw new Error("Review saved, but the refreshed Context view could not be loaded.");
 				var html=await response.text();
 				var doc=new DOMParser().parseFromString(html,"text/html");
-				[".mad4b-context-readiness","#mad4b-context-review-policy","#mad4b-required-review-inbox",".mad4b-context-optional-review",".mad4b-context-assets-panel"].forEach(function(selector){
-					var current=document.querySelector(selector), next=doc.querySelector(selector);
-					if(current&&next)current.replaceWith(next); else if(current&&!next)current.remove();
-				});
+				var current=document.getElementById("mad4b-context-review-workspace");
+				var next=doc.getElementById("mad4b-context-review-workspace");
+				if(current&&next)current.replaceWith(next);
+				else if(current&&!next)current.remove();
 				document.querySelectorAll(".mad4b-context-review-policy-form").forEach(syncDelegationConfirmation);
 			}
 			function syncDelegationConfirmation(form){
