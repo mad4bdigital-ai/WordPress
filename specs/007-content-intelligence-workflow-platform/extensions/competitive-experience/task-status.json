@@ -480,6 +480,206 @@
         "g3-delivery.json",
         "g3-delivery.md"
       ]
+    },
+    "T3931": {
+      "status": "PARTIAL",
+      "reason": "Typed forms family/provider catalog and exact version-readiness projection are implemented; provider-native discovery adapters and live version acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3932": {
+      "status": "PARTIAL",
+      "reason": "Reviewed configuration-plan semantics, provider serialization and exact-readback prerequisites are modeled; provider-native apply executors remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3933": {
+      "status": "PARTIAL",
+      "reason": "Submission operations are separated into sensitive PII authority with redaction, pagination, retention and reviewed export/delete gates; real submission adapters remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3934": {
+      "status": "PARTIAL",
+      "reason": "Forms readiness distinguishes profiled, installed-unprofiled and unavailable providers without claiming execution; provider-specific submission/runtime prerequisite probes remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3935": {
+      "status": "PARTIAL",
+      "reason": "Fail-closed operation catalog encodes PII separation, irreversible deletion and no-undo boundaries; provider-specific nested/upload/egress denial fixtures and live certification remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3936": {
+      "status": "PARTIAL",
+      "reason": "Commerce operations are independently typed across catalog, private order/customer and financial surfaces; provider-native object executors remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3937": {
+      "status": "PARTIAL",
+      "reason": "Read-first commerce readiness, bounded pagination and customer/order PII masking requirements are explicit; HPOS/object-level runtime reads remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3938": {
+      "status": "PARTIAL",
+      "reason": "Catalog/stock write plans require disposable canary, concurrency and hook-aware exact readback; WooCommerce canary execution remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3939": {
+      "status": "PARTIAL",
+      "reason": "Refund/gateway effects are classified irreversible external effects with explicit financial gates and no undo claim; shipping/tax/webhook/notification executors remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3940": {
+      "status": "PARTIAL",
+      "reason": "Concurrency, hook, PII and financial-effect denials are encoded in the typed plan boundary; provider fault fixtures and Staging acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3941": {
+      "status": "PARTIAL",
+      "reason": "Typed builder family covers Elementor, Divi, Kadence and WordPress core without execution branches in the planner; provider-native adapters remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3942": {
+      "status": "PARTIAL",
+      "reason": "Builder tree/clone planning requires native schema, revision and editor-lock checks; concrete provider tree readers and lock probes remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3943": {
+      "status": "PARTIAL",
+      "reason": "Content/template mutation plans require fresh IDs/ownership/readback boundaries; provider serialization and exact apply executors remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3944": {
+      "status": "PARTIAL",
+      "reason": "Plan output exposes operation risk, provider readiness, required gates and non-execution truth; richer visual diff/rollback UX remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3945": {
+      "status": "PARTIAL",
+      "reason": "Template scope, dynamic-data leakage and partial-rollback constraints are fail-closed plan requirements; malformed-tree/ID-collision provider fixtures remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3966": {
+      "status": "PARTIAL",
+      "reason": "Typed site-operations family covers backup, cache, migration, security and redirects with independent risk descriptors; provider adapters remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3967": {
+      "status": "PARTIAL",
+      "reason": "Backup inventory/trigger and restore-readiness semantics explicitly deny automatic restore, installer/credential disclosure and stale-authority replay; live provider integration remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3968": {
+      "status": "PARTIAL",
+      "reason": "Cache purge and redirect plans require blast-radius, URL/path egress, readback and loop-detection constraints; provider-native apply remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3969": {
+      "status": "PARTIAL",
+      "reason": "Security reads require PII masking and reviewed security changes require self-lockout denial/external host handoff; provider-specific log/change adapters remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3970": {
+      "status": "PARTIAL",
+      "reason": "Archive/restore/redirect/purge/security external-effect boundaries are encoded fail-closed; destructive fault fixtures and Staging acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3971": {
+      "status": "PARTIAL",
+      "reason": "WordPress breadth catalog separates core/object inventory from optional provider surfaces with bounded pagination and field ownership; full object-operation inventory remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3972": {
+      "status": "PARTIAL",
+      "reason": "Multilingual taxonomy/hierarchy diff requires source language, parent identity, duplicates and translation-group evidence; WPML/native dry-run implementation remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3973": {
+      "status": "PARTIAL",
+      "reason": "Hierarchy/media/menu mutation plans require cycle/egress/ownership/readback protections and do not allow role escalation; exact executors remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3974": {
+      "status": "PARTIAL",
+      "reason": "BuddyPress and Events Calendar are optional typed providers with private-message/timezone semantics; applicability probes and live adapters remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3975": {
+      "status": "PARTIAL",
+      "reason": "Private authority, malicious-media egress and hierarchy safeguards are encoded; orphan/license/domain/user-escalation denial fixtures and live acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
     }
   },
   "documentation_only_completion_forbidden": true
