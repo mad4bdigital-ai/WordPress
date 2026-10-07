@@ -45,7 +45,7 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-declarative-adapter-manifest.php",
-      "sha256": "a0d2286e2584e9e93d55e88b2511186d320260fba173727d32b3a864578921eb"
+      "sha256": "2c68173f5d843eea64e74e31b2b03ef4b553256bcffb2e139a5ef681b006fc51"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-shadow-read.php",

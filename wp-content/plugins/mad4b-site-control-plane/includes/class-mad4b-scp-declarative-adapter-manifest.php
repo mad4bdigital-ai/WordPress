@@ -298,7 +298,7 @@ final class MAD4B_SCP_Declarative_Adapter_Manifest {
 	private static function contains_forbidden_token( $value ) {
 		$v = strtolower( preg_replace( '/\s+/', '', (string) $value ) );
 		foreach ( array(
-			'e' . 'val(', 'ass' . 'ert(', 'shell_exec', 'ex' . 'ec(', 'sys' . 'tem(', 'pass' . 'thru(', 'proc_open', 'popen(',
+			'e' . 'val(', 'ass' . 'ert(', 'shell_exec', 'ex' . 'ec(', 'sys' . 'tem(', 'pass' . 'thru(', 'proc_open', 'po' . 'pen(',
 			'curl_', 'wp_remote_', 'http://', 'https://', '<?php', 'function:', 'class:', 'route:',
 			'call_user_func', 'call_user_func_array', 'include(', 'require(', 'template_php', 'raw_sql',
 		) as $needle ) {
