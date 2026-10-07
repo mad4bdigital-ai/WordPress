@@ -417,11 +417,24 @@ jobs:
               p = root / name
               if p.is_file():
                   bodies.append(p.read_text(encoding='utf-8', errors='replace'))
-          challenged = (
+          wpml_challenged = (
               not d.get('accepted')
               and (d.get('wpml_http_status') == 403 or d.get('rest_index_http_status') == 403)
               and any('/hcdn-cgi/jschallenge' in body or 'Checking your browser before accessing' in body for body in bodies)
           )
+          hotpath_challenged = False
+          hotpath_path = root / 'mcp-hotpath' / 'diagnostic.json'
+          if hotpath_path.is_file():
+              try:
+                  hotpath = json.loads(hotpath_path.read_text(encoding='utf-8'))
+                  hotpath_challenged = any(
+                      bool(row.get('hcdn_challenge'))
+                      for row in (hotpath.get('targets') or {}).values()
+                      if isinstance(row, dict)
+                  )
+              except Exception:
+                  hotpath_challenged = False
+          challenged = wpml_challenged or hotpath_challenged
           print('1' if challenged else '0')
           PY
           )"
@@ -440,11 +453,37 @@ jobs:
           import { chromium } from 'playwright';
 
           const out = '/tmp/mad4b-wpml-external';
+          const hotpathOut = path.join(out, 'mcp-hotpath');
+          fs.mkdirSync(hotpathOut, { recursive: true });
           const sourceSha = String(process.env.SOURCE_SHA || '');
+          const origin = 'https://staging.egypttourgates.com';
           const wpmlUrl = String(process.env.WPML_URL_BASE || '') + '&mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser';
           const restUrl = String(process.env.REST_INDEX_URL || '') + '?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser';
 
-          if (!/^https:\/\/staging\.egypttourgates\.com\//.test(wpmlUrl) || !/^https:\/\/staging\.egypttourgates\.com\//.test(restUrl)) {
+          function hotpathUrl(pathname, params = {}) {
+            const url = new URL(pathname, origin);
+            url.searchParams.set('mad4b_probe', sourceSha);
+            url.searchParams.set('mad4b_transport', 'browser');
+            for (const [key, value] of Object.entries(params)) {
+              url.searchParams.set(key, String(value));
+            }
+            return url.toString();
+          }
+
+          const hotpathTargets = {
+            'runtime-build': hotpathUrl('/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt'),
+            'build-provenance': hotpathUrl('/wp-content/plugins/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'),
+            'rest-index': hotpathUrl('/wp-json/'),
+            'rest-core-types': hotpathUrl('/wp-json/wp/v2/types/post', { context: 'view' }),
+            'rest-wpml': hotpathUrl('/wp-json/wpml/v1/rest/status', { test_get_parameter: '1', mad4b_hotpath: '1' }),
+            'mcp-chatgpt': hotpathUrl('/wp-json/mcp/mad4b-chatgpt'),
+            'oauth-protected-resource': hotpathUrl('/wp-json/mad4b/v1/oauth-protected-resource'),
+            'oauth-authorization-server': hotpathUrl('/.well-known/oauth-authorization-server/oauth/mcp'),
+            'oauth-jwks': hotpathUrl('/oauth/mcp/jwks')
+          };
+
+          const browserTargets = [wpmlUrl, restUrl, ...Object.values(hotpathTargets)];
+          if (browserTargets.some(url => !/^https:\/\/staging\.egypttourgates\.com\//.test(url))) {
             throw new Error('browser_fallback_target_outside_fixed_staging_origin');
           }
 
@@ -460,7 +499,8 @@ jobs:
 
           const challengeRe = /\/hcdn-cgi\/jschallenge|Checking your browser before accessing/i;
 
-          async function capture(name, url) {
+          async function capture(name, url, directory = out) {
+            fs.mkdirSync(directory, { recursive: true });
             const page = await context.newPage();
             let response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
             let challengeObserved = false;
@@ -473,26 +513,34 @@ jobs:
               response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
             }
 
+            if (challengeRe.test(await page.content())) {
+              await page.close();
+              throw new Error('hcdn_browser_challenge_not_resolved:' + name);
+            }
+
+            const cleanStartedAt = Date.now();
+            response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            const totalSeconds = Math.max(0, (Date.now() - cleanStartedAt) / 1000);
             const html = await page.content();
             if (challengeRe.test(html)) {
               await page.close();
-              throw new Error('hcdn_browser_challenge_not_resolved:' + name);
+              throw new Error('hcdn_browser_challenge_reappeared:' + name);
             }
 
             const text = await page.locator('body').innerText({ timeout: 10000 }).catch(() => '');
             const status = response ? response.status() : 0;
             const headers = response ? await response.allHeaders() : {};
-            fs.writeFileSync(path.join(out, name + '.body'), text, 'utf8');
+            fs.writeFileSync(path.join(directory, name + '.body'), text, 'utf8');
             fs.writeFileSync(
-              path.join(out, name + '.headers'),
+              path.join(directory, name + '.headers'),
               Object.entries(headers).map(([k,v]) => k + ': ' + v).join('\n') + '\n',
               'utf8'
             );
-            fs.writeFileSync(path.join(out, name + '.http-status'), String(status) + '\n', 'utf8');
-            fs.writeFileSync(path.join(out, name + '.curl-exit'), '0\n', 'utf8');
-            fs.writeFileSync(path.join(out, name + '.stderr'), '', 'utf8');
+            fs.writeFileSync(path.join(directory, name + '.http-status'), String(status) + '\n', 'utf8');
+            fs.writeFileSync(path.join(directory, name + '.curl-exit'), '0\n', 'utf8');
+            fs.writeFileSync(path.join(directory, name + '.stderr'), '', 'utf8');
             await page.close();
-            return { status, text, challengeObserved };
+            return { status, text, headers, challengeObserved, totalSeconds };
           }
 
           try {
@@ -570,6 +618,65 @@ jobs:
               authority_granted: false
             };
             fs.writeFileSync(path.join(out, 'diagnostic.json'), JSON.stringify(evidence, null, 2) + '\n', 'utf8');
+
+            const hotpathRows = {};
+            let hotpathChallengeObserved = false;
+            for (const [name, url] of Object.entries(hotpathTargets)) {
+              const captured = await capture(name, url, hotpathOut);
+              hotpathChallengeObserved = hotpathChallengeObserved || captured.challengeObserved;
+
+              let jsonPayload = null;
+              let jsonParseError = '';
+              if (captured.text.trim()) {
+                try {
+                  const parsed = JSON.parse(captured.text);
+                  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    jsonPayload = parsed;
+                  }
+                } catch (error) {
+                  jsonParseError = String(error?.name || 'Error') + ': ' + String(error?.message || error);
+                }
+              }
+
+              const upstreamRaw = String(captured.headers['x-hcdn-upstream-rt'] || '').trim();
+              const upstreamSeconds = upstreamRaw && Number.isFinite(Number(upstreamRaw))
+                ? Number(upstreamRaw)
+                : null;
+
+              hotpathRows[name] = {
+                url,
+                curl_exit: 0,
+                http_status: captured.status,
+                dns_seconds: null,
+                connect_seconds: null,
+                ttfb_seconds: null,
+                total_seconds: captured.totalSeconds,
+                origin_upstream_seconds: upstreamSeconds,
+                size_download: Buffer.byteLength(captured.text, 'utf8'),
+                hcdn_challenge: false,
+                www_authenticate: String(captured.headers['www-authenticate'] || ''),
+                json_payload: jsonPayload,
+                json_parse_error: jsonParseError,
+                stderr: ''
+              };
+            }
+
+            const hotpathEvidence = {
+              contract: 'mad4b.external-mcp-hotpath-diagnostic.v1',
+              source_sha: sourceSha,
+              origin,
+              read_only: true,
+              mutation_performed: false,
+              authority_granted: false,
+              capture_mode: 'headless_browser_after_hcdn_challenge',
+              browser_challenge_observed: hotpathChallengeObserved,
+              targets: hotpathRows
+            };
+            fs.writeFileSync(
+              path.join(hotpathOut, 'diagnostic.json'),
+              JSON.stringify(hotpathEvidence, null, 2) + '\n',
+              'utf8'
+            );
           } finally {
             await context.close();
             await browser.close();
@@ -585,6 +692,7 @@ jobs:
             echo "WPML HTTP status: $(cat "$out/wpml.http-status")"
             echo "REST index HTTP status: $(cat "$out/rest-index.http-status")"
             echo "accepted: $(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json")).get("accepted",False)).lower())')"
+            echo "MCP/OAuth capture mode: $(python3 -c 'import json; print(json.load(open("/tmp/mad4b-wpml-external/mcp-hotpath/diagnostic.json")).get("capture_mode","raw_http"))')"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Classify MCP and OAuth hotpath evidence
