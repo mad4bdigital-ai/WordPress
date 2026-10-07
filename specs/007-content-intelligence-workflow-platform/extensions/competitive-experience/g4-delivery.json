@@ -128,7 +128,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-native-providers.php",
-      "sha256": "19b3d23626cb83ef78c32a077a048e61884804bc4ce06e6413922d959ed05498"
+      "sha256": "2214afecc9f79390bf8d7559623c5c5019ca7f943c0df132292169e78e804898"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-site-operations.php",
@@ -140,7 +140,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json",
-      "sha256": "76c52df1682ae290bbfda1e1866e7b61f3247629af5a5064f95154b3ab628503"
+      "sha256": "9fa66f8ee7b589648b5d532c093ee6838943b1c22b6b9c6854d5816c25e13272"
     }
   ],
   "test_paths": [
@@ -170,7 +170,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-native-read-bridges-runtime.php",
-      "sha256": "6c2bbda58e8f36dc96b62daa306771a6a20490c3663ccc12f182867976d2735e"
+      "sha256": "2aa72de2d122bb4127ef7cead0654d47e2089f4b66f1260d8230884a6d60a882"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-site-operations-contract.php",
@@ -204,7 +204,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.md",
-      "sha256": "4a851c3eda5e4520430029dcfe6a9a197210bdd9c83b86eef3da219a1a5aa4b8"
+      "sha256": "4c1e8d63f044443cd374f9c159ba300f7c04e3f97fbc105e6625955d778351f0"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
@@ -230,7 +230,9 @@
     "independent_private_field_masks_consent_and_financial_effect_gates",
     "narrow_cache_backup_redirect_security_scope_and_restore_epoch",
     "no_raw_provider_values_diagnostics_or_approved_receipt",
-    "no_plugin_presence_or_fixture_runtime_acceptance_inference"
+    "no_plugin_presence_or_fixture_runtime_acceptance_inference",
+    "wordpress_domain_overlay_cannot_widen_g4_provider_identity",
+    "wordpress_domain_discovery_reuses_g4_readiness_without_duplicate_plugin_scanner"
   ],
   "remaining_acceptance": [
     "Provider-native discovery, inventory, schema and exact-version runtime probes for each admitted G4 family.",
