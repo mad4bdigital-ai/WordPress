@@ -91,7 +91,7 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
-      "sha256": "b13fc5974d70d18abb579366373559cae0d4c46aa69240a413896d580d23aabf"
+      "sha256": "052a8cebd27248ec050bb913f87efa9659cb0e8db5b86b40a461fbe938312ea7"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
