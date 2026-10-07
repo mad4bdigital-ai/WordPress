@@ -5,7 +5,7 @@
   "implementation_pr": 285,
   "implementation_branch": "feat/007-g5-growth-seo-external-providers-20261007",
   "integration_base": "spec/007-competitive-experience-20261006",
-  "baseline_hub_head": "cc8adae3a3d2b1409357d630a44d912c989484ac",
+  "baseline_hub_head": "732f81dad2419e7e76677647cb48b88b18ea12d3",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "provider_reference_contract": "mad4b.feature007-g5-provider-reference-profiles.v1",
   "seo_family_contract": "mad4b.feature007-g5-seo-provider-family.v1",
