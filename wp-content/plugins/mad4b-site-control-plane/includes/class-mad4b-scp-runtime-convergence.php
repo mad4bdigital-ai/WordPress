@@ -745,7 +745,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'scenarios' => array(),
 			'registry_ready' => false,
 		);
-		$path = defined( 'MAD4B_SCP_DIR' ) ? rtrim( (string) MAD4B_SCP_DIR, "/\\\\" ) . '/' . self::AUTO_RECONCILE_REGISTRY_FILE : '';
+		$path = defined( 'MAD4B_SCP_DIR' ) ? rtrim( (string) MAD4B_SCP_DIR, "/\\" ) . '/' . self::AUTO_RECONCILE_REGISTRY_FILE : '';
 		if ( '' !== $path && is_file( $path ) && is_readable( $path ) && ! is_link( $path ) ) {
 			$raw = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			$decoded = is_string( $raw ) ? json_decode( $raw, true ) : null;
