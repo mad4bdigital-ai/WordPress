@@ -17,6 +17,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	const ACTION_SELECT_SOURCE = 'mad4b_context_select_source';
 	const ACTION_SCAN_SOURCE = 'mad4b_context_scan_source';
 	const ACTION_REVIEW_ASSET = 'mad4b_context_review_asset';
+	const ACTION_REVIEW_BATCH = 'mad4b_context_review_batch';
 	const ACTION_SAVE_REVIEW_POLICY = 'mad4b_context_review_policy_save';
 	const ACTION_REMOVE_SOURCE = 'mad4b_context_remove_source';
 	const ACTION_UPDATE_SOURCE_POLICY = 'mad4b_context_update_source_policy';
@@ -41,6 +42,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_SELECT_SOURCE => 'handle_select_source',
 			self::ACTION_SCAN_SOURCE => 'handle_scan_source',
 			self::ACTION_REVIEW_ASSET => 'handle_review_asset',
+			self::ACTION_REVIEW_BATCH => 'handle_review_batch',
 			self::ACTION_SAVE_REVIEW_POLICY => 'handle_save_review_policy',
 			self::ACTION_REMOVE_SOURCE => 'handle_remove_source',
 			self::ACTION_UPDATE_SOURCE_POLICY => 'handle_update_source_policy',
@@ -308,6 +310,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				'authority_class' => isset( $_POST['authority_class'] ) ? wp_unslash( $_POST['authority_class'] ) : '',
 				'required' => ! empty( $_POST['required'] ),
 				'required_scope_confirmed' => ! empty( $_POST['required_scope_confirmed'] ),
+				'classification_confirmed' => ! empty( $_POST['classification_confirmed'] ),
 				'quality_mode' => isset( $_POST['quality_mode'] ) ? wp_unslash( $_POST['quality_mode'] ) : 'automatic',
 				'quality_score' => isset( $_POST['quality_score'] ) ? wp_unslash( $_POST['quality_score'] ) : '',
 				'decision' => isset( $_POST['decision'] ) ? wp_unslash( $_POST['decision'] ) : 'approve',
@@ -335,7 +338,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				'refresh' => true,
 			) );
 		}
-		self::redirect_result( $result, 'assets', 'asset_review_saved' );
+		self::redirect_result( $result, 'review', 'asset_review_saved' );
 	}
 
 	public static function render_page() {
