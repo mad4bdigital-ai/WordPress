@@ -128,7 +128,7 @@
       "phase": 6,
       "title": "Forms and private submission operations",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3931",
         "T3932",
@@ -148,7 +148,7 @@
       "phase": 7,
       "title": "Commerce capability breadth",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3936",
         "T3937",
@@ -169,7 +169,7 @@
       "phase": 8,
       "title": "Builders and site-editor parity",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3941",
         "T3942",
@@ -272,7 +272,7 @@
       "phase": 13,
       "title": "Backup, cache, migration, security and redirects",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3966",
         "T3967",
@@ -293,7 +293,7 @@
       "phase": 14,
       "title": "Core, multilingual, custom fields and community",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3971",
         "T3972",
@@ -1187,7 +1187,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Cover CF7/WPForms/Gravity/Fluent/JetFormBuilder with provider-specific native contracts.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1218,7 +1218,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Separate public form schema from privileged submission/PII operations and irreversible deletion.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1248,7 +1248,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Expand native commerce catalog operations with independent stock/hook/risk contracts.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1278,7 +1278,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Split financial/private reads from admitted reversible order fields and customer changes.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1309,7 +1309,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Track high-risk external/financial surfaces separately; unsupported refund/gateway work stays gated.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "HIGH_RISK_EXPLICIT_GATE",
       "task_ids": [
@@ -1340,7 +1340,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Extend admitted clone/outline/widget/template operations over existing builder foundations.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1371,7 +1371,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add a second independently certified builder adapter with shortcode/block distinction.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1402,7 +1402,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add provider-native block/tree/style/template contracts and site-editor scope boundaries.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1708,7 +1708,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add backup inventory/trigger and migration package inspection to existing recovery boundaries.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "HIGH_RISK_EXPLICIT_GATE",
       "task_ids": [
@@ -1738,7 +1738,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Extend existing cache capability governance to W3 Total Cache and future providers.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1769,7 +1769,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Expose safe security diagnostics; independently evaluate DLP/injection/anomaly/reputation claims before adopting controls.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1799,7 +1799,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add provider-native redirect inventory/diff/apply with language and cache-aware acceptance.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1829,7 +1829,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Address observed WPML out-of-sync taxonomies through scoped plan/diff rather than a blind sync action.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1860,7 +1860,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Map remaining object operations and field ownership without equating generic meta CRUD to native provider parity.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1891,7 +1891,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add optional BuddyPress/Events Calendar adapters after site applicability and privacy admission.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
