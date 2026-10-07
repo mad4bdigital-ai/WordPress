@@ -10,6 +10,33 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
 }
 class G4FixtureAdapter {public function status(){return array('version'=>'1.2.3');}public function is_available(){return true;}}
 class MAD4B_SCP_Adapter_Registry {public static function instance(){return new self();}public function get($id){return new G4FixtureAdapter();}}
+$GLOBALS['g4_provider_rows']=array(
+	array('provider_id'=>'contact-form-7','family_id'=>'forms','installed'=>true,'installed_version'=>'6.0.0','observed_plugin_identities'=>array(array('plugin_file'=>'contact-form-7/wp-contact-form-7.php','slug'=>'contact-form-7','version'=>'6.0.0','active'=>true,'network_active'=>false)),'certification_state'=>'installed_version_unprofiled','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'wpforms','family_id'=>'forms','installed'=>true,'installed_version'=>'1.0.0','observed_plugin_identities'=>array(array('plugin_file'=>'wpforms-lite/wpforms.php','slug'=>'wpforms','version'=>'1.0.0','active'=>false,'network_active'=>false)),'certification_state'=>'installed_version_unprofiled','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'gravityforms','family_id'=>'forms','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'fluentforms','family_id'=>'forms','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'jetformbuilder','family_id'=>'forms','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'woocommerce','family_id'=>'commerce','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'elementor','family_id'=>'builders','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'divi','family_id'=>'builders','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'kadence','family_id'=>'builders','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'wordpress-core','family_id'=>'builders','installed'=>true,'installed_version'=>'6.9','observed_plugin_identities'=>array(),'certification_state'=>'installed_version_unprofiled','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'updraftplus','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'w3-total-cache','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'all-in-one-wp-migration','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'wordfence','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'redirection','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'litespeed','family_id'=>'site-operations','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'wpml','family_id'=>'wordpress-breadth','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'polylang','family_id'=>'wordpress-breadth','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'advanced-custom-fields','family_id'=>'wordpress-breadth','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'buddypress','family_id'=>'wordpress-breadth','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+	array('provider_id'=>'the-events-calendar','family_id'=>'wordpress-breadth','installed'=>false,'installed_version'=>'','observed_plugin_identities'=>array(),'certification_state'=>'not_observed','adapter_registered'=>false,'read_surface_ready'=>false),
+);
+class MAD4B_SCP_G4_Provider_Families {
+	public static $calls=0;
+	public static function readiness($input=array()){++self::$calls;return array('contract'=>'mad4b.g4-provider-readiness.v1','providers'=>array_values($GLOBALS['g4_provider_rows']),'provider_count'=>count($GLOBALS['g4_provider_rows']),'authorizing'=>false,'mutation_performed'=>false);}
+}
 class G4NativeAbility {
 	public $result;public $allowed=true;public $readonly=true;public $destructive=false;public $calls=0;
 	public function __construct($result){$this->result=$result;}
@@ -39,9 +66,18 @@ $native->result['post_id']=6;g4_assert(is_wp_error(MAD4B_SCP_WordPress_Domain_Co
 $native->result['elements'][0]['settings']=array('spacing'=>1.5);g4_assert(!is_wp_error(MAD4B_SCP_WordPress_Domain_Coverage::readback($request)),'Native numeric settings blocked a reduced structural outline.');
 $native->result['elements'][0]['elements'][0]['id']='root';g4_assert(is_wp_error(MAD4B_SCP_WordPress_Domain_Coverage::readback($request)),'Duplicate native IDs were observed as a valid outline.');$native->result['elements'][0]['elements'][0]['id']='child';
 $native->result['sha256']='missing';g4_assert(is_wp_error(MAD4B_SCP_WordPress_Domain_Coverage::readback($request)),'Unbound native document hash was accepted.');$native->result['sha256']=str_repeat('a',64);
-$GLOBALS['g4_plugins']=array('contact-form-7/wp-contact-form-7.php'=>array('Version'=>'6.0.0','active'=>true),'wpforms-lite/wpforms.php'=>array('Version'=>'1.0.0','active'=>false));
-$discovery=MAD4B_SCP_Domain_Native_Providers::discovery();g4_assert($discovery['ready'] && $discovery['complete'],'Bounded installed-plugin discovery failed.');
-$rows=array_column($discovery['providers'],null,'provider_id');g4_assert($rows['contact-form-7']['installed'] && !$rows['contact-form-7']['runtime_certification_inferred'] && false===$rows['contact-form-7']['plan_contract_inferred'],'Discovery invented runtime certification or contracts.');
-g4_assert(!$rows['gravityforms']['installed'] && false===$rows['wpforms']['observed_plugins'][0]['active'],'Absent/inactive provider was reported ready.');
-$GLOBALS['g4_plugins']=array_fill_keys(range(1,513),array('Version'=>'1'));$discovery=MAD4B_SCP_Domain_Native_Providers::discovery();g4_assert(!$discovery['ready'] && !$discovery['complete'],'Truncated discovery certified absence.');
+MAD4B_SCP_G4_Provider_Families::$calls=0;
+$GLOBALS['g4_plugins']=array_fill_keys(range(1,513),array('Version'=>'scanner-must-not-run'));
+$discovery=MAD4B_SCP_Domain_Native_Providers::discovery();g4_assert($discovery['ready'] && $discovery['complete'],'G4-backed provider discovery failed.');
+g4_assert(1===MAD4B_SCP_G4_Provider_Families::$calls,'Domain discovery queried G4 readiness more than once.');
+g4_assert('mad4b.g4-provider-readiness.v1'===$discovery['identity_source'] && false===$discovery['duplicate_plugin_scanner'],'Domain discovery did not use the canonical G4 identity source.');
+$rows=array_column($discovery['providers'],null,'provider_id');
+g4_assert($rows['contact-form-7']['installed'] && !$rows['contact-form-7']['runtime_certification_inferred'] && false===$rows['contact-form-7']['plan_contract_inferred'],'Discovery invented runtime certification or contracts.');
+g4_assert(!$rows['gravityforms']['installed'] && false===$rows['wpforms']['observed_plugins'][0]['active'],'G4 provider readiness lost absent/inactive truth.');
+g4_assert(isset($rows['advanced-custom-fields']) && !isset($rows['acf']),'ACF alias drift reappeared.');
+g4_assert(isset($rows['the-events-calendar']) && !isset($rows['events-calendar']),'Events Calendar alias drift reappeared.');
+g4_assert(isset($rows['all-in-one-wp-migration']) && !isset($rows['duplicator']),'Migration provider widened outside the G4 reviewed catalog.');
+$removed=$GLOBALS['g4_provider_rows'][20];unset($GLOBALS['g4_provider_rows'][20]);$GLOBALS['g4_provider_rows']=array_values($GLOBALS['g4_provider_rows']);
+$blocked=MAD4B_SCP_Domain_Native_Providers::discovery();g4_assert(!$blocked['ready'] && 'domain_overlay_provider_not_in_g4_catalog'===$blocked['reason'],'Overlay provider missing from G4 catalog did not fail closed.');
+$GLOBALS['g4_provider_rows'][]=$removed;
 g4_done('native-read-bridges-runtime');
