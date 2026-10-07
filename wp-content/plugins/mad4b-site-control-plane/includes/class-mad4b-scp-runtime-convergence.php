@@ -1109,8 +1109,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 		return array(
 			'contract' => 'mad4b.auto-reconcile-scenarios.v1',
 			'error_code' => $error_code,
-			'decision' => self::is_transient_error_code( $error_code ) ? 'DEFER' : 'REVIEW_REQUIRED',
-			'policy_id' => self::is_transient_error_code( $error_code ) ? 'legacy_transient_fallback' : 'legacy_review_fallback',
+			'decision' => 'REVIEW_REQUIRED',
+			'policy_id' => 'registry_unavailable',
 			'policy_source' => 'runtime_fallback',
 			'mutation_allowed' => false,
 			'authority_expansion_allowed' => false,
