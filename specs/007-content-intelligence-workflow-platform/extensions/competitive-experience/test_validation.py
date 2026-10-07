@@ -200,6 +200,27 @@ class EvidenceDenials(unittest.TestCase):
         self.change("g3-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
         self.rejects("g3_delivery_source_evidence_drift")
 
+    def test_g4_task_cannot_bind_to_g3_delivery(self):
+        self.change("task-status.json", lambda d: d["overrides"].update(T3931={"status":"PARTIAL", "reason":"wrong slice", "evidence_refs":["g3-delivery.json"]}))
+        (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
+        self.rejects("g4_partial_task_missing_delivery_binding")
+
+    def test_g4_cannot_claim_runtime_parity(self):
+        self.change("g4-delivery.json", lambda d: d.update(runtime_parity_claimed=True))
+        self.rejects("g4_delivery_boundary_or_progress_invalid")
+
+    def test_g4_cannot_claim_live_provider_acceptance(self):
+        self.change("g4-delivery.json", lambda d: d.update(live_provider_acceptance=True))
+        self.rejects("g4_delivery_boundary_or_progress_invalid")
+
+    def test_g4_capability_scope_is_exact(self):
+        self.change("g4-delivery.json", lambda d: d["capability_ids"].append("CE039"))
+        self.rejects("g4_delivery_capability_scope_invalid")
+
+    def test_g4_source_hashes_are_required(self):
+        self.change("g4-delivery.json", lambda d: d["code_paths"][0].update(sha256="0"*64))
+        self.rejects("g4_delivery_source_evidence_drift")
+
     def test_missing_ledger_regeneration(self):
         path = self.root / "tasks.md"
         path.write_text(path.read_text().replace("reproducible artifact", "reproducible changed artifact", 1))
