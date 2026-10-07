@@ -1182,6 +1182,41 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</div></form></article>';
 	}
 
+	private static function render_review_audit_timeline() {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! method_exists( 'MAD4B_SCP_Audit', 'context_review_events' ) ) return;
+		$audit = MAD4B_SCP_Audit::context_review_events( array( 'limit' => 20 ) );
+		echo '<details class="mad4b-scp-panel mad4b-context-review-audit"><summary><strong>' . esc_html__( 'Review audit timeline', 'mad4b-site-control-plane' ) . '</strong></summary>';
+		if ( is_wp_error( $audit ) ) {
+			echo '<div class="notice notice-warning inline"><p><code>' . esc_html( $audit->get_error_code() ) . '</code> · ' . esc_html__( 'Review audit evidence is temporarily unavailable. Review actions remain governed and fail closed.', 'mad4b-site-control-plane' ) . '</p></div></details>';
+			return;
+		}
+		$events = isset( $audit['events'] ) && is_array( $audit['events'] ) ? array_reverse( $audit['events'] ) : array();
+		if ( empty( $events ) ) {
+			echo '<p class="description">' . esc_html__( 'No Human or delegated AI review decisions have been recorded yet.', 'mad4b-site-control-plane' ) . '</p></details>';
+			return;
+		}
+		echo '<p class="description">' . esc_html__( 'Append-only review evidence. Notes remain private; this timeline shows rationale presence and exact hashes without exposing note text.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>' . esc_html__( 'Time', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Actor', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Decision', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Asset / binding', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Previous → current', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Rationale', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
+		foreach ( $events as $event ) {
+			if ( ! is_array( $event ) ) continue;
+			$summary = isset( $event['summary'] ) && is_array( $event['summary'] ) ? $event['summary'] : array();
+			$actor_type = isset( $summary['actor_type'] ) ? sanitize_key( (string) $summary['actor_type'] ) : '';
+			$actor = 'ai_agent' === $actor_type ? __( 'AI Agent', 'mad4b-site-control-plane' ) : __( 'Human', 'mad4b-site-control-plane' );
+			if ( 'ai_agent' === $actor_type && ! empty( $summary['agent_public_id'] ) ) $actor .= ' · ' . substr( (string) $summary['agent_public_id'], 0, 8 );
+			elseif ( ! empty( $summary['wp_user_id'] ) ) $actor .= ' · user ' . absint( $summary['wp_user_id'] );
+			$decision = isset( $summary['decision'] ) ? sanitize_key( (string) $summary['decision'] ) : '';
+			$asset_id = isset( $summary['asset_id'] ) ? (string) $summary['asset_id'] : '';
+			$content_hash = isset( $summary['observed_content_hash'] ) ? (string) $summary['observed_content_hash'] : '';
+			$previous = isset( $summary['previous_review_status'] ) ? (string) $summary['previous_review_status'] : '—';
+			$current = isset( $summary['review_status'] ) ? (string) $summary['review_status'] : '—';
+			$rationale = ! empty( $summary['review_note_present'] ) ? __( 'Present ✓', 'mad4b-site-control-plane' ) : __( 'None', 'mad4b-site-control-plane' );
+			echo '<tr><td><code>' . esc_html( isset( $event['time'] ) ? (string) $event['time'] : '' ) . '</code></td><td>' . esc_html( $actor ) . '</td><td><strong>' . esc_html( $decision ) . '</strong></td><td><code>' . esc_html( substr( $asset_id, 0, 8 ) ) . '</code>';
+			if ( $content_hash ) echo '<br><code>' . esc_html( substr( $content_hash, 0, 12 ) ) . '…</code>';
+			echo '</td><td>' . esc_html( $previous . ' → ' . $current ) . '</td><td>' . esc_html( $rationale ) . '</td></tr>';
+		}
+		echo '</tbody></table></div><p class="description"><strong>' . esc_html__( 'Audit chain:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( ! empty( $audit['chain_valid'] ) && ! empty( $audit['head_consistent'] ) ? __( 'Valid ✓', 'mad4b-site-control-plane' ) : __( 'Requires integrity review', 'mad4b-site-control-plane' ) ) . '</p></details>';
+	}
+
 	private static function render_review() {
 		$status = MAD4B_SCP_Context_Authority::status();
 		$assets = MAD4B_SCP_Context_Authority::assets();
@@ -1340,6 +1375,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			foreach ( $ai_eligible as $asset ) $all_batch[] = self::ai_review_handoff_payload( $asset, $status );
 			echo '<div class="mad4b-scp-panel mad4b-context-ai-all"><strong>' . esc_html__( 'AI review all eligible pending assets', 'mad4b-site-control-plane' ) . '</strong><p>' . esc_html__( 'Low-confidence and incomplete assets are excluded until a human confirms classification or source repair succeeds.', 'mad4b-site-control-plane' ) . '</p><button type="button" class="button" data-mad4b-copy-ai-handoff="mad4b-ai-all-batch">' . esc_html( sprintf( __( 'Prepare AI review: all eligible (%d)', 'mad4b-site-control-plane' ), count( $ai_eligible ) ) ) . '</button><textarea id="mad4b-ai-all-batch" class="mad4b-context-ai-handoff-payload" hidden readonly>' . esc_textarea( wp_json_encode( array( 'contract' => 'mad4b.context-ai-review-batch-handoff.v1', 'scope' => 'all_eligible_pending', 'refresh_binding_after_each_decision' => true, 'stale_evidence_action' => 'stop_and_refresh', 'items' => $all_batch ), JSON_UNESCAPED_SLASHES ) ) . '</textarea></div>';
 		}
+		self::render_review_audit_timeline();
 		echo '</div>';
 
 	}
