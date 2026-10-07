@@ -1483,6 +1483,34 @@ final class MAD4B_SCP_Context_Authority {
 					array( 'asset_id' => $asset_id, 'source_mode' => $source_mode )
 				);
 			}
+			$normalization_status = isset( $asset['normalization_status'] ) ? sanitize_key( (string) $asset['normalization_status'] ) : ( ! empty( $asset['content_complete'] ) ? 'ready' : 'incomplete' );
+			if ( empty( $asset['content_complete'] ) || ! in_array( $normalization_status, array( 'ready', 'reused' ), true ) ) {
+				return new WP_Error(
+					'mad4b_context_review_content_incomplete',
+					'Context Review requires complete normalized source content. Repair or rescan the source before reviewing this asset.',
+					array( 'asset_id' => $asset_id, 'normalization_status' => $normalization_status )
+				);
+			}
+			$classification_confidence = isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0;
+			$classification_source = isset( $asset['classification_source'] ) ? sanitize_key( (string) $asset['classification_source'] ) : '';
+			$low_confidence_classification = $classification_confidence < 0.60 && 'human' !== $classification_source;
+			if ( $low_confidence_classification ) {
+				$actor_type = isset( $actor['actor_type'] ) ? sanitize_key( (string) $actor['actor_type'] ) : '';
+				if ( 'ai_agent' === $actor_type ) {
+					return new WP_Error(
+						'mad4b_context_ai_review_classification_confirmation_required',
+						'Delegated AI review cannot approve a low-confidence automatic classification. Human classification confirmation is required first.',
+						array( 'asset_id' => $asset_id, 'classification_confidence' => $classification_confidence )
+					);
+				}
+				if ( 'wp_admin' === $actor_type && empty( $input['classification_confirmed'] ) ) {
+					return new WP_Error(
+						'mad4b_context_review_classification_confirmation_required',
+						'Low-confidence Context classification requires explicit human confirmation before the content decision can be committed.',
+						array( 'asset_id' => $asset_id, 'classification_confidence' => $classification_confidence )
+					);
+				}
+			}
 
 			$registry_revision_before = self::registry_revision();
 			$authority_manifest_before = self::authority_manifest_fingerprint( $records );
@@ -1565,7 +1593,7 @@ final class MAD4B_SCP_Context_Authority {
 					? (string) $input['quality_mode']
 					: ( '' !== $quality_input ? 'manual' : ( ! empty( $current_quality['human_override'] ) ? 'manual' : 'automatic' ) )
 			);
-			$quality_modes = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? array( 'preserve' ) : array( 'automatic', 'manual' );
+			$quality_modes = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? array( 'preserve' ) : array( 'preserve', 'automatic', 'manual' );
 			if ( ! in_array( $quality_mode, $quality_modes, true ) ) return new WP_Error( 'mad4b_context_quality_mode_invalid', 'Quality mode is invalid for this review actor.' );
 			if ( ( 'approve' !== $decision || $governance_changed || 'manual' === $quality_mode ) && '' === $review_note ) return new WP_Error( 'mad4b_context_review_note_required', 'A review note is required for rejection, requested changes, classification/authority changes, required-scope changes, or manual quality overrides.' );
 			$automatic = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $current_quality['automatic_score'] ) ? (int) $current_quality['automatic_score'] : null );
