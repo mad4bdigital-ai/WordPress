@@ -81,7 +81,7 @@ assert "'production_mutation' => false" in evaluate
 assert "'breakglass' => false" in evaluate
 
 # WordPress updater hook records a witness only for the Control Plane itself.
-hook = adaptive.split("public static function on_plugin_update", 1)[1].split("public static function on_activation", 1)[0]
+hook = adaptive.split("public static function on_plugin_update", 1)[1].split("public static function enqueue", 1)[0]
 assert "mad4b-site-control-plane" in hook
 assert "record_operator_witnessed_replacement" in hook
 assert "operator_witness_state" in hook
