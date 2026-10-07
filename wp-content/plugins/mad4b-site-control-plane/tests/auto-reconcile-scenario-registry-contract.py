@@ -42,6 +42,11 @@ assert "DECISION_HARD_BLOCK" in registry
 assert "upgrader_process_complete" in adaptive
 assert "'source' => 'wordpress_upgrader'" in adaptive
 assert "'source' => 'build_stamp_drift'" in adaptive
+assert "FALLBACK_PROBE_INTERVAL = 300" in adaptive
+assert "candidate_binding_fallback_drift" in adaptive
+assert "'source' => 'candidate_binding_probe'" in adaptive
+assert "core_enqueued_generation" in adaptive
+assert "Persist the generation-bound core decision before provider slicing" in adaptive
 assert "plugins.php" in adaptive and "update.php" in adaptive and "plugin-install.php" in adaptive
 assert "$admin_lifecycle" in adaptive
 assert "( is_admin() && ! $admin_lifecycle )" in adaptive
@@ -68,5 +73,6 @@ for signal in (
     "untrusted_package",
     "continuation_conflict",
     "concurrent_permit",
+    "source_candidate_binding_probe",
 ):
     assert signal in registry
