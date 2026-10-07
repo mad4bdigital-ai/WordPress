@@ -1079,7 +1079,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		else foreach ( $required as $asset ) self::render_review_inbox_item( $asset, $status, $ai_ready );
 		echo '</section>';
 
-		echo '<details class="mad4b-scp-panel mad4b-context-optional-review"><summary><strong>' . esc_html__( 'Optional review', 'mad4b-site-control-plane' ) . '</strong> <span class="mad4b-context-badge">' . esc_html( (string) count( $optional ) . '</span></summary><p class="description">' . esc_html__( 'Optional assets do not have the same priority as Required context. Review them independently without obscuring the mandatory path.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<details class="mad4b-scp-panel mad4b-context-optional-review"><summary><strong>' . esc_html__( 'Optional review', 'mad4b-site-control-plane' ) . '</strong> <span class="mad4b-context-badge">' . esc_html( (string) count( $optional ) ) . '</span></summary><p class="description">' . esc_html__( 'Optional assets do not have the same priority as Required context. Review them independently without obscuring the mandatory path.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( empty( $optional ) ) echo '<p>' . esc_html__( 'No optional review is pending.', 'mad4b-site-control-plane' ) . '</p>';
 		else foreach ( $optional as $asset ) self::render_review_inbox_item( $asset, $status, $ai_ready );
 		echo '</details>';
