@@ -1,0 +1,80 @@
+{
+  "contract": "mad4b.runtime-auto-reconcile-scenarios.v1",
+  "default_decision": "review_required",
+  "scenarios": [
+    {
+      "id": "trusted_candidate_binding_drift",
+      "priority": 1000,
+      "trigger_reasons": [
+        "candidate_binding_drift"
+      ],
+      "decision": "auto_if_zero_delta",
+      "requires_trusted_release": true,
+      "requires_zero_delta": true,
+      "authority_expansion_allowed": false,
+      "production_allowed": false,
+      "breakglass_allowed": false,
+      "supported_origins": [
+        "wordpress_upload",
+        "wordpress_update",
+        "native_self_update",
+        "runtime_release_set",
+        "same_version_reinstall"
+      ]
+    },
+    {
+      "id": "runtime_metadata_drift",
+      "priority": 800,
+      "trigger_reasons": [
+        "plugin_version_drift",
+        "schema_version_drift"
+      ],
+      "decision": "auto_safe_phases",
+      "requires_trusted_release": false,
+      "requires_zero_delta": false,
+      "authority_expansion_allowed": false,
+      "production_allowed": false,
+      "breakglass_allowed": false,
+      "supported_origins": [
+        "plugin_activation",
+        "wordpress_update",
+        "native_self_update",
+        "runtime_release_set"
+      ]
+    },
+    {
+      "id": "unbound_candidate_requires_review",
+      "priority": 700,
+      "trigger_reasons": [
+        "candidate_binding_unbound"
+      ],
+      "decision": "review_required",
+      "requires_trusted_release": true,
+      "requires_zero_delta": true,
+      "authority_expansion_allowed": false,
+      "production_allowed": false,
+      "breakglass_allowed": false,
+      "supported_origins": [
+        "fresh_install",
+        "authority_reset",
+        "manual_recovery"
+      ]
+    },
+    {
+      "id": "unknown_runtime_drift",
+      "priority": 1,
+      "trigger_reasons": [
+        "*"
+      ],
+      "decision": "review_required",
+      "requires_trusted_release": true,
+      "requires_zero_delta": true,
+      "authority_expansion_allowed": false,
+      "production_allowed": false,
+      "breakglass_allowed": false,
+      "supported_origins": [
+        "future_extension"
+      ]
+    }
+  ]
+}
