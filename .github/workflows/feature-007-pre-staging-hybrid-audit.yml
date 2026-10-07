@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+  group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
