@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 adaptive = (ROOT / "includes/class-mad4b-scp-adaptive-runtime-convergence.php").read_text(encoding="utf-8")
 registry = (ROOT / "includes/class-mad4b-scp-auto-reconcile-scenarios.php").read_text(encoding="utf-8")
+runtime = (ROOT / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 
 assert "class-mad4b-scp-auto-reconcile-scenarios.php" in main
 assert "mad4b.auto-reconcile-scenarios.v1" in registry
@@ -51,6 +52,8 @@ assert "plugins.php" in adaptive and "update.php" in adaptive and "plugin-instal
 assert "$admin_lifecycle" in adaptive
 assert "( is_admin() && ! $admin_lifecycle )" in adaptive
 assert "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate" in adaptive
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error" in adaptive
+assert "failure_decision" in adaptive and "failure_policy_id" in adaptive and "failure_policy_source" in adaptive
 assert "MAD4B_SCP_Runtime_Convergence::mark_activation_pending()" in adaptive
 assert "This only queues the existing convergence worker" in adaptive
 assert "'SCHEDULE_PROBE' === $decision" in adaptive
@@ -76,3 +79,24 @@ for signal in (
     "source_candidate_binding_probe",
 ):
     assert signal in registry
+
+# Dynamic extension points are additive and fail closed.
+assert "mad4b_scp_auto_reconcile_signals" in registry
+assert "mad4b_scp_auto_reconcile_worker_error_policies" in registry
+assert "MAX_EXTENSION_SIGNALS" in registry
+assert "MAX_EXTENSION_ERROR_POLICIES" in registry
+assert "bounded_extension_context" in registry
+assert "core_worker_error_decision" in registry
+assert "extension_worker_error_decision" in registry
+
+# Runtime Convergence consumes the central registry; a second scenario universe
+# or a second extension filter would reintroduce policy drift.
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::registry" in runtime
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate" in runtime
+assert "central_reconciliation_scenario" in runtime
+assert "reconciliation_context" in runtime
+assert "mad4b_scp_auto_reconciliation_scenarios" not in runtime
+assert "'registry_decision' =>" in runtime
+assert "'registry_reason' =>" in runtime
+assert "private static function select_reconciliation_scenario" not in runtime
+assert "private static function reconciliation_signals" not in runtime
