@@ -207,6 +207,20 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 		);
 	}
 
+	private static function core_external_signal_keys() {
+		return array(
+			'grant_inventory_drift',
+			'write_contract_drift',
+			'site_profile_drift',
+			'actor_identity_drift',
+			'transport_contract_drift',
+			'baseline_expired',
+			'untrusted_package',
+			'continuation_conflict',
+			'concurrent_permit',
+		);
+	}
+
 	private static function signals( array $context ) {
 		$environment = sanitize_key( isset( $context['environment'] ) ? (string) $context['environment'] : '' );
 		$binding = isset( $context['candidate_binding'] ) && is_array( $context['candidate_binding'] ) ? $context['candidate_binding'] : array();
@@ -256,6 +270,8 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'source_native_self_update' => 'self_update' === $source,
 			'source_release_set' => 'runtime_release_set' === $source,
 		);
+		$core_external = isset( $context['signals'] ) && is_array( $context['signals'] ) ? $context['signals'] : array();
+		foreach ( self::core_external_signal_keys() as $key ) $signals[ $key ] = ! empty( $core_external[ $key ] );
 		foreach ( self::extension_signals( $context, array_keys( $signals ) ) as $key => $enabled ) $signals[ $key ] = $enabled;
 		return $signals;
 	}
