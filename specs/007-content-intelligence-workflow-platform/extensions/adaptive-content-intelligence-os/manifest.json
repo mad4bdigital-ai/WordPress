@@ -35,6 +35,7 @@
     "dynamic-policy.json",
     "effect-contracts.json",
     "evidence-trust.json",
+    "implementation-p0-remediation.md",
     "implementation-slice-01.md",
     "implementation-slice-02.md",
     "implementation-slice-03.md",
@@ -264,5 +265,16 @@
     "production_authorized": false,
     "effects": "PURE_READ",
     "ability": "mad4b/aci01-opportunity-preview"
+  },
+  "runtime_p0_remediation": {
+    "state": "SOURCE_INTEGRATED_PENDING_EXACT_PHP_AND_NATIVE_ACCEPTANCE",
+    "requires": [
+      "exact_php74_83",
+      "controlled_wpml_readback",
+      "site_generation_restore_epoch_readback",
+      "owner_recipe_mapping_review"
+    ],
+    "authorizing": false,
+    "production_authorized": false
   }
 }
