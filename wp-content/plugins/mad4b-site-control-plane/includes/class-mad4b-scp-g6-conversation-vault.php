@@ -37,13 +37,28 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         return array( 'owner' => $user, 'site' => $site );
     }
 
+    /** Reject corrupted thread identities and incomplete crypto-erasure tombstones. */
+    private static function valid_thread( $key, $thread ) {
+        if ( ! MAD4B_SCP_G6_Contracts::id( $key ) || ! is_array( $thread )
+            || ! isset( $thread['thread_id'], $thread['classification'], $thread['messages'], $thread['expires_at'], $thread['deleted'] )
+            || $thread['thread_id'] !== $key || ! is_array( $thread['messages'] )
+            || count( $thread['messages'] ) > self::MAX_MESSAGES
+            || ! is_int( $thread['expires_at'] ) || $thread['expires_at'] <= 0
+            || ! is_bool( $thread['deleted'] )
+            || ! in_array( $thread['classification'], array( 'public', 'internal' ), true )
+            || ( $thread['deleted'] && $thread['messages'] ) )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Conversation registry contains invalid or non-erased thread data.' );
+        return true;
+    }
+
     private static function inspect_thread( array $thread ) {
         return array(
             'thread_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $thread['thread_id'] ),
             'message_count' => count( $thread['messages'] ),
             'classification' => $thread['classification'],
             'expires_at' => $thread['expires_at'],
-            'deleted' => ! empty( $thread['deleted'] ),
+            'deleted' => $thread['deleted'],
+            'retention_purge_required' => ! $thread['deleted'] && $thread['expires_at'] <= time(),
             'content_exposed' => false,
         );
     }
@@ -55,9 +70,11 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         $record = MAD4B_SCP_G6_Contracts::load( self::KIND, $scope['owner'] );
         if ( is_wp_error( $record ) ) return $record;
         $threads = array();
-        foreach ( $record['items'] as $thread ) {
-            if ( ! is_array( $thread ) || ! isset( $thread['thread_id'], $thread['messages'], $thread['classification'], $thread['expires_at'] ) || ! is_array( $thread['messages'] ) )
-                return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Encrypted conversation registry requires reconciliation.' );
+        if ( count( $record['items'] ) > self::MAX_THREADS )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Thread capacity is inconsistent.' );
+        foreach ( $record['items'] as $thread_id => $thread ) {
+            $valid = self::valid_thread( $thread_id, $thread );
+            if ( is_wp_error( $valid ) ) return $valid;
             $threads[] = self::inspect_thread( $thread );
         }
         return array(
@@ -108,6 +125,8 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             'expires_at' => $now + $days * DAY_IN_SECONDS, 'deleted' => false,
             'messages' => array(),
         );
+        $valid = self::valid_thread( $id, $thread );
+        if ( is_wp_error( $valid ) ) return $valid;
         if ( ! empty( $thread['deleted'] ) || $thread['expires_at'] <= $now || $thread['classification'] !== $classification )
             return MAD4B_SCP_G6_Contracts::error( 'vault_thread_ineligible', 'Deleted, expired or reclassified threads cannot be reopened by append.' );
         if ( ! isset( $thread['messages'] ) || ! is_array( $thread['messages'] ) || count( $thread['messages'] ) >= self::MAX_MESSAGES )
@@ -142,6 +161,10 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         if ( (int) $record['revision'] !== $expected_revision )
             return MAD4B_SCP_G6_Contracts::error( 'vault_revision_conflict', 'Reload before export.' );
         $thread = isset( $record['items'][ $thread_id ] ) ? $record['items'][ $thread_id ] : null;
+        if ( is_array( $thread ) ) {
+            $valid = self::valid_thread( $thread_id, $thread );
+            if ( is_wp_error( $valid ) ) return $valid;
+        }
         if ( ! is_array( $thread ) || ! empty( $thread['deleted'] ) || $thread['expires_at'] <= time() )
             return MAD4B_SCP_G6_Contracts::error( 'vault_unavailable', 'Thread is missing, expired or deleted.' );
         $messages = array();
@@ -186,11 +209,8 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         $now = time();
         $purged = 0;
         foreach ( $items as $thread_id => $thread ) {
-            if ( ! MAD4B_SCP_G6_Contracts::id( $thread_id ) || ! is_array( $thread )
-                || ! isset( $thread['thread_id'], $thread['classification'], $thread['expires_at'], $thread['messages'] )
-                || $thread['thread_id'] !== $thread_id || ! is_int( $thread['expires_at'] )
-                || ! is_array( $thread['messages'] ) )
-                return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Retention record is malformed; no partial purge allowed.' );
+            $valid = self::valid_thread( $thread_id, $thread );
+            if ( is_wp_error( $valid ) ) return $valid;
             if ( $thread['expires_at'] > $now && empty( $thread['deleted'] ) ) continue;
             if ( empty( $thread['messages'] ) && ! empty( $thread['deleted'] ) ) continue;
             $items[ $thread_id ] = array(
@@ -230,6 +250,8 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         if ( (int) $before['revision'] !== $expected_revision || ! isset( $before['items'][ $thread_id ] ) )
             return MAD4B_SCP_G6_Contracts::error( 'vault_revision_conflict', 'Thread missing or changed.' );
         $items = $before['items'];
+        $valid = self::valid_thread( $thread_id, $items[ $thread_id ] );
+        if ( is_wp_error( $valid ) ) return $valid;
         $items[ $thread_id ] = array( 'thread_id' => $thread_id, 'classification' => $items[ $thread_id ]['classification'],
             'expires_at' => time(), 'deleted' => true, 'messages' => array() );
         $after = MAD4B_SCP_G6_Contracts::save( self::KIND, $scope['owner'], $before, array( 'revision' => $before['revision'], 'items' => $items ) );
