@@ -11,7 +11,13 @@ class MAD4B_SCP_G7_Update_Acceptance {
 }
 class MAD4B_SCP_Post_Update_Continuation {
     const CONTRACT = 'mad4b.post-update-continuation.v1';
-    public static function status() { return array( 'contract' => self::CONTRACT, 'state' => 'absent' ); }
+    public static $state = 'absent';
+    public static $active = false;
+    public static $expired = false;
+    public static function status() {
+        return array( 'contract' => self::CONTRACT, 'state' => self::$state,
+            'active' => self::$active, 'expired' => self::$expired );
+    }
 }
 class MAD4B_SCP_Runtime_Metrics {
     const CONTRACT = 'mad4b.dynamic-runtime-metrics.v1';
@@ -39,6 +45,21 @@ MAD4B_SCP_G7_Update_Acceptance::$response['state'] = 'NO_UPDATE_OBSERVED';
 MAD4B_SCP_G7_Update_Acceptance::$response['graph_changed'] = false;
 $r = MAD4B_SCP_G7_Release_Acceptance_Audit::assess( array(), array() );
 g7m( 'NO_UPDATE_OBSERVED' === $r['state'] && ! $r['release_acceptance_receipt_issued'], 'no update does not certify release' );
+MAD4B_SCP_Post_Update_Continuation::$state = 'prepared';
+MAD4B_SCP_Post_Update_Continuation::$active = true;
+$r = MAD4B_SCP_G7_Release_Acceptance_Audit::assess( array(), array() );
+g7m( 'RECONCILIATION_REQUIRED' === $r['state'] && ! $r['native_continuation_quiescent'] &&
+    in_array( 'native_continuation_active_failed_or_unclassified', $r['blocking_evidence'], true ),
+    'active continuation cannot masquerade as settled no-update evidence' );
+MAD4B_SCP_Post_Update_Continuation::$state = 'blocked';
+MAD4B_SCP_Post_Update_Continuation::$active = false;
+$r = MAD4B_SCP_G7_Release_Acceptance_Audit::assess( array(), array() );
+g7m( 'RECONCILIATION_REQUIRED' === $r['state'], 'blocked native continuation forces reconciliation' );
+MAD4B_SCP_Post_Update_Continuation::$state = 'absent';
+MAD4B_SCP_Post_Update_Continuation::$expired = true;
+$r = MAD4B_SCP_G7_Release_Acceptance_Audit::assess( array(), array() );
+g7m( 'RECONCILIATION_REQUIRED' === $r['state'], 'expired continuation cannot certify quiescence' );
+MAD4B_SCP_Post_Update_Continuation::$expired = false;
 MAD4B_SCP_Runtime_Metrics::$metrics = array(
     array( 'name' => 'g7.eligible_workload', 'count' => 3, 'sum' => 10 ),
     array( 'name' => 'g7.verified_automatic_repair', 'count' => 2, 'sum' => 9 )

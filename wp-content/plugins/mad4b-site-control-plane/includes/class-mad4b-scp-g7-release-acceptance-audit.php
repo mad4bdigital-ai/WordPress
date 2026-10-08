@@ -33,15 +33,23 @@ final class MAD4B_SCP_G7_Release_Acceptance_Audit {
             is_array( $native ) &&
             ( $native['contract'] ?? '' ) === MAD4B_SCP_Post_Update_Continuation::CONTRACT;
         if ( ! $native_valid ) $reasons[] = 'native_continuation_status_unavailable';
+        $native_state = $native_valid && is_string( $native['state'] ?? null )
+            ? $native['state'] : '';
+        // A merely valid provider contract is insufficient to call an unfinished
+        // or failed continuation a clear no-update observation.
+        $native_quiet = $native_valid && in_array( $native_state, array( 'absent', 'consumed', 'completed' ), true ) &&
+            false === ( $native['active'] ?? false ) && false === ( $native['expired'] ?? false );
+        if ( $native_valid && ! $native_quiet ) $reasons[] = 'native_continuation_active_failed_or_unclassified';
         return array(
             'contract' => self::CONTRACT,
-            'state' => ( 'NO_UPDATE_OBSERVED' === ( $comparison['state'] ?? '' ) && $native_valid )
+            'state' => ( 'NO_UPDATE_OBSERVED' === ( $comparison['state'] ?? '' ) && $native_quiet )
                 ? 'NO_UPDATE_OBSERVED' : 'RECONCILIATION_REQUIRED',
             'comparison_state' => $comparison['state'],
             'comparison_sha256' => $comparison['comparison_sha256'],
             'native_continuation_status_observed' => $native_valid,
             'native_continuation_state' => $native_valid && is_string( $native['state'] ?? null )
                 ? substr( $native['state'], 0, 60 ) : 'unavailable',
+            'native_continuation_quiescent' => $native_quiet,
             'blocking_evidence' => array_values( array_unique( $reasons ) ),
             'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
             'release_acceptance_receipt_issued' => false,

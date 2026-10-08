@@ -91,9 +91,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-missing-dependency-contract.php"
       ],
       "remaining_acceptance": [
-        "native post-update recertification and scoped impact evidence",
-        "site-local Release Acceptance Receipt",
-        "preauthorized rollback rehearsal"
+        "Native Post Update Continuation state must be quiescent; active, blocked or expired states require reconciliation",
+        "Site-local Release Acceptance Receipt, exact provider and Skills/catalog parity and preauthorized rollback rehearsal"
       ]
     },
     {
@@ -233,8 +232,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
-      "sha256": "0d5fcb391e5348b7215fc07835c39e2cb524e18c0b780754068d93daadf8d16f",
-      "bytes": 3655
+      "sha256": "ec41b791b53a6572ee18a993399588355d4723b2e118ba0760d3afa3b61dc217",
+      "bytes": 4313
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
@@ -278,8 +277,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php",
-      "sha256": "7f12d4b52dd64a7bd45021df4cb5c0a17640cd41af6f7b3a60ad79299e9fedf2",
-      "bytes": 3473
+      "sha256": "027b430348155dc90597f7cd37c0bf92829ad60e2ddbc4f451c981971e0f49e2",
+      "bytes": 4732
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-missing-dependency-contract.php",
