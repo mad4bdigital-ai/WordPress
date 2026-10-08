@@ -76,7 +76,7 @@ final class MAD4B_SCP_Solution_Discovery {
 
     private static function safe_text( $value, $max = 180 ) {
         return is_string( $value ) && strlen( $value ) <= $max * 4
-            && 1 === preg_match( '/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/uD', $value )
+            && 1 === preg_match( '/^[\p{L}\p{N}][\p{L}\p{M}\p{N} ._-]*$/uD', $value )
             && preg_match_all( '/./us', $value ) <= $max;
     }
 
@@ -89,10 +89,20 @@ final class MAD4B_SCP_Solution_Discovery {
     }
 
     private static function tokens( $value ) {
-        $result = array();
-        $matches = array();
-        if ( ! preg_match_all( '/[\p{L}\p{N}]{3,}/u', strtolower( $value ), $matches ) ) return $result;
-        foreach ( $matches[0] as $token ) $result[ $token ] = true;
+        if ( ! is_string( $value ) || strlen( $value ) > 1024 ) return array();
+        // No hard-coded provider synonyms. Unicode lexical query normalization
+        // remains a hint, not a proof of semantics or authorization.
+        $text = function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
+        $text = preg_replace( '/\\p{Mn}+/u', '', $text );
+        if ( ! is_string( $text ) ) return array();
+        $matches = array(); $result = array();
+        if ( ! preg_match_all( '/[\\p{L}\\p{N}]{2,}/u', $text, $matches ) ) return $result;
+        foreach ( $matches[0] as $token ) {
+            // General English plural form, not a named integration lookup.
+            if ( preg_match( '/^[a-z]{4,}s$/D', $token ) ) $token = substr( $token, 0, -1 );
+            $result[ $token ] = true;
+            if ( count( $result ) >= 80 ) break;
+        }
         return $result;
     }
 
@@ -185,13 +195,13 @@ final class MAD4B_SCP_Solution_Discovery {
                     // Include opaque names for admins; never index or disclose
                     // private labels or descriptions. Registration != authority.
                     $public = true === ( $meta['show_in_rest'] ?? false );
-                    $label = $public ? $ability->get_label() : $name;
+                    $label = $public ? $ability->get_label() : 'Private registered ability';
                     $description = $public ? $ability->get_description() : '';
                     if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $name );
                     $description = self::safe_text( $description, 180 ) ? $description : '';
                     $rows[] = array( 'id' => 'ability:' . $name, 'label' => $label,
                         'source' => 'registered_ability', 'observed_state' => 'registered',
-                        'match_text' => $name . ' ' . $label . ' ' . $description );
+                        'match_text' => $public ? ( $name . ' ' . $label . ' ' . $description ) : $name );
                 }
             }
         }
