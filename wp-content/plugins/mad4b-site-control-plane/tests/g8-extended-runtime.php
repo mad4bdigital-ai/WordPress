@@ -211,4 +211,20 @@ g8_check( 'BLOCKED_PENDING_GOVERNED_ACCEPTANCE' === $recovery['state']
 	&& in_array( 'unrewound_external_effect_reconciliation_required', $recovery['blockers'], true ),
 	'restored local state cannot self-authorize external-effect replay' );
 
+// A locally restored database is not proof that external payment/email effects
+// were rewound. The comparison is data-only and cannot approve compensation.
+$effect_id = str_repeat( 'a', 64 );
+$new_effect_id = str_repeat( 'b', 64 );
+$local_effects = array( $effect_id => array( 'state' => 'applied', 'effect_sha256' => str_repeat( 'c', 64 ) ) );
+$remote_effects = $local_effects;
+$remote_effects[ $new_effect_id ] = array( 'state' => 'applied', 'effect_sha256' => str_repeat( 'd', 64 ) );
+$effect_diff = MAD4B_SCP_G8_Restore_Convergence::compare_external_effects( $local_effects, $remote_effects );
+g8_check( 1 === $effect_diff['candidate_issue_count']
+	&& 'external_effect_absent_from_local_snapshot' === $effect_diff['issues'][0]['reason']
+	&& false === $effect_diff['acceptance_receipt_issued']
+	&& false === $effect_diff['automatic_retry_allowed'], 'external effects cannot be blindly replayed' );
+$bad_effects = array( 'invalid-key' => array( 'state' => 'applied', 'effect_sha256' => str_repeat( 'c', 64 ) ) );
+g8_check( g8_is_error( MAD4B_SCP_G8_Restore_Convergence::compare_external_effects( $bad_effects, $remote_effects ),
+	'mad4b_g8_restore_effects_invalid' ), 'untrusted external effect IDs are rejected' );
+
 echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
