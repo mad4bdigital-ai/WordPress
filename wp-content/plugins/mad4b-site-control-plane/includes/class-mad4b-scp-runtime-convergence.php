@@ -691,6 +691,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+		// An automatic admission denial must not turn every request into a new Cron loop.
+		if ( 'pending_manual_resume' === $state && is_array( $checkpoint )
+			&& 0 === strpos( (string) ( $checkpoint['resume_blocker'] ?? '' ), 'mad4b_automation_' ) ) return;
 		$not_before = is_array( $checkpoint ) && isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
 		if ( $not_before > time() ) {
 			self::schedule_resume( $not_before );
