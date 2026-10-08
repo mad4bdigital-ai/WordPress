@@ -71,8 +71,10 @@ jobs:
           node tools/browser-acceptance/test-provider-selection.mjs
           node tools/browser-acceptance/test-site-provider-configuration.mjs
           node tools/browser-acceptance/test-site-adapter-resolver.mjs
+          node tools/browser-acceptance/test-declarative-capability-driver.mjs
           node tools/browser-acceptance/test-site-neutral-boundaries.mjs
           php wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/capability-atlas-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php
           node tools/browser-acceptance/test-scheduler.mjs
           node tools/browser-acceptance/test-network-policy.mjs
@@ -88,6 +90,8 @@ jobs:
       - name: PHP 8.3 syntax check for bounded site discovery
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-capability-discovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-atlas.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/capability-atlas-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php
       - name: Syntax-check executable browser surfaces
@@ -107,6 +111,8 @@ jobs:
           node --check tools/browser-acceptance/worker-environment.mjs
           node --check tools/browser-acceptance/test-evidence-assembler.mjs
           node --check tools/browser-acceptance/test-worker-environment.mjs
+          node --check tools/browser-acceptance/declarative-capability-driver.mjs
+          node --check tools/browser-acceptance/test-declarative-capability-driver.mjs
           node --check tools/browser-acceptance/site-adapter-resolver.mjs
           node --check tools/browser-acceptance/test-site-adapter-resolver.mjs
           node --check tools/browser-acceptance/site-driver-registry.mjs
