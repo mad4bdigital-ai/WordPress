@@ -28,6 +28,8 @@ export function resolveSiteBrowserAdapter(caps, {
       observed.certification_issued !== false || observed.discovery_complete !== true ||
       !valid(observed.snapshot_sha256, SHA) || origin(observed.origin) !== siteOrigin ||
       !Array.isArray(observed.plugins) || observed.plugins.length > 128 ||
+      !Array.isArray(observed.post_types) || observed.post_types.length > 96 ||
+      !Array.isArray(observed.taxonomies) || observed.taxonomies.length > 96 ||
       new Set(observed.plugins).size !== observed.plugins.length ||
       observed.plugins.some(x => !valid(x, ID)) ||
       !Array.isArray(observed.provider_matches) || observed.provider_matches.length > 32) {
@@ -50,13 +52,25 @@ export function resolveSiteBrowserAdapter(caps, {
   }
   const recognized = new Set();
   for (const match of observed.provider_matches) {
+    const sources = [
+      ["source_plugins", "matched_plugins", observed.plugins, ID],
+      ["source_post_types", "matched_post_types", observed.post_types, /^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/],
+      ["source_taxonomies", "matched_taxonomies", observed.taxonomies, /^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/]
+    ];
     if (!match || !valid(match.provider_id, ID) || !providers.has(match.provider_id) ||
-        !Array.isArray(match.source_plugins) || !match.source_plugins.length ||
-        match.source_plugins.length > 32 || new Set(match.source_plugins).size !== match.source_plugins.length ||
-        match.source_plugins.some(x => !valid(x, ID)) ||
-        match.matched_plugins !== match.source_plugins.filter(x => observed.plugins.includes(x)).length ||
-        match.recognized !== (match.matched_plugins === match.source_plugins.length) ||
         match.certified !== false || match.authorizing !== false) fail("discovery_match_invalid");
+    let total = 0, hits = 0;
+    for (const [key, matchedKey, observedValues, pattern] of sources) {
+      const required = match[key] || [];
+      if (!Array.isArray(required) || required.length > 32 ||
+          new Set(required).size !== required.length ||
+          required.some(x => !valid(x, pattern))) fail("discovery_match_invalid");
+      const seen = required.filter(x => observedValues.includes(x)).length;
+      if (typeof match[matchedKey] !== "undefined" && match[matchedKey] !== seen) fail("discovery_match_invalid");
+      total += required.length;
+      hits += seen;
+    }
+    if (!total || match.recognized !== (hits === total)) fail("discovery_match_invalid");
     if (match.recognized) recognized.add(match.provider_id);
   }
   if (!Array.isArray(approvedDrivers) || approvedDrivers.length > 32) fail("driver_registry_invalid");
