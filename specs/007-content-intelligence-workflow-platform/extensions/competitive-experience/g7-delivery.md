@@ -42,6 +42,10 @@ The previous condition `Execution Receipt: signed + readback = PASS` was insuffi
 
 Legacy receipts without snapshot-bound signed readback evidence are **not automatically promoted** into trusted Last Managed baseline. Their source must be re-established through a newly governed operation; do not invent or rewrite old readback receipts.
 
+## Journal evidence provenance objection
+
+A claimed `chain_valid=true` is not proof of a valid native journal read. The G7 history-only projection now requires both exact `mad4b.dynamic-operation-trace.v1` and `mad4b.dynamic-operation-status.v1` contracts, and read-only/non-mutation flags on both before trusting chain, sequence, identity and head continuity. An event with malformed `safe_metadata` is rejected rather than rendered as an empty record. This projection explicitly states `cryptographically_signed_history=false`: source hash-chain consistency is **not** a signed native execution receipt, actor authorization, external-effect proof or Undo eligibility.
+
 ## Outstanding gates and acceptance
 
 - CI: PHP 7.4 and 8.3 G7 matrix and Spec Kit validator must run on an exact checkout and finish successfully. Queued jobs are not a PASS.

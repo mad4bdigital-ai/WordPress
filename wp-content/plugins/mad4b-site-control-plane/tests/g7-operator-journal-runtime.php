@@ -13,9 +13,14 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g7-operator-journal.php'
 function jassert( $yes, $message ) { if ( ! $yes ) { fwrite( STDERR, "FAIL: $message\n" ); exit( 1 ); } }
 $id = '1077c7ee-f3a1-4866-9320-444444444444';
 $sha = str_repeat( 'a', 64 );
-MAD4B_SCP_Operation_Journal::$status = array( 'operation_id' => $id, 'latest_sequence' => 1, 'journal_head_sha256' => $sha, 'lifecycle_state' => 'completed', 'terminal_outcome' => 'committed' );
+MAD4B_SCP_Operation_Journal::$status = array( 'contract' => 'mad4b.dynamic-operation-status.v1',
+    'read_only' => true, 'mutation_performed' => false, 'operation_id' => $id,
+    'latest_sequence' => 1, 'journal_head_sha256' => $sha,
+    'lifecycle_state' => 'completed', 'terminal_outcome' => 'committed' );
 MAD4B_SCP_Operation_Journal::$trace = array(
-    'operation_id' => $id, 'chain_valid' => true, 'complete' => true, 'count' => 1,
+    'contract' => 'mad4b.dynamic-operation-trace.v1', 'read_only' => true,
+    'mutation_performed' => false, 'operation_id' => $id,
+    'chain_valid' => true, 'complete' => true, 'count' => 1,
     'events' => array( array(
         'sequence' => 1, 'event_sha256' => $sha, 'event_type' => 'operation_completed',
         'checkpoint' => 'readback', 'lifecycle_state' => 'completed', 'terminal_outcome' => 'committed',
@@ -36,6 +41,18 @@ $good = MAD4B_SCP_Operation_Journal::$trace;
 MAD4B_SCP_Operation_Journal::$trace['chain_valid'] = false;
 $bad = MAD4B_SCP_G7_Operator_Journal::project( $id );
 jassert( 'RECONCILIATION_REQUIRED' === $bad['state'] && count( $bad['events'] ) === 0, 'forged hash chain denied' );
+MAD4B_SCP_Operation_Journal::$trace = $good;
+MAD4B_SCP_Operation_Journal::$trace['contract'] = 'foreign.journal.v1';
+jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( $id )['state'], 'foreign trace source contract denied' );
+MAD4B_SCP_Operation_Journal::$trace = $good;
+MAD4B_SCP_Operation_Journal::$trace['read_only'] = false;
+jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( $id )['state'], 'mutating trace source denied' );
+MAD4B_SCP_Operation_Journal::$trace = $good;
+MAD4B_SCP_Operation_Journal::$status['contract'] = 'foreign.status.v1';
+jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( $id )['state'], 'foreign status source contract denied' );
+MAD4B_SCP_Operation_Journal::$status['contract'] = 'mad4b.dynamic-operation-status.v1';
+MAD4B_SCP_Operation_Journal::$trace['events'][0]['safe_metadata'] = 'invalid-opaque-blob';
+jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( $id )['state'], 'malformed redaction source metadata denied' );
 MAD4B_SCP_Operation_Journal::$trace = $good;
 MAD4B_SCP_Operation_Journal::$trace['complete'] = false;
 jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( $id )['state'], 'truncation denied' );

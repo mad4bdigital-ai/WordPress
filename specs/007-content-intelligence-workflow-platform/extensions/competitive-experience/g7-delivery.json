@@ -71,8 +71,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php"
       ],
       "remaining_acceptance": [
-        "native compensation execution and signed return receipt",
-        "independent irreversible external-effect reconciliation"
+        "Source native journal trace/status contract and hash-chain parity, independently signed execution provenance, and real actor/agent authority remain separate gates",
+        "Native compensation execution and signed return receipt plus irreversible external effect reconciliation"
       ]
     },
     {
@@ -229,8 +229,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php",
-      "sha256": "69ae7bada33dc28a3b0a74c2a32048623468b7c10e5326723b862ee2e37996a7",
-      "bytes": 6637
+      "sha256": "e8f913ace3d854fae8917c1fd16db14f1eecf3bda88b80a2cfa8530e97d02b1c",
+      "bytes": 7360
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
@@ -274,8 +274,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
-      "sha256": "1640dd8313fb3ce6bddebd4e7a1cf9e02a4ceae000ecc15db04d488d86aad911",
-      "bytes": 4205
+      "sha256": "a0c22a9815691f916f46e7bb4919dd64de7036214b82824fc0a73e1aa6d9c9d8",
+      "bytes": 5493
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",

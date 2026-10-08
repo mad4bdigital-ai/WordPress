@@ -23,7 +23,16 @@ final class MAD4B_SCP_G7_Operator_Journal {
         if ( is_wp_error( $status ) ) return $status;
         if ( ! is_array( $trace ) || ! is_array( $status ) ) return self::error( 'journal_projection_unavailable' );
 
-        $identity = isset( $trace['operation_id'], $status['operation_id'] ) &&
+        // Native trace and status are independently read and may race. Never
+        // trust caller-declared hash-chain flags without the exact native,
+        // read-only source contract on BOTH responses.
+        $source_valid = ( $trace['contract'] ?? null ) === 'mad4b.dynamic-operation-trace.v1' &&
+            ( $status['contract'] ?? null ) === 'mad4b.dynamic-operation-status.v1' &&
+            true === ( $trace['read_only'] ?? null ) &&
+            true === ( $status['read_only'] ?? null ) &&
+            false === ( $trace['mutation_performed'] ?? null ) &&
+            false === ( $status['mutation_performed'] ?? null );
+        $identity = $source_valid && isset( $trace['operation_id'], $status['operation_id'] ) &&
             is_string( $trace['operation_id'] ) && is_string( $status['operation_id'] ) &&
             '' !== $trace['operation_id'] &&
             hash_equals( $operation_id, $trace['operation_id'] ) &&
@@ -55,6 +64,7 @@ final class MAD4B_SCP_G7_Operator_Journal {
             'actor_identity_verified' => false,
             'undo_eligibility' => 'EXACT_COMPENSATION_AND_CURRENT_READBACK_REQUIRED',
             'outcome_is_commit_proof' => false,
+            'cryptographically_signed_history' => false,
         );
         if ( ! $integrity ) return array_merge( $base, array(
             'state' => 'RECONCILIATION_REQUIRED',
@@ -68,7 +78,8 @@ final class MAD4B_SCP_G7_Operator_Journal {
         foreach ( $events as $event ) {
             if ( ! is_array( $event ) || ! isset( $event['sequence'], $event['event_sha256'] ) ||
                 ! is_int( $event['sequence'] ) || $event['sequence'] !== count( $timeline ) + 1 ||
-                ! is_string( $event['event_sha256'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $event['event_sha256'] ) ) {
+                ! is_string( $event['event_sha256'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $event['event_sha256'] ) ||
+                ! isset( $event['safe_metadata'] ) || ! is_array( $event['safe_metadata'] ) ) {
                 return array_merge( $base, array(
                     'state' => 'RECONCILIATION_REQUIRED', 'reason' => 'event_sequence_invalid',
                     'events' => array(), 'verified_history' => false,
@@ -76,7 +87,7 @@ final class MAD4B_SCP_G7_Operator_Journal {
                 ) );
             }
             $safe = MAD4B_SCP_Structural_Redaction::redact(
-                isset( $event['safe_metadata'] ) && is_array( $event['safe_metadata'] ) ? $event['safe_metadata'] : array(),
+                $event['safe_metadata'],
                 'g7_operator_journal'
             );
             $timeline[] = array(
