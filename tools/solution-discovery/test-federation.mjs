@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {checkTarget, discoverFederated, toWordPressRouterInput} from "./federation.mjs";
+import {checkTarget, discoverFederated, toWordPressRouterInput,planRemediation} from "./federation.mjs";
 const H=c=>c.repeat(64);
 const site={site_id:"site-a",environment:"staging",origin_sha256:H("a"),runtime_generation:H("b")};
 const item=(id,kind="connector")=>({id,kind,...site,connected:true,read_authorized:true,lane:"read"});
@@ -86,6 +86,29 @@ yes(risky.candidate_total===2&&risky.restricted_candidate_count===1,
 yes(risky.candidates.some(c=>c.requires_separate_risk_review)&&risky.external_hints.length===1,
  "high-risk mutating option never unqualified WordPress handoff");
 yes(risky.candidates.every(c=>c.execution_allowed===false),"no implied execution from risk metadata");
+const plan=planRemediation({target:site,discovery:risky,operation_id:"configuration_update",
+ requested_effect:"write",desired_state:"staging environment explicit"});
+yes(plan.contract==="mad4b.site-remediation-proposal.v1"&&!plan.execution_allowed,
+ "site-independent remediation is only a proposal");
+yes(plan.requirements.includes("externally_verified_backup")&&
+ plan.requirements.includes("compensating_rollback_and_failure_readback"),
+ "mutation requires backup compensation and independent readback");
+yes(plan.candidates.some(x=>x.eligibility==="DEDICATED_EXCEPTION_REVIEW"),
+ "exceptional provider not sent to general writes");
+const prodTarget={...site,environment:"production"};
+const prodRegistry=await discoverFederated({target:prodTarget,query:"file",
+ enumerate:async()=>({...envelope,binding:prodTarget,sources:[{...item("prod-reader"),environment:"production"}]}),
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
+ observation_sha256:H("f"),capabilities:[{id:"file-edit",label:"File workspace"}]})});
+const prod=planRemediation({target:prodTarget,discovery:prodRegistry,
+ operation_id:"configuration_update",requested_effect:"write",
+ desired_state:"production environment explicit"});
+yes(prod.requirements.includes("separate_production_promotion_authority"),
+ "production cannot inherit staging approval");
+assert.throws(()=>planRemediation({target:prodTarget,discovery:risky,
+ operation_id:"configuration_update",requested_effect:"write",
+ desired_state:"production environment explicit"}));assertions++;
+
 
 const legacy=await discoverFederated({target:site,query:"file",enumerate:async()=>[item("legacy")],inspect});
 yes(!legacy.coverage_complete&&!legacy.registry_scope_verified,"unscoped bare catalog cannot claim complete coverage");

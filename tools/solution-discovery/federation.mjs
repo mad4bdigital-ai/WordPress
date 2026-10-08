@@ -229,3 +229,63 @@ export function toWordPressRouterInput(result,planning_input,related_terms=[]) {
     id:h.id,source:h.source,label:h.label,description:h.description??h.label
   }))};
 }
+
+
+/**
+ * Build a CMS-independent, non-executable remediation proposal.
+ * A plan is NEVER a validated executor, approval, backup or release receipt.
+ */
+export function planRemediation({target,discovery,operation_id,requested_effect,
+  desired_state}={}) {
+  const site=checkTarget(target);
+  if(!isObject(discovery) || discovery.contract!==FEDERATION_CONTRACT ||
+     !boundTo(discovery.binding,site) || discovery.execution_allowed!==false ||
+     discovery.authorizing!==false || !Array.isArray(discovery.candidates) ||
+     !ID.test(operation_id??"") || !EFFECTS.has(requested_effect) ||
+     requested_effect==="unknown" || !plainText(desired_state,120)) {
+    throw new TypeError("INVALID_REMEDIATION_PLAN_INPUT");
+  }
+  if(discovery.candidates.length>MAX_HINTS)
+    throw new TypeError("REMEDIATION_CANDIDATES_OVER_BUDGET");
+  const mutates=requested_effect!=="read";
+  const entries=[];
+  for(const c of discovery.candidates) {
+    if(!isObject(c) || c.site_id!==site.site_id ||
+       c.environment!==site.environment || c.execution_allowed!==false ||
+       !ID.test(c.id??"")) throw new TypeError("FOREIGN_OR_AUTHORIZED_CANDIDATE");
+    const exceptional=Boolean(c.requires_separate_risk_review) ||
+      c.declared_risk==="high" || c.declared_risk==="exceptional" ||
+      c.declared_effect==="execute";
+    entries.push({
+      candidate_id:c.id, source_id:c.source_id,
+      eligibility:exceptional?"DEDICATED_EXCEPTION_REVIEW":"BEHAVIOR_CERTIFICATION_REQUIRED",
+      behavior_verified:false, permission_verified:false,
+      execution_allowed:false, automatic_handoff_allowed:false,
+      risk_attestation_required:true
+    });
+  }
+  entries.sort((a,b)=>a.candidate_id.localeCompare(b.candidate_id));
+  const requirements=[
+    "exact_site_and_environment_readback",
+    "independent_capability_and_effect_certification",
+    "scope_bound_credential_and_governed_authority",
+    "explicit_authorization_and_pre_execution_recheck",
+    "independent_postcondition_readback"
+  ];
+  if(mutates) requirements.push(
+    "externally_verified_backup","reviewed_reversible_mutation",
+    "compensating_rollback_and_failure_readback"
+  );
+  if(site.environment==="production" && mutates)
+    requirements.push("separate_production_promotion_authority");
+  return {
+    contract:"mad4b.site-remediation-proposal.v1",site,
+    requested_operation:operation_id,requested_effect,desired_state,
+    status:entries.length?"EXTERNAL_CERTIFICATION_REQUIRED":"EXPAND_DISCOVERY",
+    candidates:entries,requirements,metadata_only:true,
+    plan_continuity_id:continuity(JSON.stringify([site,operation_id,requested_effect,desired_state,entries])),
+    // This return shape cannot be passed as a write or developer grant.
+    authorizing:false,mutation_performed:false,execution_allowed:false,
+    automatic_install_allowed:false,release_certified:false
+  };
+}
