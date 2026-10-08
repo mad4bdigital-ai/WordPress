@@ -494,6 +494,15 @@ $marker_backup = $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRRO
 $marker_foreign = $marker_backup; $marker_foreign['site']['canonical_origin'] = 'https://foreign.example.invalid';
 $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $marker_foreign;
 g9_denied( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'mirror_identity_mismatch' );
+$blocked_closure = MAD4B_SCP_G9_Read_Surface::closure_status();
+g9_assert( ! is_wp_error( $blocked_closure )
+    && !$blocked_closure['operationally_closed']
+    && !$blocked_closure['ready_for_production']
+    && !$blocked_closure['anchor_observation_valid']
+    && in_array( 'external_fence_unavailable', $blocked_closure['blockers'], true )
+    && $blocked_closure['anchor_error_code'] === 'mad4b_resilience_anchor_mirror_identity_mismatch'
+    && !$blocked_closure['blind_retry_allowed'] && $blocked_closure['reconciliation_required'],
+    'anchor corruption produces visible non-authorizing closure blocker, never an auto repair' );
 $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $marker_backup;
 g9_assert( ! is_wp_error( $read ) && !$read['release_execution_supported'], 'site observation not executing' );
 g9_denied( MAD4B_SCP_G9_Read_Surface::site_observation( array('site'=>'foreign') ), 'read_input_invalid' );

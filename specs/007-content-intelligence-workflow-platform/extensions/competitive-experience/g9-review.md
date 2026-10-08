@@ -120,3 +120,7 @@ The G9 site observation previously allowed `authority.eligible=true` from generi
 ## Adversarial objection register
 
 See `g9-adversarial-closure.md` for 28 objection scenarios ranked by P0/P1 severity, exact source mitigation, missing signed native/Staging evidence, and a separate exit criterion. SOURCE_HARDENED is a code claim, not a passed test or release certificate.
+
+## Read-only closure diagnostics on lost or corrupted anchor (2026-10-08)
+
+`G9_Operational_Readiness::status()` previously returned raw `WP_Error` immediately when the external anchor was lost, corrupt or bound to a different DB mirror. That obscured actionable blocker summaries in the operator UI. The closure endpoint now **only** reports a sanitized `anchor_error_code` and `external_fence_unavailable` blocker, with `anchor_revision=null`, `anchor_observation_valid=false`, `operationally_closed=false`, `ready_for_production=false`, `blind_retry_allowed=false` and `reconciliation_required=true`. The direct anchor reader remains fail-closed; no repair or grant action is triggered. A hermetic corrupt-marker fixture asserts these negative conditions.

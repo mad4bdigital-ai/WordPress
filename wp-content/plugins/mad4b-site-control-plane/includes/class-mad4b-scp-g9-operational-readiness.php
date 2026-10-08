@@ -14,10 +14,15 @@ final class MAD4B_SCP_G9_Operational_Readiness {
         if ( is_wp_error( $site ) ) return $site;
         $binding = $site['binding'];
         $anchor = MAD4B_SCP_Resilience_Anchor::read( $binding );
-        if ( is_wp_error( $anchor ) ) return $anchor;
+        // An invalid/lost anchor is an actionable operational BLOCKER, not a
+        // reason to hide every other read-only closure blocker. Never
+        // recreate, repair, or coerce it into a valid zero-revision anchor.
+        $anchor_error = is_wp_error( $anchor ) ? $anchor->get_error_code() : '';
         $blockers = array();
+        if ( '' !== $anchor_error ) $blockers[] = 'external_fence_unavailable';
         if ( 'staging' !== $binding['environment'] ) $blockers[] = 'staging_site_required';
-        if ( ! is_int( $anchor['revision'] ?? null ) || $anchor['revision'] < 1 )
+        if ( '' === $anchor_error
+            && ( ! is_int( $anchor['revision'] ?? null ) || $anchor['revision'] < 1 ) )
             $blockers[] = 'external_fence_not_initialized';
         if ( ! empty( $site['identity_blockers'] ) || empty( $site['worker_current'] )
             || empty( $site['restore_bound'] ) )
@@ -77,7 +82,9 @@ final class MAD4B_SCP_G9_Operational_Readiness {
             'snapshot_sha256' => $site['snapshot_sha256'],
             'runtime_generation_sha256' => $binding['runtime_generation_sha256'],
             'restore_epoch' => $binding['restore_epoch'],
-            'anchor_revision' => $anchor['revision'],
+            'anchor_revision' => '' === $anchor_error ? $anchor['revision'] : null,
+            'anchor_observation_valid' => '' === $anchor_error,
+            'anchor_error_code' => $anchor_error,
             'blockers' => $blockers, 'blocker_count' => count( $blockers ),
             'missing_provider_evidence' => in_array( 'certified_provider_inventory_missing', $blockers, true ),
             'previous_execution_assumptions_replayed' => false,
@@ -86,6 +93,7 @@ final class MAD4B_SCP_G9_Operational_Readiness {
             'post_restore_receipt_issued' => false,
             'operationally_closed' => false, 'ready_for_production' => false,
             'authorizing' => false, 'mutation_performed' => false,
+            'blind_retry_allowed' => false, 'reconciliation_required' => true,
         );
     }
 }
