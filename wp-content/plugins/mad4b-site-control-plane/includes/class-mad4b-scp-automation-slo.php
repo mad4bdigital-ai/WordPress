@@ -12,6 +12,7 @@ final class MAD4B_SCP_Automation_SLO {
 	const MAX_QUEUE = 4;
 	const MAX_BUCKETS = 64;
 	const TICKET_TTL = 1200;
+	const MAX_RECENT_RECEIPTS = 64;
 
 	public static function boot() {
 		add_action( 'admin_post_mad4b_automation_kill_switch', array( __CLASS__, 'admin_switch' ) );
@@ -22,7 +23,9 @@ final class MAD4B_SCP_Automation_SLO {
 		if ( is_wp_error( $binding ) ) return $binding;
 		return array( 'contract' => self::CONTRACT, 'profile_digest' => MAD4B_SCP_G8_Record::profile(), 'restore_binding' => $binding, 'revision' => 0,
 			'buckets' => array(), 'tickets' => array(), 'eligible_workload_count' => 0, 'outcomes' => array(), 'duration_ms_total' => 0,
-			'cost_measured_count' => 0, 'cost_micros_total' => 0, 'authorizing' => false );
+			'cost_measured_count' => 0, 'cost_micros_total' => 0,
+			'outcome_receipts' => array(), 'outcome_root_sha256' => str_repeat( '0', 64 ),
+			'authorizing' => false );
 	}
 
 	private static function state_fields_valid( array $state ) {
@@ -47,6 +50,33 @@ final class MAD4B_SCP_Automation_SLO {
 			foreach ( array( 'started_at', 'attempts', 'errors', 'cooldown_until' ) as $key )
 				if ( ! is_int( $row[ $key ] ?? null ) || $row[ $key ] < 0 ) return false;
 		}
+		// Rolling evidence root survives bounded trimming; retained entries
+		// prove their own contiguous chain and exact final root.
+		if ( ! is_array( $state['outcome_receipts'] ?? null )
+			|| count( $state['outcome_receipts'] ) > self::MAX_RECENT_RECEIPTS
+			|| ! is_string( $state['outcome_root_sha256'] ?? null )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $state['outcome_root_sha256'] ) ) return false;
+		$previous_root = null; $last_seq = 0;
+		foreach ( $state['outcome_receipts'] as $entry ) {
+			if ( ! is_array( $entry ) || ! is_int( $entry['sequence'] ?? null )
+				|| $entry['sequence'] <= $last_seq
+				|| ! is_string( $entry['previous_root_sha256'] ?? null )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $entry['previous_root_sha256'] )
+				|| ! is_string( $entry['entry_sha256'] ?? null )
+				|| ! is_string( $entry['root_sha256'] ?? null ) ) return false;
+			if ( null !== $previous_root && ! hash_equals( $previous_root, $entry['previous_root_sha256'] ) )
+				return false;
+			$plain = $entry; unset( $plain['entry_sha256'], $plain['root_sha256'] );
+			$calculated = MAD4B_SCP_G8_Record::digest( $plain );
+			if ( ! hash_equals( $calculated, $entry['entry_sha256'] )
+				|| ! hash_equals( hash( 'sha256', $entry['previous_root_sha256'] . $calculated ), $entry['root_sha256'] ) )
+				return false;
+			$previous_root = $entry['root_sha256']; $last_seq = $entry['sequence'];
+		}
+		if ( $state['outcome_receipts']
+			&& ! hash_equals( $state['outcome_root_sha256'], $previous_root ) ) return false;
+		if ( ! $state['outcome_receipts'] && $completed > 0 ) return false;
+		if ( $last_seq > $completed ) return false;
 		foreach ( $state['tickets'] as $token => $ticket ) {
 			if ( ! is_string( $token ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $token )
 				|| ! is_array( $ticket ) || ( $ticket['token'] ?? '' ) !== $token ) return false;
@@ -288,10 +318,10 @@ final class MAD4B_SCP_Automation_SLO {
 		// counters are evidence, never permission to execute another action.
 		if ( 'verified_repair' === $outcome && is_wp_error( self::ticket_allowed( $ticket ) ) )
 			$outcome = 'handoff';
-		return self::finish( $ticket, $outcome );
+		return self::finish( $ticket, $outcome, $result );
 	}
 
-	private static function finish( array $ticket, $outcome ) {
+	private static function finish( array $ticket, $outcome, $result = null ) {
 		$before = MAD4B_SCP_G8_Record::read( self::OPTION ); $state = self::state();
 		if ( is_wp_error( $state ) ) return $state;
 		$token = $ticket['token'] ?? '';
@@ -306,6 +336,30 @@ final class MAD4B_SCP_Automation_SLO {
 			++$state['buckets'][ $scope ]['errors'];
 			if ( $state['buckets'][ $scope ]['errors'] >= 2 ) $state['buckets'][ $scope ]['cooldown_until'] = time() + self::COOLDOWN;
 		}
+		// The receipt and counters commit in ONE CAS. This local HMAC-linked
+		// history is auditable telemetry, never a native signed execution receipt.
+		$last_root = $state['outcome_root_sha256'];
+		$entry = array(
+			'sequence' => array_sum( $state['outcomes'] ),
+			'ticket_sha256' => hash( 'sha256', $ticket['token'] ),
+			'provider' => $ticket['provider'],
+			'capability' => $ticket['capability'],
+			'generation' => $ticket['generation'],
+			'restore_epoch' => $ticket['restore_binding']['epoch'],
+			'outcome' => $outcome,
+			'local_causal_receipt_sha256' => 'verified_repair' === $outcome && is_array( $result )
+				? ( $result['checkpoint']['g8_local_causal_receipt']['seal'] ?? '' ) : '',
+			'duration_ms' => max( 0, time() - $ticket['started_at'] ) * 1000,
+			'settled_at' => time(),
+			'previous_root_sha256' => $last_root,
+			'authorizing' => false,
+		);
+		$entry['entry_sha256'] = MAD4B_SCP_G8_Record::digest( $entry );
+		$entry['root_sha256'] = hash( 'sha256', $last_root . $entry['entry_sha256'] );
+		$state['outcome_root_sha256'] = $entry['root_sha256'];
+		$state['outcome_receipts'][] = $entry;
+		if ( count( $state['outcome_receipts'] ) > self::MAX_RECENT_RECEIPTS )
+			array_shift( $state['outcome_receipts'] );
 		++$state['revision']; $state['seal'] = MAD4B_SCP_G8_Record::seal( $state );
 		return MAD4B_SCP_G8_Record::replace( self::OPTION, $before, $state );
 	}
@@ -359,6 +413,10 @@ final class MAD4B_SCP_Automation_SLO {
 			'verified_repair_rate' => $denominator > 0 ? ( $outcomes['verified_repair'] ?? 0 ) / $denominator : null,
 			'mean_completion_ms' => $completed > 0 ? $state['duration_ms_total'] / $completed : null,
 			'false_repair_rate' => null, 'rollback_failure_rate' => null, 'quarantine_rate' => null, 'intervention_rate' => null, 'cost_rate' => null,
+			'outcome_chain_sha256' => $valid ? $state['outcome_root_sha256'] : null,
+			'recent_outcome_receipt_count' => $valid ? count( $state['outcome_receipts'] ) : null,
+			'recent_outcome_receipts' => $valid ? $state['outcome_receipts'] : array(),
+			'local_chain_is_not_external_execution_certificate' => true,
 			'unmeasured_metrics' => array( 'false_repair', 'rollback_failure', 'quarantine', 'intervention', 'cost' ),
 			'kill_switch' => self::switch_status(), 'observation_preserved' => true, 'manual_authority_changed' => false, 'authorizing' => false );
 	}
