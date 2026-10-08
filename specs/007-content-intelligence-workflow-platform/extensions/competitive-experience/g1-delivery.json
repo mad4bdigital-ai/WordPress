@@ -100,6 +100,10 @@
       "sha256": "7b2da3a851fac1f87833f4bff15f263e214b4cdd51bd6e1d0202cdd1ed87ba48"
     },
     {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/native-relation-evidence.py",
+      "sha256": "603de1bbd923d59b13507cd6742110b6424de4d462b40847594ee7a8340d52ea"
+    },
+    {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
       "sha256": "0f5ffa7c82ef8712fb9d54c75e3730e93a7c38f38d7d8fc726e0630eaf2d8142"
     },
@@ -109,7 +113,11 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
-      "sha256": "db7946de683233bcd9f56701274a0e3acaf85477dd2225e47cffb147f50b947d"
+      "sha256": "fd2172079d9a4cf7b5475431a7036ed32651147305aa6e20904874f3e2f8b066"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_native_relation_evidence.py",
+      "sha256": "f3e113cc66f84fcc9c90c386ef591600972962d2e4ce8ce83dc56bfb1c369262"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
@@ -142,6 +150,7 @@
     "Representative Staging runtime must prove bounded discovery against installed providers without executing unknown code or leaking secret values.",
     "Any zero-effect read relied upon for automatic classification must carry a trusted conformance receipt for the exact graph/provider/schema generation.",
     "Browser/operator acceptance must prove workstream/status/evidence-class/runtime-parity filtering, evidence history context, remaining-task drill-down, stale review handling and revision conflict behavior.",
-    "Integration Hub cumulative CI and post-merge Staging acceptance remain required; Production remains unauthorized."
+    "Integration Hub cumulative CI and post-merge Staging acceptance remain required; Production remains unauthorized.",
+    "Native relation snapshot inspection remains non-authorizing and requires independent WPML mapper, provider, translation-group and locale certification before semantic acceptance."
   ]
 }
