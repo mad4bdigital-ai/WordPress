@@ -13,10 +13,19 @@ final class MAD4B_SCP_G9_Read_Surface {
         if ( self::$booted ) return;
         self::$booted = true;
         // Pin one server-owned passive observer; never instantiate a class or
-        // callback from a request or discovered manifest.
-        MAD4B_SCP_Resilience_Context::register_reader( new MAD4B_SCP_G9_Local_Reader() );
+        // callback from a request or discovered manifest. A competing earlier
+        // registration is a boot integrity failure, not a fallback source.
+        $pinned = MAD4B_SCP_Resilience_Context::register_reader( new MAD4B_SCP_G9_Local_Reader() );
+        if ( true !== $pinned ) {
+            // Do not expose a WordPress Ability backed by an untrusted or
+            // unexpected reader. Existing registration is never overwritten.
+            return is_wp_error( $pinned ) ? $pinned : new WP_Error(
+                'mad4b_g9_reader_pin_failed', 'Code-owned G9 passive reader could not be pinned.'
+            );
+        }
         if ( function_exists( 'add_action' ) )
             add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 38 );
+        return true;
     }
 
     public static function register_abilities() {

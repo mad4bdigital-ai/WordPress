@@ -295,7 +295,12 @@ $verified = MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native );
 g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_verified']
     && !$verified['site_local_release_accepted'], 'native receipt is not release acceptance' );
-MAD4B_SCP_G9_Read_Surface::boot();
+// A separately registered test reader must not be silently displaced by
+// WordPress boot. The production read-surface declines to publish abilities
+// when the server-owned reader cannot be pinned.
+g9_denied( MAD4B_SCP_G9_Read_Surface::boot(), 'reader_already_registered' );
+g9_assert( !$GLOBALS['g9_registered_abilities'], 'failed boot never publishes read abilities' );
+// Exercise public read-only schemas separately with the injected test source.
 MAD4B_SCP_G9_Read_Surface::register_abilities();
 g9_assert( count( $GLOBALS['g9_registered_abilities'] ) === 3, 'three read-only abilities' );
 foreach ( $GLOBALS['g9_registered_abilities'] as $ability => $args ) {
