@@ -68,6 +68,10 @@ $GLOBALS['site_plugins'] = array( 'etg-dynamic-filter-seo-bridge/main.php' );
 $GLOBALS['site_network_plugins'] = array( 'network-addon/main.php' => 10 );
 $network = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( in_array( 'network-addon', $network['plugins'], true ), 'multisite network plugin observation' );
+$GLOBALS['site_network_plugins']['etg-dynamic-filter-seo-bridge/main.php'] = 11;
+$duplicate_activation = $c::observe( 'https://staging.egypttourgates.com', $providers );
+expect_site( $duplicate_activation['discovery_complete'] === true &&
+  count( $duplicate_activation['plugin_versions'] ) === 2, 'same exact plugin activated both locally and network-wide is counted once' );
 $GLOBALS['site_network_plugins'] = array();
 $GLOBALS['site_taxonomies'] = array_fill( 0, 97, 'large' );
 $tax = $c::observe( 'https://staging.egypttourgates.com', $providers );
