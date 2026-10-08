@@ -2,6 +2,24 @@
 
 Contract: `mad4b.aci-os.implementation-plan.v1`. All future work starts OPEN; phase names are local to ACI01 and do NOT change Feature 007's frozen release denominator. Implement as child branches integrating into #258 after reviewed exact-head checks; no direct merge to master from an unaccepted slice.
 
+## Normative dynamic planning (supersedes numerical execution order)
+
+The numbered G0–G10 sections **classify acceptance evidence**, not a mandatory sequential Workflow. `task-registry.json` is authoritative for task artifact dependencies, and `acceptance-gates.json` separately defines conditional certification dependencies. The non-authorizing `dynamic_core.py` resolves a candidate subset against current scope, provider capabilities, certified proofs and policy; it never executes or grants. Historical prose that suggests G7 orchestration starts only after content QA is non-normative: journal, budget and CAS must be developed and certified **before** any paid or write effects.
+
+The project remains **DESIGN_REVIEW_REQUIRED** until the criteria in `project-charter.md` are independently reviewed and the exact Python validators are executed. G0's existence as documents does not mean G0 is Done.
+
+Recommended safe parallel tracks after G0's design review:
+- Core job/journal/lease/budget/read-only operator and scope resolution (G7 foundations).
+- Native WPML/typed relations/field ownership inspection (G4).
+- Brand/context/WriterProfile discovery and local semantic profiles (G1).
+- Research source, provider account and evidence contracts on no-charge fixtures (G2).
+- Opportunity graph and blueprint stages after relevant artifacts (G3/G5).
+- Independent writing QA (G6) from approved evidence and contexts, with native relation gate only where applicable.
+- Native/governed publishing (G8) requires exact G7, G6 and conditional G4 certificates, a separate current effective authority and native+browser proofs.
+- Growth experiments (G9) require comparable observations, with release (G10) aggregating exact relevant certificates and owner approval.
+
+The first vertical slice is one site, one locale, one non-paid research fixture, one bounded native relation read, one blueprint and draft and QA review, **zero mutation**. Its STOP conditions include missing brand context, unclear relation policy, unlicensed source, stale generation and forged/missing certified capability.
+
 ## ACI-G0 — Spec integrity and ownership
 Source: this package. Review platform reuse, contract conflicts, immutable boundaries, parent/CE01 crosswalk, task traceability, exact-head ownership, doc/validator acceptance. Exit: fail-closed spec validator + repo code review, no release claim.
 
