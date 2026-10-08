@@ -62,6 +62,37 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         return true;
     }
 
+    /**
+     * Server-keyed transcript head seals the *whole* current message list.
+     * Message AEAD authenticates each item; this separate MAC detects
+     * removal of a final item even when the remaining ciphertexts are valid.
+     * Whole-registry rollback still needs a separate monotonic Staging anchor.
+     */
+    private static function transcript_mac( array $scope, array $thread, array $key ) {
+        $derived = hash_hmac( 'sha256', 'mad4b.g6.transcript-head.v1', $key['secret'], true );
+        return hash_hmac( 'sha256', MAD4B_SCP_G6_Contracts::digest( array(
+            'contract' => 'mad4b.g6.transcript-head.v1',
+            'site_uuid' => $scope['site'], 'owner_user_id' => $scope['owner'],
+            'thread_id' => $thread['thread_id'], 'classification' => $thread['classification'],
+            'expires_at' => $thread['expires_at'], 'deleted' => $thread['deleted'],
+            'messages' => $thread['messages'],
+        ) ), $derived );
+    }
+
+    private static function verify_transcript( array $scope, array $thread, array $key ) {
+        if ( $thread['deleted'] ) return true;
+        if ( ! isset( $thread['sealed_count'], $thread['sealed_mac'], $thread['sealed_key_id'] )
+            || ! is_int( $thread['sealed_count'] ) || ! MAD4B_SCP_G6_Contracts::sha( $thread['sealed_mac'] )
+            || ! is_string( $thread['sealed_key_id'] ) )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_seal_missing', 'Transcript head is missing and requires migration or reconciliation.' );
+        if ( count( $thread['messages'] ) !== $thread['sealed_count'] )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_transcript_truncated', 'Stored message count does not match the authenticated head.' );
+        if ( ! hash_equals( $key['id'], $thread['sealed_key_id'] )
+            || ! hash_equals( self::transcript_mac( $scope, $thread, $key ), $thread['sealed_mac'] ) )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_seal_invalid', 'Transcript head authentication failed.' );
+        return true;
+    }
+
     private static function inspect_thread( array $thread ) {
         return array(
             'thread_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $thread['thread_id'] ),
@@ -84,9 +115,18 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         if ( count( $record['items'] ) > self::MAX_RETIRED_IDENTITIES )
             return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Retained identity capacity exceeded.' );
         $active = 0; $tombstones = 0;
+        $key = null;
         foreach ( $record['items'] as $thread_id => $thread ) {
             $valid = self::valid_thread( $thread_id, $thread );
             if ( is_wp_error( $valid ) ) return $valid;
+            if ( ! $thread['deleted'] ) {
+                if ( null === $key ) {
+                    $key = self::key();
+                    if ( is_wp_error( $key ) ) return $key;
+                }
+                $verified = self::verify_transcript( $scope, $thread, $key );
+                if ( is_wp_error( $verified ) ) return $verified;
+            }
             if ( $thread['deleted'] ) ++$tombstones; else ++$active;
             $threads[] = self::inspect_thread( $thread );
         }
@@ -158,6 +198,10 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         );
         $valid = self::valid_thread( $id, $thread );
         if ( is_wp_error( $valid ) ) return $valid;
+        if ( isset( $items[ $id ] ) && ! $thread['deleted'] ) {
+            $verified = self::verify_transcript( $scope, $thread, $key );
+            if ( is_wp_error( $verified ) ) return $verified;
+        }
         if ( ! empty( $thread['deleted'] ) || $thread['expires_at'] <= $now || $thread['classification'] !== $classification )
             return MAD4B_SCP_G6_Contracts::error( 'vault_thread_ineligible', 'Deleted, expired or reclassified threads cannot be reopened by append.' );
         if ( ! isset( $thread['messages'] ) || ! is_array( $thread['messages'] ) || count( $thread['messages'] ) >= self::MAX_MESSAGES )
@@ -177,6 +221,9 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             'nonce' => base64_encode( $nonce ),
             'ciphertext' => base64_encode( $cipher ),
             'aad_sha256' => hash( 'sha256', $aad ), 'created_at' => $now );
+        $thread['sealed_count'] = count( $thread['messages'] );
+        $thread['sealed_key_id'] = $key['id'];
+        $thread['sealed_mac'] = self::transcript_mac( $scope, $thread, $key );
         $items[ $id ] = $thread;
         $after = MAD4B_SCP_G6_Contracts::save( self::KIND, $scope['owner'], $before, array( 'revision' => $before['revision'], 'items' => $items ) );
         if ( is_wp_error( $after ) ) return $after;
@@ -204,6 +251,8 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         }
         if ( ! is_array( $thread ) || ! empty( $thread['deleted'] ) || $thread['expires_at'] <= time() )
             return MAD4B_SCP_G6_Contracts::error( 'vault_unavailable', 'Thread is missing, expired or deleted.' );
+        $verified = self::verify_transcript( $scope, $thread, $key );
+        if ( is_wp_error( $verified ) ) return $verified;
         $messages = array();
         foreach ( $thread['messages'] as $position => $m ) {
             if ( ! isset( $m['key_id'], $m['id'], $m['nonce'], $m['ciphertext'], $m['aad_sha256'], $m['role'], $m['created_at'] )

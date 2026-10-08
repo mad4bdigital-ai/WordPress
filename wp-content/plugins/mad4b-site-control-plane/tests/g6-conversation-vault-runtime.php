@@ -59,10 +59,10 @@ g6_vault_assert( ! is_wp_error( $export ) && $export['messages'][0]['text'] === 
 $crypto_meta_key = array_keys( $GLOBALS['g6_store'][17] )[0];
 $untampered_record = $GLOBALS['g6_store'][17][$crypto_meta_key];
 $GLOBALS['g6_store'][17][$crypto_meta_key]['items']['private-thread']['messages'][0]['role'] = 'system_note';
-g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_aad_mismatch' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_seal_invalid' );
 $GLOBALS['g6_store'][17][$crypto_meta_key] = $untampered_record;
 $GLOBALS['g6_store'][17][$crypto_meta_key]['items']['private-thread']['messages'][0]['created_at'] += 3600;
-g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_aad_mismatch' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_seal_invalid' );
 $GLOBALS['g6_store'][17][$crypto_meta_key] = $untampered_record;
 unset( $GLOBALS['g6_store'][17][$crypto_meta_key]['items']['private-thread']['messages'][0]['aad_version'] );
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_aad_version_required' );
@@ -78,6 +78,19 @@ g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_vault_corru
 $GLOBALS['g6_store'][17][$meta_key_seq] = $sequence_record;
 $GLOBALS['g6_store'][17][$meta_key_seq]['items']['private-thread']['messages'] = array_reverse( $sequence_record['items']['private-thread']['messages'] );
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_corrupt' );
+$GLOBALS['g6_store'][17][$meta_key_seq] = $sequence_record;
+// A valid prefix of AEAD messages is insufficient: the independently keyed
+// head detects removal of the trailing message, including a forged counter.
+array_pop( $GLOBALS['g6_store'][17][$meta_key_seq]['items']['private-thread']['messages'] );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_vault_transcript_truncated' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_transcript_truncated' );
+$GLOBALS['g6_store'][17][$meta_key_seq]['items']['private-thread']['sealed_count'] = 1;
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_seal_invalid' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( array(
+    'thread_id' => 'private-thread', 'expected_revision' => 2,
+    'classification' => 'internal', 'role' => 'user', 'text' => 'must not append',
+    'retention_days' => 7,
+) ), 'mad4b_g6_vault_seal_invalid' );
 $GLOBALS['g6_store'][17][$meta_key_seq] = $sequence_record;
 $injected = $input; $injected['expected_revision'] = 2; $injected['role'] = 'tool';
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( $injected ), 'mad4b_g6_vault_role' );
@@ -96,7 +109,7 @@ $original_site = $GLOBALS['g6_site']; $GLOBALS['g6_site'] = '88888888-8888-8888-
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_revision_conflict' );
 $GLOBALS['g6_site'] = $original_site;
 putenv( 'MAD4B_G6_VAULT_KEY_BASE64=' . base64_encode( random_bytes( 32 ) ) );
-g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_decrypt_failed' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_seal_invalid' );
 putenv( 'MAD4B_G6_VAULT_KEY_BASE64=' . $key );
 $none = MAD4B_SCP_G6_Conversation_Vault::purge_expired( 2 );
 g6_vault_assert( ! is_wp_error( $none ) && 0 === $none['purged_threads'] && 2 === $none['revision'], 'no-expiry purge is read-only' );
