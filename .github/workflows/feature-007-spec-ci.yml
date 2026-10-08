@@ -62,6 +62,11 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g7-*.php'
 
 permissions:
@@ -337,11 +342,14 @@ jobs:
           set -euo pipefail
           PLUGIN=wp-content/plugins/mad4b-site-control-plane
           php -l "$PLUGIN/mad4b-site-control-plane.php"
-          for source in adaptive-operations-context ownership-reconciliation g7-operator-journal; do
+          for source in adaptive-operations-context ownership-reconciliation g7-operator-journal g7-host-readiness g7-update-acceptance g7-action-center; do
             php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
           done
           php "$PLUGIN/tests/g7-ownership-reconciliation-runtime.php"
           php "$PLUGIN/tests/g7-operator-journal-runtime.php"
+          php "$PLUGIN/tests/g7-update-host-action-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-control-center.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
 
   g5-runtime:
     name: Feature 007 G5 runtime (PHP ${{ matrix.php }})

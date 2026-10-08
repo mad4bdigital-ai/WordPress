@@ -128,6 +128,17 @@ final class MAD4B_SCP_Operator_Workspace {
 			echo '</article>';
 		}
 		echo '</div>';
+		$g7 = isset( $snapshot['g7_action_center'] ) && is_array( $snapshot['g7_action_center'] ) ? $snapshot['g7_action_center'] : array();
+		if ( isset( $g7['contract'] ) && 'mad4b.feature007-g7-action-center.v1' === $g7['contract'] ) {
+			echo '<details class="mad4b-evidence-details"><summary>' . esc_html__( 'G7 governed action policy', 'mad4b-site-control-plane' ) . '</summary>';
+			echo '<p>' . esc_html__( 'Read-only operator projection. No repair, approval, Undo or host action is performed here.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p><strong>' . esc_html__( 'Observed state:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( (string) ( $g7['state'] ?? 'RECONCILIATION_REQUIRED' ) ) . '</code></p>';
+			foreach ( array_slice( isset( $g7['action_items'] ) && is_array( $g7['action_items'] ) ? $g7['action_items'] : array(), 0, 16 ) as $item ) {
+				if ( ! is_array( $item ) ) continue;
+				echo '<p><code>' . esc_html( (string) ( $item['reason'] ?? 'unknown' ) ) . '</code> — ' . esc_html( (string) ( $item['state'] ?? 'RECONCILIATION_REQUIRED' ) ) . '</p>';
+			}
+			echo '<p>' . esc_html__( 'Verified automation rate: unavailable until the eligible workload and readback evidence are measured.', 'mad4b-site-control-plane' ) . '</p></details>';
+		}
 		self::setup_path();
 		self::external_notices();
 		self::capabilities( $adaptive );
