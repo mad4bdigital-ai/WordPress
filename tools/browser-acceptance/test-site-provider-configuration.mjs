@@ -3,10 +3,10 @@ import { resolveEtgBrowserOperatorConfiguration as resolve } from "./site-provid
 
 const base = () => ({
   contract: "mad4b.browser-acceptance-capabilities.v1", read_only: true, authorizing: false,
-  providers: [{ provider_id: "etg-dfsb" }],
+  provider_count: 1, providers: [{ provider_id: "etg-dfsb" }],
   operator_preference: {
     contract: "mad4b.browser-operator-preference.v1", authorizing: false, read_only: true,
-    executor: "auto", profile_id: "", site_provider_id: "",
+    executor: "auto", profile_id: "", site_provider_id: "", preference_valid: true,
     credential_verified: false, external_runner_connected: false, site_provider_registered_by_preference: false
   }
 });
@@ -23,8 +23,8 @@ function denied(mutator, expected, override = args) {
   const x = base(); mutator(x);
   assert.throws(() => resolve(x, override), (err) => err.message === expected);
 }
-denied(x => { x.providers = []; }, "mcp_site_browser_etg_provider_not_registered");
-denied(x => { x.providers.push({ provider_id: "other" }); }, "mcp_site_browser_provider_ambiguous");
+denied(x => { x.providers = []; x.provider_count = 0; }, "mcp_site_browser_etg_provider_not_registered");
+denied(x => { x.providers.push({ provider_id: "other" }); x.provider_count = 2; }, "mcp_site_browser_provider_ambiguous");
 denied(x => { x.operator_preference.site_provider_id = "other"; }, "mcp_site_browser_selected_provider_not_supported_by_etg_driver");
 denied(x => { x.operator_preference.profile_id = "different"; }, "mcp_site_browser_profile_conflicts_with_operator_selection");
 denied(x => { x.operator_preference.executor = "steel"; }, "mcp_site_browser_executor_conflicts_with_operator_selection", { profileId: "tours", requestedExecutor: "cloudflare" });
@@ -33,5 +33,13 @@ denied(x => { delete x.operator_preference; }, "mcp_site_browser_operator_prefer
 denied(x => { x.operator_preference.credential_verified = true; }, "mcp_site_browser_operator_preference_authority_mismatch");
 denied(x => { x.operator_preference.preference_valid = false; }, "mcp_site_browser_operator_preference_invalid");
 denied(x => { x.read_only = false; }, "mcp_site_browser_capabilities_invalid");
-denied(x => { x.operator_preference.site_provider_id = "etg-dfsb"; x.providers.push({provider_id: "other"}); }, "mcp_site_browser_requested_profile_invalid", { profileId: "invalid/profile", requestedExecutor: "auto" });
+denied(x => { x.operator_preference.site_provider_id = "etg-dfsb"; x.providers.push({provider_id: "other"}); x.provider_count = 2; }, "mcp_site_browser_requested_profile_invalid", { profileId: "invalid/profile", requestedExecutor: "auto" });
+denied(x => { delete x.operator_preference.preference_valid; }, "mcp_site_browser_operator_preference_invalid");
+denied(x => { x.operator_preference.preference_valid = "true"; }, "mcp_site_browser_operator_preference_invalid");
+denied(x => { delete x.operator_preference.site_provider_id; }, "mcp_site_browser_selected_provider_invalid");
+denied(x => { delete x.providers; }, "mcp_site_browser_provider_registry_invalid");
+denied(x => { x.providers[0].provider_id = "invalid/id"; }, "mcp_site_browser_provider_registry_invalid");
+denied(x => { x.provider_count = 0; }, "mcp_site_browser_provider_count_mismatch");
+denied(x => { x.providers.push({provider_id: "etg-dfsb"}); x.provider_count = 2; }, "mcp_site_browser_provider_duplicate");
+denied(x => { x.providers[0].capabilities = {error: "provider_capabilities_exception"}; }, "mcp_site_browser_provider_capabilities_unavailable");
 console.log("MAD4B_BROWSER_SITE_CONFIGURATION: PASS");
