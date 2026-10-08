@@ -24,7 +24,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "1e2b0807602e2f9c1fca62f49cc50d4f203cf810e6b0bd70ea4f09a117e8a2f8"
+      "sha256": "5ce5d6db3e1f814b3d062599c9768bab748e6a82301426a68613a631b78ec338"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-experience.php",
@@ -32,7 +32,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php",
-      "sha256": "6b02fa406d91962e84165f51cb92ab9c317d37dc8115cded561521a79a7405a4"
+      "sha256": "e7d8e6e56bc8410b5d0b0cce2a4028d1704601ef4dec07aafe5c5b1c70af16b3"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
