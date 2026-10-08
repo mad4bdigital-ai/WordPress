@@ -24,6 +24,12 @@ check_browser( $pref['executor']==='steel' && !isset($pref['secret']), 'credenti
 foreach (array('credential_verified','external_runner_connected','site_provider_registered_by_preference','authorizing') as $k) check_browser( $pref[$k] === false, 'no false authority' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'auto','profile_id'=>'','site_provider_id'=>'etg-dfsb');
 check_browser( $c::public_selection()['site_provider_id'] === 'etg-dfsb', 'site provider preference projected' );
+check_browser( '' === $c::public_selection()['configuration_revision'], 'legacy preference has no execution revision' );
+$revision='abcdef0123456789abcdef0123456789';
+$GLOBALS['browser_setting'][$c::OPTION] = array('executor'=>'auto','site_provider_id'=>'etg-dfsb','profile_id'=>'tours','configuration_revision'=>$revision);
+check_browser( $c::public_selection()['configuration_revision'] === $revision, 'revision projected exactly' );
+check_browser( is_wp_error( $c::normalize( array('configuration_revision'=>'not-a-revision') ) ), 'invalid revision rejected' );
+check_browser( is_wp_error( $c::normalize( array('configuration_revision'=>array('bad')) ) ), 'array revision rejected' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'auto','site_provider_id'=>'site-a','profile_id'=>'royal');
 check_browser( $c::runtime_target_guard('site-a','royal') === true, 'exact configured target permitted' );
 check_browser( is_wp_error($c::runtime_target_guard('site-b','royal')), 'mismatched selected provider denied' );
