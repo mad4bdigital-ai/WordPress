@@ -24,3 +24,40 @@ For completeness statements, `enumerate(site)` must return a non-authorizing, re
 The index supports `offset` + `expectedSnapshot` for consistent pagination. Its 64-bit checksum is **non-cryptographic continuity only**; it is not an authentication proof, signed receipt, trust level, or authorization grant. Returning to a modified registry with a stale cursor fails closed. Combined capability IDs are deterministically shortened when needed for the bounded WordPress hint schema.
 
 `feature007-manual-preflight.py` now runs this native Node fixture when Node is available; otherwise the case is BLOCKED. The V8 in-process tests do not stand in for Node or for site acceptance.
+
+## Universal remediation proposal (no implicit execution)
+
+`planRemediation({target,discovery,operation_id,requested_effect,desired_state})` produces a CMS-neutral non-authorizing proposal. It pins the same site/environment/origin/generation (and optional WordPress profile), records the proposed effect, lists admission requirements and keeps every candidate `execution_allowed=false`.
+
+For read-only issues, an independent capability/effect proof and scoped readback remain necessary. For any proposed mutation, the proposal requires an **externally verified backup, reviewed reversible action, compensating rollback, consent/authority and independent postcondition**. Production additionally requires separate promotion authority; staging approval is never inherited. The helper does not open an SSH session, use a file manager UI, call host APIs or assert that a backup exists.
+
+### Risk provenance and qualification
+
+Candidate `declared_risk` and `declared_effect` originate from an *untrusted source observation*. A reported `high` or `exceptional` risk, or a `write`/`execute` effect, moves that candidate to exceptional review and excludes it from automatic WordPress hint handoff. Missing risk fields remain `unknown`, never implicitly low. In WordPress, the existing governed Plugin Discovery report is joined by exact plugin main-file/version; the exceptional-risk gate must not be overwritten by a generic lexical relevance score.
+
+### Freshness and catalog integrity
+
+An inspector can return `observed_at` and `valid_until` Unix-second fields. Observations that are expired, future dated outside skew, or longer-lived than the one-day maximum are rejected from candidates and marked `STALE_OR_INVALID_OBSERVATION`. Undated observations remain visible only as unverified metadata, with `freshness_complete=false`. Explicit read authorization and exact site-bound source registry must be checked by the hosting runtime; descriptions are never instructions.
+
+### Example: any site, no vendor-specific branch
+
+```js
+import {discoverFederated, planRemediation} from "./federation.mjs";
+const discovery = await discoverFederated({
+  target: siteBinding, query: "configuration environment",
+  enumerate: siteScopedCatalogReader, inspect: permissionedReadInspector
+});
+const proposal = planRemediation({
+  target: siteBinding, discovery,
+  operation_id: "environment_configuration",
+  requested_effect: "write", desired_state: "staging environment explicit"
+});
+// proposal.execution_allowed is always false.
+// Execution belongs to a different verified, authorized host provider.
+```
+
+Production-safe defaults: no source discovery may mint credentials, call a writer, install a plugin, launch Browser Acceptance or auto-promote a release. These require separate authority, a verified plan and native functional acceptance.
+
+## True completion evidence
+
+Native Node fixture: `node tools/solution-discovery/test-federation.mjs` (included in the exact-source manual preflight); native PHP fixtures under 7.4 and 8.3; real site admission and connected-source registry evidence; current profile/host/permission mapping; a signed or independently verified execution receipt and rollback proof for any actual mutation. V8 structural source checks are valuable but do not certify those requirements.

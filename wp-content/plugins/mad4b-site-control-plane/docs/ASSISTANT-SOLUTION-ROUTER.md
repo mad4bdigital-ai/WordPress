@@ -25,3 +25,9 @@ When there are no candidates, the router distinguishes `INVENTORY_INCOMPLETE_RET
 ## Existing capability graph integration
 
 The separate `mad4b/capability-atlas` read-only Ability composes browser provider declarations and functional plugin-family evidence. The solution Router only discovers **possible** alternatives, including without lexical matches; consumers can compare both projections but MUST NOT promote candidate metadata into certified capabilities or an executor grant. G3 shadow-read and signed manifest flows remain the owners of functional/effect evidence. The isolated native fixture `capability-atlas-contract.php` is now included in `feature007-manual-preflight.py` together with both solution discovery fixtures.
+
+## Risk-aware assistant routing
+
+The router uses the unified risk-enriched plugin inventory from Solution Discovery. This preserves dynamically observed provider risk and coverage states while retaining `execution_allowed=false`. A source or configuration alternative requiring `exceptional` review is not a normal writer, even when its tool name lexically matches the user's task. Missing risk metadata is a blocker to effect qualification, not evidence that a tool is low risk.
+
+The external CMS-neutral catalog bridge `toWordPressRouterInput` accepts hints **only** when target `profile_digest` and `runtime_generation` match the intended planning input; arbitrary other-site catalogs, extra payload fields, URL credentials or dangerous source text are refused. Non-WordPress sites consume `discoverFederated` directly without a WordPress profile requirement.
