@@ -84,15 +84,20 @@ final class MAD4B_SCP_Automation_SLO {
 		}
 		$state = self::state();
 		if ( is_wp_error( $state ) ) return array( 'allowed' => false, 'reason' => $state->get_error_code(), 'authorizing' => false );
+		$now = time();
 		foreach ( $state['tickets'] as $ticket ) {
-			if ( ! is_array( $ticket ) || ! is_int( $ticket['expires_at'] ?? null ) || $ticket['expires_at'] <= time() ) return array( 'allowed' => false, 'reason' => 'expired_automation_outcome_uncertain', 'authorizing' => false );
+			if ( $ticket['started_at'] > $now + 30 || $ticket['expires_at'] > $now + self::TICKET_TTL + 30 )
+				return array( 'allowed' => false, 'reason' => 'clock_skew_requires_reconciliation', 'authorizing' => false );
+			if ( ! is_array( $ticket ) || ! is_int( $ticket['expires_at'] ?? null ) || $ticket['expires_at'] <= $now ) return array( 'allowed' => false, 'reason' => 'expired_automation_outcome_uncertain', 'authorizing' => false );
 			if ( $ticket['provider'] === $provider && $ticket['capability'] === $capability ) return array( 'allowed' => false, 'reason' => 'capability_queue_busy', 'authorizing' => false );
 		}
 		if ( count( $state['tickets'] ) >= self::MAX_QUEUE ) return array( 'allowed' => false, 'reason' => 'site_backpressure', 'authorizing' => false );
 		foreach ( array( 'site' => 24, 'provider:' . $provider => 6, 'capability:' . $provider . ':' . $capability => 3 ) as $scope => $limit ) {
 			$row = $state['buckets'][ $scope ] ?? array( 'started_at' => time(), 'attempts' => 0, 'errors' => 0, 'cooldown_until' => 0 );
 			if ( ! is_array( $row ) || ! is_int( $row['attempts'] ?? null ) || ! is_int( $row['errors'] ?? null ) || ! is_int( $row['cooldown_until'] ?? null ) || ! is_int( $row['started_at'] ?? null ) ) return array( 'allowed' => false, 'reason' => 'budget_metrics_invalid', 'authorizing' => false );
-			if ( $row['cooldown_until'] > time() ) return array( 'allowed' => false, 'reason' => 'error_budget_cooldown', 'scope' => $scope, 'authorizing' => false );
+			if ( $row['started_at'] > $now + 30 || $row['cooldown_until'] > $now + self::WINDOW + self::COOLDOWN + 30 )
+				return array( 'allowed' => false, 'reason' => 'clock_skew_requires_reconciliation', 'scope' => $scope, 'authorizing' => false );
+			if ( $row['cooldown_until'] > $now ) return array( 'allowed' => false, 'reason' => 'error_budget_cooldown', 'scope' => $scope, 'authorizing' => false );
 			if ( $row['started_at'] + self::WINDOW > time() && $row['attempts'] >= $limit ) return array( 'allowed' => false, 'reason' => 'retry_budget_exhausted', 'scope' => $scope, 'authorizing' => false );
 		}
 		return array( 'allowed' => true, 'reason' => 'within_budget', 'state_sha256' => MAD4B_SCP_G8_Record::digest( $state ), 'switch_revision' => $switch['revision'], 'authorizing' => false );
@@ -159,6 +164,9 @@ final class MAD4B_SCP_Automation_SLO {
 		$state = self::state();
 		if ( is_wp_error( $state ) ) return $state;
 		$token = $ticket['token'] ?? '';
+		if ( is_int( $ticket['started_at'] ?? null ) && is_int( $ticket['expires_at'] ?? null )
+			&& ( $ticket['started_at'] > time() + 30 || $ticket['expires_at'] > time() + self::TICKET_TTL + 30 ) )
+			return new WP_Error( 'mad4b_automation_clock_skew_requires_reconciliation', 'Ticket clock moved before its admission time.' );
 		if ( ! is_string( $token ) || ! isset( $state['tickets'][ $token ] ) || serialize( $state['tickets'][ $token ] ) !== serialize( $ticket )
 			|| ! is_int( $ticket['expires_at'] ?? null ) || $ticket['expires_at'] <= time() ) return new WP_Error( 'mad4b_automation_ticket_not_live', 'Automatic ticket expired, changed, or was consumed.' );
 		$runtime = MAD4B_SCP_G8_Record::runtime_binding();
