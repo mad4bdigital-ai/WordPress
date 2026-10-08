@@ -47,3 +47,6 @@ jobs:
           php -l "$PLUGIN/includes/class-mad4b-scp-g8-compatibility-fuzz.php"
           php -l "$PLUGIN/tests/g8-extended-runtime.php"
           php "$PLUGIN/tests/g8-extended-runtime.php"
+          php "$PLUGIN/tests/certification-pack-registry-contract.php"
+          php "$PLUGIN/tests/crypto-profile-runtime.php"
+          php "$PLUGIN/tests/restore-epoch-runtime.php"
