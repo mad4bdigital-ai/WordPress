@@ -181,8 +181,12 @@ final class MAD4B_SCP_Solution_Discovery {
                     // Private registration metadata is not a discovery result.
                     if ( ! method_exists( $ability, 'get_meta' ) ) continue;
                     $meta = $ability->get_meta();
-                    if ( ! is_array( $meta ) || true !== ( $meta['show_in_rest'] ?? false ) ) continue;
-                    $label = $ability->get_label(); $description = $ability->get_description();
+                    if ( ! is_array( $meta ) ) continue;
+                    // Include opaque names for admins; never index or disclose
+                    // private labels or descriptions. Registration != authority.
+                    $public = true === ( $meta['show_in_rest'] ?? false );
+                    $label = $public ? $ability->get_label() : $name;
+                    $description = $public ? $ability->get_description() : '';
                     if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $name );
                     $description = self::safe_text( $description, 180 ) ? $description : '';
                     $rows[] = array( 'id' => 'ability:' . $name, 'label' => $label,
@@ -193,7 +197,7 @@ final class MAD4B_SCP_Solution_Discovery {
         }
         return array( 'rows' => $rows,
             'plugin_inventory_scope' => $plugin_complete ? 'installed_plugins' : 'active_only_fallback',
-            'ability_visibility_scope' => 'show_in_rest_only',
+            'ability_visibility_scope' => 'private_metadata_redacted_admin_only',
             'plugin_inventory_complete' => $plugin_complete && count( $plugins ) <= 240,
             'ability_inventory_complete' => $ability_complete && ( ! isset( $abilities ) || count( $abilities ) <= 240 ) );
     }
@@ -266,7 +270,7 @@ final class MAD4B_SCP_Solution_Discovery {
             'snapshot_sha256' => $snapshot, 'mode' => $input['mode'] ?? 'match',
             'coverage' => array( 'plugin_inventory_complete' => ! empty( $inventory['plugin_inventory_complete'] ),
                 'ability_inventory_complete' => ! empty( $inventory['ability_inventory_complete'] ),
-                'ability_visibility_scope' => 'show_in_rest_only',
+                'ability_visibility_scope' => 'private_metadata_redacted_admin_only',
                 'plugin_inventory_scope' => $inventory['plugin_inventory_scope'] ?? 'unknown',
                 'external_inventory_complete' => false ),
             'total_matches' => count( $candidates ), 'offset' => $offset, 'limit' => $limit,
