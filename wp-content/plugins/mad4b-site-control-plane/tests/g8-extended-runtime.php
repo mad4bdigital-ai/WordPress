@@ -164,4 +164,30 @@ $GLOBALS['g8_environment'] = 'production';
 $live = MAD4B_SCP_G8_Capability_Convergence::live_acceptance();
 g8_check( false === $live['release_acceptance'], 'Production cannot gain auto acceptance' );
 
+// Distinct providers fill the bounded queue; failures trigger site cooldown.
+$GLOBALS['g8_environment'] = 'staging';
+$switch = MAD4B_SCP_Automation_SLO::switch_status();
+g8_check( true === MAD4B_SCP_Automation_SLO::change_switch( '*', false, $switch['revision'] ), 'SLO storm fixture resume' );
+$queued = array();
+for ( $i = 0; $i < 4; ++$i ) {
+	$ticket = MAD4B_SCP_Automation_SLO::reserve( 'test-provider-' . $i, 'probe', str_repeat( 'e', 64 ) );
+	g8_check( is_array( $ticket ), 'bounded queue accepts four distinct scopes' );
+	$queued[] = $ticket;
+}
+$overflow = MAD4B_SCP_Automation_SLO::reserve( 'test-provider-fifth', 'probe', str_repeat( 'e', 64 ) );
+g8_check( g8_is_error( $overflow, 'mad4b_automation_site_backpressure' ), 'queue storm is isolated and bounded' );
+foreach ( $queued as $ticket ) {
+	g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $ticket, new WP_Error( 'simulated_failure' ) ), 'fault outcome persisted' );
+}
+$cooldown = MAD4B_SCP_Automation_SLO::admission( 'fresh-provider', 'probe' );
+g8_check( 'error_budget_cooldown' === $cooldown['reason'] && 'site' === $cooldown['scope'],
+	'failure storm enforces shared site error budget' );
+$option = MAD4B_SCP_Automation_SLO::OPTION;
+$old_metrics = $GLOBALS['g8_options'][ $option ];
+$broken = $old_metrics; $broken['eligible_workload_count'] = 'invalid';
+$GLOBALS['g8_options'][ $option ] = $broken;
+$lost = MAD4B_SCP_Automation_SLO::admission( 'fresh-provider', 'probe' );
+g8_check( 'mad4b_automation_metrics_lost' === $lost['reason'], 'telemetry tampering must fail closed' );
+$GLOBALS['g8_options'][ $option ] = $old_metrics;
+
 echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
