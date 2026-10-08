@@ -106,7 +106,7 @@ try {
   }
 
   const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8"));
-  const result = await submitBrowserEvidence(session, plan, evidence);
+  const result = await submitBrowserEvidence(session, plan, evidence, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" });
   assertEtgBrowserResultBinding(plan, result);
   // A changed administrator preference invalidates the local execution receipt.
   const postExecution = resolveEtgBrowserOperatorConfiguration(
