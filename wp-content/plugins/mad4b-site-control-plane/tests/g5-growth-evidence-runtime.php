@@ -29,6 +29,8 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 	public $payload_reads = 0;
 	public $certificate_expires_at = null;
 	public $expire_during_read = false;
+	public $expire_first_in_batch = false;
+	public $delay_second_in_batch = false;
 	public function descriptor() {
 		return array(
 			'contract' => MAD4B_SCP_G5_External_Providers::CONTRACT,
@@ -69,6 +71,7 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 	public function read_observation( $observation_id, array $authorized_scope ) {
 		++$this->payload_reads;
 		if ( $this->expire_during_read ) sleep( 3 );
+		if ( $this->delay_second_in_batch && 'f' === substr( $observation_id, 0, 1 ) ) sleep( 3 );
 		if ( $authorized_scope !== $this->scope_value() ) return new WP_Error( 'fixture_scope_mismatch' );
 		$currency = substr( $observation_id, 0, 1 ) === 'f' ? 'EUR' : 'USD';
 		return array(
@@ -80,7 +83,7 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 			'privacy_class' => 'aggregate_only',
 			'scope' => $this->scope_value(),
 			'observed_at' => time() - 60,
-			'valid_until' => time() + 600,
+			'valid_until' => $this->expire_first_in_batch && 'a' === substr( $observation_id, 0, 1 ) ? time() + 2 : time() + 600,
 			'source_sha256' => str_repeat( '1', 64 ),
 			'storage_region' => 'us',
 			'dimensions' => array(
@@ -147,5 +150,20 @@ mad4b_g5_growth_assert(
 );
 $GLOBALS['g5_adapter']->expire_during_read = false;
 $GLOBALS['g5_adapter']->certificate_expires_at = null;
+
+// The first observation may expire while a later retained read runs. Per-row
+// normalization alone must not let an expired row escape inside a valid batch.
+$GLOBALS['g5_adapter']->expire_first_in_batch = true;
+$GLOBALS['g5_adapter']->delay_second_in_batch = true;
+$expired_in_batch = MAD4B_SCP_G5_Growth_Evidence::preview( array( 'observation_refs' => array(
+	array( 'provider_id' => 'ga4', 'observation_id' => str_repeat( 'a', 64 ) ),
+	array( 'provider_id' => 'ga4', 'observation_id' => str_repeat( 'f', 64 ) ),
+) ) );
+mad4b_g5_growth_assert(
+	is_wp_error( $expired_in_batch ) && 'mad4b_g5_observation_stale_or_rights_denied' === $expired_in_batch->get_error_code(),
+	'expired earlier evidence must not escape a multi-observation preview'
+);
+$GLOBALS['g5_adapter']->expire_first_in_batch = false;
+$GLOBALS['g5_adapter']->delay_second_in_batch = false;
 
 echo "mad4b.feature007-g5-growth-observation.v1: PASS\n";
