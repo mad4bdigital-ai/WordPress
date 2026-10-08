@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 309,
+  "changed_file_count": 300,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -526,13 +526,24 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-operator-workspace.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-read-work-operations.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-task-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-task-journal-bridge.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-convergence-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-operator-workspace-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-read-work-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-read-work-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-task-journal-bridge-runtime.php"
+      ]
+    },
+    {
+      "id": "concurrent-durable-operation-journal-source-20261008",
+      "semantic_unit": "Track shared durable operation journal changes independently of assistant planning and queue extension",
+      "revert_boundary": "Journal governance, atomic event writes and restoration semantics remain with the existing durable operation owner; no extension of executor authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php"
       ]
     }
   ],
-  "changed_paths_sha256": "7281a7d400e1a699cd6e51360fd81676b14bf5cfec9c94464eab989bd89e3367",
+  "changed_paths_sha256": "aceaab814451c19d3c44085810535ef89de6deb5e2e084060ef2a9cc0771eb17",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
