@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 315,
+  "changed_file_count": 318,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -553,8 +553,19 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority-convergence.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-postcondition-runtime.php"
       ]
+    },
+    {
+      "id": "evidence-backed-core-task-status-20261008",
+      "semantic_unit": "Close individually verified historical Feature 007 canonicalization tasks using GitHub evidence while preserving independent optional extension release gates",
+      "revert_boundary": "Revert task checkboxes, exact evidence overrides and deterministic generated ledger together; never promote unverified runtime/browser/authority tasks",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/task-ledger-overrides.json",
+        "specs/007-content-intelligence-workflow-platform/task-ledger.generated.json",
+        "specs/007-content-intelligence-workflow-platform/tasks.md"
+      ]
     }
   ],
-  "changed_paths_sha256": "2dbefaf5429675ca11e1bb798b7c1c82afe085711bf71f631b836cc433d8403e",
+  "changed_paths_sha256": "777ebc362484ad108f1e126b6cb9df1a47e6c24f6525d1d029f2dbdc39195d68",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
