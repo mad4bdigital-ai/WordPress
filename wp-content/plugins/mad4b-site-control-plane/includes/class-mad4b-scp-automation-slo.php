@@ -210,7 +210,8 @@ final class MAD4B_SCP_Automation_SLO {
 		if ( is_int( $ticket['started_at'] ?? null ) && is_int( $ticket['expires_at'] ?? null )
 			&& ( $ticket['started_at'] > time() + 30 || $ticket['expires_at'] > time() + self::TICKET_TTL + 30 ) )
 			return new WP_Error( 'mad4b_automation_clock_skew_requires_reconciliation', 'Ticket clock moved before its admission time.' );
-		if ( ! is_string( $token ) || ! isset( $state['tickets'][ $token ] ) || serialize( $state['tickets'][ $token ] ) !== serialize( $ticket )
+		if ( ! is_string( $token ) || ! MAD4B_SCP_G8_Record::inert( $ticket )
+			|| ! isset( $state['tickets'][ $token ] ) || serialize( $state['tickets'][ $token ] ) !== serialize( $ticket )
 			|| ! is_int( $ticket['expires_at'] ?? null ) || $ticket['expires_at'] <= time() ) return new WP_Error( 'mad4b_automation_ticket_not_live', 'Automatic ticket expired, changed, or was consumed.' );
 		$runtime = MAD4B_SCP_G8_Record::runtime_binding();
 		if ( is_wp_error( $runtime ) || ! is_string( $ticket['runtime_binding'] ?? null ) || ! hash_equals( $ticket['runtime_binding'], $runtime ) )
@@ -252,7 +253,9 @@ final class MAD4B_SCP_Automation_SLO {
 	 */
 	public static function local_causal_receipt( array $ticket, array $checkpoint ) {
 		$slice = $checkpoint['g8_current_slice_changed_safe_phases'] ?? null;
-		if ( ! is_string( $ticket['token'] ?? null ) || ! is_string( $ticket['generation'] ?? null )
+		if ( ! MAD4B_SCP_G8_Record::inert( $ticket )
+			|| ! MAD4B_SCP_G8_Record::inert( $checkpoint )
+			|| ! is_string( $ticket['token'] ?? null ) || ! is_string( $ticket['generation'] ?? null )
 			|| ! is_string( $ticket['runtime_binding'] ?? null )
 			|| ! is_array( $ticket['restore_binding'] ?? null )
 			|| ! is_array( $checkpoint['target_identity'] ?? null )
@@ -344,7 +347,11 @@ final class MAD4B_SCP_Automation_SLO {
 		$before = MAD4B_SCP_G8_Record::read( self::OPTION ); $state = self::state();
 		if ( is_wp_error( $state ) ) return $state;
 		$token = $ticket['token'] ?? '';
-		if ( ! isset( $state['tickets'][ $token ] ) || serialize( $state['tickets'][ $token ] ) !== serialize( $ticket ) || $ticket['profile_digest'] !== MAD4B_SCP_G8_Record::profile() ) return new WP_Error( 'mad4b_automation_ticket_stale', 'Automatic outcome is stale, foreign or already consumed.' );
+		if ( ! MAD4B_SCP_G8_Record::inert( $ticket )
+			|| ! is_string( $token ) || ! isset( $state['tickets'][ $token ] )
+			|| serialize( $state['tickets'][ $token ] ) !== serialize( $ticket )
+			|| ! is_string( $ticket['profile_digest'] ?? null )
+			|| $ticket['profile_digest'] !== MAD4B_SCP_G8_Record::profile() ) return new WP_Error( 'mad4b_automation_ticket_stale', 'Automatic outcome is stale, foreign or already consumed.' );
 		$runtime_binding = MAD4B_SCP_G8_Record::runtime_binding();
 		if ( is_wp_error( $runtime_binding ) || ! hash_equals( $ticket['runtime_binding'], $runtime_binding ) ) return new WP_Error( 'mad4b_automation_runtime_changed', 'Automatic outcome belongs to a different runtime; reconciliation is required.' );
 		if ( $ticket['expires_at'] <= time() ) return new WP_Error( 'mad4b_automation_outcome_uncertain', 'Expired automatic work requires reconciliation before retry.' );
