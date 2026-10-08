@@ -17,7 +17,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	}
 
 	public static function normalize( $input ) {
-		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'executor', 'profile_id', 'site_provider_id' ) ) )
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'executor', 'profile_id', 'site_provider_id', 'configuration_revision' ) ) )
 			return new WP_Error( 'mad4b_browser_setup_unexpected_fields', 'Secret, script, URL and unsupported fields are not accepted.' );
 		$executor = isset( $input['executor'] ) ? $input['executor'] : 'auto';
 		$profile = isset( $input['profile_id'] ) ? $input['profile_id'] : '';
@@ -28,12 +28,15 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			return new WP_Error( 'mad4b_browser_setup_invalid_profile', 'Invalid site-specific acceptance profile ID.' );
 		if ( ! is_string( $site_provider ) || strlen( $site_provider ) > 64 || ( '' !== $site_provider && ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $site_provider ) ) )
 			return new WP_Error( 'mad4b_browser_setup_invalid_site_provider', 'Invalid acceptance provider ID.' );
-		return array( 'executor' => $executor, 'profile_id' => $profile, 'site_provider_id' => $site_provider );
+		$revision = isset( $input['configuration_revision'] ) ? $input['configuration_revision'] : '';
+		if ( ! is_string( $revision ) || ( '' !== $revision && ! preg_match( '/^[a-f0-9]{32}$/D', $revision ) ) )
+			return new WP_Error( 'mad4b_browser_setup_revision_invalid', 'Invalid saved operator configuration revision.' );
+		return array( 'executor' => $executor, 'profile_id' => $profile, 'site_provider_id' => $site_provider, 'configuration_revision' => $revision );
 	}
 
 	public static function selection() {
 		$stored = get_option( self::OPTION, array() );
-		$known = is_array( $stored ) ? array_intersect_key( $stored, array_flip( array( 'executor', 'profile_id', 'site_provider_id' ) ) ) : array();
+		$known = is_array( $stored ) ? array_intersect_key( $stored, array_flip( array( 'executor', 'profile_id', 'site_provider_id', 'configuration_revision' ) ) ) : array();
 		$valid = self::normalize( $known );
 		return is_wp_error( $valid ) ? array( 'executor' => 'auto', 'profile_id' => '', 'site_provider_id' => '' ) : $valid;
 	}
@@ -60,6 +63,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			'executor' => $value['executor'],
 			'profile_id' => $value['profile_id'],
 			'site_provider_id' => $value['site_provider_id'],
+			'configuration_revision' => $value['configuration_revision'],
 			'credential_verified' => false,
 			'external_runner_connected' => false,
 			'site_provider_registered_by_preference' => false,
@@ -93,7 +97,11 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			'site_provider_id' => isset( $_POST['site_provider_id'] ) ? wp_unslash( $_POST['site_provider_id'] ) : '',
 		) );
 		if ( is_wp_error( $value ) ) wp_die( esc_html( $value->get_error_message() ), '', array( 'response' => 400 ) );
-		update_option( self::OPTION, $value, false );
+		// A fresh unique revision on every save prevents silent A→B→A reuse.
+		try { $value['configuration_revision'] = bin2hex( random_bytes( 16 ) ); }
+		catch ( Throwable $error ) { wp_die( 'Secure configuration revision generation failed.', '', array( 'response' => 503 ) ); }
+		if ( ! update_option( self::OPTION, $value, false ) )
+			wp_die( 'Operator preference persistence could not be verified.', '', array( 'response' => 503 ) );
 		wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ), 303 );
 		exit;
 	}
@@ -108,6 +116,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'There are TWO independent provider types: a site-specific WordPress acceptance provider that signs plans/reduces evidence; and an external browser execution service. Saving a preference neither registers a WordPress provider nor configures credentials.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( empty( $operator_status['configuration_revision'] ) ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'External browser execution requires a configuration revision. Save the operator preference once to activate exact-revision checks.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( empty( $operator_status['preference_valid'] ) ) echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Stored browser selection is invalid. Browser acceptance and queued browser execution are blocked until this administrator re-saves an approved site provider, profile and executor preference.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Preference saved; execution and browser acceptance remain separately unverified.', 'mad4b-site-control-plane' ) . '</p></div>';
