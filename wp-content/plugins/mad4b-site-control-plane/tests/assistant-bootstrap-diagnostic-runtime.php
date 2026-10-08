@@ -60,7 +60,9 @@ check_case( 'restore epoch missing reports blocker', in_array( 'mad4b_adaptive_r
 check_case( 'restore anchor never auto initialized', !$third['restore_initialization_performed'] && !$third['preview_eligible'] );
 MAD4B_SCP_Adaptive_Operations_Context::$result = array( 'contract' => 'mad4b.adaptive-operations-context.v1' );
 $ready = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
-check_case( 'verified runtime binding enables preview only', $ready['preview_eligible'] && !$ready['ready_for_mutation'] && !$ready['authorizing'] );
+check_case( 'runtime binding alone cannot authorize preview without native registration',
+    $ready['exact_runtime_evidence_ready'] && !$ready['preview_eligible']
+    && !$ready['ready_for_mutation'] && !$ready['authorizing'] );
 check_case( 'no grants or installers from bootstrap diagnostic', !$ready['write_grants_created'] && !$ready['automatic_install_allowed'] );
 $before = MAD4B_SCP_Adaptive_Operations_Context::$calls;
 $invalid = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status( array( 'approve' => true ) );
