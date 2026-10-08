@@ -346,6 +346,27 @@ scenario( 'domain_market_claim_readback_proves_ownership_and_flags_legacy', stat
 	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'legacy-no-claim', null, array( 'profile' => $old_plan['profile'], 'plan_sha256' => $old_plan['plan_sha256'] ), 'SEARCH_PROFILE_CHANGED' ), 'persist historical profile without new claim' );
 	$legacy = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'legacy-no-claim' ) ), 'legacy profile verification' );
 	check( $legacy['valid'] && 2 === $legacy['legacy_unclaimed_market_count'] && ! $legacy['market_claims_certified'], 'legacy market identities are flagged, never falsely certified' );
+	$legacy_edit = array( 'profile' => array_intersect_key( MAD4B_SCP_Search_Context::profile( 'legacy-no-claim' ), array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) ), 'expected_revision' => 1 );
+	$adopt_plan = ok( MAD4B_SCP_Search_Context::plan( $legacy_edit ), 'legacy profile adoption preflight checks peer identity' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $legacy_edit, array( 'plan_sha256' => $adopt_plan['plan_sha256'] ) ) ), 'same owner adopts historical markets without retargeting or spend changes' );
+	$claimed = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'legacy-no-claim' ) ), 'post-migration exact readback' );
+	check( $claimed['valid'] && $claimed['market_claims_certified'] && 0 === $claimed['legacy_unclaimed_market_count'], 'historical identity adoption uses owned immutable claims' );
+} );
+scenario( 'legacy_duplicate_market_ids_are_quarantined_before_adoption', static function () {
+	$first = asi_profile( 'legacy-peer-one' ); $first['markets'][0]['id'] = 'shared-old-id'; $first['markets'][1]['id'] = 'old-one-only';
+	$second = asi_profile( 'legacy-peer-two' ); $second['markets'][0]['id'] = 'shared-old-id'; $second['markets'][1]['id'] = 'old-two-only';
+	$p1 = ok( MAD4B_SCP_Search_Context::plan( array( 'profile' => $first, 'expected_revision' => 0 ) ), 'historical first normalization' );
+	$p2 = ok( MAD4B_SCP_Search_Context::plan( array( 'profile' => $second, 'expected_revision' => 0 ) ), 'historical second normalization' );
+	// Seed pre-upgrade history directly; the new runtime must *detect*, not
+	// silently select one owner or rewrite data when identities collide.
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'legacy-peer-one', null, array( 'profile' => $p1['profile'], 'plan_sha256' => $p1['plan_sha256'] ), 'PROFILE_SEEDED' ), 'historical profile one' );
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'legacy-peer-two', null, array( 'profile' => $p2['profile'], 'plan_sha256' => $p2['plan_sha256'] ), 'PROFILE_SEEDED' ), 'historical profile two' );
+	ok( MAD4B_SCP_Search_Store::cas( 'registry', 'profiles', null, array( 'ids' => array( 'legacy-peer-one', 'legacy-peer-two' ) ), 'PROFILE_ADMITTED' ), 'historical registry' );
+	$first_input = array( 'profile' => $first, 'expected_revision' => 1 );
+	$second_input = array( 'profile' => $second, 'expected_revision' => 1 );
+	denied( MAD4B_SCP_Search_Context::plan( $first_input ), 'market_identity_conflict', 'duplicate old ID denies first-side adoption' );
+	denied( MAD4B_SCP_Search_Context::plan( $second_input ), 'market_identity_conflict', 'duplicate old ID denies second-side adoption' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'shared-old-id' ), 'no arbitrary owner selected for historical collision' );
 } );
 scenario( 'domain_market_claim_reservation_survives_partial_profile_commit', static function () {
 	$raw = asi_profile( 'pending-domain-profile' ); $raw['markets'][0]['id'] = 'pending-metro'; $raw['markets'][1]['id'] = 'pending-second';
