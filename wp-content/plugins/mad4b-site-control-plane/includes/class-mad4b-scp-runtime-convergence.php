@@ -1278,6 +1278,23 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
 		if ( ! is_string( $ticket['generation'] ?? null ) || ! hash_equals( $generation, $ticket['generation'] ) )
 			return new WP_Error( 'mad4b_automation_checkpoint_generation_drift', 'Automatic worker checkpoint changed after admission.' );
+		// Re-read the checkpoint on every mutation boundary, not just at the
+		// Cron entrypoint. A concurrent owner/worker pause must revoke this
+		// ticket even if the package target hash is unchanged.
+		$gate = self::automatic_checkpoint_gate( $checkpoint );
+		if ( true !== $gate['checkpoint_schedulable'] ) {
+			// The final safe-phase checkpoint is terminal BEFORE late local
+			// version markers are written. Only the exact ticket that wrote
+			// this completed checkpoint can finish its own metadata slice.
+			$completion_owner = is_array( $checkpoint ) && 'completed' === ( $checkpoint['state'] ?? '' )
+				&& is_string( $ticket['token'] ?? null )
+				&& is_string( $checkpoint['g8_completion_ticket_sha256'] ?? null )
+				&& hash_equals( hash( 'sha256', $ticket['token'] ), $checkpoint['g8_completion_ticket_sha256'] )
+				&& is_string( $checkpoint['g8_completion_generation'] ?? null )
+				&& hash_equals( $ticket['generation'], $checkpoint['g8_completion_generation'] );
+			if ( ! $completion_owner )
+				return new WP_Error( 'mad4b_automation_checkpoint_not_schedulable', 'Current checkpoint is paused, terminal or reserved for manual reconciliation.' );
+		}
 		return true;
 	}
 
@@ -1495,6 +1512,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 				// and version writes; otherwise the last ticket fence would lose
 				// the reference needed to reject a mid-slice runtime change.
 				'target_identity' => is_array( $existing_checkpoint['target_identity'] ?? null ) ? $existing_checkpoint['target_identity'] : array(),
+				'g8_completion_ticket_sha256' => null !== $automatic_ticket && is_string( $automatic_ticket['token'] ?? null )
+					? hash( 'sha256', $automatic_ticket['token'] ) : '',
+				'g8_completion_generation' => null !== $automatic_ticket && is_string( $automatic_ticket['generation'] ?? null )
+					? $automatic_ticket['generation'] : '',
 				'changed_safe_phases' => $changed,
 				'required_blockers' => isset( $status['required_blockers'] ) ? $status['required_blockers'] : array(),
 				'continuation' => $final_continuation,
