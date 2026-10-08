@@ -8,6 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_G7_Read_Surfaces {
     const CONTRACT = 'mad4b.feature007-g7-read-surfaces.v1';
+    const MAX_EVIDENCE_NODES = 192;
+    const MAX_EVIDENCE_BYTES = 32768;
+    const MAX_EVIDENCE_DEPTH = 10;
 
     public static function boot() {
         if ( function_exists( 'add_action' ) ) {
@@ -68,7 +71,9 @@ final class MAD4B_SCP_G7_Read_Surfaces {
     public static function compare( $input = array() ) {
         if ( ! is_array( $input ) || count( $input ) !== 2 ||
             ! isset( $input['before'], $input['after'] ) ||
-            ! is_array( $input['before'] ) || ! is_array( $input['after'] ) ) {
+            ! is_array( $input['before'] ) || ! is_array( $input['after'] ) ||
+            ! self::bounded_observation( $input['before'] ) ||
+            ! self::bounded_observation( $input['after'] ) ) {
             return self::error( 'comparison_input_invalid' );
         }
         return class_exists( 'MAD4B_SCP_G7_Update_Acceptance' )
@@ -99,12 +104,46 @@ final class MAD4B_SCP_G7_Read_Surfaces {
     public static function release( $input = array() ) {
         if ( ! is_array( $input ) || count( $input ) !== 2 ||
             ! isset( $input['before'], $input['after'] ) ||
-            ! is_array( $input['before'] ) || ! is_array( $input['after'] ) ) {
+            ! is_array( $input['before'] ) || ! is_array( $input['after'] ) ||
+            ! self::bounded_observation( $input['before'] ) ||
+            ! self::bounded_observation( $input['after'] ) ) {
             return self::error( 'release_audit_input_invalid' );
         }
         return class_exists( 'MAD4B_SCP_G7_Release_Acceptance_Audit' )
             ? MAD4B_SCP_G7_Release_Acceptance_Audit::assess( $input['before'], $input['after'] )
             : self::error( 'release_audit_unavailable' );
+    }
+
+    /**
+     * Fail closed on untrusted nested evidence BEFORE MAC/JSON canonicalization.
+     * The native capture envelopes have low depth and size; authorization is
+     * never derived from passing these resource-budget checks.
+     */
+    private static function bounded_observation( array $observation ) {
+        $stack = array( array( $observation, 0 ) );
+        $nodes = 0; $bytes = 0;
+        while ( ! empty( $stack ) ) {
+            $entry = array_pop( $stack );
+            $value = $entry[0]; $depth = $entry[1];
+            if ( ++$nodes > self::MAX_EVIDENCE_NODES || $depth > self::MAX_EVIDENCE_DEPTH ) return false;
+            if ( is_array( $value ) ) {
+                if ( count( $value ) > self::MAX_EVIDENCE_NODES ) return false;
+                foreach ( $value as $key => $item ) {
+                    if ( is_string( $key ) ) {
+                        $bytes += strlen( $key );
+                        if ( strlen( $key ) > 191 || $bytes > self::MAX_EVIDENCE_BYTES ) return false;
+                    }
+                    $stack[] = array( $item, $depth + 1 );
+                    if ( count( $stack ) > self::MAX_EVIDENCE_NODES ) return false;
+                }
+            } elseif ( is_string( $value ) ) {
+                $bytes += strlen( $value );
+                if ( strlen( $value ) > 4096 || $bytes > self::MAX_EVIDENCE_BYTES ) return false;
+            } elseif ( ! is_int( $value ) && ! is_bool( $value ) && null !== $value ) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function empty_input( $input ) {

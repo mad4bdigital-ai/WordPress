@@ -228,8 +228,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
-      "sha256": "47a862aa669f6cbe3db6ef13bfa6ac23620ab7465cb0b60e84330e0a2c4457fa",
-      "bytes": 6409
+      "sha256": "44a87917d67d8596ed5c17ba032c638014e7562f6b34f4b7b3d0de5658541369",
+      "bytes": 8318
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
@@ -273,8 +273,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",
-      "sha256": "e0c1372d955270c8ba48e411f6d29173e83999a9dbc50fda9562fe5e4fed0858",
-      "bytes": 4479
+      "sha256": "158e5cdba9599fe308be93d9cd060e211743df66052943981796a29a1f241abf",
+      "bytes": 5336
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php",

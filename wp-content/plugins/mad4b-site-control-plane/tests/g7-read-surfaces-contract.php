@@ -45,6 +45,14 @@ g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::host( array( 'install' => true ) )
 g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::update( array( 'run' => true ) ) ), 'no update execution' );
 g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::compare( array( 'before' => array() ) ) ), 'complete comparison input required' );
 g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::compare( array( 'before' => array(), 'after' => array(), 'authorize' => true ) ) ), 'no injected authorization field' );
+$huge = array( 'sealed_observation' => array( 'material' => array( 'unsafe' => str_repeat( 'x', 32769 ) ) ) );
+g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::compare( array( 'before' => $huge, 'after' => array() ) ) ), 'comparison bounded before native verification' );
+g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::release( array( 'before' => array(), 'after' => $huge ) ) ), 'release input size bounded' );
+$nested = array();
+for ( $i = 0; $i < 12; $i++ ) $nested = array( 'level' => $nested );
+g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::compare( array( 'before' => $nested, 'after' => array() ) ) ), 'deep evidence rejected' );
+$objects = array( 'sealed_observation' => (object) array( 'material' => array() ) );
+g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::release( array( 'before' => $objects, 'after' => array() ) ) ), 'non-JSON objects denied' );
 $comparison = MAD4B_SCP_G7_Read_Surfaces::compare( array( 'before' => array(), 'after' => array() ) );
 g7r( ! is_wp_error( $comparison ) && false === $comparison['authorizing'], 'comparison stays non-authorizing' );
 $action = MAD4B_SCP_G7_Read_Surfaces::action();
