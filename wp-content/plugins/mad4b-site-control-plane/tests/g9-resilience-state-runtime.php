@@ -100,13 +100,14 @@ class MAD4B_SCP_Staging_Write_Authority {
     public static $snapshot_current = true;
     public static $ready_override = null;
     public static $deny_on_call = 0;
+    public static $spoof_ready_on_call = 0;
     public static $revoke_generation_on_call = 0;
     public static function current_execution_readiness() {
         self::$call_count++;
         if ( self::$revoke_generation_on_call === self::$call_count )
             MAD4B_SCP_Runtime_Generation_Fence::$revoked = true;
         $ready = self::$deny_on_call !== self::$call_count;
-        return array( 'ready'=>self::$ready_override === null ? $ready : self::$ready_override, 'current_grant_snapshot_ready'=>$ready && self::$snapshot_current,
+        return array( 'ready'=>self::$spoof_ready_on_call === self::$call_count ? 'false' : ( self::$ready_override === null ? $ready : self::$ready_override ), 'current_grant_snapshot_ready'=>$ready && self::$snapshot_current,
             'candidate_binding_match'=>$ready,
             'grant_rows_fingerprint'=>hash( 'sha256', 'grants' ) );
     }
@@ -256,6 +257,12 @@ g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'runtime_package_unveri
 MAD4B_SCP_Live_Acceptance_Observer::$full_valid = true;
 $bad = $plan; $bad['expires_at']++;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $bad ), 'plan_tampered' );
+// A self-consistent digest is not a substitute for a typed plan schema.
+// Invalid preview digests must return a denial, never a PHP TypeError.
+$bad = $plan; $bad['preview_sha256'] = array( 'unexpected' );
+unset( $bad['plan_sha256'] );
+$bad['plan_sha256'] = MAD4B_SCP_Resilience_Context::digest( $bad );
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $bad ), 'plan_superseded' );
 MAD4B_SCP_Policy::$mutable = new WP_Error( 'blocked', 'deny' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'execution_authority_unavailable' );
 MAD4B_SCP_Policy::$mutable = true;
@@ -265,6 +272,17 @@ MAD4B_SCP_Authorization::$admitted = true;
 MAD4B_SCP_Authorization::$invalid_claim = true;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'not_admitted' );
 MAD4B_SCP_Authorization::$invalid_claim = false;
+// The capture may be valid, yet the second same-cycle grant read can return
+// a non-boolean, truthy "false". Reject it before creating any external scope.
+MAD4B_SCP_Staging_Write_Authority::$spoof_ready_on_call =
+    MAD4B_SCP_Staging_Write_Authority::$call_count + 2;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'grants_stale' );
+MAD4B_SCP_Staging_Write_Authority::$spoof_ready_on_call = 0;
+// The admission read may be valid while the under-lock read is spoofed.
+MAD4B_SCP_Staging_Write_Authority::$spoof_ready_on_call =
+    MAD4B_SCP_Staging_Write_Authority::$call_count + 3;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'grants_changed_before_cas' );
+MAD4B_SCP_Staging_Write_Authority::$spoof_ready_on_call = 0;
 // Revoke exact current authority between first grant check and locked
 // external CAS. Neither reservation nor provider dispatch is permitted.
 // Cause generation drift after plan read but before external CAS.
