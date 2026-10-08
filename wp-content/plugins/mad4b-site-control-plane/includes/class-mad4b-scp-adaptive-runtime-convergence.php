@@ -189,13 +189,16 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	 * the bounded worker; no read path dispatches jobs, repairs or grants.
 	 * Only known states can claim a safe lane; unknown states fail closed.
 	 */
-	public static function remediation_lane( array $capability, $current ) {
+	public static function remediation_lane( array $capability, $current, $worker_available = false ) {
 		$state = isset( $capability['state'] ) && is_string( $capability['state'] ) ? $capability['state'] : 'ISOLATED';
 		$action = isset( $capability['next_action'] ) && is_string( $capability['next_action'] ) ? $capability['next_action'] : '';
 		$lane = 'REVIEW_REQUIRED';
 		if ( ! $current || 'STALE_OBSERVATION' === $state ) {
-			$lane = 'SAFE_AUTO_OBSERVATION';
-			$action = 'await_current_provider_observation';
+			// Stale evidence does not imply an automatic worker can run.
+			// A disabled scheduler, Production site or terminal worker failure
+			// must never be represented as safe automatic recovery.
+			$lane = $worker_available ? 'SAFE_AUTO_OBSERVATION' : 'REVIEW_REQUIRED';
+			$action = $worker_available ? 'await_current_provider_observation' : 'inspect_observation_eligibility';
 		} elseif ( 'READ_COMPATIBLE' === $state || 'ACTIVE' === $state ) {
 			$lane = 'NO_OP';
 			$action = '';
@@ -224,6 +227,8 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) return false;
 		$current = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		return ! empty( $current['runtime_manifest_match'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', (string) ( $current['source_commit_sha'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $current['package_manifest_digest'] ?? '' ) )
 			&& ! empty( $current['build_fingerprint'] )
 			&& ( $current['build_fingerprint'] ?? '' ) === ( $identity['build_fingerprint'] ?? '' )
 			&& ( $current['source_commit_sha'] ?? '' ) === ( $identity['source_commit_sha'] ?? '' )
@@ -271,7 +276,13 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		if ( empty( $event['event_id'] ) ) { self::enqueue(); $event = self::event(); }
 		try {
 			$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
-			if ( empty( $identity['runtime_manifest_match'] ) || empty( $identity['build_fingerprint'] ) ) { self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' ); return; }
+			if ( empty( $identity['runtime_manifest_match'] )
+				|| 1 !== preg_match( '/^[a-f0-9]{40}$/D', (string) ( $identity['source_commit_sha'] ?? '' ) )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['package_manifest_digest'] ?? '' ) )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['build_fingerprint'] ?? '' ) ) {
+				self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' );
+				return;
+			}
 			$profile_digest = MAD4B_SCP_Site_Profile::profile_digest();
 			$previous_raw = get_option( self::OPTION, null );
 			$previous_had_value = null !== $previous_raw;
@@ -396,7 +407,28 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 						return;
 					}
 					$skills = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
-					$registry['managed_skills'] = is_wp_error( $skills ) ? array( 'state' => 'RECONCILIATION_REQUIRED', 'error_code' => $skills->get_error_code() ) : array( 'state' => 'RECONCILED' );
+					// A bounded installer often reports a normal status array even when
+					// the seed pack, audit storage or registry is unavailable. Mere
+					// absence of WP_Error is not evidence of successful convergence.
+					$skills_ready = is_array( $skills ) && 'ready' === ( $skills['state'] ?? '' )
+						&& ! empty( $skills['current_request_observed'] )
+						&& empty( $skills['skipped_conflict'] );
+					$inspection = $skills_ready && method_exists( 'MAD4B_SCP_Skill_Provider_Discovery', 'inspect' )
+						? MAD4B_SCP_Skill_Provider_Discovery::inspect() : array( 'ready' => false );
+					$inspection_ready = is_array( $inspection ) && ! empty( $inspection['ready'] )
+						&& 'ready' === ( $inspection['state'] ?? '' );
+					if ( $skills_ready && $inspection_ready ) {
+						$registry['managed_skills'] = array( 'state' => 'RECONCILED', 'readback_verified' => true );
+					} else {
+						$registry['managed_skills'] = array(
+							'state' => 'RECONCILIATION_REQUIRED',
+							'readback_verified' => false,
+							'reason' => is_wp_error( $skills ) ? sanitize_key( (string) $skills->get_error_code() )
+								: ( $skills_ready ? 'skill_mapping_readback_incomplete' : sanitize_key( (string) ( $skills['state'] ?? 'skill_result_unverified' ) ) ),
+						);
+						self::schedule( 300 );
+					}
+
 				}
 				$registry['fabric_generation'] = $fabric_generation;
 			}
@@ -468,7 +500,12 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$has_more = count( $registry['providers'] ) > $limit;
 		$registry['providers'] = array_slice( $registry['providers'], 0, $limit, true );
 		$event = self::event();
-		$current = $valid && ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) && ( $registry['build_stamp'] ?? '' ) === self::stamp()
+		$scheduler_disabled = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
+		$worker_blocked = in_array( $event['failure_state'] ?? '', array( 'HARD_BLOCKED', 'REVIEW_REQUIRED', 'EXTERNAL_ACTION_REQUIRED' ), true );
+		$enrolled_for_observation = self::eligible();
+		$worker_available = $enrolled_for_observation && ! $scheduler_disabled && ! $worker_blocked;
+		$current = $valid && $enrolled_for_observation && ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' )
+			&& ( $registry['build_stamp'] ?? '' ) === self::stamp()
 			&& class_exists( 'MAD4B_SCP_Site_Profile', false ) && ( $registry['profile_digest'] ?? '' ) === MAD4B_SCP_Site_Profile::profile_digest();
 		if ( $valid && ! $current ) $registry['state'] = 'STALE_OBSERVATION';
 		foreach ( $registry['providers'] as &$observation ) {
@@ -481,7 +518,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				if ( ! $observation['observation_current'] ) { $capability['last_observed_state'] = $capability['state'] ?? 'ISOLATED'; $capability['state'] = 'STALE_OBSERVATION'; $capability['next_action'] = 'await_current_provider_observation'; }
 				$state = isset( $capability['state'] ) && is_string( $capability['state'] ) ? $capability['state'] : 'ISOLATED';
 				$counts[ $state ] = ( $counts[ $state ] ?? 0 ) + 1;
-				$capability['remediation'] = self::remediation_lane( $capability, $observation['observation_current'] );
+				$capability['remediation'] = self::remediation_lane( $capability, $observation['observation_current'], $worker_available );
 				$lane = $capability['remediation']['lane'];
 				$lane_counts[ $lane ] = ( $lane_counts[ $lane ] ?? 0 ) + 1;
 			}
@@ -497,6 +534,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		return array_merge( $registry, array( 'contract' => self::CONTRACT, 'receipt_integrity_valid' => $valid, 'observation_current' => $current, 'authorizing' => false, 'read_only' => true, 'production_mutation' => false,
 			'page' => array( 'total_provider_count' => $total, 'returned_provider_count' => count( $registry['providers'] ), 'has_more' => $has_more, 'next_after_provider' => $has_more ? array_keys( $registry['providers'] )[ count( $registry['providers'] ) - 1 ] : '', 'receipt_sha256' => $receipt_sha256, 'capability_details_included' => $details ),
 			'canary_policy' => 'actual_disposable_probe_exact_readback_and_rollback_required', 'provider_live_validation_deferred' => true, 'external_evidence_policy' => 'real_current_build_oauth_initialize_and_tools_list_required',
-			'scheduler_state' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'EXTERNAL_ACTION_REQUIRED' : 'AVAILABLE' ) );
+			'scheduler_state' => $scheduler_disabled ? 'EXTERNAL_ACTION_REQUIRED' : ( ! $enrolled_for_observation ? 'NOT_ELIGIBLE' : ( $worker_blocked ? 'BLOCKED_BY_WORKER_POLICY' : 'AVAILABLE' ) ),
+			'auto_observation_available' => $worker_available ) );
 	}
 }

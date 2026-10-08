@@ -47,16 +47,23 @@ class MAD4B_SCP_Staging_Write_Authority {
  }
 }
 class MAD4B_SCP_Schema { static function is_ready() { return true; } }
-class MAD4B_SCP_Skill_Provider_Discovery { static $calls = 0; static function reconcile() { ++self::$calls; return true; } }
+class MAD4B_SCP_Skill_Provider_Discovery {
+ static $calls = 0; static $state = 'ready'; static $inspect_ready = true; static $conflicts = array();
+ static function reconcile() {
+  ++self::$calls;
+  return array( 'state' => self::$state, 'current_request_observed' => true, 'skipped_conflict' => self::$conflicts );
+ }
+ static function inspect() { return array( 'state' => self::$inspect_ready ? 'ready' : 'drifted', 'ready' => self::$inspect_ready ); }
+}
 class MAD4B_SCP_Live_Acceptance_Observer {
- static $calls = 0; static $race = false; static $event_race = false; static $valid = true; static $throw = false; static $drift_at_call = 0;
+ static $calls = 0; static $race = false; static $event_race = false; static $valid = true; static $throw = false; static $drift_at_call = 0; static $identity_incomplete = false;
  static function build_provenance_status() {
   ++self::$calls;
   if ( self::$drift_at_call === self::$calls ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$throw ) { MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); throw new RuntimeException( 'PRIVATE worker path' ); }
   if ( self::$race && 0 === self::$calls % 2 ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$event_race && 0 === self::$calls % 2 ) MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
-  return array( 'runtime_manifest_match' => self::$valid, 'source_commit_sha' => str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ), 'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture' );
+  return array( 'runtime_manifest_match' => self::$valid, 'source_commit_sha' => self::$identity_incomplete ? '' : str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ), 'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture' );
  }
 }
 class MAD4B_SCP_Provider_Contracts { static function all() { return array_fill_keys( array( 'alpha', 'beta', 'gamma', 'delta', 'epsilon' ), array() ); } }
@@ -216,9 +223,63 @@ $before_writes = $GLOBALS['writes']; MAD4B_SCP_Adaptive_Runtime_Convergence::sta
 check( $before_writes === $GLOBALS['writes'], 'Corrupted event was repaired by a passive status read' );
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( 'OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) )['state'], 'Worker did not recover a malformed event without poisoning neighbors' );
+// A non-throwing provider skills failure must never become RECONCILED.
+// The next attempt must remain eligible even if the fabric hash is unchanged.
+MAD4B_SCP_Skill_Provider_Discovery::$state = 'seed_pack_not_ready';
+MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.130';
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$failed_skills = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'RECONCILIATION_REQUIRED' === $failed_skills['managed_skills']['state']
+    && 'seed_pack_not_ready' === $failed_skills['managed_skills']['reason'], 'Non-throwing seed-pack failure was misreported as reconciled' );
+MAD4B_SCP_Skill_Provider_Discovery::$state = 'ready';
+MAD4B_SCP_Skill_Provider_Discovery::$inspect_ready = false;
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$bad_readback = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'RECONCILIATION_REQUIRED' === $bad_readback['managed_skills']['state']
+    && 'skill_mapping_readback_incomplete' === $bad_readback['managed_skills']['reason'], 'Unverified skill files were treated as current' );
+MAD4B_SCP_Skill_Provider_Discovery::$inspect_ready = true;
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$ready_skills = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'RECONCILED' === $ready_skills['managed_skills']['state'] && ! empty( $ready_skills['managed_skills']['readback_verified'] ), 'Recovered skills were not marked reconciled after exact readback' );
+MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.123';
+
+// Missing exact provenance must enter the bounded worker failure policy and
+// never invoke core reconciliation or managed-skill mutations.
+$before_skills = MAD4B_SCP_Skill_Provider_Discovery::$calls;
+$before_core = MAD4B_SCP_Runtime_Convergence::$calls;
+MAD4B_SCP_Live_Acceptance_Observer::$identity_incomplete = true;
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$incomplete_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( $before_skills === MAD4B_SCP_Skill_Provider_Discovery::$calls && $before_core === MAD4B_SCP_Runtime_Convergence::$calls, 'Incomplete identity drove automatic mutation' );
+check( 1 === $incomplete_status['last_worker_failure']['attempts'] && 'installed_package_manifest_unverified' === $incomplete_status['last_worker_failure']['code'], 'Incomplete identity ignored bounded retry policy' );
+MAD4B_SCP_Live_Acceptance_Observer::$identity_incomplete = false;
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+check( 'OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['state'], 'Worker could not recover after exact identity returned' );
+
+// Production must never suggest automatic observation based on an old
+// signed Staging receipt. The read-only status surface remains accessible.
 MAD4B_SCP_Site_Profile::$environment = 'production'; $before = $GLOBALS['writes'];
+$prod_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'provider_id' => 'alpha', 'include_capabilities' => true ) );
+check( false === $prod_status['auto_observation_available'] && 'NOT_ELIGIBLE' === $prod_status['scheduler_state'], 'Production incorrectly advertised automatic observation' );
+check( ! $prod_status['providers']['alpha']['observation_current']
+    && 'REVIEW_REQUIRED' === $prod_status['providers']['alpha']['capabilities']['read']['remediation']['lane']
+    && ! $prod_status['providers']['alpha']['capabilities']['read']['remediation']['worker_may_observe'], 'Production stale evidence was routed into an automatic lane' );
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( $before === $GLOBALS['writes'], 'Production observation mutated state' );
 check( 'HIGH_RISK_GATED' === MAD4B_SCP_Adaptive_Runtime_Convergence::reduce_capability( array( 'risk' => 'high_risk_write', 'structural_compatible' => true ) )['state'], 'High-risk capability auto-promoted' );
 check( 'EXTERNAL_ACTION_REQUIRED' === MAD4B_SCP_Adaptive_Runtime_Convergence::reduce_capability( array( 'risk' => 'bounded_write', 'structural_compatible' => true, 'artifact_authority_required' => true ) )['state'], 'New artifact authority was not gated' );
+// A disabled WP-Cron scheduler cannot promise hands-off observation even in
+// Staging. No read should repair or mutate the current persisted receipt.
+MAD4B_SCP_Site_Profile::$environment = 'staging';
+define( 'DISABLE_WP_CRON', true );
+$writes_before_disabled_status = $GLOBALS['writes'];
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+$disabled_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'provider_id' => 'alpha', 'include_capabilities' => true ) );
+check( false === $disabled_status['auto_observation_available'] && 'EXTERNAL_ACTION_REQUIRED' === $disabled_status['scheduler_state'], 'Disabled WP-Cron was treated as an active automatic scheduler' );
+check( 'REVIEW_REQUIRED' === $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['lane']
+    && ! $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['worker_may_observe'], 'Disabled scheduler offered false automatic repair' );
+check( $writes_before_disabled_status + 1 === $GLOBALS['writes'], 'Passive disabled-Cron status read persisted changes' );
 echo "Adaptive runtime convergence runtime: PASS\n";
