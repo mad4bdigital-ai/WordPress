@@ -355,6 +355,7 @@ jobs:
           php "$PLUGIN/tests/g7-read-surfaces-contract.php"
           php "$PLUGIN/tests/g7-compensation-safety-runtime.php"
           php "$PLUGIN/tests/g7-release-metrics-runtime.php"
+          php "$PLUGIN/tests/g7-spec-delivery-contract.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-operator-control-center.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
 
