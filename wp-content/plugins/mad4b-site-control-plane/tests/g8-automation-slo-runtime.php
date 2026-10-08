@@ -73,7 +73,14 @@ $ticket = MAD4B_SCP_Automation_SLO::reserve( $provider, $capability, $generation
 g8_check( is_array( $ticket ) && false === $ticket['pre_ready'], 'initial ticket prestate' );
 g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::reserve( $provider, $capability, $generation ), 'mad4b_automation_capability_queue_busy' ), 'concurrent ticket rejected' );
 MAD4B_SCP_Runtime_Convergence::$ready = true;
-$completed = array( 'state' => 'completed', 'readback' => array( 'required_blockers' => array() ) );
+$completed = array(
+ 'contract' => 'mad4b.runtime-convergence-apply.v1',
+ 'state' => 'completed',
+ 'changed_safe_phases' => array( 'schema' ),
+ 'readback' => array( 'required_blockers' => array() ),
+ 'checkpoint' => array( 'state' => 'completed', 'last_execution_source' => 'post_update_cron',
+  'changed_safe_phases' => array( 'schema' ) ),
+);
 g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $completed ), 'finish success' );
 g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $completed ), 'mad4b_automation_ticket_stale' ), 'replay rejected' );
 $status = MAD4B_SCP_Automation_SLO::status();
