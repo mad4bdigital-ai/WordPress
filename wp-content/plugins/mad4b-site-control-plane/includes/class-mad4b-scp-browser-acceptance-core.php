@@ -85,6 +85,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'transport_authority' => false,
 			'browser_engine_authority' => false,
 			'execution_mode' => 'external_browser_agent',
+			'site_origin' => function_exists( 'home_url' ) ? rtrim( (string) home_url( '/' ), '/' ) : '',
 			'provider_count' => count( $providers ),
 			'operator_preference' => class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ? MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection() : array(),
 			'providers' => $providers,
