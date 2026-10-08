@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 290,
+  "changed_file_count": 292,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -464,8 +464,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/search-runtime-fixtures.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php"
       ]
+    },
+    {
+      "id": "developer-host-nonroot-identity-guard",
+      "semantic_unit": "Fail-closed Developer host identity readiness and all subprocess/lint execution paths",
+      "revert_boundary": "Only non-root identity and subprocess safety gates; no grant, build, OAuth or Production authority effects",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "0206027147caae00125d2d662f6abd2111d1db972ff685b2dadfcd2000c2046a",
+  "changed_paths_sha256": "2db77c9f1ce3f090e3ad6faa9180d5e65f1fd4a74e447fc6c3d76cce3eb13670",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
