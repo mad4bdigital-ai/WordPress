@@ -30,7 +30,11 @@ function g9_assert( $ok, $reason ) {
     if ( ! $ok ) { fwrite( STDERR, 'G9 state FAIL: ' . $reason . "\n" ); exit( 1 ); }
 }
 function g9_denied( $value, $reason ) {
-    g9_assert( is_wp_error( $value ) && false !== strpos( $value->get_error_code(), $reason ), $reason );
+    $actual = is_wp_error( $value ) ? $value->get_error_code() : gettype( $value );
+    g9_assert(
+        is_wp_error( $value ) && false !== strpos( $actual, $reason ),
+        $reason . ' (actual=' . $actual . ')'
+    );
 }
 class MAD4B_SCP_Site_Profile {
     public static $revision = 1;
@@ -411,7 +415,17 @@ class MAD4B_SCP_Crypto_Profile {
             || ! hash_equals( hash_hmac( 'sha256', $digest, 'hermetic-not-runtime-authority' ),
                 (string) ( $signature['signature'] ?? '' ) ) )
             return new WP_Error( 'crypto_invalid', 'Hermetic signature denied' );
-        return array( 'valid'=>true );
+        // Mirror the real detached-signature verification contract, not
+        // merely a truthy result. The native execution verifier must continue
+        // rejecting unsigned, malformed and cross-purpose receipts.
+        return array(
+            'contract'=>'mad4b.detached-signature-verification.v1',
+            'valid'=>true,
+            'signed_sha256'=>$digest,
+            'profile_id'=>$signature['profile_id'],
+            'kid'=>$signature['kid'],
+            'purpose'=>'execution_receipt',
+        );
     }
 }
 class MAD4B_SCP_Operation_Journal {
