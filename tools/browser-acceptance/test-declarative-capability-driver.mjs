@@ -8,7 +8,7 @@ const base = () => ({
  provider_id:"wordpress-native", profile_id:"public-observations",
  state:"ready",suite:"browser_runtime",read_only:true,authorizing:false,
  origin:"https://sample.example/",plan_digest:"a".repeat(64),plan_signature:"b".repeat(64),
- build_identity:{git_sha:"c".repeat(40),tree_sha:"d".repeat(40)},
+ build_identity:{git_sha:"c".repeat(40),build_fingerprint:"d".repeat(64)},
  challenge:{nonce:"e".repeat(32),signature:"f".repeat(64),issued_at:now-3,expires_at:now+120},
  cases:[
   {case_id:"title-test",capability_id:"content.title",probe_type:"public.document_title_digest",
@@ -32,7 +32,7 @@ denies(p=>p.provider_id="All Royal Egypt");
 denies(p=>p.origin="http://sample.example/");
 denies(p=>p.origin="https://sample.example/scope/");
 denies(p=>p.read_only=false);
-denies(p=>p.build_identity.tree_sha="");
+denies(p=>p.build_identity.build_fingerprint="");
 denies(p=>p.challenge.expires_at=now-1);
 denies(p=>p.case_count=2);
 denies(p=>p.cases[0].page_path="//different.example/path");
