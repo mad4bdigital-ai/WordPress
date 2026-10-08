@@ -16,13 +16,19 @@ class MAD4B_SCP_G7_Update_Acceptance {
     public static function compare( array $before, array $after ) { return array( 'contract' => 'g7-test-comparison', 'authorizing' => false, 'state' => 'APPROVAL_REQUIRED' ); }
 }
 class MAD4B_SCP_G7_Action_Center { const CONTRACT = 'mad4b.feature007-g7-action-center.v1'; }
+class MAD4B_SCP_G7_Workload_Measurement {
+    public static function status( $hours = 24 ) { return array( 'state' => 'INCOMPLETE_EVIDENCE', 'authorizing' => false ); }
+}
+class MAD4B_SCP_G7_Release_Acceptance_Audit {
+    public static function assess( array $before, array $after ) { return array( 'state' => 'RECONCILIATION_REQUIRED', 'authorizing' => false ); }
+}
 class MAD4B_SCP_Operator_Control_Center {
     public static function execute() { return array( 'g7_action_center' => array( 'contract' => MAD4B_SCP_G7_Action_Center::CONTRACT, 'state' => 'NO_ACTION_OBSERVED', 'authorizing' => false ) ); }
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g7-read-surfaces.php';
 function g7r( $ok, $message ) { if ( ! $ok ) { fwrite( STDERR, "FAIL: $message\n" ); exit( 1 ); } }
 MAD4B_SCP_G7_Read_Surfaces::boot();
-g7r( count( $GLOBALS['g7_read_registry'] ) === 4, 'four read-only abilities registered' );
+g7r( count( $GLOBALS['g7_read_registry'] ) === 6, 'six read-only abilities registered' );
 foreach ( $GLOBALS['g7_read_registry'] as $name => $spec ) {
     g7r( strpos( $name, 'mad4b/g7-' ) === 0, 'strict namespace' );
     g7r( $spec['category'] === 'mad4b-read' &&
@@ -44,4 +50,8 @@ g7r( ! is_wp_error( $comparison ) && false === $comparison['authorizing'], 'comp
 $action = MAD4B_SCP_G7_Read_Surfaces::action();
 g7r( ! is_wp_error( $action ) && false === $action['authorizing'], 'action status is read-only' );
 g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::action( array( 'approve' => true ) ) ), 'action input cannot approve' );
+g7r( ! is_wp_error( MAD4B_SCP_G7_Read_Surfaces::metrics() ), 'metric projection read only' );
+g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::metrics( array( 'record' => 1 ) ) ), 'metric write injection denied' );
+g7r( is_wp_error( MAD4B_SCP_G7_Read_Surfaces::release( array( 'before' => array(), 'after' => array(), 'approve' => true ) ) ), 'release grant injection denied' );
+g7r( ! is_wp_error( MAD4B_SCP_G7_Read_Surfaces::release( array( 'before' => array(), 'after' => array() ) ) ), 'release projection available' );
 echo "mad4b.feature007-g7-read-surfaces.v1: PASS\n";

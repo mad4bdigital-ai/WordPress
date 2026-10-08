@@ -1,0 +1,166 @@
+{
+  "contract": "mad4b.competitive-g7-delivery.v1",
+  "status": "REPOSITORY_G7_SAFETY_FOUNDATION_IMPLEMENTED_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 286,
+  "integration_branch": "spec/007-competitive-experience-20261006",
+  "implementation_branch": "feat/007-g7-ownership-journal-update-actioncenter-20261007",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "task_scope": [
+    "T4036",
+    "T4037",
+    "T4038",
+    "T4039",
+    "T4040",
+    "T4041",
+    "T4042",
+    "T4043",
+    "T4044",
+    "T4045",
+    "T4046",
+    "T4047",
+    "T4048",
+    "T4049",
+    "T4050",
+    "T4051",
+    "T4052",
+    "T4053",
+    "T4054",
+    "T4055",
+    "T4061",
+    "T4062",
+    "T4063",
+    "T4064",
+    "T4065"
+  ],
+  "group_progress": [
+    {
+      "group": "ownership",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4036",
+        "T4037",
+        "T4038",
+        "T4039",
+        "T4040"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "typed consumer CAS integration",
+        "Staging real owned-field readback"
+      ]
+    },
+    {
+      "group": "journal_undo",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4041",
+        "T4042",
+        "T4043",
+        "T4044",
+        "T4045"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "native compensation execution and signed return receipt",
+        "independent irreversible external-effect reconciliation"
+      ]
+    },
+    {
+      "group": "update_acceptance",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4046",
+        "T4047",
+        "T4048",
+        "T4049",
+        "T4050"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "native post-update recertification and scoped impact evidence",
+        "site-local Release Acceptance Receipt",
+        "preauthorized rollback rehearsal"
+      ]
+    },
+    {
+      "group": "host_readiness",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4051",
+        "T4052",
+        "T4053",
+        "T4054",
+        "T4055"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-update-host-action-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "separately approved real prlimit and network sandbox isolation probe",
+        "host profile expiring attestation with trusted executable capability"
+      ]
+    },
+    {
+      "group": "action_center_metrics",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4061",
+        "T4062",
+        "T4063",
+        "T4064",
+        "T4065"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "receipt-deduplicated eligible workload denominator",
+        "verified intervention, MTTR, failure and cost coverage",
+        "real operator manual governance and Staging/browser acceptance"
+      ]
+    }
+  ],
+  "global_evidence": [
+    "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+    ".github/workflows/feature-007-spec-ci.yml",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php"
+  ],
+  "claim_limits": {
+    "all_tasks_done": false,
+    "repo_ci_certified": false,
+    "staging_runtime_accepted": false,
+    "live_provider_accepted": false,
+    "host_sandbox_functionally_verified": false,
+    "undo_certified": false,
+    "release_acceptance_receipt_issued": false,
+    "verified_automation_rate_measured": false,
+    "production_authorized": false,
+    "authorizing": false
+  },
+  "pending_validation": [
+    "exact HEAD PHP7.4/PHP8.3 G7 CI green",
+    "native typed executor compensation and full readback plus external effects",
+    "native governed Staging update/capability recertification and rollback rehearsal",
+    "independent host sandbox operational certification",
+    "receipt-backed deduplicated eligible workload metrics",
+    "browser and full Hub acceptance"
+  ],
+  "policy": "Safety diagnostics and evidence are partial until independently verified; no grants, tools, host command, deployment or Production mutation."
+}

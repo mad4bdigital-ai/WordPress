@@ -66,6 +66,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g7-*.php'
@@ -343,13 +346,15 @@ jobs:
           set -euo pipefail
           PLUGIN=wp-content/plugins/mad4b-site-control-plane
           php -l "$PLUGIN/mad4b-site-control-plane.php"
-          for source in adaptive-operations-context ownership-reconciliation g7-operator-journal g7-host-readiness g7-update-acceptance g7-action-center g7-read-surfaces; do
+          for source in adaptive-operations-context ownership-reconciliation g7-operator-journal g7-host-readiness g7-update-acceptance g7-action-center g7-read-surfaces g7-compensation-audit g7-release-acceptance-audit g7-workload-measurement; do
             php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
           done
           php "$PLUGIN/tests/g7-ownership-reconciliation-runtime.php"
           php "$PLUGIN/tests/g7-operator-journal-runtime.php"
           php "$PLUGIN/tests/g7-update-host-action-runtime.php"
           php "$PLUGIN/tests/g7-read-surfaces-contract.php"
+          php "$PLUGIN/tests/g7-compensation-safety-runtime.php"
+          php "$PLUGIN/tests/g7-release-metrics-runtime.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-operator-control-center.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
 

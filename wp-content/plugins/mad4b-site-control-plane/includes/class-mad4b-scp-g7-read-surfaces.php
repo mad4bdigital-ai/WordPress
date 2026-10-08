@@ -27,6 +27,11 @@ final class MAD4B_SCP_G7_Read_Surfaces {
                     'after' => $observation ), 'required' => array( 'before', 'after' ),
                     'additionalProperties' => false ) ),
             'mad4b/g7-action-center' => array( 'G7 Action Center (read only)', 'action', $empty ),
+            'mad4b/g7-workload-measurement' => array( 'G7 Workload Evidence (read only)', 'metrics', $empty ),
+            'mad4b/g7-release-audit' => array( 'G7 Release Acceptance Evidence (read only)', 'release',
+                array( 'type' => 'object', 'properties' => array( 'before' => $observation,
+                    'after' => $observation ), 'required' => array( 'before', 'after' ),
+                    'additionalProperties' => false ) ),
         );
         foreach ( $specs as $name => $spec ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) continue;
@@ -82,6 +87,23 @@ final class MAD4B_SCP_G7_Read_Surfaces {
             return self::error( 'operator_projection_unavailable' );
         }
         return $snapshot['g7_action_center'];
+    }
+
+    public static function metrics( $input = array() ) {
+        $valid = self::empty_input( $input ); if ( is_wp_error( $valid ) ) return $valid;
+        return class_exists( 'MAD4B_SCP_G7_Workload_Measurement' )
+            ? MAD4B_SCP_G7_Workload_Measurement::status( 24 ) : self::error( 'metrics_unavailable' );
+    }
+
+    public static function release( $input = array() ) {
+        if ( ! is_array( $input ) || count( $input ) !== 2 ||
+            ! isset( $input['before'], $input['after'] ) ||
+            ! is_array( $input['before'] ) || ! is_array( $input['after'] ) ) {
+            return self::error( 'release_audit_input_invalid' );
+        }
+        return class_exists( 'MAD4B_SCP_G7_Release_Acceptance_Audit' )
+            ? MAD4B_SCP_G7_Release_Acceptance_Audit::assess( $input['before'], $input['after'] )
+            : self::error( 'release_audit_unavailable' );
     }
 
     private static function empty_input( $input ) {
