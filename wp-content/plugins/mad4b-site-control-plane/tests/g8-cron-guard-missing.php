@@ -78,12 +78,22 @@ if ( '' !== $stale_state ) {
 	$GLOBALS['g8_checkpoint']['state'] = $stale_state;
 }
 if ( $paused_cron ) $GLOBALS['g8_checkpoint']['automatic_retry_allowed'] = false;
+$malicious_checkpoint = '1' === getenv( 'G8_MALICIOUS_CHECKPOINT' );
+if ( $malicious_checkpoint ) {
+	$GLOBALS['g8_checkpoint']['untrusted_extra'] = new class {
+		public function __serialize() {
+			$GLOBALS['g8_executable_checkpoint_serialized'] = true;
+			return array( 'side_effect' => true );
+		}
+	};
+}
 $before_stale = $GLOBALS['g8_checkpoint'];
 if ( ! $throwing_slo && ! $throwing_worker && class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for missing-class fixture' . PHP_EOL ); exit( 1 ); }
 MAD4B_SCP_Runtime_Convergence::resume_safe_phases();
 $checkpoint = $GLOBALS['g8_checkpoint'];
-if ( '' !== $stale_state || $paused_cron ) {
-	if ( $before_stale !== $checkpoint || ! empty( $GLOBALS['g8_worker_finished_error'] ) ) {
+if ( '' !== $stale_state || $paused_cron || $malicious_checkpoint ) {
+	if ( $before_stale !== $checkpoint || ! empty( $GLOBALS['g8_worker_finished_error'] )
+		|| ! empty( $GLOBALS['g8_executable_checkpoint_serialized'] ) ) {
 		fwrite( STDERR, 'FAIL: stale or paused Cron event mutated its checkpoint' . PHP_EOL );
 		exit( 1 );
 	}
