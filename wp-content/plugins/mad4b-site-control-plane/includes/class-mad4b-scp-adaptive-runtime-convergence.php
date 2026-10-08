@@ -224,6 +224,8 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) return false;
 		$current = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		return ! empty( $current['runtime_manifest_match'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', (string) ( $current['source_commit_sha'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $current['package_manifest_digest'] ?? '' ) )
 			&& ! empty( $current['build_fingerprint'] )
 			&& ( $current['build_fingerprint'] ?? '' ) === ( $identity['build_fingerprint'] ?? '' )
 			&& ( $current['source_commit_sha'] ?? '' ) === ( $identity['source_commit_sha'] ?? '' )
@@ -271,7 +273,13 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		if ( empty( $event['event_id'] ) ) { self::enqueue(); $event = self::event(); }
 		try {
 			$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
-			if ( empty( $identity['runtime_manifest_match'] ) || empty( $identity['build_fingerprint'] ) ) { self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' ); return; }
+			if ( empty( $identity['runtime_manifest_match'] )
+				|| 1 !== preg_match( '/^[a-f0-9]{40}$/D', (string) ( $identity['source_commit_sha'] ?? '' ) )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['package_manifest_digest'] ?? '' ) )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['build_fingerprint'] ?? '' ) ) {
+				self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' );
+				return;
+			}
 			$profile_digest = MAD4B_SCP_Site_Profile::profile_digest();
 			$previous_raw = get_option( self::OPTION, null );
 			$previous_had_value = null !== $previous_raw;
