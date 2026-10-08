@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 351,
+  "changed_file_count": 352,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -629,8 +629,17 @@
         "tools/browser-acceptance/site-provider-configuration.mjs",
         "tools/browser-acceptance/test-site-provider-configuration.mjs"
       ]
+    },
+    {
+      "id": "browser-remote-work-operator-preference-guard-20261008",
+      "semantic_unit": "Prevent remote browser queue acceptance from bypassing the saved WordPress site provider and profile; fail closed on malformed browser preference",
+      "revert_boundary": "Remote queue operator guard and browser setup validation/CI change in same feature slice; never infer browser execution or release acceptance",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "3d29c0e47637960a33df8a5acd5251d10541974591f3a3a3564cd59acbfcdf64",
+  "changed_paths_sha256": "ecd1b8f1341950352ae3e86c878ee313321faf26a7cd7be7b79adf93d1ef2356",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
