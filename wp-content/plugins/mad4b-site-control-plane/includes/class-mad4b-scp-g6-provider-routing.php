@@ -9,6 +9,7 @@ interface MAD4B_SCP_G6_Model_Routing_Adapter {
 final class MAD4B_SCP_G6_Provider_Routing {
     const CONTRACT = 'mad4b.g6-provider-routing-review.v1';
     private static $adapters = array();
+    private static $descriptor_heads = array();
 
     public static function register( MAD4B_SCP_G6_Model_Routing_Adapter $adapter ) {
         $d = $adapter->descriptor();
@@ -17,7 +18,13 @@ final class MAD4B_SCP_G6_Provider_Routing {
         $id = $d['provider_id'];
         if ( isset( self::$adapters[ $id ] ) || count( self::$adapters ) >= 16 )
             return MAD4B_SCP_G6_Contracts::error( 'routing_collision', 'Provider identity already exists or routing is full.' );
+        $bounded = MAD4B_SCP_G6_Contracts::data( $d );
+        if ( is_wp_error( $bounded ) ) return $bounded;
+        $descriptor_sha256 = MAD4B_SCP_G6_Contracts::digest( $d );
+        if ( ! MAD4B_SCP_G6_Contracts::sha( $descriptor_sha256 ) )
+            return MAD4B_SCP_G6_Contracts::error( 'routing_descriptor', 'Provider descriptor cannot be sealed.' );
         self::$adapters[ $id ] = $adapter;
+        self::$descriptor_heads[ $id ] = $descriptor_sha256;
         return true;
     }
 
@@ -49,6 +56,10 @@ final class MAD4B_SCP_G6_Provider_Routing {
         foreach ( self::$adapters as $id => $adapter ) {
             $d = $adapter->descriptor();
             $reasons = array();
+            // The exact registered descriptor must not change during review.
+            if ( ! isset( self::$descriptor_heads[ $id ] )
+                || ! hash_equals( self::$descriptor_heads[ $id ], MAD4B_SCP_G6_Contracts::digest( $d ) ) )
+                $reasons[] = 'provider_descriptor_drift';
             // Descriptors originate in reviewed PHP, but execution certification is independent.
             if ( ! is_array( $d ) || $id !== ( isset( $d['provider_id'] ) ? $d['provider_id'] : '' ) ) $reasons[] = 'provider_identity_drift';
             if ( ! isset( $d['capabilities'] ) || ! is_array( $d['capabilities'] ) || ! in_array( $intent, $d['capabilities'], true ) ) $reasons[] = 'capability_missing';
