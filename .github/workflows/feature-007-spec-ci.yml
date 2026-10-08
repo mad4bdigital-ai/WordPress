@@ -364,19 +364,42 @@ jobs:
 
   g7-runtime:
     name: Feature 007 G7 ownership safety (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
       - name: Verify non-authorizing G7 ownership and current-binding safeguards
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
           for source in adaptive-operations-context ownership-reconciliation g7-operator-journal g7-host-readiness g7-update-acceptance g7-action-center g7-read-surfaces g7-compensation-audit g7-release-acceptance-audit g7-workload-measurement; do
-          php "$PLUGIN/tests/g7-ownership-reconciliation-runtime.php"
-          php "$PLUGIN/tests/g7-native-receipt-baseline-runtime.php"
-          php "$PLUGIN/tests/g7-operator-journal-runtime.php"
-          php "$PLUGIN/tests/g7-update-host-action-runtime.php"
-          php "$PLUGIN/tests/g7-read-surfaces-contract.php"
-          php "$PLUGIN/tests/g7-compensation-safety-runtime.php"
-          php "$PLUGIN/tests/g7-release-metrics-runtime.php"
-          php "$PLUGIN/tests/g7-release-missing-dependency-contract.php"
-          php "$PLUGIN/tests/g7-spec-delivery-contract.php"
+            php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
+          done
           php -l "$PLUGIN/includes/class-mad4b-scp-operator-control-center.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          for test in g7-ownership-reconciliation-runtime g7-native-receipt-baseline-runtime g7-operator-journal-runtime g7-update-host-action-runtime g7-read-surfaces-contract g7-compensation-safety-runtime g7-release-metrics-runtime g7-release-missing-dependency-contract g7-spec-delivery-contract; do
+            php "$PLUGIN/tests/$test.php"
+          done
   g5-runtime:
     name: Feature 007 G5 runtime (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
