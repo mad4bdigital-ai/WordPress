@@ -38,7 +38,8 @@
   ],
   "spec_paths": [
     "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
-    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-review.md"
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-review.md",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md"
   ],
   "source_files_include_real_execution_adapter": false,
   "runtime_parity_claimed": false,

@@ -116,3 +116,7 @@ Adversarial causal-order review found the G9 verifier required a `execution_rece
 ## P1 — Passive eligibility must match executable grant readiness (2026-10-08)
 
 The G9 site observation previously allowed `authority.eligible=true` from generic authority `ready` and candidate status while `current_grant_snapshot_ready=false` or the grant-row fingerprint was absent. `reserve()` requires these stronger facts, so operational read-only status could overstate eligibility. Capture now requires a current grant snapshot, exact candidate binding and valid grant fingerprint along with its existing runtime/restore/artifact proof. A hermetic test makes only the grant snapshot stale while `ready` stays true. This change tightens passive reporting; no grants or authority were created.
+
+## Adversarial objection register
+
+See `g9-adversarial-closure.md` for 28 objection scenarios ranked by P0/P1 severity, exact source mitigation, missing signed native/Staging evidence, and a separate exit criterion. SOURCE_HARDENED is a code claim, not a passed test or release certificate.
