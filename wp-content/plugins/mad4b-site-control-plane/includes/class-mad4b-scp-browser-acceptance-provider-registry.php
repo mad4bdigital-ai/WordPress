@@ -8,11 +8,19 @@ final class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
 
 	public function all() {
 		$raw = function_exists( 'apply_filters' ) ? apply_filters( 'mad4b_browser_acceptance_providers', array() ) : array();
-		$raw = is_array( $raw ) ? array_slice( $raw, 0, self::MAX_PROVIDERS, true ) : array();
+		if ( ! is_array( $raw ) || count( $raw ) > self::MAX_PROVIDERS ) return array();
 		$providers = array();
+		$seen = array();
 		foreach ( $raw as $key => $candidate ) {
 			$validated = $this->validate_provider( $key, $candidate );
-			if ( ! empty( $validated['valid'] ) ) $providers[ $validated['provider_id'] ] = $validated;
+			if ( empty( $validated['valid'] ) ) continue;
+			$id = $validated['provider_id'];
+			if ( isset( $seen[ $id ] ) ) {
+				unset( $providers[ $id ] ); // Do not select a duplicate ID by insertion order.
+			} else {
+				$providers[ $id ] = $validated;
+			}
+			$seen[ $id ] = true;
 		}
 		ksort( $providers, SORT_STRING );
 		return $providers;
@@ -20,7 +28,15 @@ final class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
 
 	public function inventory() {
 		$raw = function_exists( 'apply_filters' ) ? apply_filters( 'mad4b_browser_acceptance_providers', array() ) : array();
-		$raw = is_array( $raw ) ? array_slice( $raw, 0, self::MAX_PROVIDERS, true ) : array();
+		if ( ! is_array( $raw ) || count( $raw ) > self::MAX_PROVIDERS ) return array(
+			'contract' => self::CONTRACT, 'authorizing' => false, 'read_only' => true,
+			'provider_count' => 0,
+			'providers' => array( array(
+				'provider_id' => '', 'contract' => '', 'valid' => false,
+				'blocking_reasons' => array( 'provider_registry_invalid_or_capacity_exceeded' ),
+				'descriptor' => array(),
+			) ),
+		);
 		$items = array();
 		foreach ( $raw as $key => $candidate ) {
 			$validated = $this->validate_provider( $key, $candidate );
@@ -32,6 +48,18 @@ final class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
 				'descriptor' => ! empty( $validated['valid'] ) ? $validated['descriptor'] : array(),
 			);
 		}
+		$counts = array();
+		foreach ( $items as $item ) {
+			if ( ! empty( $item['valid'] ) ) $counts[ $item['provider_id'] ] = isset( $counts[ $item['provider_id'] ] ) ? $counts[ $item['provider_id'] ] + 1 : 1;
+		}
+		foreach ( $items as &$item ) {
+			if ( ! empty( $item['valid'] ) && $counts[ $item['provider_id'] ] > 1 ) {
+				$item['valid'] = false;
+				$item['blocking_reasons'][] = 'provider_id_duplicate';
+				$item['descriptor'] = array();
+			}
+		}
+		unset( $item );
 		usort( $items, static function ( $a, $b ) { return strcmp( (string) $a['provider_id'], (string) $b['provider_id'] ); } );
 		return array(
 			'contract' => self::CONTRACT,
@@ -68,7 +96,7 @@ final class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
 			try { $descriptor = call_user_func( $candidate['descriptor_callback'] ); }
 			catch ( Throwable $error ) { $reasons[] = 'provider_descriptor_exception'; }
 		}
-		if ( ! is_array( $descriptor ) ) { $descriptor = array(); $reasons[] = 'provider_descriptor_invalid'; }
+		if ( ! is_array( $descriptor ) || ! $descriptor ) { $descriptor = array(); $reasons[] = 'provider_descriptor_invalid'; }
 		if ( $descriptor ) {
 			if ( $provider_id !== $this->clean_id( isset( $descriptor['provider_id'] ) ? $descriptor['provider_id'] : '' ) ) $reasons[] = 'descriptor_provider_mismatch';
 			if ( $contract !== (string) ( isset( $descriptor['contract'] ) ? $descriptor['contract'] : '' ) ) $reasons[] = 'descriptor_contract_mismatch';
@@ -80,8 +108,11 @@ final class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
 			foreach ( array( 'business_state_mutation', 'profile_mutation', 'seo_mutation', 'production_activation' ) as $effect ) {
 				if ( ! array_key_exists( $effect, $descriptor ) || false !== $descriptor[ $effect ] ) $reasons[] = 'descriptor_effect_not_read_only:' . $effect;
 			}
+			foreach ( array( 'arbitrary_url_input', 'arbitrary_javascript_input' ) as $field ) {
+				if ( ! array_key_exists( $field, $descriptor ) || false !== $descriptor[ $field ] ) $reasons[] = 'descriptor_arbitrary_input_not_disabled:' . $field;
+			}
 			foreach ( $descriptor as $field => $value ) {
-				if ( 0 === strpos( (string) $field, 'arbitrary_' ) && true === $value ) $reasons[] = 'descriptor_arbitrary_input_enabled:' . $this->clean_id( $field );
+				if ( 0 === strpos( (string) $field, 'arbitrary_' ) && false !== $value ) $reasons[] = 'descriptor_arbitrary_input_not_disabled:' . (string) $field;
 			}
 		}
 		$reasons = array_values( array_unique( $reasons ) );
@@ -99,7 +130,7 @@ final class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
 	}
 
 	private function clean_id( $value ) {
-		$value = strtolower( trim( (string) $value ) );
-		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/', $value ) ? $value : '';
+		if ( ! is_string( $value ) ) return '';
+		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/D', $value ) ? $value : '';
 	}
 }
