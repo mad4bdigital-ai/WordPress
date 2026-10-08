@@ -20,7 +20,7 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g6-acceptance.php';
 function g6_expect( $ok, $label ) { if ( ! $ok ) { fwrite( STDERR, 'FAIL: ' . $label . PHP_EOL ); exit( 1 ); } }
 
 MAD4B_SCP_G6_Acceptance::register_abilities();
-g6_expect( 5 === count( $GLOBALS['g6_abilities'] ), 'five private read-only G6 abilities expected' );
+g6_expect( 6 === count( $GLOBALS['g6_abilities'] ), 'six private read-only G6 abilities expected' );
 foreach ( $GLOBALS['g6_abilities'] as $name => $def ) {
 	g6_expect( ! $def['meta']['public'] && ! $def['meta']['show_in_rest'] && ! $def['meta']['mcp']['public'] && 'admin' === $def['meta']['mcp']['surface'], 'G6 ability must remain private: ' . $name );
 	g6_expect( ! call_user_func( $def['permission_callback'] ), 'non-admin cannot access G6' );
