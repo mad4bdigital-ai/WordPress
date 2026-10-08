@@ -1,6 +1,8 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-g6-operation-compiler.php';
+require_once __DIR__ . '/class-mad4b-scp-g6-ai-workspace.php';
+require_once __DIR__ . '/class-mad4b-scp-g6-knowledge-admission.php';
 
 /** Repository-foundation review; no claims of AI, vector or live execution parity. */
 final class MAD4B_SCP_G6_Acceptance {
@@ -33,6 +35,30 @@ final class MAD4B_SCP_G6_Acceptance {
 					'workflow' => array( 'type' => 'object' ),
 				), 'required' => array( 'job_id', 'expected_job_revision', 'profile_slug', 'nodes' ), 'additionalProperties' => false ),
 			),
+			'mad4b/g6-ai-workspace-proposal' => array(
+				'label' => 'Review G6 AI Workspace Proposal',
+				'callback' => array( 'MAD4B_SCP_G6_AI_Workspace', 'propose' ),
+				'schema' => array( 'type' => 'object', 'properties' => array(
+					'intent' => array( 'type' => 'string' ),
+					'prompt' => array( 'type' => 'string', 'maxLength' => 8192 ),
+					'context_sha256' => array( 'type' => 'string' ),
+					'requested_region' => array( 'type' => 'string' ),
+					'max_cost_micro' => array( 'type' => 'integer', 'minimum' => 0 ),
+					'data_class' => array( 'type' => 'string' ),
+				), 'required' => array( 'intent', 'prompt', 'context_sha256', 'requested_region', 'max_cost_micro', 'data_class' ), 'additionalProperties' => false ),
+			),
+			'mad4b/g6-knowledge-source-admission' => array(
+				'label' => 'Review G6 Knowledge Source',
+				'callback' => array( 'MAD4B_SCP_G6_Knowledge_Admission', 'preview' ),
+				'schema' => array( 'type' => 'object', 'properties' => array(
+					'source_ref' => array( 'type' => 'string' ), 'source_sha256' => array( 'type' => 'string' ),
+					'artifact_sha256' => array( 'type' => 'string' ), 'site_uuid' => array( 'type' => 'string' ),
+					'kind' => array( 'type' => 'string' ), 'rights' => array( 'type' => 'string' ),
+					'expires_at' => array( 'type' => 'integer' ), 'privacy_class' => array( 'type' => 'string' ),
+					'storage_region' => array( 'type' => 'string' ), 'deleted' => array( 'type' => 'boolean' ),
+					'rights_revoked' => array( 'type' => 'boolean' ),
+				), 'required' => array( 'source_ref', 'source_sha256', 'artifact_sha256', 'site_uuid', 'kind', 'rights', 'expires_at', 'privacy_class', 'storage_region' ), 'additionalProperties' => false ),
+			),
 			'mad4b/g6-acceptance-status' => array(
 				'label' => 'Inspect G6 Acceptance',
 				'callback' => array( __CLASS__, 'status' ),
@@ -61,6 +87,8 @@ final class MAD4B_SCP_G6_Acceptance {
 			'task_ids' => array( 'T3956', 'T3957', 'T3958', 'T3959', 'T3960', 'T3961', 'T3962', 'T3963', 'T3964', 'T3965', 'T4016', 'T4017', 'T4018', 'T4019', 'T4020' ),
 			'foundation' => 'partial',
 			'compiled_plan_review_redacts_payloads' => true,
+			'ai_workspace_proposal_has_no_model_execution' => true,
+			'knowledge_admission_is_metadata_only' => true,
 			'dispatch_dependency_receipts' => 'not_implemented_fail_closed',
 			'ai_provider_execution' => false,
 			'vector_index_ingestion_certified' => false,
