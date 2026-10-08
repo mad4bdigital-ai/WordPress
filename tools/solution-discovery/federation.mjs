@@ -15,16 +15,15 @@ const MAX_CAPS = 24;
 const MAX_HINTS = 24;
 
 const isObject = x => x !== null && typeof x === "object" && !Array.isArray(x);
-const siteKey = x => [x.site_id,x.environment,x.origin_sha256].join("|");
 const plainText = (s, max) => typeof s === "string" &&
   s.length >= 2 && s.length <= max && !/[<>{}\r\n\t\\]/.test(s) &&
   /^[\p{L}\p{M}\p{N} ._-]+$/u.test(s);
 const labelText = (s, max) => typeof s === "string" &&
-  s.length >= 2 && s.length <= max && /^[\p{L}\p{M}\p{N} ._-]+$/u.test(s);
+  s.length >= 2 && s.length <= max &&
+  /^[\p{L}\p{N}][\p{L}\p{M}\p{N} ._-]+$/u.test(s);
 const boundTo = (s, target) => isObject(s) &&
   s.site_id === target.site_id && s.environment === target.environment &&
-  s.origin_sha256 === target.origin_sha256;
-const safeError = code => Object.freeze({code});
+  s.origin_sha256 === target.origin_sha256 && s.runtime_generation === target.runtime_generation;
 
 export function checkTarget(target) {
   if (!isObject(target) || !ID.test(target.site_id ?? "") ||
@@ -48,6 +47,13 @@ const overlap = (query, label) => {
 const summary = (source, code) => ({
   source_id:source.id, kind:source.kind, status:code
 });
+// Non-cryptographic continuity checksum ONLY. Never a signature or grant.
+const continuity = input => {
+  let h=0xcbf29ce484222325n;
+  for(let i=0;i<input.length;i++)
+    h=BigInt.asUintN(64,(h^BigInt(input.charCodeAt(i)))*0x100000001b3n);
+  return h.toString(16).padStart(16,"0");
+};
 
 /**
  * Discover is read-only by construction. It never executes an artifact from
@@ -55,9 +61,12 @@ const summary = (source, code) => ({
  * connected apps are visible until the host enumerates and attests them.
  */
 export async function discoverFederated({target,query,enumerate,inspect,
-  limit=24, maxSources=MAX_SOURCES} = {}) {
+  limit=24,offset=0,expectedSnapshot=null,maxSources=MAX_SOURCES} = {}) {
   const site = checkTarget(target);
   if (!plainText(query,180) || !Number.isInteger(limit) || limit<1 || limit>MAX_HINTS ||
+      !Number.isInteger(offset) || offset<0 || offset>1024 ||
+      (offset>0 && !/^[a-f0-9]{16}$/.test(expectedSnapshot??"")) ||
+      (offset===0 && expectedSnapshot!==null && !/^[a-f0-9]{16}$/.test(expectedSnapshot)) ||
       !Number.isInteger(maxSources) || maxSources<1 || maxSources>MAX_SOURCES ||
       typeof enumerate !== "function" || typeof inspect !== "function") {
     throw new TypeError("INVALID_FEDERATION_INPUT");
@@ -70,17 +79,24 @@ export async function discoverFederated({target,query,enumerate,inspect,
     execution_allowed:false, authorizing:false, provider_executed:false,
     warning:"enumeration_failed_no_source_trusted"
   }; }
-  if (!Array.isArray(inventory)) throw new TypeError("REGISTRY_SHAPE_INVALID");
-  if (inventory.length>maxSources) return {
+  // Legacy bare-array registries have UNKNOWN completeness.
+  const envelope=isObject(inventory)?inventory:null;
+  const scoped=envelope && envelope.contract==="mad4b.site-source-catalog.v1" &&
+    boundTo(envelope.binding,site) && envelope.read_only===true &&
+    envelope.authorizing===false && Array.isArray(envelope.sources);
+  const registered=scoped?envelope.sources:Array.isArray(inventory)?inventory:null;
+  if (!registered) throw new TypeError("REGISTRY_SHAPE_INVALID");
+  const registryComplete=Boolean(scoped && envelope.complete===true);
+  if (registered.length>maxSources) return {
     contract:FEDERATION_CONTRACT, binding:site, decision:"REGISTRY_OVER_BUDGET",
     coverage_complete:false, sources:[], candidates:[], external_hints:[],
     execution_allowed:false, authorizing:false, provider_executed:false,
     warning:"registry_limit_exceeded_no_source_inspected"
   };
   const seenSources = new Set(), seenCandidates = new Set(), records=[], candidates=[];
-  let complete=true;
+  let complete=registryComplete;
   // Registry sorting is stable, independent of connector discovery ordering.
-  const ordered = [...inventory].sort((a,b)=>String(a?.id??"").localeCompare(String(b?.id??"")));
+  const ordered = [...registered].sort((a,b)=>String(a?.id??"").localeCompare(String(b?.id??"")));
   for(const source of ordered) {
     if (!isObject(source) || !ID.test(source.id??"") ||
         !KINDS.has(source.kind) || seenSources.has(source.id)) {
@@ -117,7 +133,9 @@ export async function discoverFederated({target,query,enumerate,inspect,
         invalid=true; continue;
       }
       // Cross-source collisions are kept distinct. No executable dispatch key.
-      const key=source.id+"--"+item.id;
+      const raw=source.id+"--"+item.id;
+      const key=raw.length<=79?raw:
+        source.id.slice(0,29)+"--"+item.id.slice(0,29)+"-"+continuity(raw);
       if(key.length>79 || seenCandidates.has(key)) {invalid=true;continue;}
       seenCandidates.add(key);
       const text=[item.label,item.description??"",item.id].join(" ");
@@ -137,17 +155,23 @@ export async function discoverFederated({target,query,enumerate,inspect,
   }
   // Lexical score only ranks candidates, it cannot verify their behavior.
   candidates.sort((a,b)=>(b.lexical_score-a.lexical_score)||a.id.localeCompare(b.id));
-  const selected=candidates.slice(0,limit);
+  const snapshot=continuity(JSON.stringify([
+    site,records,candidates.map(x=>[x.id,x.label,x.description,x.observation_sha256])
+  ]));
+  if(expectedSnapshot!==null && expectedSnapshot!==snapshot)
+    throw new TypeError("STALE_DISCOVERY_SNAPSHOT");
+  const selected=candidates.slice(offset,offset+limit);
   const hints=selected.map(c=>({
     id:c.id, source:c.kind, label:c.label,
     description:c.description || c.label
   }));
   return {
     contract:FEDERATION_CONTRACT, binding:site, decision:
-      !complete?"DISCOVERY_PARTIAL":candidates.length?"VERIFY_BEHAVIOR":"NO_CATALOG_MATCH",
-    coverage_complete:complete, candidate_total:candidates.length,
+      !complete?"DISCOVERY_PARTIAL":candidates.length?"VERIFY_BEHAVIOR":"EXPAND_DISCOVERY",
+    coverage_complete:complete, registry_scope_verified:Boolean(scoped),
+    candidate_total:candidates.length, snapshot_continuity_id:snapshot, offset, limit,
     source_count:records.length, sources:records, candidates:selected,
-    external_hints:hints, next_offset:candidates.length>limit?limit:null,
+    external_hints:hints, next_offset:candidates.length>offset+limit?offset+limit:null,
     ranking:"LEXICAL_ONLY_NOT_FUNCTIONAL", no_runtime_authority:true,
     execution_allowed:false, authorizing:false, provider_executed:false,
     external_hints_are_untrusted:true

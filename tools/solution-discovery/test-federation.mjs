@@ -40,4 +40,22 @@ const x=await run(sources.slice(0,2)),y=await run(sources.slice(0,2).reverse());
 yes(JSON.stringify(x.candidates)===JSON.stringify(y.candidates),"stable ordering");
 const over=await discoverFederated({target:site,query:"site",enumerate:async()=>Array.from({length:33},(_,i)=>item("r"+i)),inspect});
 yes(over.decision==="REGISTRY_OVER_BUDGET"&&!over.coverage_complete,"budget fail closed");
+const envelope={contract:"mad4b.site-source-catalog.v1",binding:site,
+ read_only:true,authorizing:false,complete:true,
+ sources:[item("provider-aa"),item("provider-bb")]};
+const full=await discoverFederated({target:site,query:"file",enumerate:async()=>envelope,inspect,limit:1});
+yes(full.coverage_complete&&full.registry_scope_verified,"site-scoped complete catalog");
+yes(full.candidate_total===2&&full.next_offset===1,"first page");
+const page2=await discoverFederated({target:site,query:"file",enumerate:async()=>envelope,inspect,limit:1,offset:1,expectedSnapshot:full.snapshot_continuity_id});
+yes(page2.candidates[0].id!==full.candidates[0].id&&page2.next_offset===null,"stable next page");
+await assert.rejects(()=>discoverFederated({target:site,query:"file",enumerate:async()=>({...envelope,sources:[item("provider-cc")]}),inspect,offset:1,expectedSnapshot:full.snapshot_continuity_id}),/STALE_DISCOVERY_SNAPSHOT/);assertions++;
+await assert.rejects(()=>discoverFederated({target:site,query:"file",enumerate:async()=>({...envelope,binding:{...site,site_id:"foreign"}}),inspect}),/REGISTRY_SHAPE_INVALID/);assertions++;
+const long=await discoverFederated({target:site,query:"file",
+ enumerate:async()=>({...envelope,sources:[item("provider".repeat(9))]}),
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
+ observation_sha256:H("e"),capabilities:[{id:"operation".repeat(8),label:"File manager"}]})});
+yes(long.candidate_total===1&&long.external_hints[0].id.length<=79,"long names do not disappear");
+const legacy=await discoverFederated({target:site,query:"file",enumerate:async()=>[item("legacy")],inspect});
+yes(!legacy.coverage_complete&&!legacy.registry_scope_verified,"unscoped bare catalog cannot claim complete coverage");
+
 console.log("MAD4B_PORTABLE_FEDERATION: PASS",assertions,"assertions");

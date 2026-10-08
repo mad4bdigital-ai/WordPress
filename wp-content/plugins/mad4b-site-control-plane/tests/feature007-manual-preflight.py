@@ -59,6 +59,9 @@ FIXTURES = (
     "g9-resilience-state-runtime.php",
     "assistant-operator-workspace-runtime.php",
 )
+NODE_FIXTURES = (
+    "tools/solution-discovery/test-federation.mjs",
+)
 PY_CHECKS = (
     "oauth-consent-script-syntax.py",
     "developer-runtime-contract.py",
@@ -263,6 +266,14 @@ def main():
                     receipt["results"].append(result)
             for filename in PY_CHECKS:
                 receipt["results"].append(python_check(root, filename, env))
+            for filename in NODE_FIXTURES:
+                if shutil.which("node", path=env["PATH"]) is None:
+                    receipt["results"].append({"case": "node:" + filename,
+                        "result": "BLOCKED", "reason": "NODE_RUNTIME_UNAVAILABLE"})
+                else:
+                    result = run(root, ["node", filename], env)
+                    result["case"] = "node:" + filename
+                    receipt["results"].append(result)
         states = [item["result"] for item in receipt["results"]]
         receipt["status"] = ("FAIL" if "FAIL" in states else
                              "BLOCKED" if "BLOCKED" in states else

@@ -16,3 +16,11 @@ This is an external *library*, not a deployed collector or a connector installat
 
 Native test command: `node tools/solution-discovery/test-federation.mjs`.
 Independent Staging acceptance must check exact installed plugin/build, live site identity, native PHP/Node, permission boundaries, and verified readback before any GA release claim. CI queue status is not acceptance evidence.
+
+## Scoped catalog completeness and pagination
+
+For completeness statements, `enumerate(site)` must return a non-authorizing, read-only `mad4b.site-source-catalog.v1` envelope with **all four** target identity fields and `complete=true`. Legacy arrays are accepted for searching but always report unknown completeness. Individual source metadata and inspection outputs must match the exact site, environment, origin and runtime generation. Source status failures are reported as partial, not as "no solution".
+
+The index supports `offset` + `expectedSnapshot` for consistent pagination. Its 64-bit checksum is **non-cryptographic continuity only**; it is not an authentication proof, signed receipt, trust level, or authorization grant. Returning to a modified registry with a stale cursor fails closed. Combined capability IDs are deterministically shortened when needed for the bounded WordPress hint schema.
+
+`feature007-manual-preflight.py` now runs this native Node fixture when Node is available; otherwise the case is BLOCKED. The V8 in-process tests do not stand in for Node or for site acceptance.
