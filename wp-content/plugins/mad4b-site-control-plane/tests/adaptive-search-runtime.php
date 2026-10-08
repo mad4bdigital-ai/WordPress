@@ -309,6 +309,31 @@ scenario( 'domain_profile_market_identity_and_safe_retarget_invariants', static 
 	check( ! $result['profile']['enabled'] && $result['profile']['provider_policy']['freeze_spend'], 'safe update never activates observations or spend' );
 	denied( MAD4B_SCP_Search_Context::apply( array_merge( $safe, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'revision_drift', 'stale direct API apply denied' );
 } );
+scenario( 'domain_market_claim_readback_proves_ownership_and_flags_legacy', static function () {
+	$raw = asi_profile( 'claim-readback' ); $raw['markets'][0]['id'] = 'claim-metro'; $raw['markets'][1]['id'] = 'claim-second';
+	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'owned claim plan' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'owned claim commit' );
+	$verified = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'claim-readback' ) ), 'owned claim readback' );
+	check( $verified['valid'] && $verified['market_identity_integrity'] && $verified['market_claims_certified'] && 0 === $verified['legacy_unclaimed_market_count'], 'new market claims are fully certified' );
+	// Readback refuses tampered ownership even if the stored profile's own hash is intact.
+	$key = MAD4B_SCP_Search_Store::key( 'market-identity', 'claim-metro' );
+	$old = MAD4B_SCP_Search_Store::read( 'market-identity', 'claim-metro' );
+	$bad = $old; $bad['payload']['profile_id'] = 'foreign-owner';
+	check( $GLOBALS['fixture_store']->compare_exchange( $key, $old, $bad ), 'controlled claim tamper fixture' );
+	$after = MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'claim-readback' ) );
+	check( ! is_wp_error( $after ) && ! $after['valid'] && ! $after['market_identity_integrity'], 'tampered claim must not be certified' );
+
+	// Old repository snapshots may have valid profile records without new claims.
+	// They remain readable, but they are explicitly NOT fully market-claim certified.
+	$old_raw = asi_profile( 'legacy-no-claim' );
+	$old_raw['markets'][0]['id'] = 'legacy-metro'; $old_raw['markets'][1]['id'] = 'legacy-second';
+	$legacy_input = array( 'profile' => $old_raw, 'expected_revision' => 0 );
+	$old_plan = ok( MAD4B_SCP_Search_Context::plan( $legacy_input ), 'legacy profile normalization' );
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'legacy-no-claim', null, array( 'profile' => $old_plan['profile'], 'plan_sha256' => $old_plan['plan_sha256'] ), 'SEARCH_PROFILE_CHANGED' ), 'persist historical profile without new claim' );
+	$legacy = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'legacy-no-claim' ) ), 'legacy profile verification' );
+	check( $legacy['valid'] && 2 === $legacy['legacy_unclaimed_market_count'] && ! $legacy['market_claims_certified'], 'legacy market identities are flagged, never falsely certified' );
+} );
 scenario( 'domain_market_claim_reservation_survives_partial_profile_commit', static function () {
 	$raw = asi_profile( 'pending-domain-profile' ); $raw['markets'][0]['id'] = 'pending-metro'; $raw['markets'][1]['id'] = 'pending-second';
 	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
