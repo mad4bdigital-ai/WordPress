@@ -24,6 +24,13 @@ $observed = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( $observed['discovery_complete'] === true, 'complete bounded inventory' );
 expect_site( $observed['certification_issued'] === false && $observed['authorizing'] === false, 'discovery cannot authorize or certify' );
 expect_site( $observed['provider_matches'][0]['recognized'] === true, 'provider declarative plugin signal matched' );
+$cpt_provider = array( 'cpt-adapter' => array( 'descriptor' => array( 'recognition' => array(
+  'source_post_types' => array( 'tour' ), 'source_taxonomies' => array( 'tour_type' )
+) ) ) );
+$cpt = $c::observe( 'https://staging.egypttourgates.com', $cpt_provider );
+expect_site( $cpt['provider_matches'][0]['recognized'] === true &&
+  $cpt['provider_matches'][0]['matched_post_types'] === 1 &&
+  $cpt['provider_matches'][0]['matched_taxonomies'] === 1, 'plugins are not prerequisite for post-type/taxonomy adapter recognition' );
 expect_site( $observed['unmapped_plugins'] === array( 'unknown-widget' ), 'unknown plugin retained as unmapped, not guessed' );
 expect_site( in_array( 'tour', $observed['post_types'], true ) && in_array( 'tour_type', $observed['taxonomies'], true ), 'runtime post types and taxonomies observed' );
 expect_site( strlen( $observed['snapshot_sha256'] ) === 64, 'fingerprint' );
