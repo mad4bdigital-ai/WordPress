@@ -9,6 +9,50 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_G8_Restore_Convergence {
 	const CONTRACT = 'mad4b.g8-restore-convergence.v1';
 
+	/**
+	 * Data-only reconciliation proposal for external side effects. Input records
+	 * are hints, never authenticated receipts or a restore-acceptance certificate.
+	 * The trusted external provider must later confirm every discrepancy under
+	 * the existing owner-governed workflow.
+	 */
+	public static function compare_external_effects( array $before, array $external ) {
+		if ( count( $before ) > 64 || count( $external ) > 64 )
+			return new WP_Error( 'mad4b_g8_restore_effects_bounds', 'External effect comparison requires a bounded inventory.' );
+		$clean = static function ( array $items ) {
+			foreach ( $items as $id => $record ) {
+				if ( ! is_string( $id ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $id )
+					|| ! is_array( $record ) || count( $record ) > 8
+					|| ! in_array( $record['state'] ?? '', array( 'applied', 'compensated', 'unknown' ), true )
+					|| ! is_string( $record['effect_sha256'] ?? null )
+					|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $record['effect_sha256'] ) ) return false;
+			}
+			return true;
+		};
+		if ( ! $clean( $before ) || ! $clean( $external ) )
+			return new WP_Error( 'mad4b_g8_restore_effects_invalid', 'External effect records are malformed; no blind replay is permitted.' );
+		$ids = array_unique( array_merge( array_keys( $before ), array_keys( $external ) ) );
+		sort( $ids, SORT_STRING );
+		$issues = array();
+		foreach ( $ids as $id ) {
+			if ( ! isset( $before[ $id ] ) ) $reason = 'external_effect_absent_from_local_snapshot';
+			elseif ( ! isset( $external[ $id ] ) ) $reason = 'unobserved_external_effect';
+			elseif ( ! hash_equals( $before[ $id ]['effect_sha256'], $external[ $id ]['effect_sha256'] ) )
+				$reason = 'external_effect_identity_mismatch';
+			elseif ( $before[ $id ]['state'] !== $external[ $id ]['state'] )
+				$reason = 'external_effect_state_changed';
+			elseif ( 'unknown' === $external[ $id ]['state'] )
+				$reason = 'external_effect_unconfirmed';
+			else continue;
+			$issues[] = array( 'correlation_sha256' => $id, 'reason' => $reason, 'recovery' => 'governed_provider_readback_and_reconciliation' );
+		}
+		return array( 'contract' => self::CONTRACT, 'state' => 'UNTRUSTED_RECONCILIATION_PROPOSAL',
+			'candidate_issue_count' => count( $issues ), 'issues' => $issues,
+			'comparison_inputs_authenticated' => false,
+			'governed_provider_confirmation_required' => true,
+			'acceptance_receipt_issued' => false, 'automatic_retry_allowed' => false,
+			'external_effect_applied' => false, 'authorizing' => false );
+	}
+
 	private static function ready( $class, $method ) {
 		return class_exists( $class, false ) && method_exists( $class, $method );
 	}
