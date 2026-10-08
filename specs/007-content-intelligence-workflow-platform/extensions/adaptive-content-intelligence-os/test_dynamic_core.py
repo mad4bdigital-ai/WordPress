@@ -132,4 +132,44 @@ false_done['gates']['gates'][0]['completion_claimed']=True
 fail(lambda:m.validate_model(false_done['tasks'],false_done['gates'],false_done['requirements'],
                              false_done['system_map']), 'gate_authority_invalid')
 
+# Profile-driven conditional certificates: an article cannot inherit a tour's
+# native WPML requirement, and a caller's false does not waive a tour relation.
+rich_model = deepcopy(model)
+rich_model['content_recipes'] = read('content-recipes.json')
+empty_evidence = {'capabilities':{}, 'completed_tasks':[], 'certified_gates':[]}
+article = m.compile_candidate(
+    {'task_ids':['ACI-T0033'], 'content_recipe_id':'article',
+     'content_profile':{'native_relation_in_scope':False}},
+    scope, empty_evidence, rich_model, policy)
+check('ACI-G4' not in article['applicable_certification_gates'], 'article native test not mandatory')
+tour = m.compile_candidate(
+    {'task_ids':['ACI-T0033'], 'content_recipe_id':'tour',
+     'content_profile':{'native_relation_in_scope':False}},
+    scope, empty_evidence, rich_model, policy)
+check('ACI-G4' in tour['applicable_certification_gates'], 'tour recipe prevents native bypass')
+existing_growth = m.compile_candidate({'task_ids':['ACI-T0059']},
+    scope, empty_evidence, rich_model, policy)
+check('ACI-G8' not in existing_growth['applicable_certification_gates'],
+      'analyzing existing content does not require a new publish')
+new_growth = m.compile_candidate(
+    {'task_ids':['ACI-T0059'], 'depends_on_new_publication':True, 'content_recipe_id':'tour'},
+    scope, empty_evidence, rich_model, policy)
+check('ACI-G8' in new_growth['applicable_certification_gates']
+      and 'ACI-G4' in new_growth['applicable_certification_gates'],
+      'newly published tours demand publishing and typed native proof')
+fail(lambda: m.compile_candidate(
+    {'task_ids':['ACI-T0033'], 'content_recipe_id':'unknown'},
+    scope, empty_evidence, rich_model, policy), 'content_recipe_unknown_or_invalid')
+# Demonstrate the planner's registry can grow without a hardcoded 71-task
+# runtime assumption. Frozen Spec Kit inventories remain versioned in manifest.
+extended = deepcopy(model)
+extra = deepcopy(extended['tasks']['tasks'][0])
+extra['id'] = 'ACI-T8888'
+extended['tasks']['tasks'].append(extra)
+extended['gates']['gates'][0]['task_ids'].append('ACI-T8888')
+extended['requirements']['requirements'][0]['task_ids'].append('ACI-T8888')
+v2 = m.validate_model(extended['tasks'], extended['gates'],
+                      extended['requirements'], extended['system_map'])
+check(v2['tasks'] == 72, 'additive semantic task registry without runtime code edits')
+
 print('mad4b.aci-os.dynamic-core.tests.v1: PASS', checks)
