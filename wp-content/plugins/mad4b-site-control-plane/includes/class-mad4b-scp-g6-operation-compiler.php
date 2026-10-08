@@ -27,6 +27,11 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		self::$strategies[ $id ] = $strategy;
 		return true;
 	}
+	/** Failed/blocked jobs cannot quietly restart work through a compiled plan. */
+	public static function compilable_job_state( $state ) {
+		return in_array( $state, array( 'NEW', 'QUEUED', 'RUNNING', 'WAITING_REVIEW' ), true );
+	}
+
 	public static function register_defaults() {
 		if ( ! isset( self::$strategies['native-content-experience-v1'] ) ) self::register_strategy( new MAD4B_SCP_G6_Native_Content_Strategy() );
 	}
@@ -62,6 +67,7 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		$revision = isset( $input['expected_job_revision'] ) ? $input['expected_job_revision'] : null;
 		if ( ! is_int( $revision ) || $revision < 1 || $revision !== (int) $job['job_revision'] ) return MAD4B_SCP_G6_Contracts::error( 'job_revision', 'Exact ContentJob revision changed or is missing.' );
 		if ( in_array( $job['state'], array( 'CANCELLED', 'COMPLETED' ), true ) ) return MAD4B_SCP_G6_Contracts::error( 'job_terminal', 'Terminal jobs cannot receive a mutable operation plan.' );
+		if ( ! self::compilable_job_state( $job['state'] ) ) return MAD4B_SCP_G6_Contracts::error( 'job_recovery_required', 'Blocked or failed ContentJobs require an explicit lifecycle recovery before recompilation.' );
 		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( isset( $input['profile_slug'] ) ? $input['profile_slug'] : '' );
 		if ( is_wp_error( $profile ) ) return $profile;
 		if ( empty( $profile['enabled'] ) || ( isset( $job['target_post_type'] ) && '' !== $job['target_post_type'] && $job['target_post_type'] !== $profile['post_type'] ) ) return MAD4B_SCP_G6_Contracts::error( 'profile_job_mismatch', 'Enabled profile must match the job target post type.' );
@@ -120,6 +126,79 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		return $plan;
 	}
 
+
+	/**
+	 * A review-safe projection: caller material, draft text, private object IDs,
+	 * workflow payloads, diff paths and arbitrary strategy fields never leave here.
+	 * The raw compiled plan remains an internal governed-coordinator object.
+	 */
+	public static function review_projection( array $plan ) {
+		if ( ! MAD4B_SCP_G6_Contracts::assert_digest( $plan, 'plan_sha256', self::CONTRACT ) ) return MAD4B_SCP_G6_Contracts::error( 'plan_digest', 'Review requires a complete unmodified compiled plan.' );
+		$owner = MAD4B_SCP_G6_Contracts::owner(); if ( is_wp_error( $owner ) ) return $owner;
+		if ( ! isset( $plan['owner_user_id'] ) || (int) $plan['owner_user_id'] !== $owner ) return MAD4B_SCP_G6_Contracts::error( 'plan_owner', 'The compiled plan belongs to a different administrator.' );
+		$items = array();
+		foreach ( $plan['nodes'] as $id => $step ) {
+			$diffs = array();
+			foreach ( (array) $step['diffs'] as $diff ) {
+				$diffs[] = array(
+					'path_sha256' => MAD4B_SCP_G6_Contracts::digest( isset( $diff['path'] ) ? $diff['path'] : '' ),
+					'change_type' => isset( $diff['change_type'] ) ? $diff['change_type'] : 'modified',
+					'before_sha256' => $diff['before_sha256'],
+					'after_sha256' => $diff['after_sha256'],
+					'values_redacted' => true,
+					'path_redacted' => true,
+				);
+			}
+			$effects = array();
+			foreach ( (array) $step['effects'] as $effect ) $effects[] = array( 'kind' => $effect['kind'], 'reversibility' => $effect['reversibility'] );
+			$permissions = array();
+			foreach ( (array) $step['permissions'] as $permission ) $permissions[] = array( 'capability' => $permission['capability'], 'object_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( isset( $permission['object_id'] ) ? $permission['object_id'] : null ) );
+			$items[] = array(
+				'node_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $id ),
+				'primitive' => $step['primitive'],
+				'strategy_id' => $step['strategy_id'],
+				'provider_id' => $step['provider_id'],
+				'capability_id' => $step['capability_id'],
+				'arguments_sha256' => $step['arguments_sha256'],
+				'schema_sha256' => $step['schema_sha256'],
+				'provider_binding_sha256' => $step['provider_binding_sha256'],
+				'native_plan_sha256' => $step['native_plan_sha256'],
+				'step_sha256' => $step['step_sha256'],
+				'dependencies_sha256' => MAD4B_SCP_G6_Contracts::digest( $step['depends_on'] ),
+				'object_state_pins_sha256' => MAD4B_SCP_G6_Contracts::digest( $step['object_pins'] ),
+				'permissions' => $permissions,
+				'effects' => $effects,
+				'diffs' => $diffs,
+				'raw_input_exposed' => false,
+			);
+		}
+		$view = array(
+			'contract' => 'mad4b.compiled-content-operation-review.v1',
+			'plan_sha256' => $plan['plan_sha256'],
+			'binding_sha256' => MAD4B_SCP_G6_Contracts::digest( $plan['binding'] ),
+			'job_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $plan['job_id'] ),
+			'job_revision' => $plan['job_revision'],
+			'job_state' => $plan['job_state'],
+			'input_sha256' => $plan['input_sha256'],
+			'schema_sha256' => $plan['schema_sha256'],
+			'steps' => $items,
+			'workflow_handoff_sha256' => MAD4B_SCP_G6_Contracts::digest( $plan['workflow_handoff'] ),
+			'approval_required' => true,
+			'authorizing' => false,
+			'mutation_performed' => false,
+			'private_values_exposed' => false,
+			'plan_usable_as_execution_authority' => false,
+		);
+		$view['review_sha256'] = MAD4B_SCP_G6_Contracts::digest( $view );
+		return $view;
+	}
+
+	public static function preview( $input = array() ) {
+		self::register_defaults();
+		$plan = self::compile( $input );
+		return is_wp_error( $plan ) ? $plan : self::review_projection( $plan );
+	}
+
 	private static function validate_step( $step, array $node ) {
 		if ( ! is_array( $step ) ) return MAD4B_SCP_G6_Contracts::error( 'step_contract', 'Strategy returned no typed operation plan.' );
 		$budget = MAD4B_SCP_G6_Contracts::data( $step ); if ( is_wp_error( $budget ) ) return $budget;
@@ -160,6 +239,7 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		$valid = self::revalidate( array( 'plan' => $plan ) ); if ( is_wp_error( $valid ) ) return $valid;
 		if ( ! isset( $plan['nodes'][ $node_id ] ) ) return MAD4B_SCP_G6_Contracts::error( 'step_missing', 'Exact compiled node is missing.' );
 		$step = $plan['nodes'][ $node_id ];
+		if ( 'RUNNING' !== $plan['job_state'] ) return MAD4B_SCP_G6_Contracts::error( 'job_not_running', 'A currently RUNNING ContentJob is required before compiled dispatch.' );
 		// Dependency completion must be bound through the existing workflow journal.
 		// No caller-supplied success flags or fabricated receipts advance a DAG.
 		if ( $step['depends_on'] ) return MAD4B_SCP_G6_Contracts::error( 'dependency_receipt_required', 'Dependency-bearing steps require a journal-bound fresh plan and fresh approval.' );
