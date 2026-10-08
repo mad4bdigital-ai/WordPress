@@ -388,6 +388,13 @@ $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $wrong_binding;
 g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( 'unrelated-provider', 'probe' )['reason'],
 	're-sealed ticket from a different restore epoch invalidates the ledger' );
 $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $foreign_saved;
+$missing_budget = $foreign_saved;
+unset( $missing_budget['buckets']['provider:foreign-scope'] );
+$missing_budget['seal'] = MAD4B_SCP_G8_Record::seal( $missing_budget );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $missing_budget;
+g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( 'unrelated-provider', 'probe' )['reason'],
+	're-sealed pending ticket with absent provider budget is invalid, not restorable' );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $foreign_saved;
 g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $foreign_ticket, array( 'state' => 'handoff' ) ),
 	'valid restored ledger permits exact ticket cleanup' );
 
