@@ -30,7 +30,9 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 	private static function plugin_slug( $basename ) {
 		if ( ! is_string( $basename ) || ! preg_match( '/^[a-zA-Z0-9._-]+(?:\/[a-zA-Z0-9._-]+)?\.php$/D', $basename ) ) return '';
 		$parts = explode( '/', $basename );
+		foreach ( $parts as $part ) if ( '.' === $part || '..' === $part || 0 === strpos( $part, '.' ) ) return '';
 		$slug = 1 === count( $parts ) ? substr( $parts[0], 0, -4 ) : $parts[0];
+		if ( ! preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/D', $slug ) ) return '';
 		return strtolower( $slug );
 	}
 
@@ -39,6 +41,8 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 		$origin = is_string( $site_origin ) ? $site_origin : '';
 		if ( ! preg_match( '~^https://[a-zA-Z0-9.-]+(?::[0-9]{2,5})?$~D', $origin ) ) $blockers[] = 'site_origin_invalid';
 		$plugins = array();
+		$plugin_versions = array();
+		$version_evidence_complete = true;
 		if ( ! function_exists( 'get_option' ) ) {
 			$blockers[] = 'plugin_inventory_unavailable';
 		} else {
@@ -56,13 +60,26 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 					foreach ( $active as $item ) {
 						$slug = self::plugin_slug( $item );
 						if ( '' === $slug ) { $blockers[] = 'plugin_basename_invalid'; break; }
+						if ( isset( $plugins[ $slug ] ) ) { $blockers[] = 'duplicate_plugin_slug'; break; }
 						$plugins[ $slug ] = true;
+						$version = '';
+						if ( function_exists( 'get_file_data' ) && defined( 'WP_PLUGIN_DIR' ) && is_string( WP_PLUGIN_DIR ) ) {
+							$meta = get_file_data( WP_PLUGIN_DIR . '/' . $item, array( 'Version' => 'Version' ), 'plugin' );
+							if ( is_array( $meta ) && isset( $meta['Version'] ) && is_string( $meta['Version'] ) ) $version = $meta['Version'];
+						}
+						if ( ! preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,99}$/D', $version ) ) {
+							$version_evidence_complete = false;
+							$version = '';
+						}
+						$plugin_versions[] = array( 'slug' => $slug, 'basename' => $item, 'version' => $version );
 					}
 				}
 			}
 		}
 		$plugin_ids = array_keys( $plugins );
 		sort( $plugin_ids, SORT_STRING );
+		usort( $plugin_versions, static function ( $a, $b ) { return strcmp( $a['slug'], $b['slug'] ); } );
+		if ( ! $version_evidence_complete ) $blockers[] = 'plugin_version_evidence_unavailable';
 		$post_types = function_exists( 'get_post_types' ) ? self::names( get_post_types( array(), 'names' ), self::MAX_TYPES, '/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/D' ) : null;
 		$taxonomies = function_exists( 'get_taxonomies' ) ? self::names( get_taxonomies( array(), 'names' ), self::MAX_TAXONOMIES, '/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/D' ) : null;
 		if ( null === $post_types ) $blockers[] = 'post_type_inventory_unavailable_or_invalid';
@@ -112,6 +129,7 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 		$source = array(
 			'origin' => $origin,
 			'plugins' => $plugin_ids,
+			'plugin_versions' => $plugin_versions,
 			'post_types' => null === $post_types ? array() : $post_types,
 			'taxonomies' => null === $taxonomies ? array() : $taxonomies,
 			'provider_matches' => $matches,
@@ -120,7 +138,9 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 			'contract' => self::CONTRACT, 'read_only' => true, 'authorizing' => false,
 			'discovery_complete' => $complete, 'certification_issued' => false,
 			'origin' => $origin, 'snapshot_sha256' => hash( 'sha256', wp_json_encode( $source ) ),
-			'plugins' => $plugin_ids, 'post_types' => $source['post_types'],
+			'plugins' => $plugin_ids, 'plugin_versions' => $plugin_versions,
+			'plugin_versions_complete' => $version_evidence_complete && ! in_array( 'plugin_basename_invalid', $blockers, true ),
+			'post_types' => $source['post_types'],
 			'taxonomies' => $source['taxonomies'], 'provider_matches' => $matches,
 			'unmapped_plugins' => $unmapped,
 			'blocking_reasons' => array_values( array_unique( $blockers ) ),
