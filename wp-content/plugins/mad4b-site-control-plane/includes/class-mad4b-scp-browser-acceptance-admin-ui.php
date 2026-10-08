@@ -17,22 +17,25 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	}
 
 	public static function normalize( $input ) {
-		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'executor', 'profile_id' ) ) )
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'executor', 'profile_id', 'site_provider_id' ) ) )
 			return new WP_Error( 'mad4b_browser_setup_unexpected_fields', 'Secret, script, URL and unsupported fields are not accepted.' );
 		$executor = isset( $input['executor'] ) ? $input['executor'] : 'auto';
 		$profile = isset( $input['profile_id'] ) ? $input['profile_id'] : '';
+		$site_provider = isset( $input['site_provider_id'] ) ? $input['site_provider_id'] : '';
 		if ( ! is_string( $executor ) || ! in_array( $executor, array_merge( array( 'auto' ), array_keys( self::managed_executors() ) ), true ) )
 			return new WP_Error( 'mad4b_browser_setup_invalid_executor', 'Only allowlisted external browser providers are supported.' );
 		if ( ! is_string( $profile ) || strlen( $profile ) > 64 || ( '' !== $profile && ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $profile ) ) )
 			return new WP_Error( 'mad4b_browser_setup_invalid_profile', 'Invalid site-specific acceptance profile ID.' );
-		return array( 'executor' => $executor, 'profile_id' => $profile );
+		if ( ! is_string( $site_provider ) || strlen( $site_provider ) > 64 || ( '' !== $site_provider && ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $site_provider ) ) )
+			return new WP_Error( 'mad4b_browser_setup_invalid_site_provider', 'Invalid acceptance provider ID.' );
+		return array( 'executor' => $executor, 'profile_id' => $profile, 'site_provider_id' => $site_provider );
 	}
 
 	public static function selection() {
 		$stored = get_option( self::OPTION, array() );
-		$known = is_array( $stored ) ? array_intersect_key( $stored, array_flip( array( 'executor', 'profile_id' ) ) ) : array();
+		$known = is_array( $stored ) ? array_intersect_key( $stored, array_flip( array( 'executor', 'profile_id', 'site_provider_id' ) ) ) : array();
 		$valid = self::normalize( $known );
-		return is_wp_error( $valid ) ? array( 'executor' => 'auto', 'profile_id' => '' ) : $valid;
+		return is_wp_error( $valid ) ? array( 'executor' => 'auto', 'profile_id' => '', 'site_provider_id' => '' ) : $valid;
 	}
 
 	public static function public_selection() {
@@ -41,6 +44,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			'contract' => 'mad4b.browser-operator-preference.v1',
 			'executor' => $value['executor'],
 			'profile_id' => $value['profile_id'],
+			'site_provider_id' => $value['site_provider_id'],
 			'credential_verified' => false,
 			'external_runner_connected' => false,
 			'site_provider_registered_by_preference' => false,
@@ -66,11 +70,12 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	public static function save() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.', '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
-		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', '_wp_http_referer', 'executor', 'profile_id', 'submit' ) ) )
+		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', '_wp_http_referer', 'executor', 'profile_id', 'site_provider_id', 'submit' ) ) )
 			wp_die( 'Unsupported or secret-bearing request fields are forbidden.', '', array( 'response' => 400 ) );
 		$value = self::normalize( array(
 			'executor' => isset( $_POST['executor'] ) ? wp_unslash( $_POST['executor'] ) : 'auto',
 			'profile_id' => isset( $_POST['profile_id'] ) ? wp_unslash( $_POST['profile_id'] ) : '',
+			'site_provider_id' => isset( $_POST['site_provider_id'] ) ? wp_unslash( $_POST['site_provider_id'] ) : '',
 		) );
 		if ( is_wp_error( $value ) ) wp_die( esc_html( $value->get_error_message() ), '', array( 'response' => 400 ) );
 		update_option( self::OPTION, $value, false );
@@ -100,11 +105,18 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			}
 			echo '</tbody></table>';
 		}
-		echo '<h2>' . esc_html__( '2. Select an external runner', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<h2>' . esc_html__( '2. Select site test provider and external browser runner', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="mad4b_browser_setup_save">';
 		wp_nonce_field( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
-		echo '<table class="form-table"><tbody><tr><th><label for="mad4b-browser-executor">' . esc_html__( 'Managed browser service', 'mad4b-site-control-plane' ) . '</label></th><td><select id="mad4b-browser-executor" name="executor">';
+		echo '<table class="form-table"><tbody><tr><th><label for="mad4b-site-provider">Site acceptance provider</label></th><td><select id="mad4b-site-provider" name="site_provider_id">';
+		echo '<option value="">Auto-select only if one registered test provider exists</option>';
+		foreach ( array_slice( $registered, 0, 32 ) as $site_provider ) {
+			if ( empty( $site_provider['valid'] ) || empty( $site_provider['provider_id'] ) ) continue;
+			$id = (string) $site_provider['provider_id'];
+			echo '<option value="' . esc_attr( $id ) . '" ' . selected( $choice['site_provider_id'], $id, false ) . '>' . esc_html( $id ) . '</option>';
+		}
+		echo '</select><p class="description">Only installed and valid providers can produce signed test plans; choosing a name never registers one.</p></td></tr><tr><th><label for="mad4b-browser-executor">' . esc_html__( 'Managed browser service', 'mad4b-site-control-plane' ) . '</label></th><td><select id="mad4b-browser-executor" name="executor">';
 		$options = array( 'auto' => 'Auto (external scheduler)' );
 		foreach ( self::managed_executors() as $id => $details ) $options[ $id ] = $details[0];
 		foreach ( $options as $id => $label ) echo '<option value="' . esc_attr( $id ) . '" ' . selected( $choice['executor'], $id, false ) . '>' . esc_html( $label ) . '</option>';
