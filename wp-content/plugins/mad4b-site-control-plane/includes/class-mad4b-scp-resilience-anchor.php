@@ -45,7 +45,7 @@ final class MAD4B_SCP_Resilience_Anchor {
             $next = array( 'scopes' => $next['scopes'] );
             $keys = array_keys( $next['scopes'] );
             foreach ( $keys as $scope_key ) {
-                if ( ! is_string( $scope_key ) || 1 !== preg_match( '/^[a-z][a-z0-9.:-]{1,126}$/D', $scope_key ) )
+                if ( ! is_string( $scope_key ) || 1 !== preg_match( '/^[a-z][a-z0-9._:-]{1,126}$/D', $scope_key ) )
                     return self::error( 'scope_invalid', 'Resilience scope key must be a bounded code-owned identifier.' );
             }
             $next['contract'] = self::CONTRACT;
