@@ -29,7 +29,8 @@ final class MAD4B_SCP_G7_Release_Acceptance_Audit {
         $native = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) &&
             method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'status' )
             ? MAD4B_SCP_Post_Update_Continuation::status() : array();
-        $native_valid = is_array( $native ) &&
+        $native_valid = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) &&
+            is_array( $native ) &&
             ( $native['contract'] ?? '' ) === MAD4B_SCP_Post_Update_Continuation::CONTRACT;
         if ( ! $native_valid ) $reasons[] = 'native_continuation_status_unavailable';
         return array(

@@ -87,7 +87,8 @@
       "evidence_paths": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-missing-dependency-contract.php"
       ],
       "remaining_acceptance": [
         "native post-update recertification and scoped impact evidence",
@@ -197,8 +198,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "b2df3dbd62dafadefc6e5770ca3bd15ff1da73fa478bd01d77dc2fec461e7a88",
-      "bytes": 24646
+      "sha256": "59a203e2c84bb7941b14694885998f7657f89c104377ab2e2da77af3f126127f",
+      "bytes": 24719
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
@@ -232,8 +233,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
-      "sha256": "61193baa978889a420d57e3ea354e955b4d66d49aadae919cb5b1babc5786345",
-      "bytes": 3566
+      "sha256": "02043edf73fc760fc7214493248f36736433ff9cac7e409eba7c788a4b077ac0",
+      "bytes": 3634
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
@@ -279,6 +280,11 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php",
       "sha256": "7f12d4b52dd64a7bd45021df4cb5c0a17640cd41af6f7b3a60ad79299e9fedf2",
       "bytes": 3473
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-missing-dependency-contract.php",
+      "sha256": "84db04faac87809f9bd929b4a9f6932c41116cfc5768f25516a21e0976c94316",
+      "bytes": 1631
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-spec-delivery-contract.php",
