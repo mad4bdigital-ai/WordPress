@@ -37,12 +37,22 @@ MAD4B_SCP_Assistant_Operator_Workspace::register_menu();
 check_case( 'menu requires manage_options', 'manage_options' === $GLOBALS['menu'][3] );
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::$value = array(
     'environment' => 'staging', 'preview_eligible' => true,
+    'assistant_read_registration' => array( 'read_catalog_local_ready' => true ),
     'blockers' => array( 'restore_epoch_unverified', '<script>invalid</script>' ) );
 $view = MAD4B_SCP_Assistant_Operator_Workspace::snapshot();
 check_case( 'workspace no mutation', $view['read_only'] && ! $view['mutation_performed'] && ! $view['provider_install_allowed'] );
 check_case( 'preview not execution', $view['preview_eligible'] && ! $view['task_execution_ready'] );
 check_case( 'invalid blocker suppressed', array( 'restore_epoch_unverified' ) === $view['blockers'] );
 check_case( 'bounded read queues', 3 === count( $view['read_work_counts'] ) && 8 === $view['read_work_counts']['assistant_provider_catalog_snapshot'] );
+MAD4B_SCP_Assistant_Bootstrap_Diagnostic::$value['assistant_read_registration']['read_catalog_local_ready'] = false;
+$missing_catalog = MAD4B_SCP_Assistant_Operator_Workspace::snapshot();
+check_case( 'missing local ability or adapter fails closed', ! $missing_catalog['preview_eligible'] &&
+    in_array( 'assistant_read_catalog_unverified', $missing_catalog['blockers'], true ) &&
+    ! $missing_catalog['task_execution_ready'] );
+unset( MAD4B_SCP_Assistant_Bootstrap_Diagnostic::$value['assistant_read_registration'] );
+$no_witness = MAD4B_SCP_Assistant_Operator_Workspace::snapshot();
+check_case( 'absent registration witness not presumed healthy', ! $no_witness['preview_eligible'] );
+MAD4B_SCP_Assistant_Bootstrap_Diagnostic::$value['assistant_read_registration'] = array( 'read_catalog_local_ready' => true );
 ob_start(); MAD4B_SCP_Assistant_Operator_Workspace::render(); $html = ob_get_clean();
 check_case( 'unsafe HTML not rendered', false === strpos( $html, '<script>' ) );
 check_case( 'no mutation controls', false === strpos( $html, '<form' ) && false === strpos( $html, '<button' ) );
