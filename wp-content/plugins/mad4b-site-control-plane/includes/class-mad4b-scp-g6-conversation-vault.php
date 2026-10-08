@@ -50,7 +50,7 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Conversation registry contains invalid or non-erased thread data.' );
         foreach ( $thread['messages'] as $index => $message ) {
             if ( ! is_array( $message ) || ! isset( $message['aad_version'] )
-                || 2 !== $message['aad_version'] || ! isset( $message['retention_ceiling'], $message['message_index'] )
+                || 3 !== $message['aad_version'] || ! isset( $message['retention_ceiling'], $message['message_index'] )
                 || ! is_int( $message['retention_ceiling'] ) || ! is_int( $message['message_index'] )
                 || $message['message_index'] !== $index
                 || $message['retention_ceiling'] < $thread['expires_at'] )
@@ -149,7 +149,7 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         $cipher = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt( $text, $aad, $nonce, $key['secret'] );
         $thread['expires_at'] = $retention_ceiling;
         $thread['messages'][] = array( 'id' => $message_id, 'role' => $role,
-            'aad_version' => 2, 'key_id' => $key['id'],
+            'aad_version' => 3, 'key_id' => $key['id'],
             'retention_ceiling' => $retention_ceiling, 'message_index' => $message_index,
             'nonce' => base64_encode( $nonce ),
             'ciphertext' => base64_encode( $cipher ),
@@ -186,7 +186,7 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             if ( ! isset( $m['key_id'], $m['id'], $m['nonce'], $m['ciphertext'], $m['aad_sha256'], $m['role'], $m['created_at'] )
                 || ! hash_equals( $key['id'], $m['key_id'] ) )
                 return MAD4B_SCP_G6_Contracts::error( 'vault_rekey_required', 'Encrypted messages require current reviewed key material.' );
-            if ( ! isset( $m['aad_version'] ) || 2 !== $m['aad_version'] )
+            if ( ! isset( $m['aad_version'] ) || 3 !== $m['aad_version'] )
                 return MAD4B_SCP_G6_Contracts::error( 'vault_aad_version_required', 'Legacy encrypted metadata requires reviewed migration before export.' );
             if ( ! is_int( $m['created_at'] ) || $m['created_at'] <= 0
                 || ! isset( $m['retention_ceiling'], $m['message_index'] )
