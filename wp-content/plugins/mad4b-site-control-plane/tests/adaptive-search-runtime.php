@@ -34,6 +34,9 @@ scenario( 'direct_profile_creation_must_be_paused_and_frozen_before_typed_activa
 	check( ! $omitted_plan['profile']['enabled'] && $omitted_plan['profile']['provider_policy']['freeze_spend'], 'implicit freeze never enables spend on creation' );
 	$omitted_apply = ok( MAD4B_SCP_Search_Context::apply( array_merge( $omitted_args, array( 'plan_sha256' => $omitted_plan['plan_sha256'] ) ) ), 'legacy omission applies only a frozen draft' );
 	check( ! $omitted_apply['profile']['enabled'] && $omitted_apply['profile']['provider_policy']['freeze_spend'], 'persisted implicit freeze matches exact plan' );
+	$invalid = asi_profile( 'creation-explicit-null-policy' );
+	$invalid['provider_policy'] = null;
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $invalid, 'expected_revision' => 0 ) ), 'profile_invalid', 'explicit null provider policy cannot be treated as omitted safe defaults' );
 	$safe = asi_profile( 'creation-safe-typed-controls' );
 	$safe['markets'][0]['id'] = 'creation-safe-us'; $safe['markets'][1]['id'] = 'creation-safe-fr';
 	$input = array( 'profile' => $safe, 'expected_revision' => 0 );
