@@ -419,6 +419,96 @@ def refresh_generated(root: Path = ROOT, summary_path: Path = SUMMARY, history_p
     Path(history_resource_path).write_text(render_php_history(updated), encoding="utf-8")
     return verify(root, summary_path, history_path, history_resource_path)
 
+
+# Pure, non-authorizing audit of WordPress Post Meta and WPML evidence snapshots.
+# This code does not infer mapper ownership or perform cross-language rewrites.
+def audit_native_postmeta_relations(evidence):
+    if not isinstance(evidence, dict) or evidence.get("contract") != "mad4b.native-relation-audit-input.v1":
+        raise ValueError("relation_contract_invalid")
+    records, identities, fields = (evidence.get(k) for k in ("records", "identities", "fields"))
+    if (not all(isinstance(x, list) for x in (records, identities, fields))
+            or len(records) > 200 or len(identities) > 2000 or len(fields) > 30):
+        raise ValueError("relation_input_invalid")
+    def identifier(value):
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int) and value > 0:
+            return value
+        if isinstance(value, str) and re.fullmatch(r"[1-9][0-9]*", value):
+            return int(value)
+        return None
+    known, schema = {}, {}
+    for item in identities:
+        if not isinstance(item, dict) or identifier(item.get("id")) is None or identifier(item["id"]) in known:
+            raise ValueError("relation_identity_invalid")
+        known[identifier(item["id"])] = item
+    for item in fields:
+        if not isinstance(item, dict) or not isinstance(item.get("key"), str):
+            raise ValueError("relation_field_invalid")
+        key = item["key"]
+        if (not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,100}", key) or key in schema
+                or item.get("kind") not in ("post", "term")
+                or item.get("cardinality") not in ("one", "many")
+                or item.get("locale_policy") not in ("same_locale", "shared", "review")):
+            raise ValueError("relation_field_invalid")
+        schema[key] = item
+    findings, group_locales = [], set()
+    for record in records:
+        if (not isinstance(record, dict) or identifier(record.get("id")) is None
+                or not isinstance(record.get("meta"), dict)
+                or not isinstance(record.get("locale"), str)
+                or not re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?", record["locale"])
+                or not isinstance(record.get("translation_group"), str)
+                or not record["translation_group"]):
+            raise ValueError("relation_record_invalid")
+        source_id, locale = identifier(record["id"]), record["locale"]
+        group_key = (record["translation_group"], locale)
+        if group_key in group_locales:
+            findings.append({"source_id": source_id, "status": "ISSUE", "reason": "duplicate_group_locale"})
+        group_locales.add(group_key)
+        for key, field in schema.items():
+            if key not in record["meta"]:
+                findings.append({"source_id": source_id, "field": key, "status": "REVIEW", "reason": "field_not_observed"})
+                continue
+            raw = record["meta"][key]
+            if (field["cardinality"] == "many") != isinstance(raw, list):
+                findings.append({"source_id": source_id, "field": key, "status": "ISSUE", "reason": "cardinality_mismatch"})
+                continue
+            values, seen = (raw if isinstance(raw, list) else [raw]), set()
+            for value in values:
+                target_id = identifier(value)
+                finding = {"source_id": source_id, "field": key, "target_id": target_id}
+                if target_id is None:
+                    finding.update(status="ISSUE", reason="invalid_target_id")
+                elif target_id in seen:
+                    finding.update(status="ISSUE", reason="duplicate_target_id")
+                elif target_id not in known:
+                    finding.update(status="REVIEW", reason="target_identity_not_observed")
+                else:
+                    target = known[target_id]
+                    expected_type = field.get("post_type") if field["kind"] == "post" else field.get("taxonomy")
+                    actual_type = target.get("post_type") if field["kind"] == "post" else target.get("taxonomy")
+                    if target.get("exists") is not True:
+                        finding.update(status="ISSUE", reason="target_missing")
+                    elif expected_type and expected_type != actual_type:
+                        finding.update(status="ISSUE", reason="target_type_mismatch")
+                    elif field["locale_policy"] == "review":
+                        finding.update(status="REVIEW", reason="locale_policy_requires_review")
+                    elif field["locale_policy"] == "same_locale" and target.get("locale") != locale:
+                        finding.update(status="REVIEW", reason=("cross_locale_reference" if target.get("locale")
+                                                                 else "target_locale_not_verified"))
+                    else:
+                        finding.update(status="PASS", reason="relation_verified")
+                if target_id is not None:
+                    seen.add(target_id)
+                findings.append(finding)
+    summary = {state: sum(item["status"] == state for item in findings)
+               for state in ("PASS", "REVIEW", "ISSUE")}
+    return {"contract": "mad4b.native-relation-audit-result.v1", "read_only": True,
+            "authorizing": False, "mutation_performed": False,
+            "complete": not summary["REVIEW"] and not summary["ISSUE"],
+            "summary": summary, "findings": findings}
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--refresh", action="store_true",
