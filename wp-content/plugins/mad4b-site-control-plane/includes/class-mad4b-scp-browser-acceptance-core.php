@@ -100,6 +100,19 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		try { $plan = call_user_func( $provider['plan_callback'], array( 'profile_id' => $validated['profile_id'], 'suite' => 'browser_runtime' ) ); }
 		catch ( Throwable $error ) { return self::blocked_plan( $validated['provider_id'], $validated['profile_id'], array( 'provider_plan_exception' ) ); }
 		if ( ! is_array( $plan ) ) return self::blocked_plan( $validated['provider_id'], $validated['profile_id'], array( 'provider_plan_invalid' ) );
+		if ( 'ready' === ( isset( $plan['state'] ) ? $plan['state'] : '' ) ) {
+			$valid_plan = isset( $plan['contract'], $plan['provider_id'], $plan['provider_contract'], $plan['profile_id'], $plan['suite'], $plan['plan_digest'], $plan['plan_signature'] )
+				&& 'mad4b.browser-acceptance-plan.v1' === $plan['contract']
+				&& $provider['provider_id'] === $plan['provider_id']
+				&& $provider['contract'] === $plan['provider_contract']
+				&& $validated['profile_id'] === $plan['profile_id']
+				&& 'browser_runtime' === $plan['suite']
+				&& is_string( $plan['plan_digest'] ) && preg_match( '/^[a-f0-9]{64}$/D', $plan['plan_digest'] )
+				&& is_string( $plan['plan_signature'] ) && preg_match( '/^[a-f0-9]{64}$/D', $plan['plan_signature'] )
+				&& ( ! isset( $plan['authorizing'] ) || false === $plan['authorizing'] )
+				&& ( ! isset( $plan['read_only'] ) || true === $plan['read_only'] );
+			if ( ! $valid_plan ) return self::blocked_plan( $validated['provider_id'], $validated['profile_id'], array( 'provider_ready_plan_contract_invalid' ) );
+		}
 		$plan['provider_id'] = $provider['provider_id'];
 		$plan['provider_contract'] = $provider['contract'];
 		$plan['profile_id'] = $validated['profile_id'];
@@ -124,6 +137,25 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		try { $result = call_user_func( $provider['result_callback'], $request ); }
 		catch ( Throwable $error ) { return self::blocked_result( $provider['provider_id'], $validated['profile_id'], array( 'provider_result_exception' ) ); }
 		if ( ! is_array( $result ) ) return self::blocked_result( $provider['provider_id'], $validated['profile_id'], array( 'provider_result_invalid' ) );
+		if ( 'PASS' === ( isset( $result['verdict'] ) ? $result['verdict'] : '' ) ) {
+			$verified = null !== $validated['evidence']
+				&& isset( $result['contract'], $result['provider_id'], $result['provider_contract'], $result['profile_id'], $result['suite'], $result['plan_digest'] )
+				&& 'mad4b.browser-acceptance-result.v1' === $result['contract']
+				&& $provider['provider_id'] === $result['provider_id']
+				&& $provider['contract'] === $result['provider_contract']
+				&& $validated['profile_id'] === $result['profile_id']
+				&& 'browser_runtime' === $result['suite']
+				&& is_string( $result['plan_digest'] ) && hash_equals( $validated['plan_digest'], $result['plan_digest'] )
+				&& isset( $result['evidence_digest'], $result['receipt_signature'] )
+				&& is_string( $result['evidence_digest'] ) && preg_match( '/^[a-f0-9]{64}$/D', $result['evidence_digest'] )
+				&& is_string( $result['receipt_signature'] ) && preg_match( '/^[a-f0-9]{64}$/D', $result['receipt_signature'] )
+				&& true === ( isset( $result['verification']['browser_runtime_parity_verified'] ) ? $result['verification']['browser_runtime_parity_verified'] : null )
+				&& 'live_browser_runtime' === ( isset( $result['verification']['verified_through'] ) ? $result['verification']['verified_through'] : '' )
+				&& false === ( isset( $result['receipt_authorizing'] ) ? $result['receipt_authorizing'] : null )
+				&& ( ! isset( $result['authorizing'] ) || false === $result['authorizing'] )
+				&& ( ! isset( $result['read_only'] ) || true === $result['read_only'] );
+			if ( ! $verified ) return self::blocked_result( $provider['provider_id'], $validated['profile_id'], array( 'provider_pass_receipt_contract_invalid' ) );
+		}
 		$result['provider_id'] = $provider['provider_id'];
 		$result['provider_contract'] = $provider['contract'];
 		$result['profile_id'] = $validated['profile_id'];
