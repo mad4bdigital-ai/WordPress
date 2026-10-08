@@ -163,6 +163,9 @@ $GLOBALS['g6_store'][17][$meta_key]['items']['private-thread']['messages'][] = a
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_vault_corrupt' );
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::purge_expired( 5 ), 'mad4b_g6_vault_corrupt' );
 $GLOBALS['g6_store'][17][$meta_key] = $original_record;
+$GLOBALS['g6_store'][17][$meta_key]['items']['private-thread']['retained_ciphertext'] = 'hidden-private-material';
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_vault_corrupt' );
+$GLOBALS['g6_store'][17][$meta_key] = $original_record;
 g6_vault_assert( ! is_wp_error( MAD4B_SCP_G6_Conversation_Vault::status() ), 'corruption rejection never persisted a mutation' );
 $GLOBALS['g6_store'] = array(); $rev = 0;
 for ( $i = 0; $i < MAD4B_SCP_G6_Conversation_Vault::MAX_THREADS; ++$i ) {
