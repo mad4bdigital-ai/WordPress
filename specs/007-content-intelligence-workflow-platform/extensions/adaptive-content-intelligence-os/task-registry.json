@@ -1152,8 +1152,7 @@
         "ACI-019"
       ],
       "execution_dependencies": [
-        "ACI-T0034",
-        "ACI-T0029"
+        "ACI-T0034"
       ],
       "status": "OPEN",
       "capability_selector": "blueprint_authors",
@@ -1348,8 +1347,7 @@
         "ACI-019"
       ],
       "execution_dependencies": [
-        "ACI-T0039",
-        "ACI-T0029"
+        "ACI-T0039"
       ],
       "status": "OPEN",
       "capability_selector": "writing_quality",
@@ -1689,7 +1687,6 @@
       ],
       "execution_dependencies": [
         "ACI-T0044",
-        "ACI-T0029",
         "ACI-T0046",
         "ACI-T0037"
       ],
@@ -1758,7 +1755,6 @@
       "execution_dependencies": [
         "ACI-T0053",
         "ACI-T0051",
-        "ACI-T0032",
         "ACI-T0065"
       ],
       "status": "OPEN",
@@ -1992,8 +1988,7 @@
         "ACI-035"
       ],
       "execution_dependencies": [
-        "ACI-T0060",
-        "ACI-T0055"
+        "ACI-T0060"
       ],
       "status": "OPEN",
       "capability_selector": "growth",
