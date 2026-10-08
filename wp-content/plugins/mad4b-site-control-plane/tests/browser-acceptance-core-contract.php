@@ -185,8 +185,14 @@ function browser_safe_provider( $id = 'fake-browser' ) {
 			return array(
 				'contract' => 'mad4b.browser-acceptance-result.v1',
 				'provider_id' => $id,
+				'provider_contract' => 'fake.browser-acceptance.v1',
 				'profile_id' => $request['profile_id'],
-				'verification' => array( 'browser_runtime_parity_verified' => ! $diverged ),
+				'suite' => 'browser_runtime',
+				'plan_digest' => $request['plan_digest'],
+				'evidence_digest' => hash( 'sha256', 'fixture-evidence' ),
+				'receipt_signature' => hash( 'sha256', 'fixture-signature' ),
+				'receipt_authorizing' => false,
+				'verification' => array( 'browser_runtime_parity_verified' => ! $diverged, 'verified_through' => ! $diverged ? 'live_browser_runtime' : 'none' ),
 				'infrastructure_failures' => array(),
 				'defect_reasons' => $diverged ? array( 'browser_dataset_ids_mismatch' ) : array(),
 				'incomplete_evidence' => array(),
@@ -343,6 +349,19 @@ $unsafe_effect = browser_safe_provider( 'unsafe-effect' );
 $unsafe_effect['descriptor_callback'] = function () { $d = browser_safe_descriptor( 'unsafe-effect' ); $d['seo_mutation'] = true; return $d; };
 $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'unsafe-effect' => $unsafe_effect );
 browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ), 'browser provider opening SEO mutation must be rejected' );
+
+// A provider cannot assert PASS without signed, plan-bound browser evidence.
+$untrusted_pass = browser_safe_provider( 'untrusted-pass' );
+$untrusted_pass['result_callback'] = function ( array $request ) {
+	return array( 'verdict' => 'PASS', 'verification' => array( 'browser_runtime_parity_verified' => true ) );
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'untrusted-pass' => $untrusted_pass );
+$fake_pass = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+	'provider_id' => 'untrusted-pass', 'profile_id' => 'site.v1',
+	'plan_digest' => str_repeat( 'a', 64 ), 'plan_signature' => str_repeat( 'b', 64 ),
+	'evidence' => array( 'proof' => 'unverified' ),
+) );
+browser_expect( 'BLOCKED' === $fake_pass['verdict'] && in_array( 'provider_pass_receipt_contract_invalid', $fake_pass['blocking_reasons'], true ), 'a synthetic PASS must be denied' );
 
 // Core selectors must preserve exact site/provider identity, never normalize.
 $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
