@@ -159,6 +159,12 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
 }
 $prior = MAD4B_SCP_G8_Capability_Convergence::observe( 'analytics' );
 g8_check( is_array( $prior ) && 2 === count( $prior['capabilities'] ), 'current provider observation normalized' );
+$foreign_site = $prior; $foreign_site['site_profile_sha256'] = str_repeat( 'f', 64 );
+g8_check( g8_is_error( MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $foreign_site ),
+	'mad4b_g8_convergence_snapshot_invalid' ), 'foreign site profile cannot participate in convergence' );
+$restored_snapshot = $prior; ++$restored_snapshot['restore_binding']['epoch'];
+g8_check( g8_is_error( MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $restored_snapshot ),
+	'mad4b_g8_convergence_snapshot_invalid' ), 'restored epoch cannot reuse prior capability assessment' );
 $after = $prior; $after['artifact_sha256'] = str_repeat( '4', 64 );
 $diff = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $after );
 g8_check( in_array( 'read', $diff['unrelated_compatible_capabilities'], true )
