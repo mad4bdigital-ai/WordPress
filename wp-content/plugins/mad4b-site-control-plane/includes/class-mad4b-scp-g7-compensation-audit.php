@@ -29,7 +29,9 @@ final class MAD4B_SCP_G7_Compensation_Audit {
                 true !== ( $verified['valid'] ?? false ) ||
                 true !== ( $verified['cryptographic_signature_verified'] ?? false ) ||
                 ! is_string( $verified['receipt_sha256'] ?? null ) ||
-                ! MAD4B_SCP_Adaptive_Operations_Context::sha( $verified['receipt_sha256'] ) ) {
+                ! MAD4B_SCP_Adaptive_Operations_Context::sha( $verified['receipt_sha256'] ) ||
+                ! MAD4B_SCP_Adaptive_Operations_Context::sha( $receipt['receipt_sha256'] ?? null ) ||
+                ! hash_equals( $receipt['receipt_sha256'], $verified['receipt_sha256'] ) ) {
                 return self::result( $base, 'signature_or_receipt_invalid' );
             }
         }

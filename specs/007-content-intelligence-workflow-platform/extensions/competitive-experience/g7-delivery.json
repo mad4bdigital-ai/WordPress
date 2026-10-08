@@ -141,7 +141,8 @@
     ".github/workflows/feature-007-spec-ci.yml",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",
-    "wp-content/plugins/mad4b-site-control-plane/tests/g7-spec-delivery-contract.php"
+    "wp-content/plugins/mad4b-site-control-plane/tests/g7-spec-delivery-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php"
   ],
   "claim_limits": {
     "all_tasks_done": false,
@@ -200,14 +201,19 @@
       "bytes": 24646
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
+      "sha256": "e1844a6168ace8235902c5367bf607a2b8fcf16a87745887f1177a11d5947bc2",
+      "bytes": 6327
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php",
       "sha256": "3c8491629ab275653a4ba9a5222dea6d1b4f9b91ebefcb03010213d09224679e",
       "bytes": 6095
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php",
-      "sha256": "c06966050114915fc11c4d2023ba482e2bbd175eac431891aab04f0f5f86cc0f",
-      "bytes": 5297
+      "sha256": "8ca48773a778602a7dff7546f4cf89c8c605b4b162d80ace001a0544db64e71f",
+      "bytes": 5491
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php",
@@ -251,8 +257,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php",
-      "sha256": "d3a0fd228e49f751325d6a1e0f5b2bfb7f9027891059942a167c515ea2c64a67",
-      "bytes": 5011
+      "sha256": "13b370eaf386ec85cae86740302d7c3b57e78f11a27a9ca3095fad7083be7d35",
+      "bytes": 5774
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
@@ -261,8 +267,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
-      "sha256": "4e1c753cd0e91c3e9d62a4232e218accf7e4e1de3185287c2a3c0cd09ec1ea21",
-      "bytes": 10153
+      "sha256": "2ae564d454e37dcfe1e323455f6089774925c7e29c423da683a2b4c007a4a76a",
+      "bytes": 10730
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",

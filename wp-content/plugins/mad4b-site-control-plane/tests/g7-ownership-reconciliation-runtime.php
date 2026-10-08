@@ -11,8 +11,12 @@ function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 function sanitize_key( $v ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $v ) ); }
 class MAD4B_SCP_Site_Profile {
+    public static $verification_error = false;
     public static function deployment_binding_proof( $purpose, $digest ) { return hash_hmac( 'sha256', $purpose . ':' . $digest, 'g7-test-key' ); }
-    public static function verify_deployment_binding_proof( $purpose, $digest, $proof ) { return is_string( $proof ) && hash_equals( self::deployment_binding_proof( $purpose, $digest ), $proof ); }
+    public static function verify_deployment_binding_proof( $purpose, $digest, $proof ) {
+        if ( self::$verification_error ) return new WP_Error( 'native_verifier_failed' );
+        return is_string( $proof ) && hash_equals( self::deployment_binding_proof( $purpose, $digest ), $proof );
+    }
 }
 class MAD4B_SCP_Execution_Receipt {
     public static function verify( $receipt ) { return isset( $receipt['receipt_sha256'] ) ? array( 'receipt_sha256' => $receipt['receipt_sha256'] ) : new WP_Error( 'invalid_receipt' ); }
@@ -35,6 +39,11 @@ $current = $baseline; unset( $current['lineage_proof'], $current['lineage_sha256
 $desired = $current; $desired['fields']['title'] = 'safe';
 $plan = MAD4B_SCP_Ownership_Reconciliation::plan( $baseline, $current, $desired, $policy, g7_binding() );
 g7_assert( ! is_wp_error( $plan ) && 'BOUNDED_REPAIR_PLANNED' === $plan['state'] && ! $plan['authorizing'], 'bounded plan no authority' );
+MAD4B_SCP_Site_Profile::$verification_error = true;
+g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $plan, $current, $policy, g7_binding() ), 'sealed_evidence_foreign' );
+MAD4B_SCP_Site_Profile::$verification_error = false;
+$wrong_contract = g7_binding(); $wrong_contract['contract'] = 'foreign.binding.v1';
+g7_error( MAD4B_SCP_Adaptive_Operations_Context::validate( $wrong_contract ), 'binding_contract_invalid' );
 $guard = MAD4B_SCP_Ownership_Reconciliation::commit_guard( $plan, $current, $policy, g7_binding() );
 g7_assert( is_array( $guard ) && ! empty( $guard['native_cas_required'] ), 'guard still requires native CAS' );
 $after = $current; $after['fields']['title'] = 'safe'; $after['revision']++;

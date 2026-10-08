@@ -13,10 +13,11 @@ final class MAD4B_SCP_Adaptive_Operations_Context {
 		if ( ! class_exists( 'MAD4B_SCP_Runtime_Generation_Fence' ) || ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) return self::error( 'runtime_binding_unavailable' );
 		$generation = MAD4B_SCP_Runtime_Generation_Fence::capture();
 		if ( is_wp_error( $generation ) ) return $generation;
+		if ( ! is_array( $generation ) || ! self::sha( $generation['generation_sha256'] ?? null ) ) return self::error( 'runtime_generation_invalid' );
 		$artifact = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
-		if ( empty( $artifact['runtime_manifest_match'] ) ) return self::error( 'artifact_manifest_unverified' );
+		if ( ! is_array( $artifact ) || true !== ( $artifact['runtime_manifest_match'] ?? null ) ) return self::error( 'artifact_manifest_unverified' );
 		$epoch = class_exists( 'MAD4B_SCP_Restore_Epoch' ) ? MAD4B_SCP_Restore_Epoch::status( false, true ) : array();
-		if ( empty( $epoch['ready'] ) || empty( $epoch['epoch'] ) ) return self::error( 'restore_epoch_unverified' );
+		if ( ! is_array( $epoch ) || true !== ( $epoch['ready'] ?? null ) || ! isset( $epoch['epoch'] ) || ! is_int( $epoch['epoch'] ) || $epoch['epoch'] < 1 ) return self::error( 'restore_epoch_unverified' );
 		$binding = array(
 			'contract' => self::CONTRACT,
 			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
@@ -33,6 +34,7 @@ final class MAD4B_SCP_Adaptive_Operations_Context {
 	}
 
 	public static function validate( array $binding ) {
+		if ( self::CONTRACT !== ( $binding['contract'] ?? null ) ) return self::error( 'binding_contract_invalid' );
 		foreach ( array( 'site_uuid', 'environment' ) as $field ) {
 			if ( ! isset( $binding[ $field ] ) || ! is_string( $binding[ $field ] ) || '' === $binding[ $field ] || strlen( $binding[ $field ] ) > 100 || ! preg_match( '/^[a-zA-Z0-9._:-]+$/D', $binding[ $field ] ) ) return self::error( 'binding_' . $field . '_missing' );
 		}
@@ -61,6 +63,7 @@ final class MAD4B_SCP_Adaptive_Operations_Context {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! method_exists( 'MAD4B_SCP_Site_Profile', 'deployment_binding_proof' ) ) return self::error( 'binding_proof_unavailable' );
 		$digest = self::digest( $purpose, $material );
 		if ( is_wp_error( $digest ) ) return $digest;
+		if ( ! self::sha( $digest ) ) return self::error( 'sealed_digest_invalid' );
 		$proof = MAD4B_SCP_Site_Profile::deployment_binding_proof( $purpose, $digest );
 		if ( is_wp_error( $proof ) || ! is_string( $proof ) || '' === $proof ) return self::error( 'binding_proof_failed' );
 		return array( 'material' => $material, 'sha256' => $digest, 'proof' => $proof );
@@ -69,8 +72,10 @@ final class MAD4B_SCP_Adaptive_Operations_Context {
 	public static function unseal( $purpose, array $sealed ) {
 		if ( ! isset( $sealed['material'], $sealed['sha256'], $sealed['proof'] ) || ! is_array( $sealed['material'] ) || ! self::sha( $sealed['sha256'] ) || ! is_string( $sealed['proof'] ) || '' === $sealed['proof'] ) return self::error( 'sealed_evidence_missing' );
 		$digest = self::digest( $purpose, $sealed['material'] );
-		if ( is_wp_error( $digest ) || ! hash_equals( $sealed['sha256'], $digest ) ) return self::error( 'sealed_evidence_modified' );
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! method_exists( 'MAD4B_SCP_Site_Profile', 'verify_deployment_binding_proof' ) || ! MAD4B_SCP_Site_Profile::verify_deployment_binding_proof( $purpose, $digest, $sealed['proof'] ) ) return self::error( 'sealed_evidence_foreign' );
+		if ( is_wp_error( $digest ) || ! self::sha( $digest ) || ! hash_equals( $sealed['sha256'], $digest ) ) return self::error( 'sealed_evidence_modified' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! method_exists( 'MAD4B_SCP_Site_Profile', 'verify_deployment_binding_proof' ) ) return self::error( 'sealed_evidence_foreign' );
+		$verified = MAD4B_SCP_Site_Profile::verify_deployment_binding_proof( $purpose, $digest, $sealed['proof'] );
+		if ( true !== $verified ) return self::error( 'sealed_evidence_foreign' );
 		return $sealed['material'];
 	}
 }

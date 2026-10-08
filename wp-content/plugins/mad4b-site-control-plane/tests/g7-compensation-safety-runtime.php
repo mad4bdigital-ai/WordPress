@@ -23,9 +23,11 @@ class MAD4B_SCP_Restore_Epoch {
 }
 class MAD4B_SCP_Execution_Receipt {
   const CONTRACT = 'mad4b.execution-receipt.v1';
+  public static $foreign_digest = false;
   public static function verify( array $receipt ) {
     if ( empty( $receipt['signed_test_receipt'] ) ) return new WP_Error( 'invalid_crypto' );
-    return array( 'valid' => true, 'cryptographic_signature_verified' => true, 'receipt_sha256' => $receipt['receipt_sha256'] );
+    return array( 'valid' => true, 'cryptographic_signature_verified' => true,
+      'receipt_sha256' => self::$foreign_digest ? str_repeat( 'a', 64 ) : $receipt['receipt_sha256'] );
   }
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g7-compensation-audit.php';
@@ -46,6 +48,13 @@ $ctx = array( 'binding' => $bind, 'original_before_sha256' => str_repeat( '2', 6
 $result = MAD4B_SCP_G7_Compensation_Audit::assess( $original, $compensation, $ctx );
 verify_gate( $result['state'] === 'APPROVAL_REQUIRED' && ! $result['undo_certified'] &&
   $result['evidence_consistent'] && ! $result['compensation_performed'], 'signed evidence still not Undo proof' );
+MAD4B_SCP_Execution_Receipt::$foreign_digest = true;
+$result = MAD4B_SCP_G7_Compensation_Audit::assess( $original, $compensation, $ctx );
+verify_gate( $result['reason'] === 'signature_or_receipt_invalid' && ! $result['signed_receipts_verified'], 'native verification digest must match the submitted signed receipt' );
+MAD4B_SCP_Execution_Receipt::$foreign_digest = false;
+$invalid_type = $original; $invalid_type['receipt_sha256'] = array( 'not-a-digest' );
+$result = MAD4B_SCP_G7_Compensation_Audit::assess( $invalid_type, $compensation, $ctx );
+verify_gate( $result['reason'] === 'signature_or_receipt_invalid', 'malformed signed digest denied without TypeError' );
 $invalid = $original; unset( $invalid['signed_test_receipt'] );
 $result = MAD4B_SCP_G7_Compensation_Audit::assess( $invalid, $compensation, $ctx );
 verify_gate( $result['state'] === 'RECONCILIATION_REQUIRED', 'forged receipt denied' );
