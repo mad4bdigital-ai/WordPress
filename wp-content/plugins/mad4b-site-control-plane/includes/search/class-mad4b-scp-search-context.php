@@ -73,11 +73,52 @@ final class MAD4B_SCP_Search_Context {
 		$current = MAD4B_SCP_Search_Store::read( 'profile', $profile['profile_id'] ); if ( is_wp_error( $current ) ) return $current;
 		$revision = is_array( $current ) ? (int) $current['_revision'] : 0;
 		if ( $revision !== $input['expected_revision'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_revision_drift' );
+		// Domain invariant: every caller (admin, remote API or workflow) must
+		// respect historical geo identity and a separately paused/frozen edit lane.
+		if ( is_array( $current ) ) {
+			if ( ! isset( $current['profile'] ) || ! is_array( $current['profile'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_boundary' );
+			$guard = self::guard_profile_update( $current['profile'], $profile );
+			if ( is_wp_error( $guard ) ) return $guard;
+		}
 		$profile['revision'] = $revision + 1;
 		$profile['profile_sha256'] = MAD4B_SCP_Search_Contracts::digest( $profile );
 		$plan = array( 'contract' => 'mad4b.search-profile-plan.v1', 'profile' => $profile, 'expected_revision' => $revision, 'policy_fingerprint' => MAD4B_SCP_Search_Contracts::digest( self::policy() ), 'site_binding' => MAD4B_SCP_Search_Store::scope(), 'authorizing' => false, 'mutation_performed' => false );
 		$plan['plan_sha256'] = MAD4B_SCP_Search_Contracts::digest( $plan );
 		return $plan;
+	}
+
+	/**
+	 * Market IDs are historical measurement identities, not display labels.
+	 * No caller may reassign or silently remove an existing market identity.
+	 * Material configuration changes require *both* old and proposed state
+	 * to be paused/frozen. Dedicated state-only controls remain possible.
+	 */
+	private static function guard_profile_update( array $old, array $next ) {
+		if ( ! isset( $old['markets'], $next['markets'] ) || ! is_array( $old['markets'] ) || ! is_array( $next['markets'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_boundary' );
+		$by_id = array();
+		foreach ( $next['markets'] as $market ) {
+			if ( ! is_array( $market ) || ! isset( $market['id'], $market['country'] ) || ! is_string( $market['id'] ) || ! is_string( $market['country'] ) ) return MAD4B_SCP_Search_Contracts::error( 'market_invalid' );
+			$by_id[ $market['id'] ] = $market['country'];
+		}
+		foreach ( $old['markets'] as $market ) {
+			if ( ! is_array( $market ) || ! isset( $market['id'], $market['country'] ) || ! is_string( $market['id'] ) || ! is_string( $market['country'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_boundary' );
+			if ( ! isset( $by_id[ $market['id'] ] ) || $by_id[ $market['id'] ] !== $market['country'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_locked', 'Existing market IDs cannot be removed or reassigned to another country without a separately governed migration.' );
+		}
+		$p = self::policy(); if ( is_wp_error( $p ) ) return $p;
+		$fields = array_flip( $p['profile_fields'] );
+		$before = array_intersect_key( $old, $fields );
+		$after = array_intersect_key( $next, $fields );
+		// Exactly three fields belong to independently verified runtime controls.
+		unset( $before['enabled'], $after['enabled'] );
+		if ( isset( $before['provider_policy'] ) && is_array( $before['provider_policy'] ) ) unset( $before['provider_policy']['freeze_spend'], $before['provider_policy']['disabled'] );
+		if ( isset( $after['provider_policy'] ) && is_array( $after['provider_policy'] ) ) unset( $after['provider_policy']['freeze_spend'], $after['provider_policy']['disabled'] );
+		$target_change = MAD4B_SCP_Search_Contracts::digest( $before ) !== MAD4B_SCP_Search_Contracts::digest( $after );
+		$old_frozen = ! empty( $old['provider_policy']['freeze_spend'] );
+		$next_frozen = ! empty( $next['provider_policy']['freeze_spend'] );
+		if ( $target_change && ( ! empty( $old['enabled'] ) || ! empty( $next['enabled'] ) || ! $old_frozen || ! $next_frozen ) ) {
+			return MAD4B_SCP_Search_Contracts::error( 'profile_targeting_requires_pause_and_spend_freeze', 'Pause observations and freeze spend in an independent step before any material profile edit.' );
+		}
+		return true;
 	}
 
 	public static function apply( array $input ) {
