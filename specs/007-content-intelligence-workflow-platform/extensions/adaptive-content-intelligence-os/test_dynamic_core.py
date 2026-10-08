@@ -174,4 +174,30 @@ v2 = m.validate_model(extended['tasks'], extended['gates'],
                       extended['requirements'], extended['system_map'])
 check(v2['tasks'] == 72, 'additive semantic task registry without runtime code edits')
 
+# Incident findings are restrictive: they never become permission or
+# erase missing certified provider/epoch evidence.
+rules = read('disposition-rules.json')
+case_model = deepcopy(model)
+case_model['disposition_rules'] = rules
+for state_expected, finding in [
+    ('NEEDS_REVIEW', 'existing_editor_modified_copy'),
+    ('QUARANTINED', 'SERP_source_injection'),
+    ('DENIED', 'unapproved_cross_site_identity'),
+]:
+    result = m.compile_candidate(
+        {'task_ids':['ACI-T0001']}, scope,
+        {'capabilities':{'spec_integrity':{'certified':True,'runtime_generation':'f'*64}},
+         'completed_tasks':[], 'certified_gates':['ACI-G0'], 'observed_findings':[finding]},
+        case_model, policy)
+    check(result['status'] == state_expected, 'restrictive_disposition_' + state_expected)
+    check(result['trusted_authority_verified'] is False and
+          result['mutation_performed'] is False, 'never_trusted_' + state_expected)
+
+unknown = m.compile_candidate(
+    {'task_ids':['ACI-T0001']}, scope,
+    {'capabilities':{'spec_integrity':{'certified':True,'runtime_generation':'f'*64}},
+     'completed_tasks':[], 'certified_gates':['ACI-G0'],
+     'observed_findings':['UNRECOGNIZED_EXTERNAL_EFFECT']}, case_model, policy)
+check(unknown['status'] == 'QUARANTINED', 'unknown issue never silently accepted')
+
 print('mad4b.aci-os.dynamic-core.tests.v1: PASS', checks)
