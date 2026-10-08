@@ -124,12 +124,12 @@ final class MAD4B_SCP_Search_Context {
 		$old_disabled = isset( $old['provider_policy']['disabled'] ) ? $old['provider_policy']['disabled'] : array();
 		$new_disabled = isset( $next['provider_policy']['disabled'] ) ? $next['provider_policy']['disabled'] : array();
 		$state_change = $old['enabled'] !== $next['enabled'] || $old['provider_policy']['freeze_spend'] !== $next['provider_policy']['freeze_spend'] || MAD4B_SCP_Search_Contracts::digest( $old_disabled ) !== MAD4B_SCP_Search_Contracts::digest( $new_disabled );
-		if ( $state_change && ! self::$typed_control_in_progress ) return MAD4B_SCP_Search_Contracts::error( 'profile_state_requires_explicit_control', 'Runtime state transitions require the dedicated typed control operation.' );
 		$old_frozen = ! empty( $old['provider_policy']['freeze_spend'] );
 		$next_frozen = ! empty( $next['provider_policy']['freeze_spend'] );
 		if ( $target_change && ( ! empty( $old['enabled'] ) || ! empty( $next['enabled'] ) || ! $old_frozen || ! $next_frozen ) ) {
 			return MAD4B_SCP_Search_Contracts::error( 'profile_targeting_requires_pause_and_spend_freeze', 'Pause observations and freeze spend in an independent step before any material profile edit.' );
 		}
+		if ( $state_change && ! self::$typed_control_in_progress ) return MAD4B_SCP_Search_Contracts::error( 'profile_state_requires_explicit_control', 'Runtime state transitions require the dedicated typed control operation.' );
 		return true;
 	}
 
