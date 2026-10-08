@@ -178,6 +178,35 @@ $GLOBALS['g9_options'][ $marker_option ] = $current_marker;
 file_put_contents( $path, $older_valid_file );
 g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'mirror_anchor_mismatch' );
 file_put_contents( $path, $original );
+// A valid high-water revision near the platform integer ceiling must never
+// cause a float promotion, publish a broken mirror or invoke the transition.
+foreach ( array( PHP_INT_MAX - 1, PHP_INT_MAX ) as $saturated_revision ) {
+    $saturated = json_decode( $original, true );
+    $saturated['revision'] = $saturated_revision;
+    unset( $saturated['anchor_sha256'] );
+    $saturated['anchor_sha256'] = MAD4B_SCP_Resilience_Context::digest( $saturated );
+    $saturated_json = json_encode( $saturated );
+    file_put_contents( $path, $saturated_json );
+    $saturated_marker = $current_marker;
+    $saturated_marker['anchor_revision'] = $saturated_revision;
+    $saturated_marker['anchor_sha256'] = $saturated['anchor_sha256'];
+    $GLOBALS['g9_options'][ $marker_option ] = $saturated_marker;
+    $transition_ran = false;
+    g9_error( MAD4B_SCP_Resilience_Anchor::transact(
+        $binding, $saturated_revision,
+        function ( $current ) use ( &$transition_ran ) {
+            $transition_ran = true;
+            $current['scopes']['g9:overflow'] = array( 'claimed'=>true );
+            return $current;
+        }
+    ), 'revision_exhausted' );
+    g9_check( ! $transition_ran, 'saturated revision denied before any transform' );
+    g9_check( $GLOBALS['g9_options'][ $marker_option ] === $saturated_marker
+        && file_get_contents( $path ) === $saturated_json,
+        'saturated revision did not change external file or DB mirror' );
+}
+$GLOBALS['g9_options'][ $marker_option ] = $current_marker;
+file_put_contents( $path, $original );
 $forged = json_decode( $original, true );
 $forged['clock_floor'] = time() + 3600;
 unset( $forged['anchor_sha256'] );
