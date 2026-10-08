@@ -255,6 +255,7 @@ jobs:
       - name: Verify Competitive Experience G1 evidence and classifier contracts
         run: |
           python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_native_relation_evidence.py
           python wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php
