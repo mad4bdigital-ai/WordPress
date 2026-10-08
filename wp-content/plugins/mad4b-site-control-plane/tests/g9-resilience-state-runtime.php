@@ -112,7 +112,8 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
                 'site_key'=>$key, 'generation_sha256'=>$binding['runtime_generation_sha256'],
                 'certification_sha256'=>hash( 'sha256', 'cert' ), 'ready'=>true, 'revoked'=>false,
             ) ),
-            'host' => array( 'isolation_verified'=>true, 'local_readback_verified'=>true ),
+            'host' => array( 'isolation_verified'=>true, 'local_readback_verified'=>true,
+                'single_host_exclusive_verified'=>true ),
             'health' => array( 'sample_count'=>90, 'error_rate_bps'=>1, 'p95_ms'=>40,
                 'observed_at'=>$this->observed_at ),
             'external_effects' => array(), 'gates'=>array(

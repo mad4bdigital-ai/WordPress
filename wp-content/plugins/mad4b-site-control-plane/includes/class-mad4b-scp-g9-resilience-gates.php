@@ -167,6 +167,10 @@ final class MAD4B_SCP_G9_Resilience_Gates {
         }
         if ( empty( $observation['host']['isolation_verified'] ) || empty( $observation['host']['local_readback_verified'] ) )
             return self::deny( 'host_isolation_unknown', 'Pilot requires independently verified local host isolation and readback.' );
+        // flock on a file is NOT a distributed lease when different PHP hosts
+        // use separate disks. No shared/quorum fence is implemented here.
+        if ( true !== ( $observation['host']['single_host_exclusive_verified'] ?? null ) )
+            return self::deny( 'distributed_fence_unavailable', 'Site must have independently certified single-host exclusive deployment before using its local external fence.' );
         if ( ! isset( $observation['external_effects'] ) || ! is_array( $observation['external_effects'] )
             || count( $observation['external_effects'] ) > 128 )
             return self::deny( 'external_effect_evidence_missing', 'External effect inventory is incomplete or unbounded.' );

@@ -29,6 +29,7 @@ final class MAD4B_SCP_G9_Local_Reader implements MAD4B_SCP_Resilience_Reader {
             'host' => array(
                 'site_key' => $key,
                 'isolation_verified' => false, 'local_readback_verified' => false,
+                'single_host_exclusive_verified' => false,
                 'runtime' => $runtime,
             ),
             'health' => array( 'sample_count'=>0, 'error_rate_bps'=>0,
