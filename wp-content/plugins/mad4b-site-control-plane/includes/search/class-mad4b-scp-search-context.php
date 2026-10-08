@@ -79,7 +79,7 @@ final class MAD4B_SCP_Search_Context {
 		// spend. Existing active profiles retain their state; no silent migration.
 		// Operator activation is a separate exact-revision typed control action.
 		if ( null === $current && ( ! empty( $profile['enabled'] ) || empty( $profile['provider_policy']['freeze_spend'] ) ) ) {
-			return MAD4B_SCP_Search_Contracts::error( 'profile_initial_state_unsafe', 'Create Search Profiles paused and spend-frozen, then use independently authorized typed controls.' );
+			return MAD4B_SCP_Search_Contracts::error( 'profile_creation_requires_pause_and_spend_freeze', 'Create Search Profiles paused and spend-frozen, then use independently authorized typed controls.' );
 		}
 		// Every new generic Profile starts with observations paused and provider
 		// spend frozen. Runtime activation always requires independent, exact-
