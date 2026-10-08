@@ -61,7 +61,9 @@ $main = file_get_contents( $plugin . '/mad4b-site-control-plane.php' );
 $agent = file_get_contents( $plugin . '/includes/class-mad4b-scp-agent-registry.php' );
 assistant_check( is_string( $main ) && is_string( $agent ), 'bootstrap sources readable' );
 foreach ( array( 'class-mad4b-scp-assistant-planning.php', 'class-mad4b-scp-assistant-bootstrap-diagnostic.php',
-                 'MAD4B_SCP_Assistant_Planning::boot();', 'MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();' ) as $needle ) {
+                 'class-mad4b-scp-assistant-convergence.php', 'class-mad4b-scp-assistant-task-contract.php',
+                 'MAD4B_SCP_Assistant_Planning::boot();', 'MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();',
+                 'MAD4B_SCP_Assistant_Convergence::boot();' ) as $needle ) {
     assistant_check( false !== strpos( $main, $needle ), 'entrypoint loads and boots: ' . $needle );
 }
 assistant_check( false === strpos( $agent, 'MAD4B_SCP_Assistant_Planning::boot();' ) &&
@@ -69,17 +71,20 @@ assistant_check( false === strpos( $agent, 'MAD4B_SCP_Assistant_Planning::boot()
     'agent registry cannot register read tools by implicit side effect' );
 require_once $plugin . '/includes/class-mad4b-scp-assistant-planning.php';
 require_once $plugin . '/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php';
+require_once $plugin . '/includes/class-mad4b-scp-assistant-convergence.php';
+require_once $plugin . '/includes/class-mad4b-scp-assistant-task-contract.php';
 MAD4B_SCP_Assistant_Planning::boot();
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
-assistant_check( 2 === count( $GLOBALS['assistant_hooks']['wp_abilities_api_init'] ), 'both native WordPress Abilities callbacks bound' );
-assistant_check( 2 === count( $GLOBALS['assistant_hooks']['mad4b_scp_register_adapters'] ), 'both governed adapters callbacks bound' );
+MAD4B_SCP_Assistant_Convergence::boot();
+assistant_check( 3 === count( $GLOBALS['assistant_hooks']['wp_abilities_api_init'] ), 'three native WordPress Abilities callbacks bound' );
+assistant_check( 3 === count( $GLOBALS['assistant_hooks']['mad4b_scp_register_adapters'] ), 'three governed adapters callbacks bound' );
 $registry = new AssistantEntryRegistry();
 MAD4B_SCP_Adapter_Registry::$current = $registry;
 assistant_action( 'mad4b_scp_register_adapters', $registry );
-assistant_check( isset( $registry->registered['assistant-planning'], $registry->registered['assistant-bootstrap'] ), 'both adapters registered' );
+assistant_check( isset( $registry->registered['assistant-planning'], $registry->registered['assistant-bootstrap'], $registry->registered['assistant-convergence'] ), 'all read adapters registered' );
 assistant_action( 'wp_abilities_api_init' );
-assistant_check( 2 === $GLOBALS['assistant_register_calls'], 'two read abilities registered exactly once' );
-foreach ( array( 'mad4b/assistant-plan', 'mad4b/assistant-bootstrap-diagnostic' ) as $name ) {
+assistant_check( 3 === $GLOBALS['assistant_register_calls'], 'three read abilities registered exactly once' );
+foreach ( array( 'mad4b/assistant-plan', 'mad4b/assistant-bootstrap-diagnostic', 'mad4b/assistant-convergence-preview' ) as $name ) {
     assistant_check( isset( $GLOBALS['assistant_abilities'][ $name ] ), 'native ability registered: ' . $name );
     $ability = $GLOBALS['assistant_abilities'][ $name ];
     assistant_check( true === $ability['meta']['annotations']['readonly'] &&
@@ -97,7 +102,7 @@ foreach ( $registry->registered as $adapter ) {
         1 === count( $names['read'] ), 'no executable abilities in assistant adapter' );
     $adapter->register_abilities();
 }
-assistant_check( 2 === $GLOBALS['assistant_register_calls'], 'adapter lifecycle does not duplicate WordPress Ability definitions' );
+assistant_check( 3 === $GLOBALS['assistant_register_calls'], 'adapter lifecycle does not duplicate WordPress Ability definitions' );
 $witness = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
 assistant_check( ! empty( $witness['assistant_read_registration']['read_catalog_local_ready'] )
     && ! $witness['assistant_read_registration']['external_mcp_catalog_verified']
