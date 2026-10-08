@@ -85,8 +85,16 @@ class MAD4B_SCP_Policy {
 }
 class MAD4B_SCP_Authorization {
     public static $admitted = true;
+    public static $invalid_claim = false;
     public static function authorize_mutation( $ability, $category, $provider, $input ) {
-        return self::$admitted && $ability === 'mad4b/g9-release-reserve';
+        if ( ! self::$admitted ) return new WP_Error( 'not_admitted', 'deny' );
+        return array(
+            'ability'=>$ability, 'server_id'=>$category, 'provider'=>$provider,
+            'grant_id'=>self::$invalid_claim ? 0 : 42,
+            'policy_decision_sha256'=>hash( 'sha256', 'policy' ),
+            'resource_set_sha256'=>hash( 'sha256', 'resource-set' ),
+            'approval_impact_binding_sha256'=>hash( 'sha256', 'approved-impact' ),
+        );
     }
 }
 require_once __DIR__ . '/../includes/class-mad4b-scp-g9-read-surface.php';
@@ -136,6 +144,9 @@ MAD4B_SCP_Policy::$mutable = true;
 MAD4B_SCP_Authorization::$admitted = false;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'not_admitted' );
 MAD4B_SCP_Authorization::$admitted = true;
+MAD4B_SCP_Authorization::$invalid_claim = true;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'not_admitted' );
+MAD4B_SCP_Authorization::$invalid_claim = false;
 // Revoke exact current authority between first grant check and locked
 // external CAS. Neither reservation nor provider dispatch is permitted.
 MAD4B_SCP_Staging_Write_Authority::$deny_on_call =

@@ -122,8 +122,17 @@ final class MAD4B_SCP_G9_Release_Fence {
             'mad4b/g9-release-reserve', 'mad4b-admin', 'core',
             array( 'plan_sha256' => $plan['plan_sha256'] )
         );
-        if ( is_wp_error( $auth ) || true !== $auth )
-            return self::blocked( 'not_admitted', 'Existing governed executor did not admit the exact reservation.' );
+        // Native authorize_mutation() returns an EXACT claim ARRAY on success,
+        // not boolean true. Never coerce an arbitrary truthy value into consent.
+        if ( is_wp_error( $auth ) || ! is_array( $auth )
+            || ( $auth['ability'] ?? '' ) !== 'mad4b/g9-release-reserve'
+            || ( $auth['server_id'] ?? '' ) !== 'mad4b-admin'
+            || ( $auth['provider'] ?? '' ) !== 'core'
+            || ! is_int( $auth['grant_id'] ?? null ) || $auth['grant_id'] < 1
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $auth['policy_decision_sha256'] ?? '' )
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $auth['resource_set_sha256'] ?? '' )
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $auth['approval_impact_binding_sha256'] ?? '' ) )
+            return self::blocked( 'not_admitted', 'Existing governed executor did not admit an exact verified reservation claim.' );
 
         // Stable logical operation identity: re-planning with a new issued_at,
         // threshold or anchor revision MUST NOT permit another rollout for the
