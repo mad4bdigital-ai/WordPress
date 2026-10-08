@@ -34,7 +34,12 @@ final class MAD4B_SCP_Resilience_Anchor {
 		try {
 			$current = self::read_path( $path, $binding );
 			if ( is_wp_error( $current ) ) return $current;
-			if ( ! is_int( $expected_revision ) || $expected_revision < 0 || $expected_revision !== (int) $current['revision'] ) return self::error( 'revision_conflict', 'External resilience revision changed; reread before proceeding.' );
+			if ( ! is_int( $expected_revision ) || $expected_revision < 0 || $expected_revision !== $current['revision'] )
+                return self::error( 'revision_conflict', 'External resilience revision changed; reread before proceeding.' );
+            // No float promotion or terminal unwriteable counter is allowed.
+            // Reject before invoking a transform, DB mirror update or disk write.
+            if ( $current['revision'] >= PHP_INT_MAX - 1 )
+                return self::error( 'revision_exhausted', 'External resilience revision reached the integer safety ceiling; governed reconciliation is required.' );
 			if ( ! is_callable( $transform ) ) return self::error( 'transition_invalid', 'Resilience transaction requires a pinned internal handler.' );
             $next = $transform( $current );
 			if ( is_wp_error( $next ) ) return $next;
