@@ -75,6 +75,12 @@ final class MAD4B_SCP_Search_Context {
 		$current = MAD4B_SCP_Search_Store::read( 'profile', $profile['profile_id'] ); if ( is_wp_error( $current ) ) return $current;
 		$revision = is_array( $current ) ? (int) $current['_revision'] : 0;
 		if ( $revision !== $input['expected_revision'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_revision_drift' );
+		// Initial generic API admission never implies permission to execute work or
+		// spend. Existing active profiles retain their state; no silent migration.
+		// Operator activation is a separate exact-revision typed control action.
+		if ( null === $current && ( ! empty( $profile['enabled'] ) || empty( $profile['provider_policy']['freeze_spend'] ) ) ) {
+			return MAD4B_SCP_Search_Contracts::error( 'profile_initial_state_unsafe', 'Create Search Profiles paused and spend-frozen, then use independently authorized typed controls.' );
+		}
 		// Every new generic Profile starts with observations paused and provider
 		// spend frozen. Runtime activation always requires independent, exact-
 		// revision-fenced typed controls. Existing profiles are not rewritten.
