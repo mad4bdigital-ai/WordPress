@@ -45,14 +45,24 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			);
 		}
 		ksort( $capabilities, SORT_STRING );
-		return array( 'contract' => self::CONTRACT, 'provider' => $provider,
+		if ( ! class_exists( 'MAD4B_SCP_G8_Record', false ) || ! MAD4B_SCP_G8_Record::staging() )
+			return new WP_Error( 'mad4b_g8_convergence_staging_required', 'Enrolled Staging required for exact scope observation.' );
+		$binding = MAD4B_SCP_G8_Record::binding();
+		$profile = MAD4B_SCP_G8_Record::profile();
+		if ( is_wp_error( $binding ) || ! is_array( $binding )
+			|| ! is_string( $profile ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $profile ) )
+			return new WP_Error( 'mad4b_g8_convergence_site_binding_unavailable', 'Restore epoch and exact Site Profile are required.' );
+		return array( 'contract' => self::CONTRACT, 'site_profile_sha256' => $profile,
+			'restore_binding' => $binding, 'provider' => $provider,
 			'artifact_sha256' => $fingerprint, 'capabilities' => $capabilities,
 			'candidate_promotion_allowed' => false, 'mutation_performed' => false, 'authorizing' => false );
 	}
 
 	/** A pure report; only impacted capability rows are quarantined. */
 	public static function diff( array $old, array $new ) {
-		if ( ! self::valid_snapshot( $old ) || ! self::valid_snapshot( $new ) || $old['provider'] !== $new['provider'] )
+		if ( ! self::valid_snapshot( $old ) || ! self::valid_snapshot( $new ) || $old['provider'] !== $new['provider']
+			|| ! hash_equals( $old['site_profile_sha256'], $new['site_profile_sha256'] )
+			|| $old['restore_binding'] !== $new['restore_binding'] )
 			return new WP_Error( 'mad4b_g8_convergence_snapshot_invalid', 'Same-provider bounded snapshots required.' );
 		$identity_drift = ! hash_equals( $old['artifact_sha256'], $new['artifact_sha256'] );
 		$before = $old['capabilities']; $after = $new['capabilities'];
@@ -98,6 +108,11 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 
 	private static function valid_snapshot( array $snapshot ) {
 		if ( ( $snapshot['contract'] ?? '' ) !== self::CONTRACT
+			|| ! is_string( $snapshot['site_profile_sha256'] ?? null )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $snapshot['site_profile_sha256'] )
+			|| ! is_array( $snapshot['restore_binding'] ?? null )
+			|| ! is_int( $snapshot['restore_binding']['epoch'] ?? null )
+			|| $snapshot['restore_binding']['epoch'] < 1
 			|| ! self::identifier( $snapshot['provider'] ?? null )
 			|| ! is_string( $snapshot['artifact_sha256'] ?? null )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $snapshot['artifact_sha256'] )
