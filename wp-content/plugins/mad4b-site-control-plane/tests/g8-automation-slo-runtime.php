@@ -91,6 +91,21 @@ g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::change_switch( '*', true, 0 ), 
 $ticket = MAD4B_SCP_Automation_SLO::reserve( $provider, $capability, $generation );
 g8_check( is_array( $ticket ) && false === $ticket['pre_ready'], 'initial ticket prestate' );
 g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::reserve( $provider, $capability, $generation ), 'mad4b_automation_capability_queue_busy' ), 'concurrent ticket rejected' );
+$tainted_ticket = $ticket;
+$tainted_ticket['untrusted_payload'] = new G8_Test_Untrusted_Serialize();
+g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::ticket_allowed( $tainted_ticket ),
+	'mad4b_automation_ticket_not_live' ), 'foreign executable ticket rejected on admission readback' );
+g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::finish_existing( $tainted_ticket, array( 'state' => 'handoff' ) ),
+	'mad4b_automation_ticket_stale' ), 'foreign executable ticket rejected during outcome settlement' );
+$bad_checkpoint = array( 'state' => 'completed', 'last_execution_source' => 'post_update_cron',
+	'target_identity' => array( 'bad' => new G8_Test_Untrusted_Serialize() ),
+	'g8_current_slice_changed_safe_phases' => array( 'schema' ) );
+g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::local_causal_receipt( $tainted_ticket, $bad_checkpoint ),
+	'mad4b_g8_causal_receipt_ineligible' ),
+	'executable local checkpoint and ticket cannot be converted into an evidence receipt' );
+g8_check( empty( $GLOBALS['g8_untrusted_record_serialize_invoked'] )
+	&& true === MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket ),
+	'malicious ticket may not execute __serialize or consume the legitimate ticket' );
 MAD4B_SCP_Runtime_Convergence::$ready = true;
 $completed = array(
  'contract' => 'mad4b.runtime-convergence-apply.v1',
