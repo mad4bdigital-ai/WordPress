@@ -150,8 +150,12 @@ final class MAD4B_SCP_Solution_Discovery {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         $plugins = array();
         if ( function_exists( 'get_plugins' ) ) {
-            $plugins = get_plugins();
-            $plugin_complete = is_array( $plugins );
+            try {
+                $plugins = get_plugins();
+                $plugin_complete = is_array( $plugins );
+            } catch ( Throwable $failure ) {
+                $plugins = array(); $plugin_complete = false;
+            }
         } elseif ( function_exists( 'get_option' ) ) {
             $active = get_option( 'active_plugins', array() );
             if ( is_array( $active ) ) foreach ( $active as $path )
@@ -171,16 +175,22 @@ final class MAD4B_SCP_Solution_Discovery {
             if ( '.' === $slug ) $slug = pathinfo( $file, PATHINFO_FILENAME );
             $label = isset( $data['Name'] ) && is_string( $data['Name'] ) ? trim( strip_tags( $data['Name'] ) ) : $slug;
             if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $slug );
+            $network_active = function_exists( 'is_multisite' ) && is_multisite()
+                && function_exists( 'is_plugin_active_for_network' )
+                && is_plugin_active_for_network( $file );
+            $enabled = in_array( $file, $active, true ) || $network_active;
             $rows[] = array( 'id' => 'plugin:' . $file, 'label' => $label,
-                'source' => 'installed_plugin', 'observed_state' => in_array( $file, $active, true ) ? 'active' : 'inactive',
+                'source' => 'installed_plugin', 'observed_state' => $enabled ? 'active' : 'inactive',
                 'match_text' => $label . ' ' . str_replace( array( '/', '-', '_' ), ' ', $file ),
                 'metadata_digest' => hash( 'sha256', serialize( array( $file, 
                     is_string( $data['Version'] ?? null ) ? substr( $data['Version'], 0, 64 ) : '',
-                    in_array( $file, $active, true ) ) ) ) );
+                    $enabled, $network_active ) ) ) );
         }
         if ( function_exists( 'wp_get_abilities' ) ) {
-            $abilities = wp_get_abilities();
-            if ( is_array( $abilities ) ) {
+            $abilities = array();
+            try { $abilities = wp_get_abilities(); }
+            catch ( Throwable $failure ) { $ability_complete = false; }
+            if ( is_array( $abilities ) && ( ! isset( $failure ) ) ) {
                 $ability_complete = true; ksort( $abilities, SORT_STRING );
                 $count = 0;
                 foreach ( $abilities as $name => $ability ) {
@@ -190,12 +200,14 @@ final class MAD4B_SCP_Solution_Discovery {
                         || ! method_exists( $ability, 'get_description' ) ) continue;
                     // Private registration metadata is not a discovery result.
                     if ( ! method_exists( $ability, 'get_meta' ) ) continue;
-                    $meta = $ability->get_meta();
+                    try { $meta = $ability->get_meta(); }
+                    catch ( Throwable $failure ) { $ability_complete = false; continue; }
                     // WordPress' REST contract hides show_in_rest=false Abilities.
                     // Internal MAD4B tools belong to the separately governed MCP
                     // catalog, never this general discovery projection.
                     if ( ! is_array( $meta ) || true !== ( $meta['show_in_rest'] ?? false ) ) continue;
-                    $label = $ability->get_label(); $description = $ability->get_description();
+                    try { $label = $ability->get_label(); $description = $ability->get_description(); }
+                    catch ( Throwable $failure ) { $ability_complete = false; continue; }
                     if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $name );
                     $description = self::safe_text( $description, 180 ) ? $description : '';
                     $rows[] = array( 'id' => 'ability:' . $name, 'label' => $label,
@@ -221,7 +233,11 @@ final class MAD4B_SCP_Solution_Discovery {
             || ( $binding['runtime_generation'] ?? '' ) !== $input['expected_runtime_generation']
             || empty( $binding['site_uuid'] ) || empty( $binding['artifact_sha256'] )
             || ! is_int( $binding['restore_epoch'] ?? null ) || $binding['restore_epoch'] < 1 ) return self::fail( 'stale_binding' );
-        return self::discover( $input, self::site_inventory(), $binding );
+        $inventory = self::site_inventory();
+        $current = MAD4B_SCP_Adaptive_Operations_Context::current();
+        if ( ! is_array( $current ) || serialize( $current ) !== serialize( $binding ) )
+            return self::fail( 'concurrent_binding_change' );
+        return self::discover( $input, $inventory, $binding );
     }
 
     /** Pure candidate reducer, no code/HTTP/provider dispatch; can be independently tested. */

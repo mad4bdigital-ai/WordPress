@@ -116,6 +116,9 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                 'snapshot_sha256' => $result['snapshot_sha256'],
                 'execution_allowed' => false );
         }
+        $fresh = MAD4B_SCP_Adaptive_Operations_Context::current();
+        if ( ! is_array( $fresh ) || serialize( $fresh ) !== serialize( $binding ) )
+            return self::fail( 'concurrent_binding_change' );
         return array( 'contract' => 'mad4b.assistant-solution-discovery.v1',
             'plan_sha256' => $plan['plan_sha256'], 'binding' => $plan['binding'],
             'tasks' => $tasks,
