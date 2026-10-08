@@ -254,7 +254,7 @@ def compile_candidate(intent, scope, state, model, policy):
         gate = gatemap[gate_id]
         needed_gates.add(gate_id)
         for condition in gate.get('conditional_dependencies', []):
-            if profile.get(condition['when'], False):
+            if conditional_scope.get(condition['when'], True):
                 needed_gates.add(condition['gate'])
         missing = [d for d in task['execution_dependencies'] if d not in completed]
         cap = current_capabilities.get(task['capability_selector'])
@@ -308,10 +308,36 @@ def compile_candidate(intent, scope, state, model, policy):
         'READY_FOR_NON_AUTHORITATIVE_PLAN' if not reasons else
         'WAITING_DEPENDENCIES' if 'unfinished_execution_dependencies' in reasons else
         'NEEDS_EVIDENCE')
+    # Independent incident disposition is a restrictive layer. Neither user
+    # findings nor synthetic rules can promote a missing capability to ready.
+    finding_codes = state.get('observed_findings', [])
+    require(isinstance(finding_codes, list), 'observed_findings_invalid')
+    operational_disposition = 'UNCLASSIFIED'
+    if finding_codes:
+        rules = model.get('disposition_rules')
+        require(isinstance(rules, dict)
+                and rules.get('contract') == 'mad4b.aci-os.disposition-rules.v1'
+                and rules.get('authorizing') is False,
+                'disposition_rule_registry_required')
+        known = {r['code']:r['state'] for r in rules.get('rules', [])
+                 if isinstance(r, dict) and isinstance(r.get('code'), str)}
+        priority = {'READY_FOR_NON_AUTHORITATIVE_PLAN': 0, 'WAITING_DEPENDENCIES': 1,
+                    'NEEDS_EVIDENCE': 2, 'NEEDS_REVIEW': 3, 'QUARANTINED': 4, 'DENIED': 5}
+        operational_disposition = max(
+            (known.get(code, 'QUARANTINED') for code in finding_codes),
+            key=lambda status: priority.get(status, priority['QUARANTINED']))
+        # Plan readiness and disposition are conceptually independent. Incidents
+        # can only narrow readiness, never invent evidence or widen authority.
+        if priority.get(operational_disposition, 4) > priority[result_status]:
+            result_status = operational_disposition
+    
     return {'contract': 'mad4b.aci-os.dynamic-candidate.v1',
             'status': result_status, 'scope_site_uuid': scope['site_uuid'],
             'environment': scope['environment'], 'execution_order': ordered,
             'applicable_certification_gates': sorted(needed_gates),
             'tasks': statuses, 'reason_codes': sorted(set(reasons)),
+            'operational_disposition': operational_disposition,
+            'evidence_trust': 'UNVERIFIED_SPEC_SIMULATION',
+            'trusted_authority_verified': False,
             'authorizing': False, 'eligible_for_mutation': False,
             'credentials_issued': False, 'mutation_performed': False}
