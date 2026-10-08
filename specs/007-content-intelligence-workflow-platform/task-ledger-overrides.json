@@ -7,6 +7,24 @@
     "DEFERRED"
   ],
   "overrides": {
+    "T0003": {
+      "status": "DONE",
+      "evidence_refs": [
+        "compare:4b6e72efe9eb74ca31259eb571745198dd9fdea4...b5d697f05a939d87ca0b2ede1a08eb9e15f97312",
+        "merge_base:f43ec3bead478749ead2c3939c8d362922f4b80a",
+        "commit:0313e03aad8ee081c770ff9a31016202979e59e2",
+        "commit:a533de8ae815e78fe43f9a1b74d8db909272dfb9",
+        "commit:5ea91a70cc5750689f29ed4571bdab53149f5cfb",
+        "commit:b0f2c8a6a0849303df94f7f4b84c1a42ef3d4d9d",
+        "commit:93f99fbf5a5d9b94339b39b478f56376f8924912",
+        "commit:218bf660bd7a4d24ed2a4086640ea73a1ed9c9d6",
+        "commit:173985efded8f53279e864bcc48f4236562c0897",
+        "commit:8775f56cc25cf66e6c22b091a3af2bc00e57ad00",
+        "commit:ced93ea7148f4b8adc74499cd0df42fdf350c4ba",
+        "commit:b5d697f05a939d87ca0b2ede1a08eb9e15f97312"
+      ],
+      "reason": "GitHub's exact compare PR #47 HEAD...PR #45 HEAD identifies precisely these 10 PR45-only commits (ahead_by=10, total_commits=10) and the source merge base. The extraction is complete; T0004-T0013 semantic equivalence/required/superseded classifications remain independent OPEN tasks."
+    },
     "T0001": {
       "status": "DONE",
       "evidence_refs": [
