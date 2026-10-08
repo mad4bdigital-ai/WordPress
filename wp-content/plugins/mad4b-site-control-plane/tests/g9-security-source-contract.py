@@ -45,12 +45,20 @@ expect(release, (
     "policy_decision_sha256",
     "approval_impact_binding_sha256",
     "mad4b/runtime-release-set-apply",
+    "native_execution_uncertain",
+    "journal_head_sha256",
+    "latest_sequence",
     "native_signature_invalid",
     "replay_or_capacity",
     "external_record_sha256",
 ), "release")
 assert "wp_register_ability" not in release, "RELEASE_MUTATION_ABILITY_EXPOSED"
 expect(anchor, (
+    "mirror_missing",
+    "directory_permissions_unsafe",
+    "local_blog_mismatch",
+    "local_site_mismatch",
+    "mirror_lost_after_commit",
     "mirror_identity_mismatch",
     "directory_permissions_unsafe",
     "local_site_mismatch",
@@ -80,6 +88,9 @@ expect(read, (
     "MAD4B_SCP_Policy', 'can_read",
 ), "read-only-abilities")
 assert "mad4b/g9-release-reserve" not in read, "RESERVE_EXPOSED_AS_READ_ABILITY"
+expect(closure, ("native_executor_g9_reservation_binding_unimplemented",
+                 "g9_reservation_host_feature_disabled",
+                 "g9_host_release_threshold_policy_missing"), "native-admission-blocker")
 expect(closure, ("'operationally_closed' => false", "'ready_for_production' => false"), "closure")
 expect(fleet, ("'cohort_promotion_allowed'=>false", "'automatic_rollback_allowed'=>false"), "fleet")
 print("G9 SOURCE INVARIANTS: PASS (non-authorizing gate markers only; runtime CI still required)")

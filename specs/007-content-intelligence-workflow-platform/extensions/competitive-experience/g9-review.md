@@ -20,6 +20,26 @@
 | P2 | Health timestamps refreshed on every mock capture caused inconsistent sample digests | Fixtures pin sample observed_at and exercise stale-policy separately | PHP CI needs to finish; fixture presence is not a passing test |
 | P2 | No discoverable closure status | Three read-only site-bound WordPress Abilities now expose observation, restore status and current blockers | Readiness surface does not grant execution |
 
+## Deeper review addendum — operational correctness and CI
+
+- **P0 / CI root discovery:** both G9 Python validators originally used `Path(__file__).resolve().parents[4]`, pointing one directory above the repository. They now use `parents[3]` with explicit root/workflow assertions; CI path filters now watch `g9-*.py`, not just PHP.
+- **P0 / mismatched execution journal:** the existing `Execution_State_View::operation()` includes `scope`, `source_contract`, `evidence.operation_id`, `operation_binding_sha256`, `journal_head_sha256`, `latest_sequence`, and orphan/lease hazard indicators. A bare `COMMITTED` flag does not prove execution for the fenced operation. G9 requires all these independent identity and durability facts, while still refusing to mint release acceptance.
+- **P0 / missing native G9 capability:** `MAD4B_SCP_G9_Release_Fence::reserve()` references `mad4b/g9-release-reserve` in native authorization. It is deliberately not registered in the existing Capability Descriptor/grant/executor system. This path remains non-operational and requires an explicit reviewed integration, not merely enabling the Staging host flag. The read-only closure status names this blocker.
+- **P0 / database rollback:** if the external anchor file survives but the WordPress DB marker disappears or has `anchor_seen=false`, G9 now quarantines instead of accepting a restored stale database as if first-time enrollment.
+- **P1 / fleet claimed transitions:** the reducer denies contradictory terminal transitions (e.g. COMMITTED followed by FAILED) and backwards execution transitions for the same site+operation, in addition to enforcing site-local sequence monotonicity.
+- **P1 / lockfile directory race:** a private external anchor directory is checked after mkdir, before acquiring its lock, and again during readback. Both group-writable and world-writable modes fail closed; single-host OS-level isolation must be certified separately.
+- **P1 / cryptographic chain boundary:** journal hashes and the current external anchor are still local evidence, not a remotely witnessed quorum transaction. Power loss, broken fsync guarantees, Windows rename semantics, and independent multi-host releases require host-level drills and, where applicable, a distributed lease.
+
+### Exact G9 ↔ native runtime executor contract to implement separately
+
+1. Register an exact reviewed G9 fence reservation capability and policy descriptor through the owning G7/G8 governance process. No blanket permissions, implicit grants, or automatic enabling.
+2. Have the existing native runtime-release-set executor consume the **same site/cohort/ring/artifact/epoch operation SHA** under current authority before any provider side effect. Its signed request and operation-journal binding must refer back to that reservation.
+3. Produce a signed terminal receipt and independently verified per-site post-update host/provider/health/external-effect readbacks; only a separate signed release acceptance lane can permit the next ring.
+4. Implement explicitly approved compensating rollback with independent external-effect reconciliation and a separately signed post-restore acceptance receipt.
+5. Run a real Staging multi-site fault matrix for concurrent workers, missing DB mirror, restore epoch drift, partial rollback, provider outage, host swap, cloned origins, signed-receipt substitution, and crash between marker/file transitions.
+
+These are **unimplemented or unverified runtime gates**, not tasks completed by the source-only review.
+
 ## Independent dependencies
 
 1. G7 release/host/compensation acceptance (PR #286) and G8 provenance/schema/capability convergence (PR #289) must be integrated into #258 before final G9 acceptance.
