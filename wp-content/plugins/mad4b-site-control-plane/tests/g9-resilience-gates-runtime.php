@@ -40,6 +40,8 @@ $anchor = MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $curren
     $current['scopes']['ring:pilot'] = array( 'fenced' => true ); return $current;
 });
 g9_check( ! is_wp_error( $anchor ) && $anchor['revision'] === 1, 'committed anchor' );
+$initial_file = $dir . '/resilience-' . $binding['site_uuid'] . '-1-staging.json';
+$older_valid_file = file_get_contents( $initial_file );
 g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $current ) { return $current; } ), 'revision_conflict' );
 g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 1, function ( $current ) { $current['scopes'] = array(); return $current; } ), 'history_truncation' );
 g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 1, function ( $current ) {
@@ -159,6 +161,12 @@ g9_check( ! is_wp_error( $metadata ) && $metadata['revision'] === 2
     && $metadata['site']['environment'] === 'staging',
     'anchor metadata not controlled by closure' );
 $original = file_get_contents( $path );
+// A replayed older file is cryptographically self-consistent. The DB
+// high-water revision/hash must still reject it rather than resurrecting
+// a previously spent release or recovery fence.
+file_put_contents( $path, $older_valid_file );
+g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'mirror_anchor_mismatch' );
+file_put_contents( $path, $original );
 $forged = json_decode( $original, true );
 $forged['clock_floor'] = time() + 3600;
 unset( $forged['anchor_sha256'] );

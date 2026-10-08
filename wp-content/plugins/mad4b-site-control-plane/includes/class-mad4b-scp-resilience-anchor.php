@@ -67,7 +67,12 @@ final class MAD4B_SCP_Resilience_Anchor {
 			// A failed subsequent file commit deliberately leaves a quarantine
 			// marker and requires reconciliation rather than unsafe blind retry.
 			if ( function_exists( 'update_option' ) && function_exists( 'get_option' ) ) {
-				$mirror = array( 'site' => $next['site'], 'anchor_seen' => true );
+				// Persist the NEXT exact revision and digest first. A power loss
+				// before file publication quarantines the stale file, while a
+				// copied older but well-formed file cannot replay a spent fence.
+				$mirror = array( 'site' => $next['site'], 'anchor_seen' => true,
+					'anchor_revision' => $next['revision'],
+					'anchor_sha256' => $next['anchor_sha256'] );
 				update_option( self::MIRROR_OPTION, $mirror, false );
 				if ( get_option( self::MIRROR_OPTION, false ) !== $mirror )
 					return self::error( 'mirror_failed', 'Could not persist external-anchor loss marker before publishing the new state.' );
@@ -136,6 +141,15 @@ final class MAD4B_SCP_Resilience_Anchor {
 		if ( ! MAD4B_SCP_Resilience_Context::is_hash( $declared ) || ! hash_equals( $declared, MAD4B_SCP_Resilience_Context::digest( $core ) ) ) return self::error( 'corrupt', 'External resilience digest is invalid.' );
 		if ( ! hash_equals( MAD4B_SCP_Resilience_Context::digest( self::site_identity( $binding ) ), MAD4B_SCP_Resilience_Context::digest( $record['site'] ) ) ) return self::error( 'foreign_site', 'External resilience state belongs to another site, origin or environment.' );
 		if ( MAD4B_SCP_Resilience_Context::now() < (int) $record['clock_floor'] ) return self::error( 'clock_rollback', 'Clock rollback cannot expire or replay a rollout or recovery fence.' );
+		// Digest integrity alone is insufficient: an old external file can
+		// still contain a VALID digest. It must match the database high-water
+		// checkpoint exactly. Missing legacy revision/digest must fail closed
+		// and require governed migration/reconciliation, never auto-upgrade.
+		if ( ! is_int( $mirror['anchor_revision'] ?? null )
+			|| $mirror['anchor_revision'] !== $record['revision']
+			|| ! MAD4B_SCP_Resilience_Context::is_hash( $mirror['anchor_sha256'] ?? '' )
+			|| ! hash_equals( $mirror['anchor_sha256'], $declared ) )
+			return self::error( 'mirror_anchor_mismatch', 'External anchor no longer matches the last committed database high-water marker.' );
 		return $record;
 	}
 
