@@ -74,6 +74,26 @@ duplicated.site_discovery.plugin_versions.push({slug:"royal-plugin",basename:"ro
 assert.throws(()=>resolve(duplicated,options),/site_browser_site_adapter_ambiguous/);
 duplicated.operator_preference.site_provider_id="etg-dfsb";
 assert.equal(resolve(duplicated,options).siteProviderId,"etg-dfsb");
+const generic = {
+  provider_contract:"mad4b.capability-browser-provider.v1",
+  driver_id:"mad4b-declarative-capabilities",
+  evidence_contract:"mad4b.capability-browser-evidence.v1"
+};
+const mixed=example();
+mixed.providers.push(provider("mad4b-native-public",generic,"mad4b-site-control-plane","public-canonical"));
+mixed.provider_count=2;
+mixed.site_discovery.plugins.push("mad4b-site-control-plane");
+mixed.site_discovery.plugin_versions.push({slug:"mad4b-site-control-plane",
+  basename:"mad4b-site-control-plane/main.php",version:"1.0.0"});
+mixed.site_discovery.provider_matches.push(match("mad4b-native-public","mad4b-site-control-plane"));
+const mixedOptions={approvedDrivers:[etg,royal,generic]};
+assert.throws(()=>resolve(mixed,mixedOptions),/site_browser_site_adapter_ambiguous/);
+assert.equal(resolve(mixed,{...mixedOptions,requestedProfile:"public-canonical"}).siteProviderId,
+  "mad4b-native-public");
+assert.equal(resolve(mixed,{...mixedOptions,requestedProfile:"tours"}).siteProviderId,
+  "etg-dfsb");
+assert.throws(()=>resolve(mixed,{...mixedOptions,requestedProfile:"unrelated"}),
+  /site_browser_site_adapter_profile_unmatched/);
 const cpt = example("royal");
 cpt.providers[0].descriptor.recognition = {
   source_plugins:[],source_post_types:["tour"],source_taxonomies:["tour_type"]
