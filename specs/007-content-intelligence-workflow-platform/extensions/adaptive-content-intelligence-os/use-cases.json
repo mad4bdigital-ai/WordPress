@@ -343,7 +343,7 @@
       "expected_state": "DENIED",
       "required_gate": "ACI-G4",
       "expected_behavior": "site-qualified identity required",
-      "negative_case": "cross_site_reference",
+      "negative_case": "unapproved_cross_site_identity",
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
@@ -351,7 +351,7 @@
       "decision_owner": "native-content-steward",
       "disposition_class": "POLICY_DENIAL",
       "observed_finding_codes": [
-        "cross_site_reference"
+        "unapproved_cross_site_identity"
       ],
       "test_level": "PURE_FIXTURE",
       "trust_source": "SYNTHETIC_NOT_CERTIFIED",
@@ -787,7 +787,7 @@
       "expected_state": "NEEDS_REVIEW",
       "required_gate": "ACI-G4",
       "expected_behavior": "explicit cross-site link policy only, no shared writes",
-      "negative_case": "cross_site_reference",
+      "negative_case": "declared_cross_site_link_needs_review",
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
@@ -795,7 +795,7 @@
       "decision_owner": "native-content-steward",
       "disposition_class": "HUMAN_DECISION",
       "observed_finding_codes": [
-        "cross_site_reference"
+        "declared_cross_site_link_needs_review"
       ],
       "test_level": "PURE_FIXTURE",
       "trust_source": "SYNTHETIC_NOT_CERTIFIED",
