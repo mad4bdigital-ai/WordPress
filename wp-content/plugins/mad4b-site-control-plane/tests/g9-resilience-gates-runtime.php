@@ -41,6 +41,9 @@ $anchor = MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $curren
 g9_check( ! is_wp_error( $anchor ) && $anchor['revision'] === 1, 'committed anchor' );
 g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $current ) { return $current; } ), 'revision_conflict' );
 g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 1, function ( $current ) { $current['scopes'] = array(); return $current; } ), 'history_truncation' );
+g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 1, function ( $current ) {
+    $current['scopes']['ring:pilot']['fenced'] = false; return $current;
+} ), 'history_truncation' );
 $snapshot = array(
     'contract' => MAD4B_SCP_Resilience_Context::CONTRACT, 'binding' => $binding,
     'binding_sha256' => MAD4B_SCP_Resilience_Context::digest( $binding ),
@@ -105,4 +108,4 @@ g9_error( MAD4B_SCP_G9_Resilience_Gates::restore_preview( $snapshot, $foreign, a
 $path = $dir . '/resilience-' . $binding['site_uuid'] . '-1-staging.json';
 @unlink( $path ); @unlink( $path . '.lock' ); @rmdir( $dir );
 g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'lost' );
-echo "G9 resilience gates: PASS (16 isolation/restore/ring checks)\n";
+echo "G9 resilience gates: PASS (17 isolation/restore/ring checks)\n";

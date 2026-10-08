@@ -34,7 +34,10 @@ final class MAD4B_SCP_Resilience_Anchor {
 			if ( ! is_array( $next ) || ! isset( $next['scopes'] ) || ! is_array( $next['scopes'] ) ) return self::error( 'transition_invalid', 'Resilience transition did not return a bounded state document.' );
 			// The transaction owns identity, revision and monotonic time, not its transform.
 			foreach ( $current['scopes'] as $scope => $_ ) {
-				if ( ! array_key_exists( $scope, $next['scopes'] ) ) return self::error( 'history_truncation', 'Existing resilience scope history must not be removed.' );
+				if ( ! array_key_exists( $scope, $next['scopes'] )
+                    || MAD4B_SCP_Resilience_Context::digest( $next['scopes'][ $scope ] )
+                        !== MAD4B_SCP_Resilience_Context::digest( $_ ) )
+                    return self::error( 'history_truncation', 'Existing resilience scope history is append-only and cannot be removed or rewritten.' );
 			}
 			$next['contract'] = self::CONTRACT;
 			$next['site'] = self::site_identity( $binding );
@@ -71,7 +74,7 @@ final class MAD4B_SCP_Resilience_Anchor {
 		if ( ! is_readable( $path ) || false === @filesize( $path ) || filesize( $path ) > self::MAX_BYTES ) return self::error( 'unreadable', 'External resilience record is unavailable or oversized.' );
 		$raw = file_get_contents( $path );
 		$record = is_string( $raw ) ? json_decode( $raw, true ) : null;
-		if ( ! is_array( $record ) || self::CONTRACT !== ( $record['contract'] ?? '' ) || ! isset( $record['site'], $record['scopes'], $record['revision'], $record['clock_floor'] ) || ! is_array( $record['scopes'] ) || (int) $record['revision'] < 1 ) return self::error( 'corrupt', 'External resilience record is malformed.' );
+		if ( ! is_array( $record ) || self::CONTRACT !== ( $record['contract'] ?? '' ) || ! isset( $record['site'], $record['scopes'], $record['revision'], $record['clock_floor'] ) || ! is_array( $record['scopes'] ) || ! is_int( $record['revision'] ) || ! is_int( $record['clock_floor'] ) || $record['revision'] < 1 || $record['clock_floor'] < 1 ) return self::error( 'corrupt', 'External resilience record is malformed.' );
 		$declared = (string) ( $record['anchor_sha256'] ?? '' );
 		$core = $record; unset( $core['anchor_sha256'] );
 		if ( ! MAD4B_SCP_Resilience_Context::is_hash( $declared ) || ! hash_equals( $declared, MAD4B_SCP_Resilience_Context::digest( $core ) ) ) return self::error( 'corrupt', 'External resilience digest is invalid.' );
