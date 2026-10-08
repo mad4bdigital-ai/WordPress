@@ -94,7 +94,7 @@ final class MAD4B_SCP_Automation_SLO {
 			$pre_ready = is_array( $prior ) && empty( $prior['required_blockers'] );
 		}
 		$ticket = array( 'token' => $token, 'provider' => $provider, 'capability' => $capability, 'generation' => $generation, 'runtime_binding' => $runtime_binding, 'restore_binding' => $state['restore_binding'],
-			'pre_ready' => $pre_ready,
+			'pre_ready' => $pre_ready, 'switch_revision' => $decision['switch_revision'],
 			'profile_digest' => MAD4B_SCP_G8_Record::profile(), 'started_at' => time(), 'expires_at' => time() + self::TICKET_TTL );
 		$state['tickets'][ $token ] = $ticket; ++$state['revision']; ++$state['eligible_workload_count']; $state['seal'] = MAD4B_SCP_G8_Record::seal( $state );
 		$ok = MAD4B_SCP_G8_Record::replace( self::OPTION, $before, $state );
@@ -120,6 +120,8 @@ final class MAD4B_SCP_Automation_SLO {
 			return new WP_Error( 'mad4b_automation_runtime_changed', 'Automatic work belongs to a different runtime.' );
 		$switch = self::switch_status();
 		if ( ! $switch['integrity_valid'] ) return new WP_Error( 'mad4b_automation_kill_switch_integrity_lost', 'Automatic switch lost integrity.' );
+		if ( ! is_int( $ticket['switch_revision'] ?? null ) || $switch['revision'] !== $ticket['switch_revision'] )
+			return new WP_Error( 'mad4b_automation_switch_raced', 'Kill switch revision changed since the automatic ticket was reserved.' );
 		$provider = $ticket['provider'] ?? ''; $capability = $ticket['capability'] ?? '';
 		if ( ! is_string( $provider ) || ! is_string( $capability ) || ! empty( $switch['scopes']['*'] )
 			|| ! empty( $switch['scopes'][ $provider . ':*' ] ) || ! empty( $switch['scopes'][ $provider . ':' . $capability ] ) )
