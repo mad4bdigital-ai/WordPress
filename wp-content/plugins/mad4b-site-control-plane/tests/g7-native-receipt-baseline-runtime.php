@@ -12,6 +12,7 @@ function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 function sanitize_key( $v ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $v ) ); }
 class MAD4B_SCP_Crypto_Profile {
     public static $reject_as_false = false;
+    public static $verification_override = '';
     public static function default_profile( $purpose ) { return 'fixture-signing-profile'; }
     public static function sign_digest( $profile_id, $sha ) {
         return array( 'profile_id' => $profile_id, 'kid' => 'fixture-kid',
@@ -25,9 +26,17 @@ class MAD4B_SCP_Crypto_Profile {
                 (string) $signature['signature'] ) ) {
             return new WP_Error( 'fixture_signature_invalid' );
         }
-        return array( 'contract' => 'mad4b.detached-signature-verification.v1',
+        $verified = array( 'contract' => 'mad4b.detached-signature-verification.v1',
             'valid' => true, 'signed_sha256' => $sha, 'profile_id' => $signature['profile_id'],
             'kid' => $signature['kid'], 'purpose' => $purpose );
+        switch ( self::$verification_override ) {
+            case 'bad_valid': $verified['valid'] = false; break;
+            case 'bad_digest': $verified['signed_sha256'] = str_repeat( '0', 64 ); break;
+            case 'bad_kid': $verified['kid'] = 'foreign-kid'; break;
+            case 'bad_profile': $verified['profile_id'] = 'foreign-profile'; break;
+            case 'bad_purpose': $verified['purpose'] = 'foreign_purpose'; break;
+        }
+        return $verified;
     }
 }
 class MAD4B_SCP_Site_Profile {
@@ -100,6 +109,14 @@ g7_native_check( is_wp_error( $false_signature ) &&
 $false_baseline = MAD4B_SCP_Ownership_Reconciliation::managed_baseline( $snapshot, $binding, $receipt );
 g7_native_check( is_wp_error( $false_baseline ), 'Last Managed cannot accept false native crypto verification' );
 MAD4B_SCP_Crypto_Profile::$reject_as_false = false;
+foreach ( array( 'bad_valid', 'bad_digest', 'bad_kid', 'bad_profile', 'bad_purpose' ) as $adversarial ) {
+    MAD4B_SCP_Crypto_Profile::$verification_override = $adversarial;
+    $invalid_verification = MAD4B_SCP_Execution_Receipt::verify( $receipt );
+    g7_native_check( is_wp_error( $invalid_verification ) &&
+        'mad4b_execution_receipt_signature_verification_invalid' === $invalid_verification->get_error_code(),
+        'native cryptographic verifier proof must be exact: ' . $adversarial );
+}
+MAD4B_SCP_Crypto_Profile::$verification_override = '';
 $material = MAD4B_SCP_Ownership_Reconciliation::baseline_readback_material( $snapshot, $binding );
 $expected = hash( 'sha256', wp_json_encode( array( 'readback' => $material ),
     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );

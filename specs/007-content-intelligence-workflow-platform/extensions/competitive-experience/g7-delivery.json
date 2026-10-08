@@ -269,8 +269,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php",
-      "sha256": "30664a6cbcec918fab3983508881fe0a4e67c161f79de3d822c395e5fcef37bb",
-      "bytes": 8516
+      "sha256": "c85d4b2749485e88ebabe2993122d9cc922b05e46dd872eb75c2839559f46eef",
+      "bytes": 9603
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
