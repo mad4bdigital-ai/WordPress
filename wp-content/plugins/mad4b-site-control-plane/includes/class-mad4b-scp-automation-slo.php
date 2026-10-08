@@ -196,6 +196,65 @@ final class MAD4B_SCP_Automation_SLO {
 		return true;
 	}
 
+	/**
+	 * Locally witnessed execution correlation (NOT a provider signature,
+	 * independent acceptance or permission). Issued only by an already-fenced
+	 * Cron worker for one exact changed slice and exact site/restore binding.
+	 */
+	public static function local_causal_receipt( array $ticket, array $checkpoint ) {
+		$slice = $checkpoint['g8_current_slice_changed_safe_phases'] ?? null;
+		if ( ! is_string( $ticket['token'] ?? null ) || ! is_string( $ticket['generation'] ?? null )
+			|| ! is_string( $ticket['runtime_binding'] ?? null )
+			|| ! is_array( $ticket['restore_binding'] ?? null )
+			|| ! is_array( $checkpoint['target_identity'] ?? null )
+			|| ! is_array( $slice ) || ! $slice || count( $slice ) > 24
+			|| 'completed' !== ( $checkpoint['state'] ?? '' )
+			|| 'post_update_cron' !== ( $checkpoint['last_execution_source'] ?? '' ) )
+			return new WP_Error( 'mad4b_g8_causal_receipt_ineligible', 'Only an exact completed automatic slice can emit local evidence.' );
+		foreach ( $slice as $phase ) {
+			if ( ! is_string( $phase ) || 1 !== preg_match( '/^[a-z0-9_]{1,80}$/D', $phase ) )
+				return new WP_Error( 'mad4b_g8_causal_phase_invalid', 'Invalid changed phase in local execution receipt.' );
+		}
+		$receipt = array(
+			'contract' => 'mad4b.g8-local-causal-receipt.v1',
+			'ticket_sha256' => hash( 'sha256', $ticket['token'] ),
+			'generation' => $ticket['generation'],
+			'runtime_binding' => $ticket['runtime_binding'],
+			'restore_binding' => $ticket['restore_binding'],
+			'profile_digest' => $ticket['profile_digest'] ?? '',
+			'pre_ready' => $ticket['pre_ready'] ?? null,
+			'changed_slice_sha256' => MAD4B_SCP_G8_Record::digest( $slice ),
+			'target_sha256' => MAD4B_SCP_G8_Record::digest( $checkpoint['target_identity'] ),
+			'issued_at' => time(),
+			'authorizing' => false,
+		);
+		$receipt['seal'] = MAD4B_SCP_G8_Record::seal( $receipt );
+		return $receipt;
+	}
+
+	private static function exact_local_causal_evidence( array $ticket, array $result ) {
+		if ( ! function_exists( 'get_option' ) || ! is_array( $result['checkpoint'] ?? null ) )
+			return false;
+		$checkpoint = $result['checkpoint'];
+		$stored = get_option( 'mad4b_scp_runtime_convergence_v1', array() );
+		if ( ! is_array( $stored ) || serialize( $stored ) !== serialize( $checkpoint )
+			|| ! is_array( $checkpoint['g8_local_causal_receipt'] ?? null )
+			|| ! is_array( $checkpoint['g8_current_slice_changed_safe_phases'] ?? null )
+			|| ! $checkpoint['g8_current_slice_changed_safe_phases'] ) return false;
+		$receipt = $checkpoint['g8_local_causal_receipt'];
+		if ( ! MAD4B_SCP_G8_Record::valid( $receipt, 'mad4b.g8-local-causal-receipt.v1' ) )
+			return false;
+		$expected = self::local_causal_receipt( $ticket, $checkpoint );
+		if ( is_wp_error( $expected ) ) return false;
+		// Reconstruct the exact payload, keeping its original time. The live
+		// HMAC and independently persisted checkpoint must agree.
+		$expected['issued_at'] = $receipt['issued_at'] ?? null;
+		$expected['seal'] = MAD4B_SCP_G8_Record::seal( $expected );
+		return is_int( $expected['issued_at'] ) && $expected['issued_at'] <= time() + 30
+			&& $expected['issued_at'] >= ( $ticket['started_at'] ?? PHP_INT_MAX ) - 30
+			&& $expected === $receipt;
+	}
+
 	/** No success boolean is accepted; verified repair is recorded only by exact known readback. */
 	public static function finish_existing( array $ticket, $result ) {
 		$outcome = is_wp_error( $result ) ? 'failed' : 'handoff';
@@ -212,6 +271,7 @@ final class MAD4B_SCP_Automation_SLO {
 			&& 'completed' === ( $result['checkpoint']['state'] ?? '' )
 			&& 'post_update_cron' === ( $result['checkpoint']['last_execution_source'] ?? '' )
 			&& ( $result['checkpoint']['changed_safe_phases'] ?? null ) === $result['changed_safe_phases']
+			&& self::exact_local_causal_evidence( $ticket, $result )
 			&& is_array( $result['readback'] ?? null )
 			&& is_array( $result['readback']['required_blockers'] ?? null )
 			&& empty( $result['readback']['required_blockers'] )
