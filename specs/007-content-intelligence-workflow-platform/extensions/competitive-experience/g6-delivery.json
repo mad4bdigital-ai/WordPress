@@ -1,0 +1,116 @@
+{
+  "contract": "mad4b.competitive-g6-delivery.v1",
+  "status": "REPOSITORY_FOUNDATION_PARTIAL_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 287,
+  "implementation_branch": "feat/007-g6-ai-knowledge-synthesis-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "51e1f08ad5aafbea1656a0325f1070b438586c98",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "authorizing": false,
+  "production_authorized": false,
+  "provider_execution_certified": false,
+  "vector_ingestion_certified": false,
+  "dependency_execution_certified": false,
+  "live_browser_acceptance": false,
+  "scope_task_ids": [
+    "T3956",
+    "T3957",
+    "T3958",
+    "T3959",
+    "T3960",
+    "T3961",
+    "T3962",
+    "T3963",
+    "T3964",
+    "T3965",
+    "T4016",
+    "T4017",
+    "T4018",
+    "T4019",
+    "T4020"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-contracts.php",
+      "sha256": "a24f509719bd4d3415281872e9eebfc1b107b1bd5cfcdc1b1912289b90aa824b"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-operation-compiler.php",
+      "sha256": "b86031d24d0fd5b0da22a6df7feb1bc95f8ff1099fbbb7ec135df08087cccbb4"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-ai-workspace.php",
+      "sha256": "4cb49ec7aa73a91ba9e3576f0c871f13530328a6bb50ef8c4e4ffe14202a92e7"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-knowledge-admission.php",
+      "sha256": "00452543e22390a989fbcd6850ab0e2060847ab22c7add75679601610d83b4e4"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-provider-routing.php",
+      "sha256": "7d2cf6557c694de47f58a8bf63f484678e3a04a63f9b4981e7a414ba88969b66"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-retrieval-evaluation.php",
+      "sha256": "a66e54f17bac6232658d298e2584d3ea2c2675f8730ad4b22a800286cf345715"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
+      "sha256": "0d370e7c934aff53b200dd76097ec7ead5b29384b3df1652871bc4ab21006c05"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "a5220b3410f7fafa7a3ba501dfe35758c36b18c8ff6ce010eec72ed6b21d6903"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-private-preview-contract.php",
+      "sha256": "d2ef2ec738948573c4ec446298db77e9fb5514cb2d958b119b6139d6b6b4cf60"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-compiler-denial-runtime.php",
+      "sha256": "d3cde0a77d413cb781fb6e9c699e722424ee69324630ef194757d174518c8f23"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-admission-denial-runtime.php",
+      "sha256": "cbe8634187ec4d9fcc5a722701c4add8f63f5771a0d6121395513fa8f7866a77"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-provider-retrieval-denials.php",
+      "sha256": "f99c411acc27be7cebed787d6ae3cd528c085f1b9859851d36ede9c878afbd69"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "sha256": "da50aa07d151083759b9d9261698aa8f6c605f6195904c87ae6c027e56297e06"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-delivery-integrity.py",
+      "sha256": "8056b02cde36ce4af9075c93b4442911d42c41c74f5bd5ca536ce0dc7dedd2f6"
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.md",
+      "sha256": "ab359687a893f13ca9655e8cbbcf87f461ddf82f3d3e86a7bcdce6ecea928b21"
+    }
+  ],
+  "acceptance_contracts": [
+    "bounded_reviewed_dag",
+    "private_redacted_review",
+    "metadata_only_provider_router",
+    "tenant_rights_residency_and_citation_denial",
+    "no_paid_model_or_vector_ingestion",
+    "no_dep_execution_without_journal_and_fresh_approval",
+    "admin_route_smoke_and_php_matrix"
+  ],
+  "external_acceptance_required": [
+    "approved_model_accounts_and_cost_readback",
+    "conversations_and_prompt_library_governed_storage",
+    "native_document_ingestion_and_vector_deletion",
+    "media_rights_and_output_certification",
+    "server_bound_dependency_journal_and_approved_execution",
+    "staging_provider_browser_and_reversal_tests"
+  ]
+}

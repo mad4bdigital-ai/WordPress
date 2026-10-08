@@ -345,6 +345,7 @@ jobs:
           php "$PLUGIN/tests/g6-compiler-denial-runtime.php"
           php "$PLUGIN/tests/g6-admission-denial-runtime.php"
           php "$PLUGIN/tests/g6-provider-retrieval-denials.php"
+          python3 "$PLUGIN/tests/g6-delivery-integrity.py"
 
   g5-runtime:
     name: Feature 007 G5 runtime (PHP ${{ matrix.php }})
