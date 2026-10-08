@@ -18,7 +18,10 @@ final class MAD4B_SCP_G6_Knowledge_Admission {
 		if ( ! isset( $input['kind'] ) || ! in_array( $input['kind'], array( 'document', 'pdf', 'drive_asset', 'approved_html', 'form_schema' ), true ) ) return MAD4B_SCP_G6_Contracts::error( 'source_kind', 'Source kind is not admitted.' );
 		if ( ! isset( $input['rights'] ) || ! in_array( $input['rights'], array( 'owner_provided', 'licensed', 'public_domain' ), true ) ) return MAD4B_SCP_G6_Contracts::error( 'source_rights', 'Explicit verified rights are required.' );
 		if ( ! isset( $input['expires_at'] ) || ! is_int( $input['expires_at'] ) || $input['expires_at'] <= time() ) return MAD4B_SCP_G6_Contracts::error( 'source_rights_expired', 'Expired or missing rights require review.' );
-		if ( ! empty( $input['deleted'] ) || ! empty( $input['rights_revoked'] ) ) return MAD4B_SCP_G6_Contracts::error( 'source_revoked', 'Deleted or revoked evidence cannot be re-ingested.' );
+		foreach ( array( 'deleted', 'rights_revoked' ) as $flag )
+            if ( array_key_exists( $flag, $input ) && ! is_bool( $input[ $flag ] ) )
+                return MAD4B_SCP_G6_Contracts::error( 'source_flags', 'Source revocation flags must be exact booleans.' );
+        if ( ! empty( $input['deleted'] ) || ! empty( $input['rights_revoked'] ) ) return MAD4B_SCP_G6_Contracts::error( 'source_revoked', 'Deleted or revoked evidence cannot be re-ingested.' );
 		if ( ! isset( $input['privacy_class'] ) || ! in_array( $input['privacy_class'], array( 'public', 'internal', 'restricted' ), true ) ) return MAD4B_SCP_G6_Contracts::error( 'source_privacy', 'Explicit source privacy class is required.' );
 		$region = isset( $input['storage_region'] ) ? $input['storage_region'] : '';
 		if ( ! is_string( $region ) || 1 !== preg_match( '/^[a-z]{2}(-[a-z0-9]{2,12})?$/D', $region ) ) return MAD4B_SCP_G6_Contracts::error( 'source_region', 'Approved residency is not proven.' );
