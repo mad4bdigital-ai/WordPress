@@ -61,6 +61,12 @@ final class MAD4B_SCP_G8_Record {
 			|| ( is_string( $value ) && strlen( $value ) <= 65536 );
 	}
 
+	/** Public passive-data gate for callers comparing persisted evidence. */
+	public static function inert( $value ) {
+		$nodes = 0;
+		return self::plain_data( $value, 0, $nodes );
+	}
+
 	public static function valid( $record, $contract ) {
 		if ( ! is_array( $record ) || $contract !== ( $record['contract'] ?? '' )
 			|| false !== ( $record['authorizing'] ?? null )
