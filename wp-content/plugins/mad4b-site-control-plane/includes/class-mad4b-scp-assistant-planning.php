@@ -67,6 +67,8 @@ final class MAD4B_SCP_Assistant_Planning {
                                     'capability' => array( 'type' => 'string', 'pattern' => '^[a-z][a-z0-9._-]{2,79}$' ),
                                     'state' => array( 'type' => 'string', 'enum' => array( 'active', 'missing', 'degraded', 'unknown' ) ),
                                     'provider' => array( 'type' => 'string', 'pattern' => '^[a-z][a-z0-9._-]{2,79}$' ),
+                                     'dependency_state' => array( 'type' => 'string', 'enum' => array( 'unmet', 'met', 'unknown' ) ),
+                                     'certification_state' => array( 'type' => 'string', 'enum' => array( 'uncertified', 'certified', 'unknown' ) ),
                                 ), 'additionalProperties' => false ) ),
                     ), 'additionalProperties' => false ),
                 ), 'additionalProperties' => false,
@@ -160,10 +162,12 @@ final class MAD4B_SCP_Assistant_Planning {
             || ( count( $facts ) && array_keys( $facts ) !== range( 0, count( $facts ) - 1 ) ) ) return self::fail( 'budget_invalid' );
         $observations = array();
         foreach ( $have as $item ) {
-            if ( ! is_array( $item ) || ! self::keys( $item, array( 'capability', 'state', 'provider' ) )
+            if ( ! is_array( $item ) || ! self::keys( $item, array( 'capability', 'state', 'provider', 'dependency_state', 'certification_state' ) )
                 || ! self::id( $item['capability'] ?? null )
                 || ! in_array( $item['state'] ?? null, array( 'active', 'missing', 'degraded', 'unknown' ), true )
                 || ( isset( $item['provider'] ) && ! self::id( $item['provider'] ) )
+                || ( isset( $item['dependency_state'] ) && ! in_array( $item['dependency_state'], array( 'unmet', 'met', 'unknown' ), true ) )
+                || ( isset( $item['certification_state'] ) && ! in_array( $item['certification_state'], array( 'uncertified', 'certified', 'unknown' ), true ) )
                 || isset( $observations[ $item['capability'] ] ) ) return self::fail( 'observations_invalid' );
             $observations[ $item['capability'] ] = $item;
         }
@@ -199,11 +203,29 @@ final class MAD4B_SCP_Assistant_Planning {
             $state = $observations[ $id ]['state'] ?? 'unknown';
             $review = ! empty( $conflicts ) || ( 'search.intelligence' === $id
                 && ( ! isset( $fact_values['audience.market.country'] ) || ! isset( $fact_values['audience.language'] ) ) );
-            $action = $review ? 'REVIEW_CONTEXT' : ( 'active' === $state ? 'VERIFY_BEHAVIOR' : ( $item['required'] ? 'DISCOVER_ALTERNATIVES' : 'OPTIONAL_NO_INSTALL' ) );
-            $role = $review ? 'configuration' : ( 'active' === $state ? 'certification' : ( $item['required'] ? 'discovery' : 'supervisor' ) );
+            // Caller observations are unverified hints, not proof of provider execution.
+            $hint = isset( $observations[ $id ] ) ? $observations[ $id ] : array();
+            $action = 'OPTIONAL_NO_INSTALL'; $role = 'supervisor';
+            if ( $review ) { $action = 'REVIEW_CONTEXT'; $role = 'configuration'; }
+            elseif ( 'degraded' === $state ) { $action = 'REPAIR_CONFIGURATION'; $role = 'configuration'; }
+            elseif ( 'active' === $state ) {
+                $action = ! empty( $hint['provider'] ) && 'certified' !== ( $hint['certification_state'] ?? 'unknown' )
+                    ? 'CERTIFY_PROVIDER' : 'VERIFY_BEHAVIOR';
+                $role = 'certification';
+            } elseif ( 'unknown' === $state && $item['required'] ) {
+                $action = 'VERIFY_EXISTENCE'; $role = 'discovery';
+            } elseif ( 'missing' === $state && $item['required'] ) {
+                $action = 'unmet' === ( $hint['dependency_state'] ?? 'unknown' )
+                    ? 'RESOLVE_DEPENDENCY' : 'DISCOVER_ALTERNATIVES';
+                $role = 'discovery';
+            }
             if ( $review ) $review_reasons['context_review_required'] = true;
             if ( 'active' === $state ) $review_reasons['provider_behavior_unverified'] = true;
-            if ( 'DISCOVER_ALTERNATIVES' === $action ) $review_reasons['required_capability_not_verified'] = true;
+            if ( 'degraded' === $state ) $review_reasons['reported_provider_degraded'] = true;
+            if ( 'CERTIFY_PROVIDER' === $action ) $review_reasons['provider_certification_unverified'] = true;
+            if ( 'RESOLVE_DEPENDENCY' === $action ) $review_reasons['dependency_claim_requires_independent_verification'] = true;
+            if ( 'VERIFY_EXISTENCE' === $action ) $review_reasons['existence_unverified'] = true;
+            if ( $item['required'] && 'active' !== $state ) $review_reasons['required_capability_not_verified'] = true;
             $task_id = 'proposal-' . substr( hash( 'sha256', serialize( array_merge( $task_binding, array( $id ) ) ) ), 0, 32 );
             $tasks[] = array( 'task_contract' => 'mad4b.assistant-task-proposal.v1',
                 'task_id' => $task_id, 'assistant_role' => $role, 'capability' => $id,
