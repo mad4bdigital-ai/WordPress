@@ -41,4 +41,33 @@ $bad = $p; $bad['capabilities'] = array();
 check_case( 'empty capability target refused', ! MAD4B_SCP_Assistant_Read_Work_Operations::validate_payload( $bad ) );
 $bad = $p; $bad['contract'] = 'mad4b.fake';
 check_case( 'foreign contract refused', ! MAD4B_SCP_Assistant_Read_Work_Operations::validate_payload( $bad ) );
+class MAD4B_SCP_Adaptive_Operations_Context {
+    public static $current;
+    public static function current() { return self::$current; }
+}
+function is_wp_error( $x ) { return $x instanceof WP_Error; }
+class WP_Error {}
+$binding = array( 'site_uuid' => '49c562d1-8f2f-456f-b454-26816c6ba4cb',
+    'environment' => 'staging', 'profile_digest' => str_repeat( '1', 64 ),
+    'origin_sha256' => str_repeat( '2', 64 ), 'runtime_generation' => str_repeat( '3', 64 ),
+    'artifact_sha256' => str_repeat( '4', 64 ), 'restore_epoch' => 2,
+    'external_record_sha256' => str_repeat( '5', 64 ) );
+MAD4B_SCP_Adaptive_Operations_Context::$current = $binding;
+$payload = $p;
+$payload['binding_sha256'] = hash( 'sha256', serialize( array_values( $binding ) ) );
+check_case( 'Staging runtime binding matches', MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $payload ) );
+check_case( 'correct purpose matches operation',
+    MAD4B_SCP_Assistant_Read_Work_Operations::validate_for_operation( 'assistant_provider_catalog_snapshot', $payload ) );
+check_case( 'wrong operation purpose rejected',
+    ! MAD4B_SCP_Assistant_Read_Work_Operations::validate_for_operation( 'assistant_configuration_diff', $payload ) );
+$stale = $payload; $stale['binding_sha256'] = str_repeat( 'a', 64 );
+check_case( 'changed binding rejected', ! MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $stale ) );
+MAD4B_SCP_Adaptive_Operations_Context::$current['environment'] = 'production';
+check_case( 'Production never allowed', ! MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $payload ) );
+MAD4B_SCP_Adaptive_Operations_Context::$current = new WP_Error();
+check_case( 'Runtime diagnostic error denies enqueue',
+    ! MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $payload ) );
+$queue_code = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-remote-work-queue.php' );
+check_case( 'queue gates operation by exact binding', is_string( $queue_code )
+    && false !== strpos( $queue_code, 'MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches' ) );
 echo 'ASSISTANT_READ_WORK: PASS ' . $GLOBALS['asserts'] . ' checks' . PHP_EOL;
