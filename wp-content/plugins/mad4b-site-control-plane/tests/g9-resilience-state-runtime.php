@@ -474,6 +474,12 @@ $native = MAD4B_SCP_Execution_Receipt::build( $claim, array( 'readback'=>array( 
 g9_assert( ! is_wp_error( $native ) && $native['request_id'] !== $operation_id
     && $native['target_fingerprint'] !== $reserved['operation_sha256'],
     'native namespaces are independent, not manufactured G9 equality' );
+$verified_receipt = MAD4B_SCP_Execution_Receipt::verify( $native );
+g9_assert( ! is_wp_error( $verified_receipt )
+    && true === ( $verified_receipt['valid'] ?? null )
+    && true === ( $verified_receipt['cryptographic_signature_verified'] ?? null )
+    && hash_equals( $native['receipt_sha256'], $verified_receipt['receipt_sha256'] ?? '' ),
+    'hermetic native receipt must satisfy the full typed signature contract before state assertions' );
 $wrong_ability = $native; $wrong_ability['ability'] = 'mad4b/content-update-post';
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $wrong_ability ),
