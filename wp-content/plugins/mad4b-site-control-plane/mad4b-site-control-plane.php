@@ -440,6 +440,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-connection-admin-
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-browser-acceptance-admin-ui.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-capability-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';
