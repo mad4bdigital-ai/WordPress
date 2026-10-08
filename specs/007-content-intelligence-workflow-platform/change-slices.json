@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 342,
+  "changed_file_count": 345,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -584,6 +584,7 @@
       "certification": "exact_head",
       "path_globs": [
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/README.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/acceptance-gates.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/acceptance.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/architecture.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/constitution.md",
@@ -596,8 +597,10 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/operations.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/plan.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/quickstart.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/requirements.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/research.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/spec.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/system-map.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/tasks.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_validate.py",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/traceability.md",
@@ -606,6 +609,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "3c54959a4fd4a989e8f946e8d33cb7e3a93801ab51887cada09d9f8760363612",
+  "changed_paths_sha256": "4bf83ee130f0157df7af0a433545037072338593d6a7244eefb3190500b2d159",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

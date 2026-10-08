@@ -86,6 +86,52 @@ def validate(root=ROOT):
             faults.append('gate_missing:' + gate)
     if 'SPEC_BACKLOG_ONLY' not in docs['README.md'] or 'authorizing=false' not in docs['README.md']:
         faults.append('readme_authority_claim_invalid')
+    try:
+        req_register = json.loads(docs['requirements.json'])
+        gate_register = json.loads(docs['acceptance-gates.json'])
+        system_map = json.loads(docs['system-map.json'])
+    except (ValueError, TypeError, KeyError):
+        return faults + ['machine_registry_invalid']
+    if (req_register.get('contract') != 'mad4b.aci-os.requirement-registry.v1'
+            or req_register.get('status') != 'SPEC_BACKLOG_ONLY'
+            or req_register.get('authorizing') is not False):
+        faults.append('requirement_registry_authority_invalid')
+    rows = req_register.get('requirements')
+    if (not isinstance(rows, list) or [x.get('id') for x in rows if isinstance(x, dict)] != reqs
+            or len(rows) != len(reqs) or any(not isinstance(x, dict) or x.get('state') != 'OPEN'
+            or x.get('evidence_class') != 'DESIGN_DERIVED'
+            or not isinstance(x.get('description'), str) or not x.get('description')
+            or not x.get('task_ids') or any(t not in task_ids for t in x.get('task_ids', []))
+            or not x.get('gates') or any(g not in gate_ids for g in x.get('gates', [])) for x in rows)):
+        faults.append('requirement_registry_coverage_invalid')
+    if (gate_register.get('contract') != 'mad4b.aci-os.gate-registry.v1'
+            or gate_register.get('status') != 'SPEC_BACKLOG_ONLY'
+            or gate_register.get('authorizing') is not False):
+        faults.append('gate_registry_authority_invalid')
+    gates = gate_register.get('gates')
+    if (not isinstance(gates, list) or [x.get('id') for x in gates if isinstance(x, dict)] != gate_ids
+            or len(gates) != len(gate_ids)
+            or any(not isinstance(x, dict) or x.get('status') != 'OPEN'
+                or x.get('completion_claimed') is not False or x.get('authorizing') is not False
+                or not x.get('task_ids') or any(t not in task_ids for t in x.get('task_ids', []))
+                or not x.get('negative_cases') for x in gates)):
+        faults.append('gate_registry_coverage_invalid')
+    if (system_map.get('contract') != 'mad4b.aci-os.system-map.v1'
+            or system_map.get('status') != 'SPEC_BACKLOG_ONLY'
+            or system_map.get('authorizing') is not False
+            or system_map.get('production_authorized') is not False
+            or system_map.get('existing_authority_reuse_required') is not True):
+        faults.append('system_map_authority_invalid')
+    loops = system_map.get('loops')
+    if (not isinstance(loops, list) or [x.get('id') for x in loops if isinstance(x, dict)]
+            != ['discovery', 'evidence', 'content', 'validation', 'optimization']
+            or any(not x.get('hard_stop') or not x.get('output') for x in loops)):
+        faults.append('five_decision_loops_missing')
+    shortcut = system_map.get('forbidden_shortcuts')
+    if not isinstance(shortcut, list) or len(shortcut) < 4 or any(
+            not isinstance(row, list) or len(row) != 2 or row[1] != 'governed_wordpress_dispatch'
+            for row in shortcut):
+        faults.append('forbidden_authority_shortcuts_missing')
     return faults
 
 

@@ -17,9 +17,10 @@ This is a **complete target architecture and acceptance specification**, not a c
 5. `research.md` — architecture decisions, known evidence and unknowns.
 6. `ui.md` — operator workspaces, Arabic/RTL and approval experiences.
 7. `contracts/` — intelligence, relations, orchestration and publishing interfaces.
-8. `plan.md` — incremental delivery, rollback boundaries and exact gate exits.
-9. `tasks.md` + `traceability.md` — implementable, independently evidenced work.
-10. `acceptance.md`, `quickstart.md` — gate/negative cases and safe validation journey.
+8. `requirements.json`, `acceptance-gates.json`, `system-map.json` — typed, machine-checkable inventory and five-loop topology.
+9. `plan.md` — incremental delivery, rollback boundaries and exact gate exits.
+10. `tasks.md` + `traceability.md` — implementable, independently evidenced work.
+11. `acceptance.md`, `quickstart.md` — gate/negative cases and safe validation journey.
 
 ## Truth and scope
 
