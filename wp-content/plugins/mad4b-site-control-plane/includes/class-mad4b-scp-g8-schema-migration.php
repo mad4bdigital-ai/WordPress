@@ -42,6 +42,22 @@ final class MAD4B_SCP_G8_Schema_Migration {
 		return $row;
 	}
 
+	private static function valid_receipt( $receipt, array $binding, $revision ) {
+		if ( ! is_array( $receipt ) || ! self::name_ok( $receipt['domain'] ?? null )
+			|| ! self::doc_ok( $receipt['domain'], $receipt['before'] ?? null )
+			|| ! is_string( $receipt['before_sha256'] ?? null )
+			|| ! hash_equals( MAD4B_SCP_G8_Record::digest( $receipt['before'] ), $receipt['before_sha256'] )
+			|| ! is_string( $receipt['after_sha256'] ?? null )
+			|| ! is_string( $receipt['plan_sha256'] ?? null )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $receipt['after_sha256'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $receipt['plan_sha256'] )
+			|| ( $receipt['restore_binding'] ?? null ) !== $binding
+			|| ! is_int( $receipt['cutover_revision'] ?? null ) || $receipt['cutover_revision'] < 1
+			|| $receipt['cutover_revision'] > $revision || false !== ( $receipt['authorizing'] ?? true ) )
+			return false;
+		return true;
+	}
+
 	private static function read_state() {
 		$row = MAD4B_SCP_G8_Record::read( self::OPTION );
 		if ( is_wp_error( $row ) ) return $row;
@@ -55,6 +71,18 @@ final class MAD4B_SCP_G8_Schema_Migration {
 			|| ! is_array( $row['receipts'] ?? null ) || count( $row['receipts'] ) > self::MAX_RECEIPTS
 			|| strlen( serialize( $row ) ) > self::MAX_BYTES )
 			return new WP_Error( 'mad4b_g8_migration_state_invalid', 'Migration state is stale, malformed or belongs to another epoch.' );
+
+		foreach ( $row['documents'] as $domain => $doc ) {
+			if ( ! self::name_ok( $domain ) || ! self::doc_ok( $domain, $doc ) )
+				return new WP_Error( 'mad4b_g8_migration_document_invalid', 'Stored observation document is invalid.' );
+		}
+		$last_revision = 0;
+		foreach ( $row['receipts'] as $receipt ) {
+			if ( ! self::valid_receipt( $receipt, $binding, $row['revision'] )
+				|| $receipt['cutover_revision'] <= $last_revision )
+				return new WP_Error( 'mad4b_g8_migration_receipt_invalid', 'Stored cutover receipt is malformed or replayed.' );
+			$last_revision = $receipt['cutover_revision'];
+		}
 		return $row;
 	}
 
@@ -183,6 +211,7 @@ final class MAD4B_SCP_G8_Schema_Migration {
 		$receipt = $state['receipts'] ? end( $state['receipts'] ) : null;
 		if ( ! is_array( $receipt ) || ! is_int( $expected_revision ) || $state['revision'] !== $expected_revision
 			|| ! is_string( $expected_plan_sha256 ) || ! hash_equals( $receipt['plan_sha256'], $expected_plan_sha256 )
+			|| ! self::valid_receipt( $receipt, $state['restore_binding'], $state['revision'] )
 			|| ( $receipt['restore_binding'] ?? null ) !== $state['restore_binding']
 			|| ! isset( $state['documents'][ $receipt['domain'] ] )
 			|| ! hash_equals( $receipt['after_sha256'], MAD4B_SCP_G8_Record::digest( $state['documents'][ $receipt['domain'] ] ) ) )
