@@ -169,4 +169,30 @@ for ( $i = 0; $i < MAD4B_SCP_G6_Conversation_Vault::MAX_THREADS; ++$i ) {
     g6_vault_assert( ! is_wp_error( $r ), 'new active thread after 16 tombstones' ); $rev = $r['revision'];
 }
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( array( 'thread_id' => 'active-over-limit', 'expected_revision' => $rev, 'classification' => 'internal', 'role' => 'user', 'text' => 'no', 'retention_days' => 7 ) ), 'mad4b_g6_vault_thread_budget' );
+// The finite no-resurrection registry must never silently discard tombstones.
+$boundary_key = array_keys( $GLOBALS['g6_store'][17] )[0];
+$boundary_record = $GLOBALS['g6_store'][17][$boundary_key];
+$boundary_record['items'] = array();
+for ( $i = 0; $i < MAD4B_SCP_G6_Conversation_Vault::MAX_RETIRED_IDENTITIES; ++$i ) {
+    $id = 'retired-max-' . $i;
+    $boundary_record['items'][$id] = array(
+        'thread_id' => $id, 'classification' => 'internal',
+        'expires_at' => time() - 1, 'deleted' => true, 'messages' => array(),
+    );
+}
+$GLOBALS['g6_store'][17][$boundary_key] = $boundary_record;
+$at_cap = MAD4B_SCP_G6_Conversation_Vault::status();
+g6_vault_assert( ! is_wp_error( $at_cap )
+    && 0 === $at_cap['active_count']
+    && 0 === $at_cap['retained_identity_slots_remaining'], 'bounded identity ledger reported' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( array(
+    'thread_id' => 'overflow-identity', 'expected_revision' => $rev,
+    'classification' => 'internal', 'role' => 'user', 'text' => 'blocked',
+    'retention_days' => 7,
+) ), 'mad4b_g6_vault_retired_identity_budget' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( array(
+    'thread_id' => 'retired-max-0', 'expected_revision' => $rev,
+    'classification' => 'internal', 'role' => 'user', 'text' => 'blocked',
+    'retention_days' => 7,
+) ), 'mad4b_g6_vault_thread_ineligible' );
 echo "mad4b.g6-conversation-vault-runtime.v1: PASS\n";

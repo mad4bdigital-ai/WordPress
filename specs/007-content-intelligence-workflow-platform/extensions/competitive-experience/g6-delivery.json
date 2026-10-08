@@ -99,7 +99,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-conversation-vault-runtime.php",
-      "sha256": "2641214eb82f42cfe64349fa0e17aa7f66dcf3075924dd0d9bf0079e10e953b6"
+      "sha256": "d49da130a81e9ccf2f271b9d922dfcb6ff02e6935f61f4cee70b94bf93f79868"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",
@@ -109,7 +109,7 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.md",
-      "sha256": "c345544fceb3cc206d3d083de471b61105bb1bdccb870ae15f9e2836c048d65e"
+      "sha256": "f439b977ff844f036371bfd2678f966c968864bf2903046744d14e916dc2e4ec"
     }
   ],
   "acceptance_contracts": [
