@@ -53,6 +53,73 @@ final class MAD4B_SCP_G8_Restore_Convergence {
 			'external_effect_applied' => false, 'authorizing' => false );
 	}
 
+	/**
+	 * Cross-check optional native signed operation evidence against an external
+	 * effect inventory. This is NOT proof that the external provider was rewound:
+	 * the independent provider/host acceptance lane must still attest reality.
+	 * No receipt is minted and no restored authority can become active here.
+	 */
+	public static function evidence_pack( array $before, array $external, array $witnesses ) {
+		if ( count( $witnesses ) > 64 )
+			return new WP_Error( 'mad4b_g8_restore_witness_capacity', 'Bounded native execution witnesses required.' );
+		$diff = self::compare_external_effects( $before, $external );
+		if ( is_wp_error( $diff ) ) return $diff;
+		if ( ! self::ready( 'MAD4B_SCP_G8_Record', 'staging' ) || ! MAD4B_SCP_G8_Record::staging() )
+			return new WP_Error( 'mad4b_g8_restore_staging_required', 'A current enrolled Staging site is required.' );
+		$binding = MAD4B_SCP_G8_Record::binding();
+		$runtime = MAD4B_SCP_G8_Record::runtime_binding();
+		if ( is_wp_error( $binding ) || ! is_array( $binding ) || is_wp_error( $runtime )
+			|| ! is_string( $runtime ) )
+			return new WP_Error( 'mad4b_g8_restore_identity_unavailable', 'Exact current restore and runtime binding are required.' );
+		$verified = array(); $rejected = array();
+		foreach ( $witnesses as $id => $receipt ) {
+			if ( ! is_string( $id ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $id )
+				|| ! isset( $external[ $id ] ) || ! is_array( $receipt ) || count( $receipt ) > 48 ) {
+				return new WP_Error( 'mad4b_g8_restore_witness_invalid', 'Witness must describe an inventoried effect.' );
+			}
+			if ( ! self::ready( 'MAD4B_SCP_Execution_Receipt', 'verify' ) ) {
+				$rejected[ $id ] = 'native_signature_verifier_unavailable'; continue;
+			}
+			$check = MAD4B_SCP_Execution_Receipt::verify( $receipt );
+			if ( is_wp_error( $check ) || ! is_array( $check )
+				|| true !== ( $check['valid'] ?? false )
+				|| true !== ( $check['cryptographic_signature_verified'] ?? false )
+				|| ! is_string( $receipt['request_id'] ?? null )
+				|| ! hash_equals( $id, hash( 'sha256', $receipt['request_id'] ) )
+				|| ! is_string( $receipt['target_fingerprint'] ?? null )
+				|| ! hash_equals( $external[ $id ]['effect_sha256'], $receipt['target_fingerprint'] )
+				|| ! is_string( $receipt['provider_id'] ?? null ) || '' === $receipt['provider_id']
+				|| ! is_string( $receipt['ability'] ?? null ) || '' === $receipt['ability'] ) {
+				$rejected[ $id ] = 'native_receipt_signature_or_operation_binding_invalid'; continue;
+			}
+			$verified[ $id ] = $check['receipt_sha256'];
+		}
+		ksort( $verified, SORT_STRING ); ksort( $rejected, SORT_STRING );
+		$unwitnessed = array_values( array_diff( array_keys( $external ), array_keys( $verified ) ) );
+		sort( $unwitnessed, SORT_STRING );
+		return array(
+			'contract' => 'mad4b.g8-restore-evidence-pack.v1',
+			'restore_binding' => $binding,
+			'runtime_binding' => $runtime,
+			'local_inventory_sha256' => MAD4B_SCP_G8_Record::digest( $before ),
+			'external_claim_sha256' => MAD4B_SCP_G8_Record::digest( $external ),
+			'comparison' => $diff,
+			'signed_native_operation_count' => count( $verified ),
+			'signed_native_receipt_sha256_by_effect' => $verified,
+			'rejected_witness_reasons' => $rejected,
+			'unwitnessed_effect_keys' => $unwitnessed,
+			'external_inventory_independently_certified' => false,
+			'external_provider_readback_verified' => false,
+			'governed_restore_acceptance_issued' => false,
+			'acceptance_status' => 'EXTERNAL_PROVIDER_AND_GOVERNED_ACCEPTANCE_PENDING',
+			'write_resume_allowed' => false,
+			'candidate_rebinding_allowed' => false,
+			'automatic_retry_allowed' => false,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 	private static function ready( $class, $method ) {
 		return class_exists( $class, false ) && method_exists( $class, $method );
 	}
@@ -104,6 +171,17 @@ final class MAD4B_SCP_G8_Restore_Convergence {
 			&& true === ( $external['inventory_match'] ?? false )
 			&& true === ( $external['package_identity_match'] ?? false );
 		if ( ! $client_verified ) $blockers[] = 'external_client_inventory_acceptance_pending';
+
+		// Integration with G9 remains an independent read-only gate. It may
+		// be loaded later by Hub #258; absence never implies acceptance.
+		$g9 = self::ready( 'MAD4B_SCP_G9_Restore_Convergence', 'status' )
+			? MAD4B_SCP_G9_Restore_Convergence::status() : array();
+		if ( is_wp_error( $g9 ) || ! is_array( $g9 )
+			|| ( $g9['contract'] ?? '' ) !== 'mad4b.g9.restore-convergence.v1'
+			|| true !== ( $g9['origin_and_generation_ready'] ?? false )
+			|| ( $g9['restore_epoch'] ?? null ) !== $epoch
+			|| ( $g9['external_record_sha256'] ?? '' ) !== ( $restore['external_record_sha256'] ?? '' ) )
+			$blockers[] = 'g9_independent_restore_fence_pending';
 
 		// Browser receipts alone cannot prove that an external payment, email,
 		// update or provider action was undone by a local database restore.
