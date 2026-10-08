@@ -57,3 +57,5 @@ jobs:
           php "$PLUGIN/tests/certification-pack-registry-contract.php"
           php "$PLUGIN/tests/crypto-profile-runtime.php"
           php "$PLUGIN/tests/restore-epoch-runtime.php"
+          php -l "$PLUGIN/tests/g8-mysql-cas-integration.php"
+          php -l "$PLUGIN/tests/g8-staging-acceptance-readonly.php"
