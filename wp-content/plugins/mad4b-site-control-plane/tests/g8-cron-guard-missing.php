@@ -68,9 +68,28 @@ file_put_contents( MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json', json_encode( a
 $GLOBALS['g8_checkpoint'] = array( 'contract' => MAD4B_SCP_Runtime_Convergence::CONTRACT,
 	'source' => 'self_update_regression', 'state' => 'pending_safe_phases', 'target_identity' => $identity,
 	'resume_not_before' => 0, 'automatic_retry_allowed' => true );
+$stale_state = getenv( 'G8_STALE_CRON_STATE' ) ?: '';
+$paused_cron = '1' === getenv( 'G8_STALE_CRON_PAUSED' );
+if ( '' !== $stale_state ) {
+	if ( ! in_array( $stale_state, array( 'blocked', 'completed', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true ) ) {
+		fwrite( STDERR, 'Invalid stale Cron fixture state' . PHP_EOL ); exit( 2 );
+	}
+	$GLOBALS['g8_checkpoint']['state'] = $stale_state;
+}
+if ( $paused_cron ) $GLOBALS['g8_checkpoint']['automatic_retry_allowed'] = false;
+$before_stale = $GLOBALS['g8_checkpoint'];
 if ( ! $throwing_slo && ! $throwing_worker && class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for missing-class fixture' . PHP_EOL ); exit( 1 ); }
 MAD4B_SCP_Runtime_Convergence::resume_safe_phases();
 $checkpoint = $GLOBALS['g8_checkpoint'];
+if ( '' !== $stale_state || $paused_cron ) {
+	if ( $before_stale !== $checkpoint || ! empty( $GLOBALS['g8_worker_finished_error'] ) ) {
+		fwrite( STDERR, 'FAIL: stale or paused Cron event mutated its checkpoint' . PHP_EOL );
+		exit( 1 );
+	}
+	@unlink( MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ); @rmdir( $root );
+	echo 'G8_CRON_STALE_OR_PAUSED: PASS' . PHP_EOL;
+	exit( 0 );
+}
 if ( $throwing_worker ) {
 	if ( 'mad4b_automation_worker_exception' !== ( $GLOBALS['g8_worker_finished_error'] ?? null )
 		|| 'blocked' !== ( $checkpoint['state'] ?? null )
