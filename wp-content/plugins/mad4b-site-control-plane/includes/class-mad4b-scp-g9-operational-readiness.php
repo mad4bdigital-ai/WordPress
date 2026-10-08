@@ -32,17 +32,52 @@ final class MAD4B_SCP_G9_Operational_Readiness {
                 $site['authority']['grant_snapshot_sha256'] ?? ''
             ) )
             $blockers[] = 'current_site_grants_or_candidate_unready';
+        $site_key = MAD4B_SCP_Resilience_Context::site_key( $binding );
         if ( ! isset( $site['providers'] ) || ! is_array( $site['providers'] )
-            || ! $site['providers'] || count( $site['providers'] ) > 32 )
+            || ! $site['providers'] || count( $site['providers'] ) > 32 ) {
             $blockers[] = 'certified_provider_inventory_missing';
+        } else {
+            foreach ( $site['providers'] as $provider ) {
+                if ( ! is_array( $provider )
+                    || true !== ( $provider['ready'] ?? null )
+                    || ! empty( $provider['revoked'] )
+                    || ( $provider['site_key'] ?? '' ) !== $site_key
+                    || ( $provider['generation_sha256'] ?? '' ) !== $binding['runtime_generation_sha256']
+                    || ! MAD4B_SCP_Resilience_Context::is_hash( $provider['certification_sha256'] ?? '' ) ) {
+                    $blockers[] = 'certified_provider_unready';
+                    break;
+                }
+            }
+        }
         if ( true !== ( $site['host']['isolation_verified'] ?? false )
             || true !== ( $site['host']['local_readback_verified'] ?? false )
             || true !== ( $site['host']['single_host_exclusive_verified'] ?? false ) )
             $blockers[] = 'host_isolation_and_exclusive_fence_unverified';
         if ( ! is_array( $site['external_effects'] ?? null )
             || count( $site['external_effects'] ) > 128
-            || true !== ( $site['gates']['external_effect_inventory_complete'] ?? null ) )
+            || true !== ( $site['gates']['external_effect_inventory_complete'] ?? null ) ) {
             $blockers[] = 'complete_external_effect_inventory_unverified';
+        } else {
+            foreach ( $site['external_effects'] as $effect ) {
+                if ( ! is_array( $effect )
+                    || ! in_array( $effect['state'] ?? null,
+                        array( 'verified_no_effect', 'verified_reconciled' ), true )
+                    || ( $effect['site_key'] ?? '' ) !== $site_key
+                    || ! MAD4B_SCP_Resilience_Context::is_hash( $effect['receipt_sha256'] ?? '' ) ) {
+                    $blockers[] = 'external_effect_unreconciled';
+                    break;
+                }
+            }
+        }
+        $health = $site['health'] ?? array();
+        $now = MAD4B_SCP_Resilience_Context::now();
+        if ( ! is_array( $health ) || ! is_int( $health['observed_at'] ?? null )
+            || $health['observed_at'] > $now || $health['observed_at'] < $now - 120
+            || ! is_int( $health['sample_count'] ?? null ) || $health['sample_count'] < 1
+            || ! is_int( $health['error_rate_bps'] ?? null )
+            || $health['error_rate_bps'] < 0 || $health['error_rate_bps'] > 10000
+            || ! is_int( $health['p95_ms'] ?? null ) || $health['p95_ms'] < 0 )
+            $blockers[] = 'current_health_window_unverified';
         foreach ( array(
             'provider_inventory_complete',
             'host_inventory_complete',

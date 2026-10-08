@@ -504,16 +504,28 @@ g9_assert( ! is_wp_error( $revoked_provider )
     && $revoked_provider['provider_evidence_present']
     && !$revoked_provider['provider_evidence_verified'],
     'provider completeness flag does not mask revoked provider' );
+$revoked_closure = MAD4B_SCP_G9_Read_Surface::closure_status();
+g9_assert( ! is_wp_error( $revoked_closure )
+    && in_array( 'certified_provider_unready', $revoked_closure['blockers'], true ),
+    'closure names revoked provider even with complete inventory flag' );
 G9_Exact_Reader::$provider_certified = true;
 G9_Exact_Reader::$effect_uncertain = true;
 $effect_drift = MAD4B_SCP_G9_Read_Surface::site_observation();
 g9_assert( ! is_wp_error( $effect_drift ) && !$effect_drift['external_effect_inventory_verified'],
     'claimed complete inventory does not verify uncertain external effect' );
+$effect_closure = MAD4B_SCP_G9_Read_Surface::closure_status();
+g9_assert( ! is_wp_error( $effect_closure )
+    && in_array( 'external_effect_unreconciled', $effect_closure['blockers'], true ),
+    'closure names unresolved external effect' );
 G9_Exact_Reader::$effect_uncertain = false;
 G9_Exact_Reader::$health_stale = true;
 $stale_health = MAD4B_SCP_G9_Read_Surface::site_observation();
 g9_assert( ! is_wp_error( $stale_health ) && !$stale_health['health_window_verified'],
     'fresh health window cannot be inferred from old sample with complete flag' );
+$stale_health_closure = MAD4B_SCP_G9_Read_Surface::closure_status();
+g9_assert( ! is_wp_error( $stale_health_closure )
+    && in_array( 'current_health_window_unverified', $stale_health_closure['blockers'], true ),
+    'closure reports expired health window rather than accepting complete flag' );
 G9_Exact_Reader::$health_stale = false;
 $marker_backup = $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ];
 $marker_foreign = $marker_backup; $marker_foreign['site']['canonical_origin'] = 'https://foreign.example.invalid';
