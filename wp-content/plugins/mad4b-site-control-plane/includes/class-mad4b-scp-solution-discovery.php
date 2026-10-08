@@ -188,9 +188,10 @@ final class MAD4B_SCP_Solution_Discovery {
         }
         if ( function_exists( 'wp_get_abilities' ) ) {
             $abilities = array();
+            $ability_call_failed = false;
             try { $abilities = wp_get_abilities(); }
-            catch ( Throwable $failure ) { $ability_complete = false; }
-            if ( is_array( $abilities ) && ( ! isset( $failure ) ) ) {
+            catch ( Throwable $failure ) { $ability_call_failed = true; }
+            if ( ! $ability_call_failed && is_array( $abilities ) ) {
                 $ability_complete = true; ksort( $abilities, SORT_STRING );
                 $count = 0;
                 foreach ( $abilities as $name => $ability ) {
