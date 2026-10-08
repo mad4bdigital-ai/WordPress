@@ -161,6 +161,17 @@ g9_check( ! is_wp_error( $metadata ) && $metadata['revision'] === 2
     && $metadata['site']['environment'] === 'staging',
     'anchor metadata not controlled by closure' );
 $original = file_get_contents( $path );
+// A restored or manually downgraded database mirror must not accept a
+// newer external state merely because its unkeyed checksum is internally valid.
+$marker_option = MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION;
+$current_marker = $GLOBALS['g9_options'][ $marker_option ];
+$old_record = json_decode( $older_valid_file, true );
+$rollback_marker = $current_marker;
+$rollback_marker['anchor_revision'] = $old_record['revision'];
+$rollback_marker['anchor_sha256'] = $old_record['anchor_sha256'];
+$GLOBALS['g9_options'][ $marker_option ] = $rollback_marker;
+g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'mirror_anchor_mismatch' );
+$GLOBALS['g9_options'][ $marker_option ] = $current_marker;
 // A replayed older file is cryptographically self-consistent. The DB
 // high-water revision/hash must still reject it rather than resurrecting
 // a previously spent release or recovery fence.

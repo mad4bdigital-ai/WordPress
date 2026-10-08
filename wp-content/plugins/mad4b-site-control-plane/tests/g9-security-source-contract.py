@@ -55,6 +55,9 @@ expect(release, (
 assert "wp_register_ability" not in release, "RELEASE_MUTATION_ABILITY_EXPOSED"
 expect(anchor, (
     "mirror_missing",
+    "mirror_anchor_mismatch",
+    "'anchor_revision' => $next['revision']",
+    "'anchor_sha256' => $next['anchor_sha256']",
     "directory_permissions_unsafe",
     "local_blog_mismatch",
     "local_site_mismatch",
