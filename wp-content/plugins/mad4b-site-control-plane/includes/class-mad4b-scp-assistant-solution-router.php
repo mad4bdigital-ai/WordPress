@@ -82,7 +82,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
             ( $related && array_keys( $related ) !== range( 0, count( $related ) - 1 ) ) )
             return self::fail( 'terms_invalid' );
         foreach ( $related as $term ) if ( ! is_string( $term ) || strlen( $term ) > 320
-            || ! preg_match( '/^[\\p{L}\\p{N}][\\p{L}\\p{N} ._-]{2,79}$/uD', $term ) )
+            || ! preg_match( '/^[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N} ._-]{2,79}$/uD', $term ) )
             return self::fail( 'terms_invalid' );
         $external = $input['external_hints'] ?? array();
         if ( ! is_array( $external ) || count( $external ) > 24 ||
@@ -130,12 +130,29 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                 'intent' => str_replace( array( '.', '_', '-' ), ' ', $capability ),
                 'related_terms' => $related, 'external_hints' => $external, 'limit' => $limit ), $inventory, $binding );
             if ( is_wp_error( $result ) ) return $result;
+            $fallback = array( 'candidates' => array(), 'next_offset' => null );
+            if ( ! $result['total_matches'] ) {
+                // Failure to match a plugin by name is not proof it cannot
+                // solve the goal: expose bounded, explicitly *unranked* options
+                // for independent assistant/human evaluation.
+                $fallback = MAD4B_SCP_Solution_Discovery::discover( array(
+                    'expected_profile_digest' => $binding['profile_digest'],
+                    'expected_runtime_generation' => $binding['runtime_generation'],
+                    'intent' => str_replace( array( '.', '_', '-' ), ' ', $capability ),
+                    'related_terms' => $related, 'external_hints' => $external,
+                    'limit' => $limit, 'mode' => 'inventory',
+                    'expected_snapshot_sha256' => $result['snapshot_sha256'] ), $inventory, $binding );
+                if ( is_wp_error( $fallback ) ) return $fallback;
+            }
             $tasks[] = array( 'task_id' => $task['task_id'], 'capability' => $capability,
                 'planner_decision' => $decision, 'total_matches' => $result['total_matches'],
                 'status' => $result['total_matches'] ? 'VERIFY_CANDIDATE_BEHAVIOR'
-                    : ( ! empty( $result['inventory_incomplete'] ) ? 'INVENTORY_INCOMPLETE_RETRY' : 'EXPAND_DISCOVERY' ),
+                    : ( ! empty( $result['inventory_incomplete'] ) ? 'INVENTORY_INCOMPLETE_RETRY' : 'EVALUATE_UNRANKED_FALLBACK' ),
                 'inventory_incomplete' => $result['inventory_incomplete'],
                 'candidates' => $result['candidates'],
+                'unranked_fallback_candidates' => $fallback['candidates'],
+                'unranked_fallback_next_offset' => $fallback['next_offset'],
+                'fallback_has_no_match_evidence' => true,
                 'snapshot_sha256' => $result['snapshot_sha256'],
                 'execution_allowed' => false );
         }
