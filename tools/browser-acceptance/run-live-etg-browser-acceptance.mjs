@@ -12,7 +12,12 @@ import {
 } from "./mcp-bridge.mjs";
 import { buildBrowserExecutionReceipt, canonicalSha256 } from "./receipt.mjs";
 import { loadProviderContracts } from "./providers.mjs";
-import { resolveEtgBrowserOperatorConfiguration } from "./site-provider-configuration.mjs";
+import {
+  resolveEtgBrowserOperatorConfiguration,
+  assertEtgBrowserBindingUnchanged,
+  assertEtgBrowserPlanBinding,
+  assertEtgBrowserResultBinding
+} from "./site-provider-configuration.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -54,6 +59,13 @@ const session = await createMad4bMcpSession({ resource, accessToken });
 const capabilities = await session.callAbility("mad4b/browser-acceptance-capabilities", {});
 const configured = resolveEtgBrowserOperatorConfiguration(capabilities, { profileId, requestedExecutor: browserProvider });
 const plan = await requestBrowserPlan(session, { providerId: configured.siteProviderId, profileId: configured.profileId });
+assertEtgBrowserPlanBinding(configured, plan);
+// Selection could have changed while the signed plan was being generated.
+const preExecution = resolveEtgBrowserOperatorConfiguration(
+  await session.callAbility("mad4b/browser-acceptance-capabilities", {}),
+  { profileId, requestedExecutor: browserProvider }
+);
+assertEtgBrowserBindingUnchanged(configured, preExecution);
 
 const contracts = loadProviderContracts();
 const now = Math.floor(Date.now() / 1000);
@@ -95,6 +107,13 @@ try {
 
   const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8"));
   const result = await submitBrowserEvidence(session, plan, evidence);
+  assertEtgBrowserResultBinding(plan, result);
+  // A changed administrator preference invalidates the local execution receipt.
+  const postExecution = resolveEtgBrowserOperatorConfiguration(
+    await session.callAbility("mad4b/browser-acceptance-capabilities", {}),
+    { profileId, requestedExecutor: browserProvider }
+  );
+  assertEtgBrowserBindingUnchanged(configured, postExecution);
   fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const localEvidenceDigest = canonicalSha256(evidence);
