@@ -197,8 +197,16 @@ final class MAD4B_SCP_Automation_SLO {
 			&& is_array( $readback ) && 'mad4b.skill-runtime-certification.v2' === ( $readback['contract'] ?? '' ) && true === ( $readback['ready'] ?? false )
 			&& is_array( $persisted = MAD4B_SCP_Skill_Runtime_Certification::persisted_status() ) && true === ( $persisted['build_identity_current'] ?? false ) ) $outcome = 'verified_repair';
 		if ( false === ( $ticket['pre_ready'] ?? null ) && 'runtime-convergence' === ( $ticket['provider'] ?? '' ) && 'safe-phases' === ( $ticket['capability'] ?? '' )
-			&& is_array( $result ) && 'completed' === ( $result['state'] ?? '' )
-			&& is_array( $result['readback'] ?? null ) && empty( $result['readback']['required_blockers'] )
+			&& is_array( $result ) && 'mad4b.runtime-convergence-apply.v1' === ( $result['contract'] ?? '' )
+			&& 'completed' === ( $result['state'] ?? '' )
+			&& is_array( $result['changed_safe_phases'] ?? null ) && ! empty( $result['changed_safe_phases'] )
+			&& is_array( $result['checkpoint'] ?? null )
+			&& 'completed' === ( $result['checkpoint']['state'] ?? '' )
+			&& 'post_update_cron' === ( $result['checkpoint']['last_execution_source'] ?? '' )
+			&& ( $result['checkpoint']['changed_safe_phases'] ?? null ) === $result['changed_safe_phases']
+			&& is_array( $result['readback'] ?? null )
+			&& is_array( $result['readback']['required_blockers'] ?? null )
+			&& empty( $result['readback']['required_blockers'] )
 			&& class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
 			$actual = MAD4B_SCP_Runtime_Convergence::status();
 			if ( is_array( $actual ) && array_key_exists( 'required_blockers', $actual )
