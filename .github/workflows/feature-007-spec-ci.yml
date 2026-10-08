@@ -621,6 +621,8 @@ jobs:
           php -l "$PLUGIN/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php"
           php -l "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
           php "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
+          php -l "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
+          php "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
 
   oauth-operational-ux:
     name: OAuth consent operating-state denials (PHP ${{ matrix.php }})
