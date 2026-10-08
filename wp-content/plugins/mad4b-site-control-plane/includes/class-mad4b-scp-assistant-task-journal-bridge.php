@@ -106,10 +106,7 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
         return true;
     }
 
-    /** Initialize a task ONLY inside a preexisting, single-owner journal head. */
-    public static function initialize( array $context, array $record ) {
-        $binding = self::preflight( $context, true );
-        if ( is_wp_error( $binding ) ) return $binding;
+    private static function initial_record_valid( array $record, $binding ) {
         if ( array_keys( $record ) !== array( 'contract', 'task_id', 'plan_sha256', 'binding_sha256', 'revision', 'state', 'last_event_sha256' )
             || ( $record['contract'] ?? null ) !== MAD4B_SCP_Assistant_Task_Contract::CONTRACT
             || ! is_string( $record['task_id'] ) || ! preg_match( '/^proposal-[a-f0-9]{32}$/D', $record['task_id'] )
@@ -117,6 +114,37 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
             || $record['binding_sha256'] !== $binding
             || $record['revision'] !== 1 || $record['state'] !== 'proposed'
             || $record['last_event_sha256'] !== str_repeat( '0', 64 ) ) return self::deny( 'initial_record_invalid' );
+        return true;
+    }
+
+    /**
+     * Create ONLY a non-authorizing Staging review ticket. An exact admin
+     * request creates one canonical Operation Journal head; on any uncertain
+     * outcome the journal is retained for independent reconciliation.
+     * This cannot activate, install, configure, certify or approve providers.
+     */
+    public static function open_review_ticket( array $context, array $record ) {
+        $binding = self::preflight( $context, true );
+        if ( is_wp_error( $binding ) ) return $binding;
+        $valid = self::initial_record_valid( $record, $binding );
+        if ( is_wp_error( $valid ) ) return $valid;
+        if ( $context['operation_key'] !== $record['task_id'] ) return self::deny( 'identity_mismatch' );
+        $created = MAD4B_SCP_Operation_Journal::begin( $context, 'planned', self::genesis_claim( $record ) );
+        if ( is_wp_error( $created ) ) return $created;
+        $result = self::initialize( $context, $record );
+        if ( is_wp_error( $result ) ) return new WP_Error( 'mad4b_assistant_journal_initialization_uncertain',
+            'A non-executable review head was created but initialization was not fully verified; reconcile instead of blindly retrying.',
+            array( 'cause' => $result->get_error_code(), 'reconciliation_required' => true,
+                'blind_retry_allowed' => false, 'authorizing' => false, 'provider_entry_allowed' => false ) );
+        return $result;
+    }
+
+    /** Initialize a task ONLY inside a preexisting, single-owner journal head. */
+    public static function initialize( array $context, array $record ) {
+        $binding = self::preflight( $context, true );
+        if ( is_wp_error( $binding ) ) return $binding;
+        $valid = self::initial_record_valid( $record, $binding );
+        if ( is_wp_error( $valid ) ) return $valid;
         $head = self::consistent_head( $context, $record['task_id'] );
         if ( is_wp_error( $head ) ) return $head;
         if ( (int) $head['latest_sequence'] !== 1 ) return self::deny( 'already_initialized_or_drifted' );
