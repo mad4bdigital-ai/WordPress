@@ -134,17 +134,21 @@ final class MAD4B_SCP_ACI01_Intake_Preview {
                         'brand_id' => $brand, 'locale' => $locale, 'market' => $market );
         $candidate = array( 'post_type' => $post_type, 'content_recipe_key' => $selected ? 'native:' . $post_type : null,
                             'taxonomies' => $taxonomies, 'requires_native_relation_review' => $requires_relation_review );
+        $stages = array(
+            array( 'id' => 'site_discovery', 'status' => 'OBSERVED' ),
+            array( 'id' => 'evidence_pack', 'status' => 'NEEDS_EVIDENCE' ),
+        );
+        if ( $requires_relation_review ) {
+            $stages[] = array( 'id' => 'native_relation_review', 'status' => 'NEEDS_EVIDENCE' );
+        }
+        $stages[] = array( 'id' => 'blueprint', 'status' => 'WAITING_DEPENDENCIES' );
+        $stages[] = array( 'id' => 'draft_qa', 'status' => 'WAITING_DEPENDENCIES' );
+        $stages[] = array( 'id' => 'operator_review', 'status' => 'NEEDS_REVIEW' );
         return array(
             'contract' => self::CONTRACT, 'status' => $status,
             'scope' => $scope, 'candidate' => $candidate,
             'available_post_types' => array_keys( $catalog ),
-            'stages' => array(
-                array( 'id' => 'site_discovery', 'status' => 'OBSERVED' ),
-                array( 'id' => 'evidence_pack', 'status' => 'NEEDS_EVIDENCE' ),
-                array( 'id' => 'blueprint', 'status' => 'WAITING_DEPENDENCIES' ),
-                array( 'id' => 'draft_qa', 'status' => 'WAITING_DEPENDENCIES' ),
-                array( 'id' => 'operator_review', 'status' => 'NEEDS_REVIEW' ),
-            ),
+            'stages' => $stages,
             'reason_codes' => $reasons,
             'review_ticket' => array( 'target' => $candidate['content_recipe_key'], 'required_decisions' => $reasons ),
             'source' => 'EXISTING_WORDPRESS_NATIVE_DISCOVERY', 'evidence_trust' => 'UNVERIFIED_READ_ONLY',
