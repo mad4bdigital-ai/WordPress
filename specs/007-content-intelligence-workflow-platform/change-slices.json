@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 295,
+  "changed_file_count": 296,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -493,8 +493,17 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/feature007-manual-preflight.py"
       ]
+    },
+    {
+      "id": "feature007-ci-outage-native-runbook",
+      "semantic_unit": "Exact-head offline-native preflight instructions and non-waivable external acceptance matrix",
+      "revert_boundary": "Documentation only; host, grant, provider, production and release authority remain separate",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/FEATURE007-CI-OUTAGE-ACCEPTANCE.md"
+      ]
     }
   ],
-  "changed_paths_sha256": "e004f38845769f0bf3c978c0cda0ddaa68c873f6d63cda3bbb4644011f8d7843",
+  "changed_paths_sha256": "7fd0500a2cfcc3fc1b9d77380f682407c746279efe55d6233eb8c853f5c90768",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
