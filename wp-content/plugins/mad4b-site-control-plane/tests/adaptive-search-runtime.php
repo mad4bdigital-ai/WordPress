@@ -421,6 +421,23 @@ scenario( 'legacy_duplicate_market_ids_are_quarantined_before_adoption', static 
 	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'resume', 'expected_revision' => 4 ) ), 'market_identity_conflict', 're-activation stays blocked while market identity conflicts' );
 	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'shared-old-id' ), 'safety controls cannot mint conflicting ownership claims' );
 } );
+scenario( 'market_identity_reservation_survives_registry_cas_failure', static function () {
+	$raw = asi_profile( 'registry-cas-owner' ); $raw['markets'][0]['id'] = 'registry-cas-us'; $raw['markets'][1]['id'] = 'registry-cas-fr';
+	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'registry fault initial plan' );
+	$registry_key = MAD4B_SCP_Search_Store::key( 'registry', 'profiles' );
+	$GLOBALS['fixture_cas_failure'] = static function ( $key, $old, $next ) use ( $registry_key ) { return $key === $registry_key; };
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'compare_exchange_conflict', 'registry CAS failure is not hidden' );
+	$GLOBALS['fixture_cas_failure'] = null;
+	check( null === MAD4B_SCP_Search_Store::read( 'profile', 'registry-cas-owner' ) && null === MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ), 'failed admission has no false profile or registry success' );
+	$claim = MAD4B_SCP_Search_Store::read( 'market-identity', 'registry-cas-us' );
+	check( is_array( $claim ) && $claim['payload']['profile_id'] === 'registry-cas-owner', 'persisted reservation survives interrupted Registry commit' );
+	$other = asi_profile( 'registry-cas-foreign' ); $other['markets'][0]['id'] = 'registry-cas-us'; $other['markets'][1]['id'] = 'registry-cas-foreign-fr';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $other, 'expected_revision' => 0 ) ), 'market_identity_conflict', 'other profile cannot seize orphaned claim' );
+	$retry = ok( MAD4B_SCP_Search_Context::plan( $input ), 'same owner retry plan after Registry fault' );
+	$completed = ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $retry['plan_sha256'] ) ) ), 'same owner completes previous admission' );
+	check( $completed['profile']['profile_id'] === 'registry-cas-owner' && 1 === $completed['profile']['revision'], 'owner recovery preserves original market identities' );
+} );
 scenario( 'domain_market_claim_reservation_survives_partial_profile_commit', static function () {
 	$raw = asi_profile( 'pending-domain-profile' ); $raw['markets'][0]['id'] = 'pending-metro'; $raw['markets'][1]['id'] = 'pending-second';
 	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
