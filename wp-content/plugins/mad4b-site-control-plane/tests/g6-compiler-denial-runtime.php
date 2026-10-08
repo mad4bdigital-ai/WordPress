@@ -2,8 +2,10 @@
 define( 'ABSPATH', __DIR__ . '/' );
 class WP_Error {
 	private $code;
-	public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; }
+	private $data;
+	public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; $this->data = $data; }
 	public function get_error_code() { return $this->code; }
+	public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
@@ -42,7 +44,7 @@ final class G6_Test_Strategy implements MAD4B_SCP_G6_Operation_Strategy {
 			'ability_name' => 'mad4b/test-native-content-apply',
 			'typed_input' => array( 'post_content' => $arguments['content'] ),
 			'schema_sha256' => str_repeat( '3', 64 ),
-			'provider_binding_sha256' => str_repeat( '4', 64 ),
+			'provider_binding_sha256' => str_repeat( isset( $GLOBALS['g6_test_pin_char'] ) ? $GLOBALS['g6_test_pin_char'] : '4', 64 ),
 			'native_plan_sha256' => str_repeat( '5', 64 ),
 			'object_pins' => array( array( 'resource_id' => 'post:17', 'state_sha256' => str_repeat( '6', 64 ) ) ),
 			'permissions' => array( array( 'capability' => 'edit_post', 'object_id' => 17 ) ),
@@ -84,6 +86,12 @@ $GLOBALS['g6_test_job']['state'] = 'WAITING_REVIEW';
 $GLOBALS['g6_test_profile_enabled'] = false;
 g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_profile_job_mismatch', 'disabled profile denied' );
 $GLOBALS['g6_test_profile_enabled'] = true;
+$GLOBALS['g6_test_pin_char'] = '5';
+$drift = MAD4B_SCP_G6_Operation_Compiler::revalidate( array( 'plan' => $plan ) );
+g6_test_error( $drift, 'mad4b_g6_replan_required', 'provider pin drift invalidates approval' );
+$redacted = $drift->get_error_data();
+g6_test_assert( isset( $redacted['diff_summary_sha256'] ) && ! isset( $redacted['diffs'] ) && true === $redacted['diff_paths_redacted'], 'revalidation errors must expose digest only, no source paths' );
+$GLOBALS['g6_test_pin_char'] = '4';
 $GLOBALS['g6_test_owner'] = false;
 g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_owner_required', 'nonadmin compilation denied' );
 $GLOBALS['g6_test_owner'] = true;

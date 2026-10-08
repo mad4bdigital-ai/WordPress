@@ -225,7 +225,7 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		if ( (int) get_current_user_id() !== (int) $plan['owner_user_id'] ) return MAD4B_SCP_G6_Contracts::error( 'plan_owner', 'Compiled plan belongs to another administrator.' );
 		$current = self::compile( $plan['compile_input'] );
 		if ( is_wp_error( $current ) ) return MAD4B_SCP_G6_Contracts::error( 'replan_required', 'Provider, object, permission or job is no longer eligible.', array( 'cause' => $current->get_error_code(), 'approval_invalidated' => true ) );
-		if ( ! hash_equals( $plan['plan_sha256'], $current['plan_sha256'] ) ) return MAD4B_SCP_G6_Contracts::error( 'replan_required', 'Plan semantics changed; create and approve a new exact plan.', array( 'current_plan_sha256' => $current['plan_sha256'], 'diffs' => MAD4B_SCP_G6_Contracts::diff( $plan, $current ), 'approval_invalidated' => true ) );
+		if ( ! hash_equals( $plan['plan_sha256'], $current['plan_sha256'] ) ) return MAD4B_SCP_G6_Contracts::error( 'replan_required', 'Plan semantics changed; create and approve a new exact plan.', array( 'current_plan_sha256' => $current['plan_sha256'], 'diff_summary_sha256' => MAD4B_SCP_G6_Contracts::digest( MAD4B_SCP_G6_Contracts::diff( $plan, $current ) ), 'diff_paths_redacted' => true, 'approval_invalidated' => true ) );
 		return array( 'contract' => 'mad4b.compiled-content-plan-revalidation.v1', 'valid' => true, 'plan_sha256' => $plan['plan_sha256'], 'authorizing' => false );
 	}
 

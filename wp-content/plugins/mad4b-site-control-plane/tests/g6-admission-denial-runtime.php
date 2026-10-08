@@ -24,7 +24,7 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g6-acceptance.php';
 function g6_admit_assert( $ok, $label ) { if ( ! $ok ) { fwrite( STDERR, 'FAIL: ' . $label . PHP_EOL ); exit( 1 ); } }
 function g6_admit_error( $result, $code ) { g6_admit_assert( is_wp_error( $result ) && $code === $result->get_error_code(), 'expected fail-closed ' . $code ); }
 MAD4B_SCP_G6_Acceptance::register_abilities();
-g6_admit_assert( 6 === count( $GLOBALS['g6_abilities'] ), 'seven private G6 abilities' );
+g6_admit_assert( 7 === count( $GLOBALS['g6_abilities'] ), 'seven private G6 abilities' );
 foreach ( $GLOBALS['g6_abilities'] as $name => $def ) {
 	g6_admit_assert( ! $def['meta']['public'] && ! $def['meta']['show_in_rest'] && ! $def['meta']['mcp']['public'] && 'admin' === $def['meta']['mcp']['surface'], 'G6 must stay private: ' . $name );
 }
