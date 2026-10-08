@@ -46,6 +46,7 @@ class MAD4B_SCP_Site_Profile {
 class MAD4B_SCP_Runtime_Generation_Fence {
     const CONTRACT = 'mad4b.runtime-generation-fence.v1';
     public static $revoked = false;
+    public static $ready_override = null;
     public static function assert_current( array $expected ) {
         $status = self::status();
         if ( self::$revoked || ( $expected['contract'] ?? '' ) !== self::CONTRACT
@@ -55,7 +56,7 @@ class MAD4B_SCP_Runtime_Generation_Fence {
     }
     public static function status() {
         return array(
-            'ready' => true, 'generation_sha256' => hash( 'sha256', 'generation' ),
+            'ready' => self::$ready_override === null ? true : self::$ready_override, 'generation_sha256' => hash( 'sha256', 'generation' ),
             'blockers' => array(), 'material' => array(
                 'schema_installed_version' => 40,
                 'persisted_contract_registry_sha256' => hash( 'sha256', 'registry' ),
@@ -67,8 +68,9 @@ class MAD4B_SCP_Runtime_Generation_Fence {
     }
 }
 class MAD4B_SCP_Restore_Epoch {
+    public static $ready_override = null;
     public static function status( $initialize = false, $refresh = false ) {
-        return array( 'ready'=>true, 'epoch'=>1,
+        return array( 'ready'=>self::$ready_override === null ? true : self::$ready_override, 'epoch'=>1,
             'external_record_sha256'=>hash( 'sha256', 'external-record' ), 'blockers'=>array() );
     }
 }
@@ -96,6 +98,7 @@ class MAD4B_SCP_Certification_Pack_Registry {
 class MAD4B_SCP_Staging_Write_Authority {
     public static $call_count = 0;
     public static $snapshot_current = true;
+    public static $ready_override = null;
     public static $deny_on_call = 0;
     public static $revoke_generation_on_call = 0;
     public static function current_execution_readiness() {
@@ -103,7 +106,7 @@ class MAD4B_SCP_Staging_Write_Authority {
         if ( self::$revoke_generation_on_call === self::$call_count )
             MAD4B_SCP_Runtime_Generation_Fence::$revoked = true;
         $ready = self::$deny_on_call !== self::$call_count;
-        return array( 'ready'=>$ready, 'current_grant_snapshot_ready'=>$ready && self::$snapshot_current,
+        return array( 'ready'=>self::$ready_override === null ? $ready : self::$ready_override, 'current_grant_snapshot_ready'=>$ready && self::$snapshot_current,
             'candidate_binding_match'=>$ready,
             'grant_rows_fingerprint'=>hash( 'sha256', 'grants' ) );
     }
@@ -164,6 +167,23 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
 g9_assert( true === MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader registration' );
 $observation = MAD4B_SCP_Resilience_Context::capture();
 g9_assert( ! is_wp_error( $observation ) && $observation['authority']['eligible'], 'current capture' );
+// Mocked upstream status values must never become eligibility through PHP's
+// truthiness coercion of the non-empty string "false".
+MAD4B_SCP_Staging_Write_Authority::$ready_override = 'false';
+$invalid_admission = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $invalid_admission ) && false === $invalid_admission['authority']['eligible'],
+    'string-valued write readiness is not authority' );
+MAD4B_SCP_Staging_Write_Authority::$ready_override = null;
+MAD4B_SCP_Restore_Epoch::$ready_override = 'false';
+$invalid_restore = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $invalid_restore ) && false === $invalid_restore['restore_bound']
+    && false === $invalid_restore['authority']['eligible'], 'string-valued restore admission rejected' );
+MAD4B_SCP_Restore_Epoch::$ready_override = null;
+MAD4B_SCP_Runtime_Generation_Fence::$ready_override = 'false';
+$invalid_worker = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $invalid_worker ) && false === $invalid_worker['worker_current']
+    && false === $invalid_worker['authority']['eligible'], 'string-valued generation admission rejected' );
+MAD4B_SCP_Runtime_Generation_Fence::$ready_override = null;
 MAD4B_SCP_Staging_Write_Authority::$snapshot_current = false;
 $stale_grants = MAD4B_SCP_Resilience_Context::capture();
 g9_assert( ! is_wp_error( $stale_grants ) && !$stale_grants['authority']['eligible'],
