@@ -76,9 +76,12 @@ $receipt = MAD4B_SCP_G8_Schema_Migration::apply( 'registry', 3, 1, $plan['plan_s
 g8_check( 'COMMITTED' === ( $receipt['state'] ?? '' ) && 2 === $receipt['revision'], 'exact migration CAS applied' );
 g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::apply( 'registry', 3, 1, $plan['plan_sha256'] ),
 	'mad4b_g8_migration_target_invalid' ), 'already migrated generation refused' );
-$reader = MAD4B_SCP_G8_Schema_Migration::view( 'registry', 1 );
+g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::view( 'registry', 1 ),
+	'mad4b_g8_migration_reader_incompatible' ), 'N-2 stale reader cannot reinterpret version 3 evidence' );
+$reader = MAD4B_SCP_G8_Schema_Migration::view( 'registry', 2 );
 g8_check( true !== $reader['reader_current'] && false === $reader['mutations_allowed']
-	&& 'keep_me' === $reader['document']['data']['legacy_unknown_field'], 'mixed-generation reader is non-authorizing' );
+	&& 2 === $reader['document']['min_reader_version']
+	&& 'keep_me' === $reader['document']['data']['legacy_unknown_field'], 'declared N-1 reader is non-authorizing' );
 g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::register_observation( 'policy', array( 'safe' => true ), 2 ),
 	'mad4b_g8_migration_domain_denied' ), 'policy mutation requires independent review' );
 // Even a re-sealed forged receipt cannot substitute a different pre-migration snapshot.
