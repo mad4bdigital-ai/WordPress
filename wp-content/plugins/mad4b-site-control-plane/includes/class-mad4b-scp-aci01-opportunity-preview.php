@@ -63,11 +63,19 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'locale' => $evidence['scope']['locale'],
             'market' => $evidence['scope']['market'],
         ) );
-        return self::compile( $intake, $evidence, $input['goal'] );
+        if ( ! class_exists( 'MAD4B_SCP_ACI01_Semantic_Recipe', false )
+            || ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false ) ) return self::denied( 'semantic_or_binding_provider_missing' );
+        $semantic = MAD4B_SCP_ACI01_Semantic_Recipe::current(
+            array( 'content_type' => $evidence['scope']['content_type'] ?? '' ), $intake );
+        $now = MAD4B_SCP_ACI01_Runtime_Binding::current();
+        if ( is_wp_error( $now ) || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $intake['scope']['binding'] ?? null, $now )
+            || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $evidence['scope']['binding'] ?? null, $now ) )
+            return self::denied( 'runtime_snapshot_changed' );
+        return self::compile( $intake, $evidence, $input['goal'], $semantic );
     }
 
     /** Pure candidate compiler. No generation, external tool dispatch or persistence. */
-    public static function compile( $intake, $evidence, $goal ) {
+    public static function compile( $intake, $evidence, $goal, $semantic = null ) {
         if ( ! is_array( $intake ) || ! is_array( $evidence ) || ! is_string( $goal ) ||
              '' === trim( $goal ) || strlen( $goal ) > self::MAX_GOAL_BYTES ) return self::denied( 'candidate_inputs_invalid' );
         if ( ! isset( $intake['status'], $evidence['status'] ) ||
@@ -95,6 +103,21 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
                     $evidence['scope']['locale'], $evidence['scope']['market'] ) ||
              $intake['scope']['locale'] !== $evidence['scope']['locale'] ||
              $intake['scope']['market'] !== $evidence['scope']['market'] ) return self::denied( 'locale_market_mismatch' );
+        if ( ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false )
+            || ! MAD4B_SCP_ACI01_Runtime_Binding::same(
+                $intake['scope']['binding'] ?? null, $evidence['scope']['binding'] ?? null ) )
+            return self::denied( 'runtime_binding_mismatch' );
+        if ( ! is_array( $semantic ) || ( $semantic['contract'] ?? '' ) !== 'mad4b.aci01.semantic-recipe.v1'
+            || ( $semantic['status'] ?? '' ) !== 'NEEDS_EVIDENCE'
+            || ! empty( $semantic['authorizing'] )
+            || ! is_array( $semantic['mapping'] ?? null )
+            || ! is_array( $semantic['obligations'] ?? null )
+            || ! is_string( $semantic['semantic_fingerprint_sha256'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $semantic['semantic_fingerprint_sha256'] ) )
+            return self::denied( 'semantic_mapping_missing_or_invalid' );
+        if ( ( $semantic['mapping']['post_type'] ?? null ) !== ( $intake['candidate']['post_type'] ?? null )
+            || ( $semantic['mapping']['content_job_type'] ?? null ) !== ( $evidence['scope']['content_type'] ?? null ) )
+            return self::denied( 'semantic_job_target_mismatch' );
         foreach ( array( $intake['plan_fingerprint_sha256'], $evidence['preview_sha256'] ) as $fingerprint ) {
             if ( ! is_string( $fingerprint ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return self::denied( 'source_fingerprint_invalid' );
         }
@@ -104,6 +127,12 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
         $required = array( 'business_goal', 'audience_intent', 'evidence_source_rights',
                            'approved_brand_context', 'factual_claims', 'editorial_qa' );
         if ( $relation_review ) $required[] = 'native_relation_identity';
+        foreach ( $semantic['obligations'] as $obligation ) {
+            if ( ! is_string( $obligation ) || ! preg_match( '/^[a-z0-9_.-]{1,80}$/D', $obligation ) )
+                return self::denied( 'semantic_obligation_invalid' );
+            $required[] = $obligation;
+        }
+        $required = array_values( array_unique( $required ) );
         $reasons = array();
         foreach ( array( $intake, $evidence ) as $part ) {
             if ( ! isset( $part['reason_codes'] ) || ! is_array( $part['reason_codes'] ) ||
@@ -112,6 +141,11 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
                 if ( ! is_string( $r ) || ! preg_match( '/^[a-z0-9_.-]{1,120}$/', $r ) ) return self::denied( 'reason_code_invalid' );
                 $reasons[] = $r;
             }
+        }
+        foreach ( $semantic['reason_codes'] ?? array() as $reason ) {
+            if ( ! is_string( $reason ) || ! preg_match( '/^[a-z0-9_.-]{1,120}$/D', $reason ) )
+                return self::denied( 'semantic_reason_invalid' );
+            $reasons[] = $reason;
         }
         $reasons[] = 'independent_editorial_approval_required';
         $reasons[] = 'external_provider_and_rights_not_certified';
@@ -122,13 +156,16 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'post_type' => $post_type,
             'goal_sha256' => hash( 'sha256', trim( $goal ) ),
             'source_previews' => array( $intake['plan_fingerprint_sha256'], $evidence['preview_sha256'] ),
-            'required_sections' => $required, 'reason_codes' => $reasons );
+            'required_sections' => $required, 'reason_codes' => $reasons,
+            'semantic_sha256' => $semantic['semantic_fingerprint_sha256'] );
         return array( 'contract' => self::CONTRACT, 'status' => 'NEEDS_EVIDENCE',
             'review_status' => 'NEEDS_REVIEW',
             'candidate_kind' => 'OpportunityHypothesis_BlueprintCandidate',
             'site_scope' => $intake['scope'], 'target_post_type' => $post_type,
             'goal_sha256' => $material['goal_sha256'],
             'evidence_fingerprints' => $material['source_previews'],
+            'semantic_fingerprint_sha256' => $semantic['semantic_fingerprint_sha256'],
+            'recipe_mapping' => $semantic['mapping'],
             'required_blueprint_sections' => $required,
             'reason_codes' => $reasons,
             'handoff' => 'EXISTING_MAD4B_CONTENT_INTELLIGENCE_AFTER_APPROVAL',

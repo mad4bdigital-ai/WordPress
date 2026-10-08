@@ -131,6 +131,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-jobs.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-intent-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-artifacts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-intelligence-pipeline.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-runtime-binding.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-semantic-recipe.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-intake-preview.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-evidence-preview.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-opportunity-preview.php';
@@ -384,6 +386,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-govern
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-experience-runtime.php';
 MAD4B_SCP_Content_Experience_Governance::boot();
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-aci01-read-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-context-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-skills-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-runtime-component-adapters.php';

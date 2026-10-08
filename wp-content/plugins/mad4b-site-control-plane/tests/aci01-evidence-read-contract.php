@@ -14,6 +14,20 @@ final class MAD4B_SCP_Site_Profile {
     public static function site_origin(){return 'https://staging.example.org';}
     public static function current_environment(){return 'staging';}
 }
+final class MAD4B_SCP_ACI01_Runtime_Binding {
+    public static $generation='a';
+    public static function current() {
+        if(!MAD4B_SCP_Site_Profile::$configured)return new WP_Error('unenrolled');
+        return array('contract'=>'mad4b.aci01.runtime-binding.v1',
+            'site_uuid'=>MAD4B_SCP_Site_Profile::site_uuid(),
+            'origin'=>MAD4B_SCP_Site_Profile::site_origin(),
+            'environment'=>MAD4B_SCP_Site_Profile::current_environment(),
+            'runtime_generation'=>str_repeat(self::$generation,64),
+            'restore_epoch'=>1);
+    }
+    public static function is_valid($x){return is_array($x)&&isset($x['restore_epoch']);}
+    public static function same($a,$b){return self::is_valid($a)&&self::is_valid($b)&&$a===$b;}
+}
 final class MAD4B_SCP_Content_Jobs {
     public static function get_job($input){return array('job'=>array(
         'job_id'=>$input['job_id'],'brand_id'=>'brand_a','language'=>'ar','country'=>'EG','content_type'=>'article'));}
@@ -77,4 +91,10 @@ $ctx['brand_id']='other';
 check($service::project($job,$jobRow,$ctx,array(),604800,$scope)['status']==='DENIED','cross brand context');
 $ctx['brand_id']='brand_a';$ctx['ready']=true;$ctx['missing_required_classes']=array();
 check($service::project($job,$jobRow,$ctx,array(),604800,$scope)['status']==='NEEDS_EVIDENCE','read observed cannot grant');
+$scope['binding']=MAD4B_SCP_ACI01_Runtime_Binding::current();
+check($service::project($job,$jobRow,$ctx,array(),604800,$scope)['scope']['binding']['restore_epoch']===1,
+    'evidence projection retains trusted binding');
+$scope['binding']['site_uuid']='33333333-3333-4333-8333-333333333333';
+check($service::project($job,$jobRow,$ctx,array(),604800,$scope)['status']==='DENIED',
+    'cross-site binding denied');
 echo "ACI01_EVIDENCE_READ_CONTRACT: PASS\n";

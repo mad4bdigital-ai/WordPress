@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 422,
+  "changed_file_count": 427,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -605,6 +605,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/dynamic_core.py",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/effect-contracts.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/evidence-trust.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-p0-remediation.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-01.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-02.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-03.md",
@@ -754,8 +755,20 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-atlas.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/capability-atlas-contract.php"
       ]
+    },
+    {
+      "id": "aci01-p0-governed-semantic-binding",
+      "semantic_unit": "Exact Site/Profile generation and restore-epoch check, dynamic reviewed ContentJob-to-CPT semantic relation and three read-only MCP mounts",
+      "revert_boundary": "Read-only identity, semantic, adapter and test fixtures only; no mutation or provider execution",
+      "certification": "source_php_tests_partial_staging_and_native_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-aci01-read-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-runtime-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-semantic-recipe.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/aci01-p0-governed-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "f5381d57d3507b248978720b7cbdd88a547947c33a0493cb5f0fb95a9fce1960",
+  "changed_paths_sha256": "0ba5ed6f6cdd17c93f6856fcbf4cbae2898693e88ca7d9a1d778d467dfd28eb8",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

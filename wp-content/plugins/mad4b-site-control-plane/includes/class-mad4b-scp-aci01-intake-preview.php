@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_ACI01_Intake_Preview {
     const CONTRACT = 'mad4b.aci01.intake-preview.v1';
-    const MAX_POST_TYPES = 80;
+    const MAX_POST_TYPES = 96;
     const MAX_TAXONOMIES = 32;
     private static $booted = false;
 
@@ -51,14 +51,22 @@ final class MAD4B_SCP_ACI01_Intake_Preview {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) {
             return self::denied( 'required_existing_provider_missing' );
         }
-        // The site profile is bootstrapped by the existing governed kernel.
-        if ( ! MAD4B_SCP_Site_Profile::configured() ) return self::denied( 'site_not_enrolled' );
+        if ( ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false ) ) return self::denied( 'binding_provider_unavailable' );
+        $binding = MAD4B_SCP_ACI01_Runtime_Binding::current();
+        if ( is_wp_error( $binding ) || ! is_array( $binding ) ) return self::denied( 'site_binding_unverified' );
         $site = array(
             'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
             'origin' => MAD4B_SCP_Site_Profile::site_origin(),
-            'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+            'environment' => $binding['environment'],
+            'verified_binding' => $binding,
+            'multilingual_detected' => defined( 'ICL_SITEPRESS_VERSION' )
+                || function_exists( 'icl_object_id' )
+                || ( function_exists( 'has_filter' ) && false !== has_filter( 'wpml_element_language_details' ) ),
         );
         $inventory = MAD4B_SCP_Content_Experience_Profiles::discover( array() );
+        $after = MAD4B_SCP_ACI01_Runtime_Binding::current();
+        if ( is_wp_error( $after ) || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $binding, $after ) )
+            return self::denied( 'runtime_changed_during_read' );
         return self::plan_from_discovery( $input, $site, $inventory );
     }
 
@@ -77,7 +85,7 @@ final class MAD4B_SCP_ACI01_Intake_Preview {
         $origin = isset( $site['origin'] ) ? (string) $site['origin'] : '';
         $environment = isset( $site['environment'] ) ? (string) $site['environment'] : '';
         if ( ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $uuid ) ||
-             ! self::https_origin( $origin ) || ! in_array( $environment, array( 'development', 'staging', 'production', 'disposable' ), true ) ) {
+             ! self::https_origin( $origin ) || ! in_array( $environment, array( 'local', 'development', 'staging', 'production', 'disposable' ), true ) ) {
             return self::denied( 'site_identity_not_verified' );
         }
         $brand = isset( $input['brand_id'] ) ? $input['brand_id'] : '';
@@ -123,15 +131,28 @@ final class MAD4B_SCP_ACI01_Intake_Preview {
             $taxonomies = array_values( array_unique( $taxonomies ) );
             sort( $taxonomies, SORT_STRING );
         }
-        // Site discovery reveals a *candidate*, never translates IDs or certifies WPML.
-        $requires_relation_review = count( $taxonomies ) > 0;
+        // An absent taxonomy does not imply an absence of WPML post/language
+        // relations. Native identity is never certified by this inventory.
+        $requires_relation_review = count( $taxonomies ) > 0 || ! empty( $site['multilingual_detected'] );
         if ( $requires_relation_review ) $reasons[] = 'native_relation_policy_unverified';
+        $reasons[] = 'native_language_identity_unverified';
         $reasons[] = 'governed_brand_and_source_receipts_not_supplied';
         $reasons = array_values( array_unique( $reasons ) );
         sort( $reasons, SORT_STRING );
         $status = '' === $post_type ? 'NEEDS_REVIEW' : 'NEEDS_EVIDENCE';
         $scope = array( 'site_uuid' => $uuid, 'origin' => $origin, 'environment' => $environment,
                         'brand_id' => $brand, 'locale' => $locale, 'market' => $market );
+        $binding = $site['verified_binding'] ?? null;
+        if ( $binding !== null ) {
+            if ( ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false )
+                || ! MAD4B_SCP_ACI01_Runtime_Binding::is_valid( $binding )
+                || $binding['site_uuid'] !== $uuid || $binding['origin'] !== $origin
+                || $binding['environment'] !== $environment ) return self::denied( 'binding_scope_mismatch' );
+            $scope['binding'] = $binding;
+        } else {
+            $reasons[] = 'runtime_binding_unverified';
+            sort( $reasons, SORT_STRING );
+        }
         $candidate = array( 'post_type' => $post_type, 'content_recipe_key' => $selected ? 'native:' . $post_type : null,
                             'taxonomies' => $taxonomies, 'requires_native_relation_review' => $requires_relation_review );
         $stages = array(

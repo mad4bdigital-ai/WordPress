@@ -4,6 +4,25 @@ $GLOBALS['aci03_registered']=array();
 function add_action($h,$cb,$p=10){}
 function wp_has_ability($n){return false;}
 function wp_register_ability($n,$d){$GLOBALS['aci03_registered'][$n]=$d;}
+function is_wp_error($v){return $v instanceof WP_Error;}
+class WP_Error{function __construct($code=''){ } }
+final class MAD4B_SCP_ACI01_Runtime_Binding{
+    public static function current(){return array('contract'=>'mad4b.aci01.runtime-binding.v1',
+        'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
+        'origin'=>'https://example.org','environment'=>'staging',
+        'runtime_generation'=>str_repeat('f',64),'restore_epoch'=>1);}
+    public static function is_valid($b){return is_array($b)&&isset($b['restore_epoch']);}
+    public static function same($a,$b){return self::is_valid($a)&&self::is_valid($b)&&$a===$b;}
+}
+final class MAD4B_SCP_Content_Experience_Profiles {
+    public static function profile_status($input=array()){return array(
+        'contract'=>'mad4b.content-experience-profiles.v1','profiles'=>array(
+            array('slug'=>'article','post_type'=>'post','enabled'=>true,
+                'runtime_post_type_ready'=>true,'helper_catalog_match'=>true,
+                'authority_current'=>true,'migration_required'=>false,
+                'revision'=>1,'authority_sha256'=>str_repeat('d',64)),
+        ));}
+}
 final class MAD4B_SCP_Policy { public static $read=true;public static function can_read(){return self::$read;} }
 final class MAD4B_SCP_ACI01_Evidence_Preview {
     public static $denied=false;
@@ -12,7 +31,8 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         return array('contract'=>'mad4b.aci01.evidence-preview.v1','authorizing'=>false,'mutation_performed'=>false,'status'=>'NEEDS_EVIDENCE','scope'=>array(
             'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
             'origin'=>'https://example.org','environment'=>'staging',
-            'brand_id'=>'b1','locale'=>'ar','market'=>'EG'),
+            'brand_id'=>'b1','locale'=>'ar','market'=>'EG',
+            'content_type'=>'article', 'binding'=>MAD4B_SCP_ACI01_Runtime_Binding::current()),
             'preview_sha256'=>str_repeat('a',64),
             'reason_codes'=>array('context_not_ready','research_evidence_required'));
     }
@@ -23,13 +43,15 @@ final class MAD4B_SCP_ACI01_Intake_Preview {
         return array('contract'=>'mad4b.aci01.intake-preview.v1','authorizing'=>false,'mutation_performed'=>false,'status'=>'NEEDS_EVIDENCE','scope'=>array(
             'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
             'origin'=>'https://example.org','environment'=>'staging',
-            'brand_id'=>$input['brand_id'],'locale'=>$input['locale'],'market'=>$input['market']),
+            'brand_id'=>$input['brand_id'],'locale'=>$input['locale'],'market'=>$input['market'],
+            'binding'=>MAD4B_SCP_ACI01_Runtime_Binding::current()),
             'candidate'=>array('post_type'=>$input['post_type'],
                 'requires_native_relation_review'=>self::$relation),
             'plan_fingerprint_sha256'=>str_repeat('b',64),
             'reason_codes'=>array('governed_brand_and_source_receipts_not_supplied'));
     }
 }
+require __DIR__.'/../includes/class-mad4b-scp-aci01-semantic-recipe.php';
 require __DIR__.'/../includes/class-mad4b-scp-aci01-opportunity-preview.php';
 function check($ok,$why){if(!$ok){fwrite(STDERR,'FAIL '.$why."\n");exit(1);}}
 $cls='MAD4B_SCP_ACI01_Opportunity_Preview';
@@ -64,4 +86,14 @@ check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($input),
     array_merge(MAD4B_SCP_ACI01_Evidence_Preview::preview($input),
         array('scope'=>array_merge(MAD4B_SCP_ACI01_Evidence_Preview::preview($input)['scope'],array('brand_id'=>'wrong')))),
     $input['goal'])['status']==='DENIED','cross-brand');
+$badt= MAD4B_SCP_ACI01_Evidence_Preview::preview($input);
+$badt['scope']['binding']['restore_epoch']=2;
+check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($input), $badt, $input['goal'],
+    MAD4B_SCP_ACI01_Semantic_Recipe::current(array('content_type'=>'article'),
+        MAD4B_SCP_ACI01_Intake_Preview::preview($input)))['status']==='DENIED', 'restore epoch mismatch');
+$badtype=MAD4B_SCP_ACI01_Evidence_Preview::preview($input);
+$badtype['scope']['content_type']='comparison';
+check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($input), $badtype, $input['goal'],
+    MAD4B_SCP_ACI01_Semantic_Recipe::current(array('content_type'=>'article'),
+        MAD4B_SCP_ACI01_Intake_Preview::preview($input)))['status']==='DENIED', 'job content type mismatch');
 echo "ACI01_OPPORTUNITY_CANDIDATE: PASS\n";

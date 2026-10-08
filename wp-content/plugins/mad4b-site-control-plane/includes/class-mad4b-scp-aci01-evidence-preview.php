@@ -48,7 +48,9 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         foreach ( array( 'MAD4B_SCP_Site_Profile', 'MAD4B_SCP_Content_Jobs', 'MAD4B_SCP_Context_Pack', 'MAD4B_SCP_Artifacts' ) as $owner ) {
             if ( ! class_exists( $owner ) ) return self::denied( 'existing_read_provider_unavailable' );
         }
-        if ( ! MAD4B_SCP_Site_Profile::configured() ) return self::denied( 'site_not_enrolled' );
+        if ( ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false ) ) return self::denied( 'binding_provider_unavailable' );
+        $binding = MAD4B_SCP_ACI01_Runtime_Binding::current();
+        if ( is_wp_error( $binding ) || ! is_array( $binding ) ) return self::denied( 'site_binding_unverified' );
         if ( ! is_array( $input ) || ! isset( $input['job_id'] ) || ! self::uuid( $input['job_id'] ) ) return self::denied( 'job_identity_invalid' );
         foreach ( $input as $key => $value ) if ( ! in_array( $key, array( 'job_id', 'artifact_ids', 'max_age_seconds' ), true ) ) return self::denied( 'unknown_input' );
         $refs = isset( $input['artifact_ids'] ) ? $input['artifact_ids'] : array();
@@ -72,8 +74,12 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         $scope = array(
             'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
             'origin' => MAD4B_SCP_Site_Profile::site_origin(),
-            'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+            'environment' => $binding['environment'],
+            'binding' => $binding,
         );
+        $after = MAD4B_SCP_ACI01_Runtime_Binding::current();
+        if ( is_wp_error( $after ) || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $binding, $after ) )
+            return self::denied( 'runtime_changed_during_evidence_read' );
         return self::project( $job_id, $result['job'], $context, $rows, $age, $scope );
     }
 
@@ -84,7 +90,14 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             ! is_int( $age ) || $age < 1 || $age > self::MAX_AGE_SECONDS || ! is_array( $scope ) ) return self::denied( 'projection_shape_invalid' );
         if ( ! self::uuid( isset( $scope['site_uuid'] ) ? $scope['site_uuid'] : '' ) ||
              ! isset( $scope['origin'] ) || ! is_string( $scope['origin'] ) || 0 !== strpos( $scope['origin'], 'https://' ) ||
-             ! isset( $scope['environment'] ) || ! in_array( $scope['environment'], array( 'staging', 'production', 'development', 'disposable' ), true ) ) return self::denied( 'site_scope_invalid' );
+             ! isset( $scope['environment'] ) || ! in_array( $scope['environment'], array( 'local', 'staging', 'production', 'development', 'disposable' ), true ) ) return self::denied( 'site_scope_invalid' );
+        if ( isset( $scope['binding'] ) &&
+             ( ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false )
+               || ! MAD4B_SCP_ACI01_Runtime_Binding::is_valid( $scope['binding'] )
+               || $scope['binding']['site_uuid'] !== $scope['site_uuid']
+               || $scope['binding']['origin'] !== $scope['origin']
+               || $scope['binding']['environment'] !== $scope['environment'] ) )
+            return self::denied( 'binding_scope_mismatch' );
         if ( ! isset( $job['job_id'] ) || ! is_string( $job['job_id'] ) || strtolower( $job['job_id'] ) !== strtolower( $job_id ) ||
              ! isset( $job['brand_id'], $job['language'], $job['country'], $job['content_type'] ) ) return self::denied( 'job_scope_mismatch' );
         if ( ! isset( $context['job_id'], $context['brand_id'], $context['language'], $context['country'] ) ||
@@ -145,7 +158,8 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             'scope' => array( 'site_uuid' => $scope['site_uuid'], 'origin' => $scope['origin'],
                 'environment' => $scope['environment'], 'brand_id' => (string) $job['brand_id'],
                 'locale' => (string) $job['language'], 'market' => (string) $job['country'],
-                'content_type' => (string) $job['content_type'] ),
+                'content_type' => (string) $job['content_type'],
+                'binding' => $scope['binding'] ?? null ),
             'context' => array( 'required_missing' => $missing,
                 'requirements_digest' => isset( $context['job_requirements_sha256'] ) ? (string) $context['job_requirements_sha256'] : '',
                 'context_digest' => isset( $context['context_pack_sha256'] ) ? (string) $context['context_pack_sha256'] : '',
