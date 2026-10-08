@@ -60,7 +60,16 @@ $arg['related_terms']=array('unknown');$arg['planning_input']['desired']['capabi
 $arg['planning_input']['observed']['capabilities'][0]['capability']='unrelated.analytics';
 $empty=MAD4B_SCP_Assistant_Solution_Router::read_plan($arg);
 ok(is_array($empty) && $empty['tasks'][0]['total_matches']===0
-    && $empty['tasks'][0]['status']==='EXPAND_DISCOVERY','negative no result');
+    && $empty['tasks'][0]['status']==='EVALUATE_UNRANKED_FALLBACK','missing lexical tokens triggers fallback');
+ok(count($empty['tasks'][0]['unranked_fallback_candidates'])===2
+    && $empty['tasks'][0]['fallback_has_no_match_evidence']===true,
+    'unranked fallback preserves both unmapped plugin options');
+$arg['planning_input']['desired']['capabilities'][0]['capability']='configuration.environment';
+$arg['planning_input']['observed']['capabilities'][0]['capability']='configuration.environment';
+$configGap=MAD4B_SCP_Assistant_Solution_Router::read_plan($arg);
+ok(is_array($configGap) && $configGap['tasks'][0]['total_matches']===0
+    && count($configGap['tasks'][0]['unranked_fallback_candidates'])===2,
+    'environment configuration can suggest file-management options without vendor mapping');
 MAD4B_SCP_Assistant_Solution_Router::register_ability();
 ok(isset($GLOBALS['abilities']['mad4b/assistant-solution-discover'])
     && $GLOBALS['abilities']['mad4b/assistant-solution-discover']['meta']['annotations']['readonly']===true,'registered read only');

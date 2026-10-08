@@ -40,3 +40,7 @@ The follow-up connector `mad4b/assistant-solution-discover` is a read-only adapt
 The live registry now explicitly reads **ordinary plugins, must-use plugins and core drop-ins**, as well as REST-visible WordPress Abilities, without vendor-specific lookup tables. WordPress supplies `get_plugins()`, `get_mu_plugins()`, and `get_dropins()` from its trusted core plugin admin helper. Must-use plugin presence is active by core semantics; drop-in **presence** is only `registered` (not automatically proven loaded or usable).
 
 All metadata is treated as a non-executable hint. A failed function, malformed plugin main-file path, unsupported/inaccessible helper, or truncated inventory marks a corresponding `*_inventory_complete=false`; a no-match result on incomplete coverage returns `INVENTORY_INCOMPLETE_RETRY`. Offset pagination is available past the old 400-result boundary, subject to a hard 1024-result safety ceiling. Scanning never invokes the unknown provider code or grants a file/host write.
+
+## Exact inventory pagination (continuation safety)
+
+Supply `expected_snapshot_sha256` from the first response when reading subsequent pages of the same scope, goal and external hints. If a plugin version/status, environment binding, extension registry or hint changes, the server refuses with `mad4b_solution_discovery_snapshot_changed`. `snapshot_sha256` is an integrity continuity identifier, not provider certification and not a cryptographic authorization token. A lost snapshot requires restarting the inventory scan, not mixing pages.

@@ -18,3 +18,6 @@ Optional `external_hints` can contain vetted-shape descriptions from an eligible
 
 
 When there are no candidates, the router distinguishes `INVENTORY_INCOMPLETE_RETRY` from `EXPAND_DISCOVERY` using the local registry completeness flags. Separate `extension_inventory_complete` reports MU/drop-in registry availability. If an existing WordPress extension cannot be examined, the assistant must explore a permissioned external provider inventory rather than falsely conclude no solution exists.
+
+
+**Automatic no-lexical-match fallback:** An unresolved planning goal can differ completely from all candidate plugin names (for example `configuration.environment` vs `File Workspace`). The bridge now returns a bounded `unranked_fallback_candidates` inventory page when lexical matches are empty, with `fallback_has_no_match_evidence=true` and a continuation cursor. This is a possible-alternative pool for independent analysis; it cannot be interpreted as a recommendation or permission to execute. A scan that lacks coverage reports `INVENTORY_INCOMPLETE_RETRY` even if it supplies fallback candidates.

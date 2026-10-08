@@ -107,8 +107,13 @@ ok(is_array($changed) && $changed['snapshot_sha256']!==$r['snapshot_sha256'],'ve
 $GLOBALS['plugin_version']='2.1.0';
 $in['mode']='inventory'; $in['limit']=1; $all=MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $all['total_matches']===6 && $all['next_offset']===1, 'inventory pagination' );
-$in['offset']=1; $next=MAD4B_SCP_Solution_Discovery::read_discover($in);
+$in['offset']=1; $in['expected_snapshot_sha256']=$all['snapshot_sha256'];
+$next=MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $next['candidates'][0]['id']!==$all['candidates'][0]['id'], 'pagination unique' );
+$GLOBALS['plugin_version']='2.2.0';
+ok( is_wp_error( MAD4B_SCP_Solution_Discovery::read_discover($in) ), 'changed plugin version rejects stale page token' );
+$GLOBALS['plugin_version']='2.1.0';
+unset($in['expected_snapshot_sha256']);
 $in['mode']='match'; $in['offset']=0; $in['related_terms']=array();
 $in['intent']='Unrelated analysis'; $empty=MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $empty['total_matches']===0 && $empty['decision']==='INVENTORY_INCOMPLETE_RETRY',
