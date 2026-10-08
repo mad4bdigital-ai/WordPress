@@ -100,7 +100,7 @@ Contract `mad4b.aci-os.task-registry.v2`. Task dependencies are materialized inp
 
 - [ ] ACI-T0065 [OPEN] Reconcile exact Staging runtime/grants/Skills — requirements: ACI-033, ACI-042; dependencies: ACI-T0006, ACI-T0046; exit: ACI-G10 / mad4b.aci.task.0065.v1.
 - [ ] ACI-T0066 [OPEN] Certify provider/site and host sandbox boundaries — requirements: ACI-040, ACI-042; dependencies: ACI-T0045, ACI-T0065; exit: ACI-G10 / mad4b.aci.task.0066.v1.
-- [ ] ACI-T0067 [OPEN] Run native MySQL/MariaDB/WPML compatibility — requirements: ACI-021, ACI-042; dependencies: ACI-T0032, ACI-T0066; exit: ACI-G10 / mad4b.aci.task.0067.v1.
+- [ ] ACI-T0067 [OPEN] Run native MySQL/MariaDB/WPML compatibility — requirements: ACI-021, ACI-042; dependencies: ACI-T0066; exit: ACI-G10 / mad4b.aci.task.0067.v1.
 - [ ] ACI-T0068 [OPEN] Run real browser/RTL/accessibility journeys — requirements: ACI-038, ACI-042; dependencies: ACI-T0055, ACI-T0066; exit: ACI-G10 / mad4b.aci.task.0068.v1.
 - [ ] ACI-T0069 [OPEN] Benchmark workload and failure budgets — requirements: ACI-030, ACI-041, ACI-042; dependencies: ACI-T0050, ACI-T0066; exit: ACI-G10 / mad4b.aci.task.0069.v1.
 - [ ] ACI-T0070 [OPEN] Certify restore epoch, rollback and idempotency — requirements: ACI-027, ACI-041; dependencies: ACI-T0056, ACI-T0046; exit: ACI-G10 / mad4b.aci.task.0070.v1.
