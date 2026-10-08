@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 354,
+  "changed_file_count": 356,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -111,7 +111,9 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/native-relation-evidence.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_native_relation_evidence.py",
         "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
         "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
@@ -574,9 +576,9 @@
         ".github/workflows/mad4b-browser-acceptance-core.yml",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
-      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-provider-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-provider-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php",
-      "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php"
       ]
     },
     {
@@ -642,6 +644,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "6c64829c96a41a53fcbae2b0ccb485d18bf8fee3b9e0f392c7883f16367e059e",
+  "changed_paths_sha256": "5b10cfcfff4ebca3b2ee25851b8e9ae1435951eb1ef51d68d68e79ace431f45c",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
