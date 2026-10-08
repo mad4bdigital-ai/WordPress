@@ -54,9 +54,12 @@ def validate(root=ROOT):
         'README.md', 'project-charter.md', 'dynamic-foundation.md', 'dynamic-policy.json',
         'content-recipes.json', 'domain-fact-authority.json', 'use-cases.json',
         'task-registry.json', 'requirements.json', 'acceptance-gates.json', 'system-map.json',
+        'effect-contracts.json', 'evidence-trust.json', 'release-profiles.json',
+        'ledger-contracts.json', 'optimization-policy.json', 'disposition-rules.json',
         'tasks.md', 'traceability.md', 'spec.md', 'architecture.md', 'data-model.md',
         'plan.md', 'acceptance.md', 'ui.md', 'operations.md',
         'validate.py', 'test_validate.py', 'dynamic_core.py', 'test_dynamic_core.py',
+        'design_closure.py', 'test_design_closure.py',
     }
     if not core.issubset(paths) or len(paths) != len(set(paths)):
         faults.append('required_file_coverage_invalid')
@@ -73,7 +76,10 @@ def validate(root=ROOT):
     docs = {n:(root / n).read_text(encoding='utf-8') for n in required_docs}
     machine_names = ('task-registry.json', 'requirements.json', 'acceptance-gates.json',
                      'system-map.json', 'dynamic-policy.json', 'content-recipes.json',
-                     'domain-fact-authority.json', 'use-cases.json')
+                     'domain-fact-authority.json', 'use-cases.json',
+                     'effect-contracts.json', 'evidence-trust.json',
+                     'release-profiles.json', 'ledger-contracts.json',
+                     'optimization-policy.json', 'disposition-rules.json')
     try:
         machine = {name:json.loads(docs[name]) for name in machine_names}
     except (ValueError, KeyError, TypeError):
@@ -198,6 +204,32 @@ def validate(root=ROOT):
             or 'Dynamic' not in docs['dynamic-foundation.md']
             or 'authorizing=false' not in docs['README.md']):
         faults.append('project_charter_or_dynamic_principle_missing')
+    try:
+        import importlib.util
+        closure_path = root / 'design_closure.py'
+        spec = importlib.util.spec_from_file_location('aci_design_closure', closure_path)
+        require_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(require_module)
+        bundle = {
+            'effects': machine['effect-contracts.json'],
+            'trust': machine['evidence-trust.json'],
+            'release': machine['release-profiles.json'],
+            'ledgers': machine['ledger-contracts.json'],
+            'optimization': machine['optimization-policy.json'],
+            'recipes': recipes,
+            'facts': facts,
+            'cases': cases,
+            'rules': machine['disposition-rules.json'],
+            'policy': policy,
+            'task': tasks,
+            'gates': gates,
+            'requirements': reqs,
+            'system': graph,
+        }
+        require_module.check_contracts(bundle)
+    except Exception as error:
+        faults.append('design_closure_contract_invalid')
+        faults.append('design_closure_detail:' + str(error))
     return faults
 
 
