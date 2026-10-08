@@ -621,6 +621,10 @@ jobs:
           php -l "$PLUGIN/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php"
           php -l "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
           php "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-task-contract.php"
+          php -l "$PLUGIN/tests/assistant-convergence-runtime.php"
+          php "$PLUGIN/tests/assistant-convergence-runtime.php"
           php -l "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
           php "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
 
