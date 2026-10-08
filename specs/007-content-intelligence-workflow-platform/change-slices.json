@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 292,
+  "changed_file_count": 294,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -474,8 +474,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php"
       ]
+    },
+    {
+      "id": "full-staging-host-certification-hardened",
+      "semantic_unit": "Distinguish process/sandbox binary prerequisites from independently certified Developer host execution in Full Staging authority status",
+      "revert_boundary": "Fail-closed operational status only; exact Write-only authority convergence and production gates unchanged",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "2db77c9f1ce3f090e3ad6faa9180d5e65f1fd4a74e447fc6c3d76cce3eb13670",
+  "changed_paths_sha256": "6eff05cd961c57da9f62bb88506f052ff0125f250a34af0b6a9698fbbf50f0f6",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
