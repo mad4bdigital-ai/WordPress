@@ -91,9 +91,17 @@ final class MAD4B_SCP_G6_Contracts {
 			return self::error( 'store_owner_scope', 'Private G6 storage must be accessed by its authenticated owner.' );
 		$site = self::site(); if ( is_wp_error( $site ) ) return $site;
 		$key = '_mad4b_g6_' . $kind . '_' . hash( 'sha256', $site );
-		$record = get_user_meta( $owner, $key, true );
-		if ( '' === $record ) return array( 'revision' => 0, 'items' => array() );
-		if ( ! is_array( $record ) || ! isset( $record['revision'], $record['items'] ) || ! is_array( $record['items'] ) ) return self::error( 'store_corrupt', 'Private workspace storage is invalid.' );
+		// Multiple user-meta rows are ambiguous; single-row reads must not
+		// quietly accept the first while writes reject the same registry.
+		$rows = get_user_meta( $owner, $key, false );
+		if ( ! is_array( $rows ) ) return self::error( 'store_corrupt', 'Private workspace reader returned an invalid shape.' );
+		if ( count( $rows ) > 1 ) return self::error( 'store_duplicate', 'Duplicate private storage rows require reconciliation.' );
+		if ( ! $rows ) return array( 'revision' => 0, 'items' => array() );
+		$record = $rows[0];
+		if ( ! is_array( $record ) || ! isset( $record['revision'], $record['items'] )
+			|| ! is_int( $record['revision'] ) || $record['revision'] < 1
+			|| $record['revision'] >= PHP_INT_MAX || ! is_array( $record['items'] ) )
+			return self::error( 'store_corrupt', 'Private workspace revision or registry shape is invalid.' );
 		return $record;
 	}
 	public static function save( $kind, $owner, array $before, array $after ) {
@@ -102,6 +110,13 @@ final class MAD4B_SCP_G6_Contracts {
 			return self::error( 'store_owner_scope', 'Private G6 storage must be updated only by its authenticated owner.' );
 		$site = self::site(); if ( is_wp_error( $site ) ) return $site;
 		$key = '_mad4b_g6_' . $kind . '_' . hash( 'sha256', $site );
+		// CAS must never coerce untrusted revisions or wrap an integer counter.
+		if ( ! isset( $before['revision'], $before['items'], $after['revision'], $after['items'] )
+			|| ! is_int( $before['revision'] ) || $before['revision'] < 0
+			|| $before['revision'] >= PHP_INT_MAX
+			|| ! is_int( $after['revision'] ) || $after['revision'] !== $before['revision']
+			|| ! is_array( $before['items'] ) || ! is_array( $after['items'] ) )
+			return self::error( 'store_revision_invalid', 'An exact non-overflowing registry revision and item list are required.' );
 		$guard = self::data( $after ); if ( is_wp_error( $guard ) ) return $guard;
 		if ( ! class_exists( 'MAD4B_SCP_Distributed_Lock' ) ) return self::error( 'store_mutex_missing', 'Private workspace requires the existing distributed mutex.' );
 		$lock = MAD4B_SCP_Distributed_Lock::catalog_name( 'g6-private-store:' . $owner . ':' . $key );
