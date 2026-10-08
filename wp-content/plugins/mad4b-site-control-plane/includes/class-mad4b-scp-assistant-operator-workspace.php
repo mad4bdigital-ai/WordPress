@@ -3,13 +3,15 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Read-only bounded WP admin overview. Never changes governance or queues jobs. */
 final class MAD4B_SCP_Assistant_Operator_Workspace {
-    const SLUG = 'mad4b-assistant-workspace';
+    const PAGE_SLUG = 'mad4b-assistant-workspace';
+    const SLUG = self::PAGE_SLUG;
     private static $booted = false;
 
     public static function boot() {
-        if ( self::$booted || ! function_exists( 'add_action' ) ) return;
+        if ( self::$booted || ! function_exists( 'add_action' )
+            || ! class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) return;
         self::$booted = true;
-        add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 100 );
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 100 );
     }
 
     public static function register_menu() {
@@ -100,3 +102,5 @@ final class MAD4B_SCP_Assistant_Operator_Workspace {
         echo '</tbody></table></div>';
     }
 }
+
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Assistant_Operator_Workspace::PAGE_SLUG, 'manage_options' );

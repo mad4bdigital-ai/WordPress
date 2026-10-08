@@ -5,8 +5,10 @@ $GLOBALS['allowed'] = false; $GLOBALS['hooks'] = array(); $GLOBALS['menu'] = arr
 function current_user_can( $name ) { return $GLOBALS['allowed'] && 'manage_options' === $name; }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
 function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
-function add_action( $hook, $cb, $priority = 10 ) { $GLOBALS['hooks'][ $hook ] = $cb; }
+function add_action( $hook, $cb, $priority = 10 ) { $GLOBALS['hooks'][ $hook ][] = array( 'callback' => $cb, 'priority' => $priority ); }
 function add_submenu_page( ...$args ) { $GLOBALS['menu'] = $args; }
+function admin_url( $path = '' ) { return 'https://example.invalid/wp-admin/' . $path; }
+function add_query_arg( $key, $value, $url ) { return $url . '?' . http_build_query( array( $key => $value ) ); }
 class WP_Error {
     private $code;
     public function __construct( $code, $message = '' ) { $this->code = $code; }
@@ -22,6 +24,7 @@ class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
 class MAD4B_SCP_Remote_Work_Queue {
     public static function list_jobs( $op ) { return array( 'count' => 8, 'items' => array() ); }
 }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-route-registry.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-assistant-operator-workspace.php';
 $GLOBALS['asserts'] = 0;
 function check_case( $name, $ok ) {
@@ -32,6 +35,19 @@ function check_case( $name, $ok ) {
 check_case( 'administrator permission enforced', is_wp_error( MAD4B_SCP_Assistant_Operator_Workspace::snapshot() ) );
 MAD4B_SCP_Assistant_Operator_Workspace::boot();
 check_case( 'admin lifecycle attached', isset( $GLOBALS['hooks']['admin_menu'] ) );
+check_case( 'child menu follows shared parent ordering',
+    $GLOBALS['hooks']['admin_menu'][0]['priority'] >= MAD4B_SCP_Admin_Route_Registry::SUBMENU_PRIORITY
+    && $GLOBALS['hooks']['admin_menu'][0]['priority'] > MAD4B_SCP_Admin_Route_Registry::PARENT_MENU_PRIORITY );
+MAD4B_SCP_Assistant_Operator_Workspace::boot();
+check_case( 'menu schedule remains idempotent', 1 === count( $GLOBALS['hooks']['admin_menu'] ) );
+$routes = MAD4B_SCP_Admin_Route_Registry::routes();
+check_case( 'shared route retains administrator permission',
+    isset( $routes[ MAD4B_SCP_Assistant_Operator_Workspace::PAGE_SLUG ] )
+    && 'manage_options' === $routes[ MAD4B_SCP_Assistant_Operator_Workspace::PAGE_SLUG ]['required_capability'] );
+check_case( 'legacy slug points to canonical admin route',
+    MAD4B_SCP_Assistant_Operator_Workspace::SLUG === MAD4B_SCP_Assistant_Operator_Workspace::PAGE_SLUG
+    && 'https://example.invalid/wp-admin/admin.php?page=mad4b-assistant-workspace'
+        === $routes[ MAD4B_SCP_Assistant_Operator_Workspace::SLUG ]['canonical_admin_url'] );
 $GLOBALS['allowed'] = true;
 MAD4B_SCP_Assistant_Operator_Workspace::register_menu();
 check_case( 'menu requires manage_options', 'manage_options' === $GLOBALS['menu'][3] );
