@@ -13,7 +13,7 @@ const example=(where="etg")=>{
  provider_count:1,providers:[provider(id,driver,slug,other?"site.v1":"tours")],
  site_discovery:{contract:"mad4b.site-capability-discovery.v1",origin,read_only:true,authorizing:false,
  discovery_complete:true,certification_issued:false,snapshot_sha256:"f".repeat(64),
- plugins:[slug,"unmapped-plugin"],unmapped_plugins:["unmapped-plugin"],provider_matches:[match(id,slug)]},
+ plugins:[slug,"unmapped-plugin"],post_types:["post","page","tour"],taxonomies:["category","tour_type"],unmapped_plugins:["unmapped-plugin"],provider_matches:[match(id,slug)]},
  operator_preference:{contract:"mad4b.browser-operator-preference.v1",read_only:true,authorizing:false,
  preference_valid:true,configuration_revision:"a".repeat(32),executor:"auto",profile_id:"",site_provider_id:"",
  credential_verified:false,external_runner_connected:false,site_provider_registered_by_preference:false}};
@@ -41,6 +41,14 @@ duplicated.provider_count=2;duplicated.site_discovery.plugins.push("royal-plugin
 assert.throws(()=>resolve(duplicated,options),/site_browser_site_adapter_ambiguous/);
 duplicated.operator_preference.site_provider_id="etg-dfsb";
 assert.equal(resolve(duplicated,options).siteProviderId,"etg-dfsb");
+const cpt = example("royal");
+cpt.site_discovery.plugins = [];
+cpt.site_discovery.provider_matches = [{
+  provider_id:"royal-provider",source_plugins:[],source_post_types:["tour"],
+  source_taxonomies:["tour_type"],matched_plugins:0,matched_post_types:1,matched_taxonomies:1,
+  recognized:true,certified:false,authorizing:false
+}];
+assert.equal(resolve(cpt,options).siteProviderId,"royal-provider");
 const badPreference=example();delete badPreference.operator_preference.configuration_revision;
 assert.throws(()=>resolve(badPreference,options),/site_browser_operator_preference_invalid/);
 const plan={contract:"mad4b.browser-acceptance-plan.v1",state:"ready",origin:etgResult.siteOrigin+"/",
