@@ -343,10 +343,11 @@ scenario( 'domain_market_claim_reservation_survives_partial_profile_commit', sta
 	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'compare_exchange_conflict', 'profile CAS failure surfaced without silent rollback' );
 	$GLOBALS['fixture_cas_failure'] = null;
 	$other = asi_profile( 'other-domain-profile' ); $other['markets'][0]['id'] = 'pending-metro'; $other['markets'][1]['id'] = 'fresh-second';
-	$args = array( 'profile' => $other, 'expected_revision' => 0 ); $other_plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'pending registry rows are not falsely treated as completed profiles' );
-	denied( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $other_plan['plan_sha256'] ) ) ), 'market_identity_conflict', 'durable identity claim fences another profile after interrupted commit' );
+	$args = array( 'profile' => $other, 'expected_revision' => 0 );
+	denied( MAD4B_SCP_Search_Context::plan( $args ), 'market_identity_conflict', 'read-only planning detects interrupted market-claim owner before any additional reservation' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'fresh-second' ), 'rejected plan created no orphan claim for another candidate market' );
 	check( null === MAD4B_SCP_Search_Store::read( 'profile', 'other-domain-profile' ), 'conflicting profile was not admitted' );
-	$retry = ok( MAD4B_SCP_Search_Context::plan( $input ), 'same original owner can resume pending admission' );
+	$retry = ok( MAD4B_SCP_Search_Context::plan( $input ), 'same original owner can resume matching pending claim' );
 	ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $retry['plan_sha256'] ) ) ), 'same owner idempotently recovers its market reservation' );
 } );
 scenario( 'composed_profile_language_surface_drift_preserves_history', static function () {
