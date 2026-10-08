@@ -254,8 +254,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
-      "sha256": "17500178e4768c7f4470a89648e44759fb3aac6d62f60fba30da32561e2bd0ae",
-      "bytes": 21949
+      "sha256": "27f415da2e7883e310450ed57a13f4685fdca23349de45d88ce9cc67ecdeae08",
+      "bytes": 23401
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -279,8 +279,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
-      "sha256": "9ea3eaa5d7dd54ab699717bfb6e5882b23ffb02eebff9e6a97aa35e93eee8cbb",
-      "bytes": 16644
+      "sha256": "cb3563f9fb7b9e6505cb43e52a6d8568f4beb5c28c2326f0f69fdd506cf3cf73",
+      "bytes": 17722
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",

@@ -87,7 +87,13 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		if ( is_wp_error( $live_binding ) ) return $live_binding;
 		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $live_binding ); if ( is_wp_error( $v ) ) return $v;
 		foreach ( array( $last_managed, $current, $desired ) as $snapshot ) { $v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v; }
-		if ( $current['resource_id'] !== $desired['resource_id'] ) return self::error( 'resource_mismatch' );
+		if ( $current['resource_id'] !== $desired['resource_id'] ||
+			$last_managed['resource_id'] !== $current['resource_id'] ) return self::error( 'resource_mismatch' );
+		if ( ! hash_equals( $last_managed['target_fingerprint'], $current['target_fingerprint'] ) ||
+			! hash_equals( $current['target_fingerprint'], $desired['target_fingerprint'] ) ) {
+			return self::error( 'target_identity_changed' );
+		}
+		$v = self::snapshot_values_bounded( $policies ); if ( is_wp_error( $v ) ) return $v;
 		$lineage = $last_managed['lineage_proof'] ?? array();
         if ( ! is_array( $lineage ) ) return self::error( 'baseline_lineage_format_invalid' );
         $baseline_material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::BASELINE_CONTRACT, $lineage );
@@ -191,11 +197,26 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	private static function snapshot_valid( array $s ) {
 		if ( empty( $s['resource_id'] ) || ! is_string( $s['resource_id'] ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,191}$/D', $s['resource_id'] ) || ! isset( $s['revision'], $s['owner_revision'], $s['fields'], $s['owners'] ) || ! is_int( $s['revision'] ) || $s['revision'] < 1 || ! is_int( $s['owner_revision'] ) || $s['owner_revision'] < 1 || ! is_array( $s['fields'] ) || ! is_array( $s['owners'] ) ) return self::error( 'snapshot_incomplete' );
 		if ( count( $s['fields'] ) > self::MAX_FIELDS || count( $s['owners'] ) > self::MAX_FIELDS ) return self::error( 'field_limit' );
+		$allowed = array( 'resource_id', 'revision', 'owner_revision', 'fields', 'owners',
+			'target_fingerprint', 'lineage_sha256', 'lineage_proof' );
+		foreach ( array_keys( $s ) as $key ) {
+			if ( ! is_string( $key ) || ! in_array( $key, $allowed, true ) ) return self::error( 'snapshot_unknown_metadata' );
+		}
+		if ( ! isset( $s['target_fingerprint'] ) || ! is_string( $s['target_fingerprint'] ) ||
+			'' === $s['target_fingerprint'] || strlen( $s['target_fingerprint'] ) > 191 ||
+			1 !== preg_match( '/^[A-Za-z0-9._:-]+$/D', $s['target_fingerprint'] ) ) {
+			return self::error( 'snapshot_target_invalid' );
+		}
+		if ( array_key_exists( 'lineage_sha256', $s ) &&
+			! MAD4B_SCP_Adaptive_Operations_Context::sha( $s['lineage_sha256'] ) ) return self::error( 'snapshot_lineage_invalid' );
+		if ( array_key_exists( 'lineage_proof', $s ) && ! is_array( $s['lineage_proof'] ) ) return self::error( 'snapshot_lineage_invalid' );
 		foreach ( array_keys( $s['fields'] ) as $field ) if ( ! is_string( $field ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,100}$/D', $field ) ) return self::error( 'field_identifier_invalid' );
 		foreach ( $s['owners'] as $field => $owner ) {
 			if ( ! is_string( $field ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,100}$/D', $field ) || ! in_array( $owner, array( 'managed', 'human', 'provider', 'unknown' ), true ) ) return self::error( 'owner_record_invalid' );
 		}
-		return self::snapshot_values_bounded( $s['fields'] );
+		// Covers fields AND signed lineage and all other metadata: validating
+		// fields alone left a route for deeply nested extraneous snapshot data.
+		return self::snapshot_values_bounded( $s );
 	}
 
 	/**

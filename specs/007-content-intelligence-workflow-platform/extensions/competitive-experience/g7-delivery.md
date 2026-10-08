@@ -27,6 +27,10 @@ A Last Managed baseline must not trust a Crypto_Profile adapter solely because i
 
 Field-count bounds alone were insufficient: G7 limits nested snapshot values before canonicalization (16 levels, 2,048 nodes, 256 KiB total and 32 KiB/string). Objects, floats, resources, cyclic/deep structures and invalid UTF-8 fail closed. The size budget applies to the owned-field snapshot, not to the full WordPress post body. Consumers with larger serialized fields must define an explicit, reviewed normalized reference or fingerprint rather than silently dropping evidence.
 
+## Snapshot identity and resource-budget objections
+
+Last Managed must never derive an owned-field baseline from a snapshot with arbitrary extra metadata, another `target_fingerprint`, or a foreign `resource_id`. For this G7 contract only canonical keys `resource_id`, `revision`, `owner_revision`, `fields`, `owners`, `target_fingerprint`, and sealed `lineage_sha256` / `lineage_proof` are accepted. `target_fingerprint` is required to be bounded stable ASCII; it must match across last-managed/current/desired. The complete snapshot including its lineage envelope, not merely `fields`, is checked for recursive depth, JSON-compatible types and bounded nodes/bytes before canonical hashing. Policies are similarly bounded before conflict and merge logic. This is a fail-closed compatibility change: consumers with unknown metadata must separate that metadata from the canonical owned-field Snapshot and establish any new evidence through the governed native path, never silently drop it.
+
 ## Mandatory native Last Managed readback binding
 
 The previous condition `Execution Receipt: signed + readback = PASS` was insufficient: a receipt for the same target could be attached to a different field/owner snapshot. The native typed consumer must now:

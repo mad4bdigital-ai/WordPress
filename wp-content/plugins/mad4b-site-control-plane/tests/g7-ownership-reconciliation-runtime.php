@@ -150,6 +150,16 @@ g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $missing_noop, $curr
 g7_error( MAD4B_SCP_Ownership_Reconciliation::verify_readback( $missing_noop, $current, g7_binding() ), 'missing_managed_baseline' );
 $invalid_snapshot = $baseline; $invalid_snapshot['fields'] = 'not-an-array';
 g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $invalid_snapshot, $current, $desired, $policy, g7_binding() ), 'snapshot_incomplete' );
+$wrong_target = $desired; $wrong_target['target_fingerprint'] = str_repeat( 'a', 64 );
+g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $baseline, $current, $wrong_target, $policy, g7_binding() ), 'target_identity_changed' );
+$unknown_metadata = $current; $unknown_metadata['extra_undeclared_metadata'] = array( 'large' => str_repeat( 'x', 200000 ) );
+g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $baseline, $unknown_metadata, $desired, $policy, g7_binding() ), 'snapshot_unknown_metadata' );
+$wrong_lineage_type = $baseline; $wrong_lineage_type['lineage_sha256'] = array( 'not-sha256' );
+g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $wrong_lineage_type, $current, $desired, $policy, g7_binding() ), 'snapshot_lineage_invalid' );
+$deep_policy = $policy; $nested_policy = array();
+for ( $i = 0; $i < 22; $i++ ) $nested_policy = array( 'x' => $nested_policy );
+$deep_policy['title']['policy_evidence'] = $nested_policy;
+g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $baseline, $current, $desired, $deep_policy, g7_binding() ), 'snapshot_value_unbounded' );
 $float_value = $current; $float_value['fields']['title'] = 1.5;
 g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $baseline, $float_value, $desired, $policy, g7_binding() ), 'snapshot_value_type_invalid' );
 $object_value = $current; $object_value['fields']['title'] = (object) array( 'secret' => true );
