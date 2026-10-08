@@ -43,6 +43,9 @@ final class MAD4B_SCP_G6_Retrieval_Evaluation {
             if ( ! is_array( $o ) || array_diff( array_keys( $o ), $fields ) ) return MAD4B_SCP_G6_Contracts::error( 'retrieval_payload_forbidden', 'Raw text or source instructions cannot enter evaluation.' );
             if ( ! isset( $o['source_sha256'], $o['chunk_sha256'] ) || ! MAD4B_SCP_G6_Contracts::sha( $o['source_sha256'] ) || ! MAD4B_SCP_G6_Contracts::sha( $o['chunk_sha256'] ) )
                 return MAD4B_SCP_G6_Contracts::error( 'retrieval_pin', 'Source and chunk digests are required.' );
+            foreach ( array( 'deleted', 'access_granted', 'citation_verified', 'embedding_current' ) as $flag )
+                if ( ! array_key_exists( $flag, $o ) || ! is_bool( $o[ $flag ] ) )
+                    return MAD4B_SCP_G6_Contracts::error( 'retrieval_flags', 'Retrieval trust flags must be exact booleans.' );
             $key = $o['source_sha256'] . ':' . $o['chunk_sha256'];
             if ( isset( $seen[ $key ] ) ) { $rejections[] = 'duplicate_citation'; continue; }
             $seen[ $key ] = true;
@@ -50,7 +53,7 @@ final class MAD4B_SCP_G6_Retrieval_Evaluation {
             if ( ! isset( $o['generation_sha256'] ) || $request['generation_sha256'] !== $o['generation_sha256'] ) { $rejections[] = 'stale_embedding'; continue; }
             if ( ! isset( $o['storage_region'] ) || $region !== $o['storage_region'] ) { $rejections[] = 'residency_mismatch'; continue; }
             if ( ! isset( $o['rights_expires_at'] ) || ! is_int( $o['rights_expires_at'] ) || $o['rights_expires_at'] <= time() ) { $rejections[] = 'rights_expired'; continue; }
-            if ( ! empty( $o['deleted'] ) || empty( $o['access_granted'] ) || empty( $o['citation_verified'] ) || empty( $o['embedding_current'] ) ) { $rejections[] = 'source_uncertified_or_revoked'; continue; }
+            if ( $o['deleted'] || ! $o['access_granted'] || ! $o['citation_verified'] || ! $o['embedding_current'] ) { $rejections[] = 'source_uncertified_or_revoked'; continue; }
             $citations[] = array( 'source_sha256' => $o['source_sha256'], 'chunk_sha256' => $o['chunk_sha256'] );
         }
         $out = array( 'contract' => self::CONTRACT,
