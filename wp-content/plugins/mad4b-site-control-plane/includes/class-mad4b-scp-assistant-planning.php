@@ -107,6 +107,8 @@ final class MAD4B_SCP_Assistant_Planning {
         if ( ! self::inert( $binding, 0, $nodes ) || ! is_array( $binding )
             || ! self::sha( $binding['profile_digest'] ?? null ) || ! self::sha( $binding['runtime_generation'] ?? null )
             || ! self::sha( $binding['artifact_sha256'] ?? null )
+            || ! is_string( $binding['site_uuid'] ?? null ) || strlen( $binding['site_uuid'] ) < 8
+            || ! is_int( $binding['restore_epoch'] ?? null ) || $binding['restore_epoch'] < 1
             || ! in_array( $binding['environment'] ?? null, array( 'staging', 'development', 'local', 'production' ), true ) ) return self::fail( 'binding_invalid' );
         $nodes = 0;
         if ( ! self::inert( $desired, 0, $nodes ) || ! is_array( $desired )
@@ -119,7 +121,10 @@ final class MAD4B_SCP_Assistant_Planning {
         $have = $observed['capabilities'] ?? array();
         if ( ! is_array( $want ) || ! array_key_exists( 0, $want ) || count( $want ) > self::MAX_CAPABILITIES
             || ! is_array( $facts ) || count( $facts ) > self::MAX_FACTS
-            || ! is_array( $have ) || count( $have ) > self::MAX_CAPABILITIES ) return self::fail( 'budget_invalid' );
+            || ! is_array( $have ) || count( $have ) > self::MAX_CAPABILITIES
+            || array_keys( $want ) !== range( 0, count( $want ) - 1 )
+            || ( count( $have ) && array_keys( $have ) !== range( 0, count( $have ) - 1 ) )
+            || ( count( $facts ) && array_keys( $facts ) !== range( 0, count( $facts ) - 1 ) ) ) return self::fail( 'budget_invalid' );
         $observations = array();
         foreach ( $have as $item ) {
             if ( ! is_array( $item ) || ! self::keys( $item, array( 'capability', 'state', 'provider' ) )
@@ -160,9 +165,11 @@ final class MAD4B_SCP_Assistant_Planning {
         }
         $plan = array( 'contract' => self::CONTRACT, 'binding' => array(
             'environment' => $binding['environment'], 'profile_digest' => $binding['profile_digest'],
+            'site_uuid' => $binding['site_uuid'], 'restore_epoch' => $binding['restore_epoch'],
             'runtime_generation' => $binding['runtime_generation'], 'artifact_sha256' => $binding['artifact_sha256'] ),
             'state' => empty( $conflicts ) ? 'PROPOSAL_ONLY' : 'CONFLICT_REVIEW_REQUIRED',
             'fact_conflicts' => array_keys( $conflicts ), 'tasks' => $tasks,
+            'input_sha256' => hash( 'sha256', serialize( array( $desired, $observed ) ) ),
             'authorizing' => false, 'write_performed' => false, 'provider_calls_performed' => false,
             'plugin_lifecycle_performed' => false, 'production_authorized' => false );
         $encoded = function_exists( 'wp_json_encode' ) ? wp_json_encode( $plan ) : json_encode( $plan );
