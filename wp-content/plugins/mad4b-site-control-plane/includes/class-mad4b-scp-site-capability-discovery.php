@@ -87,6 +87,26 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 		$taxonomies = function_exists( 'get_taxonomies' ) ? self::names( get_taxonomies( array(), 'names' ), self::MAX_TAXONOMIES, '/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/D' ) : null;
 		if ( null === $post_types ) $blockers[] = 'post_type_inventory_unavailable_or_invalid';
 		if ( null === $taxonomies ) $blockers[] = 'taxonomy_inventory_unavailable_or_invalid';
+		$theme = array( 'stylesheet' => '', 'version' => '', 'parent_stylesheet' => '', 'parent_version' => '' );
+		if ( function_exists( 'wp_get_theme' ) ) {
+			$theme_object = wp_get_theme();
+			if ( is_object( $theme_object ) && method_exists( $theme_object, 'get_stylesheet' ) && method_exists( $theme_object, 'get' ) ) {
+				$theme['stylesheet'] = $theme_object->get_stylesheet();
+				$theme['version'] = $theme_object->get( 'Version' );
+				$parent = method_exists( $theme_object, 'parent' ) ? $theme_object->parent() : false;
+				if ( is_object( $parent ) && method_exists( $parent, 'get_stylesheet' ) && method_exists( $parent, 'get' ) ) {
+					$theme['parent_stylesheet'] = $parent->get_stylesheet();
+					$theme['parent_version'] = $parent->get( 'Version' );
+				}
+			}
+		}
+		$theme_valid = is_string( $theme['stylesheet'] ) && preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/D', $theme['stylesheet'] )
+			&& is_string( $theme['version'] ) && preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,99}$/D', $theme['version'] )
+			&& ( '' === $theme['parent_stylesheet'] || ( is_string( $theme['parent_stylesheet'] )
+				&& preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/D', $theme['parent_stylesheet'] )
+				&& is_string( $theme['parent_version'] )
+				&& preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,99}$/D', $theme['parent_version'] ) ) );
+		if ( ! $theme_valid ) $blockers[] = 'theme_version_evidence_unavailable';
 		$matches = array();
 		$mapped = array();
 		if ( count( $providers ) > self::MAX_MATCHES ) $blockers[] = 'provider_inventory_overflow';
@@ -133,6 +153,7 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 			'origin' => $origin,
 			'plugins' => $plugin_ids,
 			'plugin_versions' => $plugin_versions,
+			'theme' => $theme,
 			'post_types' => null === $post_types ? array() : $post_types,
 			'taxonomies' => null === $taxonomies ? array() : $taxonomies,
 			'provider_matches' => $matches,
@@ -143,6 +164,7 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 			'origin' => $origin, 'snapshot_sha256' => hash( 'sha256', wp_json_encode( $source ) ),
 			'plugins' => $plugin_ids, 'plugin_versions' => $plugin_versions,
 			'plugin_versions_complete' => $version_evidence_complete && ! in_array( 'plugin_basename_invalid', $blockers, true ),
+			'theme' => $theme, 'theme_version_complete' => (bool) $theme_valid,
 			'post_types' => $source['post_types'],
 			'taxonomies' => $source['taxonomies'], 'provider_matches' => $matches,
 			'unmapped_plugins' => $unmapped,
