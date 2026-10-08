@@ -1,0 +1,79 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-g9-restore-convergence.php';
+
+/**
+ * G9 non-authorizing closure assessor. Aggregates current source readiness
+ * without emitting a signed release, restore, rollback or fleet authority.
+ */
+final class MAD4B_SCP_G9_Operational_Readiness {
+    const CONTRACT = 'mad4b.g9.operational-readiness.v1';
+
+    public static function status() {
+        $site = MAD4B_SCP_Resilience_Context::capture();
+        if ( is_wp_error( $site ) ) return $site;
+        $binding = $site['binding'];
+        $anchor = MAD4B_SCP_Resilience_Anchor::read( $binding );
+        if ( is_wp_error( $anchor ) ) return $anchor;
+        $blockers = array();
+        if ( 'staging' !== $binding['environment'] ) $blockers[] = 'staging_site_required';
+        if ( ! is_int( $anchor['revision'] ?? null ) || $anchor['revision'] < 1 )
+            $blockers[] = 'external_fence_not_initialized';
+        if ( ! empty( $site['identity_blockers'] ) || empty( $site['worker_current'] )
+            || empty( $site['restore_bound'] ) )
+            $blockers[] = 'runtime_or_restore_generation_unready';
+        if ( empty( $site['authority']['eligible'] )
+            || ! MAD4B_SCP_Resilience_Context::is_hash(
+                $site['authority']['grant_snapshot_sha256'] ?? ''
+            ) )
+            $blockers[] = 'current_site_grants_or_candidate_unready';
+        if ( ! isset( $site['providers'] ) || ! is_array( $site['providers'] )
+            || ! $site['providers'] || count( $site['providers'] ) > 32 )
+            $blockers[] = 'certified_provider_inventory_missing';
+        if ( true !== ( $site['host']['isolation_verified'] ?? false )
+            || true !== ( $site['host']['local_readback_verified'] ?? false )
+            || true !== ( $site['host']['single_host_exclusive_verified'] ?? false ) )
+            $blockers[] = 'host_isolation_and_exclusive_fence_unverified';
+        if ( ! is_array( $site['external_effects'] ?? null )
+            || count( $site['external_effects'] ) > 128
+            || true !== ( $site['gates']['external_effect_inventory_complete'] ?? null ) )
+            $blockers[] = 'complete_external_effect_inventory_unverified';
+        foreach ( array(
+            'provider_inventory_complete',
+            'host_inventory_complete',
+            'health_sample_window_complete',
+        ) as $key ) {
+            if ( true !== ( $site['gates'][ $key ] ?? null ) )
+                $blockers[] = 'site_evidence_incomplete';
+        }
+        if ( ! class_exists( 'MAD4B_SCP_G7_Release_Acceptance_Audit' )
+            || ! class_exists( 'MAD4B_SCP_G7_Host_Readiness' ) )
+            $blockers[] = 'g7_signed_host_and_release_acceptance_integration_missing';
+        if ( ! class_exists( 'MAD4B_SCP_G8_Capability_Convergence' )
+            || ! class_exists( 'MAD4B_SCP_G8_Supply_Provenance' )
+            || ! class_exists( 'MAD4B_SCP_G8_Schema_Migration' ) )
+            $blockers[] = 'g8_schema_supply_and_capability_integration_missing';
+        // Native signed execution/rollback and post-restore provider/host
+        // readbacks are always separate. Repository readiness cannot waive them.
+        $blockers[] = 'native_signed_release_and_rollback_acceptance_pending';
+        $blockers[] = 'external_effect_and_post_restore_acceptance_pending';
+        $blockers[] = 'governed_staging_dr_fault_drill_pending';
+        $blockers = array_values( array_unique( $blockers ) );
+        return array(
+            'contract' => self::CONTRACT,
+            'site_key' => MAD4B_SCP_Resilience_Context::site_key( $binding ),
+            'snapshot_sha256' => $site['snapshot_sha256'],
+            'runtime_generation_sha256' => $binding['runtime_generation_sha256'],
+            'restore_epoch' => $binding['restore_epoch'],
+            'anchor_revision' => $anchor['revision'],
+            'blockers' => $blockers, 'blocker_count' => count( $blockers ),
+            'missing_provider_evidence' => in_array( 'certified_provider_inventory_missing', $blockers, true ),
+            'previous_execution_assumptions_replayed' => false,
+            'prior_release_accepted' => false,
+            'fleet_rollout_authorized' => false,
+            'post_restore_receipt_issued' => false,
+            'operationally_closed' => false, 'ready_for_production' => false,
+            'authorizing' => false, 'mutation_performed' => false,
+        );
+    }
+}

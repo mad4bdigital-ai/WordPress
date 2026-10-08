@@ -3,6 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-g9-release-fence.php';
 require_once __DIR__ . '/class-mad4b-scp-g9-restore-convergence.php';
 require_once __DIR__ . '/class-mad4b-scp-g9-local-reader.php';
+require_once __DIR__ . '/class-mad4b-scp-g9-operational-readiness.php';
 
 /** G9 exposes only passive exact-site reads; release/restore mutations remain private. */
 final class MAD4B_SCP_G9_Read_Surface {
@@ -27,6 +28,9 @@ final class MAD4B_SCP_G9_Read_Surface {
             ),
             'mad4b/g9-restore-status' => array(
                 'G9 Restore Convergence Status', array( __CLASS__, 'restore_status' ),
+            ),
+            'mad4b/g9-closure-status' => array(
+                'G9 Operational Closure Blockers', array( __CLASS__, 'closure_status' ),
             ),
         ) as $ability => $spec ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability ) ) continue;
@@ -75,6 +79,11 @@ final class MAD4B_SCP_G9_Read_Surface {
     public static function restore_status( $input = array() ) {
         if ( ! is_array( $input ) || $input ) return self::invalid_input();
         return MAD4B_SCP_G9_Restore_Convergence::status();
+    }
+
+    public static function closure_status( $input = array() ) {
+        if ( ! is_array( $input ) || $input ) return self::invalid_input();
+        return MAD4B_SCP_G9_Operational_Readiness::status();
     }
 
     private static function invalid_input() {

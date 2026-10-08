@@ -257,7 +257,7 @@ g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_ve
     && !$verified['site_local_release_accepted'], 'native receipt is not release acceptance' );
 MAD4B_SCP_G9_Read_Surface::boot();
 MAD4B_SCP_G9_Read_Surface::register_abilities();
-g9_assert( count( $GLOBALS['g9_registered_abilities'] ) === 2, 'two read-only abilities' );
+g9_assert( count( $GLOBALS['g9_registered_abilities'] ) === 3, 'three read-only abilities' );
 foreach ( $GLOBALS['g9_registered_abilities'] as $ability => $args ) {
     g9_assert( $args['meta']['annotations']['readonly'] === true
         && $args['meta']['mcp']['surface'] === 'read'
@@ -281,6 +281,12 @@ g9_assert( ! is_wp_error( $unsigned ) && !$unsigned['external_effects_verified']
 $empty = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, array() );
 g9_assert( ! is_wp_error( $empty ) && !$empty['external_effects_verified']
     && $empty['requires_quarantine'], 'empty inventory cannot imply native effect verification' );
+$closure = MAD4B_SCP_G9_Read_Surface::closure_status();
+g9_assert( ! is_wp_error( $closure ) && !$closure['operationally_closed']
+    && !$closure['ready_for_production'] && $closure['blocker_count'] >= 3
+    && in_array( 'g7_signed_host_and_release_acceptance_integration_missing',
+        $closure['blockers'], true ), 'closure truth remains fail-closed' );
+g9_denied( MAD4B_SCP_G9_Read_Surface::closure_status( array( 'site_id'=>2 ) ), 'read_input_invalid' );
 $state = MAD4B_SCP_G9_Restore_Convergence::status();
 g9_assert( ! is_wp_error( $state ) && !$state['write_reenabled'], 'restore status never grants' );
 $path = MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY . '/resilience-' . $binding['site_uuid'] . '-1-staging.json';

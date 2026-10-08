@@ -25,7 +25,8 @@
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-release-fence.php",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-fleet-rollout.php",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-restore-convergence.php",
-    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-read-surface.php"
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-read-surface.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-operational-readiness.php"
   ],
   "test_paths": [
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php",
