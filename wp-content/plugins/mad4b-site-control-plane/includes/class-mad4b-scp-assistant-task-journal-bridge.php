@@ -63,6 +63,34 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
         return $head;
     }
 
+    /**
+     * A preexisting journal head must explicitly commit to the non-authorizing
+     * ticket identity in its original operation_started event. This protects
+     * against accidental aliasing to a generic operation journal head.
+     * It does NOT certify caller evidence or provide an approval signature.
+     */
+    public static function genesis_claim( array $record ) {
+        return array( 'assistant_ticket' => 'proposal_only',
+            'task_id' => $record['task_id'], 'plan_sha256' => $record['plan_sha256'],
+            'binding_sha256' => $record['binding_sha256'] );
+    }
+
+    private static function verify_genesis( array $trace, array $record ) {
+        $first = isset( $trace['events'][0] ) ? $trace['events'][0] : null;
+        if ( ! is_array( $first ) || (int) ( $first['sequence'] ?? 0 ) !== 1
+            || ( $first['event_type'] ?? '' ) !== 'operation_started'
+            || ( $first['checkpoint'] ?? '' ) !== 'planned'
+            || ( $first['lifecycle_state'] ?? '' ) !== 'planned' ) return self::deny( 'genesis_unverified' );
+        $metadata = $first['safe_metadata']['metadata'] ?? null;
+        $json = wp_json_encode( self::genesis_claim( $record ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( ! is_array( $metadata ) || ! is_string( $json )
+            || ! isset( $metadata['sha256'], $metadata['length'] )
+            || ! is_string( $metadata['sha256'] )
+            || ! hash_equals( hash( 'sha256', $json ), $metadata['sha256'] )
+            || (int) $metadata['length'] !== strlen( $json ) ) return self::deny( 'genesis_unverified' );
+        return true;
+    }
+
     /** Initialize a task ONLY inside a preexisting, single-owner journal head. */
     public static function initialize( array $context, array $record ) {
         $binding = self::preflight( $context, true );
@@ -77,6 +105,12 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
         $head = self::consistent_head( $context, $record['task_id'] );
         if ( is_wp_error( $head ) ) return $head;
         if ( (int) $head['latest_sequence'] !== 1 ) return self::deny( 'already_initialized_or_drifted' );
+        $trace = MAD4B_SCP_Operation_Journal::trace( $context['operation_id'], 1000 );
+        if ( is_wp_error( $trace ) || ! is_array( $trace ) || empty( $trace['chain_valid'] )
+            || empty( $trace['complete'] ) || ! isset( $trace['events'] )
+            || count( $trace['events'] ) !== 1 ) return self::deny( 'genesis_unverified' );
+        $genesis = self::verify_genesis( $trace, $record );
+        if ( is_wp_error( $genesis ) ) return $genesis;
         $result = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_initialized', array(
             'expected_sequence' => 1, 'expected_event_sha256' => $head['latest_event_sha256'],
             'checkpoint' => 'proposed', 'lifecycle_state' => 'planned',
@@ -111,6 +145,8 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
             'task_id' => $m['task_id'], 'plan_sha256' => $m['plan_sha256'],
             'binding_sha256' => $m['binding_sha256'], 'revision' => $m['task_revision'],
             'state' => $m['task_state'], 'last_event_sha256' => $m['task_event_sha256'] );
+        $genesis = self::verify_genesis( $trace, $record );
+        if ( is_wp_error( $genesis ) ) return $genesis;
         if ( ! is_string( $record['task_id'] ) || ! hash_equals( $context['operation_key'], $record['task_id'] )
             || $record['binding_sha256'] !== $binding || ! is_int( $record['revision'] )
             || $record['revision'] < 1 || ! is_string( $record['plan_sha256'] )
