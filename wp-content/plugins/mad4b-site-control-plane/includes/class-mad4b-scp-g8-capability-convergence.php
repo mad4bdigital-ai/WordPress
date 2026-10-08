@@ -53,6 +53,13 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			);
 		}
 		ksort( $capabilities, SORT_STRING );
+		// Provider/adapter discovery may be slow or change during a package
+		// transition. Never publish a hybrid old-site/new-runtime snapshot.
+		$after_binding = MAD4B_SCP_G8_Record::binding();
+		if ( is_wp_error( $after_binding ) || $after_binding !== $binding
+			|| ! hash_equals( $profile, MAD4B_SCP_G8_Record::profile() )
+			|| ! MAD4B_SCP_G8_Record::staging() )
+			return new WP_Error( 'mad4b_g8_convergence_identity_raced', 'Site or restore epoch changed during provider observation.' );
 		return array( 'contract' => self::CONTRACT, 'site_profile_sha256' => $profile,
 			'restore_binding' => $binding, 'provider' => $provider,
 			'artifact_sha256' => $fingerprint, 'capabilities' => $capabilities,
@@ -112,6 +119,12 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			|| ! is_string( $snapshot['site_profile_sha256'] ?? null )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $snapshot['site_profile_sha256'] )
 			|| ! is_array( $snapshot['restore_binding'] ?? null )
+			|| ! is_string( $snapshot['restore_binding']['profile_digest'] ?? null )
+			|| ! hash_equals( $snapshot['site_profile_sha256'], $snapshot['restore_binding']['profile_digest'] )
+			|| ! is_string( $snapshot['restore_binding']['site_uuid'] ?? null )
+			|| 1 !== preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/D', $snapshot['restore_binding']['site_uuid'] )
+			|| ! is_string( $snapshot['restore_binding']['external_record_sha256'] ?? null )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $snapshot['restore_binding']['external_record_sha256'] )
 			|| ! is_int( $snapshot['restore_binding']['epoch'] ?? null )
 			|| $snapshot['restore_binding']['epoch'] < 1
 			|| ! self::identifier( $snapshot['provider'] ?? null )
