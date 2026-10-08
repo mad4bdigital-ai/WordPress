@@ -16,7 +16,7 @@ start = source.index(prefix)
 end = source.index(end_marker, start) + len("})();")
 js = "const u='https://example.invalid',nonce='fixture'" + source[start:end]
 required = (
-    "developer_execution_blockers", "developer_host", "Readback unavailable",
+    "developer_execution_blockers", "developer-host-state", "Readback unavailable",
     "lastFingerprint=\"\"", "No displayable grant names", "textContent",
 )
 for token in required:
