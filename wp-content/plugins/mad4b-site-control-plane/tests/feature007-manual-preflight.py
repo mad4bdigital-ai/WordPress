@@ -24,14 +24,12 @@ LINT = (
     "class-mad4b-scp-assistant-task-contract.php",
     "class-mad4b-scp-assistant-read-work-operations.php",
     "class-mad4b-scp-remote-work-queue.php",
-    "class-mad4b-scp-assistant-convergence.php",
-    "class-mad4b-scp-assistant-task-contract.php",
-    "class-mad4b-scp-assistant-read-work-operations.php",
     "class-mad4b-scp-oauth-consent-projection-view.php",
     "class-mad4b-scp-developer-runtime.php",
     "class-mad4b-scp-developer-host-capabilities.php",
     "class-mad4b-scp-full-staging-authority.php",
     "class-mad4b-scp-local-oauth-server.php",
+    "class-mad4b-scp-assistant-operator-workspace.php",
 )
 FIXTURES = (
     "assistant-planning-runtime.php",
@@ -39,13 +37,12 @@ FIXTURES = (
     "assistant-convergence-runtime.php",
     "assistant-read-work-runtime.php",
     "assistant-entrypoint-registration-runtime.php",
-    "assistant-convergence-runtime.php",
-    "assistant-read-work-runtime.php",
     "oauth-consent-projection-view-runtime.php",
     "g7-compensation-safety-runtime.php",
     "g8-automation-slo-runtime.php",
     "g9-resilience-gates-runtime.php",
     "g9-resilience-state-runtime.php",
+    "assistant-operator-workspace-runtime.php",
 )
 PY_CHECKS = (
     "oauth-consent-script-syntax.py",
