@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-g6-operation-compiler.php';
 require_once __DIR__ . '/class-mad4b-scp-g6-ai-workspace.php';
 require_once __DIR__ . '/class-mad4b-scp-g6-knowledge-admission.php';
+require_once __DIR__ . '/class-mad4b-scp-g6-provider-routing.php';
+require_once __DIR__ . '/class-mad4b-scp-g6-retrieval-evaluation.php';
 
 /** Repository-foundation review; no claims of AI, vector or live execution parity. */
 final class MAD4B_SCP_G6_Acceptance {
@@ -59,6 +61,15 @@ final class MAD4B_SCP_G6_Acceptance {
 					'rights_revoked' => array( 'type' => 'boolean' ),
 				), 'required' => array( 'source_ref', 'source_sha256', 'artifact_sha256', 'site_uuid', 'kind', 'rights', 'expires_at', 'privacy_class', 'storage_region' ), 'additionalProperties' => false ),
 			),
+			'mad4b/g6-model-routing-review' => array(
+				'label' => 'Review G6 Provider Routing',
+				'callback' => array( 'MAD4B_SCP_G6_Provider_Routing', 'review' ),
+				'schema' => array( 'type' => 'object', 'properties' => array(
+					'intent' => array( 'type' => 'string' ), 'privacy_class' => array( 'type' => 'string' ),
+					'region' => array( 'type' => 'string' ), 'maximum_cost_micro' => array( 'type' => 'integer' ),
+					'context_sha256' => array( 'type' => 'string' ),
+				), 'required' => array( 'intent', 'privacy_class', 'region', 'maximum_cost_micro', 'context_sha256' ), 'additionalProperties' => false ),
+			),
 			'mad4b/g6-acceptance-status' => array(
 				'label' => 'Inspect G6 Acceptance',
 				'callback' => array( __CLASS__, 'status' ),
@@ -89,6 +100,8 @@ final class MAD4B_SCP_G6_Acceptance {
 			'compiled_plan_review_redacts_payloads' => true,
 			'ai_workspace_proposal_has_no_model_execution' => true,
 			'knowledge_admission_is_metadata_only' => true,
+			'model_router_has_no_execution' => true,
+			'retrieval_evaluation_requires_external_readback' => true,
 			'dispatch_dependency_receipts' => 'not_implemented_fail_closed',
 			'ai_provider_execution' => false,
 			'vector_index_ingestion_certified' => false,
