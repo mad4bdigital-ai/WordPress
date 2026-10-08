@@ -57,7 +57,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
-      "sha256": "8dbfd05d1704f1c5e0b2e5735f06971f1217893de356aae8dd73352f3435762f"
+      "sha256": "f8392b29b7e41da86fe8b4b1d8865305b66467eea873040f6e205fa75534dc2b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -65,7 +65,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",
-      "sha256": "8e6592eea2fcf0eb89942fe872511d534f1afef4f5139b6e3aa50db81deb37b7"
+      "sha256": "6b929a476c93990d245bedc016c994b0502b7d2d9f8a1a84a67ab380b5b2105b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-durable-dag-evidence.php",
@@ -99,7 +99,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-conversation-vault-runtime.php",
-      "sha256": "df8d86c20d79024c48b0e43a33b95236e65f53dee30c1a8791c7ef7446bca11d"
+      "sha256": "ee8600682d436d794e70606121a27266a1fed3c0fa54a0b66e0f7810679df260"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",
@@ -109,7 +109,7 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.md",
-      "sha256": "f439b977ff844f036371bfd2678f966c968864bf2903046744d14e916dc2e4ec"
+      "sha256": "c7b5d81991c273c6abe131606b5b930f438be2602b2e3ad3f81383c1fa49fdb7"
     }
   ],
   "acceptance_contracts": [

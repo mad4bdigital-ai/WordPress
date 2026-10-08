@@ -140,7 +140,11 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             'tombstone_count' => $tombstones, 'active_limit' => self::MAX_THREADS,
             'retained_identity_limit' => self::MAX_RETIRED_IDENTITIES,
             'retained_identity_slots_remaining' => self::MAX_RETIRED_IDENTITIES - count( $record['items'] ),
-            'retired_id_reuse_allowed' => false, 'encryption_required' => true,
+            'retired_id_reuse_allowed' => false,
+            'whole_registry_rollback_certified' => false,
+            'tombstone_authenticity_certified' => false,
+            'external_monotonic_head_required' => true,
+            'encryption_required' => true,
             'content_exposed' => false, 'model_execution_performed' => false,
             'production_storage_certified' => false, 'authorizing' => false,
         );

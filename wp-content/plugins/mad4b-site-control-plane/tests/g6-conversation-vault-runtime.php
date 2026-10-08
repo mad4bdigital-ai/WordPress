@@ -187,6 +187,10 @@ $at_cap = MAD4B_SCP_G6_Conversation_Vault::status();
 g6_vault_assert( ! is_wp_error( $at_cap )
     && 0 === $at_cap['active_count']
     && 0 === $at_cap['retained_identity_slots_remaining'], 'bounded identity ledger reported' );
+g6_vault_assert( false === $at_cap['whole_registry_rollback_certified']
+    && false === $at_cap['tombstone_authenticity_certified']
+    && true === $at_cap['external_monotonic_head_required'],
+    'in-record HMAC never claims rollback or tombstone provenance certification' );
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( array(
     'thread_id' => 'overflow-identity', 'expected_revision' => $rev,
     'classification' => 'internal', 'role' => 'user', 'text' => 'blocked',
