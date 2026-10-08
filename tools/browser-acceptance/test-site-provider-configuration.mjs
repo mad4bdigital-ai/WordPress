@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
-import { resolveEtgBrowserOperatorConfiguration as resolve } from "./site-provider-configuration.mjs";
+import {
+  resolveEtgBrowserOperatorConfiguration as resolve,
+  assertEtgBrowserBindingUnchanged,
+  assertEtgBrowserPlanBinding,
+  assertEtgBrowserResultBinding
+} from "./site-provider-configuration.mjs";
 
 const base = () => ({
   contract: "mad4b.browser-acceptance-capabilities.v1", read_only: true, authorizing: false,
-  provider_count: 1, providers: [{ provider_id: "etg-dfsb" }],
+  provider_count: 1, providers: [{ provider_id: "etg-dfsb", contract: "etg.dfsb.browser-acceptance-provider.v2" }],
   operator_preference: {
     contract: "mad4b.browser-operator-preference.v1", authorizing: false, read_only: true,
     executor: "auto", profile_id: "", site_provider_id: "", preference_valid: true,
@@ -42,4 +47,19 @@ denied(x => { x.providers[0].provider_id = "invalid/id"; }, "mcp_site_browser_pr
 denied(x => { x.provider_count = 0; }, "mcp_site_browser_provider_count_mismatch");
 denied(x => { x.providers.push({provider_id: "etg-dfsb"}); x.provider_count = 2; }, "mcp_site_browser_provider_duplicate");
 denied(x => { x.providers[0].capabilities = {error: "provider_capabilities_exception"}; }, "mcp_site_browser_provider_capabilities_unavailable");
+denied(x => { delete x.providers[0].contract; }, "mcp_site_browser_provider_contract_invalid");
+const snapshot = resolve(base(), args);
+assertEtgBrowserBindingUnchanged(snapshot, resolve(base(), args));
+const changeContract = base(); changeContract.providers[0].contract = "etg.dfsb.browser-acceptance-provider.v3";
+assert.throws(() => assertEtgBrowserBindingUnchanged(snapshot, resolve(changeContract, args)), /mcp_site_browser_operator_selection_changed:siteProviderContract/);
+const changeExecutor = base(); changeExecutor.operator_preference.executor = "steel";
+assert.throws(() => assertEtgBrowserBindingUnchanged(snapshot, resolve(changeExecutor, args)), /mcp_site_browser_operator_selection_changed:executor/);
+const plan = { provider_id: snapshot.siteProviderId, provider_contract: snapshot.siteProviderContract, profile_id: snapshot.profileId, suite: "browser_runtime", read_only: true, authorizing: false, plan_digest: "a".repeat(64) };
+assertEtgBrowserPlanBinding(snapshot, plan);
+assert.throws(() => assertEtgBrowserPlanBinding(snapshot, { ...plan, provider_id: "all-royal" }), /mcp_site_browser_plan_binding_mismatch/);
+assert.throws(() => assertEtgBrowserPlanBinding(snapshot, { ...plan, authorizing: true }), /mcp_site_browser_plan_binding_mismatch/);
+const result = { provider_id: plan.provider_id, provider_contract: plan.provider_contract, profile_id: plan.profile_id, suite: plan.suite, plan_digest: plan.plan_digest, read_only: true, authorizing: false };
+assertEtgBrowserResultBinding(plan, result);
+assert.throws(() => assertEtgBrowserResultBinding(plan, { ...result, profile_id: "other" }), /mcp_site_browser_result_binding_mismatch/);
+assert.throws(() => assertEtgBrowserResultBinding(plan, { ...result, plan_digest: "b".repeat(64) }), /mcp_site_browser_result_binding_mismatch/);
 console.log("MAD4B_BROWSER_SITE_CONFIGURATION: PASS");
