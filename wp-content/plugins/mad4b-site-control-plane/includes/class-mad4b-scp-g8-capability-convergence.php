@@ -39,6 +39,7 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 				'structural_compatible' => true === ( $row['structural_compatible'] ?? false ),
 				'behavioral_verified' => true === ( $behavior['behavioral_verified'] ?? false ),
 				'rollback_verified' => true === ( $behavior['rollback_verified'] ?? false ),
+				'read_eligible' => true === ( $row['read_eligible'] ?? false ),
 				'write_eligible' => true === ( $row['write_eligible'] ?? false ),
 				'certification_level' => is_string( $row['certification_level'] ?? null ) ? substr( $row['certification_level'], 0, 50 ) : 'UNKNOWN',
 			);
@@ -63,10 +64,19 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			elseif ( null === $b ) $state = 'CAPABILITY_REMOVED';
 			elseif ( ! hash_equals( $a['contract_sha256'], $b['contract_sha256'] ) || $a['structural_compatible'] !== $b['structural_compatible'] )
 				$state = 'STRUCTURE_CHANGED';
+			elseif ( ( ! $a['write_eligible'] && $b['write_eligible'] ) || ( ! $a['read_eligible'] && $b['read_eligible'] ) )
+				$state = 'ELIGIBILITY_EXPANSION_REQUIRES_GOVERNED_REVIEW';
 			elseif ( ! $b['behavioral_verified'] && $a['behavioral_verified'] || ! $b['rollback_verified'] && $a['rollback_verified'] )
 				$state = 'BEHAVIOR_RECHECK_REQUIRED';
+			elseif ( $a['read_eligible'] && ! $b['read_eligible'] ) $state = 'READ_FENCED';
 			elseif ( ! $b['write_eligible'] && $a['write_eligible'] ) $state = 'WRITE_FENCED';
+			elseif ( $a['certification_level'] !== $b['certification_level']
+				|| $a['behavioral_verified'] !== $b['behavioral_verified']
+				|| $a['rollback_verified'] !== $b['rollback_verified'] )
+				$state = 'CERTIFICATION_EVIDENCE_CHANGED';
 			elseif ( $identity_drift && ( $a['write_eligible'] || $b['write_eligible'] ) ) $state = 'IDENTITY_CHANGED_RECHECK_REQUIRED';
+			elseif ( ! $b['read_eligible'] && ! $b['write_eligible'] ) $state = 'INELIGIBLE_CAPABILITY';
+			elseif ( ! $b['structural_compatible'] ) $state = 'STRUCTURE_UNVERIFIED';
 			else $state = 'UNCHANGED';
 			if ( 'UNCHANGED' === $state ) $preserved[] = $id;
 			else $changed[ $id ] = array( 'state' => $state, 'quarantine_scope' => $old['provider'] . ':' . $id,
@@ -101,7 +111,10 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 				|| ! is_bool( $row['structural_compatible'] ?? null )
 				|| ! is_bool( $row['behavioral_verified'] ?? null )
 				|| ! is_bool( $row['rollback_verified'] ?? null )
-				|| ! is_bool( $row['write_eligible'] ?? null ) ) return false;
+				|| ! is_bool( $row['read_eligible'] ?? null )
+				|| ! is_bool( $row['write_eligible'] ?? null )
+				|| ! is_string( $row['certification_level'] ?? null )
+				|| strlen( $row['certification_level'] ) > 50 ) return false;
 		}
 		return true;
 	}
