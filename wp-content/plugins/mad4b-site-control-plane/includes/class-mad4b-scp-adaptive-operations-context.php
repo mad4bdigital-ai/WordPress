@@ -67,7 +67,7 @@ final class MAD4B_SCP_Adaptive_Operations_Context {
 	}
 
 	public static function unseal( $purpose, array $sealed ) {
-		if ( ! isset( $sealed['material'], $sealed['sha256'], $sealed['proof'] ) || ! is_array( $sealed['material'] ) || ! self::sha( $sealed['sha256'] ) ) return self::error( 'sealed_evidence_missing' );
+		if ( ! isset( $sealed['material'], $sealed['sha256'], $sealed['proof'] ) || ! is_array( $sealed['material'] ) || ! self::sha( $sealed['sha256'] ) || ! is_string( $sealed['proof'] ) || '' === $sealed['proof'] ) return self::error( 'sealed_evidence_missing' );
 		$digest = self::digest( $purpose, $sealed['material'] );
 		if ( is_wp_error( $digest ) || ! hash_equals( $sealed['sha256'], $digest ) ) return self::error( 'sealed_evidence_modified' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! method_exists( 'MAD4B_SCP_Site_Profile', 'verify_deployment_binding_proof' ) || ! MAD4B_SCP_Site_Profile::verify_deployment_binding_proof( $purpose, $digest, $sealed['proof'] ) ) return self::error( 'sealed_evidence_foreign' );

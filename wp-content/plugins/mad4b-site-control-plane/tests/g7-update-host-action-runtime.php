@@ -96,6 +96,8 @@ MAD4B_SCP_Developer_Host_Capabilities::$snapshot['capability_fingerprint'] = str
 MAD4B_SCP_Developer_Host_Capabilities::$snapshot['network_sandbox_binary_present'] = true;
 $host_bad_type = $host; $host_bad_type['sealed_observation'] = 'invalid-object';
 g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $host_bad_type ), 'malformed host proof fail closed without TypeError' );
+$host_wrong_proof_type = $host; $host_wrong_proof_type['sealed_observation']['proof'] = array( 'not-a-signature' );
+g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $host_wrong_proof_type ), 'array proof rejected before PHP typed verifier' );
 $host_tampered = $host; $host_tampered['sealed_observation']['sha256'] = str_repeat( '0', 64 );
 g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $host_tampered ), 'forged host envelope denied' );
 $material = $host['sealed_observation']['material'];

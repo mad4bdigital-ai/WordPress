@@ -92,6 +92,7 @@ final class MAD4B_SCP_G7_Update_Acceptance {
     }
 
     private static function read( array $observation ) {
+        if ( ! class_exists( 'MAD4B_SCP_Runtime_Evidence_Graph' ) ) return self::error( 'graph_unavailable' );
         $sealed = $observation['sealed_observation'] ?? array();
         if ( ! is_array( $sealed ) ) return self::error( 'observation_format_invalid' );
         $material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $sealed );
