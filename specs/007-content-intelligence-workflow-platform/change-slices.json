@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 430,
+  "changed_file_count": 437,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -778,8 +778,23 @@
         "tools/solution-discovery/test-federation.mjs",
         "wp-content/plugins/mad4b-site-control-plane/docs/UNIVERSAL-FEDERATED-DISCOVERY.md"
       ]
+    },
+    {
+      "id": "native-semantic-oracle-attestation-20261009",
+      "semantic_unit": "Native capability semantic truth, signed WordPress plan/reducer, independently RSA-signed browser evidence, trust/cross-scope tests",
+      "revert_boundary": "Roll back WordPress native Provider, browser signer + fixtures, and extension Spec Kit as one read-only source unit",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/native-semantic-oracle/acceptance.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/native-semantic-oracle/spec.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/native-semantic-oracle/tasks.md",
+        "tools/browser-acceptance/browser-attestation.mjs",
+        "tools/browser-acceptance/test-browser-attestation.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-capability-browser-provider.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-capability-browser-provider-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "8550ef095d3cfda04d447ffdf2574d76dea0d5b0231af4e5d77361a6a0c5959d",
+  "changed_paths_sha256": "c91c3651b22750ebe41b0d10999de9d611034ed7aa8dbea82bf4ea7291980deb",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
