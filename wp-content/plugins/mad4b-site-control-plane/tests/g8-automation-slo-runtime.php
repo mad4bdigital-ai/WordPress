@@ -137,6 +137,19 @@ $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $forged_chain;
 g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'],
 	'a re-sealed but altered event chain cannot pass integrity validation' );
 $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $recorded;
+$sequence_forged = $recorded;
+$sequence_forged['outcome_receipts'][0]['sequence'] = 2;
+$plain = $sequence_forged['outcome_receipts'][0];
+unset( $plain['entry_sha256'], $plain['root_sha256'] );
+$sequence_forged['outcome_receipts'][0]['entry_sha256'] = MAD4B_SCP_G8_Record::digest( $plain );
+$sequence_forged['outcome_receipts'][0]['root_sha256'] = hash( 'sha256',
+	$plain['previous_root_sha256'] . $sequence_forged['outcome_receipts'][0]['entry_sha256'] );
+$sequence_forged['outcome_root_sha256'] = $sequence_forged['outcome_receipts'][0]['root_sha256'];
+$sequence_forged['seal'] = MAD4B_SCP_G8_Record::seal( $sequence_forged );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $sequence_forged;
+g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'],
+	're-sealed outcome with sequence gap cannot pass conservation' );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $recorded;
 $forged_completed = $completed;
 $forged_completed['checkpoint']['g8_current_slice_changed_safe_phases'] = array( 'provider' );
 $unknown = MAD4B_SCP_Automation_SLO::reserve( $provider, 'unrelated-test', $generation );
@@ -171,6 +184,15 @@ $skills_status = MAD4B_SCP_Automation_SLO::status();
 g8_check( 1 === ( $skills_status['outcomes']['verified_repair'] ?? 0 )
 	&& 3 === ( $skills_status['outcomes']['handoff'] ?? 0 ),
 	'unattributed Managed Skills transition cannot inflate the verified repair numerator' );
+$tail_saved = $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ];
+$truncated = $tail_saved;
+array_pop( $truncated['outcome_receipts'] );
+$truncated['outcome_root_sha256'] = end( $truncated['outcome_receipts'] )['root_sha256'];
+$truncated['seal'] = MAD4B_SCP_G8_Record::seal( $truncated );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $truncated;
+g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'],
+	're-sealed truncated tail cannot hide a completed automatic result' );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $tail_saved;
 $GLOBALS['g8_after_slo_cas'] = static function () {
  $revision = MAD4B_SCP_Automation_SLO::switch_status()['revision'];
  g8_check( true === MAD4B_SCP_Automation_SLO::change_switch( '*', false, $revision ), 'switch ABA revision advance' );
