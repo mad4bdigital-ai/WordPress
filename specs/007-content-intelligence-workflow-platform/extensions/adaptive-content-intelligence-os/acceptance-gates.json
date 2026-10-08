@@ -1,5 +1,5 @@
 {
-  "contract": "mad4b.aci-os.gate-registry.v1",
+  "contract": "mad4b.aci-os.gate-registry.v2",
   "status": "SPEC_BACKLOG_ONLY",
   "authorizing": false,
   "gates": [
@@ -11,9 +11,10 @@
       "depends_on": [],
       "requirement_ids": [
         "ACI-001",
-        "ACI-002",
-        "ACI-003",
-        "ACI-004",
+        "ACI-028",
+        "ACI-042",
+        "ACI-033",
+        "ACI-043",
         "ACI-005"
       ],
       "task_ids": [
@@ -28,13 +29,12 @@
         "repository"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "spec_false_done",
+        "unowned_change"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G1",
@@ -45,11 +45,13 @@
         "ACI-G0"
       ],
       "requirement_ids": [
-        "ACI-001",
         "ACI-002",
+        "ACI-020",
+        "ACI-001",
+        "ACI-005",
         "ACI-003",
         "ACI-004",
-        "ACI-005"
+        "ACI-016"
       ],
       "task_ids": [
         "ACI-T0007",
@@ -64,13 +66,12 @@
         "disposable_native"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "tenant_context_leak",
+        "missing_brand_context"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G2",
@@ -78,15 +79,14 @@
       "name": "research_evidence",
       "status": "OPEN",
       "depends_on": [
-        "ACI-G1"
+        "ACI-G0"
       ],
       "requirement_ids": [
         "ACI-006",
-        "ACI-007",
         "ACI-008",
-        "ACI-009",
+        "ACI-030",
         "ACI-010",
-        "ACI-011",
+        "ACI-009",
         "ACI-012"
       ],
       "task_ids": [
@@ -102,13 +102,13 @@
         "disposable_native"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G3",
@@ -116,13 +116,17 @@
       "name": "opportunity_intelligence",
       "status": "OPEN",
       "depends_on": [
+        "ACI-G1",
         "ACI-G2"
       ],
       "requirement_ids": [
         "ACI-007",
-        "ACI-011",
         "ACI-013",
-        "ACI-014"
+        "ACI-014",
+        "ACI-011",
+        "ACI-010",
+        "ACI-012",
+        "ACI-006"
       ],
       "task_ids": [
         "ACI-T0019",
@@ -137,13 +141,12 @@
         "disposable_native"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "evidence_noncomparable",
+        "unsupported_claim"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G4",
@@ -151,17 +154,17 @@
       "name": "native_relation_wpml",
       "status": "OPEN",
       "depends_on": [
-        "ACI-G3"
+        "ACI-G0"
       ],
       "requirement_ids": [
-        "ACI-005",
         "ACI-021",
-        "ACI-022",
-        "ACI-023",
         "ACI-024",
+        "ACI-023",
+        "ACI-022",
         "ACI-025",
         "ACI-026",
-        "ACI-027"
+        "ACI-027",
+        "ACI-042"
       ],
       "task_ids": [
         "ACI-T0025",
@@ -179,13 +182,13 @@
         "live_staging"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G5",
@@ -193,15 +196,16 @@
       "name": "blueprint_author",
       "status": "OPEN",
       "depends_on": [
-        "ACI-G4"
+        "ACI-G1",
+        "ACI-G3"
       ],
       "requirement_ids": [
         "ACI-013",
-        "ACI-014",
+        "ACI-020",
         "ACI-015",
         "ACI-016",
-        "ACI-017",
-        "ACI-020"
+        "ACI-019",
+        "ACI-018"
       ],
       "task_ids": [
         "ACI-T0033",
@@ -216,13 +220,17 @@
         "disposable_native"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "writer_rights",
+        "editor_conflict"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ]
     },
     {
       "id": "ACI-G6",
@@ -252,13 +260,13 @@
         "disposable_native"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G7",
@@ -266,16 +274,18 @@
       "name": "durable_orchestration",
       "status": "OPEN",
       "depends_on": [
-        "ACI-G6"
+        "ACI-G0"
       ],
       "requirement_ids": [
         "ACI-028",
         "ACI-029",
         "ACI-030",
-        "ACI-037",
-        "ACI-039",
-        "ACI-040",
         "ACI-041",
+        "ACI-036",
+        "ACI-037",
+        "ACI-038",
+        "ACI-040",
+        "ACI-033",
         "ACI-043"
       ],
       "task_ids": [
@@ -292,13 +302,13 @@
         "disposable_native"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G8",
@@ -306,17 +316,19 @@
       "name": "governed_publication",
       "status": "OPEN",
       "depends_on": [
+        "ACI-G6",
         "ACI-G7"
       ],
       "requirement_ids": [
-        "ACI-019",
-        "ACI-026",
-        "ACI-027",
         "ACI-031",
-        "ACI-032",
-        "ACI-033",
         "ACI-039",
-        "ACI-042"
+        "ACI-019",
+        "ACI-032",
+        "ACI-027",
+        "ACI-018",
+        "ACI-042",
+        "ACI-033",
+        "ACI-043"
       ],
       "task_ids": [
         "ACI-T0052",
@@ -334,13 +346,18 @@
         "real_browser"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ]
     },
     {
       "id": "ACI-G9",
@@ -348,11 +365,10 @@
       "name": "growth_learning",
       "status": "OPEN",
       "depends_on": [
+        "ACI-G2",
         "ACI-G8"
       ],
       "requirement_ids": [
-        "ACI-006",
-        "ACI-007",
         "ACI-034",
         "ACI-035",
         "ACI-036"
@@ -370,13 +386,12 @@
         "disposable_native"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "seasonal_false_causality",
+        "feedback_flapping"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": []
     },
     {
       "id": "ACI-G10",
@@ -384,18 +399,20 @@
       "name": "release_operability",
       "status": "OPEN",
       "depends_on": [
+        "ACI-G0",
+        "ACI-G7",
+        "ACI-G8",
         "ACI-G9"
       ],
       "requirement_ids": [
-        "ACI-028",
-        "ACI-030",
         "ACI-033",
-        "ACI-037",
-        "ACI-038",
-        "ACI-039",
-        "ACI-040",
-        "ACI-041",
         "ACI-042",
+        "ACI-040",
+        "ACI-021",
+        "ACI-038",
+        "ACI-030",
+        "ACI-041",
+        "ACI-027",
         "ACI-043"
       ],
       "task_ids": [
@@ -417,13 +434,18 @@
         "release"
       ],
       "negative_cases": [
-        "no_authority_from_spec",
-        "missing_or_stale_evidence",
-        "wrong_site_or_locale",
-        "approval_expired_or_invalid"
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
       ],
       "authorizing": false,
-      "completion_claimed": false
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ]
     }
   ]
 }
