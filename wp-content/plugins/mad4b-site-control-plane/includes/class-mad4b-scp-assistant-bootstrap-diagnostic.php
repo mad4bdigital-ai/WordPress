@@ -97,8 +97,41 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
             }
             if ( ! $binding_ready ) $actions[] = 'review_readonly_runtime_and_restore_evidence';
         }
+        // Read-only, explicit runtime registration witness. This does not
+        // invoke provider discovery, register abilities or create an adapter.
+        $plan_ability = class_exists( 'MAD4B_SCP_Assistant_Planning', false )
+            ? MAD4B_SCP_Assistant_Planning::ABILITY : 'mad4b/assistant-plan';
+        $hooks_bound = function_exists( 'has_action' )
+            && false !== has_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Assistant_Planning', 'register_ability' ) )
+            && false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ) )
+            && false !== has_action( 'mad4b_scp_register_adapters', array( 'MAD4B_SCP_Assistant_Planning', 'register_adapter' ) )
+            && false !== has_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ) );
+        $abilities_observed = function_exists( 'did_action' ) && did_action( 'wp_abilities_api_init' ) > 0;
+        $plan_visible = $abilities_observed && function_exists( 'wp_has_ability' ) && wp_has_ability( $plan_ability );
+        $diagnostic_visible = $abilities_observed && function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY );
+        $registry_observed = class_exists( 'MAD4B_SCP_Adapter_Registry', false );
+        $plan_adapter = $registry_observed ? MAD4B_SCP_Adapter_Registry::instance()->get( 'assistant-planning' ) : null;
+        $bootstrap_adapter = $registry_observed ? MAD4B_SCP_Adapter_Registry::instance()->get( 'assistant-bootstrap' ) : null;
+        $adapters_visible = null !== $plan_adapter && null !== $bootstrap_adapter;
+        $read_registration = array(
+            'contract' => 'mad4b.assistant-read-registration-witness.v1',
+            'hooks_bound' => $hooks_bound,
+            'abilities_lifecycle_observed' => $abilities_observed,
+            'planning_ability_visible' => (bool) $plan_visible,
+            'bootstrap_ability_visible' => (bool) $diagnostic_visible,
+            'planning_adapter_visible' => null !== $plan_adapter,
+            'bootstrap_adapter_visible' => null !== $bootstrap_adapter,
+            'read_catalog_local_ready' => $hooks_bound && $plan_visible && $diagnostic_visible && $adapters_visible,
+            'external_mcp_catalog_verified' => false,
+            'mutation_performed' => false,
+        );
+        if ( $abilities_observed && ! $read_registration['read_catalog_local_ready'] ) {
+            $blockers[] = 'assistant_runtime_registration_unverified';
+            $actions[] = 'verify_assistant_ability_and_adapter_lifecycle';
+        }
         return array(
             'contract' => self::CONTRACT,
+            'assistant_read_registration' => $read_registration,
             'environment' => $environment,
             'profile_configured' => $enrolled,
             'origin_verified' => $origin,
