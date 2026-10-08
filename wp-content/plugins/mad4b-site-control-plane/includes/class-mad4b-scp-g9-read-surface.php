@@ -10,6 +10,7 @@ final class MAD4B_SCP_G9_Read_Surface {
     private static $booted = false;
     private static $reader_pinned = false;
     private static $boot_result = null;
+    private static $abilities_registered = false;
 
     public static function boot() {
         // Process-scoped, deterministic one-time pinning. Repeated calls must
@@ -36,6 +37,7 @@ final class MAD4B_SCP_G9_Read_Surface {
     }
 
     public static function register_abilities() {
+        if ( self::$abilities_registered ) return true;
         // WordPress Abilities can also be invoked directly by another PHP
         // component. Do not expose read endpoints without a verified
         // code-owned reader even when boot hook registration was bypassed.
@@ -53,8 +55,26 @@ final class MAD4B_SCP_G9_Read_Surface {
                 'G9 Operational Closure Blockers', array( __CLASS__, 'closure_status' ),
             ),
         ) as $ability => $spec ) {
-            if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability ) ) continue;
-            wp_register_ability( $ability, array(
+            // Preflight ALL names, not one-by-one. A separately registered
+            // Ability could have an unrelated callback or mutation policy;
+            // registering the remaining two would create a misleading
+            // partially-owned G9 surface. Never overwrite foreign owners.
+            if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability ) )
+                return new WP_Error( 'mad4b_g9_ability_namespace_collision',
+                    'A G9 read Ability name was registered before this code-owned surface.' );
+        }
+        foreach ( array(
+            'mad4b/g9-site-observation' => array(
+                'G9 Site Observation', array( __CLASS__, 'site_observation' ),
+            ),
+            'mad4b/g9-restore-status' => array(
+                'G9 Restore Convergence Status', array( __CLASS__, 'restore_status' ),
+            ),
+            'mad4b/g9-closure-status' => array(
+                'G9 Operational Closure Blockers', array( __CLASS__, 'closure_status' ),
+            ),
+        ) as $ability => $spec ) {
+            $registered = wp_register_ability( $ability, array(
                 'label' => $spec[0],
                 'description' => 'Read only the enrolled current local site; never infer fleet membership or restoration of write authority.',
                 'category' => 'mad4b-read',
@@ -70,7 +90,12 @@ final class MAD4B_SCP_G9_Read_Surface {
                     ),
                 ),
             ) );
+            if ( is_wp_error( $registered ) || false === $registered )
+                return new WP_Error( 'mad4b_g9_ability_registration_failed',
+                    'The code-owned read Ability could not be registered.' );
         }
+        self::$abilities_registered = true;
+        return true;
     }
 
     public static function site_observation( $input = array() ) {

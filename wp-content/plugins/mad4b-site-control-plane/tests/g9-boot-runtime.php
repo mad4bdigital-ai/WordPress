@@ -30,7 +30,9 @@ check_g9( count( $GLOBALS['g9_ability_hooks'] ) === 1, 'one bootstrap hook' );
 $hook = $GLOBALS['g9_ability_hooks'][0];
 check_g9( $hook[0] === 'wp_abilities_api_init' && $hook[2] === 38,
     'abilities exposed only via standard WordPress init' );
-call_user_func( $hook[1] );
+check_g9( call_user_func( $hook[1] ) === true, 'private read Ability registration succeeds' );
+check_g9( MAD4B_SCP_G9_Read_Surface::register_abilities() === true,
+    'repeated read Ability registration is idempotent' );
 check_g9( count( $GLOBALS['g9_boot_abilities'] ) === 3, 'three passive abilities' );
 foreach ( $GLOBALS['g9_boot_abilities'] as $name => $args ) {
     check_g9( strpos( $name, 'mad4b/g9-' ) === 0
