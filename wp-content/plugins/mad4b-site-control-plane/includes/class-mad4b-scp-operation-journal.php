@@ -33,6 +33,16 @@ final class MAD4B_SCP_Operation_Journal {
 		global $wpdb;
 		$valid = self::validate_context( $context );
 		if ( is_wp_error( $valid ) ) return $valid;
+		// Opt-in exact-head CAS for governed assistant transitions. Existing
+		// journal producers that do not request CAS retain their old contract.
+		$has_expected_seq = array_key_exists( 'expected_sequence', $args );
+		$has_expected_sha = array_key_exists( 'expected_event_sha256', $args );
+		if ( $has_expected_seq !== $has_expected_sha ||
+			( $has_expected_seq && ( ! is_int( $args['expected_sequence'] ) || $args['expected_sequence'] < 0
+			|| ! is_string( $args['expected_event_sha256'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $args['expected_event_sha256'] ) ) ) ) {
+			return new WP_Error( 'mad4b_operation_journal_cas_invalid', 'The exact journal CAS precondition is malformed or incomplete.' );
+		}
 		$event_type = sanitize_key( (string) $event_type );
 		if ( '' === $event_type ) return new WP_Error( 'mad4b_operation_event_type_invalid', 'Operation event_type is required.' );
 		$lifecycle = isset( $args['lifecycle_state'] ) ? sanitize_key( (string) $args['lifecycle_state'] ) : 'running';
@@ -49,6 +59,10 @@ final class MAD4B_SCP_Operation_Journal {
 			$head = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE BINARY operation_id=BINARY %s FOR UPDATE", $context['operation_id'] ), ARRAY_A );
 			if ( ! is_array( $head ) ) throw new RuntimeException( 'operation_head_missing' );
 			if ( ! hash_equals( (string) $head['operation_binding_sha256'], (string) $context['operation_binding_sha256'] ) || ! hash_equals( (string) $head['operation_key'], (string) $context['operation_key'] ) ) throw new RuntimeException( 'operation_identity_conflict' );
+			if ( $has_expected_seq && ( (int) $head['latest_sequence'] !== $args['expected_sequence']
+				|| ! hash_equals( (string) $head['latest_event_sha256'], $args['expected_event_sha256'] ) ) ) {
+				throw new RuntimeException( 'operation_journal_cas_stale' );
+			}
 			if ( (int) $head['latest_sequence'] >= self::MAX_EVENTS_PER_OPERATION ) throw new RuntimeException( 'operation_event_limit_exceeded' );
 			$sequence = (int) $head['latest_sequence'] + 1;
 			$previous = (string) $head['latest_event_sha256'];
@@ -87,7 +101,8 @@ final class MAD4B_SCP_Operation_Journal {
 			$rolled_back = MAD4B_SCP_Database_Transaction_Guard::rollback( $transaction );
 			$rollback_verified = true === $rolled_back;
 			$semantics = MAD4B_SCP_Database_Failure_Semantics::classify( 'operation_journal_append', $db_error . ' ' . $e->getMessage(), $rollback_verified );
-			$code = ! empty( $semantics['reconciliation_required'] ) ? 'mad4b_operation_journal_persistence_uncertain' : 'mad4b_operation_journal_append_failed';
+			$code = ! empty( $semantics['reconciliation_required'] ) ? 'mad4b_operation_journal_persistence_uncertain'
+				: ( 'operation_journal_cas_stale' === $e->getMessage() ? 'mad4b_operation_journal_cas_stale' : 'mad4b_operation_journal_append_failed' );
 			return new WP_Error( $code, 'Unable to append operation journal event.', array_merge( $semantics, array(
 				'reason' => substr( $e->getMessage(), 0, 100 ),
 				'db_error' => substr( $db_error, 0, 191 ),
