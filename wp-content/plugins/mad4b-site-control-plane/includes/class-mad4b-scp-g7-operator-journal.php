@@ -11,6 +11,9 @@ final class MAD4B_SCP_G7_Operator_Journal {
     const MAX_EVENTS = 1000;
 
     public static function project( $operation_id ) {
+        if ( ! is_string( $operation_id ) || 1 !== preg_match( '/^[A-Za-z0-9._:-]{1,191}$/D', $operation_id ) ) {
+            return self::error( 'operation_id_invalid' );
+        }
         if ( ! class_exists( 'MAD4B_SCP_Operation_Journal' ) ) {
             return self::error( 'operation_journal_unavailable' );
         }
@@ -23,6 +26,7 @@ final class MAD4B_SCP_G7_Operator_Journal {
         $identity = isset( $trace['operation_id'], $status['operation_id'] ) &&
             is_string( $trace['operation_id'] ) && is_string( $status['operation_id'] ) &&
             '' !== $trace['operation_id'] &&
+            hash_equals( $operation_id, $trace['operation_id'] ) &&
             hash_equals( $trace['operation_id'], $status['operation_id'] );
         $events = isset( $trace['events'] ) && is_array( $trace['events'] ) ? $trace['events'] : array();
         $count = count( $events );

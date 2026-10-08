@@ -48,4 +48,7 @@ jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( $
 MAD4B_SCP_Operation_Journal::$trace = $good;
 MAD4B_SCP_Operation_Journal::$status['operation_id'] = 'foreign';
 jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( $id )['state'], 'cross-operation identity denied' );
+MAD4B_SCP_Operation_Journal::$status['operation_id'] = $id;
+jassert( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G7_Operator_Journal::project( 'another-operation' )['state'], 'matching trace and status must still match the requested operation' );
+jassert( is_wp_error( MAD4B_SCP_G7_Operator_Journal::project( array( 'untrusted' => 'id' ) ) ), 'invalid operation input rejected before calling native journal' );
 echo "mad4b.feature007-g7-operator-journal.v1: PASS\n";
