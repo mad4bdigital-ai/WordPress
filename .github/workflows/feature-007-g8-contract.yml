@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: feature-007-g8-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  group: feature-007-g8-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
   g8-automatic-maintenance:
