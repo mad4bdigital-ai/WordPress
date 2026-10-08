@@ -94,17 +94,27 @@ $completed = array(
  'changed_safe_phases' => array( 'schema' ),
  'readback' => array( 'required_blockers' => array() ),
  'checkpoint' => array( 'state' => 'completed', 'last_execution_source' => 'post_update_cron',
-  'changed_safe_phases' => array( 'schema' ) ),
+  'changed_safe_phases' => array( 'schema' ), 'target_identity' => array( 'exact_test' => $generation ),
+  'g8_current_slice_changed_safe_phases' => array( 'schema' ) ),
 );
+$completed['checkpoint']['g8_local_causal_receipt'] = MAD4B_SCP_Automation_SLO::local_causal_receipt( $ticket, $completed['checkpoint'] );
+g8_check( is_array( $completed['checkpoint']['g8_local_causal_receipt'] ), 'issue bounded local Cron receipt' );
+$GLOBALS['g8_options']['mad4b_scp_runtime_convergence_v1'] = $completed['checkpoint'];
 g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $completed ), 'finish success' );
 g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $completed ), 'mad4b_automation_ticket_stale' ), 'replay rejected' );
 $status = MAD4B_SCP_Automation_SLO::status();
 g8_check( 1 === $status['outcomes']['verified_repair'], 'measured repair count' );
+$forged_completed = $completed;
+$forged_completed['checkpoint']['g8_current_slice_changed_safe_phases'] = array( 'provider' );
+$unknown = MAD4B_SCP_Automation_SLO::reserve( $provider, 'unrelated-test', $generation );
+g8_check( is_array( $unknown ), 'test forged independent receipt with unrelated ticket' );
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $unknown, $forged_completed ),
+ 'unbound proof produces a handoff, not a verified repair' );
 $healthy = MAD4B_SCP_Automation_SLO::reserve( $provider, $capability, $generation );
 g8_check( is_array( $healthy ) && true === $healthy['pre_ready'], 'healthy prestate' );
 g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $healthy, $completed ), 'already ready finish' );
 $status = MAD4B_SCP_Automation_SLO::status();
-g8_check( 1 === $status['outcomes']['verified_repair'] && 1 === $status['outcomes']['handoff'], 'no false repair count' );
+g8_check( 1 === $status['outcomes']['verified_repair'] && 2 === $status['outcomes']['handoff'], 'no false repair count' );
 $GLOBALS['g8_after_slo_cas'] = static function () {
  $revision = MAD4B_SCP_Automation_SLO::switch_status()['revision'];
  g8_check( true === MAD4B_SCP_Automation_SLO::change_switch( '*', false, $revision ), 'switch ABA revision advance' );
