@@ -21,6 +21,10 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
   if (capabilities.provider_count !== ids.length) throw new Error("mcp_site_browser_provider_count_mismatch");
   if (new Set(ids).size !== ids.length) throw new Error("mcp_site_browser_provider_duplicate");
   if (!ids.includes("etg-dfsb")) throw new Error("mcp_site_browser_etg_provider_not_registered");
+  const selected = registered.find((row) => row.provider_id === "etg-dfsb");
+  if (!selected || typeof selected.contract !== "string" || !/^[a-z0-9][a-z0-9._-]{0,159}$/.test(selected.contract)) {
+    throw new Error("mcp_site_browser_provider_contract_invalid");
+  }
   const pref = capabilities.operator_preference;
   if (!pref || pref.contract !== "mad4b.browser-operator-preference.v1" || pref.authorizing !== false || pref.read_only !== true) {
     throw new Error("mcp_site_browser_operator_preference_unavailable");
@@ -46,10 +50,42 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
   }
   return Object.freeze({
     siteProviderId: "etg-dfsb",
+    siteProviderContract: selected.contract,
     profileId,
     executor: requestedExecutor === "auto" ? pref.executor : requestedExecutor,
     configuredExecutor: pref.executor,
     operatorSelectionValidated: true,
     externallyCertified: false,
   });
+}
+
+/** Non-authorizing readback guard, repeated before execution and after reduction. */
+export function assertEtgBrowserBindingUnchanged(initial, current) {
+  for (const key of ["siteProviderId", "siteProviderContract", "profileId", "executor", "configuredExecutor"]) {
+    if (!initial || !current || initial[key] !== current[key]) {
+      throw new Error("mcp_site_browser_operator_selection_changed:" + key);
+    }
+  }
+  return true;
+}
+
+/** The MCP server must not return a plan or result for a different target. */
+export function assertEtgBrowserPlanBinding(selection, plan) {
+  if (!plan || plan.provider_id !== selection?.siteProviderId ||
+      plan.provider_contract !== selection?.siteProviderContract ||
+      plan.profile_id !== selection?.profileId || plan.suite !== "browser_runtime" ||
+      plan.read_only !== true || plan.authorizing !== false) {
+    throw new Error("mcp_site_browser_plan_binding_mismatch");
+  }
+  return true;
+}
+export function assertEtgBrowserResultBinding(plan, result) {
+  if (!result || result.provider_id !== plan?.provider_id ||
+      result.provider_contract !== plan?.provider_contract ||
+      result.profile_id !== plan?.profile_id || result.suite !== "browser_runtime" ||
+      result.plan_digest !== plan?.plan_digest ||
+      result.read_only !== true || result.authorizing !== false) {
+    throw new Error("mcp_site_browser_result_binding_mismatch");
+  }
+  return true;
 }
