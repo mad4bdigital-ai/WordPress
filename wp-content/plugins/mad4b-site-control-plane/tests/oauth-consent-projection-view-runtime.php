@@ -38,4 +38,12 @@ t( 'authorized host remains operationally blocked', true === $blocked['authority
 t( 'host blockers deduplicate and sanitize', $blocked['blockers'] === array( 'resource_limiter_unavailable', 'network_isolation_unavailable' ) );
 $unknown = MAD4B_SCP_OAuth_Consent_Projection_View::developer_execution( true, array() );
 t( 'missing host evidence fails closed', false === $unknown['operational_ready'] && in_array( 'host_execution_not_certified', $unknown['blockers'], true ) );
+$source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-local-oauth-server.php' );
+$consent = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-local-oauth-consent-ui.php' );
+t( 'live host execution blockers exposed', is_string( $source ) && false !== strpos( $source, "'developer_execution_blockers'" ) );
+t( 'stale readback explicitly blocks operational display', is_string( $source ) && false !== strpos( $source, 'Readback unavailable' ) );
+t( 'stale fetch timestamp updates on unchanged fingerprint', is_string( $source ) && false !== strpos( $source, 'stamp.textContent=x.data.projection.observed_at' ) );
+t( 'grant list always reports missing labels', is_string( $source ) && false !== strpos( $source, 'No displayable grant names' ) );
+t( 'OAuth consent labels executable host separately', is_string( $consent ) && false !== strpos( $consent, 'Developer host execution' ) );
+t( 'consent remains OAuth server POST, unchanged submission', is_string( $source ) && false !== strpos( $source, 'name="decision" value="approve"' ) );
 echo 'OAUTH_CONSENT_PROJECTION_VIEW: PASS' . PHP_EOL;
