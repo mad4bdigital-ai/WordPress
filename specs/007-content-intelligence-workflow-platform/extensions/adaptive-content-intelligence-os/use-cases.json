@@ -1,5 +1,5 @@
 {
-  "contract": "mad4b.aci-os.use-case-acceptance.v1",
+  "contract": "mad4b.aci-os.use-case-acceptance.v2",
   "status": "SPEC_BACKLOG_ONLY",
   "authorizing": false,
   "use_cases": [
@@ -14,7 +14,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "context-steward",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "missing_brand_context"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-02",
@@ -27,7 +51,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "growth-strategist",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "canonical_conflict"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-03",
@@ -40,7 +88,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "poisoned_scrape"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "comparison",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-04",
@@ -53,7 +125,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "growth-strategist",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "unsupported_claim"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "landing",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-05",
@@ -66,7 +162,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "growth-analyst",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "attribution_mismatch"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-06",
@@ -79,7 +199,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "editor",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "edit_conflict"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-07",
@@ -92,7 +236,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "wpml_original_fallback"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-08",
@@ -105,7 +273,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "wrong_term_namespace"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-09",
@@ -118,7 +310,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "translated_id_fallback"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-10",
@@ -131,7 +347,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "cross_site_reference"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-11",
@@ -144,7 +384,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "evidence_noncomparable"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "destination",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-12",
@@ -157,7 +421,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "quota_exhaustion"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-13",
@@ -170,7 +458,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "external_effect_unknown"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-14",
@@ -183,7 +495,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "provider_spend_race"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-15",
@@ -196,7 +532,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "DEPENDENCY_WAIT",
+      "observed_finding_codes": [
+        "model_failure"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-16",
@@ -209,7 +569,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "grant_revoked"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-17",
@@ -222,7 +606,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "publisher-approver",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "missing_browser_readback"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-18",
@@ -235,7 +643,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "restore_epoch_replay"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-19",
@@ -248,7 +680,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "growth-analyst",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "seasonal_false_causality"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-20",
@@ -261,7 +717,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "release-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "stale_authority"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-21",
@@ -274,7 +754,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "provider_schema_drift"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-22",
@@ -287,7 +791,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "cross_site_reference"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "destination",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-23",
@@ -300,7 +828,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "independent-qa",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "unsafe_media"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-24",
@@ -313,7 +865,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "publisher-approver",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "publish_cas_conflict"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "landing",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-25",
@@ -326,7 +902,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "release-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "scope_escalation"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-26",
@@ -339,7 +939,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "SIMULATION_CANDIDATE",
+      "observed_finding_codes": [
+        "NO_FINDING"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-27",
@@ -352,7 +976,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "provider_unauthorized"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-28",
@@ -365,7 +1013,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "pagination_incomplete"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-29",
@@ -378,7 +1050,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "missing_authority"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     },
     {
       "id": "UC-30",
@@ -391,7 +1087,31 @@
       "site_scope": "DYNAMIC_FIXTURE",
       "effect_class": "NONE_SPEC_SIMULATION",
       "evidence_level": "TEST_FIXTURE_NOT_LIVE",
-      "authorizing": false
+      "authorizing": false,
+      "decision_owner": "publisher-approver",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "unsupported_business_claim"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
     }
   ]
 }
