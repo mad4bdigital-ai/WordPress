@@ -22,25 +22,34 @@
     "acceptance.md",
     "architecture.md",
     "constitution.md",
+    "content-recipes.json",
     "contracts/decision-evidence.md",
     "contracts/native-relations-wpml.md",
     "contracts/orchestration-budget.md",
     "contracts/publication-growth.md",
     "data-model.md",
+    "domain-fact-authority.json",
+    "dynamic-foundation.md",
+    "dynamic-policy.json",
     "operations.md",
     "plan.md",
+    "project-charter.md",
     "quickstart.md",
     "requirements.json",
     "research.md",
     "spec.md",
     "system-map.json",
+    "task-registry.json",
     "tasks.md",
     "traceability.md",
-    "ui.md"
+    "ui.md",
+    "use-cases.json"
   ],
   "required_code": [
-    "validate.py",
-    "test_validate.py"
+    "dynamic_core.py",
+    "test_dynamic_core.py",
+    "test_validate.py",
+    "validate.py"
   ],
   "requirement_ids": [
     "ACI-001",
@@ -186,5 +195,17 @@
     "release"
   ],
   "autonomy_ceiling_for_spec": "NONE",
-  "no_parent_task_denominator_changes": true
+  "no_parent_task_denominator_changes": true,
+  "spec_architecture_generation": "DYNAMIC_BY_DEFAULT_V2",
+  "design_review_status": "DESIGN_REVIEW_REQUIRED",
+  "execution_enabled": false,
+  "spec_only": true,
+  "source_of_truth": {
+    "task_registry": "task-registry.json",
+    "requirements": "requirements.json",
+    "gates": "acceptance-gates.json",
+    "system_map": "system-map.json",
+    "dynamic_policy": "dynamic-policy.json",
+    "product_scope": "project-charter.md"
+  }
 }
