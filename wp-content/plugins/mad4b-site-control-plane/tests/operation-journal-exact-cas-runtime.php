@@ -70,6 +70,11 @@ function assert_journal( $what, $condition ) {
 }
 $args = array( 'expected_sequence' => 1, 'expected_event_sha256' => str_repeat( 'a', 64 ),
     'metadata' => array( 'task_id' => $context['operation_key'] ) );
+$unsafe_unbound = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition',
+    array( 'metadata' => array( 'task_id' => $context['operation_key'] ) ) );
+assert_journal( 'assistant journal event always requires exact-head CAS', is_wp_error( $unsafe_unbound )
+    && 'mad4b_operation_journal_cas_required' === $unsafe_unbound->get_error_code()
+    && 0 === MAD4B_SCP_Database_Transaction_Guard::$begin );
 $bad = $args; unset( $bad['expected_event_sha256'] );
 $denial = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition', $bad );
 assert_journal( 'partial expected head must be rejected before DB', is_wp_error( $denial )
