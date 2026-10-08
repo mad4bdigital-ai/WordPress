@@ -7,18 +7,29 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
   if (!capabilities || capabilities.contract !== "mad4b.browser-acceptance-capabilities.v1" || capabilities.read_only !== true || capabilities.authorizing !== false) {
     throw new Error("mcp_site_browser_capabilities_invalid");
   }
-  const registered = Array.isArray(capabilities.providers) ? capabilities.providers : [];
-  const ids = registered.map((row) => String(row?.provider_id || "")).filter((id) => ID.test(id));
+  if (!Array.isArray(capabilities.providers)) throw new Error("mcp_site_browser_provider_registry_invalid");
+  const registered = capabilities.providers;
+  const ids = registered.map((row) => {
+    if (!row || typeof row.provider_id !== "string" || !ID.test(row.provider_id)) {
+      throw new Error("mcp_site_browser_provider_registry_invalid");
+    }
+    if (row.capabilities && (typeof row.capabilities !== "object" || row.capabilities.error)) {
+      throw new Error("mcp_site_browser_provider_capabilities_unavailable");
+    }
+    return row.provider_id;
+  });
+  if (capabilities.provider_count !== ids.length) throw new Error("mcp_site_browser_provider_count_mismatch");
+  if (new Set(ids).size !== ids.length) throw new Error("mcp_site_browser_provider_duplicate");
   if (!ids.includes("etg-dfsb")) throw new Error("mcp_site_browser_etg_provider_not_registered");
   const pref = capabilities.operator_preference;
   if (!pref || pref.contract !== "mad4b.browser-operator-preference.v1" || pref.authorizing !== false || pref.read_only !== true) {
     throw new Error("mcp_site_browser_operator_preference_unavailable");
   }
-  if (pref.preference_valid === false) throw new Error("mcp_site_browser_operator_preference_invalid");
+  if (pref.preference_valid !== true) throw new Error("mcp_site_browser_operator_preference_invalid");
   if (pref.credential_verified !== false || pref.external_runner_connected !== false || pref.site_provider_registered_by_preference !== false) {
     throw new Error("mcp_site_browser_operator_preference_authority_mismatch");
   }
-  const siteId = pref.site_provider_id || "";
+  const siteId = pref.site_provider_id;
   if (typeof siteId !== "string" || (siteId && !ID.test(siteId))) throw new Error("mcp_site_browser_selected_provider_invalid");
   if (siteId && siteId !== "etg-dfsb") throw new Error("mcp_site_browser_selected_provider_not_supported_by_etg_driver");
   if (!siteId && ids.length !== 1) throw new Error("mcp_site_browser_provider_ambiguous");
