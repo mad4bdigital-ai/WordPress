@@ -256,10 +256,20 @@ assert_journal( 'single committed genesis has a valid complete trace', is_array(
 $wpdb->head['operation_key'] = 'corrupted-head-identity';
 $forged_head = MAD4B_SCP_Operation_Journal::trace( $orphan_ctx['operation_id'] );
 assert_journal( 'trace detects event-to-head identity drift despite a signed chain',
-    is_array( $forged_head ) && false === $forged_head['chain_valid'] );
+    is_array( $forged_head ) && false === $forged_head['chain_valid'] && false === $forged_head['complete'] );
 $wpdb->head['operation_key'] = $orphan_ctx['operation_key'];
 $wpdb->events[0][4] = 'forged_genesis';
 $forged_genesis = MAD4B_SCP_Operation_Journal::trace( $orphan_ctx['operation_id'] );
 assert_journal( 'trace rejects a history without operation_started genesis',
     is_array( $forged_genesis ) && false === $forged_genesis['chain_valid'] );
+$wpdb = new FixtureJournalDB();
+$wpdb->head = array( 'operation_key' => $orphan_ctx['operation_key'],
+    'operation_binding_sha256' => $orphan_ctx['operation_binding_sha256'],
+    'latest_sequence' => 0, 'latest_event_sha256' => str_repeat( '0', 64 ) );
+$orphan_append = MAD4B_SCP_Operation_Journal::append( $orphan_ctx, 'assistant_task_transition', array(
+    'expected_sequence' => 0, 'expected_event_sha256' => str_repeat( '0', 64 ),
+    'metadata' => array( 'task_id' => $orphan_ctx['operation_key'] ) ) );
+assert_journal( 'uncommitted genesis cannot accept even correctly fenced CAS append',
+    is_wp_error( $orphan_append ) && 0 === $wpdb->inserted && 0 === $wpdb->updated
+    && MAD4B_SCP_Database_Transaction_Guard::$rollback > 0 );
 echo 'OPERATION_JOURNAL_EXACT_CAS: PASS ' . $GLOBALS['tests'] . ' checks (hermetic DB stub)' . PHP_EOL;

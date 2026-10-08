@@ -375,13 +375,20 @@ try {
     $orphan_trace = MAD4B_SCP_Operation_Journal::trace( $empty_id );
     g8_journal_assert( is_array( $orphan_trace )
         && empty( $orphan_trace['chain_valid'] ) && empty( $orphan_trace['complete'] ), 'orphan_is_invalid' );
+    $orphan_context = $context;
+    $orphan_context['operation_id'] = $empty_id;
+    $orphan_context['operation_key'] = 'orphan-head-test';
+    $orphan_write = MAD4B_SCP_Operation_Journal::append( $orphan_context, 'assistant_task_transition', array(
+        'expected_sequence' => 0, 'expected_event_sha256' => str_repeat( '0', 64 ),
+        'checkpoint' => 'not_allowed' ) );
+    g8_journal_assert( is_wp_error( $orphan_write ), 'orphan_cannot_append' );
     $bad_head_key = $GLOBALS['wpdb']->prepare(
         'UPDATE g8_ci_journal_heads SET operation_key = %s WHERE operation_id = %s',
         'tampered-head-key', $context['operation_id'] );
     g8_journal_assert( 1 === $GLOBALS['wpdb']->query( $bad_head_key ), 'tamper_disposable_head' );
     $drifted_trace = MAD4B_SCP_Operation_Journal::trace( $context['operation_id'] );
-    g8_journal_assert( is_array( $drifted_trace ) && empty( $drifted_trace['chain_valid'] ),
-        'head_identity_forgery_denied' );
+    g8_journal_assert( is_array( $drifted_trace ) && empty( $drifted_trace['chain_valid'] )
+        && empty( $drifted_trace['complete'] ), 'head_identity_forgery_denied' );
 } catch ( Throwable $e ) {
     $journal_error = substr( $e->getMessage(), 0, 160 );
 } finally {

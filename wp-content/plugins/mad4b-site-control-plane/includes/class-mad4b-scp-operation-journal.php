@@ -147,6 +147,16 @@ final class MAD4B_SCP_Operation_Journal {
 			$head = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE BINARY operation_id=BINARY %s FOR UPDATE", $context['operation_id'] ), ARRAY_A );
 			if ( ! is_array( $head ) ) throw new RuntimeException( 'operation_head_missing' );
 			if ( ! hash_equals( (string) $head['operation_binding_sha256'], (string) $context['operation_binding_sha256'] ) || ! hash_equals( (string) $head['operation_key'], (string) $context['operation_key'] ) ) throw new RuntimeException( 'operation_identity_conflict' );
+			// Pre-atomic-generation legacy heads may remain at sequence zero.
+			// Do not let a later append turn an uncommitted genesis into an
+			// executable-looking history; only independent reconciliation may
+			// resolve an orphan or a malformed head.
+			if ( (int) $head['latest_sequence'] < 1
+				|| ! is_string( $head['latest_event_sha256'] )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $head['latest_event_sha256'] )
+				|| hash_equals( str_repeat( '0', 64 ), $head['latest_event_sha256'] ) ) {
+				throw new RuntimeException( 'operation_journal_genesis_unverified' );
+			}
 			if ( $has_expected_seq && ( (int) $head['latest_sequence'] !== $args['expected_sequence']
 				|| ! hash_equals( (string) $head['latest_event_sha256'], $args['expected_event_sha256'] ) ) ) {
 				throw new RuntimeException( 'operation_journal_cas_stale' );
@@ -286,13 +296,15 @@ final class MAD4B_SCP_Operation_Journal {
 			);
 		}
 		$head = self::head( $operation_id );
-		$complete = ! is_wp_error( $head ) && ! empty( $events )
-			&& (int) $head['latest_sequence'] === count( $events )
-			&& hash_equals( (string) $head['latest_event_sha256'], $previous );
 		if ( ! is_wp_error( $head ) && ! empty( $events )
 			&& ( ! hash_equals( (string) $head['operation_key'], $first_key )
 				|| ! hash_equals( (string) $head['operation_binding_sha256'], $first_binding ) ) ) $valid = false;
 		if ( is_wp_error( $head ) || empty( $events ) ) $valid = false;
+		// Complete is an acceptance-ready, verified history, not merely a
+		// matching row count. A tampered head must fail both acceptance signals.
+		$complete = $valid && ! is_wp_error( $head )
+			&& (int) $head['latest_sequence'] === count( $events )
+			&& hash_equals( (string) $head['latest_event_sha256'], $previous );
 		return array( 'contract'=>'mad4b.dynamic-operation-trace.v1','operation_id'=>$operation_id,'operation_identity_class'=>(string)$identity['identity_class'],'historical_identity_preserved'=>!empty($identity['historical_identity_preserved']),'rewrite_allowed'=>!empty($identity['rewrite_allowed']),'chain_valid'=>$valid,'complete'=>$complete,'count'=>count($events),'events'=>$events,'read_only'=>true,'mutation_performed'=>false );
 	}
 
