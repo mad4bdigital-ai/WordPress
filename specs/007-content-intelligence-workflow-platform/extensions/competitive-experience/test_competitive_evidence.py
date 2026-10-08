@@ -153,5 +153,4 @@ with tempfile.TemporaryDirectory() as temporary:
         assert str(error) == "COMPETITIVE_EVIDENCE_HISTORY_ENTRY_DIGEST_INVALID"
     assert [path.read_bytes() for path in (summary_path, history_path, resource_path)] == before
 
-
 print("mad4b.competitive-evidence-tests.v3: PASS")
