@@ -61,7 +61,7 @@ profile_case( 'audience_country_and_languages_are_explicit', static function () 
 	profile_check( ! is_wp_error( $first ) && 'search-us' === $first['profile']['profile_id'] && 'market-us' === $first['profile']['markets'][0]['id'], 'IDs derive from US target market' );
 	profile_check( array( 'en-us', 'es' ) === $first['profile']['language_policy']['desired'] && ! $first['profile']['enabled'] && $first['profile']['provider_policy']['freeze_spend'], 'selected audience languages remain paused and frozen' );
 	$second = MAD4B_SCP_Search_Profile_Admin::save( $args );
-	profile_check( ! is_wp_error( $second ) && 'search-us-2' === $second['profile']['profile_id'], 'second market profile gets collision-safe ID' );
+	profile_check( ! is_wp_error( $second ) && 'search-us-2' === $second['profile']['profile_id'] && 'market-us-2' === $second['profile']['markets'][0]['id'], 'second market profile gets collision-safe ID' );
 	$args['profile_id'] = 'custom-us-audience'; $args['market_id'] = 'custom-market';
 	$custom = MAD4B_SCP_Search_Profile_Admin::save( $args );
 	profile_check( ! is_wp_error( $custom ) && 'custom-market' === $custom['profile']['markets'][0]['id'], 'explicit IDs supported' );
