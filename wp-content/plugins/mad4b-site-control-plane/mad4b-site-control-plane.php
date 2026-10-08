@@ -439,6 +439,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-connection-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-browser-acceptance-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';
@@ -452,6 +453,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
  * idempotent and later calls remain safe.
  */
 MAD4B_SCP_Context_Admin_UI::boot();
+MAD4B_SCP_Browser_Acceptance_Admin_UI::boot();
 MAD4B_SCP_Site_Profile_Admin::boot();
 MAD4B_SCP_Admin_Settings_Persistence::boot();
 MAD4B_SCP_Staging_OAuth_Autoconfig::boot_admin_actions_early();

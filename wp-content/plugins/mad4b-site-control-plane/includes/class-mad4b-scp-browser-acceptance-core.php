@@ -86,6 +86,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'browser_engine_authority' => false,
 			'execution_mode' => 'external_browser_agent',
 			'provider_count' => count( $providers ),
+			'operator_preference' => class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ? MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection() : array(),
 			'providers' => $providers,
 			'registry' => $inventory,
 		);
