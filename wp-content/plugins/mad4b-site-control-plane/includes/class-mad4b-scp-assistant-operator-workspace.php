@@ -34,7 +34,13 @@ final class MAD4B_SCP_Assistant_Operator_Workspace {
             $environment = in_array( $bootstrap['environment'] ?? '',
                 array( 'staging', 'development', 'local', 'production' ), true )
                 ? $bootstrap['environment'] : 'unknown';
-            $previewReady = ! empty( $bootstrap['preview_eligible'] );
+            // Operator UI must not report eligible on binding alone when the
+            // native local Ability/Adapter lifecycle is missing or not observed.
+            $previewReady = ! empty( $bootstrap['preview_eligible'] )
+                && ! empty( $bootstrap['assistant_read_registration']['read_catalog_local_ready'] );
+            if ( ! $previewReady && ! empty( $bootstrap['preview_eligible'] ) ) {
+                $blockers[] = 'assistant_read_catalog_unverified';
+            }
             foreach ( $bootstrap['blockers'] ?? array() as $b ) {
                 if ( is_string( $b ) && preg_match( '/^[a-z0-9_]{3,96}$/D', $b )
                     && count( $blockers ) < 12 ) $blockers[] = $b;
