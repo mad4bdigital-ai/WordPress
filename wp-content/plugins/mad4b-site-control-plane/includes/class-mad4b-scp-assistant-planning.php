@@ -224,8 +224,9 @@ final class MAD4B_SCP_Assistant_Planning {
             if ( $review ) { $action = 'REVIEW_CONTEXT'; $role = 'configuration'; }
             elseif ( 'degraded' === $state ) { $action = 'REPAIR_CONFIGURATION'; $role = 'configuration'; }
             elseif ( 'active' === $state ) {
-                $action = ! empty( $hint['provider'] ) && 'certified' !== ( $hint['certification_state'] ?? 'unknown' )
-                    ? 'CERTIFY_PROVIDER' : 'VERIFY_BEHAVIOR';
+                // Even caller-claimed "certified" is untrusted: only an independent
+                // provider attestation can satisfy actual certification.
+                $action = ! empty( $hint['provider'] ) ? 'CERTIFY_PROVIDER' : 'VERIFY_BEHAVIOR';
                 $role = 'certification';
             } elseif ( 'unknown' === $state && $item['required'] ) {
                 $action = 'VERIFY_EXISTENCE'; $role = 'discovery';
