@@ -1,0 +1,62 @@
+name: Feature 007 G8 Real Database CAS
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/feature-007-g8-database-cas.yml'
+permissions:
+  contents: read
+concurrency:
+  group: feature-007-g8-db-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  disposable-database-cas:
+    name: G8 real CAS / ${{ matrix.database }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+        database: ['mariadb:11.4', 'mysql:8.4']
+    services:
+      database:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ROOT_PASSWORD: g8_ci_only_not_a_site_secret
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: g8_ci_contract
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pg8_ci_only_not_a_site_secret"
+          --health-interval=5s
+          --health-timeout=4s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify exact head and guard against external DB URLs
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test -z "${G8_CAS_HOST:-}"
+          test -z "${G8_CAS_DATABASE:-}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli
+          coverage: none
+      - name: Prove SQL-level concurrent CAS on disposable table only
+        env:
+          G8_CAS_DISPOSABLE: '1'
+          G8_CAS_HOST: 127.0.0.1
+          G8_CAS_USER: root
+          G8_CAS_PASSWORD: g8_ci_only_not_a_site_secret
+          G8_CAS_DATABASE: g8_ci_contract
+          G8_CAS_PORT: 3306
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
