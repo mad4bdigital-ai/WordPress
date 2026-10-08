@@ -133,6 +133,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-artifacts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-intelligence-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-intake-preview.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-evidence-preview.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-aci01-opportunity-preview.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-content-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-draft.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-publication-verification.php';
@@ -493,6 +494,7 @@ MAD4B_SCP_Automation_SLO::boot();
 MAD4B_SCP_G7_Read_Surfaces::boot();
 MAD4B_SCP_ACI01_Intake_Preview::boot();
 MAD4B_SCP_ACI01_Evidence_Preview::boot();
+MAD4B_SCP_ACI01_Opportunity_Preview::boot();
 
 $mad4b_passive_admin_read = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 	&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();

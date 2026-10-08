@@ -37,6 +37,7 @@
     "evidence-trust.json",
     "implementation-slice-01.md",
     "implementation-slice-02.md",
+    "implementation-slice-03.md",
     "ledger-contracts.json",
     "operations.md",
     "optimization-policy.json",
@@ -255,5 +256,13 @@
     "ability": "mad4b/aci01-evidence-preview",
     "artifact_journal_modified": false,
     "provider_spend_allowed": false
+  },
+  "runtime_slice_03": {
+    "contract": "mad4b.aci01.opportunity-preview.v1",
+    "delivery_state": "SOURCE_IMPLEMENTED_EXACT_PHP_PENDING_STAGING_PENDING",
+    "authorizing": false,
+    "production_authorized": false,
+    "effects": "PURE_READ",
+    "ability": "mad4b/aci01-opportunity-preview"
   }
 }
