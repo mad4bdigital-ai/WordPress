@@ -133,6 +133,11 @@ final class MAD4B_SCP_Solution_Discovery {
     /** The only environmental reads: plugin inventory and registered metadata. */
     public static function site_inventory() {
         $rows = array(); $plugin_complete = false; $ability_complete = false;
+        // Load the trusted WordPress core metadata helper in REST/MCP contexts.
+        // Do not include or execute unknown third-party plugin PHP.
+        if ( ! function_exists( 'get_plugins' ) && defined( 'ABSPATH' )
+            && is_file( ABSPATH . 'wp-admin/includes/plugin.php' ) )
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
         $plugins = array();
         if ( function_exists( 'get_plugins' ) ) {
             $plugins = get_plugins();
@@ -149,15 +154,19 @@ final class MAD4B_SCP_Solution_Discovery {
         $count = 0;
         foreach ( $plugins as $file => $data ) {
             if ( ++$count > 240 ) break;
-            if ( ! is_string( $file ) || ! preg_match( '~^[A-Za-z0-9._+/\-]{1,190}\.php$~D', $file )
+            if ( ! is_string( $file ) ||
+                ! preg_match( '~^(?:[A-Za-z0-9][A-Za-z0-9._-]{0,89}/)?[A-Za-z0-9][A-Za-z0-9._-]{0,89}\\.php$~D', $file )
                 || ! is_array( $data ) ) continue;
             $slug = dirname( $file );
             if ( '.' === $slug ) $slug = pathinfo( $file, PATHINFO_FILENAME );
             $label = isset( $data['Name'] ) && is_string( $data['Name'] ) ? trim( strip_tags( $data['Name'] ) ) : $slug;
             if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $slug );
-            $rows[] = array( 'id' => 'plugin:' . $slug, 'label' => $label,
+            $rows[] = array( 'id' => 'plugin:' . $file, 'label' => $label,
                 'source' => 'installed_plugin', 'observed_state' => in_array( $file, $active, true ) ? 'active' : 'inactive',
-                'match_text' => $label . ' ' . str_replace( array( '/', '-', '_' ), ' ', $slug ) );
+                'match_text' => $label . ' ' . str_replace( array( '/', '-', '_' ), ' ', $file ),
+                'metadata_digest' => hash( 'sha256', serialize( array( $file, 
+                    is_string( $data['Version'] ?? null ) ? substr( $data['Version'], 0, 64 ) : '',
+                    in_array( $file, $active, true ) ) ) ) );
         }
         if ( function_exists( 'wp_get_abilities' ) ) {
             $abilities = wp_get_abilities();
@@ -169,6 +178,10 @@ final class MAD4B_SCP_Solution_Discovery {
                     if ( ! is_string( $name ) || ! preg_match( '~^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$~D', $name )
                         || ! is_object( $ability ) || ! method_exists( $ability, 'get_label' )
                         || ! method_exists( $ability, 'get_description' ) ) continue;
+                    // Private registration metadata is not a discovery result.
+                    if ( ! method_exists( $ability, 'get_meta' ) ) continue;
+                    $meta = $ability->get_meta();
+                    if ( ! is_array( $meta ) || true !== ( $meta['show_in_rest'] ?? false ) ) continue;
                     $label = $ability->get_label(); $description = $ability->get_description();
                     if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $name );
                     $description = self::safe_text( $description, 180 ) ? $description : '';
@@ -179,12 +192,16 @@ final class MAD4B_SCP_Solution_Discovery {
             }
         }
         return array( 'rows' => $rows,
+            'plugin_inventory_scope' => $plugin_complete ? 'installed_plugins' : 'active_only_fallback',
+            'ability_visibility_scope' => 'show_in_rest_only',
             'plugin_inventory_complete' => $plugin_complete && count( $plugins ) <= 240,
             'ability_inventory_complete' => $ability_complete && ( ! isset( $abilities ) || count( $abilities ) <= 240 ) );
     }
 
     public static function read_discover( $input = array() ) {
         if ( ! self::validate( $input ) ) return self::fail( 'input_invalid' );
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) )
+            return self::fail( 'permission_denied' );
         if ( ! class_exists( 'MAD4B_SCP_Adaptive_Operations_Context', false ) ) return self::fail( 'context_missing' );
         $binding = MAD4B_SCP_Adaptive_Operations_Context::current();
         if ( ! is_array( $binding ) || ( $binding['profile_digest'] ?? '' ) !== $input['expected_profile_digest']
@@ -211,13 +228,17 @@ final class MAD4B_SCP_Solution_Discovery {
                 'observed_state' => 'caller_claimed',
                 'match_text' => $hint['label'] . ' ' . ( $hint['description'] ?? '' ) );
         }
+        if ( count( $all ) > 504 ) return self::fail( 'inventory_over_budget' );
         foreach ( $all as $row ) {
             if ( ! is_array( $row ) || ! is_string( $row['id'] ?? null )
-                || ! preg_match( '~^(plugin|ability|hint):[a-zA-Z0-9._/+:-]{2,240}$~D', $row['id'] )
+                || ! preg_match( '~^(?:plugin:(?:[A-Za-z0-9][A-Za-z0-9._-]{0,89}/)?[A-Za-z0-9][A-Za-z0-9._-]{0,89}\\.php|ability:[A-Za-z0-9._-]+/[A-Za-z0-9._-]+|hint:[a-z_]+:[a-z0-9][a-z0-9._-]{1,79})$~D', $row['id'] )
                 || ! self::safe_text( $row['label'] ?? null, 120 )
                 || ! in_array( $row['source'] ?? null, array( 'installed_plugin', 'registered_ability', 'external_service', 'connector', 'skill', 'operator' ), true )
                 || ! in_array( $row['observed_state'] ?? null, array( 'active', 'inactive', 'registered', 'caller_claimed' ), true )
                 || ! is_string( $row['match_text'] ?? null ) || strlen( $row['match_text'] ) > 900
+                || ( isset( $row['metadata_digest'] ) && (
+                    ! is_string( $row['metadata_digest'] ) ||
+                    ! preg_match( '/^[a-f0-9]{64}$/D', $row['metadata_digest'] ) ) )
                 || isset( $seen[ $row['id'] ] ) ) return self::fail( 'candidate_invalid' );
             $seen[ $row['id'] ] = true;
             $matches = array_keys( array_intersect_key( $goal, self::tokens( $row['match_text'] ) ) );
@@ -226,6 +247,7 @@ final class MAD4B_SCP_Solution_Discovery {
             if ( 'match' === ( $input['mode'] ?? 'match' ) && 0 === $score ) continue;
             $candidates[] = array( 'id' => $row['id'], 'label' => $row['label'],
                 'source' => $row['source'], 'observed_state' => $row['observed_state'],
+                'metadata_digest' => $row['metadata_digest'] ?? null,
                 'matched_terms' => $matches, 'lexical_score' => $score,
                 'classification' => 'UNMAPPED_OR_UNVERIFIED',
                 'behavior_verified' => false, 'authorization_verified' => false,
@@ -244,8 +266,12 @@ final class MAD4B_SCP_Solution_Discovery {
             'snapshot_sha256' => $snapshot, 'mode' => $input['mode'] ?? 'match',
             'coverage' => array( 'plugin_inventory_complete' => ! empty( $inventory['plugin_inventory_complete'] ),
                 'ability_inventory_complete' => ! empty( $inventory['ability_inventory_complete'] ),
+                'ability_visibility_scope' => 'show_in_rest_only',
+                'plugin_inventory_scope' => $inventory['plugin_inventory_scope'] ?? 'unknown',
                 'external_inventory_complete' => false ),
             'total_matches' => count( $candidates ), 'offset' => $offset, 'limit' => $limit,
+            'inventory_incomplete' => empty( $inventory['plugin_inventory_complete'] )
+                || empty( $inventory['ability_inventory_complete'] ),
             'next_offset' => $offset + $limit < count( $candidates ) && $offset + $limit <= 400 ? $offset + $limit : null,
             'candidates' => array_slice( $candidates, $offset, $limit ),
             'decision' => count( $candidates ) ? 'EVALUATE_CANDIDATES' : 'EXPAND_INVENTORY_OR_EXTERNAL_DISCOVERY',
