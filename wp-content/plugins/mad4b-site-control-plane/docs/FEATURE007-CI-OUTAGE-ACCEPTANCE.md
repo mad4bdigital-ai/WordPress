@@ -35,6 +35,17 @@ From PowerShell, adjust the PHP paths:
     $Head = (git rev-parse HEAD).Trim()
     py -3 wp-content/plugins/mad4b-site-control-plane/tests/feature007-disposable-db-matrix.py --expected-head $Head --php74 "C:\php74\php.exe" --php83 "C:\php83\php.exe" --allow-disposable-docker --report "$env:TEMP\feature007-$Head-disposable-db.json"
 
+The same SQL fixture now exercises the real `MAD4B_SCP_Operation_Journal::begin/append`
+source using separate disposable InnoDB head/event tables, including an
+injected event-insert failure, head-CAS failure, rollback observation,
+duplicate-genesis rejection, stale CAS refusal and hash-chain readback.
+The matrix rejects a PHP exit=0 result that omits the explicit
+`G8_JOURNAL_TRANSACTION: PASS` marker. A test-only transaction guard is
+used to connect the journal source to real SQL; this is **not** certification
+of the complete WordPress transaction guard, provider execution, Staging,
+or faulted network commits. A genuine native PHP/Docker test run is still
+required before the local SQL acceptance result can be claimed.
+
 The result is **LOCAL_DISPOSABLE_DB_MATRIX_PASS_ONLY** if all four
 database/PHP combinations pass. Missing Docker/PHP/image is BLOCKED,
 not PASS. Any failed CAS/refusal/cleanup is FAIL and the receipt lists

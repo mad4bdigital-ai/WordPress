@@ -191,6 +191,7 @@ def run_matrix(root, opt, report, created, clean_env):
             report["results"].append({"case": case, "state": state,
                                       "safe_refusal_exit_2": refused.returncode == 2,
                                       "native_cas_exit_0": tested.returncode == 0,
+                                      "journal_genesis_native_sql_marker": "G8_JOURNAL_TRANSACTION: PASS" in tested.stdout,
                                       "image_id": image.stdout.strip(),
                                       "stdout_sha256": hashlib.sha256(tested.stdout.encode()).hexdigest()})
     return blocked, failed
@@ -206,7 +207,7 @@ def self_test():
                "runtime_source_sha256": {TEST: "c" * 64}}
     scenarios = ("success", "timeout_after_create", "rejected_without_create", "wrong_owner",
                  "remove_failed", "missing_docker", "missing_php", "head_changed",
-                 "dirty_at_end", "source_changed")
+                 "dirty_at_end", "source_changed", "missing_journal_marker")
     for scenario in scenarios:
         live, calls = {}, []
         snapshots = 0
@@ -261,6 +262,8 @@ def self_test():
                 output = "yes" if "extension_loaded" in args[-1] else "7.4" if "7.4" in args[0] else "8.3"
             else:
                 code = 2 if env.get("G8_CAS_DATABASE") == "forbidden_database" else 0
+                if code == 0 and args[-1] == TEST and scenario != "missing_journal_marker":
+                    output = "G8_JOURNAL_TRANSACTION: PASS (mocked fixture marker only)"
             return SimpleNamespace(returncode=code, stdout=output, stderr="")
         def which(binary, **kwargs):
             if scenario == "missing_docker" and binary == "docker" or scenario == "missing_php" and binary == "php7.4":
