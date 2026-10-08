@@ -3,6 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-g6-operation-compiler.php';
 require_once __DIR__ . '/class-mad4b-scp-g6-ai-workspace.php';
 require_once __DIR__ . '/class-mad4b-scp-g6-knowledge-admission.php';
+require_once __DIR__ . '/class-mad4b-scp-g6-conversation-vault.php';
 require_once __DIR__ . '/class-mad4b-scp-g6-provider-routing.php';
 require_once __DIR__ . '/class-mad4b-scp-g6-retrieval-evaluation.php';
 
@@ -72,6 +73,11 @@ final class MAD4B_SCP_G6_Acceptance {
 					'context_sha256' => array( 'type' => 'string' ),
 				), 'required' => array( 'intent', 'privacy_class', 'region', 'maximum_cost_micro', 'context_sha256' ), 'additionalProperties' => false ),
 			),
+			'mad4b/g6-private-conversation-status' => array(
+				'label' => 'Inspect private conversation metadata',
+				'callback' => array( 'MAD4B_SCP_G6_Conversation_Vault', 'status' ),
+				'schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+			),
 			'mad4b/g6-acceptance-status' => array(
 				'label' => 'Inspect G6 Acceptance',
 				'callback' => array( __CLASS__, 'status' ),
@@ -121,6 +127,8 @@ final class MAD4B_SCP_G6_Acceptance {
 			'compiled_plan_review_redacts_payloads' => true,
 			'ai_workspace_proposal_has_no_model_execution' => true,
 			'knowledge_admission_is_metadata_only' => true,
+			'conversation_vault_encryption_requires_dedicated_key' => true,
+			'conversation_vault_production_certified' => false,
 			'model_router_has_no_execution' => true,
 			'retrieval_evaluation_requires_external_readback' => true,
 			'dispatch_dependency_receipts' => 'not_implemented_fail_closed',
