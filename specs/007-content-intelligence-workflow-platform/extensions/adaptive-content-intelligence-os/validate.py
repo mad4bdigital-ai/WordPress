@@ -18,8 +18,8 @@ def _read_json(path):
     return json.loads(path.read_text(encoding='utf-8'))
 
 
-def _dynamic():
-    spec = importlib.util.spec_from_file_location('aci_dynamic_core', ROOT / 'dynamic_core.py')
+def _dynamic(root):
+    spec = importlib.util.spec_from_file_location('aci_dynamic_core', root / 'dynamic_core.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -140,7 +140,7 @@ def validate(root=ROOT):
     if gate_ids != expected_gate:
         faults.append('gate_inventory_invalid')
     try:
-        dynamic = _dynamic()
+        dynamic = _dynamic(root)
         dynamic.validate_model(tasks, gates, reqs, graph)
     except Exception as error:
         reason = str(error)
