@@ -68,8 +68,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "307f4e5a9dfe5696f5155bb024ce18f6b13068ec3603ba271b0d23977a1fc28f",
-      "bytes": 39908
+      "sha256": "14f9514e73b22fc8191af7df35e7c0cd7fbba15bc233cb823ea20bda546d38b6",
+      "bytes": 40410
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",
@@ -171,8 +171,8 @@
   "workflow_paths": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "d47c161d7b0beb415eb25bcc32a70cd81ffd7a8cb327fac9e7fa326330aca848",
-      "bytes": 35349
+      "sha256": "a77c00b8841a3e228db4725ba915bf51d2494e7773769aa3523ee0e866b9f3e9",
+      "bytes": 35504
     }
   ]
 }
