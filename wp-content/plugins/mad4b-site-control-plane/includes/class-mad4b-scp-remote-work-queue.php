@@ -30,7 +30,9 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				'production_policy' => 'deny',
 			),
 		);
-		return class_exists( 'MAD4B_SCP_Search_Work_Operations' ) ? MAD4B_SCP_Search_Work_Operations::definitions( $base ) : $base;
+		$registered = class_exists( 'MAD4B_SCP_Search_Work_Operations' ) ? MAD4B_SCP_Search_Work_Operations::definitions( $base ) : $base;
+		return class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
+			? MAD4B_SCP_Assistant_Read_Work_Operations::definitions( $registered ) : $registered;
 	}
 
 	private static function now() { return time(); }
@@ -181,6 +183,15 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		if ( ! isset( self::allowed_operations()[ $operation_id ] ) ) return new WP_Error( 'mad4b_remote_work_operation_not_allowed', 'Remote work operation is not registered.' );
 		$definition = self::allowed_operations()[ $operation_id ];
 		if ( isset( $definition['validate_payload'] ) && ! call_user_func( $definition['validate_payload'], $payload ) ) return new WP_Error( 'mad4b_remote_work_payload_invalid', 'Semantic work payload is outside its registered contract.' );
+		// Assistant jobs may request bounded discovery in Staging only, never
+		// issue grants, mutate providers or cross exact Site/Origin/Restore identity.
+		if ( 0 === strpos( $operation_id, 'assistant_' )
+			&& ( ! class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
+				|| ! MAD4B_SCP_Assistant_Read_Work_Operations::validate_for_operation( $operation_id, $payload )
+				|| ! MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $payload ) ) ) {
+			return new WP_Error( 'mad4b_remote_work_assistant_binding_invalid',
+				'Assistant read work requires matching Staging-only runtime, operation and restore identity.' );
+		}
 		foreach ( $expected_identity as $key => $value ) $expected_identity[ $key ] = strtolower( trim( (string) $value ) );
 		if ( ! self::identity_valid( $expected_identity ) ) return new WP_Error( 'mad4b_remote_work_identity_invalid', 'Remote work requires complete exact-build identity.' );
 		$ttl_seconds = max( 300, min( DAY_IN_SECONDS, (int) $ttl_seconds ) );
