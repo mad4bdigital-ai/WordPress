@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 287,
+  "changed_file_count": 290,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -453,8 +453,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-projection-view-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-script-syntax.py"
       ]
+    },
+    {
+      "id": "concurrent-site-profile-search-regressions-20261008",
+      "semantic_unit": "Reconcile exact Site Profile and Search fixture paths added to #258 concurrently while child PRs were integrating",
+      "revert_boundary": "Tracks existing Hub changes only; authority and behavior are owned by the upstream source commits",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/search-runtime-fixtures.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "6d80ed2f9c8eb2674c838eda7a801598ecf408f9cf0e571b586ba35b673de053",
+  "changed_paths_sha256": "0206027147caae00125d2d662f6abd2111d1db972ff685b2dadfcd2000c2046a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
