@@ -37,7 +37,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-operation-compiler.php",
-      "sha256": "b86031d24d0fd5b0da22a6df7feb1bc95f8ff1099fbbb7ec135df08087cccbb4"
+      "sha256": "ccca6e8075eee8d7815aaed85a119b75fbbf90e1d25eb40932ce391ecd9445d5"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-ai-workspace.php",
@@ -57,17 +57,25 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
-      "sha256": "0d370e7c934aff53b200dd76097ec7ead5b29384b3df1652871bc4ab21006c05"
+      "sha256": "8dbfd05d1704f1c5e0b2e5735f06971f1217893de356aae8dd73352f3435762f"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "a5220b3410f7fafa7a3ba501dfe35758c36b18c8ff6ce010eec72ed6b21d6903"
+      "sha256": "05aed3ca045d06b37bb00b73eae284cda450089d710a36a7320c53eaa8e02a04"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",
+      "sha256": "4cfe6f6c4655f60a2574dcffbae1ea8094063e26845058bc0fdc19902869a983"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-durable-dag-evidence.php",
+      "sha256": "d983f218be20f0b4f55e55beb34c30eb4d9ec52f6f341c1896fd18fcd38b475a"
     }
   ],
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-private-preview-contract.php",
-      "sha256": "d2ef2ec738948573c4ec446298db77e9fb5514cb2d958b119b6139d6b6b4cf60"
+      "sha256": "42de3a0da347549afaae8f066aaade475bcef692d145f11f33d704a50dcfc761"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-compiler-denial-runtime.php",
@@ -75,7 +83,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-admission-denial-runtime.php",
-      "sha256": "cbe8634187ec4d9fcc5a722701c4add8f63f5771a0d6121395513fa8f7866a77"
+      "sha256": "7b37769face50ee27937331a2a54226574244f542db30f72133f8bf59d7704c5"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-provider-retrieval-denials.php",
@@ -88,12 +96,20 @@
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-delivery-integrity.py",
       "sha256": "8056b02cde36ce4af9075c93b4442911d42c41c74f5bd5ca536ce0dc7dedd2f6"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-conversation-vault-runtime.php",
+      "sha256": "78f1828d3969affe564082c9d3d600e598a8e65af24a497a991bf9177de3e9d5"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",
+      "sha256": "893a715efcd48ded00db93e5e1bc7a5752442e2c0efa239a2a02983e0e9fcf83"
     }
   ],
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.md",
-      "sha256": "ab359687a893f13ca9655e8cbbcf87f461ddf82f3d3e86a7bcdce6ecea928b21"
+      "sha256": "c345544fceb3cc206d3d083de471b61105bb1bdccb870ae15f9e2836c048d65e"
     }
   ],
   "acceptance_contracts": [
@@ -106,11 +122,11 @@
     "admin_route_smoke_and_php_matrix"
   ],
   "external_acceptance_required": [
-    "approved_model_accounts_and_cost_readback",
-    "conversations_and_prompt_library_governed_storage",
-    "native_document_ingestion_and_vector_deletion",
-    "media_rights_and_output_certification",
-    "server_bound_dependency_journal_and_approved_execution",
-    "staging_provider_browser_and_reversal_tests"
+    "certify_live_model_accounts_consents_regions_and_cost_readbacks",
+    "staging_encryption_key_rotation_purge_backup_and_export_governance",
+    "private_conversation_and_prompt_library_end_to_end",
+    "licensed_documents_and_vector_tenant_isolation_source_deletion",
+    "journal_verified_provider_postconditions_with_approval_and_rollback",
+    "staging_provider_browser_and_hub_cumulative_certification"
   ]
 }
