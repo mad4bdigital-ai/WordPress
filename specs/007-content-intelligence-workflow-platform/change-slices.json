@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 322,
+  "changed_file_count": 342,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -576,8 +576,36 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php"
       ]
+    },
+    {
+      "id": "aci01-adaptive-content-intelligence-os-spec-kit",
+      "semantic_unit": "ACI01 optional non-authorizing complete Adaptive Content Intelligence OS target Spec Kit, five decision loops, typed relations/WPML, provider budget and publishing contracts, 43 requirements, 71 OPEN tasks, gated acceptance",
+      "revert_boundary": "Revert the ACI01 spec-only extension as one slice, with its root README/CI registration; no runtime service, grant, publication or frozen parent task changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/README.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/acceptance.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/architecture.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/constitution.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/decision-evidence.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/native-relations-wpml.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/orchestration-budget.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/publication-growth.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/data-model.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/manifest.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/operations.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/plan.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/quickstart.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/research.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/spec.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/tasks.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_validate.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/traceability.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ui.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/validate.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "02e74201d4cbe2e2716e7579ceab874f1a11abe6ab231311617360d6d2ae440a",
+  "changed_paths_sha256": "3c54959a4fd4a989e8f946e8d33cb7e3a93801ab51887cada09d9f8760363612",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

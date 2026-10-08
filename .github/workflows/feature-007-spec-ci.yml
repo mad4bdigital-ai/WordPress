@@ -247,6 +247,11 @@ jobs:
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
 
+      - name: Validate ACI01 Adaptive Content Intelligence OS Spec Kit
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/validate.py
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_validate.py
+
       - name: Reject unsafe competitor evidence and false extension completion
         run: |
           python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py

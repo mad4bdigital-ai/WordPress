@@ -173,3 +173,7 @@ The first vertical slice cannot close while repository governance is only commit
 ## Optional competitive experience extension
 
 [CE01](extensions/competitive-experience/README.md) retains four original competitor ZIPs with source hashes and defines 59 capability requirements, 35 local phases and 175 implementation tasks. Its independent ledger is outside the frozen release scope.
+
+## Optional Adaptive Content Intelligence OS target Spec Kit (ACI01)
+
+[ACI01](extensions/adaptive-content-intelligence-os/README.md) is the full, **non-authorizing** target architecture for multi-site/brand/locale discovery, governed research and evidence, content/experience planning, native Post Meta/WPML relation integrity, independent QA, publication and postpublish learning. It defines 43 requirements, 71 OPEN tasks, 11 local gates, 5 decision loops and bounded provider/economic/authority contracts. This optional documentation extension neither changes the frozen Feature 007/CE01 release denominator nor claims deployed runtime or Production readiness. Its validator and denial tests run in Feature 007 Spec Quality CI.
