@@ -213,13 +213,13 @@ upgrade caller claims to signed native capability attestations.
 
 ### Exact-head offline checks
 
-The existing `feature007-manual-preflight.py` and the GA/GB PHP 7.4/8.3
-workflow matrix now include
-`tests/assistant-entrypoint-registration-runtime.php`. This fixture
-exercises both hook callbacks, adapter inventory, actual ability
-registration metadata, duplicate registration denial, and the fail-closed
-registration-witness behavior. It also verifies the source entrypoint
-wiring. It is a **hermetic test**, not a real WordPress/MCP acceptance run.
+The existing `feature007-manual-preflight.py` and the PHP 7.4/8.3
+workflow matrix now include `tests/assistant-entrypoint-registration-runtime.php`
+and `tests/assistant-convergence-runtime.php`. These hermetic fixtures
+exercise all three read hook/adapter pairs, ability metadata, duplicate
+registration denials, the fail-closed registration witness, dependency
+ambiguity/cycles and pure CAS-transition denials. They verify the main
+entrypoint wiring but are **not** live WordPress or MCP acceptance.
 
 External closure must separately prove the deployed site, build and
 `initialize`/`tools/list` match, actual read calls, authorization denial,
@@ -278,3 +278,21 @@ ability registration, tainted authorization/approval denials, and stale/terminal
 CAS transitions. CI runs this on PHP 7.4 and 8.3. **Repository tests are not
 Staging/provider/runtime acceptance**, and CI cannot be marked PASS until an
 actual exact-head runner executes.
+
+### Exact WordPress integration probe (read-only, not yet executed)
+
+After deploying an exact, certified build to a disposable WordPress instance,
+run under WordPress CLI with this plugin loaded:
+
+```bash
+wp eval-file wp-content/plugins/mad4b-site-control-plane/tests/assistant-wordpress-integration-readonly.php
+```
+
+It fails if the native WordPress Abilities lifecycle did not run or any of
+the three read Abilities/Adapters is missing; verifies invalid inputs are
+denied and the registered scopes remain private/read-only; records the
+current PHP, WordPress and plugin entrypoint source SHA. It never
+initializes a missing enrollment, triggers provider work, or mutates
+WordPress settings. `LOCAL_NATIVE_REGISTRATION_PASS` is **not**
+independent MCP `initialize`/`tools/list` proof, a site deployment
+certificate, an authorization grant or a release approval.
