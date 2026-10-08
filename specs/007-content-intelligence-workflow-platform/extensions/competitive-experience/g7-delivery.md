@@ -21,6 +21,12 @@ Coverage percentage (including the 90–95% aspiration), intervention rate, MTTR
 
 The generated Feature 007 Task Ledger currently records **24 G7 tasks PARTIAL and T4062 OPEN** (no G7 task DONE). The extension validator enforces this boundary and checks the SHA-256/byte inventory of exact source, test and workflow files. This is a repository evidence classification, **not** Release Acceptance or a deployment receipt.
 
+## Strict native receipt signature and bounded ownership values
+
+A Last Managed baseline must not trust a Crypto_Profile adapter solely because it did not return WP_Error. Execution Receipt now requires an explicit detached-signature verification result with `valid === true`, matching `purpose`, `profile_id`, `kid`, and `signed_sha256`. The PHP integration fixture tests a falsely negative adapter response; real asymmetric signer/keyring and independently persisted readback remain live acceptance work.
+
+Field-count bounds alone were insufficient: G7 limits nested snapshot values before canonicalization (16 levels, 2,048 nodes, 256 KiB total and 32 KiB/string). Objects, floats, resources, cyclic/deep structures and invalid UTF-8 fail closed. The size budget applies to the owned-field snapshot, not to the full WordPress post body. Consumers with larger serialized fields must define an explicit, reviewed normalized reference or fingerprint rather than silently dropping evidence.
+
 ## Mandatory native Last Managed readback binding
 
 The previous condition `Execution Receipt: signed + readback = PASS` was insufficient: a receipt for the same target could be attached to a different field/owner snapshot. The native typed consumer must now:

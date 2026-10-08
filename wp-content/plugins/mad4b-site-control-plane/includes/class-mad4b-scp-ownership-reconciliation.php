@@ -6,6 +6,10 @@ require_once __DIR__ . '/class-mad4b-scp-adaptive-operations-context.php';
 final class MAD4B_SCP_Ownership_Reconciliation {
 	const CONTRACT = 'mad4b.ownership-reconciliation-plan.v1';
 	const MAX_FIELDS = 64;
+	const MAX_VALUE_DEPTH = 16;
+	const MAX_VALUE_NODES = 2048;
+	const MAX_VALUE_BYTES = 262144;
+	const MAX_STRING_BYTES = 32768;
 	const TTL = 300;
 	const BASELINE_CONTRACT = 'mad4b.ownership-managed-baseline.v1';
 	const READBACK_CONTRACT = 'mad4b.ownership-baseline-readback.v1';
@@ -163,7 +167,12 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		if ( true !== $basis['baseline_valid'] ) return self::error( 'missing_managed_baseline' );
 		if ( ! empty( $basis['conflicts'] ) || $after['resource_id'] !== $basis['resource_id'] || $after['revision'] !== $basis['expected_revision'] + ( empty( $basis['changes'] ) ? 0 : 1 ) || $after['owner_revision'] !== $basis['owner_revision'] ) return self::error( 'readback_revision_conflict' );
 		foreach ( $basis['changes'] as $field => $change ) if ( self::field( $after, $field ) !== $change['after'] ) return self::error( 'partial_apply_readback' );
-		foreach ( $basis['preserved'] as $field => $evidence ) if ( ! hash_equals( $evidence['current_sha256'], self::value_digest( self::field( $after, $field ) ) ) ) return self::error( 'human_delta_overwritten' );
+		foreach ( $basis['preserved'] as $field => $evidence ) {
+			if ( ! is_array( $evidence ) || ! MAD4B_SCP_Adaptive_Operations_Context::sha( $evidence['current_sha256'] ?? null ) ) return self::error( 'preserved_evidence_invalid' );
+			$observed = self::value_digest( self::field( $after, $field ) );
+			if ( is_wp_error( $observed ) || ! MAD4B_SCP_Adaptive_Operations_Context::sha( $observed ) ||
+				! hash_equals( $evidence['current_sha256'], $observed ) ) return self::error( 'human_delta_overwritten' );
+		}
 		$actual = self::snapshot_digest( $after );
 		if ( is_wp_error( $actual ) || ! hash_equals( $basis['expected_after_sha256'], $actual ) ) return self::error( 'unrelated_state_or_owner_changed' );
 		return array( 'contract' => 'mad4b.ownership-readback.v1', 'plan_sha256' => $plan['plan_sha256'], 'resource_id' => $basis['resource_id'], 'readback_sha256' => self::snapshot_digest( $after ), 'verified' => true, 'authorizing' => false, 'native_execution_receipt_required' => true );
@@ -185,6 +194,42 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		foreach ( array_keys( $s['fields'] ) as $field ) if ( ! is_string( $field ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,100}$/D', $field ) ) return self::error( 'field_identifier_invalid' );
 		foreach ( $s['owners'] as $field => $owner ) {
 			if ( ! is_string( $field ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,100}$/D', $field ) || ! in_array( $owner, array( 'managed', 'human', 'provider', 'unknown' ), true ) ) return self::error( 'owner_record_invalid' );
+		}
+		return self::snapshot_values_bounded( $s['fields'] );
+	}
+
+	/**
+	 * Bound values BEFORE recursive canonicalization and preserve exact
+	 * JSON-compatible types. This is a traversal limit, not authorization.
+	 * Explicit limits avoid large/cyclic PHP arrays exhausting worker memory.
+	 */
+	private static function snapshot_values_bounded( array $fields ) {
+		$stack = array( array( $fields, 0 ) );
+		$nodes = 0; $bytes = 0;
+		while ( ! empty( $stack ) ) {
+			$item = array_pop( $stack );
+			$value = $item[0]; $depth = $item[1];
+			if ( ++$nodes > self::MAX_VALUE_NODES || $depth > self::MAX_VALUE_DEPTH ) return self::error( 'snapshot_value_unbounded' );
+			if ( is_array( $value ) ) {
+				if ( count( $value ) > self::MAX_VALUE_NODES ) return self::error( 'snapshot_value_unbounded' );
+				foreach ( $value as $key => $child ) {
+					if ( is_string( $key ) ) {
+						$bytes += strlen( $key );
+						if ( strlen( $key ) > 191 || $bytes > self::MAX_VALUE_BYTES ||
+							1 !== preg_match( '//u', $key ) ) return self::error( 'snapshot_value_unbounded' );
+					}
+					$stack[] = array( $child, $depth + 1 );
+					if ( count( $stack ) > self::MAX_VALUE_NODES ) return self::error( 'snapshot_value_unbounded' );
+				}
+			} elseif ( is_string( $value ) ) {
+				$bytes += strlen( $value );
+				if ( strlen( $value ) > self::MAX_STRING_BYTES || $bytes > self::MAX_VALUE_BYTES ||
+					1 !== preg_match( '//u', $value ) ) return self::error( 'snapshot_value_unbounded' );
+			} elseif ( ! is_null( $value ) && ! is_bool( $value ) && ! is_int( $value ) ) {
+				// Floats, PHP objects and resources are not deterministic
+				// owned-field JSON; canonicalization never gets these values.
+				return self::error( 'snapshot_value_type_invalid' );
+			}
 		}
 		return true;
 	}

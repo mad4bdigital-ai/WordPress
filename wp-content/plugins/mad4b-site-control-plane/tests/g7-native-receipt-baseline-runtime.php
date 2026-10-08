@@ -11,19 +11,23 @@ function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 function sanitize_key( $v ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $v ) ); }
 class MAD4B_SCP_Crypto_Profile {
+    public static $reject_as_false = false;
     public static function default_profile( $purpose ) { return 'fixture-signing-profile'; }
     public static function sign_digest( $profile_id, $sha ) {
         return array( 'profile_id' => $profile_id, 'kid' => 'fixture-kid',
             'signature' => hash_hmac( 'sha256', 'execution_receipt:' . $sha, 'fixture-private-key' ) );
     }
     public static function verify_digest_for_purpose( $signature, $sha, $purpose ) {
+        if ( self::$reject_as_false ) return false;
         if ( 'execution_receipt' !== $purpose || ! is_array( $signature ) ||
-            ! isset( $signature['signature'], $signature['profile_id'] ) ||
+            ! isset( $signature['signature'], $signature['profile_id'], $signature['kid'] ) ||
             ! hash_equals( hash_hmac( 'sha256', $purpose . ':' . $sha, 'fixture-private-key' ),
                 (string) $signature['signature'] ) ) {
             return new WP_Error( 'fixture_signature_invalid' );
         }
-        return true;
+        return array( 'contract' => 'mad4b.detached-signature-verification.v1',
+            'valid' => true, 'signed_sha256' => $sha, 'profile_id' => $signature['profile_id'],
+            'kid' => $signature['kid'], 'purpose' => $purpose );
     }
 }
 class MAD4B_SCP_Site_Profile {
@@ -88,6 +92,14 @@ g7_native_check( ! is_wp_error( $receipt ), 'native receipt built' );
 $verified = MAD4B_SCP_Execution_Receipt::verify( $receipt );
 g7_native_check( ! is_wp_error( $verified ) && true === ( $verified['cryptographic_signature_verified'] ?? false ),
     'native cryptographic verifier accepted exact signed envelope' );
+MAD4B_SCP_Crypto_Profile::$reject_as_false = true;
+$false_signature = MAD4B_SCP_Execution_Receipt::verify( $receipt );
+g7_native_check( is_wp_error( $false_signature ) &&
+    'mad4b_execution_receipt_signature_verification_invalid' === $false_signature->get_error_code(),
+    'false non-WP_Error verifier return is not a verified signature' );
+$false_baseline = MAD4B_SCP_Ownership_Reconciliation::managed_baseline( $snapshot, $binding, $receipt );
+g7_native_check( is_wp_error( $false_baseline ), 'Last Managed cannot accept false native crypto verification' );
+MAD4B_SCP_Crypto_Profile::$reject_as_false = false;
 $material = MAD4B_SCP_Ownership_Reconciliation::baseline_readback_material( $snapshot, $binding );
 $expected = hash( 'sha256', wp_json_encode( array( 'readback' => $material ),
     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );

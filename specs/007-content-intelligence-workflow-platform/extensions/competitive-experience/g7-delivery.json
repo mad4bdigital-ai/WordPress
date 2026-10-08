@@ -50,8 +50,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php"
       ],
       "remaining_acceptance": [
-        "Native typed consumer must bind signed persisted Last Managed snapshot to current site/runtime/restore epoch before Last Managed can be trusted",
-        "Independent Staging owned-field CAS/readback and human-edit preservation acceptance"
+        "Real native signed Last Managed readback with strict crypto-profile verification and exact current site/runtime/restore binding",
+        "Typed Staging CAS, bounded field-value compatibility and independent physical post-write readback"
       ]
     },
     {
@@ -143,7 +143,8 @@
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/g7-spec-delivery-contract.php",
-    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php"
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php"
   ],
   "claim_limits": {
     "all_tasks_done": false,
@@ -207,6 +208,11 @@
       "bytes": 6327
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+      "sha256": "895917a888755b0019ab65c7a8a97a248f9c2f4f94ae49df3fa9106bff85d879",
+      "bytes": 11254
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php",
       "sha256": "3c8491629ab275653a4ba9a5222dea6d1b4f9b91ebefcb03010213d09224679e",
       "bytes": 6095
@@ -248,8 +254,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
-      "sha256": "c5061a42ca42ced452bc554d1c0fda73c23b08022b407e4c86c9c44a2c12b546",
-      "bytes": 19779
+      "sha256": "17500178e4768c7f4470a89648e44759fb3aac6d62f60fba30da32561e2bd0ae",
+      "bytes": 21949
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -263,8 +269,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php",
-      "sha256": "d8a62e2c25ff6acab468cefda4b07499b69f972ac43971b245eed671a7f94be4",
-      "bytes": 7566
+      "sha256": "30664a6cbcec918fab3983508881fe0a4e67c161f79de3d822c395e5fcef37bb",
+      "bytes": 8516
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
@@ -273,8 +279,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
-      "sha256": "b16b4260f0da857ed73f975e06da1f01186fa3e4a35a8da32bbe325dad1773c6",
-      "bytes": 15145
+      "sha256": "9ea3eaa5d7dd54ab699717bfb6e5882b23ffb02eebff9e6a97aa35e93eee8cbb",
+      "bytes": 16644
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",
