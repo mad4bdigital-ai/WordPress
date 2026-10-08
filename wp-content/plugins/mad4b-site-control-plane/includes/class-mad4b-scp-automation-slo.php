@@ -470,6 +470,8 @@ final class MAD4B_SCP_Automation_SLO {
 			'cancelled_workload_rate' => $denominator > 0 ? ( $outcomes['cancelled'] ?? 0 ) / $denominator : null,
 			'outcome_denominator_includes_pending' => true,
 			'mean_completion_ms' => $completed > 0 ? $state['duration_ms_total'] / $completed : null,
+			'duration_measurement_resolution_ms' => 1000,
+			'duration_is_wall_clock_estimate' => true,
 			'false_repair_rate' => null, 'rollback_failure_rate' => null, 'quarantine_rate' => null, 'intervention_rate' => null, 'cost_rate' => null,
 			'outcome_chain_sha256' => $valid ? $state['outcome_root_sha256'] : null,
 			'recent_outcome_receipt_count' => $valid ? count( $state['outcome_receipts'] ) : null,
