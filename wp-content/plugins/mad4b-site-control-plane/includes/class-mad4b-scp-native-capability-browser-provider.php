@@ -152,7 +152,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
                 isset( $parsed['query'] ) || isset( $parsed['fragment'] ) ||
                 (int) ( $parsed['port'] ?? 443 ) !== (int) ( parse_url( $origin, PHP_URL_PORT ) ?: 443 ) ) continue;
             $path = (string) ( $parsed['path'] ?? '/' );
-            if ( ! preg_match( '~^/(?!/)[a-zA-Z0-9~._/%-]*$~D', $path ) ||
+            if ( ! preg_match( '#^/(?!/)[a-zA-Z0-9~._/%-]*$#D', $path ) ||
                 preg_match( '~(?:\\.\\.|%2e|%2f|%5c|%00|\\\\|#)~i', $path ) ||
                 preg_match( '~(?:^|/)(?:wp-admin|wp-json|wp-login\\.php|xmlrpc\\.php|wp-cron\\.php)(?:/|$)~i', $path ) ) continue;
             $cases[] = array(
