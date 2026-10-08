@@ -48,6 +48,13 @@ $snapshot = array(
         'runtime_generation_sha256'=>$hash, 'restore_epoch'=>1,
         'grant_snapshot_sha256'=>$hash, 'eligible'=>true ),
     'identity_blockers'=>array(), 'worker_current'=>true, 'restore_bound'=>true,
+    'providers'=>array( 'core'=>array(
+        'ready'=>true, 'revoked'=>false,
+        'site_key'=>MAD4B_SCP_Resilience_Context::site_key( $binding ),
+        'generation_sha256'=>$hash, 'certification_sha256'=>$hash ) ),
+    'host'=>array( 'isolation_verified'=>true, 'local_readback_verified'=>true ),
+    'gates'=>array( 'prior_ring_health_accepted'=>false ),
+    'external_effects'=>array(),
     'health'=>array( 'sample_count'=>100, 'error_rate_bps'=>20, 'p95_ms'=>120 ),
     'facets'=>array( 'database'=>$hash, 'files'=>$hash, 'runtime_package'=>$hash,
         'site_profile'=>$hash, 'registry'=>$hash ),
@@ -71,6 +78,20 @@ $changed = $snapshot; $changed['health']['p95_ms'] = 999;
 $changed['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $changed );
 $changedtarget = $target; $changedtarget['baseline_snapshot_sha256'] = $changed['snapshot_sha256'];
 g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview( $changed, $changedtarget, $limits ), 'pilot_health_failed' );
+$revoked = $snapshot; $revoked['providers']['core']['revoked'] = true;
+$revoked['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $revoked );
+$revokedtarget = $target; $revokedtarget['baseline_snapshot_sha256'] = $revoked['snapshot_sha256'];
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview( $revoked, $revokedtarget, $limits ), 'provider_revoked_or_foreign' );
+$unrewound = $snapshot; $unrewound['external_effects']['payment'] = array( 'state'=>'unknown', 'site_key'=>$key, 'receipt_sha256'=>$hash );
+$unrewound['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $unrewound );
+$unrewoundtarget = $target; $unrewoundtarget['baseline_snapshot_sha256'] = $unrewound['snapshot_sha256'];
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview( $unrewound, $unrewoundtarget, $limits ), 'external_effect_uncertain' );
+$nohost = $snapshot; $nohost['host']['isolation_verified'] = false;
+$nohost['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $nohost );
+$nohosttarget = $target; $nohosttarget['baseline_snapshot_sha256'] = $nohost['snapshot_sha256'];
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview( $nohost, $nohosttarget, $limits ), 'host_isolation_unknown' );
+$wider = $target; $wider['ring'] = 'general';
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview( $snapshot, $wider, $limits ), 'prior_ring_missing' );
 g9_error( MAD4B_SCP_G9_Resilience_Gates::fleet_inventory( array( $snapshot, $snapshot ) ), 'duplicate_site' );
 $fleet = MAD4B_SCP_G9_Resilience_Gates::fleet_inventory( array( $snapshot ) );
 g9_check( ! is_wp_error( $fleet ) && $fleet['site_count'] === 1 && ! $fleet['sites'][0]['eligible_for_execution'], 'fleet non-authorizing' );
@@ -84,4 +105,4 @@ g9_error( MAD4B_SCP_G9_Resilience_Gates::restore_preview( $snapshot, $foreign, a
 $path = $dir . '/resilience-' . $binding['site_uuid'] . '-1-staging.json';
 @unlink( $path ); @unlink( $path . '.lock' ); @rmdir( $dir );
 g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'lost' );
-echo "G9 resilience gates: PASS (12 isolation/restore/ring checks)\n";
+echo "G9 resilience gates: PASS (16 isolation/restore/ring checks)\n";

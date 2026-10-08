@@ -94,6 +94,36 @@ final class MAD4B_SCP_G9_Resilience_Gates {
             || empty( $observation['authority']['eligible'] )
             || ! MAD4B_SCP_Resilience_Context::is_hash( $observation['authority']['grant_snapshot_sha256'] ?? '' ) )
             return self::deny( 'local_authority_unready', 'Current site identity, authority or restore binding is unready.' );
+        // Missing/foreign/revoked providers and uncertain external effects are
+        // blockers; a green WordPress health probe cannot override them.
+        if ( ! isset( $observation['providers'] ) || ! is_array( $observation['providers'] )
+            || ! $observation['providers'] || count( $observation['providers'] ) > 32 )
+            return self::deny( 'provider_evidence_missing', 'No bounded, site-local provider certification evidence was captured.' );
+        $site_key = MAD4B_SCP_Resilience_Context::site_key( $binding );
+        foreach ( $observation['providers'] as $provider ) {
+            if ( ! is_array( $provider )
+                || empty( $provider['ready'] ) || ! empty( $provider['revoked'] )
+                || ( $provider['site_key'] ?? '' ) !== $site_key
+                || ( $provider['generation_sha256'] ?? '' ) !== $binding['runtime_generation_sha256']
+                || ! MAD4B_SCP_Resilience_Context::is_hash( $provider['certification_sha256'] ?? '' ) )
+                return self::deny( 'provider_revoked_or_foreign', 'A provider is unready, revoked, stale or belongs to another site.' );
+        }
+        if ( empty( $observation['host']['isolation_verified'] ) || empty( $observation['host']['local_readback_verified'] ) )
+            return self::deny( 'host_isolation_unknown', 'Pilot requires independently verified local host isolation and readback.' );
+        if ( ! isset( $observation['external_effects'] ) || ! is_array( $observation['external_effects'] )
+            || count( $observation['external_effects'] ) > 128 )
+            return self::deny( 'external_effect_evidence_missing', 'External effect inventory is incomplete or unbounded.' );
+        foreach ( $observation['external_effects'] as $effect ) {
+            if ( ! is_array( $effect )
+                || ! in_array( $effect['state'] ?? '', array( 'verified_no_effect', 'verified_reconciled' ), true )
+                || ( $effect['site_key'] ?? '' ) !== $site_key
+                || ! MAD4B_SCP_Resilience_Context::is_hash( $effect['receipt_sha256'] ?? '' ) )
+                return self::deny( 'external_effect_uncertain', 'Unrewound or foreign external effect must be reconciled before a pilot.' );
+        }
+        if ( 'pilot' !== $target['ring']
+            && ( ! MAD4B_SCP_Resilience_Context::is_hash( $target['prior_ring_receipt_sha256'] ?? '' )
+                || empty( $observation['gates']['prior_ring_health_accepted'] ) ) )
+            return self::deny( 'prior_ring_missing', 'Wider rings require evidence from an already accepted prior ring.' );
         $health = $observation['health'] ?? array();
         foreach ( array( 'sample_count', 'error_rate_bps', 'p95_ms' ) as $field ) {
             if ( ! isset( $health[ $field ] ) || ! is_int( $health[ $field ] ) || $health[ $field ] < 0 )
