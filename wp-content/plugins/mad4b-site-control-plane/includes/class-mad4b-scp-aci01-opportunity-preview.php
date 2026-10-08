@@ -127,6 +127,14 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
         $required = array( 'business_goal', 'audience_intent', 'evidence_source_rights',
                            'approved_brand_context', 'factual_claims', 'editorial_qa' );
         if ( $relation_review ) $required[] = 'native_relation_identity';
+        // Reviewed domain-specific recipe requirements are intentionally not
+        // inferred from WordPress post-type names or taxonomy presence.
+        if ( ! class_exists( 'MAD4B_SCP_ACI01_Recipe_Gap', false ) )
+            return self::denied( 'recipe_gap_provider_missing' );
+        $recipe_gap = MAD4B_SCP_ACI01_Recipe_Gap::evaluate( $semantic, null, array() );
+        if ( ! is_array( $recipe_gap ) || ( $recipe_gap['status'] ?? '' ) === 'DENIED' )
+            return self::denied( 'recipe_gap_invalid' );
+        foreach ( $recipe_gap['missing_requirement_keys'] as $missing_key ) $required[] = $missing_key;
         foreach ( $semantic['obligations'] as $obligation ) {
             if ( ! is_string( $obligation ) || ! preg_match( '/^[a-z0-9_.-]{1,80}$/D', $obligation ) )
                 return self::denied( 'semantic_obligation_invalid' );
@@ -147,6 +155,7 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
                 return self::denied( 'semantic_reason_invalid' );
             $reasons[] = $reason;
         }
+        foreach ( $recipe_gap['reason_codes'] as $gap_reason ) $reasons[] = $gap_reason;
         $reasons[] = 'independent_editorial_approval_required';
         $reasons[] = 'external_provider_and_rights_not_certified';
         sort( $required, SORT_STRING );
@@ -157,7 +166,8 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'goal_sha256' => hash( 'sha256', trim( $goal ) ),
             'source_previews' => array( $intake['plan_fingerprint_sha256'], $evidence['preview_sha256'] ),
             'required_sections' => $required, 'reason_codes' => $reasons,
-            'semantic_sha256' => $semantic['semantic_fingerprint_sha256'] );
+            'semantic_sha256' => $semantic['semantic_fingerprint_sha256'],
+            'recipe_gap_sha256' => hash( 'sha256', json_encode( $recipe_gap ) ) );
         return array( 'contract' => self::CONTRACT, 'status' => 'NEEDS_EVIDENCE',
             'review_status' => 'NEEDS_REVIEW',
             'candidate_kind' => 'OpportunityHypothesis_BlueprintCandidate',
@@ -166,6 +176,7 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'evidence_fingerprints' => $material['source_previews'],
             'semantic_fingerprint_sha256' => $semantic['semantic_fingerprint_sha256'],
             'recipe_mapping' => $semantic['mapping'],
+            'recipe_gap' => $recipe_gap,
             'required_blueprint_sections' => $required,
             'reason_codes' => $reasons,
             'handoff' => 'EXISTING_MAD4B_CONTENT_INTELLIGENCE_AFTER_APPROVAL',

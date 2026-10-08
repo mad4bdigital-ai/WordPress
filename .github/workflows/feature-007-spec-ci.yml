@@ -266,6 +266,11 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-runtime-binding.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-semantic-recipe.php
           php wp-content/plugins/mad4b-site-control-plane/tests/aci01-p0-governed-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-native-relation-audit.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-native-relation-audit-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-recipe-gap.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-recipe-gap-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-aci01-read-adapter.php
 
       - name: Reject unsafe competitor evidence and false extension completion
         run: |

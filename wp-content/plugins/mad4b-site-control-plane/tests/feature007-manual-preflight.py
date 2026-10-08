@@ -37,6 +37,14 @@ LINT = (
     "class-mad4b-scp-browser-acceptance-admin-ui.php",
     "class-mad4b-scp-local-oauth-server.php",
     "class-mad4b-scp-assistant-operator-workspace.php",
+    "class-mad4b-scp-aci01-intake-preview.php",
+    "class-mad4b-scp-aci01-evidence-preview.php",
+    "class-mad4b-scp-aci01-opportunity-preview.php",
+    "class-mad4b-scp-aci01-runtime-binding.php",
+    "class-mad4b-scp-aci01-semantic-recipe.php",
+    "class-mad4b-scp-aci01-native-relation-audit.php",
+    "class-mad4b-scp-aci01-recipe-gap.php",
+    "adapters/class-mad4b-scp-aci01-read-adapter.php",
 )
 FIXTURES = (
     "assistant-planning-runtime.php",
@@ -58,6 +66,12 @@ FIXTURES = (
     "g9-resilience-gates-runtime.php",
     "g9-resilience-state-runtime.php",
     "assistant-operator-workspace-runtime.php",
+    "aci01-intake-preview-contract.php",
+    "aci01-evidence-read-contract.php",
+    "aci01-opportunity-candidate-contract.php",
+    "aci01-p0-governed-contract.php",
+    "aci01-native-relation-audit-contract.php",
+    "aci01-recipe-gap-contract.php",
 )
 NODE_FIXTURES = (
     "tools/solution-discovery/test-federation.mjs",
