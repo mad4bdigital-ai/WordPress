@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 318,
+  "changed_file_count": 320,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -111,7 +111,9 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g1-delivery.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/native-relation-evidence.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_native_relation_evidence.py",
         "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
         "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
@@ -566,6 +568,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "777ebc362484ad108f1e126b6cb9df1a47e6c24f6525d1d029f2dbdc39195d68",
+  "changed_paths_sha256": "42dc7f5589e9839395c2b84abac20d72f6f3564e65d2f1b6da02ff5ce9748747",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
