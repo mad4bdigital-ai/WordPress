@@ -69,6 +69,16 @@ $unknown = $event; $unknown['site_key'] = 'foreign:abc';
 g9_error( MAD4B_SCP_G9_Fleet_Rollout::inspect( array( $a, $b ), array( $unknown ) ), 'event_invalid' );
 $gap = $event; $gap['sequence'] = 3;
 g9_error( MAD4B_SCP_G9_Fleet_Rollout::inspect( array( $a, $b ), array( $gap ) ), 'event_gap_or_replay' );
+$terminal_conflict = $event; $terminal_conflict['sequence'] = 2;
+$terminal_conflict['state'] = 'FAILED';
+g9_error( MAD4B_SCP_G9_Fleet_Rollout::inspect(
+    array( $a, $b ), array( $event, $terminal_conflict )
+), 'contradictory_terminal_claim' );
+$staged = $event; $staged['state']='EXECUTING';
+$regression = $staged; $regression['sequence']=2; $regression['state']='PREPARED';
+g9_error( MAD4B_SCP_G9_Fleet_Rollout::inspect(
+    array( $a, $b ), array( $staged, $regression )
+), 'regressive_operation_claim' );
 $conflict = $event; $conflict['sequence']=2; $conflict['action']='rollback';
 g9_error( MAD4B_SCP_G9_Fleet_Rollout::inspect( array( $a, $b ), array( $event, $conflict ) ), 'operation_action_conflict' );
 $forged = $event; $forged['binding_sha256'] = str_repeat( 'c', 64 );

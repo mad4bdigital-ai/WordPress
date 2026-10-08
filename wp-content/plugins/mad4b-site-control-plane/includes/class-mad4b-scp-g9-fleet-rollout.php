@@ -44,6 +44,7 @@ final class MAD4B_SCP_G9_Fleet_Rollout {
         }
         $ledger = array();
         $seen = array();
+        $last_operation_state = array();
         foreach ( $events as $event ) {
             if ( ! is_array( $event ) || ( $event['contract'] ?? '' ) !== self::CONTRACT
                 || ! is_string( $event['site_key'] ?? null )
@@ -66,6 +67,19 @@ final class MAD4B_SCP_G9_Fleet_Rollout {
             if ( isset( $seen[ $opkey ] )
                 && $seen[ $opkey ] !== $event['action'] )
                 return self::error( 'operation_action_conflict' );
+            // A terminal or uncertain observation cannot later reverse into
+            // an incompatible state for the SAME native operation. This is
+            // not a verified execution journal; contradictions are errors.
+            if ( isset( $last_operation_state[ $opkey ] ) ) {
+                $previous = $last_operation_state[ $opkey ];
+                $next = $event['state'];
+                if ( in_array( $previous, array( 'COMMITTED', 'FAILED', 'UNKNOWN', 'RECONCILING' ), true )
+                    && $next !== $previous )
+                    return self::error( 'contradictory_terminal_claim' );
+                if ( 'EXECUTING' === $previous && 'PREPARED' === $next )
+                    return self::error( 'regressive_operation_claim' );
+            }
+            $last_operation_state[ $opkey ] = $event['state'];
             $seen[ $opkey ] = $event['action'];
             $sites[ $key ]['last_sequence'] = $event['sequence'];
             $sites[ $key ]['last_reported_state'] = $event['state'];

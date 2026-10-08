@@ -5,9 +5,10 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g9-*.py'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/feature-007-g9-resilience.yml'
-      - 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.*'
+      - 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-*'
   workflow_dispatch:
 permissions:
   contents: read
