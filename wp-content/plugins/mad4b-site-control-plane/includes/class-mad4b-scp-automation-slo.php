@@ -57,9 +57,11 @@ final class MAD4B_SCP_Automation_SLO {
 			|| ! is_string( $state['outcome_root_sha256'] ?? null )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $state['outcome_root_sha256'] ) ) return false;
 		$previous_root = null; $last_seq = 0;
+		$retained = count( $state['outcome_receipts'] );
+		$expected_seq = $completed - $retained + 1;
 		foreach ( $state['outcome_receipts'] as $entry ) {
 			if ( ! is_array( $entry ) || ! is_int( $entry['sequence'] ?? null )
-				|| $entry['sequence'] <= $last_seq
+				|| $entry['sequence'] !== $expected_seq
 				|| ! is_string( $entry['previous_root_sha256'] ?? null )
 				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $entry['previous_root_sha256'] )
 				|| ! is_string( $entry['entry_sha256'] ?? null )
@@ -72,11 +74,13 @@ final class MAD4B_SCP_Automation_SLO {
 				|| ! hash_equals( hash( 'sha256', $entry['previous_root_sha256'] . $calculated ), $entry['root_sha256'] ) )
 				return false;
 			$previous_root = $entry['root_sha256']; $last_seq = $entry['sequence'];
+			++$expected_seq;
 		}
 		if ( $state['outcome_receipts']
 			&& ! hash_equals( $state['outcome_root_sha256'], $previous_root ) ) return false;
-		if ( ! $state['outcome_receipts'] && $completed > 0 ) return false;
-		if ( $last_seq > $completed ) return false;
+		if ( ! $state['outcome_receipts'] && ( $completed > 0
+			|| ! hash_equals( str_repeat( '0', 64 ), $state['outcome_root_sha256'] ) ) ) return false;
+		if ( $state['outcome_receipts'] && $last_seq !== $completed ) return false;
 		foreach ( $state['tickets'] as $token => $ticket ) {
 			if ( ! is_string( $token ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $token )
 				|| ! is_array( $ticket ) || ( $ticket['token'] ?? '' ) !== $token ) return false;
