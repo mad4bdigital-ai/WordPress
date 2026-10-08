@@ -41,12 +41,9 @@ $in = array( 'expected_profile_digest'=>$b['profile_digest'],
     'expected_runtime_generation'=>$b['runtime_generation'],
     'intent'=>'Edit site files', 'related_terms'=>array('file manager'), 'mode'=>'match' );
 $inventory = MAD4B_SCP_Solution_Discovery::site_inventory();
-ok( count($inventory['rows']) === 5, 'dynamic inventory includes same-directory plugins' );
-ok( count(array_unique(array_column($inventory['rows'],'id'))) === 5, 'stable unique main-file IDs' );
-ok( in_array('ability:private/rotate-keys',array_column($inventory['rows'],'id'),true), 'opaque private ability identity observed by admin' );
-$opaque = array_values(array_filter($inventory['rows'],function($row){return $row['id']==='ability:private/rotate-keys';}));
-ok(count($opaque)===1 && $opaque[0]['label']==='Private registered ability'
-    && strpos($opaque[0]['match_text'],'Rotate Private Keys')===false, 'private metadata redacted');
+ok( count($inventory['rows']) === 4, 'dynamic inventory includes same-directory plugins' );
+ok( count(array_unique(array_column($inventory['rows'],'id'))) === 4, 'stable unique main-file IDs' );
+ok( !in_array('ability:private/rotate-keys',array_column($inventory['rows'],'id'),true), 'private ability hidden from read discovery' );
 ok( $inventory['plugin_inventory_complete'] && $inventory['ability_inventory_complete'], 'coverage' );
 $r = MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( is_array($r) && count($r['candidates']) === 3, 'unmapped plugin and ability discovered dynamically' );
@@ -54,12 +51,12 @@ ok( $r['candidates'][0]['lexical_score'] >= $r['candidates'][1]['lexical_score']
 ok( $r['candidates'][0]['execution_allowed'] === false && !$r['mutation_performed'], 'never auto executes' );
 ok( $r['mapping_required_to_discover'] === false && !$r['auto_install_allowed'], 'no adapter requirement' );
 ok( $r['coverage']['external_inventory_complete'] === false, 'external coverage not falsely complete' );
-ok( $r['coverage']['ability_visibility_scope'] === 'private_metadata_redacted_admin_only', 'WordPress private abilities filtered' );
+ok( $r['coverage']['ability_visibility_scope'] === 'show_in_rest_only', 'WordPress private abilities filtered' );
 ok( count(array_filter($r['candidates'], function($c) { return !empty($c['metadata_digest']); })) === 2, 'plugin version/state digest recorded' );
 $again = MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $r['snapshot_sha256'] === $again['snapshot_sha256'] && $r['candidates'] === $again['candidates'], 'deterministic' );
 $in['mode']='inventory'; $in['limit']=1; $all=MAD4B_SCP_Solution_Discovery::read_discover($in);
-ok( $all['total_matches']===5 && $all['next_offset']===1, 'inventory pagination' );
+ok( $all['total_matches']===4 && $all['next_offset']===1, 'inventory pagination' );
 $in['offset']=1; $next=MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $next['candidates'][0]['id']!==$all['candidates'][0]['id'], 'pagination unique' );
 $in['mode']='match'; $in['offset']=0; $in['related_terms']=array();

@@ -2,7 +2,7 @@
 
 The optional new read-only Ability `mad4b/assistant-solution-discover` accepts the exact `Assistant_Planning::read_plan` input plus optional related terms and per-gap cap. It calls the **existing** planning policy, expands only unresolved capability gaps via the generic local WordPress inventory, and emits candidate identity, matching evidence, uncertainty and strict `execution_allowed=false`. It is not an action executor, installer, approval or a new authority plane.
 
-Private WordPress Abilities are represented to an administrator as opaque canonical names with private descriptions and labels redacted. No private Ability is executed. This allows the assistant to notice governed MAD4B admin tools as potential routes without exposing configuration or granting their scopes.
+Private WordPress Abilities (`show_in_rest=false`) are excluded entirely, in accordance with WordPress' REST visibility boundary. MAD4B private/admin tools must use their existing governed MCP catalog/projection, not the general WordPress metadata read. No discovered Ability is executed.
 
 **Hardcoding boundary:** only structural schema, registered WordPress APIs and security enums are fixed. Plugin slugs, vendor adapters, hostnames, goal-to-vendor maps and executable targets are not fixed. The optional `related_terms` is caller-authored query expansion; no automated synonym or semantic correctness is implied. A result is always potential, never certified.
 

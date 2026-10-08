@@ -33,4 +33,4 @@ The test covers dynamic unmapped candidates, introspected Abilities, ambiguous h
 
 Source tests are not staging/real browser/host or external provider certification. Re-run on the latest exact PR HEAD before any release claim.
 
-The follow-up connector `mad4b/assistant-solution-discover` is a read-only adapter wrapping the existing Assistant Planning GAP decisions, described in `docs/ASSISTANT-SOLUTION-ROUTER.md`. Private Abilities appear to the admin only as opaque canonical names (their descriptions are redacted); the discovery result is NEVER a permission grant.
+The follow-up connector `mad4b/assistant-solution-discover` is a read-only adapter wrapping the existing Assistant Planning GAP decisions, described in `docs/ASSISTANT-SOLUTION-ROUTER.md`. Private WordPress Abilities (`show_in_rest=false`) remain completely absent from this general discovery response. Governed MAD4B private operations must be discovered through their separately authorized MCP catalog; the discovery result is NEVER a permission grant.
