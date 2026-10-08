@@ -36,7 +36,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
-      "sha256": "826deebb139ac3fda6194bb69363a919b59aa17def931e9582fb1722056c3bd5"
+      "sha256": "fe695a6489ddbc7278c6b8122a4984d07f68e70245d3022efa794b2454c75cbd"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
@@ -98,7 +98,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
-      "sha256": "f209c4f1e83a64c82b2779299570ca3e653bdbe545e8c06405c29c12f4090c31"
+      "sha256": "3e83fa0519fd4e4af345e81a525ecf442c5778d23116c027edd0908c3fe03a8f"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",

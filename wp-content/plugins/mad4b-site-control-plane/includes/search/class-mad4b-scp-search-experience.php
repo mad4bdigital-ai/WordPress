@@ -82,19 +82,14 @@ final class MAD4B_SCP_Search_Experience {
 		$id = isset( $input['profile_id'] ) ? $input['profile_id'] : ''; $control = isset( $input['control'] ) ? $input['control'] : '';
 		$p = MAD4B_SCP_Search_Context::profile( $id ); if ( is_wp_error( $p ) ) return $p;
 		if ( in_array( $control, array( 'pause', 'resume', 'freeze_spend', 'unfreeze_spend', 'disable_provider', 'enable_provider' ), true ) ) {
-			if ( isset( $input['expected_revision'] ) && (int) $input['expected_revision'] !== (int) $p['revision'] ) return MAD4B_SCP_Search_Contracts::error( 'search_control_stale' );
-			$policy = MAD4B_SCP_Search_Context::policy(); $raw = array_intersect_key( $p, array_flip( $policy['profile_fields'] ) );
-			if ( 'pause' === $control ) $raw['enabled'] = false;
-			if ( 'resume' === $control ) $raw['enabled'] = true;
-			if ( 'freeze_spend' === $control || 'unfreeze_spend' === $control ) $raw['provider_policy']['freeze_spend'] = 'freeze_spend' === $control;
-			if ( 'disable_provider' === $control ) { if ( empty( $input['provider_id'] ) || ! MAD4B_SCP_Search_Contracts::id( $input['provider_id'] ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_id_invalid' ); $raw['provider_policy']['disabled'][] = $input['provider_id']; }
-			if ( 'enable_provider' === $control ) $raw['provider_policy']['disabled'] = array_values( array_diff( $raw['provider_policy']['disabled'], array( isset( $input['provider_id'] ) ? $input['provider_id'] : '' ) ) );
-			$args = array( 'profile' => $raw, 'expected_revision' => $p['revision'] ); $plan = MAD4B_SCP_Search_Context::plan( $args );
-			if ( is_wp_error( $plan ) ) return $plan;
-			$result = MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) );
+			// State changes are built by the typed domain lane, never via the
+			// generic profile_apply API. The domain validates the revision,
+			// reconstructs persisted fields and fences reentrant control.
+			$result = MAD4B_SCP_Search_Context::control_transition( $input );
 			if ( is_wp_error( $result ) ) return $result;
 			$verify = MAD4B_SCP_Search_Context::verify( array( 'profile_id' => $id ) );
-			if ( is_wp_error( $verify ) || empty( $verify['valid'] ) || ! isset( $result['profile']['profile_sha256'] ) || ! hash_equals( (string) $result['profile']['profile_sha256'], (string) $verify['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			$quarantined_safe = ! empty( $result['safe_control_identity_quarantined'] ) && in_array( $control, array( 'pause', 'freeze_spend', 'disable_provider' ), true );
+			if ( is_wp_error( $verify ) || ( empty( $verify['valid'] ) && ! $quarantined_safe ) || ! isset( $verify['profile_sha256'], $result['profile']['profile_sha256'] ) || ! hash_equals( (string) $result['profile']['profile_sha256'], (string) $verify['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'pause' === $control && ! empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'resume' === $control && empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'freeze_spend' === $control && empty( $result['profile']['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
