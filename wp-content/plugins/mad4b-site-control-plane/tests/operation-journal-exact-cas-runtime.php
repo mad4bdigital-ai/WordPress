@@ -13,9 +13,16 @@ class WP_Error {
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $key ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $key ) ); }
 function wp_json_encode( $value, $options = 0 ) { return json_encode( $value, $options ); }
+function absint( $value ) { return abs( (int) $value ); }
 class MAD4B_SCP_Identifiers {
     public static function operation_id_for_write( $id ) {
         return is_string( $id ) && preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D', $id ) ? $id : '';
+    }
+    public static function operation_lookup( $id ) {
+        $canonical = self::operation_id_for_write( $id );
+        return $canonical ? array( 'value' => $canonical, 'identity_class' => 'canonical_uuid',
+            'historical_identity_preserved' => false, 'rewrite_allowed' => false )
+            : new WP_Error( 'journal_bad_id' );
     }
 }
 class MAD4B_SCP_Schema {
@@ -72,6 +79,22 @@ class FixtureJournalDB {
     public $fail_next_event_insert = false, $fail_next_head_update = false;
     public function prepare( $sql ) { return array( $sql, array_slice( func_get_args(), 1 ) ); }
     public function get_row( $prepared, $output ) { return $this->head; }
+    public function get_results( $prepared, $output ) {
+        $rows = array();
+        foreach ( $this->events as $args ) {
+            if ( $args[0] !== $prepared[1][0] ) continue;
+            $rows[] = array(
+                'operation_id' => $args[0], 'operation_key' => $args[1],
+                'operation_binding_sha256' => $args[2], 'sequence' => $args[3],
+                'event_type' => $args[4], 'checkpoint' => $args[5],
+                'lifecycle_state' => $args[6], 'terminal_outcome' => $args[7],
+                'safe_metadata_json' => $args[8], 'previous_event_sha256' => $args[9],
+                'event_sha256' => $args[10], 'created_at' => $args[11],
+            );
+        }
+        usort( $rows, static function ( $a, $b ) { return (int) $a['sequence'] - (int) $b['sequence']; } );
+        return array_slice( $rows, 0, (int) $prepared[1][1] );
+    }
     public function query( $prepared ) {
         $sql = $prepared[0]; $args = $prepared[1];
         if ( 0 === strpos( $sql, 'INSERT IGNORE INTO ' ) ) {
@@ -215,4 +238,28 @@ $duplicate = MAD4B_SCP_Operation_Journal::begin( $failure_context, 'planned', ar
 assert_journal( 'uncertain commit cannot be duplicated on retry', is_wp_error( $duplicate )
     && 'mad4b_operation_journal_head_already_exists' === $duplicate->get_error_code()
     && 1 === count( $wpdb->events ) );
+$wpdb = new FixtureJournalDB();
+$orphan_ctx = $new_ctx;
+$wpdb->head = array( 'operation_key' => $orphan_ctx['operation_key'],
+    'operation_binding_sha256' => $orphan_ctx['operation_binding_sha256'],
+    'latest_sequence' => 0, 'latest_event_sha256' => str_repeat( '0', 64 ) );
+$zero_trace = MAD4B_SCP_Operation_Journal::trace( $orphan_ctx['operation_id'] );
+assert_journal( 'orphan genesis head is never a valid complete trace', is_array( $zero_trace )
+    && false === $zero_trace['chain_valid'] && false === $zero_trace['complete']
+    && 0 === $zero_trace['count'] );
+$wpdb = new FixtureJournalDB();
+$good_trace_genesis = MAD4B_SCP_Operation_Journal::begin( $orphan_ctx, 'planned', array( 'ticket' => 'proposal' ) );
+$good_trace = MAD4B_SCP_Operation_Journal::trace( $orphan_ctx['operation_id'] );
+assert_journal( 'single committed genesis has a valid complete trace', is_array( $good_trace_genesis )
+    && true === $good_trace['chain_valid'] && true === $good_trace['complete']
+    && 1 === $good_trace['count'] );
+$wpdb->head['operation_key'] = 'corrupted-head-identity';
+$forged_head = MAD4B_SCP_Operation_Journal::trace( $orphan_ctx['operation_id'] );
+assert_journal( 'trace detects event-to-head identity drift despite a signed chain',
+    is_array( $forged_head ) && false === $forged_head['chain_valid'] );
+$wpdb->head['operation_key'] = $orphan_ctx['operation_key'];
+$wpdb->events[0][4] = 'forged_genesis';
+$forged_genesis = MAD4B_SCP_Operation_Journal::trace( $orphan_ctx['operation_id'] );
+assert_journal( 'trace rejects a history without operation_started genesis',
+    is_array( $forged_genesis ) && false === $forged_genesis['chain_valid'] );
 echo 'OPERATION_JOURNAL_EXACT_CAS: PASS ' . $GLOBALS['tests'] . ' checks (hermetic DB stub)' . PHP_EOL;

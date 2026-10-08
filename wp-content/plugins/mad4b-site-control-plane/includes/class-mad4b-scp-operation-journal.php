@@ -240,10 +240,28 @@ final class MAD4B_SCP_Operation_Journal {
 		$t = MAD4B_SCP_Schema::tables();
 		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['operation_events']} WHERE BINARY operation_id=BINARY %s ORDER BY sequence ASC LIMIT %d", $operation_id, $limit ), ARRAY_A );
 		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_operation_trace_read_failed', 'Unable to read operation trace.' );
-		$valid = true;
+		// A committed journal MUST start with operation_started at sequence 1.
+		// A sequence-zero head without genesis is not an empty valid history.
+		$valid = ! empty( $rows );
 		$previous = str_repeat( '0', 64 );
 		$events = array();
+		$expected_sequence = 1;
+		$first_key = '';
+		$first_binding = '';
 		foreach ( $rows as $row ) {
+			// All events must belong to the same immutable operation/binding.
+			// Digest validation by itself does not prove contiguous ordering.
+			if ( 1 !== $expected_sequence ) {
+				if ( ! hash_equals( $first_key, (string) $row['operation_key'] )
+					|| ! hash_equals( $first_binding, (string) $row['operation_binding_sha256'] ) ) $valid = false;
+			} else {
+				$first_key = (string) $row['operation_key'];
+				$first_binding = (string) $row['operation_binding_sha256'];
+				if ( 'operation_started' !== (string) $row['event_type'] ) $valid = false;
+			}
+			if ( (int) $row['sequence'] !== $expected_sequence
+				|| ! hash_equals( $operation_id, (string) $row['operation_id'] ) ) $valid = false;
+			++$expected_sequence;
 			$metadata = json_decode( (string) $row['safe_metadata_json'], true );
 			if ( ! is_array( $metadata ) ) { $valid = false; $metadata = array(); }
 			$basis = array(
@@ -268,8 +286,13 @@ final class MAD4B_SCP_Operation_Journal {
 			);
 		}
 		$head = self::head( $operation_id );
-		$complete = ! is_wp_error( $head ) && (int)$head['latest_sequence'] === count( $events );
-		if ( $complete && ! empty( $events ) && ! hash_equals( (string)$head['latest_event_sha256'], (string)$previous ) ) $valid = false;
+		$complete = ! is_wp_error( $head ) && ! empty( $events )
+			&& (int) $head['latest_sequence'] === count( $events )
+			&& hash_equals( (string) $head['latest_event_sha256'], $previous );
+		if ( ! is_wp_error( $head ) && ! empty( $events )
+			&& ( ! hash_equals( (string) $head['operation_key'], $first_key )
+				|| ! hash_equals( (string) $head['operation_binding_sha256'], $first_binding ) ) ) $valid = false;
+		if ( is_wp_error( $head ) || empty( $events ) ) $valid = false;
 		return array( 'contract'=>'mad4b.dynamic-operation-trace.v1','operation_id'=>$operation_id,'operation_identity_class'=>(string)$identity['identity_class'],'historical_identity_preserved'=>!empty($identity['historical_identity_preserved']),'rewrite_allowed'=>!empty($identity['rewrite_allowed']),'chain_valid'=>$valid,'complete'=>$complete,'count'=>count($events),'events'=>$events,'read_only'=>true,'mutation_performed'=>false );
 	}
 

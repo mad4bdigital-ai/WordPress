@@ -364,6 +364,24 @@ try {
     $trace = MAD4B_SCP_Operation_Journal::trace( $context['operation_id'] );
     g8_journal_assert( is_array( $trace ) && ! empty( $trace['chain_valid'] )
         && ! empty( $trace['complete'] ) && 2 === $trace['count'], 'native_hash_chain_readback' );
+    // A coherent-looking head with zero events MUST be rejected.
+    $empty_id = '7dc87343-aa9d-44d9-9a24-4b4541e97502';
+    $insert_orphan = $GLOBALS['wpdb']->prepare(
+        'INSERT INTO g8_ci_journal_heads (operation_id,operation_key,operation_binding_sha256,latest_sequence,latest_event_sha256,lifecycle_state,terminal_outcome,heartbeat_at,lock_expires_at,stale_after,hard_deadline_at,created_at,updated_at) VALUES (%s,%s,%s,0,%s,%s,%s,%s,NULL,%s,%s,%s,%s)',
+        $empty_id, 'orphan-head-test', str_repeat( 'b', 64 ), str_repeat( '0', 64 ), 'planned', '',
+        gmdate( 'Y-m-d H:i:s' ), gmdate( 'Y-m-d H:i:s', time() + 300 ),
+        gmdate( 'Y-m-d H:i:s', time() + 1200 ), gmdate( 'Y-m-d H:i:s' ), gmdate( 'Y-m-d H:i:s' ) );
+    g8_journal_assert( 1 === $GLOBALS['wpdb']->query( $insert_orphan ), 'seed_disposable_orphan' );
+    $orphan_trace = MAD4B_SCP_Operation_Journal::trace( $empty_id );
+    g8_journal_assert( is_array( $orphan_trace )
+        && empty( $orphan_trace['chain_valid'] ) && empty( $orphan_trace['complete'] ), 'orphan_is_invalid' );
+    $bad_head_key = $GLOBALS['wpdb']->prepare(
+        'UPDATE g8_ci_journal_heads SET operation_key = %s WHERE operation_id = %s',
+        'tampered-head-key', $context['operation_id'] );
+    g8_journal_assert( 1 === $GLOBALS['wpdb']->query( $bad_head_key ), 'tamper_disposable_head' );
+    $drifted_trace = MAD4B_SCP_Operation_Journal::trace( $context['operation_id'] );
+    g8_journal_assert( is_array( $drifted_trace ) && empty( $drifted_trace['chain_valid'] ),
+        'head_identity_forgery_denied' );
 } catch ( Throwable $e ) {
     $journal_error = substr( $e->getMessage(), 0, 160 );
 } finally {
