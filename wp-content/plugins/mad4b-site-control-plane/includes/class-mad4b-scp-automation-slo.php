@@ -25,6 +25,39 @@ final class MAD4B_SCP_Automation_SLO {
 			'cost_measured_count' => 0, 'cost_micros_total' => 0, 'authorizing' => false );
 	}
 
+	private static function state_fields_valid( array $state ) {
+		foreach ( array( 'revision', 'eligible_workload_count', 'duration_ms_total', 'cost_measured_count', 'cost_micros_total' ) as $field ) {
+			if ( ! is_int( $state[ $field ] ?? null ) || $state[ $field ] < 0 ) return false;
+		}
+		if ( ! is_array( $state['outcomes'] ?? null ) || count( $state['outcomes'] ) > 4 ) return false;
+		$completed = 0;
+		foreach ( $state['outcomes'] as $outcome => $count ) {
+			if ( ! in_array( $outcome, array( 'failed', 'handoff', 'verified_repair', 'cancelled' ), true )
+				|| ! is_int( $count ) || $count < 0 ) return false;
+			$completed += $count;
+		}
+		if ( $completed + count( $state['tickets'] ) > $state['eligible_workload_count'] ) return false;
+		foreach ( $state['buckets'] as $scope => $row ) {
+			if ( ! is_string( $scope ) || strlen( $scope ) > 175 || ! is_array( $row ) ) return false;
+			if ( 'site' !== $scope && 1 !== preg_match( '/^(provider:[a-z0-9_.-]{1,80}|capability:[a-z0-9_.-]{1,80}:[a-z0-9_.-]{1,80})$/D', $scope ) ) return false;
+			foreach ( array( 'started_at', 'attempts', 'errors', 'cooldown_until' ) as $key )
+				if ( ! is_int( $row[ $key ] ?? null ) || $row[ $key ] < 0 ) return false;
+			if ( $row['errors'] > $row['attempts'] ) return false;
+		}
+		foreach ( $state['tickets'] as $token => $ticket ) {
+			if ( ! is_string( $token ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $token )
+				|| ! is_array( $ticket ) || ( $ticket['token'] ?? '' ) !== $token ) return false;
+			foreach ( array( 'provider', 'capability' ) as $field )
+				if ( ! is_string( $ticket[ $field ] ?? null ) || 1 !== preg_match( '/^[a-z0-9_.-]{1,80}$/D', $ticket[ $field ] ) ) return false;
+			foreach ( array( 'generation', 'runtime_binding' ) as $field )
+				if ( ! is_string( $ticket[ $field ] ?? null ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $ticket[ $field ] ) ) return false;
+			if ( ! is_int( $ticket['started_at'] ?? null ) || ! is_int( $ticket['expires_at'] ?? null )
+				|| $ticket['expires_at'] <= $ticket['started_at'] || ! is_int( $ticket['switch_revision'] ?? null )
+				|| ! is_array( $ticket['restore_binding'] ?? null ) ) return false;
+		}
+		return true;
+	}
+
 	private static function state() {
 		$raw = MAD4B_SCP_G8_Record::read( self::OPTION );
 		if ( null === $raw ) return self::initial();
@@ -32,7 +65,7 @@ final class MAD4B_SCP_Automation_SLO {
 		if ( ! MAD4B_SCP_G8_Record::valid( $raw, self::CONTRACT ) || ( $raw['profile_digest'] ?? '' ) !== MAD4B_SCP_G8_Record::profile()
 			|| is_wp_error( $binding ) || serialize( $raw['restore_binding'] ?? null ) !== serialize( $binding )
 			|| ! is_array( $raw['buckets'] ?? null ) || ! is_array( $raw['tickets'] ?? null ) || count( $raw['buckets'] ) > self::MAX_BUCKETS
-			|| count( $raw['tickets'] ) > self::MAX_QUEUE || ! is_int( $raw['revision'] ?? null ) || ! is_int( $raw['eligible_workload_count'] ?? null ) ) {
+			|| count( $raw['tickets'] ) > self::MAX_QUEUE || ! self::state_fields_valid( $raw ) ) {
 			return new WP_Error( 'mad4b_automation_metrics_lost', 'Automation telemetry is invalid or belongs to another profile; automatic work requires reconciliation.' );
 		}
 		return $raw;
