@@ -1428,12 +1428,18 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'retry_policy' => isset( $auto_reconciliation['retry_policy'] ) ? (string) $auto_reconciliation['retry_policy'] : 'none',
 				'retry_after_seconds' => $retry_after_seconds,
 			);
+			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			if ( 'pending_safe_phases' === $checkpoint_state && $retry_after_seconds > 0 ) {
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$auto_retry_scheduled = self::schedule_resume( time() + $retry_after_seconds );
 				$checkpoint['auto_retry_scheduled'] = (bool) $auto_retry_scheduled;
 				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			}
+			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 			if ( defined( 'MAD4B_SCP_VERSION' ) ) update_option( 'mad4b_scp_version', (string) MAD4B_SCP_VERSION, false );
 			if ( defined( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' ) && 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 ) ) ) {
 				update_option( 'mad4b_scp_boot_provenance_sha256', strtolower( (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 ), false );
