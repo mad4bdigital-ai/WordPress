@@ -180,12 +180,15 @@ final class MAD4B_SCP_Search_Context {
 	/** Fail-safe controls retain emergency stopping power in legacy collision cases. */
 	private static function is_scoped_fail_safe( array $profile, $current ) {
 		$scope = self::$typed_control_scope;
+		// apply() sees a stamped revision and profile SHA; the exact scope
+		// binds the pre-stamp validated profile used by plan() instead.
+		$unstamped = $profile; unset( $unstamped['revision'], $unstamped['profile_sha256'] );
 		return is_array( $current ) && isset( $current['profile']['profile_id'], $current['profile']['revision'] ) && is_array( $scope )
 			&& isset( $scope['action'], $scope['profile_id'], $scope['revision'], $scope['profile_sha256'] )
 			&& in_array( $scope['action'], array( 'pause', 'freeze_spend', 'disable_provider' ), true )
 			&& $scope['profile_id'] === $profile['profile_id'] && $scope['profile_id'] === $current['profile']['profile_id']
 			&& (int) $scope['revision'] === (int) $current['profile']['revision']
-			&& hash_equals( $scope['profile_sha256'], MAD4B_SCP_Search_Contracts::digest( $profile ) );
+			&& hash_equals( $scope['profile_sha256'], MAD4B_SCP_Search_Contracts::digest( $unstamped ) );
 	}
 
 	/**
