@@ -55,8 +55,8 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			if ( ! is_array( $providers ) || count( $providers ) > 64 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$adapters = MAD4B_SCP_Search_Providers::adapters();
 			foreach ( $providers as $provider ) if ( ! is_string( $provider ) || ! isset( $adapters[ $provider ] ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_id_invalid' );
-			$languages = self::list_input( isset( $input['languages'] ) ? $input['languages'] : array() );
-			$extra = self::list_input( isset( $input['additional_languages'] ) ? $input['additional_languages'] : '' );
+			$languages = self::language_input( isset( $input['languages'] ) ? $input['languages'] : array() );
+			$extra = self::language_input( isset( $input['additional_languages'] ) ? $input['additional_languages'] : '' );
 			$engines = self::list_input( $input['engines'] );
 			if ( is_wp_error( $languages ) || is_wp_error( $extra ) || is_wp_error( $engines ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$languages = array_values( array_unique( array_merge( $languages, $extra ) ) );
@@ -93,7 +93,7 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			if ( ! preg_match( '/^[A-Z]{2}$/D', $country ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			// A country change must not carry stale provider-specific geo mappings.
 			if ( $country !== $raw['markets'][0]['country'] && ! empty( $raw['markets'][0]['provider_locations'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_location_review_required' );
-			$languages = self::list_input( $input['audience_languages'] );
+			$languages = self::language_input( $input['audience_languages'] );
 			$devices = self::list_input( $input['audience_devices'] );
 			if ( is_wp_error( $languages ) || is_wp_error( $devices ) || ! $languages || ! $devices || count( $languages ) > 64 || array_diff( $devices, array( 'desktop', 'mobile', 'tablet' ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$objective = trim( $input['objective'] );
@@ -132,6 +132,19 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			$out[] = $item;
 		}
 		return array_values( array_unique( $out ) );
+	}
+
+	/** Canonical lower-case BCP-47-like codes matching the Search Context contract. */
+	private static function language_input( $value ) {
+		$items = self::list_input( $value );
+		if ( is_wp_error( $items ) ) return $items;
+		$out = array();
+		foreach ( $items as $item ) {
+			$code = strtolower( str_replace( '_', '-', $item ) );
+			if ( ! preg_match( '/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/D', $code ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$out[ $code ] = true;
+		}
+		return array_keys( $out );
 	}
 
 	public static function post() {
@@ -261,16 +274,22 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			$wpml = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0, 'orderby' => 'code' ) );
 			if ( is_array( $wpml ) ) {
 				foreach ( $wpml as $code => $row ) {
-					if ( ! is_string( $code ) || ! preg_match( '/^[A-Za-z0-9._-]{1,32}$/D', $code ) ) continue;
+					if ( ! is_string( $code ) ) continue;
+					$normalized = self::language_input( array( $code ) );
+					if ( is_wp_error( $normalized ) || ! $normalized ) continue;
 					$label = is_array( $row ) ? ( ! empty( $row['native_name'] ) ? $row['native_name'] : ( ! empty( $row['translated_name'] ) ? $row['translated_name'] : ( ! empty( $row['english_name'] ) ? $row['english_name'] : $code ) ) ) : $code;
-					$items[ $code ] = (string) $label;
+					$items[ $normalized[0] ] = (string) $label;
 				}
 				if ( $items ) $source = 'WPML active languages';
 			}
 		}
 		if ( ! $items && function_exists( 'pll_languages_list' ) ) {
 			$codes = pll_languages_list( array( 'fields' => 'slug' ) );
-			if ( is_array( $codes ) ) foreach ( $codes as $code ) if ( is_string( $code ) && preg_match( '/^[A-Za-z0-9._-]{1,32}$/D', $code ) ) $items[ $code ] = strtoupper( $code );
+			if ( is_array( $codes ) ) foreach ( $codes as $code ) {
+				if ( ! is_string( $code ) ) continue;
+				$normalized = self::language_input( array( $code ) );
+				if ( ! is_wp_error( $normalized ) && $normalized ) $items[ $normalized[0] ] = strtoupper( $code );
+			}
 			if ( $items ) $source = 'Polylang active languages';
 		}
 		if ( ! $items ) {
