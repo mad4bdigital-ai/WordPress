@@ -1,0 +1,2360 @@
+{
+  "contract": "mad4b.aci-os.task-registry.v2",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "tasks": [
+    {
+      "id": "ACI-T0001",
+      "gate": "ACI-G0",
+      "title": "Pin parent Feature 007/CE01 reuse matrix",
+      "requirement_ids": [
+        "ACI-001",
+        "ACI-028",
+        "ACI-042"
+      ],
+      "execution_dependencies": [],
+      "status": "OPEN",
+      "capability_selector": "spec_integrity",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0001.v1",
+      "negative_cases": [
+        "spec_false_done",
+        "unowned_change"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0002",
+      "gate": "ACI-G0",
+      "title": "Freeze ACI spec invariants and contract boundary",
+      "requirement_ids": [
+        "ACI-001",
+        "ACI-033",
+        "ACI-043"
+      ],
+      "execution_dependencies": [
+        "ACI-T0001"
+      ],
+      "status": "OPEN",
+      "capability_selector": "spec_integrity",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0002.v1",
+      "negative_cases": [
+        "spec_false_done",
+        "unowned_change"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0003",
+      "gate": "ACI-G0",
+      "title": "Implement spec integrity and denial validator",
+      "requirement_ids": [
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0002"
+      ],
+      "status": "OPEN",
+      "capability_selector": "spec_integrity",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0003.v1",
+      "negative_cases": [
+        "spec_false_done",
+        "unowned_change"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0004",
+      "gate": "ACI-G0",
+      "title": "Record changed-path owner slice and CI job",
+      "requirement_ids": [
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0003"
+      ],
+      "status": "OPEN",
+      "capability_selector": "spec_integrity",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0004.v1",
+      "negative_cases": [
+        "spec_false_done",
+        "unowned_change"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0005",
+      "gate": "ACI-G0",
+      "title": "Review non-authorizing architecture/decision crosswalk",
+      "requirement_ids": [
+        "ACI-005",
+        "ACI-028"
+      ],
+      "execution_dependencies": [
+        "ACI-T0001"
+      ],
+      "status": "OPEN",
+      "capability_selector": "spec_integrity",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0005.v1",
+      "negative_cases": [
+        "spec_false_done",
+        "unowned_change"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0006",
+      "gate": "ACI-G0",
+      "title": "Certify exact-head documentation-only delivery",
+      "requirement_ids": [
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0003",
+        "ACI-T0004",
+        "ACI-T0005"
+      ],
+      "status": "OPEN",
+      "capability_selector": "spec_integrity",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0006.v1",
+      "negative_cases": [
+        "spec_false_done",
+        "unowned_change"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0007",
+      "gate": "ACI-G1",
+      "title": "Inventory native content with edit ownership",
+      "requirement_ids": [
+        "ACI-002",
+        "ACI-020"
+      ],
+      "execution_dependencies": [
+        "ACI-T0001"
+      ],
+      "status": "OPEN",
+      "capability_selector": "business_context",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0007.v1",
+      "negative_cases": [
+        "tenant_context_leak",
+        "missing_brand_context"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0008",
+      "gate": "ACI-G1",
+      "title": "Map semantic content profiles and site identity",
+      "requirement_ids": [
+        "ACI-001",
+        "ACI-005"
+      ],
+      "execution_dependencies": [
+        "ACI-T0007"
+      ],
+      "status": "OPEN",
+      "capability_selector": "business_context",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0008.v1",
+      "negative_cases": [
+        "tenant_context_leak",
+        "missing_brand_context"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0009",
+      "gate": "ACI-G1",
+      "title": "Detect missing brand core and language context",
+      "requirement_ids": [
+        "ACI-003"
+      ],
+      "execution_dependencies": [
+        "ACI-T0001"
+      ],
+      "status": "OPEN",
+      "capability_selector": "business_context",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0009.v1",
+      "negative_cases": [
+        "tenant_context_leak",
+        "missing_brand_context"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0010",
+      "gate": "ACI-G1",
+      "title": "Build bounded versioned ContextPack",
+      "requirement_ids": [
+        "ACI-004"
+      ],
+      "execution_dependencies": [
+        "ACI-T0009"
+      ],
+      "status": "OPEN",
+      "capability_selector": "business_context",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0010.v1",
+      "negative_cases": [
+        "tenant_context_leak",
+        "missing_brand_context"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0011",
+      "gate": "ACI-G1",
+      "title": "Distill WriterProfile from reviewed author assets",
+      "requirement_ids": [
+        "ACI-004",
+        "ACI-016"
+      ],
+      "execution_dependencies": [
+        "ACI-T0010"
+      ],
+      "status": "OPEN",
+      "capability_selector": "business_context",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0011.v1",
+      "negative_cases": [
+        "tenant_context_leak",
+        "missing_brand_context"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0012",
+      "gate": "ACI-G1",
+      "title": "Certify context tenant/expiry/privacy negative fixtures",
+      "requirement_ids": [
+        "ACI-001",
+        "ACI-004"
+      ],
+      "execution_dependencies": [
+        "ACI-T0008",
+        "ACI-T0010",
+        "ACI-T0011"
+      ],
+      "status": "OPEN",
+      "capability_selector": "business_context",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0012.v1",
+      "negative_cases": [
+        "tenant_context_leak",
+        "missing_brand_context"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0013",
+      "gate": "ACI-G2",
+      "title": "Define provider neutral keyword and SERP schemas",
+      "requirement_ids": [
+        "ACI-006",
+        "ACI-008"
+      ],
+      "execution_dependencies": [
+        "ACI-T0001"
+      ],
+      "status": "OPEN",
+      "capability_selector": "research_evidence",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0013.v1",
+      "negative_cases": [
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0014",
+      "gate": "ACI-G2",
+      "title": "Add provider account cost reservation dry run",
+      "requirement_ids": [
+        "ACI-008",
+        "ACI-030"
+      ],
+      "execution_dependencies": [
+        "ACI-T0013",
+        "ACI-T0047"
+      ],
+      "status": "OPEN",
+      "capability_selector": "research_evidence",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0014.v1",
+      "negative_cases": [
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0015",
+      "gate": "ACI-G2",
+      "title": "Normalize scraping rights/robots and provenance",
+      "requirement_ids": [
+        "ACI-008",
+        "ACI-010"
+      ],
+      "execution_dependencies": [
+        "ACI-T0013",
+        "ACI-T0014"
+      ],
+      "status": "OPEN",
+      "capability_selector": "research_evidence",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0015.v1",
+      "negative_cases": [
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0016",
+      "gate": "ACI-G2",
+      "title": "Implement source dedupe and contradiction registry",
+      "requirement_ids": [
+        "ACI-009",
+        "ACI-010"
+      ],
+      "execution_dependencies": [
+        "ACI-T0015"
+      ],
+      "status": "OPEN",
+      "capability_selector": "research_evidence",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0016.v1",
+      "negative_cases": [
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0017",
+      "gate": "ACI-G2",
+      "title": "Build immutable EvidencePack with exclusions",
+      "requirement_ids": [
+        "ACI-009",
+        "ACI-012"
+      ],
+      "execution_dependencies": [
+        "ACI-T0016"
+      ],
+      "status": "OPEN",
+      "capability_selector": "research_evidence",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0017.v1",
+      "negative_cases": [
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0018",
+      "gate": "ACI-G2",
+      "title": "Certify uncertain external effects and spend denial",
+      "requirement_ids": [
+        "ACI-008",
+        "ACI-030"
+      ],
+      "execution_dependencies": [
+        "ACI-T0014",
+        "ACI-T0047"
+      ],
+      "status": "OPEN",
+      "capability_selector": "research_evidence",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0018.v1",
+      "negative_cases": [
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0019",
+      "gate": "ACI-G3",
+      "title": "Inventory search intent and existing canonical assets",
+      "requirement_ids": [
+        "ACI-007",
+        "ACI-013"
+      ],
+      "execution_dependencies": [
+        "ACI-T0007",
+        "ACI-T0013"
+      ],
+      "status": "OPEN",
+      "capability_selector": "opportunity_decisions",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0019.v1",
+      "negative_cases": [
+        "evidence_noncomparable",
+        "unsupported_claim"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0020",
+      "gate": "ACI-G3",
+      "title": "Compute semantic question/entity coverage matrix",
+      "requirement_ids": [
+        "ACI-007",
+        "ACI-014"
+      ],
+      "execution_dependencies": [
+        "ACI-T0019",
+        "ACI-T0016"
+      ],
+      "status": "OPEN",
+      "capability_selector": "opportunity_decisions",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0020.v1",
+      "negative_cases": [
+        "evidence_noncomparable",
+        "unsupported_claim"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0021",
+      "gate": "ACI-G3",
+      "title": "Compile information-gain and competitor gaps",
+      "requirement_ids": [
+        "ACI-014"
+      ],
+      "execution_dependencies": [
+        "ACI-T0020"
+      ],
+      "status": "OPEN",
+      "capability_selector": "opportunity_decisions",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0021.v1",
+      "negative_cases": [
+        "evidence_noncomparable",
+        "unsupported_claim"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0022",
+      "gate": "ACI-G3",
+      "title": "Rank opportunities with explainable economics",
+      "requirement_ids": [
+        "ACI-011"
+      ],
+      "execution_dependencies": [
+        "ACI-T0021",
+        "ACI-T0014"
+      ],
+      "status": "OPEN",
+      "capability_selector": "opportunity_decisions",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0022.v1",
+      "negative_cases": [
+        "evidence_noncomparable",
+        "unsupported_claim"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0023",
+      "gate": "ACI-G3",
+      "title": "Preserve alternatives and noncausal uncertainty",
+      "requirement_ids": [
+        "ACI-010",
+        "ACI-012"
+      ],
+      "execution_dependencies": [
+        "ACI-T0022"
+      ],
+      "status": "OPEN",
+      "capability_selector": "opportunity_decisions",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0023.v1",
+      "negative_cases": [
+        "evidence_noncomparable",
+        "unsupported_claim"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0024",
+      "gate": "ACI-G3",
+      "title": "Certify baseline/market/locale conflict denials",
+      "requirement_ids": [
+        "ACI-006",
+        "ACI-012"
+      ],
+      "execution_dependencies": [
+        "ACI-T0023",
+        "ACI-T0017"
+      ],
+      "status": "OPEN",
+      "capability_selector": "opportunity_decisions",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0024.v1",
+      "negative_cases": [
+        "evidence_noncomparable",
+        "unsupported_claim"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0025",
+      "gate": "ACI-G4",
+      "title": "Identify field owner and serialized meta schema",
+      "requirement_ids": [
+        "ACI-021"
+      ],
+      "execution_dependencies": [
+        "ACI-T0007"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0025.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0026",
+      "gate": "ACI-G4",
+      "title": "Inspect WPML Meta ID Mapper code/settings policy",
+      "requirement_ids": [
+        "ACI-024"
+      ],
+      "execution_dependencies": [
+        "ACI-T0025"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0026.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0027",
+      "gate": "ACI-G4",
+      "title": "Resolve post/term namespace and translation groups",
+      "requirement_ids": [
+        "ACI-021",
+        "ACI-023"
+      ],
+      "execution_dependencies": [
+        "ACI-T0025"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0027.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0028",
+      "gate": "ACI-G4",
+      "title": "Create semantic identity evidence crosswalk",
+      "requirement_ids": [
+        "ACI-022",
+        "ACI-023"
+      ],
+      "execution_dependencies": [
+        "ACI-T0027",
+        "ACI-T0026"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0028.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0029",
+      "gate": "ACI-G4",
+      "title": "Classify copied IDs/shared/missing translations",
+      "requirement_ids": [
+        "ACI-024",
+        "ACI-025"
+      ],
+      "execution_dependencies": [
+        "ACI-T0028"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0029.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0030",
+      "gate": "ACI-G4",
+      "title": "Prove bounded full-scan coverage and freshness",
+      "requirement_ids": [
+        "ACI-022",
+        "ACI-025"
+      ],
+      "execution_dependencies": [
+        "ACI-T0027"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0030.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0031",
+      "gate": "ACI-G4",
+      "title": "Design reversible field-owned CAS repair proposal",
+      "requirement_ids": [
+        "ACI-026"
+      ],
+      "execution_dependencies": [
+        "ACI-T0028",
+        "ACI-T0029",
+        "ACI-T0046"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0031.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0032",
+      "gate": "ACI-G4",
+      "title": "Run disposable WPML and read-only Staging tests",
+      "requirement_ids": [
+        "ACI-027",
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0029",
+        "ACI-T0030"
+      ],
+      "status": "OPEN",
+      "capability_selector": "native_relations",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0032.v1",
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0033",
+      "gate": "ACI-G5",
+      "title": "Resolve content intent and existing asset ownership",
+      "requirement_ids": [
+        "ACI-013",
+        "ACI-020"
+      ],
+      "execution_dependencies": [
+        "ACI-T0019",
+        "ACI-T0008"
+      ],
+      "status": "OPEN",
+      "capability_selector": "blueprint_authors",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0033.v1",
+      "negative_cases": [
+        "writer_rights",
+        "editor_conflict"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0034",
+      "gate": "ACI-G5",
+      "title": "Build cited per-locale ContentBlueprint",
+      "requirement_ids": [
+        "ACI-015"
+      ],
+      "execution_dependencies": [
+        "ACI-T0021",
+        "ACI-T0017",
+        "ACI-T0010"
+      ],
+      "status": "OPEN",
+      "capability_selector": "blueprint_authors",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0034.v1",
+      "negative_cases": [
+        "writer_rights",
+        "editor_conflict"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0035",
+      "gate": "ACI-G5",
+      "title": "Version author voice and editorial profiles",
+      "requirement_ids": [
+        "ACI-016"
+      ],
+      "execution_dependencies": [
+        "ACI-T0011"
+      ],
+      "status": "OPEN",
+      "capability_selector": "blueprint_authors",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0035.v1",
+      "negative_cases": [
+        "writer_rights",
+        "editor_conflict"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0036",
+      "gate": "ACI-G5",
+      "title": "Preview commercial CTA and native internal links",
+      "requirement_ids": [
+        "ACI-015",
+        "ACI-019"
+      ],
+      "execution_dependencies": [
+        "ACI-T0034",
+        "ACI-T0029"
+      ],
+      "status": "OPEN",
+      "capability_selector": "blueprint_authors",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0036.v1",
+      "negative_cases": [
+        "writer_rights",
+        "editor_conflict"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0037",
+      "gate": "ACI-G5",
+      "title": "Preserve human edits in three-way diff",
+      "requirement_ids": [
+        "ACI-020"
+      ],
+      "execution_dependencies": [
+        "ACI-T0033"
+      ],
+      "status": "OPEN",
+      "capability_selector": "blueprint_authors",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0037.v1",
+      "negative_cases": [
+        "writer_rights",
+        "editor_conflict"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0038",
+      "gate": "ACI-G5",
+      "title": "Certify translation/editorial/rights denials",
+      "requirement_ids": [
+        "ACI-018",
+        "ACI-020"
+      ],
+      "execution_dependencies": [
+        "ACI-T0034",
+        "ACI-T0035",
+        "ACI-T0037"
+      ],
+      "status": "OPEN",
+      "capability_selector": "blueprint_authors",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0038.v1",
+      "negative_cases": [
+        "writer_rights",
+        "editor_conflict"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0039",
+      "gate": "ACI-G6",
+      "title": "Generate bounded citation-aware draft artifacts",
+      "requirement_ids": [
+        "ACI-017"
+      ],
+      "execution_dependencies": [
+        "ACI-T0034",
+        "ACI-T0035",
+        "ACI-T0017"
+      ],
+      "status": "OPEN",
+      "capability_selector": "writing_quality",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0039.v1",
+      "negative_cases": [
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0040",
+      "gate": "ACI-G6",
+      "title": "Implement fact QA independent of writer",
+      "requirement_ids": [
+        "ACI-018"
+      ],
+      "execution_dependencies": [
+        "ACI-T0039"
+      ],
+      "status": "OPEN",
+      "capability_selector": "writing_quality",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0040.v1",
+      "negative_cases": [
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0041",
+      "gate": "ACI-G6",
+      "title": "Implement SEO/editorial/accessibility checks",
+      "requirement_ids": [
+        "ACI-018"
+      ],
+      "execution_dependencies": [
+        "ACI-T0039"
+      ],
+      "status": "OPEN",
+      "capability_selector": "writing_quality",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0041.v1",
+      "negative_cases": [
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0042",
+      "gate": "ACI-G6",
+      "title": "Implement rights/media/translation validators",
+      "requirement_ids": [
+        "ACI-018",
+        "ACI-019"
+      ],
+      "execution_dependencies": [
+        "ACI-T0039",
+        "ACI-T0029"
+      ],
+      "status": "OPEN",
+      "capability_selector": "writing_quality",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0042.v1",
+      "negative_cases": [
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0043",
+      "gate": "ACI-G6",
+      "title": "Run adversarial prompt injection and cross-site denial",
+      "requirement_ids": [
+        "ACI-018",
+        "ACI-020"
+      ],
+      "execution_dependencies": [
+        "ACI-T0039"
+      ],
+      "status": "OPEN",
+      "capability_selector": "writing_quality",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0043.v1",
+      "negative_cases": [
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0044",
+      "gate": "ACI-G6",
+      "title": "Certify quality verdict separate from publication",
+      "requirement_ids": [
+        "ACI-018",
+        "ACI-031"
+      ],
+      "execution_dependencies": [
+        "ACI-T0040",
+        "ACI-T0041",
+        "ACI-T0042",
+        "ACI-T0043"
+      ],
+      "status": "OPEN",
+      "capability_selector": "writing_quality",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0044.v1",
+      "negative_cases": [
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0045",
+      "gate": "ACI-G7",
+      "title": "Compile typed stage DAG and dependency guards",
+      "requirement_ids": [
+        "ACI-028",
+        "ACI-029"
+      ],
+      "execution_dependencies": [
+        "ACI-T0001"
+      ],
+      "status": "OPEN",
+      "capability_selector": "orchestration",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0045.v1",
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0046",
+      "gate": "ACI-G7",
+      "title": "Bind journal/CAS/lease/external effect state",
+      "requirement_ids": [
+        "ACI-028",
+        "ACI-030",
+        "ACI-041"
+      ],
+      "execution_dependencies": [
+        "ACI-T0045"
+      ],
+      "status": "OPEN",
+      "capability_selector": "orchestration",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0046.v1",
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0047",
+      "gate": "ACI-G7",
+      "title": "Add account/site/job reservation ledger",
+      "requirement_ids": [
+        "ACI-030",
+        "ACI-036"
+      ],
+      "execution_dependencies": [
+        "ACI-T0046"
+      ],
+      "status": "OPEN",
+      "capability_selector": "orchestration",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0047.v1",
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0048",
+      "gate": "ACI-G7",
+      "title": "Implement pause/cancel/reconcile/kill-switch",
+      "requirement_ids": [
+        "ACI-030",
+        "ACI-041"
+      ],
+      "execution_dependencies": [
+        "ACI-T0046"
+      ],
+      "status": "OPEN",
+      "capability_selector": "orchestration",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0048.v1",
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0049",
+      "gate": "ACI-G7",
+      "title": "Build Arabic RTL Action Center states",
+      "requirement_ids": [
+        "ACI-037",
+        "ACI-038",
+        "ACI-040"
+      ],
+      "execution_dependencies": [
+        "ACI-T0045"
+      ],
+      "status": "OPEN",
+      "capability_selector": "orchestration",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0049.v1",
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0050",
+      "gate": "ACI-G7",
+      "title": "Verify replay/crash/restore/cost concurrency tests",
+      "requirement_ids": [
+        "ACI-028",
+        "ACI-041"
+      ],
+      "execution_dependencies": [
+        "ACI-T0046",
+        "ACI-T0047",
+        "ACI-T0048"
+      ],
+      "status": "OPEN",
+      "capability_selector": "orchestration",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0050.v1",
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0051",
+      "gate": "ACI-G7",
+      "title": "Prove WorkflowProvider cannot widen authority",
+      "requirement_ids": [
+        "ACI-029",
+        "ACI-033",
+        "ACI-043"
+      ],
+      "execution_dependencies": [
+        "ACI-T0045",
+        "ACI-T0046"
+      ],
+      "status": "OPEN",
+      "capability_selector": "orchestration",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0051.v1",
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0052",
+      "gate": "ACI-G8",
+      "title": "Freeze native PublishManifest and reviewer roles",
+      "requirement_ids": [
+        "ACI-031",
+        "ACI-039"
+      ],
+      "execution_dependencies": [
+        "ACI-T0044",
+        "ACI-T0029",
+        "ACI-T0046",
+        "ACI-T0037"
+      ],
+      "status": "OPEN",
+      "capability_selector": "publication",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0052.v1",
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0053",
+      "gate": "ACI-G8",
+      "title": "Preview WordPress media/SEO/translated relationships",
+      "requirement_ids": [
+        "ACI-019",
+        "ACI-031"
+      ],
+      "execution_dependencies": [
+        "ACI-T0052"
+      ],
+      "status": "OPEN",
+      "capability_selector": "publication",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0053.v1",
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0054",
+      "gate": "ACI-G8",
+      "title": "Implement exact postmeta/content CAS apply",
+      "requirement_ids": [
+        "ACI-032"
+      ],
+      "execution_dependencies": [
+        "ACI-T0053",
+        "ACI-T0051",
+        "ACI-T0032",
+        "ACI-T0065"
+      ],
+      "status": "OPEN",
+      "capability_selector": "publication",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0054.v1",
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0055",
+      "gate": "ACI-G8",
+      "title": "Verify native and rendered multilingual readback",
+      "requirement_ids": [
+        "ACI-027",
+        "ACI-032"
+      ],
+      "execution_dependencies": [
+        "ACI-T0054"
+      ],
+      "status": "OPEN",
+      "capability_selector": "publication",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0055.v1",
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0056",
+      "gate": "ACI-G8",
+      "title": "Certify Undo and partial effect reconciliation",
+      "requirement_ids": [
+        "ACI-027",
+        "ACI-032"
+      ],
+      "execution_dependencies": [
+        "ACI-T0054"
+      ],
+      "status": "OPEN",
+      "capability_selector": "publication",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0056.v1",
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0057",
+      "gate": "ACI-G8",
+      "title": "Prove browser/SEO/hreflang/AJAX accessibility",
+      "requirement_ids": [
+        "ACI-018",
+        "ACI-032",
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0055"
+      ],
+      "status": "OPEN",
+      "capability_selector": "publication",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0057.v1",
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0058",
+      "gate": "ACI-G8",
+      "title": "Certify independent publication and Production gates",
+      "requirement_ids": [
+        "ACI-033",
+        "ACI-042",
+        "ACI-043"
+      ],
+      "execution_dependencies": [
+        "ACI-T0055",
+        "ACI-T0056",
+        "ACI-T0057",
+        "ACI-T0065",
+        "ACI-T0066"
+      ],
+      "status": "OPEN",
+      "capability_selector": "publication",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0058.v1",
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0059",
+      "gate": "ACI-G9",
+      "title": "Bind GSC/GA4 properties and comparative windows",
+      "requirement_ids": [
+        "ACI-034"
+      ],
+      "execution_dependencies": [
+        "ACI-T0013",
+        "ACI-T0014"
+      ],
+      "status": "OPEN",
+      "capability_selector": "growth",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0059.v1",
+      "negative_cases": [
+        "seasonal_false_causality",
+        "feedback_flapping"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0060",
+      "gate": "ACI-G9",
+      "title": "Normalize currency/device/attribution by market",
+      "requirement_ids": [
+        "ACI-034"
+      ],
+      "execution_dependencies": [
+        "ACI-T0059"
+      ],
+      "status": "OPEN",
+      "capability_selector": "growth",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0060.v1",
+      "negative_cases": [
+        "seasonal_false_causality",
+        "feedback_flapping"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0061",
+      "gate": "ACI-G9",
+      "title": "Analyze SEO and conversion impact uncertainty",
+      "requirement_ids": [
+        "ACI-035"
+      ],
+      "execution_dependencies": [
+        "ACI-T0060",
+        "ACI-T0055"
+      ],
+      "status": "OPEN",
+      "capability_selector": "growth",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0061.v1",
+      "negative_cases": [
+        "seasonal_false_causality",
+        "feedback_flapping"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0062",
+      "gate": "ACI-G9",
+      "title": "Generate optimization proposal only",
+      "requirement_ids": [
+        "ACI-035",
+        "ACI-036"
+      ],
+      "execution_dependencies": [
+        "ACI-T0061"
+      ],
+      "status": "OPEN",
+      "capability_selector": "growth",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0062.v1",
+      "negative_cases": [
+        "seasonal_false_causality",
+        "feedback_flapping"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0063",
+      "gate": "ACI-G9",
+      "title": "Run seasonality/confounding/vanity negative fixtures",
+      "requirement_ids": [
+        "ACI-035",
+        "ACI-036"
+      ],
+      "execution_dependencies": [
+        "ACI-T0061"
+      ],
+      "status": "OPEN",
+      "capability_selector": "growth",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0063.v1",
+      "negative_cases": [
+        "seasonal_false_causality",
+        "feedback_flapping"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0064",
+      "gate": "ACI-G9",
+      "title": "Measure actual cost-to-value without causal overclaim",
+      "requirement_ids": [
+        "ACI-036"
+      ],
+      "execution_dependencies": [
+        "ACI-T0062",
+        "ACI-T0063"
+      ],
+      "status": "OPEN",
+      "capability_selector": "growth",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0064.v1",
+      "negative_cases": [
+        "seasonal_false_causality",
+        "feedback_flapping"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0065",
+      "gate": "ACI-G10",
+      "title": "Reconcile exact Staging runtime/grants/Skills",
+      "requirement_ids": [
+        "ACI-033",
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0006",
+        "ACI-T0046"
+      ],
+      "status": "OPEN",
+      "capability_selector": "release",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0065.v1",
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0066",
+      "gate": "ACI-G10",
+      "title": "Certify provider/site and host sandbox boundaries",
+      "requirement_ids": [
+        "ACI-040",
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0045",
+        "ACI-T0065"
+      ],
+      "status": "OPEN",
+      "capability_selector": "release",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0066.v1",
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0067",
+      "gate": "ACI-G10",
+      "title": "Run native MySQL/MariaDB/WPML compatibility",
+      "requirement_ids": [
+        "ACI-021",
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0032",
+        "ACI-T0066"
+      ],
+      "status": "OPEN",
+      "capability_selector": "release",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0067.v1",
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0068",
+      "gate": "ACI-G10",
+      "title": "Run real browser/RTL/accessibility journeys",
+      "requirement_ids": [
+        "ACI-038",
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0055",
+        "ACI-T0066"
+      ],
+      "status": "OPEN",
+      "capability_selector": "release",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0068.v1",
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0069",
+      "gate": "ACI-G10",
+      "title": "Benchmark workload and failure budgets",
+      "requirement_ids": [
+        "ACI-030",
+        "ACI-041",
+        "ACI-042"
+      ],
+      "execution_dependencies": [
+        "ACI-T0050",
+        "ACI-T0066"
+      ],
+      "status": "OPEN",
+      "capability_selector": "release",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0069.v1",
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0070",
+      "gate": "ACI-G10",
+      "title": "Certify restore epoch, rollback and idempotency",
+      "requirement_ids": [
+        "ACI-027",
+        "ACI-041"
+      ],
+      "execution_dependencies": [
+        "ACI-T0056",
+        "ACI-T0046"
+      ],
+      "status": "OPEN",
+      "capability_selector": "release",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0070.v1",
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    },
+    {
+      "id": "ACI-T0071",
+      "gate": "ACI-G10",
+      "title": "Record separate owner release/promotion decision",
+      "requirement_ids": [
+        "ACI-033",
+        "ACI-042",
+        "ACI-043"
+      ],
+      "execution_dependencies": [
+        "ACI-T0058",
+        "ACI-T0064",
+        "ACI-T0067",
+        "ACI-T0068",
+        "ACI-T0069",
+        "ACI-T0070"
+      ],
+      "status": "OPEN",
+      "capability_selector": "release",
+      "dimensions": [
+        "tenant",
+        "site_uuid",
+        "brand_id",
+        "locale",
+        "market",
+        "environment",
+        "runtime_generation",
+        "restore_epoch"
+      ],
+      "expected_evidence_contract": "mad4b.aci.task.0071.v1",
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "execution_effect": "SPEC_ONLY",
+      "authorizing": false,
+      "completion_claimed": false
+    }
+  ]
+}
