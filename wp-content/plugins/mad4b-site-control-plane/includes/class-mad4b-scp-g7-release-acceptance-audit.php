@@ -35,7 +35,7 @@ final class MAD4B_SCP_G7_Release_Acceptance_Audit {
         if ( ! $native_valid ) $reasons[] = 'native_continuation_status_unavailable';
         return array(
             'contract' => self::CONTRACT,
-            'state' => 'NO_UPDATE_OBSERVED' === ( $comparison['state'] ?? '' )
+            'state' => ( 'NO_UPDATE_OBSERVED' === ( $comparison['state'] ?? '' ) && $native_valid )
                 ? 'NO_UPDATE_OBSERVED' : 'RECONCILIATION_REQUIRED',
             'comparison_state' => $comparison['state'],
             'comparison_sha256' => $comparison['comparison_sha256'],

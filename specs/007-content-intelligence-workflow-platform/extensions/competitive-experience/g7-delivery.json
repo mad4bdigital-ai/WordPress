@@ -233,8 +233,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
-      "sha256": "02043edf73fc760fc7214493248f36736433ff9cac7e409eba7c788a4b077ac0",
-      "bytes": 3634
+      "sha256": "0d5fcb391e5348b7215fc07835c39e2cb524e18c0b780754068d93daadf8d16f",
+      "bytes": 3655
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
@@ -283,8 +283,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-missing-dependency-contract.php",
-      "sha256": "84db04faac87809f9bd929b4a9f6932c41116cfc5768f25516a21e0976c94316",
-      "bytes": 1631
+      "sha256": "dea5572898fdf651e2ab19e352ebdfe4066d0b0f2f5144323300f4ca38309066",
+      "bytes": 2213
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-spec-delivery-contract.php",
