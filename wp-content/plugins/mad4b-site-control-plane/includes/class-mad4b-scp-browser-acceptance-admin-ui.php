@@ -38,7 +38,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		$stored = get_option( self::OPTION, array() );
 		$known = is_array( $stored ) ? array_intersect_key( $stored, array_flip( array( 'executor', 'profile_id', 'site_provider_id', 'configuration_revision' ) ) ) : array();
 		$valid = self::normalize( $known );
-		return is_wp_error( $valid ) ? array( 'executor' => 'auto', 'profile_id' => '', 'site_provider_id' => '' ) : $valid;
+		return is_wp_error( $valid ) ? array( 'executor' => 'auto', 'profile_id' => '', 'site_provider_id' => '', 'configuration_revision' => '' ) : $valid;
 	}
 
 	/** Check the raw persisted operator selection, not the UI's display fallback. */
