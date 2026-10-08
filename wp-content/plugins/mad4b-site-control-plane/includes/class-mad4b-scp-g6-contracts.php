@@ -102,6 +102,8 @@ final class MAD4B_SCP_G6_Contracts {
 			|| ! is_int( $record['revision'] ) || $record['revision'] < 1
 			|| $record['revision'] >= PHP_INT_MAX || ! is_array( $record['items'] ) )
 			return self::error( 'store_corrupt', 'Private workspace revision or registry shape is invalid.' );
+		$bounded = self::data( $record );
+		if ( is_wp_error( $bounded ) ) return self::error( 'store_corrupt', 'Private workspace record exceeds safe storage bounds.' );
 		return $record;
 	}
 	public static function save( $kind, $owner, array $before, array $after ) {
@@ -124,6 +126,7 @@ final class MAD4B_SCP_G6_Contracts {
 		try {
 			wp_cache_delete( $owner, 'user_meta' );
 			$rows = get_user_meta( $owner, $key, false );
+			if ( ! is_array( $rows ) ) return self::error( 'store_corrupt', 'Private workspace CAS reader returned an invalid shape.' );
 			if ( count( $rows ) > 1 ) return self::error( 'store_duplicate', 'Duplicate private storage rows require reconciliation.' );
 			$current = $rows ? $rows[0] : array( 'revision' => 0, 'items' => array() );
 			if ( $current !== $before || ! MAD4B_SCP_Distributed_Lock::owns( $lock ) ) return self::error( 'revision_conflict', 'Workspace changed; reload before editing.' );
@@ -132,7 +135,7 @@ final class MAD4B_SCP_G6_Contracts {
 			if ( ! $ok ) return self::error( 'revision_conflict', 'Workspace changed; reload before editing.' );
 			wp_cache_delete( $owner, 'user_meta' );
 			$readback = get_user_meta( $owner, $key, false );
-			if ( 1 !== count( $readback ) || $readback[0] !== $after || ! MAD4B_SCP_Distributed_Lock::owns( $lock ) ) return self::error( 'readback_failed', 'Workspace save requires reconciliation.' );
+			if ( ! is_array( $readback ) || 1 !== count( $readback ) || $readback[0] !== $after || ! MAD4B_SCP_Distributed_Lock::owns( $lock ) ) return self::error( 'readback_failed', 'Workspace save requires reconciliation.' );
 			return $after;
 		} finally { MAD4B_SCP_Distributed_Lock::release( $lock ); }
 	}
