@@ -227,3 +227,32 @@ identity, and its workflow asserts that an incorrect target DB exits with a
 These changes remain source-level until the exact-head GitHub Actions and
 separately enrolled Staging tests complete; they do not constitute a live
 release or restore acceptance decision.
+
+### Ticket-bound mid-slice checkpoint fencing and operator visibility
+
+The post-closure race review found a second source of implicit retry
+authority: even when the Cron entrypoint checked the checkpoint state,
+a different worker or owner could set `blocked` between ticket reservation
+and a later mutation while leaving the exact artifact identity unchanged.
+A generation-only guard would not notice that deliberate operational pause.
+
+`Runtime_Convergence::guard_automatic_ticket()` now checks the **fresh
+current checkpoint state at each mutation boundary**, in addition to the
+live SLO ticket, independent Kill Switch revision and exact generation.
+For completed safe-phase checkpoints, only the same exact ticket that
+persisted `g8_completion_ticket_sha256` plus its original generation can
+finish its own late local version/provenance metadata. A foreign/old worker
+can neither borrow that completed state nor bypass manual/blocked/quarantined
+state. The completion marker never creates a grant or extends a ticket TTL.
+
+The new read-only `automatic_checkpoint_gate` shares its verdict with the
+Cron entrypoint and is exposed inside Runtime Convergence `status()` as
+`automatic_checkpoint_gate`: it shows `checkpoint_schedulable`, a
+reason code and `slo_ticket_verified=false`. This is observability only;
+SLO admission remains a distinct requirement.
+
+Hermetic tests now cover immediate owner pause after initial admission,
+exact-own-ticket completed metadata, forged/foreign completion owner,
+old queued blocked/completed/manual/restart-wait events, valid pending
+restart and malicious object-bearing checkpoints. All tests are wired
+into the exact-head PHP 7.4/8.3 matrix but are not yet claimed successful.
