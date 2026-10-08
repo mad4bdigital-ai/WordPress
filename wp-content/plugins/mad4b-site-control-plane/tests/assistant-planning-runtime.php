@@ -99,6 +99,12 @@ $uncertified = $observed; $uncertified['capabilities'][0] = array( 'capability' 
     'provider' => 'sample.provider', 'certification_state' => 'uncertified' );
 $diagnosis = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $uncertified );
 check_case( 'active provider without certificate requires certification', 'CERTIFY_PROVIDER' === $diagnosis['tasks'][0]['decision'] );
+$caller_certified = $uncertified;
+$caller_certified['capabilities'][0]['certification_state'] = 'certified';
+$claimed = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $caller_certified );
+check_case( 'caller cannot self-certify provider', 'CERTIFY_PROVIDER' === $claimed['tasks'][0]['decision']
+    && ! $claimed['tasks'][0]['execution_allowed']
+    && in_array( 'provider_certification_unverified', $claimed['review_reasons'], true ) );
 $dependency = $observed; $dependency['capabilities'][0]['dependency_state'] = 'unmet';
 $diagnosis = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $dependency );
 check_case( 'claimed missing dependency requires independent dependency review', 'RESOLVE_DEPENDENCY' === $diagnosis['tasks'][0]['decision'] );
