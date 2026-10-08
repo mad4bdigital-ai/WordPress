@@ -17,7 +17,9 @@ $GLOBALS['browser_test_actual_plan'] = array();
 class MAD4B_SCP_Browser_Acceptance_Core {
 	public static function capabilities() {
 		return array( 'providers' => array_map( static function( $id ) {
-			return array( 'provider_id' => $id );
+			return array( 'provider_id' => $id, 'capabilities' => array(
+				'default_profile_id' => 'etg-dfsb' === $id ? 'tours' : ( 'site-auto' === $id ? 'site.v1' : '' ),
+			) );
 		}, $GLOBALS['browser_test_providers'] ) );
 	}
 	public static function plan( $input ) {
@@ -64,6 +66,9 @@ $GLOBALS['browser_test_option'][MAD4B_SCP_Browser_Acceptance_Admin_UI::OPTION]['
 $unregistered = $ref->invoke( null );
 expect_browser( ! $unregistered['ready'] && in_array( 'selected_site_browser_provider_unregistered', $unregistered['blockers'], true ), 'unregistered selection fail closed' );
 $GLOBALS['browser_test_option'][MAD4B_SCP_Browser_Acceptance_Admin_UI::OPTION] = array( 'executor' => 'auto', 'profile_id' => '', 'site_provider_id' => '' );
+$GLOBALS['browser_test_providers'] = array( 'site-auto' );
+$generic = $ref->invoke( null );
+expect_browser( $generic['ready'] && 'site.v1' === $generic['selected_profile_id'], 'site-neutral provider-advertised profile selected' );
 $GLOBALS['browser_test_providers'] = array( 'etg-dfsb' );
 $legacy = $ref->invoke( null );
 expect_browser( $legacy['ready'] && $legacy['selected_profile_id'] === 'tours', 'ETG legacy fixture preserved for actual ETG registration' );
