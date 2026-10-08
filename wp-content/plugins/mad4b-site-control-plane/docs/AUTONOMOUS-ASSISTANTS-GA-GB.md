@@ -43,6 +43,8 @@ fingerprints. Its pure planner also requires a bounded runtime binding.
 }
 ```
 
+The response routes each proposal through a typed **discovery, configuration, certification or supervisor** role; these are descriptive task proposals, not grant-bearing agent identities. Only the bounded `audience.market.country` and `audience.language` facts can appear as `configuration_proposals.audience`, always with `apply_allowed=false` and an explicit unverified provenance marker. Other caller facts are used for conflicts/input digests, not echoed as sensitive configuration values.
+
 The observation and provenance strings are **caller assertions only**. A
 reported active provider is not automatically certified. `plan_sha256` binds
 the site/runtime/artifact/restore epoch and the hash of the exact desired and
