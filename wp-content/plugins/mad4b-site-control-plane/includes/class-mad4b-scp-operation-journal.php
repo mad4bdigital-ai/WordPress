@@ -26,7 +26,18 @@ final class MAD4B_SCP_Operation_Journal {
 			$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], str_repeat( '0', 64 ), sanitize_key( $lifecycle_state ), $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $deadline, $now, $now
 		) );
 		if ( false === $inserted ) return MAD4B_SCP_Database_Failure_Semantics::error( 'mad4b_operation_journal_head_create_failed', 'Unable to initialize operation journal.', 'operation_journal_head_create', (string) $wpdb->last_error, null );
-		return self::append( $context, 'operation_started', array( 'checkpoint' => 'planned', 'lifecycle_state' => $lifecycle_state, 'metadata' => $metadata ) );
+		// INSERT IGNORE returns zero when the head already exists. Never append
+		// a second operation_started event or rewrite a competing owner identity.
+		if ( 1 !== (int) $inserted ) {
+			return new WP_Error( 'mad4b_operation_journal_head_already_exists',
+				'Journal head already exists or creation is uncertain. Reconcile before retry.',
+				array( 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+		}
+		return self::append( $context, 'operation_started', array(
+			'expected_sequence' => 0,
+			'expected_event_sha256' => str_repeat( '0', 64 ),
+			'checkpoint' => 'planned', 'lifecycle_state' => $lifecycle_state,
+			'metadata' => $metadata ) );
 	}
 
 	public static function append( array $context, $event_type, array $args = array() ) {
