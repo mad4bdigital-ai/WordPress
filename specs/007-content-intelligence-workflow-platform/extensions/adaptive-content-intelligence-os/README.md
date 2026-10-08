@@ -58,3 +58,11 @@ flowchart LR
 ```
 
 No direct arrow from growth signals, LLM output, crawled content, or relationship observations to WordPress mutation. Each passes through independent admission, human/agent approvals when applicable, commit-time CAS and native readback.
+
+## Canonical project definition and dynamic foundation
+
+- [Project Charter](project-charter.md) defines the single product promise, personas, source-of-truth boundaries, first vertical slice, remaining research decisions and **DESIGN_REVIEW_REQUIRED** STOP gate.
+- [Dynamic Foundation](dynamic-foundation.md) defines adaptive-by-default admission for every site, market, locale, field, content recipe, provider, account, job, review and release stage.
+- The machine-owned inputs are `task-registry.json`, `requirements.json`, `acceptance-gates.json`, `system-map.json`, `dynamic-policy.json`, `content-recipes.json`, `domain-fact-authority.json` and `use-cases.json`. Their validators are `validate.py` and `dynamic_core.py`; negative fixtures live in `test_validate.py` and `test_dynamic_core.py`.
+- G0–G10 are **conditional certification families**, not a fixed execution chain. Execution can proceed only as a permitted, scope-bound plan; a documentation preview cannot dispatch an operation or certify staging.
+- **No implementation starts** until an exact-HEAD Spec Kit review proves registry↔Markdown bidirectional links, acyclic dynamic graphs, field/content ownership, relevant denial cases and independent site/authority boundaries. An offline/static result is never external acceptance.
