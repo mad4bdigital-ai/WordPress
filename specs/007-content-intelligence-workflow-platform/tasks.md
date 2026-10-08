@@ -298,7 +298,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1523 P1 Unknown-kid bounded refresh/deny test.
 - [ ] T1524 P1 Refresh replay/family poisoning regression.
 - [ ] T1525 P1 Key rotation overlap test.
-- [ ] T1526 P1 Add MCP Adapter exact-package protocol profile.
+- [x] T1526 P1 Add MCP Adapter exact-package protocol profile.
 - [ ] T1527 P1 Add successor official release certification workflow.
 - [ ] T1528 P1 Dual-protocol regression when successor supports newer MCP.
 - [ ] T1529 P0 GATE Multi-Authority Live Certification contract implementation.
@@ -344,7 +344,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1703 P0 Implement ProviderResolutionDecision.
 - [ ] T1704 P0 Consider certification/environment/risk/cost/locality/performance.
 - [ ] T1705 P0 Ensure Resolver is non-authorizing.
-- [ ] T1706 P0 Ensure Skills do not hardcode Bit Flows.
+- [x] T1706 P0 Ensure Skills do not hardcode Bit Flows.
 - [ ] T1707 P0 Define signed workflow-execution-request.v1.
 - [ ] T1708 P0 Bind request to site/workflow SHA/plan SHA/expiry/nonce.
 - [ ] T1709 P0 Replay denial.
