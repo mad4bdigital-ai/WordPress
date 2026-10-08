@@ -30,6 +30,10 @@ export function resolveSiteBrowserAdapter(caps, {
       !Array.isArray(observed.plugins) || observed.plugins.length > 128 ||
       !Array.isArray(observed.post_types) || observed.post_types.length > 96 ||
       !Array.isArray(observed.taxonomies) || observed.taxonomies.length > 96 ||
+      observed.post_types.some(x => !valid(x, /^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/)) ||
+      observed.taxonomies.some(x => !valid(x, /^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/)) ||
+      new Set(observed.post_types).size !== observed.post_types.length ||
+      new Set(observed.taxonomies).size !== observed.taxonomies.length ||
       new Set(observed.plugins).size !== observed.plugins.length ||
       observed.plugins.some(x => !valid(x, ID)) ||
       observed.theme_version_complete !== true ||
@@ -47,9 +51,15 @@ export function resolveSiteBrowserAdapter(caps, {
       observed.plugin_versions.some(x => !x || !valid(x.slug, ID) ||
         !observed.plugins.includes(x.slug) ||
         typeof x.basename !== "string" ||
+        (x.basename.includes("/") ? x.basename.split("/")[0].toLowerCase() :
+          x.basename.slice(0, -4).toLowerCase()) !== x.slug ||
         !/^[a-zA-Z0-9._-]+(?:\/[a-zA-Z0-9._-]+)?\.php$/.test(x.basename) ||
         x.basename.split("/").some(y => y === "." || y === ".." || y.startsWith(".")) ||
         !/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,99}$/.test(x.version || "")) ||
+      !Array.isArray(observed.unmapped_plugins) ||
+      observed.unmapped_plugins.length > 128 ||
+      new Set(observed.unmapped_plugins).size !== observed.unmapped_plugins.length ||
+      observed.unmapped_plugins.some(x => !valid(x, ID) || !observed.plugins.includes(x)) ||
       !Array.isArray(observed.provider_matches) || observed.provider_matches.length > 32) {
     fail("discovery_invalid_or_incomplete");
   }
@@ -69,6 +79,18 @@ export function resolveSiteBrowserAdapter(caps, {
     providers.set(row.provider_id, row);
   }
   const recognized = new Set();
+  const declared = new Set();
+  for (const provider of providers.values()) {
+    const rules = provider.descriptor.recognition;
+    if (!rules) continue;
+    if (typeof rules !== "object" || Array.isArray(rules)) fail("provider_recognition_invalid");
+    const keys = ["source_plugins", "source_post_types", "source_taxonomies"];
+    const requirements = keys.map(k => rules[k] ?? []);
+    if (requirements.some(x => !Array.isArray(x) || x.length > 32)) fail("provider_recognition_invalid");
+    if (requirements.some(x => x.length)) declared.add(provider.provider_id);
+  }
+  const seenMatches = new Set();
+  const coveredPlugins = new Set();
   for (const match of observed.provider_matches) {
     const sources = [
       ["source_plugins", "matched_plugins", observed.plugins, ID],
@@ -76,7 +98,9 @@ export function resolveSiteBrowserAdapter(caps, {
       ["source_taxonomies", "matched_taxonomies", observed.taxonomies, /^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/]
     ];
     if (!match || !valid(match.provider_id, ID) || !providers.has(match.provider_id) ||
-        match.certified !== false || match.authorizing !== false) fail("discovery_match_invalid");
+        match.certified !== false || match.authorizing !== false ||
+        !declared.has(match.provider_id) || seenMatches.has(match.provider_id)) fail("discovery_match_invalid");
+    seenMatches.add(match.provider_id);
     let total = 0, hits = 0;
     for (const [key, matchedKey, observedValues, pattern] of sources) {
       const required = match[key] || [];
@@ -94,7 +118,15 @@ export function resolveSiteBrowserAdapter(caps, {
       hits += seen;
     }
     if (!total || match.recognized !== (hits === total)) fail("discovery_match_invalid");
-    if (match.recognized) recognized.add(match.provider_id);
+    if (match.recognized) {
+      recognized.add(match.provider_id);
+      for (const plugin of match.source_plugins || []) coveredPlugins.add(plugin);
+    }
+  }
+  if (seenMatches.size !== declared.size) fail("discovery_match_incomplete");
+  if (JSON.stringify([...observed.unmapped_plugins].sort()) !==
+      JSON.stringify(observed.plugins.filter(x => !coveredPlugins.has(x)).sort())) {
+    fail("unmapped_plugin_projection_invalid");
   }
   if (!Array.isArray(approvedDrivers) || approvedDrivers.length > 32) fail("driver_registry_invalid");
   const candidates = new Map();
