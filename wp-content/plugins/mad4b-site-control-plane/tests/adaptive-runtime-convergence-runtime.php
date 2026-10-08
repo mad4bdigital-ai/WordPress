@@ -352,4 +352,19 @@ check( false === $disabled_status['auto_observation_available'] && 'EXTERNAL_ACT
 check( 'REVIEW_REQUIRED' === $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['lane']
     && ! $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['worker_may_observe'], 'Disabled scheduler offered false automatic repair' );
 check( $writes_before_disabled_status + 1 === $GLOBALS['writes'], 'Passive disabled-Cron status read persisted changes' );
+$corrupt = get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION );
+$corrupt['failure_code'] = array( 'invalid' );
+$corrupt['failure_state'] = array( 'RETRY_PENDING' );
+$corrupt['attempts'] = array( 999 );
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION] = $corrupt;
+$before_corrupt_writes = $GLOBALS['writes'];
+$before_corrupt_probes = MAD4B_SCP_Live_Acceptance_Observer::$calls;
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$corrupt_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( $before_corrupt_writes === $GLOBALS['writes'] && $before_corrupt_probes === MAD4B_SCP_Live_Acceptance_Observer::$calls,
+    'Malformed failure state triggered an automatic repair' );
+check( 'REVIEW_REQUIRED' === $corrupt_status['last_worker_failure']['state']
+    && 'invalid_failure_record' === $corrupt_status['last_worker_failure']['code']
+    && 0 === $corrupt_status['last_worker_failure']['attempts']
+    && ! $corrupt_status['auto_observation_available'], 'Malformed persisted event was not safely represented' );
 echo "Adaptive runtime convergence runtime: PASS\n";

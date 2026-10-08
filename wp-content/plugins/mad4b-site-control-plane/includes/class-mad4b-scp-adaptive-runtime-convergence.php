@@ -109,7 +109,11 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	}
 
 	private static function terminal_event( $event ) {
-		return is_array( $event ) && in_array( $event['failure_state'] ?? '', array( 'HARD_BLOCKED', 'REVIEW_REQUIRED', 'EXTERNAL_ACTION_REQUIRED' ), true );
+		if ( ! is_array( $event ) ) return true;
+		if ( ! array_key_exists( 'failure_state', $event ) ) return array_key_exists( 'failure_code', $event );
+		// Corrupt/unknown failure states never silently downgrade a stop
+		// decision to a retry. Only an explicit bounded retry is nonterminal.
+		return ! is_string( $event['failure_state'] ) || 'RETRY_PENDING' !== $event['failure_state'];
 	}
 
 	public static function maybe_schedule() {
@@ -507,7 +511,11 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$readback = get_option( self::OPTION, array() );
 			if ( ! self::valid_registry( $readback ) || ! hash_equals( $registry['seal'], $readback['seal'] ) ) { self::schedule( 60 ); return; }
 			$latest_event = self::event();
-			if ( isset( $latest_event['failure_code'] ) && ( $latest_event['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) ) { unset( $latest_event['failure_code'], $latest_event['failure_state'], $latest_event['attempts'] ); update_option( self::EVENT_OPTION, $latest_event, false ); }
+			if ( isset( $latest_event['failure_code'] ) && ( $latest_event['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) ) {
+				unset( $latest_event['failure_code'], $latest_event['failure_state'], $latest_event['attempts'],
+					$latest_event['failure_decision'], $latest_event['failure_policy_id'], $latest_event['failure_policy_source'] );
+				update_option( self::EVENT_OPTION, $latest_event, false );
+			}
 			self::schedule( $pending ? 5 : 3600 );
 		} catch ( Throwable $error ) { self::note_failure( 'runtime_observation_failed', $event['event_id'] ?? '' ); }
 		finally { MAD4B_SCP_Runtime_Maintenance_Lease::release( $lock, 'adaptive_runtime_observation' ); }
@@ -578,7 +586,11 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			if ( ! $details ) unset( $observation['capabilities'], $observation['capability_diff'] );
 		}
 		unset( $observation );
-		$registry['last_worker_failure'] = isset( $event['failure_code'] ) ? array( 'state' => $event['failure_state'] ?? '', 'code' => sanitize_key( $event['failure_code'] ), 'attempts' => (int) ( $event['attempts'] ?? 0 ) ) : array();
+		$registry['last_worker_failure'] = array_key_exists( 'failure_code', $event ) ? array(
+			'state' => is_string( $event['failure_state'] ?? null ) ? $event['failure_state'] : 'REVIEW_REQUIRED',
+			'code' => is_string( $event['failure_code'] ) ? sanitize_key( $event['failure_code'] ) : 'invalid_failure_record',
+			'attempts' => is_int( $event['attempts'] ?? null ) ? max( 0, min( 6, $event['attempts'] ) ) : 0,
+		) : array();
 		unset( $registry['seal'] );
 		return array_merge( $registry, array( 'contract' => self::CONTRACT, 'receipt_integrity_valid' => $valid, 'observation_current' => $current, 'authorizing' => false, 'read_only' => true, 'production_mutation' => false,
 			'page' => array( 'total_provider_count' => $total, 'returned_provider_count' => count( $registry['providers'] ), 'has_more' => $has_more, 'next_after_provider' => $has_more ? array_keys( $registry['providers'] )[ count( $registry['providers'] ) - 1 ] : '', 'receipt_sha256' => $receipt_sha256, 'capability_details_included' => $details ),
