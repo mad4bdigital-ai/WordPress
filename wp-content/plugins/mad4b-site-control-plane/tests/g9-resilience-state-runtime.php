@@ -140,6 +140,11 @@ $receipt = MAD4B_SCP_G9_Release_Fence::inspect( $binding, $reserved['operation_s
 g9_assert( ! is_wp_error( $receipt ) && $receipt['external_effect_unknown']
     && !$receipt['blind_retry_allowed'], 'unknown external effect remains uncertain' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'plan_superseded' );
+$replanned = MAD4B_SCP_G9_Release_Fence::plan( $target, $limits );
+g9_assert( ! is_wp_error( $replanned )
+    && $replanned['plan_sha256'] !== $plan['plan_sha256'],
+    'fresh plan has different issuance/anchor fingerprint' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $replanned ), 'replay_or_capacity' );
 $foreign = $binding; $foreign['site_uuid'] = '22222222-2222-4222-8222-222222222222';
 g9_denied( MAD4B_SCP_G9_Release_Fence::inspect( $foreign, $reserved['operation_sha256'] ), 'foreign_site' );
 $baseline = MAD4B_SCP_Resilience_Context::capture();

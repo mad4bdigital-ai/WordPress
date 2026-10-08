@@ -122,9 +122,18 @@ final class MAD4B_SCP_G9_Release_Fence {
         if ( is_wp_error( $auth ) || true !== $auth )
             return self::blocked( 'not_admitted', 'Existing governed executor did not admit the exact reservation.' );
 
+        // Stable logical operation identity: re-planning with a new issued_at,
+        // threshold or anchor revision MUST NOT permit another rollout for the
+        // same site/cohort/ring/artifact/restore epoch.
         $operation_sha = MAD4B_SCP_Resilience_Context::digest( array(
-            $plan['site_key'], $plan['target']['cohort_id'], $plan['target']['ring'],
-            $observed['binding']['runtime_generation_sha256'], $plan['plan_sha256'],
+            'contract' => 'mad4b.g9.release-operation-key.v1',
+            'site_key' => $plan['site_key'],
+            'cohort_id' => $plan['target']['cohort_id'],
+            'ring' => $plan['target']['ring'],
+            'artifact_sha256' => $observed['binding']['artifact_sha256'],
+            'runtime_generation_sha256' => $observed['binding']['runtime_generation_sha256'],
+            'restore_epoch' => $observed['binding']['restore_epoch'],
+            'external_record_sha256' => $observed['binding']['external_record_sha256'],
         ) );
         $entry_key = 'g9:release:' . $operation_sha;
         $result = MAD4B_SCP_Resilience_Anchor::transact(
