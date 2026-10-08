@@ -1140,6 +1140,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			return;
 		}
 		$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] ) ? $checkpoint['target_identity'] : array();
+		if ( ! self::automatic_identity_safe( $target ) ) return;
 		$current = self::current_identity();
 		if ( ! self::identity_matches( $target, $current ) ) {
 			$checkpoint['state'] = 'waiting_for_exact_runtime_restart';
@@ -1247,6 +1248,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$target = is_array( $checkpoint ) && is_array( $checkpoint['target_identity'] ?? null )
 			? $checkpoint['target_identity'] : array();
+		if ( ! self::automatic_identity_safe( $target ) )
+			return new WP_Error( 'mad4b_automation_target_identity_invalid', 'Automatic checkpoint is not an exact bounded runtime identity.' );
 		$current = self::current_identity();
 		if ( ! self::identity_matches( $target, $current ) )
 			return new WP_Error( 'mad4b_automation_target_identity_drift', 'Automatic worker target is no longer the exact current runtime.' );
@@ -1607,6 +1610,19 @@ final class MAD4B_SCP_Runtime_Convergence {
 			}
 		}
 		return self::bounded_identity( $identity );
+	}
+
+	/** Reject executable or expansive checkpoint identity data before hashing. */
+	private static function automatic_identity_safe( $identity ) {
+		if ( ! is_array( $identity ) || 5 !== count( $identity ) ) return false;
+		foreach ( array( 'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			if ( ! is_string( $identity[ $field ] ?? null ) ) return false;
+		}
+		return '' !== $identity['version'] && strlen( $identity['version'] ) <= 64
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', $identity['source_commit_sha'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $identity['build_fingerprint'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $identity['package_manifest_digest'] )
+			&& strlen( $identity['artifact_identity'] ) <= 255;
 	}
 
 	private static function bounded_identity( array $identity ) {
