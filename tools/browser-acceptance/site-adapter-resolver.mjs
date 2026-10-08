@@ -62,6 +62,11 @@ export function resolveSiteBrowserAdapter(caps, {
     let total = 0, hits = 0;
     for (const [key, matchedKey, observedValues, pattern] of sources) {
       const required = match[key] || [];
+      const descriptorSignal = providers.get(match.provider_id).descriptor.recognition?.[key] || [];
+      if (!Array.isArray(descriptorSignal) ||
+          JSON.stringify([...descriptorSignal].sort()) !== JSON.stringify([...required].sort())) {
+        fail("provider_recognition_mismatch");
+      }
       if (!Array.isArray(required) || required.length > 32 ||
           new Set(required).size !== required.length ||
           required.some(x => !valid(x, pattern))) fail("discovery_match_invalid");
