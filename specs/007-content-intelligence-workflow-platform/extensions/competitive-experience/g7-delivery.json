@@ -224,8 +224,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php",
-      "sha256": "20f2523cce57166dfe9547549f28dcf95187b96dd2f20fcba67ff6d71a7d00b2",
-      "bytes": 6287
+      "sha256": "1c291e8a1337b32a52e8b90c09218e6e86be37ca7a405f1ade24a1ead611f17a",
+      "bytes": 7018
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php",
@@ -244,8 +244,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
-      "sha256": "4f83d48b3a50f6718644c17eb62dc9a9c627e5390395d5d11540875b9deb4cf5",
-      "bytes": 8658
+      "sha256": "64ce6e9647b06018e9f6d624483d75fb51af6a4d5accaac396fcafc0d8ff9125",
+      "bytes": 9412
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php",
@@ -304,8 +304,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-update-host-action-runtime.php",
-      "sha256": "5cb270cb2cd810d068e81691be3376681b8b65e0fc878f192ad47d57bd585b5f",
-      "bytes": 12415
+      "sha256": "1581ab197fe0df4c7d7603e603bdd714b8791730e7fb938eb0fac87766ba894b",
+      "bytes": 14081
     }
   ]
 }

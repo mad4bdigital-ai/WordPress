@@ -18,6 +18,11 @@ final class MAD4B_SCP_G7_Update_Acceptance {
         if ( is_wp_error( $graph ) ) return $graph;
         if ( ! is_array( $graph ) || ( $graph['contract'] ?? '' ) !== MAD4B_SCP_Runtime_Evidence_Graph::CONTRACT ||
             ! MAD4B_SCP_Adaptive_Operations_Context::sha( $graph['generation_sha256'] ?? '' ) ) return self::error( 'graph_invalid' );
+        // Keep the graph and its site/runtime/restore binding in one stable observation.
+        $post_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+        if ( is_wp_error( $post_binding ) ) return $post_binding;
+        $same = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $post_binding );
+        if ( is_wp_error( $same ) ) return $same;
         $complete = self::graph_complete( $graph );
         $material = array(
             'contract' => self::CONTRACT, 'binding' => $binding, 'observed_at' => time(),
@@ -55,6 +60,11 @@ final class MAD4B_SCP_G7_Update_Acceptance {
             self::graph_complete( $live_graph ) !== $new['graph_complete'] ) {
             return self::error( 'post_observation_graph_drift' );
         }
+        // A matching graph hash cannot hide a restore/runtime change during readback.
+        $post_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+        if ( is_wp_error( $post_binding ) ) return $post_binding;
+        $same = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $new['binding'], $post_binding );
+        if ( is_wp_error( $same ) ) return $same;
         $runtime_changed = ! hash_equals( $old['binding']['runtime_generation'], $new['binding']['runtime_generation'] ) ||
             ! hash_equals( $old['binding']['artifact_sha256'], $new['binding']['artifact_sha256'] );
         $graph_changed = ! hash_equals( $old['graph_generation_sha256'], $new['graph_generation_sha256'] );

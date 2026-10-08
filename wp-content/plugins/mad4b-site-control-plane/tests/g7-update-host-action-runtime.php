@@ -43,14 +43,22 @@ class MAD4B_SCP_Restore_Epoch {
 class MAD4B_SCP_Developer_Host_Capabilities {
     const CONTRACT = 'mad4b.developer-host-capabilities.v1';
     public static $snapshot;
-    public static function snapshot() { return self::$snapshot; }
+    public static $binding_drift = '';
+    public static function snapshot() {
+        if ( 'restore' === self::$binding_drift ) MAD4B_SCP_Restore_Epoch::$epoch++;
+        if ( 'runtime' === self::$binding_drift ) MAD4B_SCP_Runtime_Generation_Fence::$sha = str_repeat( '6', 64 );
+        return self::$snapshot;
+    }
 }
 class MAD4B_SCP_Runtime_Evidence_Graph {
     const CONTRACT = 'mad4b.runtime-evidence-graph.v2';
     public static $generation;
     public static $complete = true;
     public static $side_effect_observed = false;
+    public static $binding_drift = '';
     public static function snapshot( $input = array() ) {
+        if ( 'restore' === self::$binding_drift ) MAD4B_SCP_Restore_Epoch::$epoch++;
+        if ( 'runtime' === self::$binding_drift ) MAD4B_SCP_Runtime_Generation_Fence::$sha = str_repeat( '6', 64 );
         return array(
             'contract' => self::CONTRACT, 'generation_sha256' => self::$generation,
             'complete_for_absence' => self::$complete,
@@ -87,6 +95,14 @@ g7_check( ! is_wp_error( $host ), 'host observed and site sealed' );
 $host_status = MAD4B_SCP_G7_Host_Readiness::verify( $host );
 g7_check( ! is_wp_error( $host_status ) && true === $host_status['candidate_prerequisites_present'] &&
     false === $host_status['execution_eligible'] && 'EXTERNAL_ACTION_REQUIRED' === $host_status['state'], 'binary presence cannot certify sandbox operational safety' );
+MAD4B_SCP_Developer_Host_Capabilities::$binding_drift = 'restore';
+g7_denied( MAD4B_SCP_G7_Host_Readiness::capture(), 'restore during host capture denied before sealing' );
+MAD4B_SCP_Developer_Host_Capabilities::$binding_drift = '';
+MAD4B_SCP_Restore_Epoch::$epoch = 1;
+MAD4B_SCP_Developer_Host_Capabilities::$binding_drift = 'runtime';
+g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $host ), 'runtime replacement during host verification denied' );
+MAD4B_SCP_Developer_Host_Capabilities::$binding_drift = '';
+MAD4B_SCP_Runtime_Generation_Fence::$sha = str_repeat( 'c', 64 );
 MAD4B_SCP_Developer_Host_Capabilities::$snapshot['network_sandbox_binary_present'] = false;
 MAD4B_SCP_Developer_Host_Capabilities::$snapshot['capability_fingerprint'] = str_repeat( '0', 64 );
 g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $host ), 'host drift denied' );
@@ -108,6 +124,14 @@ g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $old_host ), 'expired host obser
 
 $before = MAD4B_SCP_G7_Update_Acceptance::capture();
 g7_check( ! is_wp_error( $before ), 'before observation captured' );
+MAD4B_SCP_Runtime_Evidence_Graph::$binding_drift = 'restore';
+g7_denied( MAD4B_SCP_G7_Update_Acceptance::capture(), 'restore during graph capture denied before sealing' );
+MAD4B_SCP_Runtime_Evidence_Graph::$binding_drift = '';
+MAD4B_SCP_Restore_Epoch::$epoch = 1;
+MAD4B_SCP_Runtime_Evidence_Graph::$binding_drift = 'runtime';
+g7_denied( MAD4B_SCP_G7_Update_Acceptance::compare( $before, $before ), 'runtime replacement during comparison denied despite matching graph hash' );
+MAD4B_SCP_Runtime_Evidence_Graph::$binding_drift = '';
+MAD4B_SCP_Runtime_Generation_Fence::$sha = str_repeat( 'c', 64 );
 $none = MAD4B_SCP_G7_Update_Acceptance::compare( $before, $before );
 g7_check( ! is_wp_error( $none ) && 'NO_UPDATE_OBSERVED' === $none['state'] &&
     false === $none['acceptance_receipt_issued'], 'unchanged observations do not claim release acceptance' );

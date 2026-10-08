@@ -16,6 +16,11 @@ final class MAD4B_SCP_G7_Host_Readiness {
         if ( is_wp_error( $binding ) ) return $binding;
         $snapshot = MAD4B_SCP_Developer_Host_Capabilities::snapshot();
         if ( ! is_array( $snapshot ) || ( $snapshot['contract'] ?? '' ) !== MAD4B_SCP_Developer_Host_Capabilities::CONTRACT ) return self::error( 'snapshot_untrusted' );
+        // Reject a restore/runtime change while the host snapshot was being read.
+        $post_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+        if ( is_wp_error( $post_binding ) ) return $post_binding;
+        $same = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $post_binding );
+        if ( is_wp_error( $same ) ) return $same;
         $now = time();
         $material = array(
             'contract' => self::CONTRACT,
@@ -56,6 +61,11 @@ final class MAD4B_SCP_G7_Host_Readiness {
         if ( ! is_array( $snapshot ) || ( $snapshot['contract'] ?? '' ) !== MAD4B_SCP_Developer_Host_Capabilities::CONTRACT ||
             ! MAD4B_SCP_Adaptive_Operations_Context::sha( $snapshot['capability_fingerprint'] ?? '' ) ||
             ! hash_equals( $material['host_capability_fingerprint'], $snapshot['capability_fingerprint'] ) ) return self::error( 'host_drift' );
+        // The host read itself can overlap a restore or runtime replacement.
+        $post_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+        if ( is_wp_error( $post_binding ) ) return $post_binding;
+        $same = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $post_binding );
+        if ( is_wp_error( $same ) ) return $same;
         return self::assess_snapshot( $snapshot );
     }
 
