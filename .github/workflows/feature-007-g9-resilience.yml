@@ -7,6 +7,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/feature-007-g9-resilience.yml'
+      - 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.*'
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,6 +29,8 @@ jobs:
       - name: Lint G9 runtime
         run: |
           for f in wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-{context,anchor}.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php; do php -l "$f" || exit 1; done
+      - name: Verify G9 non-authorizing delivery contract
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py
       - name: Run G9 isolation and restore fixtures
         run: |
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php
