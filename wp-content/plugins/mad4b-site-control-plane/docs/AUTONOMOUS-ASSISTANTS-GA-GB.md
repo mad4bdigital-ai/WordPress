@@ -331,3 +331,21 @@ native acceptance. Unfinished leases cannot be blindly retried. The included
 hermetic regression checks `tests/assistant-read-work-runtime.php` cover
 operation/purpose mapping, stale identity, Production denial, unsafe payload
 fields and absence of privileged operations.
+
+## GF read-only Assistant Review workspace
+
+The WordPress Tools subpage `Assistant Review` is now registered under the
+existing MAD4B Control Plane admin menu, restricted to `manage_options`.
+The view reports only enrolled/bootstrap readiness, bounded known blockers,
+and counts for the three semantic assistant read jobs. It deliberately
+does not render provider payloads, secrets, OAuth tokens, plan approvals,
+write buttons or HTML supplied by diagnostics. It never changes any setting.
+
+The workspace distinguishes **preview eligible** from **execution ready**;
+provider certification and authorization remain separate. A failed Site
+Profile/runtime read displays `bootstrap_read_unavailable` rather than
+claiming an operationally ready assistant. The hermetic
+`tests/assistant-operator-workspace-runtime.php` covers admin capability,
+HTML escaping, absence of mutation controls and read-only authority.
+Real WordPress browser/keyboard/accessibility and production performance
+acceptance are still independent release gates.
