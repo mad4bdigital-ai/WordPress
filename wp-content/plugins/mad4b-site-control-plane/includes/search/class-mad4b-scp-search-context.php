@@ -145,34 +145,32 @@ final class MAD4B_SCP_Search_Context {
 	}
 
 	/**
-	 * All market IDs carry historical target identity. Existing unclaimed
-	 * legacy IDs must be checked against committed peers before safely
-	 * adopting an immutable claim. This is deliberately bounded by the
-	 * registry's max_profiles constraint.
+	 * Exact market identities cannot alias between profiles, including older
+	 * profiles outside a damaged Registry. A single bounded Store scan avoids
+	 * the N+1 profile reads and observes orphaned committed profiles as well.
+	 * Concurrent writes remain fenced by immutable claims on apply.
 	 */
 	private static function market_id_unique( array $candidate, array $previous ) {
-		$check_ids = array(); $unclaimed = array();
+		$ids = array();
 		foreach ( $candidate['markets'] as $market ) {
-			$id = $market['id']; $country = $market['country'];
+			$id = $market['id']; $ids[ $id ] = $market['country'];
 			$claim = MAD4B_SCP_Search_Store::read( 'market-identity', $id );
 			if ( is_wp_error( $claim ) ) return $claim;
-			if ( null === $claim ) { $unclaimed[ $id ] = $country; $check_ids[ $id ] = true; continue; }
-			$expected = array( 'profile_id' => $candidate['profile_id'], 'country' => $country );
+			if ( null === $claim ) continue;
+			$expected = array( 'profile_id' => $candidate['profile_id'], 'country' => $market['country'] );
 			if ( ! is_array( $claim ) || ! isset( $claim['digest'], $claim['payload'] ) || ! is_string( $claim['digest'] ) || ! is_array( $claim['payload'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $expected ), $claim['digest'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $claim['payload'] ), $claim['digest'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'This market ID has a different or invalid durable owner claim.' );
 		}
-		if ( ! $unclaimed ) return true;
-		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
-		if ( is_wp_error( $registry ) ) return $registry;
-		if ( null !== $registry && ( ! is_array( $registry ) || ! isset( $registry['ids'] ) || ! is_array( $registry['ids'] ) || count( $registry['ids'] ) > self::policy()['max_profiles'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
-		foreach ( is_array( $registry ) ? $registry['ids'] : array() as $other_id ) {
-			if ( ! MAD4B_SCP_Search_Contracts::id( $other_id ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
-			if ( $other_id === $candidate['profile_id'] ) continue;
-			$other = MAD4B_SCP_Search_Store::read( 'profile', $other_id );
-			if ( is_wp_error( $other ) ) return $other;
-			if ( null === $other ) continue; // Pending reservations are covered by claims at apply.
-			if ( ! is_array( $other ) || ! isset( $other['profile']['markets'] ) || ! is_array( $other['profile']['markets'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
-			foreach ( $other['profile']['markets'] as $market ) if ( ! is_array( $market ) || ! isset( $market['id'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
-			else if ( isset( $check_ids[ $market['id'] ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'The market ID appears in another historical Search Profile and cannot be silently adopted.' );
+		$limit = (int) self::policy()['max_profiles'];
+		$rows = MAD4B_SCP_Search_Store::list_rows( 'profile', '', $limit + 1 );
+		if ( is_wp_error( $rows ) ) return $rows;
+		if ( ! isset( $rows['items'] ) || ! is_array( $rows['items'] ) || count( $rows['items'] ) > $limit ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid', 'Search Profile store cardinality is inconsistent.' );
+		foreach ( $rows['items'] as $row ) {
+			if ( ! is_array( $row ) || ! isset( $row['profile']['profile_id'], $row['profile']['markets'] ) || ! MAD4B_SCP_Search_Contracts::id( $row['profile']['profile_id'] ) || ! is_array( $row['profile']['markets'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+			if ( $row['profile']['profile_id'] === $candidate['profile_id'] ) continue;
+			foreach ( $row['profile']['markets'] as $market ) {
+				if ( ! is_array( $market ) || ! isset( $market['id'] ) || ! is_string( $market['id'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+				if ( isset( $ids[ $market['id'] ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'This market ID also appears in another committed Search Profile.' );
+			}
 		}
 		return true;
 	}
