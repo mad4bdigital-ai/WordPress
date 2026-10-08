@@ -26,6 +26,16 @@ class WP_Error {
 	public function __construct( $code, $message = '' ) { $this->code = $code; }
 	public function get_error_code() { return $this->code; }
 }
+$throwing_slo = '1' === getenv( 'G8_THROWING_SLO' );
+if ( $throwing_slo ) {
+	class MAD4B_SCP_Automation_SLO {
+		public static function reserve( $provider, $capability, $generation ) {
+			throw new RuntimeException( 'simulated internal admission failure' );
+		}
+		public static function ticket_allowed( $ticket ) { return true; }
+		public static function finish_existing( $ticket, $result ) { return true; }
+	}
+}
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-convergence.php';
 $identity = array( 'version' => MAD4B_SCP_VERSION, 'source_commit_sha' => str_repeat( 'a', 40 ),
 	'build_fingerprint' => str_repeat( 'b', 64 ), 'package_manifest_digest' => str_repeat( 'c', 64 ),
@@ -40,13 +50,13 @@ file_put_contents( MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json', json_encode( a
 $GLOBALS['g8_checkpoint'] = array( 'contract' => MAD4B_SCP_Runtime_Convergence::CONTRACT,
 	'source' => 'self_update_regression', 'state' => 'pending_safe_phases', 'target_identity' => $identity,
 	'resume_not_before' => 0, 'automatic_retry_allowed' => true );
-if ( class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for this fixture' . PHP_EOL ); exit( 1 ); }
+if ( ! $throwing_slo && class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for missing-class fixture' . PHP_EOL ); exit( 1 ); }
 MAD4B_SCP_Runtime_Convergence::resume_safe_phases();
 $checkpoint = $GLOBALS['g8_checkpoint'];
 if ( 'pending_manual_resume' !== ( $checkpoint['state'] ?? null )
-	|| 'mad4b_automation_guard_missing' !== ( $checkpoint['resume_blocker'] ?? null )
+	|| ( $throwing_slo ? 'mad4b_automation_admission_exception' : 'mad4b_automation_guard_missing' ) !== ( $checkpoint['resume_blocker'] ?? null )
 	|| false !== ( $checkpoint['automatic_retry_allowed'] ?? null ) ) {
 	fwrite( STDERR, 'FAIL: missing automatic security class was not parked' . PHP_EOL ); exit( 1 );
 }
 @unlink( MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ); @rmdir( $root );
-echo 'G8_CRON_MISSING_GUARD: PASS' . PHP_EOL;
+echo $throwing_slo ? 'G8_CRON_THROWING_GUARD: PASS' . PHP_EOL : 'G8_CRON_MISSING_GUARD: PASS' . PHP_EOL;
