@@ -3,6 +3,9 @@
 define( 'ABSPATH', __DIR__ . '/' );
 $_SERVER['DOCUMENT_ROOT'] = __DIR__;
 define( 'MAD4B_SCP_G9_RELEASE_FENCE_ENABLED', true );
+define( 'MAD4B_SCP_G9_RELEASE_LIMITS', array(
+    'min_samples'=>30, 'max_error_rate_bps'=>10, 'max_p95_ms'=>80,
+) );
 define( 'MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY',
     sys_get_temp_dir() . '/mad4b-g9-state-' . bin2hex( random_bytes( 8 ) ) );
 $GLOBALS['g9_test_options'] = array();
@@ -142,6 +145,10 @@ $target = array(
 $limits = array( 'min_samples'=>30, 'max_error_rate_bps'=>10, 'max_p95_ms'=>80 );
 $plan = MAD4B_SCP_G9_Release_Fence::plan( $target, $limits );
 g9_assert( ! is_wp_error( $plan ) && !$plan['authorizing'] && !$plan['execution_supported'], 'bounded read plan' );
+$lax = $limits; $lax['max_p95_ms'] = 10000000;
+$lax_plan = MAD4B_SCP_G9_Release_Fence::plan( $target, $lax );
+g9_assert( ! is_wp_error( $lax_plan ), 'descriptive threshold preview' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $lax_plan ), 'policy_not_pinned' );
 $bad = $plan; $bad['expires_at']++;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $bad ), 'plan_tampered' );
 MAD4B_SCP_Policy::$mutable = new WP_Error( 'blocked', 'deny' );

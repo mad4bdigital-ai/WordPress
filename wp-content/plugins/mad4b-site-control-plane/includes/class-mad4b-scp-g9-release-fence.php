@@ -81,6 +81,23 @@ final class MAD4B_SCP_G9_Release_Fence {
             || $plan['expires_at'] - $plan['issued_at'] > self::MAX_PLAN_AGE )
             return self::blocked( 'plan_expired', 'Plan expired or clock moved backward.' );
 
+        // The native executor must receive a code-owned, exact policy. Caller
+        // supplied thresholds are descriptive only; accepting arbitrary lax
+        // limits would silently defeat the release gate.
+        if ( ! defined( 'MAD4B_SCP_G9_RELEASE_LIMITS' )
+            || ! is_array( MAD4B_SCP_G9_RELEASE_LIMITS )
+            || ! is_array( $plan['limits'] ?? null )
+            || ! hash_equals(
+                MAD4B_SCP_Resilience_Context::digest( MAD4B_SCP_G9_RELEASE_LIMITS ),
+                MAD4B_SCP_Resilience_Context::digest( $plan['limits'] )
+            ) )
+            return self::blocked( 'policy_not_pinned', 'A code-owned exact Staging release threshold policy must match the plan.' );
+        // Prior-ring hashes are not signed site acceptance receipts. Block
+        // canary/general reservations until the native prior-ring verifier
+        // is wired into the governed release/acceptance lane.
+        if ( ! is_array( $plan['target'] ?? null )
+            || ( $plan['target']['ring'] ?? '' ) !== 'pilot' )
+            return self::blocked( 'wider_ring_not_certified', 'Only pilot reservation is modeled; wider rings require native signed prior-ring acceptance.' );
         // Never trust the observations carried by the plan. Recapture this worker
         // and compare every exact fact, including provider/host/health/effects.
         $observed = self::live_observation();
@@ -104,6 +121,7 @@ final class MAD4B_SCP_G9_Release_Fence {
         // Ability, and can never substitute for provider-specific authorization.
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
             || true !== MAD4B_SCP_Site_Profile::nonproduction_governed()
+            || MAD4B_SCP_Site_Profile::current_environment() !== 'staging'
             || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
             || ! class_exists( 'MAD4B_SCP_Authorization' )
             || ! class_exists( 'MAD4B_SCP_Policy' ) )
