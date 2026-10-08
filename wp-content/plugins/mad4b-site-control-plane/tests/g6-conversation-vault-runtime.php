@@ -140,4 +140,20 @@ g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_vault_corru
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::purge_expired( 5 ), 'mad4b_g6_vault_corrupt' );
 $GLOBALS['g6_store'][17][$meta_key] = $original_record;
 g6_vault_assert( ! is_wp_error( MAD4B_SCP_G6_Conversation_Vault::status() ), 'corruption rejection never persisted a mutation' );
+$GLOBALS['g6_store'] = array(); $rev = 0;
+for ( $i = 0; $i < MAD4B_SCP_G6_Conversation_Vault::MAX_THREADS; ++$i ) {
+    $id = 'retired-' . $i;
+    $r = MAD4B_SCP_G6_Conversation_Vault::append( array( 'thread_id' => $id, 'expected_revision' => $rev, 'classification' => 'internal', 'role' => 'user', 'text' => 'bounded', 'retention_days' => 7 ) );
+    g6_vault_assert( ! is_wp_error( $r ), 'create retirement fixture' ); $rev = $r['revision'];
+    $r = MAD4B_SCP_G6_Conversation_Vault::delete( $id, $rev );
+    g6_vault_assert( ! is_wp_error( $r ), 'retire fixture' ); $rev = $r['revision'];
+}
+$state = MAD4B_SCP_G6_Conversation_Vault::status();
+g6_vault_assert( ! is_wp_error( $state ) && 0 === $state['active_count'] && 16 === $state['tombstone_count'], 'retired identities cannot exhaust active limit' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( array( 'thread_id' => 'retired-0', 'expected_revision' => $rev, 'classification' => 'internal', 'role' => 'user', 'text' => 'no resurrection', 'retention_days' => 7 ) ), 'mad4b_g6_vault_thread_ineligible' );
+for ( $i = 0; $i < MAD4B_SCP_G6_Conversation_Vault::MAX_THREADS; ++$i ) {
+    $r = MAD4B_SCP_G6_Conversation_Vault::append( array( 'thread_id' => 'active-' . $i, 'expected_revision' => $rev, 'classification' => 'internal', 'role' => 'user', 'text' => 'bounded', 'retention_days' => 7 ) );
+    g6_vault_assert( ! is_wp_error( $r ), 'new active thread after 16 tombstones' ); $rev = $r['revision'];
+}
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( array( 'thread_id' => 'active-over-limit', 'expected_revision' => $rev, 'classification' => 'internal', 'role' => 'user', 'text' => 'no', 'retention_days' => 7 ) ), 'mad4b_g6_vault_thread_budget' );
 echo "mad4b.g6-conversation-vault-runtime.v1: PASS\n";

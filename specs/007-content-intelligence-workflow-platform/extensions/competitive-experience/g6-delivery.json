@@ -65,7 +65,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",
-      "sha256": "d3c5eb0bcdf79f3485240143d7ce077213e8cd259f2be6f5cabc3c9ab10a8e28"
+      "sha256": "9c8e4a9deae320f80eae39f12d9910be05ad17ad6df96c211fc744d44b9e182d"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-durable-dag-evidence.php",
@@ -99,7 +99,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-conversation-vault-runtime.php",
-      "sha256": "74dcb9164a46b285383bc700e268c51b745216a53dd29ebab02abce0ef648933"
+      "sha256": "c4e6d66704312a27dc2e7b166b97d758b811f0f7b18fbf3c2d735c0df3a0c540"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",

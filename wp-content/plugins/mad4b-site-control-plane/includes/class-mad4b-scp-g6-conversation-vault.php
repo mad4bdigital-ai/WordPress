@@ -11,6 +11,8 @@ final class MAD4B_SCP_G6_Conversation_Vault {
     const CONTRACT = 'mad4b.g6-private-conversation-vault.v1';
     const KIND = 'conversations_v1';
     const MAX_THREADS = 16;
+    // Retired names are never evicted or silently reused; exhaustion is explicit.
+    const MAX_RETIRED_IDENTITIES = 256;
     const MAX_MESSAGES = 64;
     const MAX_TEXT_BYTES = 8192;
     const MAX_RETENTION_DAYS = 30;
@@ -79,18 +81,26 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         $record = MAD4B_SCP_G6_Contracts::load( self::KIND, $scope['owner'] );
         if ( is_wp_error( $record ) ) return $record;
         $threads = array();
-        if ( count( $record['items'] ) > self::MAX_THREADS )
-            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Thread capacity is inconsistent.' );
+        if ( count( $record['items'] ) > self::MAX_RETIRED_IDENTITIES )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Retained identity capacity exceeded.' );
+        $active = 0; $tombstones = 0;
         foreach ( $record['items'] as $thread_id => $thread ) {
             $valid = self::valid_thread( $thread_id, $thread );
             if ( is_wp_error( $valid ) ) return $valid;
+            if ( $thread['deleted'] ) ++$tombstones; else ++$active;
             $threads[] = self::inspect_thread( $thread );
         }
+        if ( $active > self::MAX_THREADS )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Active thread quota violated.' );
         return array(
             'contract' => self::CONTRACT, 'registry_revision' => (int) $record['revision'],
             'site_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $scope['site'] ),
             'owner_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $scope['owner'] ),
-            'threads' => $threads, 'encryption_required' => true,
+            'threads' => $threads, 'active_count' => $active,
+            'tombstone_count' => $tombstones, 'active_limit' => self::MAX_THREADS,
+            'retained_identity_limit' => self::MAX_RETIRED_IDENTITIES,
+            'retained_identity_slots_remaining' => self::MAX_RETIRED_IDENTITIES - count( $record['items'] ),
+            'retired_id_reuse_allowed' => false, 'encryption_required' => true,
             'content_exposed' => false, 'model_execution_performed' => false,
             'production_storage_certified' => false, 'authorizing' => false,
         );
@@ -126,8 +136,20 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         if ( (int) $before['revision'] !== $input['expected_revision'] )
             return MAD4B_SCP_G6_Contracts::error( 'vault_revision_conflict', 'Reload private registry before appending.' );
         $items = $before['items'];
-        if ( ! isset( $items[ $id ] ) && count( $items ) >= self::MAX_THREADS )
-            return MAD4B_SCP_G6_Contracts::error( 'vault_thread_budget', 'Private vault thread limit reached.' );
+        $active = 0;
+        if ( count( $items ) > self::MAX_RETIRED_IDENTITIES )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Retained identity registry exceeds bounds.' );
+        foreach ( $items as $known_id => $known_thread ) {
+            $valid = self::valid_thread( $known_id, $known_thread );
+            if ( is_wp_error( $valid ) ) return $valid;
+            if ( ! $known_thread['deleted'] ) ++$active;
+        }
+        if ( $active > self::MAX_THREADS )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Active quota violated.' );
+        if ( ! isset( $items[ $id ] ) && $active >= self::MAX_THREADS )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_thread_budget', 'Active conversation limit reached.' );
+        if ( ! isset( $items[ $id ] ) && count( $items ) >= self::MAX_RETIRED_IDENTITIES )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_retired_identity_budget', 'Identity ledger is full; reviewed migration required.' );
         $now = time();
         $thread = isset( $items[ $id ] ) ? $items[ $id ] : array(
             'thread_id' => $id, 'classification' => $classification,
@@ -226,8 +248,8 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         if ( is_wp_error( $before ) ) return $before;
         if ( (int) $before['revision'] !== $expected_revision )
             return MAD4B_SCP_G6_Contracts::error( 'vault_revision_conflict', 'Private registry changed before purge.' );
-        if ( count( $before['items'] ) > self::MAX_THREADS )
-            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Thread count exceeds governed retention limits.' );
+        if ( count( $before['items'] ) > self::MAX_RETIRED_IDENTITIES )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Identity count exceeds retention bounds.' );
 
         $items = $before['items'];
         $now = time();
