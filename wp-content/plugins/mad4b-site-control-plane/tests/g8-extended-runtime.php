@@ -167,7 +167,7 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
 		if ( ! empty( $GLOBALS['g8_epoch_flip_on_inspection'] ) ) $GLOBALS['g8_epoch'] = 2;
 		$GLOBALS['g8_provider_inspections'] = (int) ( $GLOBALS['g8_provider_inspections'] ?? 0 ) + 1;
 		if ( 'analytics' !== $provider ) return new WP_Error( 'unknown_provider' );
-		return array( 'artifact' => array( 'runtime_artifact_fingerprint' => str_repeat( '1', 64 ) ),
+		$assessment = array( 'artifact' => array( 'runtime_artifact_fingerprint' => str_repeat( '1', 64 ) ),
 			'capabilities' => array(
 				'read' => array( 'capability_contract_digest' => str_repeat( '2', 64 ),
 					'structural_compatible' => true, 'behavioral_evidence' => array( 'behavioral_verified' => true, 'rollback_verified' => false ),
@@ -176,8 +176,23 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
 					'structural_compatible' => true, 'behavioral_evidence' => array( 'behavioral_verified' => true, 'rollback_verified' => true ),
 					'read_eligible' => false, 'write_eligible' => true, 'certification_level' => 'REVERSIBLE_WRITE_CERTIFIED' ),
 			) );
+		if ( ! empty( $GLOBALS['g8_inject_executable_receipt'] ) ) {
+			$assessment['capabilities']['read']['behavioral_evidence']['accepted_receipt'] = new class {
+				public function __serialize() {
+					$GLOBALS['g8_untrusted_serialize_invoked'] = true;
+					return array( 'unsafe' => true );
+				}
+			};
+		}
+		return $assessment;
 	}
 }
+$GLOBALS['g8_inject_executable_receipt'] = true;
+$unsafe_receipt = MAD4B_SCP_G8_Capability_Convergence::observe( 'analytics' );
+g8_check( g8_is_error( $unsafe_receipt, 'mad4b_g8_convergence_receipt_invalid' )
+	&& empty( $GLOBALS['g8_untrusted_serialize_invoked'] ),
+	'provider object must be rejected without invoking its __serialize method' );
+$GLOBALS['g8_inject_executable_receipt'] = false;
 $GLOBALS['g8_epoch_flip_on_inspection'] = true;
 $raced_provider = MAD4B_SCP_G8_Capability_Convergence::observe( 'analytics' );
 g8_check( g8_is_error( $raced_provider, 'mad4b_g8_convergence_identity_raced' ),
