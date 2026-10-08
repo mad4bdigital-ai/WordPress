@@ -260,6 +260,12 @@ $GLOBALS['g8_options'][ $option ] = $broken;
 $lost = MAD4B_SCP_Automation_SLO::admission( 'fresh-provider', 'probe' );
 g8_check( 'mad4b_automation_metrics_lost' === $lost['reason'], 'telemetry tampering must fail closed' );
 $GLOBALS['g8_options'][ $option ] = $old_metrics;
+$lost_outcome = $old_metrics; ++$lost_outcome['eligible_workload_count'];
+$lost_outcome['seal'] = MAD4B_SCP_G8_Record::seal( $lost_outcome );
+$GLOBALS['g8_options'][ $option ] = $lost_outcome;
+g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( 'fresh-provider', 'probe' )['reason'],
+	're-sealed missing outcome fails SLO conservation instead of understating results' );
+$GLOBALS['g8_options'][ $option ] = $old_metrics;
 
 // Post-restore admission must remain blocked until independent external-effect
 // reconciliation and a governed acceptance receipt; CI cannot mint either.
@@ -351,6 +357,19 @@ g8_check( 'clock_skew_requires_reconciliation' === MAD4B_SCP_Automation_SLO::adm
 $GLOBALS['g8_options'][ $clock_option ] = $clock_saved;
 g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $clock_ticket, array( 'state' => 'handoff' ) ),
 	'normal ticket can finish only after valid clock fixture restored' );
+
+$foreign_ticket = MAD4B_SCP_Automation_SLO::reserve( 'foreign-scope', 'probe', str_repeat( 'e', 64 ) );
+g8_check( is_array( $foreign_ticket ), 'foreign binding test starts from live ticket' );
+$foreign_saved = $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ];
+$wrong_binding = $foreign_saved;
+$wrong_binding['tickets'][ $foreign_ticket['token'] ]['restore_binding']['epoch'] = 99;
+$wrong_binding['seal'] = MAD4B_SCP_G8_Record::seal( $wrong_binding );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $wrong_binding;
+g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( 'unrelated-provider', 'probe' )['reason'],
+	're-sealed ticket from a different restore epoch invalidates the ledger' );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $foreign_saved;
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $foreign_ticket, array( 'state' => 'handoff' ) ),
+	'valid restored ledger permits exact ticket cleanup' );
 
 // A crashed/expired worker outcome remains uncertain. Do not purge its
 // sealed ticket or allow another capability to work around the site breaker.
