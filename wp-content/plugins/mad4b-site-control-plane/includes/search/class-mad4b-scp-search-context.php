@@ -169,14 +169,29 @@ final class MAD4B_SCP_Search_Context {
 		}
 		$version = MAD4B_SCP_Search_Store::immutable( 'profile-version', $plan['profile']['profile_sha256'], $plan['profile'] ); if ( is_wp_error( $version ) ) return $version;
 		$row = MAD4B_SCP_Search_Store::cas( 'profile', $id, $current, array( 'profile' => $plan['profile'], 'plan_sha256' => $plan['plan_sha256'] ), 'SEARCH_PROFILE_CHANGED' );
-		return is_wp_error( $row ) ? $row : array( 'profile' => $row['profile'], 'applied' => true, 'authorizing' => false );
+		if ( is_wp_error( $row ) ) return $row;
+		$verified = self::verify( array( 'profile_id' => $id ) );
+		if ( is_wp_error( $verified ) || empty( $verified['valid'] ) || empty( $verified['market_identity_integrity'] ) || ! hash_equals( (string) $row['profile']['profile_sha256'], (string) $verified['profile_sha256'] ) ) {
+			return MAD4B_SCP_Search_Contracts::error( 'profile_readback_failed', 'Profile commit cannot be certified without matching profile and market identity evidence.' );
+		}
+		return array( 'profile' => $row['profile'], 'applied' => true, 'authorizing' => false );
 	}
 
 	public static function verify( array $input ) {
 		$p = self::profile( isset( $input['profile_id'] ) ? $input['profile_id'] : '' ); if ( is_wp_error( $p ) ) return $p;
+		if ( ! isset( $p['profile_sha256'], $p['revision'], $p['profile_id'], $p['markets'] ) || ! is_string( $p['profile_sha256'] ) || ! is_array( $p['markets'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_readback_invalid' );
 		$copy = $p; unset( $copy['profile_sha256'] );
-		$valid = hash_equals( (string) $p['profile_sha256'], MAD4B_SCP_Search_Contracts::digest( $copy ) );
-		return array( 'contract' => 'mad4b.search-profile-verify.v1', 'valid' => $valid, 'revision' => $p['revision'], 'profile_sha256' => $p['profile_sha256'], 'authorizing' => false );
+		$valid = MAD4B_SCP_Search_Contracts::sha( $p['profile_sha256'] ) && hash_equals( $p['profile_sha256'], MAD4B_SCP_Search_Contracts::digest( $copy ) );
+		$legacy_unclaimed = 0; $market_integrity = true;
+		foreach ( $p['markets'] as $market ) {
+			if ( ! is_array( $market ) || ! isset( $market['id'], $market['country'] ) || ! is_string( $market['id'] ) || ! is_string( $market['country'] ) ) { $market_integrity = false; break; }
+			$claim = MAD4B_SCP_Search_Store::read( 'market-identity', $market['id'] );
+			if ( is_wp_error( $claim ) ) { $market_integrity = false; break; }
+			if ( null === $claim ) { ++$legacy_unclaimed; continue; }
+			$expected = array( 'profile_id' => $p['profile_id'], 'country' => $market['country'] );
+			if ( ! is_array( $claim ) || ! isset( $claim['payload'], $claim['digest'] ) || ! is_array( $claim['payload'] ) || ! is_string( $claim['digest'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $expected ), $claim['digest'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $claim['payload'] ), $claim['digest'] ) ) { $market_integrity = false; break; }
+		}
+		return array( 'contract' => 'mad4b.search-profile-verify.v1', 'valid' => $valid && $market_integrity, 'revision' => $p['revision'], 'profile_sha256' => $p['profile_sha256'], 'market_identity_integrity' => $market_integrity, 'legacy_unclaimed_market_count' => $legacy_unclaimed, 'market_claims_certified' => $market_integrity && 0 === $legacy_unclaimed, 'authorizing' => false );
 	}
 
 	public static function compile( array $profile, array $facts, array $selection = array(), array $safe_override = array() ) {
