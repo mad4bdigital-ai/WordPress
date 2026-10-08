@@ -36,7 +36,9 @@ final class MAD4B_SCP_Automation_SLO {
 				|| ! is_int( $count ) || $count < 0 ) return false;
 			$completed += $count;
 		}
-		if ( $completed + count( $state['tickets'] ) > $state['eligible_workload_count'] ) return false;
+		// Every admission has exactly one durable outcome or one live/uncertain
+		// ticket. An unexplained gap is evidence loss, not a free retry budget.
+		if ( $completed + count( $state['tickets'] ) !== $state['eligible_workload_count'] ) return false;
 		foreach ( $state['buckets'] as $scope => $row ) {
 			if ( ! is_string( $scope ) || strlen( $scope ) > 175 || ! is_array( $row ) ) return false;
 			if ( 'site' !== $scope && 1 !== preg_match( '/^(provider:[a-z0-9_.-]{1,80}|capability:[a-z0-9_.-]{1,80}:[a-z0-9_.-]{1,80})$/D', $scope ) ) return false;
@@ -52,7 +54,10 @@ final class MAD4B_SCP_Automation_SLO {
 				if ( ! is_string( $ticket[ $field ] ?? null ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $ticket[ $field ] ) ) return false;
 			if ( ! is_int( $ticket['started_at'] ?? null ) || ! is_int( $ticket['expires_at'] ?? null )
 				|| $ticket['expires_at'] <= $ticket['started_at'] || ! is_int( $ticket['switch_revision'] ?? null )
-				|| ! is_array( $ticket['restore_binding'] ?? null ) ) return false;
+				|| ! is_array( $ticket['restore_binding'] ?? null )
+				|| $ticket['restore_binding'] !== ( $state['restore_binding'] ?? null )
+				|| ! is_string( $ticket['profile_digest'] ?? null )
+				|| $ticket['profile_digest'] !== ( $state['profile_digest'] ?? null ) ) return false;
 		}
 		return true;
 	}
