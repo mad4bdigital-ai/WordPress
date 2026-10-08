@@ -86,6 +86,9 @@ final class MAD4B_SCP_G6_Contracts {
 	}
 	/** CAS storage is private to a user and site; no authority records are stored here. */
 	public static function load( $kind, $owner ) {
+		$actor = self::owner(); if ( is_wp_error( $actor ) ) return $actor;
+		if ( ! is_int( $owner ) || $owner !== $actor || ! self::id( $kind ) )
+			return self::error( 'store_owner_scope', 'Private G6 storage must be accessed by its authenticated owner.' );
 		$site = self::site(); if ( is_wp_error( $site ) ) return $site;
 		$key = '_mad4b_g6_' . $kind . '_' . hash( 'sha256', $site );
 		$record = get_user_meta( $owner, $key, true );
@@ -94,6 +97,9 @@ final class MAD4B_SCP_G6_Contracts {
 		return $record;
 	}
 	public static function save( $kind, $owner, array $before, array $after ) {
+		$actor = self::owner(); if ( is_wp_error( $actor ) ) return $actor;
+		if ( ! is_int( $owner ) || $owner !== $actor || ! self::id( $kind ) )
+			return self::error( 'store_owner_scope', 'Private G6 storage must be updated only by its authenticated owner.' );
 		$site = self::site(); if ( is_wp_error( $site ) ) return $site;
 		$key = '_mad4b_g6_' . $kind . '_' . hash( 'sha256', $site );
 		$guard = self::data( $after ); if ( is_wp_error( $guard ) ) return $guard;

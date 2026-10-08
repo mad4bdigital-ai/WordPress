@@ -68,6 +68,11 @@ $foreign = $GLOBALS['g6_owner']; $GLOBALS['g6_owner'] = 18;
 $noaccess = MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 );
 g6_vault_error( $noaccess, 'mad4b_g6_vault_revision_conflict' );
 $GLOBALS['g6_owner'] = $foreign;
+// The public storage helper itself must reject cross-owner direct calls.
+$GLOBALS['g6_owner'] = 18;
+g6_vault_error( MAD4B_SCP_G6_Contracts::load( MAD4B_SCP_G6_Conversation_Vault::KIND, 17 ), 'mad4b_g6_store_owner_scope' );
+g6_vault_error( MAD4B_SCP_G6_Contracts::save( MAD4B_SCP_G6_Conversation_Vault::KIND, 17, array( 'revision' => 0, 'items' => array() ), array( 'revision' => 0, 'items' => array() ) ), 'mad4b_g6_store_owner_scope' );
+$GLOBALS['g6_owner'] = $foreign;
 $original_site = $GLOBALS['g6_site']; $GLOBALS['g6_site'] = '88888888-8888-8888-8888-888888888888';
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_revision_conflict' );
 $GLOBALS['g6_site'] = $original_site;
