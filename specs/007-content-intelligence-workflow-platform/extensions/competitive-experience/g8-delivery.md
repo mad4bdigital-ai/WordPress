@@ -197,3 +197,33 @@ inventory; G9 host/runtime rollback/readback; and explicitly governed
 post-restore/release owner acceptance. PR #289 remains Draft until those
 receipts exist and child-branch bootstrap overlaps with G9 are reconciled
 in Integration Hub #258.
+
+### P0 post-closure audit — stale Cron and inert checkpoint admission
+
+A post-implementation adversarial review found an authorization/state lapse in the
+WordPress Cron entrypoint: `resume_safe_phases()` previously checked the
+runtime identity but **did not require a schedulable checkpoint state**. Thus
+a queued event might re-enter automation after a separate worker/owner set
+`blocked`, `completed`, `pending_manual_resume`,
+`waiting_for_exact_runtime_restart`, or explicitly disabled automatic
+retry. This is now fenced *before* any safety-ticket reservation or new
+mutation: only `pending_restart` and `pending_safe_phases` can reach
+the worker, and an explicit `automatic_retry_allowed=false` is final
+until the existing governed lifecycle intentionally re-arms a checkpoint.
+
+In addition, the Cron entrypoint requires the **whole** checkpoint be bounded,
+passive data through the real `MAD4B_SCP_G8_Record::inert` check before any
+hash, update, or object serialization. Its exact `target_identity` must be
+five string fields with pinned digests and no untrusted extra keys; target
+identity inspection cannot call an injected PHP `__serialize` callback.
+The shared G8 digest/HMAC helpers enforce that passive-data rule themselves.
+
+Executed fixtures were added to the PHP 7.4/8.3 matrix for all terminal/manual/
+restore-wait/paused states and injected executable objects. The disposable
+MySQL/MariaDB CAS harness is now hard-bound to one fixed loopback CI database
+identity, and its workflow asserts that an incorrect target DB exits with a
+**safe refusal code before connecting**.
+
+These changes remain source-level until the exact-head GitHub Actions and
+separately enrolled Staging tests complete; they do not constitute a live
+release or restore acceptance decision.
