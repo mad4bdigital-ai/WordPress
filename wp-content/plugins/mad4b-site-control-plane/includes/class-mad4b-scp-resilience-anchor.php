@@ -28,11 +28,14 @@ final class MAD4B_SCP_Resilience_Anchor {
 		try {
 			$current = self::read_path( $path, $binding );
 			if ( is_wp_error( $current ) ) return $current;
-			if ( (int) $expected_revision !== (int) $current['revision'] ) return self::error( 'revision_conflict', 'External resilience revision changed; reread before proceeding.' );
+			if ( ! is_int( $expected_revision ) || $expected_revision < 0 || $expected_revision !== (int) $current['revision'] ) return self::error( 'revision_conflict', 'External resilience revision changed; reread before proceeding.' );
 			$next = $transform( $current );
 			if ( is_wp_error( $next ) ) return $next;
 			if ( ! is_array( $next ) || ! isset( $next['scopes'] ) || ! is_array( $next['scopes'] ) ) return self::error( 'transition_invalid', 'Resilience transition did not return a bounded state document.' );
 			// The transaction owns identity, revision and monotonic time, not its transform.
+			foreach ( $current['scopes'] as $scope => $_ ) {
+				if ( ! array_key_exists( $scope, $next['scopes'] ) ) return self::error( 'history_truncation', 'Existing resilience scope history must not be removed.' );
+			}
 			$next['contract'] = self::CONTRACT;
 			$next['site'] = self::site_identity( $binding );
 			$next['revision'] = (int) $current['revision'] + 1;
@@ -40,27 +43,32 @@ final class MAD4B_SCP_Resilience_Anchor {
 			unset( $next['anchor_sha256'] );
 			$next['anchor_sha256'] = MAD4B_SCP_Resilience_Context::digest( $next );
 			$json = json_encode( $next, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-			if ( ! is_string( $json ) || strlen( $json ) > self::MAX_BYTES ) return self::error( 'capacity', 'Resilience history is full; old fences must not be evicted automatically.' );
+			if ( ! is_string( $json ) || strlen( $json ) + 1 > self::MAX_BYTES ) return self::error( 'capacity', 'Resilience history is full; old fences must not be evicted automatically.' );
 			$tmp = @tempnam( $dir, '.mad4b-resilience-' );
 			if ( false === $tmp ) return self::error( 'write_failed', 'Could not stage the external resilience record.' );
 			@chmod( $tmp, 0600 );
 			$written = @file_put_contents( $tmp, $json . "\n", LOCK_EX );
-			if ( false === $written || ! @rename( $tmp, $path ) ) { @unlink( $tmp ); return self::error( 'write_failed', 'External resilience record could not be committed.' ); }
+			if ( false === $written || $written !== strlen( $json ) + 1 || ! @rename( $tmp, $path ) ) { @unlink( $tmp ); return self::error( 'write_failed', 'External resilience record could not be committed.' ); }
 			@chmod( $path, 0600 );
 			$readback = self::read_path( $path, $binding );
 			if ( is_wp_error( $readback ) || ! hash_equals( $next['anchor_sha256'], (string) ( $readback['anchor_sha256'] ?? '' ) ) ) return self::error( 'readback_failed', 'External resilience commit is uncertain; reconciliation is required.' );
-			if ( function_exists( 'update_option' ) ) update_option( self::MIRROR_OPTION, array( 'site'=>$next['site'], 'anchor_seen'=>true ), false );
+			if ( function_exists( 'update_option' ) && function_exists( 'get_option' ) ) {
+				$mirror = array( 'site' => $next['site'], 'anchor_seen' => true );
+				update_option( self::MIRROR_OPTION, $mirror, false );
+				if ( get_option( self::MIRROR_OPTION, false ) !== $mirror ) return self::error( 'mirror_failed', 'External record committed but the database loss marker could not be confirmed.' );
+			}
 			return $readback;
 		} finally { flock( $lock, LOCK_UN ); fclose( $lock ); }
 	}
 
 	private static function read_path( $path, array $binding ) {
+		if ( is_link( $path ) ) return self::error( 'symlink_denied', 'External resilience record may not be a symlink.' );
 		if ( ! is_file( $path ) ) {
 			$seen = function_exists( 'get_option' ) ? get_option( self::MIRROR_OPTION, false ) : false;
 			if ( false !== $seen ) return self::error( 'lost', 'Previously initialized external resilience state is missing; automatic recreation is denied.' );
 			return array( 'contract'=>self::CONTRACT, 'site'=>self::site_identity( $binding ), 'revision'=>0, 'clock_floor'=>0, 'scopes'=>array(), 'anchor_sha256'=>'' );
 		}
-		if ( ! is_readable( $path ) || filesize( $path ) > self::MAX_BYTES ) return self::error( 'unreadable', 'External resilience record is unavailable or oversized.' );
+		if ( ! is_readable( $path ) || false === @filesize( $path ) || filesize( $path ) > self::MAX_BYTES ) return self::error( 'unreadable', 'External resilience record is unavailable or oversized.' );
 		$raw = file_get_contents( $path );
 		$record = is_string( $raw ) ? json_decode( $raw, true ) : null;
 		if ( ! is_array( $record ) || self::CONTRACT !== ( $record['contract'] ?? '' ) || ! isset( $record['site'], $record['scopes'], $record['revision'], $record['clock_floor'] ) || ! is_array( $record['scopes'] ) || (int) $record['revision'] < 1 ) return self::error( 'corrupt', 'External resilience record is malformed.' );
@@ -82,7 +90,7 @@ final class MAD4B_SCP_Resilience_Anchor {
 			if ( is_wp_error( $key ) ) return self::error( 'path_unavailable', 'An external resilience directory must be configured.' );
 			$dir = dirname( $key );
 		} else return self::error( 'path_unavailable', 'An external resilience directory must be configured.' );
-		if ( 1 !== preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', $dir ) || false !== strpos( str_replace( '\\', '/', $dir ), '/../' ) ) return self::error( 'path_invalid', 'Resilience state requires a canonical absolute directory.' );
+		if ( 1 !== preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', $dir ) || preg_match( '#(?:^|[/\\\\])\\.\\.?(?:[/\\\\]|$)#', $dir ) || false !== strpos( $dir, "\0" ) ) return self::error( 'path_invalid', 'Resilience state requires a canonical absolute directory.' );
 		$normal = rtrim( str_replace( '\\', '/', $dir ), '/' );
 		foreach ( array( ABSPATH, $_SERVER['DOCUMENT_ROOT'] ?? '' ) as $root ) {
 			$root = rtrim( str_replace( '\\', '/', (string) $root ), '/' );

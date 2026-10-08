@@ -1,0 +1,31 @@
+name: Feature 007 G9 Resilience
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php'
+      - '.github/workflows/feature-007-g9-resilience.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g9-resilience:
+    name: G9 hermetic runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+      - name: Lint G9 runtime
+        run: |
+          for f in wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-{context,anchor}.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-resilience-gates.php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php; do php -l "$f" || exit 1; done
+      - name: Run G9 isolation and restore fixtures
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php

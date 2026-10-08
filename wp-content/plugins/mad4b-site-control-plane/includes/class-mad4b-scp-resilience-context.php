@@ -91,8 +91,9 @@ final class MAD4B_SCP_Resilience_Context {
 		if ( ! in_array( $binding['environment'] ?? '', array( 'local', 'development', 'staging', 'production' ), true ) ) return self::error( 'environment_invalid', 'An exact environment is required.' );
 		$origin = (string) ( $binding['canonical_origin'] ?? '' );
 		$parsed = parse_url( $origin );
-		if ( ! is_array( $parsed ) || ! in_array( $parsed['scheme'] ?? '', array( 'https', 'http' ), true ) || empty( $parsed['host'] ) || isset( $parsed['user'], $parsed['pass'] ) || isset( $parsed['query'] ) || isset( $parsed['fragment'] ) || ( isset( $parsed['path'] ) && '' !== $parsed['path'] ) ) return self::error( 'origin_invalid', 'Canonical origin must be an enrolled HTTP origin without credentials or a path.' );
+		if ( ! is_array( $parsed ) || ! in_array( $parsed['scheme'] ?? '', array( 'https', 'http' ), true ) || empty( $parsed['host'] ) || isset( $parsed['user'] ) || isset( $parsed['pass'] ) || isset( $parsed['query'] ) || isset( $parsed['fragment'] ) || ( isset( $parsed['path'] ) && '' !== $parsed['path'] ) ) return self::error( 'origin_invalid', 'Canonical origin must be an enrolled HTTP origin without credentials or a path.' );
 		foreach ( array( 'runtime_generation_sha256', 'artifact_sha256', 'site_profile_sha256', 'registry_sha256', 'external_record_sha256' ) as $key ) if ( ! self::is_hash( $binding[ $key ] ?? '' ) ) return self::error( 'binding_incomplete', 'Exact artifact, profile, registry, worker and external restore identities are required.' );
+		if ( ! is_int( $binding['blog_id'] ) || ! is_int( $binding['restore_epoch'] ?? null ) || ! is_int( $binding['site_profile_revision'] ?? null ) || ! is_int( $binding['registry_revision'] ?? null ) ) return self::error( 'binding_type_invalid', 'Binding revisions and site IDs must be exact integers.' );
 		if ( (int) ( $binding['restore_epoch'] ?? 0 ) < 1 || (int) ( $binding['site_profile_revision'] ?? 0 ) < 1 || (int) ( $binding['registry_revision'] ?? -1 ) < 0 ) return self::error( 'binding_revision_invalid', 'Current restore, profile and registry revisions are required.' );
 		return true;
 	}
@@ -102,6 +103,6 @@ final class MAD4B_SCP_Resilience_Context {
 	public static function digest( $value ) { $json = json_encode( self::canonicalize( $value ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); return is_string( $json ) ? hash( 'sha256', $json ) : ''; }
 	public static function is_hash( $value ) { return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/D', $value ); }
 	public static function now() { return class_exists( 'MAD4B_SCP_Time_Policy' ) ? (int) MAD4B_SCP_Time_Policy::now_epoch() : time(); }
-	private static function canonicalize( $value ) { if ( ! is_array( $value ) ) return $value; if ( array_keys( $value ) !== range( 0, count( $value ) - 1 ) ) ksort( $value, SORT_STRING ); foreach ( $value as $key=>$item ) $value[ $key ] = self::canonicalize( $item ); return $value; }
+	private static function canonicalize( $value ) { if ( ! is_array( $value ) ) return $value; if ( array() !== $value && array_keys( $value ) !== range( 0, count( $value ) - 1 ) ) ksort( $value, SORT_STRING ); foreach ( $value as $key=>$item ) $value[ $key ] = self::canonicalize( $item ); return $value; }
 	private static function error( $suffix, $message ) { return new WP_Error( 'mad4b_resilience_' . $suffix, $message, array( 'authorizing'=>false, 'blind_retry_allowed'=>false, 'mutation_performed'=>false ) ); }
 }
