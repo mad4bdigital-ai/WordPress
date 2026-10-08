@@ -39,8 +39,11 @@ The same SQL fixture now exercises the real `MAD4B_SCP_Operation_Journal::begin/
 source using separate disposable InnoDB head/event tables, including an
 injected event-insert failure, head-CAS failure, rollback observation,
 duplicate-genesis rejection, stale CAS refusal and hash-chain readback.
-The matrix rejects a PHP exit=0 result that omits the explicit
-`G8_JOURNAL_TRANSACTION: PASS` marker. A test-only transaction guard is
+The matrix rejects a PHP exit=0 result unless the SQL harness emits exactly
+one `G8_JOURNAL_TRANSACTION: PASS` and exactly one
+`G8_MYSQL_MARIADB_CAS: PASS`, in that order, after disposable fixture cleanup.
+Missing, repeated or out-of-order markers fail closed, even if the PHP process
+exits zero. These literal markers are receipts, not independently signed proofs. A test-only transaction guard is
 used to connect the journal source to real SQL; this is **not** certification
 of the complete WordPress transaction guard, provider execution, Staging,
 or faulted network commits. A genuine native PHP/Docker test run is still

@@ -407,7 +407,9 @@ if ( isset( $journal_error ) || false === $drop_events || false === $drop_heads 
 }
 echo "G8_JOURNAL_TRANSACTION: PASS (atomic genesis, rollback, exact CAS, replay denial, chain readback, cleanup)\n";
 
-$db->query( 'DROP TABLE IF EXISTS `g8_ci_cas_options`' );
-foreach ( array( '1.ready', '2.ready', 'go' ) as $name ) @unlink( $gate . '/' . $name );
-@rmdir( $gate );
-echo 'G8_MYSQL_MARIADB_CAS: PASS (one winner, one conflict, signed readback, replay rejected)' . PHP_EOL;
+check_g8( (bool) $db->query( 'DROP TABLE IF EXISTS `g8_ci_cas_options`' ), 'disposable CAS table cleanup' );
+foreach ( array( '1.ready', '2.ready', 'go' ) as $name ) {
+    check_g8( @unlink( $gate . '/' . $name ), 'disposable barrier cleanup ' . $name );
+}
+check_g8( @rmdir( $gate ), 'disposable barrier directory cleanup' );
+echo 'G8_MYSQL_MARIADB_CAS: PASS (one winner, one conflict, signed readback, replay rejected, cleanup)' . PHP_EOL;
