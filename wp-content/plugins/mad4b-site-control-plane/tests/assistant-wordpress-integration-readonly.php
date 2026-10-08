@@ -10,12 +10,15 @@ function mad4b_assistant_native_check( $condition, $message ) {
 }
 mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Planning', false ), 'planning_class_not_loaded' );
 mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Bootstrap_Diagnostic', false ), 'diagnostic_class_not_loaded' );
+mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Convergence', false ), 'convergence_class_not_loaded' );
+mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Task_Contract', false ), 'task_contract_class_not_loaded' );
 mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Adapter_Registry', false ), 'adapter_registry_not_loaded' );
 mad4b_assistant_native_check( function_exists( 'wp_has_ability' ) && function_exists( 'did_action' ), 'native_abilities_api_unavailable' );
 mad4b_assistant_native_check( did_action( 'wp_abilities_api_init' ) > 0, 'native_abilities_lifecycle_not_observed' );
 foreach ( array(
     'mad4b/assistant-plan' => array( 'MAD4B_SCP_Assistant_Planning', 'register_ability' ),
     'mad4b/assistant-bootstrap-diagnostic' => array( 'MAD4B_SCP_Assistant_Bootstrap_Diagnostic', 'register_ability' ),
+    'mad4b/assistant-convergence-preview' => array( 'MAD4B_SCP_Assistant_Convergence', 'register_ability' ),
 ) as $name => $callback ) {
     mad4b_assistant_native_check( false !== has_action( 'wp_abilities_api_init', $callback ), 'hook_missing:' . $name );
     mad4b_assistant_native_check( wp_has_ability( $name ), 'ability_not_registered:' . $name );
@@ -24,6 +27,7 @@ $registry = MAD4B_SCP_Adapter_Registry::instance();
 foreach ( array(
     'assistant-planning' => 'mad4b/assistant-plan',
     'assistant-bootstrap' => 'mad4b/assistant-bootstrap-diagnostic',
+    'assistant-convergence' => 'mad4b/assistant-convergence-preview',
 ) as $id => $ability ) {
     $adapter = $registry->get( $id );
     mad4b_assistant_native_check( null !== $adapter, 'adapter_not_registered:' . $id );
