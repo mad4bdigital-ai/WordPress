@@ -21,6 +21,8 @@ BASE = "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2"
 OWNERSHIP_LABEL = "mad4b.feature007.disposable.run"
 SOURCE_PATHS = (TEST, TEST.replace("tests/g8-mysql-cas-integration.php",
                                   "includes/class-mad4b-scp-g8-record.php"),
+                TEST.replace("tests/g8-mysql-cas-integration.php",
+                             "includes/class-mad4b-scp-operation-journal.php"),
                 TEST.replace("g8-mysql-cas-integration.php", "feature007-disposable-db-matrix.py"))
 
 def execv(args, env=None, timeout=35, cwd=None):
@@ -182,7 +184,8 @@ def run_matrix(root, opt, report, created, clean_env):
             refused = execv([binary, TEST], env=dict(scope, G8_CAS_DATABASE="forbidden_database"),
                             cwd=root, timeout=25)
             tested = execv([binary, TEST], env=scope, cwd=root, timeout=75)
-            state = "PASS" if refused.returncode == 2 and tested.returncode == 0 else "FAIL"
+            state = "PASS" if (refused.returncode == 2 and tested.returncode == 0
+                               and "G8_JOURNAL_TRANSACTION: PASS" in tested.stdout) else "FAIL"
             if state == "FAIL":
                 failed = True
             report["results"].append({"case": case, "state": state,
