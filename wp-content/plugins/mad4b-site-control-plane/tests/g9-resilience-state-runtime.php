@@ -218,7 +218,14 @@ class MAD4B_SCP_Execution_Receipt {
 }
 $operation_id = 'g9-native:operation-0001';
 $native = array( 'request_id'=>$operation_id,
-    'target_fingerprint'=>$reserved['operation_sha256'] );
+    'target_fingerprint'=>$reserved['operation_sha256'],
+    'ability'=>'mad4b/runtime-release-set-apply',
+    'provider_id'=>'core',
+    'terminal_receipt_sha256'=>hash( 'sha256', 'native-terminal' ) );
+$wrong_ability = $native; $wrong_ability['ability'] = 'mad4b/content-update-post';
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $wrong_ability ),
+    'native_receipt_unbound' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native ),
     'native_execution_uncertain' );

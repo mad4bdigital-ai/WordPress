@@ -230,11 +230,15 @@ final class MAD4B_SCP_G9_Release_Fence {
             || ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) )
             return self::blocked( 'native_evidence_unavailable', 'Existing execution state and signed receipt verifier are unavailable.' );
         if ( ( $receipt['request_id'] ?? '' ) !== $operation_id
-            || ( $receipt['target_fingerprint'] ?? '' ) !== $operation_sha256 )
-            return self::blocked( 'native_receipt_unbound', 'Native receipt does not identify this exact fenced operation.' );
+            || ( $receipt['target_fingerprint'] ?? '' ) !== $operation_sha256
+            || ( $receipt['ability'] ?? '' ) !== 'mad4b/runtime-release-set-apply'
+            || ( $receipt['provider_id'] ?? '' ) !== 'core'
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $receipt['terminal_receipt_sha256'] ?? '' ) )
+            return self::blocked( 'native_receipt_unbound', 'The native release executor, operation and signed terminal receipt must be bound together.' );
         $verified = MAD4B_SCP_Execution_Receipt::verify( $receipt );
         if ( is_wp_error( $verified ) || ! is_array( $verified )
-            || empty( $verified['valid'] ) || empty( $verified['cryptographic_signature_verified'] ) )
+            || empty( $verified['valid'] ) || empty( $verified['cryptographic_signature_verified'] )
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $verified['receipt_sha256'] ?? '' ) )
             return self::blocked( 'native_signature_invalid', 'Native execution receipt signature is unavailable or invalid.' );
         $state = MAD4B_SCP_Execution_State_View::operation( $operation_id );
         if ( is_wp_error( $state ) || ! is_array( $state )
