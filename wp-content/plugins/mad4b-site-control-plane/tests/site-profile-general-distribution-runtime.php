@@ -321,15 +321,33 @@ $confirmed=MAD4B_SCP_Site_Profile::save_current_site($transition);
 ok(!is_wp_error($confirmed)&&!empty($confirmed['write_enabled']),'explicitly confirmed Staging to Production write transition saves');
 ok(empty(MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible']),'Production profile disables managed runtime recovery');
 
+// Invalid host binding material is never reported as configured or
+// accepted by the purpose-bound proof API. These probes use no site writes.
+reset_state();
+$binding_material=str_repeat('b',64);
+foreach(array(
+	'', 'short', str_repeat('a',31), str_repeat('a',1025),
+	str_repeat('a',32).' ', "\n".str_repeat('a',32),
+	str_repeat('a',16)."\t".str_repeat('a',16)
+) as $invalid_binding) {
+	$GLOBALS['mad4b_test_deployment_binding']=$invalid_binding;
+	ok(''===MAD4B_SCP_Site_Profile::deployment_binding_digest(),'unusable host secret cannot be reported configured');
+	ok(''===MAD4B_SCP_Site_Profile::deployment_binding_proof('deploy-test',$binding_material),'unusable host secret cannot mint proof');
+}
+$GLOBALS['mad4b_test_deployment_binding']=hash('sha256','exact-host-a-fixture');
+$valid_proof=MAD4B_SCP_Site_Profile::deployment_binding_proof('deploy-test',$binding_material);
+ok(64===strlen($valid_proof)&&MAD4B_SCP_Site_Profile::verify_deployment_binding_proof('deploy-test',$binding_material,$valid_proof),'valid exact binding supports purpose-bound proof');
+ok(!MAD4B_SCP_Site_Profile::verify_deployment_binding_proof('other-purpose',$binding_material,$valid_proof),'deployment proof is purpose bound');
+
 // Optional host binding protects independent same-origin clones without exposing
 // the raw host secret in WordPress storage.
 reset_state();
 $GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://same-origin.client.test/';
-$GLOBALS['mad4b_test_deployment_binding']='deployment-a';
+$GLOBALS['mad4b_test_deployment_binding']=hash('sha256','exact-host-a-fixture');
 $bound=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>0,'oauth_user_ids'=>array(7),'oauth_enabled'=>true));
 ok(!is_wp_error($bound)&&!empty($bound['same_origin_clone_protection']),'deployment binding did not become active');
 $bound_uuid=$bound['site_uuid'];
-$GLOBALS['mad4b_test_deployment_binding']='deployment-b';MAD4B_SCP_Site_Profile::reset_cache();
+$GLOBALS['mad4b_test_deployment_binding']=hash('sha256','exact-host-b-fixture');MAD4B_SCP_Site_Profile::reset_cache();
 $clone=MAD4B_SCP_Site_Profile::status();
 ok('deployment_drift'===($clone['binding_state']??'')&&!empty($clone['profile_authority_quarantined'])&&empty($clone['oauth_enabled']),'same-origin clone inherited authority across deployment binding');
 $reb=MAD4B_SCP_Site_Profile::save_current_site(array('environment'=>'staging','expected_revision'=>(int)$clone['revision'],'expected_profile_digest'=>$clone['profile_digest'],'oauth_user_ids'=>array(7),'oauth_enabled'=>true));

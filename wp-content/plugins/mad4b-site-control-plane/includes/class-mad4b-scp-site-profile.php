@@ -178,13 +178,18 @@ final class MAD4B_SCP_Site_Profile {
 		$value = '';
 		if ( defined( 'MAD4B_SCP_DEPLOYMENT_BINDING' ) ) {
 			$candidate = constant( 'MAD4B_SCP_DEPLOYMENT_BINDING' );
-			if ( is_string( $candidate ) ) $value = trim( $candidate );
+			if ( is_string( $candidate ) ) $value = $candidate;
 		}
 		if ( '' === $value && function_exists( 'apply_filters' ) ) {
 			$candidate = apply_filters( 'mad4b_scp_deployment_binding', '' );
-			if ( is_string( $candidate ) ) $value = trim( $candidate );
+			if ( is_string( $candidate ) ) $value = $candidate;
 		}
-		if ( '' === $value || strlen( $value ) > 1024 ) return '';
+		// "Configured" must always imply a proof-capable key. Never trim away
+		// whitespace/control bytes: silently normalizing host material can bind
+		// multiple distinct deployments to one credential. Length is a minimum
+		// safety bound, not evidence of entropy; provisioning must use CSPRNG.
+		if ( strlen( $value ) < 32 || strlen( $value ) > 1024
+			|| preg_match( '/[\\x00-\\x20\\x7f]/', $value ) ) return '';
 		return $value;
 	}
 
