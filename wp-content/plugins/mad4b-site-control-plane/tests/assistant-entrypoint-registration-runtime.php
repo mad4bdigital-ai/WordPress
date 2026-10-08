@@ -73,6 +73,7 @@ require_once $plugin . '/includes/class-mad4b-scp-assistant-planning.php';
 require_once $plugin . '/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php';
 require_once $plugin . '/includes/class-mad4b-scp-assistant-convergence.php';
 require_once $plugin . '/includes/class-mad4b-scp-assistant-task-contract.php';
+assistant_check( array() === $GLOBALS['assistant_hooks'], 'loading assistant definitions cannot bind hooks implicitly' );
 MAD4B_SCP_Assistant_Planning::boot();
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
 MAD4B_SCP_Assistant_Convergence::boot();

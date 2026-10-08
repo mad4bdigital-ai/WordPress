@@ -4,6 +4,8 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 ui = (root / 'includes' / 'class-mad4b-scp-chatgpt-connection-admin-ui.php').read_text(encoding='utf-8')
 consent_ui = (root / 'includes' / 'class-mad4b-scp-local-oauth-consent-ui.php').read_text(encoding='utf-8')
+projection_view = (root / 'includes' / 'class-mad4b-scp-oauth-consent-projection-view.php').read_text(encoding='utf-8')
+oauth = (root / 'includes' / 'class-mad4b-scp-local-oauth-server.php').read_text(encoding='utf-8')
 js = (root / 'assets' / 'chatgpt-connection.js').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
@@ -135,12 +137,32 @@ required_consent_semantics = [
     'What you are approving now',
     'Generic raw-SQL Breakglass',
     'Current governed authority',
-    'Full Staging Authority (Staging only)',
+    'Developer authority',
+    'Developer Breakglass authority',
+    'Developer host execution',
+    'Staging operational readiness:',
+    'Generic raw-SQL Breakglass is not included in Full Staging Authority.',
     'Production writes still require exact Site Profile confirmation, database-bound Production OAuth opt-in, explicit runtime-gate confirmation, and one-time approval',
 ]
 for marker in required_consent_semantics:
     if marker not in consent_ui:
         raise SystemExit(f'missing OAuth/write-authority semantic marker: {marker}')
+
+for marker in [
+    "'full_staging_authority_ready' => $full_staging_authority_ready",
+    "'full_staging_operational_ready' => $full_staging_operational",
+    "'developer_execution_ready' => ! empty( $developer_execution['operational_ready'] )",
+]:
+    if marker not in oauth:
+        raise SystemExit(f'missing separate OAuth authority/host readiness marker: {marker}')
+for marker in [
+    "'host_execution_ready' => false",
+    "'host_execution_certification' => 'NOT_CERTIFIED'",
+    "'operational_ready' => false",
+    'host_behavior_uncertified',
+]:
+    if marker not in projection_view:
+        raise SystemExit(f'missing uncertified host execution fence: {marker}')
 
 for forbidden in [
     'Read-only access · OAuth 2.1 · PKCE S256',

@@ -177,8 +177,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php",
-      "sha256": "2153f08c576fb7ef183b0abcc79631d1dad255cc93e917a704a9ff0ece77d239",
-      "bytes": 7693
+      "sha256": "16defe1f0526f19def74c22179ad2e9b1d17fa54cdcbc2825dfaf7bc65f48f84",
+      "bytes": 10179
     }
   ],
   "spec_paths": [
@@ -277,7 +277,7 @@
       "pending": "Actual disposable WordPress/provider execution isolation, process/network fault injection and native review/canary evidence linkage"
     }
   ],
-  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091–T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
+  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091\u2013T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
   "remaining_acceptance": [
     "Final exact-head PHP 7.4/8.3 Actions and disposable MySQL 8.4/MariaDB 11.4 CAS matrix must complete; source fixtures are not a passing runtime receipt",
     "Existing governed Staging host, identity, context, consent, signing-key and native journal boundaries require independent current readbacks",

@@ -40,7 +40,8 @@ final class MAD4B_SCP_Assistant_Task_Contract {
             'cancelled' => array(),
             'completed' => array(),
         );
-        if ( ! isset( $allowed[ $record['state'] ] )
+        if ( ! is_string( $record['state'] ) || strlen( $record['state'] ) > 32
+            || ! isset( $allowed[ $record['state'] ] )
             || ! in_array( $request['next_state'], $allowed[ $record['state'] ], true ) ) return self::fail( 'transition_not_allowed' );
         // No state in this public pure reducer confers execution eligibility.
         // An external signed grant cannot be created by any input here.

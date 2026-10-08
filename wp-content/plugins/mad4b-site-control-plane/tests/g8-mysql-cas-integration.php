@@ -7,17 +7,56 @@
 if ( '1' !== getenv( 'G8_CAS_DISPOSABLE' ) ) {
 	fwrite( STDERR, "G8_CAS_DISPOSABLE=1 required; refusing any DB access\n" ); exit( 2 );
 }
-if ( ! extension_loaded( 'mysqli' ) ) { fwrite( STDERR, "mysqli required\n" ); exit( 2 ); }
+/** Admit only the fixture database and recognizable CI-only credentials. */
+function g8_disposable_identity( $host, $user, $password, $database, $port ) {
+	return in_array( $host, array( '127.0.0.1', 'localhost' ), true )
+		&& 'root' === $user && 'g8_ci_contract' === $database
+		&& is_string( $password ) && ( 'g8_ci_only_not_a_site_secret' === $password
+			|| 1 === preg_match( '/\Ag8_ci_only_[A-Za-z0-9_-]{32}\z/', $password ) )
+		&& is_string( $port ) && 1 === preg_match( '/\A[1-9][0-9]{3,4}\z/', $port )
+		&& (int) $port >= 1024 && (int) $port <= 65535;
+}
+if ( 'identity-self-test' === ( $argv[1] ?? '' ) ) {
+	$old = 'g8_ci_only_not_a_site_secret'; $new = 'g8_ci_only_' . str_repeat( 'a', 32 );
+	$checks = array(
+		array( true, '127.0.0.1', 'root', $old, 'g8_ci_contract', '3306' ),
+		array( true, '127.0.0.1', 'root', $new, 'g8_ci_contract', '1024' ),
+		array( true, 'localhost', 'root', $new, 'g8_ci_contract', '65535' ),
+		array( false, 'example.com', 'root', $new, 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1.example.com', 'root', $new, 'g8_ci_contract', '49170' ),
+		array( false, '::1', 'root', $new, 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1 ', 'root', $new, 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1', 'wordpress', $new, 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1', 'root', $new, 'wordpress', '49170' ),
+		array( false, '127.0.0.1', 'root', 'site-secret', 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1', 'root', $old . ' ', 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1', 'root', $new . "\n", 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1', 'root', 'g8_ci_only_' . str_repeat( 'a', 31 ), 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1', 'root', 'g8_ci_only_' . str_repeat( 'a', 33 ), 'g8_ci_contract', '49170' ),
+		array( false, '127.0.0.1', 'root', $new, 'g8_ci_contract', '1023' ),
+		array( false, '127.0.0.1', 'root', $new, 'g8_ci_contract', '65536' ),
+		array( false, '127.0.0.1', 'root', $new, 'g8_ci_contract', '03306' ),
+		array( false, '127.0.0.1', 'root', $new, 'g8_ci_contract', '+3306' ),
+		array( false, '127.0.0.1', 'root', $new, 'g8_ci_contract', "3306\n" ),
+		array( false, '127.0.0.1', 'root', $new, 'g8_ci_contract', false ),
+	);
+	foreach ( $checks as $row ) {
+		$expected = array_shift( $row );
+		if ( $expected !== g8_disposable_identity( ...$row ) ) {
+			fwrite( STDERR, "DISPOSABLE_IDENTITY_SELFTEST_FAIL\n" ); exit( 1 );
+		}
+	}
+	echo 'DISPOSABLE_IDENTITY_SELFTEST_PASS: ' . count( $checks ) . " bounded cases; no database connection\n";
+	exit( 0 );
+}
 // Both protections are mandatory. This harness drops only its own fixture
 // table, and must never be redirected at a real Staging/Production database.
-if ( 'g8_ci_contract' !== getenv( 'G8_CAS_DATABASE' )
-	|| ! in_array( getenv( 'G8_CAS_HOST' ), array( '127.0.0.1', 'localhost' ), true )
-	|| 'root' !== getenv( 'G8_CAS_USER' )
-	|| 'g8_ci_only_not_a_site_secret' !== getenv( 'G8_CAS_PASSWORD' )
-	|| '3306' !== getenv( 'G8_CAS_PORT' ) ) {
+if ( ! g8_disposable_identity( getenv( 'G8_CAS_HOST' ), getenv( 'G8_CAS_USER' ),
+	getenv( 'G8_CAS_PASSWORD' ), getenv( 'G8_CAS_DATABASE' ), getenv( 'G8_CAS_PORT' ) ) ) {
 	fwrite( STDERR, "Disposable loopback CI database identity mismatch; refusing DB access\n" );
 	exit( 2 );
 }
+if ( ! extension_loaded( 'mysqli' ) ) { fwrite( STDERR, "mysqli required\n" ); exit( 2 ); }
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 class WP_Error {
 	private $code;
@@ -40,9 +79,9 @@ class G8_Disposable_WPDB {
 		$this->db = new mysqli(
 			'127.0.0.1',
 			'root',
-			'g8_ci_only_not_a_site_secret',
+			getenv( 'G8_CAS_PASSWORD' ),
 			'g8_ci_contract',
-			3306
+			(int) getenv( 'G8_CAS_PORT' )
 		);
 		$this->db->set_charset( 'utf8mb4' );
 	}

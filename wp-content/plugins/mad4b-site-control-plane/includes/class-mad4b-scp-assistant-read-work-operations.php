@@ -73,13 +73,20 @@ final class MAD4B_SCP_Assistant_Read_Work_Operations {
             && $payload['purpose'] === $purposes[ $operation ];
     }
 
-    /** Exact site, origin, restore and generation fence for durable enqueue. */
-    public static function runtime_binding_matches( $payload ) {
+    /** Exact site, origin, restore and generation fence at execution boundaries. */
+    public static function runtime_binding_matches( $payload, $expected_identity = null ) {
         if ( ! self::validate_payload( $payload )
             || ! class_exists( 'MAD4B_SCP_Adaptive_Operations_Context', false ) ) return false;
         $current = MAD4B_SCP_Adaptive_Operations_Context::current();
         if ( is_wp_error( $current ) || ! is_array( $current )
             || ( $current['environment'] ?? null ) !== 'staging' ) return false;
+        // Adaptive context artifact_sha256 is the same package_manifest_digest
+        // emitted by build_provenance_status(), not a separate artifact hash.
+        if ( null !== $expected_identity && ( ! is_array( $expected_identity )
+            || ! is_string( $expected_identity['package_manifest_digest'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $expected_identity['package_manifest_digest'] )
+            || ! is_string( $current['artifact_sha256'] ?? null )
+            || ! hash_equals( $current['artifact_sha256'], $expected_identity['package_manifest_digest'] ) ) ) return false;
         $fields = array( 'site_uuid', 'environment', 'profile_digest',
             'origin_sha256', 'runtime_generation', 'artifact_sha256',
             'restore_epoch', 'external_record_sha256' );

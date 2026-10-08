@@ -354,6 +354,12 @@ final class MAD4B_SCP_Search_Context {
 		// Revalidate specialization after overlay composition, not only the base profile.
 		$raw = array_intersect_key( $effective, array_flip( $p['profile_fields'] ) );
 		$checked = self::validate( $raw ); if ( is_wp_error( $checked ) ) return $checked;
+		// Typed profile controls remain binding after every specialization.
+		// Overlays may add a freeze or disabled provider, never remove either
+		// restriction imposed by the persisted profile's independent controls.
+		$base = self::validate( array_intersect_key( $profile, array_flip( $p['profile_fields'] ) ) ); if ( is_wp_error( $base ) ) return $base;
+		$effective['provider_policy']['freeze_spend'] = $base['provider_policy']['freeze_spend'] || $checked['provider_policy']['freeze_spend'];
+		$effective['provider_policy']['disabled'] = array_values( array_unique( array_merge( $base['provider_policy']['disabled'], $checked['provider_policy']['disabled'] ) ) );
 		$languages = array();
 		foreach ( $profile['language_policy']['desired'] as $language ) {
 			$live = isset( $facts['languages'][ $language ] ) ? $facts['languages'][ $language ] : array();

@@ -10,6 +10,8 @@ final class MAD4B_SCP_Assistant_Convergence {
     const ABILITY = 'mad4b/assistant-convergence-preview';
     const MAX_CANDIDATES = 32;
     const MAX_DEPENDENCIES = 12;
+    // The planner's 128 Unicode code points need at most 512 UTF-8 bytes.
+    const MAX_STRING_BYTES = 512;
 
     public static function boot() {
         if ( ! function_exists( 'add_action' ) ) return;
@@ -91,7 +93,8 @@ final class MAD4B_SCP_Assistant_Convergence {
             return true;
         }
         return null === $value || is_bool( $value ) || is_int( $value )
-            || ( is_string( $value ) && strlen( $value ) <= 256 );
+            || ( is_string( $value ) && strlen( $value ) <= self::MAX_STRING_BYTES
+                && 1 === preg_match( '//u', $value ) );
     }
 
     /** Strict read operation: no caller-supplied plan SHA may become an authority. */
@@ -147,6 +150,8 @@ final class MAD4B_SCP_Assistant_Convergence {
                 if ( ! self::id( $id ) || isset( $depends[ $id ] ) ) return self::fail( 'provider_dependencies_invalid' );
                 $depends[ $id ] = true;
             }
+            ksort( $capabilities, SORT_STRING );
+            ksort( $depends, SORT_STRING );
             $catalog[ $candidate['provider'] ] = array(
                 'provider' => $candidate['provider'], 'capabilities' => array_keys( $capabilities ),
                 'requires' => array_keys( $depends ),

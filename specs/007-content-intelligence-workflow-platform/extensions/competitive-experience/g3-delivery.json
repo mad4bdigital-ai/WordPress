@@ -148,6 +148,6 @@
     "Staging disposable fixture provisioning and exact one-time canary authority; hooks/external-effect cleanup, cancellation, drift and uncertainty readback.",
     "Live pack database locking, concurrent activation/revocation, corruption, expired active state, key revocation and replay after restore; per-type interpreter/consumer integration.",
     "Relevant operator/browser/RTL journeys and independent persisted readback; no direct WordPress connection from this development window.",
-    "G4–G9 and final frozen release closure remain pending before #258 is release-ready; Production remains unauthorized."
+    "G4\u2013G9 and final frozen release closure remain pending before #258 is release-ready; Production remains unauthorized."
   ]
 }

@@ -45,9 +45,9 @@ scenario( 'direct_profile_creation_must_be_paused_and_frozen_before_typed_activa
 	check( ! $created['profile']['enabled'] && $created['profile']['provider_policy']['freeze_spend'], 'new profile cannot run observations or incur provider spend' );
 	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $safe['profile_id'], 'control' => 'resume' ) ), 'revision_required', 'resume requires exact revision' );
 	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $safe['profile_id'], 'control' => 'unfreeze_spend' ) ), 'revision_required', 'unfreeze requires exact revision' );
-	$GLOBALS['fixture_write'] = false;
+	$GLOBALS['fixture_admin'] = false;
 	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $safe['profile_id'], 'control' => 'unfreeze_spend', 'expected_revision' => 1 ) ), 'unauthorized', 'profile existence cannot grant configuration authority' );
-	$GLOBALS['fixture_write'] = true;
+	$GLOBALS['fixture_admin'] = true;
 	$active = asi_activate_profile( $safe['profile_id'], $created['profile']['revision'] );
 	check( $active['profile']['enabled'] && ! $active['profile']['provider_policy']['freeze_spend'], 'typed unfreeze + resume explicitly activate with fresh revisions' );
 	$persisted = ok( MAD4B_SCP_Search_Context::profile( $safe['profile_id'] ), 'persist activated profile' );
@@ -77,6 +77,88 @@ scenario( 'overlay_precedence_minimal_drift_and_reason_chain', static function (
 	$after = $ctx['dependencies']; $after['LANGUAGE'] = hash( 'sha256', 'disabled' );
 	check( array( 'LANGUAGE_DRIFT' ) === MAD4B_SCP_Search_Context::drift( $ctx['dependencies'], $after, array( 'PROFILE', 'LANGUAGE', 'SURFACE' ) ), 'minimal invalidation' );
 	check( array() === MAD4B_SCP_Search_Context::drift( $ctx['dependencies'], $after, array( 'PROFILE' ) ), 'unrelated dependencies remain usable' );
+} );
+scenario( 'base_runtime_safety_controls_dominate_every_overlay_and_safe_override', static function () {
+	$raw = asi_profile( 'composed-runtime-safety' );
+	$raw['provider_policy']['disabled'] = array( 'alpha' );
+	foreach ( array( 'brand', 'market', 'language', 'surface', 'experiment' ) as $family ) $raw['overlays'][ $family ]['selected'] = array( 'provider_policy' => array( 'freeze_spend' => false, 'disabled' => array() ), 'objective' => $family );
+	$p = ok( MAD4B_SCP_Search_Context::plan( array( 'profile' => $raw, 'expected_revision' => 0 ) ), 'composed safety plan' )['profile'];
+	foreach ( array( 'brand', 'market', 'language', 'surface', 'experiment' ) as $family ) {
+		$ctx = ok( MAD4B_SCP_Search_Context::compile( $p, array(), array( $family => 'selected' ) ), 'compose ' . $family );
+		check( true === $ctx['effective']['provider_policy']['freeze_spend'], 'base freeze survives ' . $family . ' overlay' );
+		check( in_array( 'alpha', $ctx['effective']['provider_policy']['disabled'], true ), 'base provider disable survives ' . $family . ' overlay' );
+		check( $family === $ctx['effective']['objective'], 'ordinary specialization remains available for ' . $family );
+	}
+	$ctx = ok( MAD4B_SCP_Search_Context::compile( $p, array(), array(), array( 'provider_policy' => array( 'freeze_spend' => false, 'disabled' => array( 'beta' ) ) ) ), 'compose safe request override' );
+	check( true === $ctx['effective']['provider_policy']['freeze_spend'], 'request override cannot unfreeze a profile' );
+	check( array( 'alpha', 'beta' ) === $ctx['effective']['provider_policy']['disabled'], 'request restriction adds to profile disabled providers' );
+	$unfrozen = $p; $unfrozen['provider_policy']['freeze_spend'] = false; $unfrozen['provider_policy']['disabled'] = array();
+	$ctx = ok( MAD4B_SCP_Search_Context::compile( $unfrozen, array(), array(), array( 'provider_policy' => array( 'freeze_spend' => true, 'disabled' => array( 'beta' ) ) ) ), 'restrictive request specialization' );
+	check( true === $ctx['effective']['provider_policy']['freeze_spend'] && array( 'beta' ) === $ctx['effective']['provider_policy']['disabled'], 'overrides retain their ability to further restrict execution' );
+} );
+scenario( 'typed_freeze_and_disable_provider_block_composed_worker_admission', static function () {
+	$raw = asi_profile( 'overlay-worker-controls' );
+	$raw['provider_policy']['allowed'] = array( 'alpha' );
+	$raw['overlays']['market']['metro'] = array( 'provider_policy' => array( 'freeze_spend' => false, 'disabled' => array() ) );
+	$args = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$draft = ok( MAD4B_SCP_Search_Context::plan( $args ), 'worker safety draft plan' );
+	$created = ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $draft['plan_sha256'] ) ) ), 'worker safety draft apply' );
+	$resumed = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'resume', 'expected_revision' => $created['profile']['revision'] ) ), 'resume observations independently of spend' );
+	check( $resumed['profile']['enabled'] && $resumed['profile']['provider_policy']['freeze_spend'], 'resume retains explicit spend freeze' );
+	$d = $GLOBALS['fixture_providers'][0]->descriptor();
+	ok( MAD4B_SCP_Search_Budgets::configure( $d['account_id'], $raw['budget_policy'], array_merge( $d['usage'], array( 'generation' => $d['certification_generation'] ) ), time() ), 'configured observed provider budget' );
+	$compile = static function () use ( $raw ) {
+		$args = array( 'profile_id' => $raw['profile_id'], 'candidates' => array( asi_candidate() ) );
+		$plan = ok( MAD4B_SCP_Search_Runtime::compile_plan( $args ), 'compile current profile revision' );
+		ok( MAD4B_SCP_Search_Runtime::compile_apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'persist current revision targets' );
+		return array( 'profile_id' => $raw['profile_id'], 'target_id' => $plan['compilation']['targets'][0]['target_id'], 'observation_epoch' => time() - 1 );
+	};
+	$input = $compile();
+	denied( MAD4B_SCP_Search_Worker::plan( $input ), 'no_eligible_provider', 'overlay cannot bypass the initial spend freeze' );
+	denied( MAD4B_SCP_Search_Worker::apply( array_merge( $input, array( 'plan_sha256' => str_repeat( '0', 64 ) ) ) ), 'no_eligible_provider', 'frozen composed context cannot enter a provider' );
+	$unfrozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'unfreeze_spend', 'expected_revision' => $resumed['profile']['revision'] ) ), 'explicit independent unfreeze' );
+	$input = $compile();
+	$admitted = ok( MAD4B_SCP_Search_Worker::plan( $input ), 'provider is available after exact typed unfreeze' );
+	check( 'PROVIDER_CAPTURE' === $admitted['mode'] && 'alpha' === $admitted['routing']['selected']['provider_id'], 'intended provider admission remains available' );
+	$frozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'freeze_spend', 'expected_revision' => $unfrozen['profile']['revision'] ) ), 'typed freeze of running observations' );
+	$input = $compile();
+	denied( MAD4B_SCP_Search_Worker::plan( $input ), 'no_eligible_provider', 'overlay cannot reverse an emergency typed spend freeze' );
+	denied( MAD4B_SCP_Search_Worker::apply( array_merge( $input, array( 'plan_sha256' => str_repeat( '0', 64 ) ) ) ), 'no_eligible_provider', 'emergency freeze fences provider entry' );
+	$unfrozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'unfreeze_spend', 'expected_revision' => $frozen['profile']['revision'] ) ), 'exact unfreeze after emergency freeze' );
+	$disabled = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'disable_provider', 'provider_id' => 'alpha', 'expected_revision' => $unfrozen['profile']['revision'] ) ), 'typed provider disable' );
+	$input = $compile();
+	denied( MAD4B_SCP_Search_Worker::plan( $input ), 'no_eligible_provider', 'overlay cannot remove a typed provider disable' );
+	denied( MAD4B_SCP_Search_Worker::apply( array_merge( $input, array( 'plan_sha256' => str_repeat( '0', 64 ) ) ) ), 'no_eligible_provider', 'disabled composed context cannot enter a provider' );
+	ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'enable_provider', 'provider_id' => 'alpha', 'expected_revision' => $disabled['profile']['revision'] ) ), 'exact typed provider enable' );
+	$admitted = ok( MAD4B_SCP_Search_Worker::plan( $compile() ), 'provider is available after exact typed enable' );
+	check( 'PROVIDER_CAPTURE' === $admitted['mode'], 'typed re-enable restores eligible admission' );
+	check( ! MAD4B_SCP_Search_Store::list_rows( 'job' )['items'] && ! MAD4B_SCP_Search_Budgets::status( $d['account_id'] )['reservations'], 'denied admission creates no job or quota reservation' );
+	check( 0 === $GLOBALS['fixture_providers'][0]->calls && 0 === $GLOBALS['fixture_providers'][1]->calls, 'control and plan tests never call a provider' );
+} );
+scenario( 'typed_provider_disable_cannot_be_removed_by_market_specialization', static function () {
+	$raw = asi_profile( 'overlay-disabled-provider' );
+	$raw['provider_policy']['allowed'] = array( 'alpha' );
+	$raw['overlays']['market']['metro'] = array( 'provider_policy' => array( 'disabled' => array() ) );
+	$args = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'disabled-provider fixture plan' );
+	$created = ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'disabled-provider fixture apply' );
+	$active = asi_activate_profile( $raw['profile_id'], $created['profile']['revision'] );
+	$d = $GLOBALS['fixture_providers'][0]->descriptor();
+	ok( MAD4B_SCP_Search_Budgets::configure( $d['account_id'], $raw['budget_policy'], array_merge( $d['usage'], array( 'generation' => $d['certification_generation'] ) ), time() ), 'disabled-provider observed allowance' );
+	$compile = static function () use ( $raw ) {
+		$args = array( 'profile_id' => $raw['profile_id'], 'candidates' => array( asi_candidate() ) );
+		$plan = ok( MAD4B_SCP_Search_Runtime::compile_plan( $args ), 'compile disabled-provider target' );
+		ok( MAD4B_SCP_Search_Runtime::compile_apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'persist disabled-provider target' );
+		return array( 'profile_id' => $raw['profile_id'], 'target_id' => $plan['compilation']['targets'][0]['target_id'], 'observation_epoch' => time() - 1 );
+	};
+	$before = ok( MAD4B_SCP_Search_Worker::plan( $compile() ), 'unfrozen provider is initially eligible' );
+	check( 'alpha' === $before['routing']['selected']['provider_id'], 'only the intended provider was eligible' );
+	ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'disable_provider', 'provider_id' => 'alpha', 'expected_revision' => $active['profile']['revision'] ) ), 'disable the formerly eligible provider' );
+	$input = $compile();
+	denied( MAD4B_SCP_Search_Worker::plan( $input ), 'no_eligible_provider', 'market specialization cannot re-enable a disabled provider' );
+	denied( MAD4B_SCP_Search_Worker::apply( array_merge( $input, array( 'plan_sha256' => $before['plan_sha256'] ) ) ), 'no_eligible_provider', 'disabled provider cannot enter on a reviewed old plan' );
+	check( ! MAD4B_SCP_Search_Store::list_rows( 'job' )['items'] && ! MAD4B_SCP_Search_Budgets::status( $d['account_id'] )['reservations'], 'disabled provider creates no job or quota hold' );
+	check( 0 === $GLOBALS['fixture_providers'][0]->calls && 0 === $GLOBALS['fixture_providers'][1]->calls, 'disabled provider never executes' );
 } );
 scenario( 'object_surface_virtual_admission_and_indexability_conflicts', static function () {
 	$p = MAD4B_SCP_Search_Context::validate( asi_profile() ); $term = asi_surface( 'TERM', 8 ); $archive = asi_surface( 'TERM_ARCHIVE', 8 );
@@ -393,9 +475,9 @@ scenario( 'typed_control_scope_blocks_nested_profile_api_escalation', static fun
 	$next = asi_profile( 'unauthorized-domain-apply' ); $next['markets'][0]['id'] = 'unauthorized-us'; $next['markets'][1]['id'] = 'unauthorized-fr';
 	$input = array( 'profile' => $next, 'expected_revision' => 0 );
 	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'read-only plan available to unauthorized executor' );
-	$GLOBALS['fixture_write'] = false;
+	$GLOBALS['fixture_admin'] = false;
 	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'configuration_unauthorized', 'domain apply itself enforces config authority' );
-	$GLOBALS['fixture_write'] = true;
+	$GLOBALS['fixture_admin'] = true;
 } );
 scenario( 'profile_registry_malformed_denial_before_claims_or_profile_write', static function () {
 	$invalid = array(
@@ -568,7 +650,9 @@ scenario( 'composed_profile_language_surface_drift_preserves_history', static fu
 	$raw['enabled'] = false; $raw['provider_policy']['freeze_spend'] = true;
 	$args = array( 'profile' => $raw, 'expected_revision' => $frozen['profile']['revision'] );
 	$plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'paused and frozen retarget plan' );
-	ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'changed profile only after pause and freeze' );
+	$edited = ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'changed profile only after pause and freeze' );
+	denied( MAD4B_SCP_Search_Worker::plan( $input ), 'profile_paused', 'paused profile still blocks admission before target drift checks' );
+	asi_activate_profile( 'fixture.search', $edited['profile']['revision'] );
 	$input['observation_epoch']--; denied( MAD4B_SCP_Search_Worker::plan( $input ), 'profile_drift', 'old target suspends until recomposed' );
 	check( $original === MAD4B_SCP_Search_Store::evidence( 'snapshot', $result['snapshot_id'] ), 'historical observation immutable across profile drift' );
 	$target = MAD4B_SCP_Search_Store::read( 'target', $input['target_id'] ); $changed = $target['target']; $changed['cluster_id'] = 'replacement'; ok( MAD4B_SCP_Search_Targets::persist( $changed ), 'new target version' );

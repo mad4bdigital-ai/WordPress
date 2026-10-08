@@ -124,6 +124,33 @@ check_case( 'malicious input rejected before runtime reads', rejected( MAD4B_SCP
 $bad_input = $input; $bad_input['out_of_contract'] = 'ignore?';
 check_case( 'unknown top-level input rejected before runtime reads', rejected( MAD4B_SCP_Assistant_Planning::read_plan( $bad_input ), 'input_invalid' )
     && $before_reads === MAD4B_SCP_Adaptive_Operations_Context::$reads );
+$unicode = $desired;
+$unicode['facts'][] = array( 'key' => 'brand.name', 'value' => str_repeat( 'س', 128 ), 'provenance' => 'operator' );
+$unicode_input = $input; $unicode_input['desired'] = $unicode;
+$unicode_plan = MAD4B_SCP_Assistant_Planning::read_plan( $unicode_input );
+check_case( '128 Arabic fact characters accepted without authority', is_array( $unicode_plan )
+    && false === $unicode_plan['authorizing'] && 'NOT_EXECUTABLE' === $unicode_plan['readiness'] );
+check_case( 'Unicode facts bind exact input without echoing their value', is_array( $unicode_plan )
+    && $unicode_plan['input_sha256'] !== $plan['input_sha256']
+    && false === strpos( json_encode( $unicode_plan, JSON_UNESCAPED_UNICODE ), str_repeat( 'س', 128 ) ) );
+$unicode['facts'][2]['value'] = str_repeat( 'س', 129 );
+check_case( '129 Arabic fact characters denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $unicode, $observed ), 'facts_invalid' ) );
+$unicode['facts'][2]['value'] = str_repeat( '😀', 128 );
+check_case( '128 four-byte emoji fact characters accepted', is_array( MAD4B_SCP_Assistant_Planning::plan( $binding, $unicode, $observed ) ) );
+$unicode_input['desired'] = $unicode;
+check_case( '128 emoji fact characters pass governed read boundary', is_array( MAD4B_SCP_Assistant_Planning::read_plan( $unicode_input ) ) );
+$before_reads = MAD4B_SCP_Adaptive_Operations_Context::$reads;
+$unicode_input['desired']['facts'][2]['value'] = str_repeat( '😀', 129 );
+check_case( '129 emoji fact characters exceed byte budget before runtime reads', rejected( MAD4B_SCP_Assistant_Planning::read_plan( $unicode_input ), 'input_invalid' )
+    && $before_reads === MAD4B_SCP_Adaptive_Operations_Context::$reads );
+$unicode_input['desired']['facts'][2]['value'] = "\xC3\x28";
+check_case( 'malformed UTF8 denied before runtime reads', rejected( MAD4B_SCP_Assistant_Planning::read_plan( $unicode_input ), 'input_invalid' )
+    && $before_reads === MAD4B_SCP_Adaptive_Operations_Context::$reads );
+$unicode_input['desired']['facts'][2]['value'] = str_repeat( 'a', 513 );
+check_case( 'oversized string denied before runtime reads', rejected( MAD4B_SCP_Assistant_Planning::read_plan( $unicode_input ), 'input_invalid' )
+    && $before_reads === MAD4B_SCP_Adaptive_Operations_Context::$reads );
+$unicode_input['desired']['facts'][2]['value'] = str_repeat( 'a', 129 );
+check_case( '129 ASCII fact characters remain denied', rejected( MAD4B_SCP_Assistant_Planning::read_plan( $unicode_input ), 'facts_invalid' ) );
 $prod = $binding; $prod['environment'] = 'production';
 check_case( 'production never mutation', false === MAD4B_SCP_Assistant_Planning::plan( $prod, $desired, $observed )['production_authorized'] );
 echo "ASSISTANT_GA_GB_FIXTURE: PASS\n";

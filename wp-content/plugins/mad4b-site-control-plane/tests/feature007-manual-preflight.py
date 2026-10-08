@@ -52,9 +52,14 @@ PY_CHECKS = (
     "g9-delivery-contract.py",
     "g9-security-source-contract.py",
 )
+INTEGRITY_ERRORS = (ValueError, OSError, subprocess.CalledProcessError,
+                    subprocess.TimeoutExpired, json.JSONDecodeError, KeyError, TypeError)
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+def exact_git_sha(value):
+    return isinstance(value, str) and re.fullmatch(r"[a-f0-9]{40}", value) is not None
 
 def run(root, args, env=None, timeout=50):
     try:
@@ -70,11 +75,11 @@ def run(root, args, env=None, timeout=50):
 
 def integrity(root, base, head):
     def git(*arguments):
-        result = run(root, ["git", "-C", str(root), *arguments])
-        if result["result"] != "PASS":
+        try:
+            return subprocess.check_output(["git", "-C", str(root), *arguments],
+                                           stderr=subprocess.PIPE, text=True, timeout=20).strip()
+        except subprocess.CalledProcessError:
             raise ValueError("GIT_CHECK_FAILED:" + " ".join(arguments[:2]))
-        return subprocess.check_output(["git", "-C", str(root), *arguments],
-                                       text=True, timeout=20).strip()
     if git("rev-parse", "HEAD") != head:
         raise ValueError("HEAD_MISMATCH")
     if git("status", "--porcelain", "--untracked-files=all"):
@@ -99,8 +104,82 @@ def integrity(root, base, head):
         items = [p for p in record["workflow_paths"] if p["path"] == str(WF)]
         if len(items) != 1 or items[0]["sha256"] != digest(workflow) or items[0]["bytes"] != len(workflow):
             raise ValueError("WORKFLOW_MANIFEST_DRIFT:" + group)
+    tree = git("rev-parse", "HEAD^{tree}")
+    # Recheck identity and cleanliness after reading the bound metadata too.
+    if git("rev-parse", "HEAD") != head:
+        raise ValueError("HEAD_MISMATCH")
+    if git("status", "--porcelain", "--untracked-files=all"):
+        raise ValueError("WORKTREE_DIRTY")
     return {"changed_paths": len(paths), "path_sha256": actual,
-            "workflow_sha256": digest(workflow), "G6_G8_hashes_match": True}
+            "workflow_sha256": digest(workflow), "source_tree_sha": tree,
+            "G6_G8_hashes_match": True}
+
+def python_check(root, filename, env):
+    case = "python:" + filename
+    dependencies = {
+        "oauth-consent-script-syntax.py": ("node", "NODE_RUNTIME_UNAVAILABLE"),
+        # This contract invokes generic `php -l` itself, independently of the
+        # two explicit PHP matrix executable names. Missing php is no code FAIL.
+        "developer-runtime-contract.py": ("php", "PHP_LINTER_RUNTIME_UNAVAILABLE"),
+    }
+    if filename in dependencies:
+        executable, reason = dependencies[filename]
+        if shutil.which(executable, path=env["PATH"]) is None:
+            return {"case": case, "result": "BLOCKED", "reason": reason,
+                    "required_executable": executable}
+    result = run(root, [sys.executable, "-B", str(PLUGIN / "tests" / filename)], env)
+    result["case"] = case
+    return result
+
+def final_integrity(receipt, root, base, head):
+    receipt["source_immutable_verified"] = False
+    if "integrity_error" in receipt:
+        return
+    try:
+        final = integrity(root, base, head)
+        if final != receipt["integrity"]:
+            raise ValueError("SOURCE_SNAPSHOT_CHANGED")
+        receipt["final_integrity"] = final
+        receipt["source_immutable_verified"] = True
+    except INTEGRITY_ERRORS as exc:
+        receipt["final_integrity_error"] = str(exc)
+        receipt["status"] = "FAIL"
+
+def self_test():
+    from unittest.mock import patch
+    assert digest(b"abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    assert exact_git_sha("a" * 40)
+    for malformed in ("a" * 39, "a" * 41, "A" * 40, "a" * 40 + "\n", None, 1):
+        assert not exact_git_sha(malformed), "Malformed exact head accepted"
+    calls = []
+    def failed_check(root, command, env):
+        calls.append(command)
+        return {"result": "FAIL", "exit_code": 1}
+    with patch.object(shutil, "which", return_value=None), patch.dict(globals(), {"run": failed_check}):
+        blocked = python_check(Path("."), "developer-runtime-contract.py", {"PATH": ""})
+        assert blocked["result"] == "BLOCKED" and blocked["required_executable"] == "php"
+        assert not calls, "Missing PHP must not execute a known PHP-dependent contract"
+        blocked_node = python_check(Path("."), "oauth-consent-script-syntax.py", {"PATH": ""})
+        assert blocked_node["result"] == "BLOCKED" and not calls
+        failed = python_check(Path("."), "g9-delivery-contract.py", {"PATH": ""})
+        assert failed["result"] == "FAIL" and len(calls) == 1, "Source FAIL must not become BLOCKED"
+    snapshot = {"source_tree_sha": "a" * 40, "workflow_sha256": "b" * 64}
+    with patch.dict(globals(), {"integrity": lambda *args: dict(snapshot)}):
+        receipt = {"integrity": dict(snapshot), "status": "BLOCKED"}
+        final_integrity(receipt, Path("."), "a" * 40, "b" * 40)
+        assert receipt["source_immutable_verified"] and receipt["status"] == "BLOCKED"
+        receipt = {"integrity": dict(snapshot, workflow_sha256="c" * 64), "status": "BLOCKED"}
+        final_integrity(receipt, Path("."), "a" * 40, "b" * 40)
+        assert receipt["status"] == "FAIL" and receipt["final_integrity_error"] == "SOURCE_SNAPSHOT_CHANGED"
+    for reason in ("HEAD_MISMATCH", "WORKTREE_DIRTY"):
+        def changed(*arguments):
+            raise ValueError(reason)
+        with patch.dict(globals(), {"integrity": changed}):
+            receipt = {"integrity": snapshot, "status": "BLOCKED"}
+            final_integrity(receipt, Path("."), "a" * 40, "b" * 40)
+            assert receipt["status"] == "FAIL" and not receipt["source_immutable_verified"]
+            assert receipt["final_integrity_error"] == reason
+    print("OFFLINE_PRECHECK_SELFTEST_PASS; SHA, missing-engine, source-FAIL and immutable-source denials; not a release certificate")
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -112,12 +191,11 @@ def main():
     parser.add_argument("--report")
     args = parser.parse_args()
     if args.self_test:
-        assert digest(b"abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-        print("OFFLINE_PRECHECK_SELFTEST_PASS; not a release certificate")
+        self_test()
         return 0
     if not args.expected_head or not args.base_sha or not args.report:
         parser.error("Exact --expected-head, --base-sha and --report are required")
-    if any(not re.fullmatch(r"[a-f0-9]{40}", x) for x in (args.expected_head, args.base_sha)):
+    if any(not exact_git_sha(x) for x in (args.expected_head, args.base_sha)):
         parser.error("A full exact Git SHA is mandatory")
     root = Path(__file__).resolve().parents[4]
     report = Path(args.report).resolve()
@@ -132,7 +210,7 @@ def main():
                "network_isolated": False, "results": []}
     try:
         receipt["integrity"] = integrity(root, args.base_sha, args.expected_head)
-    except (ValueError, OSError, subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as exc:
+    except INTEGRITY_ERRORS as exc:
         receipt["integrity_error"] = str(exc)
         receipt["status"] = "FAIL"
     if "integrity_error" not in receipt:
@@ -168,17 +246,14 @@ def main():
                     result["case"] = version + ":fixture:" + filename
                     receipt["results"].append(result)
             for filename in PY_CHECKS:
-                if filename == "oauth-consent-script-syntax.py" and shutil.which("node") is None:
-                    receipt["results"].append({"case": "python:" + filename,
-                                               "result": "BLOCKED", "reason": "NODE_RUNTIME_UNAVAILABLE"})
-                    continue
-                result = run(root, [sys.executable, str(PLUGIN / "tests" / filename)], env)
-                result["case"] = "python:" + filename
-                receipt["results"].append(result)
+                receipt["results"].append(python_check(root, filename, env))
         states = [item["result"] for item in receipt["results"]]
         receipt["status"] = ("FAIL" if "FAIL" in states else
                              "BLOCKED" if "BLOCKED" in states else
                              "LOCAL_SOURCE_CHECKS_PASS_EXTERNAL_ACCEPTANCE_PENDING")
+    # All test output belongs to the exact starting source only while HEAD,
+    # tracked files and bound fingerprints still match after the checks finish.
+    final_integrity(receipt, root, args.base_sha, args.expected_head)
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"head": args.expected_head, "status": receipt["status"],

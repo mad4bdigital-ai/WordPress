@@ -12,6 +12,7 @@ developer = (inc / "class-mad4b-scp-developer-runtime.php").read_text(encoding="
 developer_authority = (inc / "class-mad4b-scp-developer-authority.php").read_text(encoding="utf-8")
 oauth = (inc / "class-mad4b-scp-local-oauth-server.php").read_text(encoding="utf-8")
 ui = (inc / "class-mad4b-scp-local-oauth-consent-ui.php").read_text(encoding="utf-8")
+projection_view = (inc / "class-mad4b-scp-oauth-consent-projection-view.php").read_text(encoding="utf-8")
 plugin = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 
@@ -391,7 +392,27 @@ assert "mad4b:authority:step-up" in ui
 assert "Deny access" in ui
 assert "Generic raw-SQL Breakglass" in ui
 assert "Current governed authority" in ui
-assert "Full Staging Authority (Staging only)" in ui
+for marker in (
+    "Developer authority",
+    "Developer Breakglass authority",
+    "Developer host execution",
+    "Staging operational readiness:",
+    "Generic raw-SQL Breakglass is not included in Full Staging Authority.",
+):
+    assert marker in ui, marker
+for marker in (
+    "'full_staging_authority_ready' => $full_staging_authority_ready",
+    "'full_staging_operational_ready' => $full_staging_operational",
+    "'developer_execution_ready' => ! empty( $developer_execution['operational_ready'] )",
+):
+    assert marker in oauth, marker
+for marker in (
+    "'host_execution_ready' => false",
+    "'host_execution_certification' => 'NOT_CERTIFIED'",
+    "'operational_ready' => false",
+    "host_behavior_uncertified",
+):
+    assert marker in projection_view, marker
 
 header = re.search(r"(?mi)^\s*\*\s*Version:\s*([^\r\n]+)", plugin)
 constant = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", plugin)

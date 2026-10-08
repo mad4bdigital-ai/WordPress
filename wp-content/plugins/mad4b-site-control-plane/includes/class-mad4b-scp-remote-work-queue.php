@@ -188,7 +188,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		if ( 0 === strpos( $operation_id, 'assistant_' )
 			&& ( ! class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
 				|| ! MAD4B_SCP_Assistant_Read_Work_Operations::validate_for_operation( $operation_id, $payload )
-				|| ! MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $payload ) ) ) {
+				|| ! MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $payload, $expected_identity ) ) ) {
 			return new WP_Error( 'mad4b_remote_work_assistant_binding_invalid',
 				'Assistant read work requires matching Staging-only runtime, operation and restore identity.' );
 		}
@@ -286,6 +286,19 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		}
 	}
 
+	private static function assistant_job_binding_matches( array $job ) {
+		return class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
+			&& is_array( $job['payload'] ?? null ) && is_array( $job['expected_identity'] ?? null )
+			&& MAD4B_SCP_Assistant_Read_Work_Operations::validate_for_operation( $job['operation_id'], $job['payload'] )
+			&& MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $job['payload'], $job['expected_identity'] );
+	}
+
+	private static function assistant_binding_error() {
+		return new WP_Error( 'mad4b_remote_work_assistant_binding_invalid',
+			'Assistant read work changed its exact Staging identity; cancel or reconcile before further execution.',
+			array( 'provider_entry_allowed' => false, 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+	}
+
 	public static function claim( $job_id, $executor_id, $lease_seconds, array $current_identity ) {
 		$job_id = strtolower( trim( (string) $job_id ) );
 		$executor_id = sanitize_key( (string) $executor_id );
@@ -316,6 +329,8 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				) );
 			}
 			if ( 'pending' !== $status ) return new WP_Error( 'mad4b_remote_work_job_not_claimable', 'Remote work job is not claimable in its current state.' );
+			if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
+				&& ! self::assistant_job_binding_matches( $job ) ) return self::assistant_binding_error();
 
 			$token = self::fresh_lease_token();
 			$job['status'] = 'claimed';
@@ -441,6 +456,8 @@ final class MAD4B_SCP_Remote_Work_Queue {
 					) );
 				}
 				if ( ! in_array( $current, array( 'not_entered', 'provider_entered' ), true ) ) return new WP_Error( 'mad4b_remote_work_provider_checkpoint_regression', 'Provider checkpoint cannot move backward.' );
+				if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
+					&& ! self::assistant_job_binding_matches( $job ) ) return self::assistant_binding_error();
 				$job['provider_checkpoint'] = 'provider_entered';
 				$job['provider_entry_at'] = '' !== (string) $job['provider_entry_at'] ? (string) $job['provider_entry_at'] : gmdate( 'c' );
 				$job['provider_side_effect_possible'] = true;

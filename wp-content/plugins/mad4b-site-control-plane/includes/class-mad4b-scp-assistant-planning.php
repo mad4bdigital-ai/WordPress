@@ -11,6 +11,10 @@ final class MAD4B_SCP_Assistant_Planning {
     const ABILITY = 'mad4b/assistant-plan';
     const MAX_CAPABILITIES = 24;
     const MAX_FACTS = 48;
+    const MAX_FACT_VALUE_CHARACTERS = 128;
+    // A valid Unicode code point takes at most four UTF-8 bytes. Bound bytes
+    // before UTF-8 scanning while allowing the entire advertised fact limit.
+    const MAX_INERT_STRING_BYTES = 512;
 
     public static function boot() {
         if ( ! function_exists( 'add_action' ) ) return;
@@ -56,7 +60,7 @@ final class MAD4B_SCP_Assistant_Planning {
                                 'items' => array( 'type' => 'object', 'required' => array( 'key', 'value', 'provenance' ),
                                     'properties' => array(
                                         'key' => array( 'type' => 'string', 'pattern' => '^[a-z][a-z0-9._-]{2,79}$' ),
-                                        'value' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 128 ),
+                                        'value' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => self::MAX_FACT_VALUE_CHARACTERS ),
                                         'provenance' => array( 'type' => 'string', 'enum' => array( 'operator', 'site_profile', 'provider', 'inferred' ) ),
                                     ), 'additionalProperties' => false ) ),
                         ), 'additionalProperties' => false ),
@@ -93,6 +97,15 @@ final class MAD4B_SCP_Assistant_Planning {
         return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/D', $value );
     }
 
+    /** JSON Schema string lengths count Unicode code points, not UTF-8 bytes. */
+    private static function fact_value( $value ) {
+        if ( ! is_string( $value ) || strlen( $value ) > self::MAX_INERT_STRING_BYTES || '' === trim( $value ) ) return false;
+        // PCRE handles UTF-8 without requiring mbstring or ambient encodings.
+        // The byte bound above keeps this scan small; invalid UTF-8 fails closed.
+        $characters = preg_match_all( '/./us', $value );
+        return is_int( $characters ) && $characters >= 1 && $characters <= self::MAX_FACT_VALUE_CHARACTERS;
+    }
+
     private static function keys( array $row, array $allowed ) {
         foreach ( $row as $key => $value ) if ( ! is_string( $key ) || ! in_array( $key, $allowed, true ) ) return false;
         return true;
@@ -110,7 +123,8 @@ final class MAD4B_SCP_Assistant_Planning {
             return true;
         }
         return null === $value || is_bool( $value ) || is_int( $value )
-            || ( is_string( $value ) && strlen( $value ) <= 256 );
+            || ( is_string( $value ) && strlen( $value ) <= self::MAX_INERT_STRING_BYTES
+                && 1 === preg_match( '//u', $value ) );
     }
 
     /** Called only by existing READ authority. Never claims user-supplied observations are certified. */
@@ -174,8 +188,7 @@ final class MAD4B_SCP_Assistant_Planning {
         $fact_values = array(); $conflicts = array();
         foreach ( $facts as $item ) {
             if ( ! is_array( $item ) || ! self::keys( $item, array( 'key', 'value', 'provenance' ) )
-                || ! self::id( $item['key'] ?? null ) || ! is_string( $item['value'] ?? null )
-                || '' === trim( $item['value'] ) || strlen( $item['value'] ) > 128
+                || ! self::id( $item['key'] ?? null ) || ! self::fact_value( $item['value'] ?? null )
                 || ! in_array( $item['provenance'] ?? null, array( 'operator', 'site_profile', 'provider', 'inferred' ), true ) ) return self::fail( 'facts_invalid' );
             $key = $item['key'];
             // Validate *every* candidate, including conflicting second values:

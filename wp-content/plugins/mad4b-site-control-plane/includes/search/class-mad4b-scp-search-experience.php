@@ -67,8 +67,9 @@ final class MAD4B_SCP_Search_Experience {
 			foreach ( $rows as $row ) echo '<tr><th scope="row">' . esc_html( $row['label'] ) . '</th><td>' . esc_html( $row['value'] ) . '</td></tr>';
 			echo '</tbody></table>';
 		}
-		if ( $id && MAD4B_SCP_Search_Runtime::can_configure() ) {
-			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_search_control"><input type="hidden" name="profile_id" value="' . esc_attr( $id ) . '">';
+		$control_profile = $id ? MAD4B_SCP_Search_Context::profile( $id ) : null;
+		if ( $id && MAD4B_SCP_Search_Runtime::can_configure() && is_array( $control_profile ) && isset( $control_profile['revision'] ) ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_search_control"><input type="hidden" name="profile_id" value="' . esc_attr( $id ) . '"><input type="hidden" name="expected_revision" value="' . esc_attr( (string) $control_profile['revision'] ) . '">';
 			wp_nonce_field( 'mad4b_search_control' );
 			echo '<label for="mad4b-search-control">Operator control</label> <select id="mad4b-search-control" name="control">';
 			foreach ( array( 'disable_provider' => 'Disable provider', 'enable_provider' => 'Enable provider', 'pin' => 'Pin target', 'unpin' => 'Unpin target', 'mute' => 'Mute target', 'unmute' => 'Unmute target', 'refresh' => 'Request refresh' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '">' . esc_html( $label ) . '</option>';

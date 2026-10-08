@@ -21,8 +21,10 @@ function wp_get_session_token() { return 'hermetic-administrator-session'; }
 function wp_salt( $scheme ) { return 'hermetic-notice-signing-salt'; }
 function check_admin_referer( $action ) { if ( ! isset( $_POST['_wpnonce'] ) || hash( 'sha256', $action ) !== $_POST['_wpnonce'] ) throw new RuntimeException( 'nonce_denied' ); }
 function wp_die( $message, $title = '', $args = array() ) { throw new RuntimeException( 'post_denied' ); }
+function wp_safe_redirect( $url ) { $GLOBALS['fixture_redirect'] = $url; throw new RuntimeException( 'control_redirect' ); }
 function submit_button( $text, $type, $name, $wrap ) { echo '<button>' . esc_html( $text ) . '</button>'; }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-workspace.php';
+require dirname( __DIR__, 4 ) . '/wp-includes/rest-api.php';
 MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-search-intelligence', 'manage_options' );
 MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-control-plane-site-profile', 'manage_options' );
 $assertions = 0; $cases = array();
@@ -158,6 +160,57 @@ profile_case( 'profile_runtime_state_controls_are_explicit_revision_fenced_and_r
 	$unfreeze = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'unfreeze_spend', 'expected_revision' => 2 ) );
 	profile_check( ! is_wp_error( $unfreeze ) && ! empty( $unfreeze['control_readback_verified'] ) && empty( $unfreeze['profile']['provider_policy']['freeze_spend'] ) && 3 === $unfreeze['profile']['revision'], 'spend unfreeze uses independent verified readback' );
 	profile_check( 0 === count( $GLOBALS['fixture_http'] ), 'profile state controls never call a provider' );
+} );
+profile_case( 'operator_provider_controls_submit_the_displayed_revision_and_reject_stale_forms', static function () {
+	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form( 'provider-control-form' ) );
+	profile_check( ! is_wp_error( $saved ), 'provider form fixture created' );
+	$id = $saved['profile']['profile_id']; $first_post = null;
+	foreach ( array( 'disable_provider', 'enable_provider' ) as $control ) {
+		$_GET = array( 'profile_id' => $id );
+		ob_start(); MAD4B_SCP_Search_Experience::render(); $html = ob_get_clean();
+		profile_check( 1 === preg_match( '/<form\b[^>]*>((?:(?!<\/form>).)*id="mad4b-search-control"(?:(?!<\/form>).)*)<\/form>/s', $html, $form ), 'actual operator control form is available' );
+		preg_match_all( '/<input\b[^>]*name="([^"]+)"[^>]*value="([^"]*)"[^>]*>/s', $form[1], $fields, PREG_SET_ORDER );
+		$post = array(); foreach ( $fields as $field ) $post[ $field[1] ] = html_entity_decode( $field[2], ENT_QUOTES, 'UTF-8' );
+		$post['control'] = $control; $post['provider_id'] = 'alpha'; $post['target_id'] = '';
+		$current = MAD4B_SCP_Search_Context::profile( $id );
+		$_POST = $post;
+		try { MAD4B_SCP_Search_Experience::control_post(); throw new RuntimeException( 'control_did_not_redirect' ); }
+		catch ( RuntimeException $error ) { profile_check( 'control_redirect' === $error->getMessage(), 'rendered form succeeds through nonce, POST parser and typed control: ' . $control ); }
+		profile_check( isset( $post['expected_revision'] ) && (string) $current['revision'] === $post['expected_revision'], 'operator form submits exactly the revision displayed' );
+		$after = MAD4B_SCP_Search_Context::profile( $id );
+		profile_check( $current['revision'] + 1 === $after['revision'] && ( 'disable_provider' === $control ) === in_array( 'alpha', $after['provider_policy']['disabled'], true ), 'provider state readback matches the submitted control' );
+		profile_check( false !== strpos( $GLOBALS['fixture_redirect'], 'profile_id=' . rawurlencode( $id ) ), 'redirect remains bound to selected profile' );
+		if ( null === $first_post ) {
+			$first_post = $post; $stale = $first_post; $stale['control'] = 'enable_provider'; $_POST = $stale;
+			try { MAD4B_SCP_Search_Experience::control_post(); throw new RuntimeException( 'stale_control_accepted' ); }
+			catch ( RuntimeException $error ) { profile_check( 'post_denied' === $error->getMessage(), 'stale displayed provider control remains denied' ); }
+			profile_check( $after === MAD4B_SCP_Search_Context::profile( $id ), 'stale form cannot mutate provider state' );
+		}
+	}
+	profile_check( 0 === count( $GLOBALS['fixture_http'] ), 'operator control POST never calls a provider' );
+} );
+profile_case( 'registered_control_schema_accepts_exact_revision_and_preserves_domain_fences', static function () {
+	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form( 'schema-control-profile' ) );
+	profile_check( ! is_wp_error( $saved ), 'schema fixture created' );
+	MAD4B_SCP_Adaptive_Search_Intelligence::register();
+	$ability = $GLOBALS['fixture_abilities']['mad4b/search-control'];
+	$schema = $ability['input_schema'];
+	$args = array( 'profile_id' => $saved['profile']['profile_id'], 'control' => 'resume', 'expected_revision' => $saved['profile']['revision'] );
+	$valid = rest_validate_value_from_schema( $args, $schema, 'search-control' );
+	profile_check( true === $valid, 'WordPress schema accepts an exact revision for typed search controls' );
+	$bad = $args; $bad['profile'] = array( 'enabled' => true );
+	$denied = rest_validate_value_from_schema( $bad, $schema, 'search-control' );
+	profile_check( is_wp_error( $denied ) && 'rest_additional_properties_forbidden' === $denied->get_error_code(), 'schema keeps arbitrary profile input forbidden' );
+	$bad = $args; $bad['expected_revision'] = array( 1 );
+	profile_check( is_wp_error( rest_validate_value_from_schema( $bad, $schema, 'search-control' ) ), 'schema rejects a malformed revision' );
+	$missing = $args; unset( $missing['expected_revision'] );
+	$result = call_user_func( $ability['execute_callback'], $missing );
+	profile_check( is_wp_error( $result ) && 'mad4b_search_search_control_revision_required' === $result->get_error_code(), 'typed domain still requires revision for activation' );
+	$result = call_user_func( $ability['execute_callback'], $args );
+	profile_check( ! is_wp_error( $result ) && $result['profile']['enabled'] && ! empty( $result['control_readback_verified'] ), 'schema-admitted exact control reaches real typed transition and readback' );
+	$stale = call_user_func( $ability['execute_callback'], $args );
+	profile_check( is_wp_error( $stale ) && 'mad4b_search_search_control_stale' === $stale->get_error_code(), 'schema availability does not weaken exact domain revision fence' );
+	profile_check( 0 === count( $GLOBALS['fixture_http'] ), 'schema control never calls a provider' );
 } );
 profile_case( 'profile_form_denies_malformed_inputs_role_production_and_bad_nonce', static function () {
 	foreach ( array( 'profile_id', 'expected_revision', 'languages', 'market_country', 'providers', 'operation' ) as $field ) { $bad = profile_form(); $bad[ $field ] = array( array( 'invalid' ) ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'nested form value denied: ' . $field ); }

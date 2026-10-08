@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 300,
+  "changed_file_count": 309,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -207,6 +207,7 @@
       "revert_boundary": "Revert the PR #270 unique Context/Search runtime and focused contract tests as one bounded non-authorizing slice; shared admin, content-experience and provider/runtime ownership remains unchanged.",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-context.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
@@ -452,6 +453,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-consent-projection-view.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-connection-ui-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-projection-view-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-script-syntax.py"
       ]
@@ -531,6 +533,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "75a2ffa8eb63d0a7dfd2a9bd1f863cbf1ab0912a80a02d235d67586410895c5d",
+  "changed_paths_sha256": "7281a7d400e1a699cd6e51360fd81676b14bf5cfec9c94464eab989bd89e3367",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
