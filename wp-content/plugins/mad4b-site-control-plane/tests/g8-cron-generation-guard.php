@@ -56,6 +56,21 @@ $guard = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'guard_automatic
 $guard->setAccessible( true );
 $run = static function ( $row ) use ( $guard ) { return $guard->invoke( null, $row ); };
 g8_guard_assert( true === $run( $ticket ), 'exact Cron target is accepted' );
+class G8_Unexpected_Checkpoint_Object {
+	public function __serialize() {
+		$GLOBALS['g8_unexpected_checkpoint_serialized'] = true;
+		return array( 'side_effect' => true );
+	}
+}
+$untrusted_checkpoint = $GLOBALS['g8_checkpoint'];
+$untrusted_checkpoint['target_identity']['unexpected'] = new G8_Unexpected_Checkpoint_Object();
+$GLOBALS['g8_checkpoint'] = $untrusted_checkpoint;
+$unsafe = $run( $ticket );
+g8_guard_assert( is_wp_error( $unsafe )
+	&& 'mad4b_automation_target_identity_invalid' === $unsafe->get_error_code()
+	&& empty( $GLOBALS['g8_unexpected_checkpoint_serialized'] ),
+	'extra executable checkpoint identity rejected without serialization' );
+$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target );
 $changed = $GLOBALS['g8_checkpoint'];
 $changed['target_identity']['build_fingerprint'] = str_repeat( 'e', 64 );
 $GLOBALS['g8_checkpoint'] = $changed;
