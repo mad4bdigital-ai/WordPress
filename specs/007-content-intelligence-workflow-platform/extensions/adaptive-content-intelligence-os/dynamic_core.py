@@ -232,17 +232,39 @@ def compile_candidate(intent, scope, state, model, policy):
         statuses.append({'task_id': task_id, 'state': status, 'reason': reason})
         if status != 'READY_FOR_NON_AUTHORITATIVE_PLAN':
             reasons.append(reason)
+    # Close the applicable certification graph transitively; a child gate cannot
+    # self-certify while its parent is absent. Optional native proofs are included
+    # only when this exact content profile requires them.
+    def include_gate(gate_id):
+        if gate_id in expanded_gates:
+            return
+        expanded_gates.add(gate_id)
+        gate = gatemap[gate_id]
+        for predecessor in gate.get('depends_on', []):
+            include_gate(predecessor)
+        for condition in gate.get('conditional_dependencies', []):
+            if profile.get(condition['when'], False):
+                include_gate(condition['gate'])
+    expanded_gates = set()
+    for gate_id in needed_gates:
+        include_gate(gate_id)
+    needed_gates = expanded_gates
     if scope['environment'] == 'production':
         reasons.append('production_authority_out_of_scope')
     if any(x not in gate_certificates for x in needed_gates):
         reasons.append('certification_gate_incomplete')
-    if intent.get('effect_class') in ('PAID', 'WORDPRESS_WRITE', 'HOST_WRITE'):
+    effect = intent.get('effect_class', 'NONE')
+    require(effect in ('NONE', 'READ_ONLY', 'PAID', 'WORDPRESS_WRITE', 'HOST_WRITE'),
+            'effect_class_unknown')
+    if effect in ('PAID', 'WORDPRESS_WRITE', 'HOST_WRITE'):
         reasons.append('effect_requires_separate_MAD4B_authority')
-    if intent.get('effect_class') == 'PAID' and state.get('account_budget_reserved') is not True:
+    if effect == 'PAID' and state.get('account_budget_reserved') is not True:
         reasons.append('account_cost_reservation_unverified')
-    result_status = 'READY_FOR_NON_AUTHORITATIVE_PLAN' if not reasons else (
-        'DENIED' if scope['environment'] == 'production' or
-        'account_cost_reservation_unverified' in reasons else
+    # This is a non-authorizing compiler. An effect request is a denial,
+    # never 'ready' or a work ticket disguised as a grant.
+    result_status = 'DENIED' if scope['environment'] == 'production' or effect in (
+        'PAID', 'WORDPRESS_WRITE', 'HOST_WRITE') else (
+        'READY_FOR_NON_AUTHORITATIVE_PLAN' if not reasons else
         'WAITING_DEPENDENCIES' if 'unfinished_execution_dependencies' in reasons else
         'NEEDS_EVIDENCE')
     return {'contract': 'mad4b.aci-os.dynamic-candidate.v1',
