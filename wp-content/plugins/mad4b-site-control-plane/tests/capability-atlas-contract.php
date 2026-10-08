@@ -65,4 +65,9 @@ $invalid = $plugin; $invalid['count'] = 3;
 atlas_assert( ! MAD4B_SCP_Capability_Atlas::compose( $browser, $invalid )['complete'], 'partial plugin report rejected' );
 $invalid = $plugin; $invalid['items'][1]['plugin_file'] = 'my-shop/main.php';
 atlas_assert( ! MAD4B_SCP_Capability_Atlas::compose( $browser, $invalid )['complete'], 'duplicate plugin identity rejected' );
+$partial = $plugin; $partial['items'][1]['functional_family_key'] = '';
+$degraded = MAD4B_SCP_Capability_Atlas::compose( $browser, $partial );
+atlas_assert( ! $degraded['complete'] && $degraded['partial'] === true &&
+    $degraded['count'] > 0 && ! $degraded['execution_allowed'],
+    'unmapped plugin family keeps safe observed candidates visible without certification' );
 echo "MAD4B_CAPABILITY_ATLAS_CONTRACT: PASS\n";
