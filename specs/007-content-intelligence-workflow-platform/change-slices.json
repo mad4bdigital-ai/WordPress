@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 300,
+  "changed_file_count": 313,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -545,6 +545,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "58e1e0877372d1041db7b882336265c0230dad0fcad1e398dce2f24503af6944",
+  "changed_paths_sha256": "9b1fa9f35bef04dd45d9fe160a1bdd50057fb1127ab9efccfd610d4ce360155a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
