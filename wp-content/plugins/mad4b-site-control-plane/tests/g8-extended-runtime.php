@@ -313,6 +313,46 @@ $bad_effects = array( 'invalid-key' => array( 'state' => 'applied', 'effect_sha2
 g8_check( g8_is_error( MAD4B_SCP_G8_Restore_Convergence::compare_external_effects( $bad_effects, $remote_effects ),
 	'mad4b_g8_restore_effects_invalid' ), 'untrusted external effect IDs are rejected' );
 
+// The real native verifier is exercised in crypto-profile CI. This fixture
+// models its verified/unverified return contract to test G8's exact operation
+// binding and the independent GOVERNED acceptance boundary.
+class MAD4B_SCP_Execution_Receipt {
+	public static function verify( array $receipt ) {
+		if ( true !== ( $receipt['mock_native_signature_verified'] ?? false ) )
+			return new WP_Error( 'simulated_native_signature_rejected' );
+		return array( 'valid' => true, 'cryptographic_signature_verified' => true,
+			'receipt_sha256' => str_repeat( 'e', 64 ) );
+	}
+}
+$operation_id = 'g8-effect-operation-1';
+$correlation = hash( 'sha256', $operation_id );
+$effect_sha = str_repeat( 'a', 64 );
+$one_effect = array( $correlation => array( 'state' => 'applied', 'effect_sha256' => $effect_sha ) );
+$native = array( 'request_id' => $operation_id, 'target_fingerprint' => $effect_sha,
+	'provider_id' => 'external-provider', 'ability' => 'demo/provider-effect',
+	'mock_native_signature_verified' => true );
+$evidence = MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_effect,
+	array( $correlation => $native ) );
+g8_check( 1 === $evidence['signed_native_operation_count'] && ! $evidence['unwitnessed_effect_keys']
+	&& false === $evidence['external_provider_readback_verified']
+	&& false === $evidence['governed_restore_acceptance_issued']
+	&& false === $evidence['write_resume_allowed'], 'native signature is not external rewind or governed acceptance' );
+$untrusted = $native; $untrusted['mock_native_signature_verified'] = false;
+$bad_native = MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_effect,
+	array( $correlation => $untrusted ) );
+g8_check( 0 === $bad_native['signed_native_operation_count']
+	&& 'native_receipt_signature_or_operation_binding_invalid' === $bad_native['rejected_witness_reasons'][ $correlation ],
+	'unsigned operation evidence cannot be treated as a verified effect' );
+$foreign_native = $native; $foreign_native['target_fingerprint'] = str_repeat( 'f', 64 );
+$foreign_pack = MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_effect,
+	array( $correlation => $foreign_native ) );
+g8_check( 0 === $foreign_pack['signed_native_operation_count']
+	&& false === $foreign_pack['automatic_retry_allowed'], 'cross-effect receipt substitution is rejected' );
+$unwitnessed = MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_effect, array() );
+g8_check( 1 === count( $unwitnessed['unwitnessed_effect_keys'] )
+	&& false === $unwitnessed['external_inventory_independently_certified'],
+	'empty witnesses cannot certify external inventory' );
+
 // Historic, signed and expired windows may not permanently block new
 // providers; preserve the site bucket and never evict a live ticket scope.
 $stale = $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ];
