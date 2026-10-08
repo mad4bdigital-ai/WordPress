@@ -40,7 +40,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
-      "sha256": "26d1f36eae8af5c1c5a6e7d82cdfc13bb57e6b890cea50d0a89507e1b7798417"
+      "sha256": "42cfe746d13a8ef7ef0f07f2cfd6081fb3b4cd82bdbba41a162b554c24bb7777"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
