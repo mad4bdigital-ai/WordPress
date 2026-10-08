@@ -237,7 +237,9 @@ final class MAD4B_SCP_Automation_SLO {
 			return false;
 		$checkpoint = $result['checkpoint'];
 		$stored = get_option( 'mad4b_scp_runtime_convergence_v1', array() );
-		if ( ! is_array( $stored ) || serialize( $stored ) !== serialize( $checkpoint )
+		if ( ! is_array( $stored ) || ! MAD4B_SCP_G8_Record::inert( $stored )
+			|| ! MAD4B_SCP_G8_Record::inert( $checkpoint )
+			|| serialize( $stored ) !== serialize( $checkpoint )
 			|| ! is_array( $checkpoint['g8_local_causal_receipt'] ?? null )
 			|| ! is_array( $checkpoint['g8_current_slice_changed_safe_phases'] ?? null )
 			|| ! $checkpoint['g8_current_slice_changed_safe_phases'] ) return false;
