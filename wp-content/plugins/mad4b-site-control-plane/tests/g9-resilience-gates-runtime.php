@@ -78,6 +78,39 @@ $target = array( 'contract'=>MAD4B_SCP_G9_Resilience_Gates::RING_CONTRACT, 'ring
 $limits = array( 'min_samples'=>25, 'max_error_rate_bps'=>100, 'max_p95_ms'=>250 );
 $preview = MAD4B_SCP_G9_Resilience_Gates::release_preview( $snapshot, $target, $limits );
 g9_check( ! is_wp_error( $preview ) && $preview['health_gate_passed'] && ! $preview['execution_supported'], 'non-authorizing pilot' );
+// A string is not an authorization or a valid provider/host verification flag.
+// All snapshots remain digest-consistent, so denials test policy rather than
+// accidentally failing earlier at the snapshot checksum boundary.
+foreach ( array( 'worker_current', 'restore_bound' ) as $flag ) {
+    $coerced = $snapshot;
+    $coerced[ $flag ] = 'false';
+    $coerced['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $coerced );
+    $coerced_target = $target;
+    $coerced_target['baseline_snapshot_sha256'] = $coerced['snapshot_sha256'];
+    g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview(
+        $coerced, $coerced_target, $limits ), 'local_authority_unready' );
+}
+$coerced = $snapshot; $coerced['authority']['eligible'] = 'false';
+$coerced['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $coerced );
+$coerced_target = $target; $coerced_target['baseline_snapshot_sha256'] = $coerced['snapshot_sha256'];
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview(
+    $coerced, $coerced_target, $limits ), 'local_authority_unready' );
+$coerced = $snapshot; $coerced['providers']['core']['ready'] = 'false';
+$coerced['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $coerced );
+$coerced_target = $target; $coerced_target['baseline_snapshot_sha256'] = $coerced['snapshot_sha256'];
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview(
+    $coerced, $coerced_target, $limits ), 'provider_revoked_or_foreign' );
+$coerced = $snapshot; $coerced['host']['local_readback_verified'] = 'false';
+$coerced['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $coerced );
+$coerced_target = $target; $coerced_target['baseline_snapshot_sha256'] = $coerced['snapshot_sha256'];
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview(
+    $coerced, $coerced_target, $limits ), 'host_isolation_unknown' );
+$coerced = $snapshot; $coerced['gates']['prior_ring_health_accepted'] = 'false';
+$coerced['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $coerced );
+$coerced_target = $target; $coerced_target['baseline_snapshot_sha256'] = $coerced['snapshot_sha256'];
+$coerced_target['ring'] = 'canary'; $coerced_target['prior_ring_receipt_sha256'] = $hash;
+g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview(
+    $coerced, $coerced_target, $limits ), 'prior_ring_missing' );
 $changed = $target; $changed['baseline_snapshot_sha256'] = str_repeat( 'b', 64 );
 g9_error( MAD4B_SCP_G9_Resilience_Gates::release_preview( $snapshot, $changed, $limits ), 'stale_cohort' );
 $changed = $snapshot; $changed['binding']['environment'] = 'production';
