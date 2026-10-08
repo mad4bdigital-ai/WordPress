@@ -159,12 +159,13 @@ check( 2 === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Changed provider graph
 // Simulate artifact/profile drift after provider scans but immediately before
 // managed-file reconciliation: the automatic worker must not touch managed
 // skill files or publish an observation under a stale site generation.
-$prior_registry = get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION );
-$prior_skills = MAD4B_SCP_Skill_Provider_Discovery::$calls;
 MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.124';
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); // First slice cannot reconcile providers yet.
+$prior_registry = get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION );
+$prior_skills = MAD4B_SCP_Skill_Provider_Discovery::$calls;
 MAD4B_SCP_Live_Acceptance_Observer::$drift_at_call = MAD4B_SCP_Live_Acceptance_Observer::$calls + 2;
-MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); // Second slice reaches the skill side-effect fence.
 check( $prior_skills === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Stale generation reconciled managed skill files' );
 check( $prior_registry === get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION ), 'Stale generation published a new observation' );
 MAD4B_SCP_Live_Acceptance_Observer::$drift_at_call = 0;
