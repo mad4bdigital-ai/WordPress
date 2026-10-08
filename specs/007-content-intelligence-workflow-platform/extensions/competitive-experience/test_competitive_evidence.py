@@ -153,4 +153,9 @@ with tempfile.TemporaryDirectory() as temporary:
         assert str(error) == "COMPETITIVE_EVIDENCE_HISTORY_ENTRY_DIGEST_INVALID"
     assert [path.read_bytes() for path in (summary_path, history_path, resource_path)] == before
 
+# Keep the shared G1 workflow unchanged: exercise the read-only relation audit here.
+# This is untrusted snapshot inspection, not WPML semantic or mutation approval.
+import runpy
+runpy.run_path(str(HERE / "test_native_relation_evidence.py"), run_name="__main__")
+
 print("mad4b.competitive-evidence-tests.v3: PASS")
