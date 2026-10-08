@@ -24,6 +24,20 @@ class MAD4B_SCP_Operation_Journal {
     public static $head;
     public static $events;
     public static $simulate_collision = false;
+    public static function begin( $context, $lifecycle, $claim ) {
+        if ( is_array( self::$head ) ) return new WP_Error( 'mad4b_operation_journal_head_already_exists' );
+        $claim_json = wp_json_encode( $claim, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        self::$head = array( 'operation_key' => $context['operation_key'],
+            'operation_binding_sha256' => $context['operation_binding_sha256'],
+            'latest_sequence' => 1, 'latest_event_sha256' => str_repeat( 'f', 64 ),
+            'hard_deadline_at' => gmdate( 'Y-m-d H:i:s', strtotime( $context['hard_deadline_at'] ) ) );
+        self::$events = array( array( 'sequence' => 1, 'event_type' => 'operation_started',
+            'checkpoint' => 'planned', 'lifecycle_state' => 'planned',
+            'safe_metadata' => array( 'metadata' => array( 'sha256' => hash( 'sha256', $claim_json ),
+                'length' => strlen( $claim_json ) ) ),
+            'event_sha256' => str_repeat( 'f', 64 ) ) );
+        return array( 'sequence' => 1 );
+    }
     public static function head( $id ) { return self::$head; }
     public static function trace( $id, $limit ) {
         return array( 'chain_valid' => true, 'complete' => count( self::$events ) === self::$head['latest_sequence'],
@@ -138,4 +152,20 @@ assert_task( 'concurrent journal CAS race is denied without success receipt', is
     MAD4B_SCP_Assistant_Task_Journal_Bridge::transition( $context, $next['record'], $next_req ) ) );
 assert_task( 'journal no longer falsely complete following injected concurrency', is_wp_error(
     MAD4B_SCP_Assistant_Task_Journal_Bridge::read( $context ) ) );
+MAD4B_SCP_Operation_Journal::$head = null;
+$review_record = $record; $review_record['task_id'] = 'proposal-' . str_repeat( '4', 32 );
+$review_context = $context;
+$review_context['operation_id'] = '86d542eb-f29b-4f64-9c2d-45ca52817cb5';
+$review_context['operation_key'] = $review_record['task_id'];
+$forged = $review_record; $forged['state'] = 'authority_pending';
+assert_task( 'review-ticket opener refuses invalid state before writing genesis', is_wp_error(
+    MAD4B_SCP_Assistant_Task_Journal_Bridge::open_review_ticket( $review_context, $forged ) )
+    && null === MAD4B_SCP_Operation_Journal::$head );
+$started = MAD4B_SCP_Assistant_Task_Journal_Bridge::open_review_ticket( $review_context, $review_record );
+assert_task( 'review opener creates genesis and durable nonexecutable proposal', is_array( $started )
+    && 'PERSISTED_JOURNAL_CAS' === $started['persistence_status']
+    && ! $started['executable'] && ! $started['authorizing']
+    && 2 === MAD4B_SCP_Operation_Journal::$head['latest_sequence'] );
+assert_task( 'review opener refuses duplicate genesis on retry', is_wp_error(
+    MAD4B_SCP_Assistant_Task_Journal_Bridge::open_review_ticket( $review_context, $review_record ) ) );
 echo 'ASSISTANT_TASK_JOURNAL_BRIDGE: PASS ' . $GLOBALS['checked'] . ' checks (hermetic only)' . PHP_EOL;
