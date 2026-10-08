@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "63679b85906fdd36c5289b6587e5b707fa14d56a72a2bef04c1a61033fdde52c",
+  "status_source_sha256": "ea2f166afa2c8bd245b723b459ec3f04b0910598017fc2103009ad39cb0b4474",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 75,
-    "PARTIAL": 100,
+    "OPEN": 52,
+    "PARTIAL": 123,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -1334,180 +1334,240 @@
       "phase": 23,
       "priority": "P0",
       "summary": "Implement resource/field ownership and lineage over Last Managed, Current Runtime and Desired Policy state with exact revision/CAS contracts.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted."
     },
     {
       "task_id": "T4037",
       "phase": 23,
       "priority": "P0",
       "summary": "Distinguish managed drift, human-owned edits, provider drift and ambiguous conflict across profiles/bindings/workflows/schemas/SEO/settings/Skills.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted."
     },
     {
       "task_id": "T4038",
       "phase": 23,
       "priority": "P0",
       "summary": "Generate bounded repair plans for proven owned non-authorizing fields; preserve/rebase valid human deltas only inside explicit unlocked policy.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted."
     },
     {
       "task_id": "T4039",
       "phase": 23,
       "priority": "P0",
       "summary": "Route locked/ambiguous/security-sensitive changes to review; never overwrite human Skills, reset authority, resume observations or unfreeze spend by inference.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted."
     },
     {
       "task_id": "T4040",
       "phase": 23,
       "priority": "P0",
       "summary": "GATE Prove missing baseline, concurrent edit, changed owner, human language addition, centrally locked field, secret/authority field and partial apply preserve safety.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted."
     },
     {
       "task_id": "T4041",
       "phase": 24,
       "priority": "P0",
       "summary": "Implement one human-readable journal projection linking operation/actor/agent/why/objects/pre-state/post-state/provider/capability/authority and reversal evidence.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified."
     },
     {
       "task_id": "T4042",
       "phase": 24,
       "priority": "P0",
       "summary": "Bind every admitted mutation outcome to current execution, readback, uncertainty and external effects using existing audit/journal services.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified."
     },
     {
       "task_id": "T4043",
       "phase": 24,
       "priority": "P0",
       "summary": "Expose Undo eligibility/expiry, preview, visual diff and exact governed compensation without creating a second execution or authority system.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified."
     },
     {
       "task_id": "T4044",
       "phase": 24,
       "priority": "P0",
       "summary": "Preserve redaction, tenant/object access, integrity, retention and durable receipt ordering across archive/export/restore.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified."
     },
     {
       "task_id": "T4045",
       "phase": 24,
       "priority": "P0",
       "summary": "GATE Prove history-only rollback, forged authority links, truncation, external irreversible effects, failed receipts and stale current state cannot report success.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified."
     },
     {
       "task_id": "T4046",
       "phase": 25,
       "priority": "P0",
       "summary": "Capture pre-update artifact/graph/workflows/authority/schema/topology/performance and observe post-update generation without changing update authorization.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing."
     },
     {
       "task_id": "T4047",
       "phase": 25,
       "priority": "P0",
       "summary": "Classify no drift/read drift/changed reversible write/removed capability/authority or topology change/side channel with explicit isolated outcomes.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing."
     },
     {
       "task_id": "T4048",
       "phase": 25,
       "priority": "P0",
       "summary": "Compile exact bounded remediation/test/recertification plans under approved autonomy policy and preserve unrelated capabilities/session safety.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing."
     },
     {
       "task_id": "T4049",
       "phase": 25,
       "priority": "P0",
       "summary": "Verify registry/Skills/catalog/current eligible-grant projection and issue Update Acceptance Receipt; release rollback needs a preauthorized exact recovery plan.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing."
     },
     {
       "task_id": "T4050",
       "phase": 25,
       "priority": "P0",
       "summary": "GATE Inject partial update, stale worker, lost rollback, changed authority/DB topology, new side channel and uncertain API effect; block/reconcile without retry widening.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing."
     },
     {
       "task_id": "T4051",
       "phase": 26,
       "priority": "P0",
       "summary": "Implement versioned host observations for filesystem/process/network sandbox/wp-cli/cron/loopback/memory/disk/PHP extensions/database features.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified."
     },
     {
       "task_id": "T4052",
       "phase": 26,
       "priority": "P0",
       "summary": "Bind observations to exact host/environment profile and trusted bounded probe provenance with expiry; unknown/missing values stay unknown.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified."
     },
     {
       "task_id": "T4053",
       "phase": 26,
       "priority": "P0",
       "summary": "Derive execution eligibility from actual prlimit plus admitted network sandbox capability without host-specific fallback code or binaries installation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified."
     },
     {
       "task_id": "T4054",
       "phase": 26,
       "priority": "P0",
       "summary": "Expose one external host remediation action and a read-only recheck; host authority remains separate from WordPress/Staging write authority.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified."
     },
     {
       "task_id": "T4055",
       "phase": 26,
       "priority": "P0",
       "summary": "GATE Reject forged tool availability, stale host profile, unsandboxed execution, generic process probes and automatic host package installation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified."
     },
     {
       "task_id": "T4056",
@@ -1577,9 +1637,11 @@
       "status": "PARTIAL",
       "evidence_refs": [
         "ui-delivery.json",
-        "ui-delivery.md"
+        "ui-delivery.md",
+        "g7-delivery.json",
+        "g7-delivery.md"
       ],
-      "reason": "Operator action cards and L0-L5 reference implemented without dispatch or claimed repair; per-plan receipts and autonomy evaluation remain pending."
+      "reason": "Operator action cards and L0-L5 reference implemented without dispatch or claimed repair; per-plan receipts and autonomy evaluation remain pending. Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented."
     },
     {
       "task_id": "T4062",
@@ -1595,27 +1657,36 @@
       "phase": 28,
       "priority": "P0",
       "summary": "Expose cause, scope, evidence, next step, user-owned conflict, attempt/readback/rollback history and capability-local blast radius.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented."
     },
     {
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
       "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented."
     },
     {
       "task_id": "T4065",
       "phase": 28,
       "priority": "P0",
       "summary": "GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ],
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented."
     },
     {
       "task_id": "T4066",

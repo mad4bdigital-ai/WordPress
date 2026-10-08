@@ -227,7 +227,8 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     g3_partial_ids = {f"T40{i:02}" for i in range(11, 16)} | {f"T40{i:02}" for i in range(21, 36)}
     g4_partial_ids = {f"T39{i:02}" for i in range(31, 46)} | {f"T39{i:02}" for i in range(66, 76)}
     g5_partial_ids = {f"T39{i:02}" for i in range(26, 31)} | {f"T39{i:02}" for i in range(46, 51)} | {f"T40{i:02}" for i in range(56, 61)}
-    supported_partial_ids = ui_partial_ids | g1_partial_ids | g2_partial_ids | g3_partial_ids | g4_partial_ids | g5_partial_ids
+    g7_partial_ids = {f"T40{i:02}" for i in range(36, 56)} | {"T4061", "T4063", "T4064", "T4065"}
+    supported_partial_ids = ui_partial_ids | g1_partial_ids | g2_partial_ids | g3_partial_ids | g4_partial_ids | g5_partial_ids | g7_partial_ids
     if partial - supported_partial_ids:
         raise ValueError("implementation_partial_task_owner_invalid:" + ",".join(sorted(partial - supported_partial_ids)))
 
@@ -237,6 +238,7 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     g3_partial = partial & g3_partial_ids
     g4_partial = partial & g4_partial_ids
     g5_partial = partial & g5_partial_ids
+    g7_partial = partial & g7_partial_ids
     if partial:
         if feature.get("status") not in {"UI_IMPLEMENTATION_IN_PROGRESS", "IMPLEMENTATION_IN_PROGRESS"}:
             raise ValueError("implementation_progress_requires_implementation_state")
@@ -427,6 +429,51 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
             for row in ledger["tasks"]:
                 if row["task_id"] in g5_partial and "g5-delivery.json" not in row["evidence_refs"]:
                     raise ValueError("g5_partial_task_missing_delivery_binding:" + row["task_id"])
+        if g7_partial:
+            delivery = load(root, "g7-delivery.json")
+            expected_g7 = {f"T40{i:02}" for i in range(36, 56)} | {f"T40{i:02}" for i in range(61, 66)}
+            limits = delivery.get("claim_limits", {})
+            if (delivery.get("contract") != "mad4b.competitive-g7-delivery.v1"
+                    or delivery.get("status") != "REPOSITORY_G7_SAFETY_FOUNDATION_IMPLEMENTED_EXTERNAL_ACCEPTANCE_PENDING"
+                    or delivery.get("exact_head_binding") != "supplied_by_ci_not_embedded_in_commit"
+                    or delivery.get("implementation_pr") != 286 or delivery.get("integration_pr") != 258
+                    or set(delivery.get("task_scope", [])) != expected_g7
+                    or set(delivery.get("partial_task_ids", [])) != g7_partial
+                    or delivery.get("open_task_ids") != ["T4062"]
+                    or not limits or any(value is not False for value in limits.values())
+                    or not delivery.get("pending_validation")):
+                raise ValueError("g7_delivery_boundary_or_progress_invalid")
+            groups = delivery.get("group_progress", [])
+            assigned = [task for group in groups for task in group.get("task_ids", [])]
+            evidence = delivery.get("evidence_integrity", [])
+            declared = {entry.get("path") for entry in evidence if isinstance(entry, dict)}
+            expected_paths = set(delivery.get("global_evidence", []))
+            for group in groups:
+                if (group.get("status") != "PARTIAL" or not group.get("remaining_acceptance")
+                        or not group.get("evidence_paths")):
+                    raise ValueError("g7_group_completion_claim_invalid")
+                expected_paths.update(group["evidence_paths"])
+            if (set(assigned) != expected_g7 or len(assigned) != len(expected_g7)
+                    or not expected_paths or declared != expected_paths or len(evidence) != len(declared)):
+                raise ValueError("g7_task_owner_or_evidence_inventory_invalid")
+            for entry in evidence:
+                path = entry["path"]
+                if (not isinstance(path, str)
+                        or not (path.startswith("wp-content/plugins/mad4b-site-control-plane/")
+                                or path == ".github/workflows/feature-007-spec-ci.yml")
+                        or ".." in PurePosixPath(path).parts):
+                    raise ValueError("g7_evidence_outside_reviewed_scope")
+                source = repo / path
+                if (source.is_symlink() or not source.is_file()
+                        or not source.resolve().is_relative_to(repo.resolve())
+                        or digest(source.read_bytes()) != entry.get("sha256")
+                        or source.stat().st_size != entry.get("bytes")):
+                    raise ValueError("g7_evidence_integrity_drift:" + path)
+            for row in ledger["tasks"]:
+                if row["task_id"] in g7_partial and (
+                        "g7-delivery.json" not in row["evidence_refs"]
+                        or "g7-delivery.md" not in row["evidence_refs"]):
+                    raise ValueError("g7_partial_missing_delivery_binding:" + row["task_id"])
     elif feature.get("status") != "SPEC_BACKLOG_ONLY":
         raise ValueError("implementation_state_without_progress")
     phases = set(range(35))
