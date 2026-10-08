@@ -12,6 +12,7 @@ mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Planning', fals
 mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Bootstrap_Diagnostic', false ), 'diagnostic_class_not_loaded' );
 mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Convergence', false ), 'convergence_class_not_loaded' );
 mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Task_Contract', false ), 'task_contract_class_not_loaded' );
+mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Assistant_Task_Journal_Bridge', false ), 'governed_task_journal_bridge_not_loaded' );
 mad4b_assistant_native_check( class_exists( 'MAD4B_SCP_Adapter_Registry', false ), 'adapter_registry_not_loaded' );
 mad4b_assistant_native_check( function_exists( 'wp_has_ability' ) && function_exists( 'did_action' ), 'native_abilities_api_unavailable' );
 mad4b_assistant_native_check( did_action( 'wp_abilities_api_init' ) > 0, 'native_abilities_lifecycle_not_observed' );
