@@ -35,7 +35,8 @@
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py",
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
-    "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php"
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php"
   ],
   "spec_paths": [
     "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",

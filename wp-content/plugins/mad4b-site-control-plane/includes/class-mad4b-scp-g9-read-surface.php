@@ -75,7 +75,10 @@ final class MAD4B_SCP_G9_Read_Surface {
                 'description' => 'Read only the enrolled current local site; never infer fleet membership or restoration of write authority.',
                 'category' => 'mad4b-read',
                 'execute_callback' => $spec[1],
-                'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+                // A partial WordPress registration must never grant access
+                // if a later ability could not be registered. The callback
+                // is enabled only after the complete owned trio exists.
+                'permission_callback' => array( __CLASS__, 'can_read_ability' ),
                 'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'meta' => array(
@@ -92,6 +95,12 @@ final class MAD4B_SCP_G9_Read_Surface {
         }
         self::$abilities_registered = true;
         return true;
+    }
+
+    public static function can_read_ability( $input = array() ) {
+        return true === self::$reader_pinned && true === self::$abilities_registered
+            && class_exists( 'MAD4B_SCP_Policy' )
+            && true === MAD4B_SCP_Policy::can_read();
     }
 
     public static function site_observation( $input = array() ) {
