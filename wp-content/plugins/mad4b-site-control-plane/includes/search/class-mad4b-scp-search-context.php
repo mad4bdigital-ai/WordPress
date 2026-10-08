@@ -145,12 +145,44 @@ final class MAD4B_SCP_Search_Context {
 	}
 
 	/**
+	 * Validate the exact CAS-owned profile registry before non-emergency edits.
+	 * Do not treat corrupt or tampered state as an empty list.
+	 */
+	private static function checked_profile_registry( $registry ) {
+		$policy = self::policy();
+		if ( is_wp_error( $policy ) ) return $policy;
+		if ( ! isset( $policy['max_profiles'] ) || ! is_int( $policy['max_profiles'] ) || $policy['max_profiles'] < 1 ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+		if ( null === $registry ) return array( 'ids' => array(), 'max_profiles' => $policy['max_profiles'] );
+		if ( ! is_array( $registry ) || ! isset( $registry['ids'], $registry['_revision'], $registry['_event'], $registry['_event_sha256'] )
+			|| ! is_array( $registry['ids'] ) || ! is_int( $registry['_revision'] ) || $registry['_revision'] < 1
+			|| ! is_array( $registry['_event'] ) || ! MAD4B_SCP_Search_Contracts::sha( $registry['_event_sha256'] )
+			|| array_diff( array_keys( $registry ), array( 'ids', '_revision', '_event', '_event_sha256' ) )
+			|| ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $registry['_event'] ), $registry['_event_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+		$payload = $registry;
+		unset( $payload['_event'], $payload['_event_sha256'] );
+		if ( ! isset( $registry['_event']['payload_sha256'] ) || ! MAD4B_SCP_Search_Contracts::sha( $registry['_event']['payload_sha256'] )
+			|| ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $payload ), $registry['_event']['payload_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+		$ids = $registry['ids'];
+		if ( count( $ids ) > $policy['max_profiles'] || ( $ids && array_keys( $ids ) !== range( 0, count( $ids ) - 1 ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+		$seen = array();
+		foreach ( $ids as $id ) {
+			if ( ! is_string( $id ) || ! MAD4B_SCP_Search_Contracts::id( $id ) || isset( $seen[ $id ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+			$seen[ $id ] = true;
+		}
+		return array( 'ids' => $ids, 'max_profiles' => $policy['max_profiles'] );
+	}
+
+	/**
 	 * Exact market identities cannot alias between profiles, including older
 	 * profiles outside a damaged Registry. A single bounded Store scan avoids
 	 * the N+1 profile reads and observes orphaned committed profiles as well.
 	 * Concurrent writes remain fenced by immutable claims on apply.
 	 */
 	private static function market_id_unique( array $candidate, array $previous ) {
+		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
+		if ( is_wp_error( $registry ) ) return $registry;
+		$checked = self::checked_profile_registry( $registry );
+		if ( is_wp_error( $checked ) ) return $checked;
 		$ids = array();
 		foreach ( $candidate['markets'] as $market ) {
 			$id = $market['id']; $ids[ $id ] = $market['country'];
@@ -240,6 +272,14 @@ final class MAD4B_SCP_Search_Context {
 		// A failed profile CAS leaves an intentionally reserved identity: fail-closed,
 		// never silently reuse it or claim an unsafe rollback.
 		$fail_safe = self::is_scoped_fail_safe( $plan['profile'], $current );
+		if ( ! $fail_safe ) {
+			// The plan was read-only; a fresh registry validation must precede
+			// *every* immutable market claim and other profile mutation.
+			$before_claims = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
+			if ( is_wp_error( $before_claims ) ) return $before_claims;
+			$checked_before = self::checked_profile_registry( $before_claims );
+			if ( is_wp_error( $checked_before ) ) return $checked_before;
+		}
 		// Fail-safe controls must not mint misleading ownership evidence while
 		// a legacy market collision remains in quarantine.
 		if ( ! $fail_safe ) {
@@ -248,12 +288,18 @@ final class MAD4B_SCP_Search_Context {
 				if ( is_wp_error( $claim ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'The market identifier is reserved by another owner or could not be verified.' );
 			}
 		}
-		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ); if ( is_wp_error( $registry ) ) return $registry;
-		$ids = is_array( $registry ) ? $registry['ids'] : array();
-		if ( ! in_array( $id, $ids, true ) ) {
-			if ( count( $ids ) >= self::policy()['max_profiles'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_cardinality' );
-			$ids[] = $id; sort( $ids, SORT_STRING ); $registered = MAD4B_SCP_Search_Store::cas( 'registry', 'profiles', $registry, array( 'ids' => $ids ), 'PROFILE_ADMITTED' ); if ( is_wp_error( $registered ) ) return $registered;
+		if ( ! $fail_safe ) {
+			$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ); if ( is_wp_error( $registry ) ) return $registry;
+			$checked = self::checked_profile_registry( $registry );
+			if ( is_wp_error( $checked ) ) return $checked;
+			$ids = $checked['ids'];
+			if ( ! in_array( $id, $ids, true ) ) {
+				if ( count( $ids ) >= $checked['max_profiles'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_cardinality' );
+				$ids[] = $id; sort( $ids, SORT_STRING ); $registered = MAD4B_SCP_Search_Store::cas( 'registry', 'profiles', $registry, array( 'ids' => $ids ), 'PROFILE_ADMITTED' ); if ( is_wp_error( $registered ) ) return $registered;
+			}
 		}
+		// Emergency pause/freeze/disable of an existing profile cannot be
+		// blocked by a corrupt Registry. It never admits or repairs that Registry.
 		$version = MAD4B_SCP_Search_Store::immutable( 'profile-version', $plan['profile']['profile_sha256'], $plan['profile'] ); if ( is_wp_error( $version ) ) return $version;
 		$row = MAD4B_SCP_Search_Store::cas( 'profile', $id, $current, array( 'profile' => $plan['profile'], 'plan_sha256' => $plan['plan_sha256'] ), 'SEARCH_PROFILE_CHANGED' );
 		if ( is_wp_error( $row ) ) return $row;
