@@ -196,8 +196,7 @@
       "name": "blueprint_author",
       "status": "OPEN",
       "depends_on": [
-        "ACI-G1",
-        "ACI-G3"
+        "ACI-G1"
       ],
       "requirement_ids": [
         "ACI-013",
@@ -226,6 +225,10 @@
       "authorizing": false,
       "completion_claimed": false,
       "conditional_dependencies": [
+        {
+          "gate": "ACI-G3",
+          "when": "opportunity_research_in_scope"
+        },
         {
           "gate": "ACI-G4",
           "when": "native_relation_in_scope"
@@ -266,7 +269,12 @@
       ],
       "authorizing": false,
       "completion_claimed": false,
-      "conditional_dependencies": []
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ]
     },
     {
       "id": "ACI-G7",
@@ -365,8 +373,7 @@
       "name": "growth_learning",
       "status": "OPEN",
       "depends_on": [
-        "ACI-G2",
-        "ACI-G8"
+        "ACI-G2"
       ],
       "requirement_ids": [
         "ACI-034",
@@ -391,7 +398,12 @@
       ],
       "authorizing": false,
       "completion_claimed": false,
-      "conditional_dependencies": []
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G8",
+          "when": "new_content_publication_in_scope"
+        }
+      ]
     },
     {
       "id": "ACI-G10",
@@ -401,8 +413,7 @@
       "depends_on": [
         "ACI-G0",
         "ACI-G7",
-        "ACI-G8",
-        "ACI-G9"
+        "ACI-G8"
       ],
       "requirement_ids": [
         "ACI-033",
@@ -444,6 +455,10 @@
         {
           "gate": "ACI-G4",
           "when": "native_relation_in_scope"
+        },
+        {
+          "gate": "ACI-G9",
+          "when": "growth_learning_in_scope"
         }
       ]
     }
