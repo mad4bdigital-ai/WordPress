@@ -20,6 +20,11 @@ final class MAD4B_SCP_Resilience_Anchor {
 		if ( is_wp_error( $path ) ) return $path;
 		$dir = dirname( $path );
 		if ( ! is_dir( $dir ) && ! @mkdir( $dir, 0700, true ) && ! is_dir( $dir ) ) return self::error( 'directory_unavailable', 'External resilience directory is unavailable.' );
+		// Recheck after create: another process may replace the directory
+		// between path validation and the first lock-file open.
+		$dir_mode = @fileperms( $dir );
+		if ( is_link( $dir ) || false === $dir_mode || 0 !== ( $dir_mode & 0022 ) )
+			return self::error( 'directory_permissions_unsafe', 'External resilience directory must be private at CAS admission.');
 		$lock_path = $path . '.lock';
 		if ( is_link( $lock_path ) ) return self::error( 'symlink_denied', 'External resilience lock may not be a symlink.' );
 		$lock = @fopen( $lock_path, 'c+' );
@@ -85,6 +90,10 @@ final class MAD4B_SCP_Resilience_Anchor {
 	}
 
 	private static function read_path( $path, array $binding ) {
+		$dir = dirname( $path );
+		$dir_mode = @fileperms( $dir );
+		if ( is_link( $dir ) || false === $dir_mode || 0 !== ( $dir_mode & 0022 ) )
+			return self::error( 'directory_permissions_unsafe', 'External resilience directory changed permissions before readback.' );
 		clearstatcache( true, $path );
 		$mirror = function_exists( 'get_option' ) ? get_option( self::MIRROR_OPTION, false ) : false;
 		// A restored DB can lose its loss marker while retaining the external
@@ -148,8 +157,8 @@ final class MAD4B_SCP_Resilience_Anchor {
 		// replace lock/state filenames inside a world-writable directory.
 		if ( is_dir( $dir ) ) {
 			$mode = @fileperms( $dir );
-			if ( false === $mode || 0 !== ( $mode & 0002 ) )
-				return self::error( 'directory_permissions_unsafe', 'External resilience directory must not be world-writable.' );
+			if ( false === $mode || 0 !== ( $mode & 0022 ) )
+				return self::error( 'directory_permissions_unsafe', 'External resilience directory must not be group- or world-writable.' );
 		}
 		$normal = rtrim( str_replace( '\\', '/', $dir ), '/' );
 		foreach ( array( ABSPATH, $_SERVER['DOCUMENT_ROOT'] ?? '' ) as $root ) {
