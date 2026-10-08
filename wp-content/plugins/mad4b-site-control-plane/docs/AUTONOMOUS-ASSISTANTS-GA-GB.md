@@ -107,11 +107,11 @@ Hardening added in this follow-up:
 
 Important limitations requiring independent work:
 
-1. **Bootstrap paradox:** the currently registered read Ability requires
-   configured enrolled Site Profile, current runtime generation, matching
-   artifact manifest and valid external restore anchor. A separate minimal
-   read-only enrollment/bootstrap diagnostic must be designed for sites lacking
-   these prerequisites; weakening the existing read authority is not a fix.
+1. **Bootstrap boundary:** the separate read-only
+   `mad4b/assistant-bootstrap-diagnostic` now reports enrollment, origin and
+   restore prerequisites without trying to create them. `assistant-plan` still
+   requires the exact enrolled runtime binding. Neither Ability bypasses the
+   existing read permission or grants bootstrap execution.
 2. **Unverified observations:** caller claims cannot be promoted into provider
    certification, package recommendation or an installation decision. Durable
    evidence envelopes need source IDs, timestamps, provider signatures,
@@ -174,3 +174,67 @@ and browser/host acceptance remain separate implementation groups.
 Do not merge the hub into master or install on Staging until its existing
 release gates and exact-head acceptance are met. PR #290 covers the separate
 Search Intelligence audience editor and should not be merged implicitly here.
+
+## Explicit WordPress entrypoint and decision classification (2026-10-08)
+
+The plugin entrypoint now explicitly `require_once`-loads and calls
+`boot()` for both `MAD4B_SCP_Assistant_Planning` and
+`MAD4B_SCP_Assistant_Bootstrap_Diagnostic` before WordPress Abilities
+registration. The Agent Registry no longer has hidden load-time bootstrap
+side effects. The Adapter Registry continues to lazily register the
+`assistant-planning` and `assistant-bootstrap` read adapters during the
+existing `mad4b_scp_register_adapters` hook.
+
+The bootstrap diagnostic reports a passive
+`assistant_read_registration` witness for both hook bindings, local
+WordPress Ability visibility and existing adapter inventory. The witness
+deliberately reports `external_mcp_catalog_verified=false`; it is not a
+live ChatGPT/MCP handshake, provider capability certificate or mutation
+authority. A missing post-lifecycle registration remains a blocker.
+
+The planner classifies unverified observed states without conflating them:
+
+| Caller-reported state | Proposed review action | Safety boundary |
+| --- | --- | --- |
+| `missing`, required | `DISCOVER_ALTERNATIVES` | No automatic package selection |
+| `unknown`, required | `VERIFY_EXISTENCE` | No absence inference |
+| `degraded` | `REPAIR_CONFIGURATION` | No replacement or repair dispatch |
+| `active`, provider reported without independent certificate | `CERTIFY_PROVIDER` | Never treat caller certificate as trust |
+| `active`, no provider reported | `VERIFY_BEHAVIOR` | Read-only attestation needed |
+| `missing`, required, dependency reported unmet | `RESOLVE_DEPENDENCY` | Dependency hint is not trusted evidence |
+| optional unavailable | `OPTIONAL_NO_INSTALL` | No optional installation |
+| conflicting/unbounded audience | `REVIEW_CONTEXT` | No silent correction |
+
+All task records still carry `execution_allowed=false`,
+`authority_expansion_allowed=false`, and `observation_trust` as unverified.
+The new observation fields `dependency_state` and
+`certification_state` accept explicit bounded enum values but never
+upgrade caller claims to signed native capability attestations.
+
+### Exact-head offline checks
+
+The existing `feature007-manual-preflight.py` and the GA/GB PHP 7.4/8.3
+workflow matrix now include
+`tests/assistant-entrypoint-registration-runtime.php`. This fixture
+exercises both hook callbacks, adapter inventory, actual ability
+registration metadata, duplicate registration denial, and the fail-closed
+registration-witness behavior. It also verifies the source entrypoint
+wiring. It is a **hermetic test**, not a real WordPress/MCP acceptance run.
+
+External closure must separately prove the deployed site, build and
+`initialize`/`tools/list` match, actual read calls, authorization denial,
+revocation, native PHP/DB concurrency, and browser interactions.
+
+### Durable execution, provisioning and recovery
+
+No new assistant-specific task journal or general-purpose autonomous plugin
+installer is claimed by this foundation. The existing Control Plane
+`MAD4B_SCP_Operation_Journal`, `MAD4B_SCP_Durable_Execution`, and
+`MAD4B_SCP_Dependency_Manager` have separate governed ownership and
+release gates. An Assistant-to-Executor bridge must demonstrate exact
+site/generation/artifact/restore binding, independent provider observations,
+versioned dependency solver decisions, a CAS-journaled task identity,
+single-use approval, native executor readback, safe rollback, and an
+externally proven no-effect reconciliation path. Until certified, the
+planner never delegates `Install → Activate → Configure`, changes grants,
+or marks native G4/G6/G9 capability coverage complete.
