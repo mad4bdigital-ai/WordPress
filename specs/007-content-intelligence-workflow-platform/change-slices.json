@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 376,
+  "changed_file_count": 382,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -607,6 +607,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/dynamic_core.py",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/effect-contracts.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/evidence-trust.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-01.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ledger-contracts.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/manifest.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/operations.md",
@@ -662,8 +663,29 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php"
       ]
+    },
+    {
+      "id": "aci01-native-readonly-intake-slice01",
+      "semantic_unit": "ACI01 first native read-only intake ability: site/content post-type discovery, exact dimensions, conditional relation stage and denial fixture",
+      "revert_boundary": "Read-only Ability class, PHP fixture and bootstrap wiring only; no new grants, database schema, WordPress content mutations or external provider calls",
+      "certification": "disposable_php_fixture_pass_live_staging_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-intake-preview.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/aci01-intake-preview-contract.php"
+      ]
+    },
+    {
+      "id": "feature007-universal-solution-discovery-runtime",
+      "semantic_unit": "Existing independent Feature 007 universal solution discovery source and read-only contract, observed already present on Hub",
+      "revert_boundary": "Read-only solution discovery service, runtime fixture and explanation; unrelated to ACI01 feature authorization",
+      "certification": "existing_source_only_separate_owner_runtime_acceptance",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/UNIVERSAL-SOLUTION-DISCOVERY.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-solution-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "89efd4790d701233f11e1e8bc456052226a8d32a2b0eff98dba0ae712cc99f2f",
+  "changed_paths_sha256": "e67506fff26168a4e8952046ab86e8944d2a4c664139bb4c2567a7131c64cb47",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
