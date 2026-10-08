@@ -128,7 +128,13 @@ def main():
     if "integrity_error" not in receipt:
         with tempfile.TemporaryDirectory(prefix="mad4b-offline-ci-") as temp:
             env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-                   "HOME": temp, "TMPDIR": temp, "LANG": "C", "LC_ALL": "C"}
+                   "HOME": temp, "TMPDIR": temp, "TMP": temp, "TEMP": temp,
+                   "LANG": "C", "LC_ALL": "C"}
+            # Windows child-process loader needs these OS-owned variables.
+            # Do not forward database, OAuth, provider or cloud credentials.
+            for key in ("SystemRoot", "WINDIR", "PATHEXT"):
+                if key in os.environ:
+                    env[key] = os.environ[key]
             for version, name in (("7.4", args.php74), ("8.3", args.php83)):
                 binary = shutil.which(name)
                 if binary is None:
@@ -152,6 +158,10 @@ def main():
                     result["case"] = version + ":fixture:" + filename
                     receipt["results"].append(result)
             for filename in PY_CHECKS:
+                if filename == "oauth-consent-script-syntax.py" and shutil.which("node") is None:
+                    receipt["results"].append({"case": "python:" + filename,
+                                               "result": "BLOCKED", "reason": "NODE_RUNTIME_UNAVAILABLE"})
+                    continue
                 result = run(root, [sys.executable, str(PLUGIN / "tests" / filename)], env)
                 result["case"] = "python:" + filename
                 receipt["results"].append(result)
