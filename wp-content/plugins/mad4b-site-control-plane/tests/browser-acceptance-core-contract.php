@@ -344,6 +344,26 @@ $unsafe_effect['descriptor_callback'] = function () { $d = browser_safe_descript
 $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'unsafe-effect' => $unsafe_effect );
 browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ), 'browser provider opening SEO mutation must be rejected' );
 
+// Core selectors must preserve exact site/provider identity, never normalize.
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
+$dot = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => 'fake-browser', 'profile_id' => 'site.v1' ) );
+browser_expect( 'ready' === $dot['state'] && 'site.v1' === $dot['profile_id'], 'dot-qualified profile stays exact' );
+foreach ( array(
+    array( 'provider_id' => 'FAKE-BROWSER', 'profile_id' => 'site.v1' ),
+    array( 'provider_id' => ' fake-browser', 'profile_id' => 'site.v1' ),
+    array( 'provider_id' => 'fake-browser', 'profile_id' => 'SITE.V1' ),
+    array( 'provider_id' => 'fake-browser', 'profile_id' => 'site.v1 ' ),
+    array( 'provider_id' => 'fake-browser', 'profile_id' => 123 ),
+) as $bad_selector ) {
+    $denied = MAD4B_SCP_Browser_Acceptance_Core::plan( $bad_selector );
+    browser_expect( 'blocked' === $denied['state'], 'non-exact or non-string browser selector rejected' );
+}
+$bad_result = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+    'provider_id' => 'FAKE-BROWSER', 'profile_id' => 'site.v1',
+    'plan_digest' => str_repeat( 'a', 64 ), 'plan_signature' => str_repeat( 'b', 64 ),
+) );
+browser_expect( 'BLOCKED' === $bad_result['verdict'], 'non-exact result provider rejected' );
+
 // Regression: registration must not infer safety from omitted provider metadata.
 $empty = browser_safe_provider( 'empty-descriptor' );
 $empty['descriptor_callback'] = function () { return array(); };
