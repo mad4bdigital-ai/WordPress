@@ -138,7 +138,9 @@ final class MAD4B_SCP_Assistant_Planning {
             || ! self::sha( $binding['artifact_sha256'] ?? null )
             || ! self::sha( $binding['origin_sha256'] ?? null )
             || ! self::sha( $binding['external_record_sha256'] ?? null )
-            || ! is_string( $binding['site_uuid'] ?? null ) || strlen( $binding['site_uuid'] ) < 8
+            || ! is_string( $binding['site_uuid'] ?? null )
+            || strlen( $binding['site_uuid'] ) < 8 || strlen( $binding['site_uuid'] ) > 100
+            || 1 !== preg_match( '/^[a-zA-Z0-9._:-]+$/D', $binding['site_uuid'] )
             || ! is_int( $binding['restore_epoch'] ?? null ) || $binding['restore_epoch'] < 1
             || ! in_array( $binding['environment'] ?? null, array( 'staging', 'development', 'local', 'production' ), true ) ) return self::fail( 'binding_invalid' );
         $nodes = 0;
@@ -172,12 +174,15 @@ final class MAD4B_SCP_Assistant_Planning {
                 || '' === trim( $item['value'] ) || strlen( $item['value'] ) > 128
                 || ! in_array( $item['provenance'] ?? null, array( 'operator', 'site_profile', 'provider', 'inferred' ), true ) ) return self::fail( 'facts_invalid' );
             $key = $item['key'];
+            // Validate *every* candidate, including conflicting second values:
+            // no malformed secondary audience entry may pass through as a
+            // harmless conflict with the first, valid observation.
+            if ( 'audience.market.country' === $key && ! preg_match( '/^[A-Z]{2}$/D', $item['value'] ) ) return self::fail( 'market_invalid' );
+            if ( 'audience.language' === $key && ! preg_match( '/^[a-z]{2,3}(?:-[a-zA-Z]{2,4})?$/D', $item['value'] ) ) return self::fail( 'language_invalid' );
             if ( isset( $fact_values[ $key ] ) && $fact_values[ $key ] !== $item['value'] ) $conflicts[ $key ] = true;
             if ( ! isset( $fact_values[ $key ] ) ) $fact_values[ $key ] = $item['value'];
             // Even 'operator' here is only a caller assertion until independently attested.
         }
-        if ( isset( $fact_values['audience.market.country'] ) && ! preg_match( '/^[A-Z]{2}$/D', $fact_values['audience.market.country'] ) ) return self::fail( 'market_invalid' );
-        if ( isset( $fact_values['audience.language'] ) && ! preg_match( '/^[a-z]{2,3}(?:-[a-zA-Z]{2,4})?$/D', $fact_values['audience.language'] ) ) return self::fail( 'language_invalid' );
         // Tasks are stable for identical site, restore generation and inputs.
         // These proposal identifiers are NOT durable execution identifiers.
         $input_digest = hash( 'sha256', serialize( array( $desired, $observed ) ) );
