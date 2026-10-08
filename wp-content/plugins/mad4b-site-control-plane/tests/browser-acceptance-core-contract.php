@@ -344,4 +344,35 @@ $unsafe_effect['descriptor_callback'] = function () { $d = browser_safe_descript
 $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'unsafe-effect' => $unsafe_effect );
 browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ), 'browser provider opening SEO mutation must be rejected' );
 
+// Regression: registration must not infer safety from omitted provider metadata.
+$empty = browser_safe_provider( 'empty-descriptor' );
+$empty['descriptor_callback'] = function () { return array(); };
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'empty-descriptor' => $empty );
+browser_expect( 0 === count( $registry->all() ), 'empty descriptor rejected' );
+browser_expect( false === $registry->inventory()['providers'][0]['valid'], 'empty descriptor diagnostic' );
+
+$missing = browser_safe_provider( 'missing-safety' );
+$missing['descriptor_callback'] = function () { $d = browser_safe_descriptor( 'missing-safety' ); unset( $d['arbitrary_javascript_input'] ); return $d; };
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'missing-safety' => $missing );
+browser_expect( 0 === count( $registry->all() ), 'omitted arbitrary JS flag rejected' );
+
+$string = browser_safe_provider( 'string-safety' );
+$string['descriptor_callback'] = function () { $d = browser_safe_descriptor( 'string-safety' ); $d['arbitrary_url_input'] = 'false'; return $d; };
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'string-safety' => $string );
+browser_expect( 0 === count( $registry->all() ), 'unsafe non-boolean field rejected' );
+
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'Mixed.Case' => browser_safe_provider( 'Mixed.Case' ) );
+browser_expect( 0 === count( $registry->all() ), 'case-normalized provider IDs rejected' );
+
+$duplicate = browser_safe_provider( 'same.provider' );
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'alias-a' => $duplicate, 'alias-b' => $duplicate );
+browser_expect( 0 === count( $registry->all() ), 'duplicate provider ID rejected' );
+foreach ( $registry->inventory()['providers'] as $item ) browser_expect( false === $item['valid'] && in_array( 'provider_id_duplicate', $item['blocking_reasons'], true ), 'duplicate inventory flagged' );
+
+$overflow = array();
+for ( $n = 0; $n < 33; $n++ ) { $id = 'provider-' . $n; $overflow[ $id ] = browser_safe_provider( $id ); }
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = $overflow;
+browser_expect( 0 === count( $registry->all() ), 'registry overflow rejected' );
+browser_expect( 0 === $registry->inventory()['provider_count'], 'capacity overflow diagnostic' );
+
 echo "MAD4B Browser Acceptance Core contract smoke passed.\n";
