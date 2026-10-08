@@ -190,6 +190,14 @@ g9_assert( ! is_wp_error( $reserved ) && 2 === $reserved['anchor_revision']
     && $reserved['state'] === 'fenced_not_dispatched'
     && !$reserved['release_accepted'] && !$reserved['provider_mutation_performed'],
     'site-local immutable reservation' );
+$original_marker = $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ];
+unset( $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] );
+g9_denied( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'mirror_missing' );
+$GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = array(
+    'site'=>$original_marker['site'], 'anchor_seen'=>false
+);
+g9_denied( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'mirror_identity_mismatch' );
+$GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $original_marker;
 $receipt = MAD4B_SCP_G9_Release_Fence::inspect( $binding, $reserved['operation_sha256'] );
 g9_assert( ! is_wp_error( $receipt ) && $receipt['external_effect_unknown']
     && !$receipt['blind_retry_allowed'], 'unknown external effect remains uncertain' );

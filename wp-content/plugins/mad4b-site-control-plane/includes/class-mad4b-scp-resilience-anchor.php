@@ -87,8 +87,14 @@ final class MAD4B_SCP_Resilience_Anchor {
 	private static function read_path( $path, array $binding ) {
 		clearstatcache( true, $path );
 		$mirror = function_exists( 'get_option' ) ? get_option( self::MIRROR_OPTION, false ) : false;
+		// A restored DB can lose its loss marker while retaining the external
+		// file. Never silently accept it as an enrolled current reservation.
+		// First-time initialization is the ONLY exception: no file and no marker.
+		if ( is_file( $path ) && false === $mirror )
+			return self::error( 'mirror_missing', 'External resilience record exists but the database loss marker disappeared after restore.' );
 		if ( false !== $mirror ) {
-			if ( ! is_array( $mirror ) || ! isset( $mirror['site'] ) || ! is_array( $mirror['site'] )
+			if ( ! is_array( $mirror ) || true !== ( $mirror['anchor_seen'] ?? null )
+				|| ! isset( $mirror['site'] ) || ! is_array( $mirror['site'] )
 				|| ! hash_equals(
 					MAD4B_SCP_Resilience_Context::digest( self::site_identity( $binding ) ),
 					MAD4B_SCP_Resilience_Context::digest( $mirror['site'] )
