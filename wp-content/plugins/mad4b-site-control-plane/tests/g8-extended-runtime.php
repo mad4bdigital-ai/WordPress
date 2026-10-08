@@ -81,6 +81,16 @@ g8_check( true !== $reader['reader_current'] && false === $reader['mutations_all
 	&& 'keep_me' === $reader['document']['data']['legacy_unknown_field'], 'mixed-generation reader is non-authorizing' );
 g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::register_observation( 'policy', array( 'safe' => true ), 2 ),
 	'mad4b_g8_migration_domain_denied' ), 'policy mutation requires independent review' );
+// Even a re-sealed forged receipt cannot substitute a different pre-migration snapshot.
+$migration_option = MAD4B_SCP_G8_Schema_Migration::OPTION;
+$saved_migration = $GLOBALS['g8_options'][ $migration_option ];
+$forged = $saved_migration;
+$forged['receipts'][0]['before']['data']['legacy_unknown_field'] = 'forged';
+$forged['seal'] = MAD4B_SCP_G8_Record::seal( $forged );
+$GLOBALS['g8_options'][ $migration_option ] = $forged;
+g8_check( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G8_Schema_Migration::status()['state'],
+	'forged signed prestate must be rejected' );
+$GLOBALS['g8_options'][ $migration_option ] = $saved_migration;
 $rollback = MAD4B_SCP_G8_Schema_Migration::rollback_last( 2, $plan['plan_sha256'] );
 g8_check( 'ROLLED_BACK' === ( $rollback['state'] ?? '' ) && 3 === $rollback['revision'], 'atomic rollback restored version 1' );
 $reader = MAD4B_SCP_G8_Schema_Migration::view( 'registry', 1 );
@@ -190,5 +200,15 @@ $GLOBALS['g8_options'][ $option ] = $broken;
 $lost = MAD4B_SCP_Automation_SLO::admission( 'fresh-provider', 'probe' );
 g8_check( 'mad4b_automation_metrics_lost' === $lost['reason'], 'telemetry tampering must fail closed' );
 $GLOBALS['g8_options'][ $option ] = $old_metrics;
+
+// Post-restore admission must remain blocked until independent external-effect
+// reconciliation and a governed acceptance receipt; CI cannot mint either.
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-restore-convergence.php';
+$recovery = MAD4B_SCP_G8_Restore_Convergence::status();
+g8_check( 'BLOCKED_PENDING_GOVERNED_ACCEPTANCE' === $recovery['state']
+	&& false === $recovery['write_resume_allowed']
+	&& false === $recovery['old_receipts_replayed']
+	&& in_array( 'unrewound_external_effect_reconciliation_required', $recovery['blockers'], true ),
+	'restored local state cannot self-authorize external-effect replay' );
 
 echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
