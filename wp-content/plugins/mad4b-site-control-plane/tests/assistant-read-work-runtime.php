@@ -177,9 +177,18 @@ $claimed = MAD4B_SCP_Remote_Work_Queue::claim( $job_id, 'fixture-agent', 60, $id
 check_case( 'current binding admits provider entry', is_array( MAD4B_SCP_Remote_Work_Queue::provider_checkpoint(
     $job_id, 'fixture-agent', $claimed['lease_token'], 'provider_entered' ) ) );
 $GLOBALS['context']['restore_epoch'] = 3;
+$false_applied = array( 'postcondition_verified' => true, 'provider_effect_state' => 'applied',
+    'provider_execution_ref' => 'fixture:stale:applied', 'evidence_sha256' => str_repeat( 'f', 64 ) );
+$before_stale_completion = get_option( MAD4B_SCP_Remote_Work_Queue::OPTION );
+check_case( 'old lease cannot positively complete after restore drift',
+    is_wp_error( MAD4B_SCP_Remote_Work_Queue::complete( $job_id, 'fixture-agent', $claimed['lease_token'], $false_applied ) ) );
+check_case( 'denied stale positive completion preserves exact journal',
+    $before_stale_completion === get_option( MAD4B_SCP_Remote_Work_Queue::OPTION ) );
 check_case( 'provider return remains recordable across stale binding', is_array( MAD4B_SCP_Remote_Work_Queue::provider_checkpoint(
     $job_id, 'fixture-agent', $claimed['lease_token'], 'provider_returned' ) ) );
 $cancel = MAD4B_SCP_Remote_Work_Queue::cancel( $job_id );
+check_case( 'even reconciling stale work cannot claim applied result',
+    is_wp_error( MAD4B_SCP_Remote_Work_Queue::complete( $job_id, 'fixture-agent', $claimed['lease_token'], $false_applied ) ) );
 $proof = array( 'postcondition_verified' => true, 'provider_effect_state' => 'no_effect',
     'provider_execution_ref' => 'fixture:read-only:1', 'evidence_sha256' => str_repeat( 'e', 64 ) );
 $completed = MAD4B_SCP_Remote_Work_Queue::complete( $job_id, 'fixture-agent', $claimed['lease_token'], $proof );
