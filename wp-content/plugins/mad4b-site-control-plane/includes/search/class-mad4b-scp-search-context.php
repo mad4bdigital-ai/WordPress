@@ -84,8 +84,14 @@ final class MAD4B_SCP_Search_Context {
 		}
 		// A market identifier participates in target_id but profile_id does not.
 		// Reject cross-profile aliasing before reserving identities on apply.
-		$unique = self::market_id_unique( $profile, is_array( $current ) ? $current['profile'] : array() );
-		if ( is_wp_error( $unique ) ) return $unique;
+		// A pre-existing identity collision must never stop a fail-safe shutdown.
+		// Scoped pause/freeze/disable may proceed with a quarantine receipt; it
+		// cannot certify or adopt the conflicting market identity.
+		$fail_safe = self::is_scoped_fail_safe( $profile, $current );
+		if ( ! $fail_safe ) {
+			$unique = self::market_id_unique( $profile, is_array( $current ) ? $current['profile'] : array() );
+			if ( is_wp_error( $unique ) ) return $unique;
+		}
 		$profile['revision'] = $revision + 1;
 		$profile['profile_sha256'] = MAD4B_SCP_Search_Contracts::digest( $profile );
 		$plan = array( 'contract' => 'mad4b.search-profile-plan.v1', 'profile' => $profile, 'expected_revision' => $revision, 'policy_fingerprint' => MAD4B_SCP_Search_Contracts::digest( self::policy() ), 'site_binding' => MAD4B_SCP_Search_Store::scope(), 'authorizing' => false, 'mutation_performed' => false );
@@ -171,6 +177,17 @@ final class MAD4B_SCP_Search_Context {
 		return true;
 	}
 
+	/** Fail-safe controls retain emergency stopping power in legacy collision cases. */
+	private static function is_scoped_fail_safe( array $profile, $current ) {
+		$scope = self::$typed_control_scope;
+		return is_array( $current ) && isset( $current['profile']['profile_id'], $current['profile']['revision'] ) && is_array( $scope )
+			&& isset( $scope['action'], $scope['profile_id'], $scope['revision'], $scope['profile_sha256'] )
+			&& in_array( $scope['action'], array( 'pause', 'freeze_spend', 'disable_provider' ), true )
+			&& $scope['profile_id'] === $profile['profile_id'] && $scope['profile_id'] === $current['profile']['profile_id']
+			&& (int) $scope['revision'] === (int) $current['profile']['revision']
+			&& hash_equals( $scope['profile_sha256'], MAD4B_SCP_Search_Contracts::digest( $profile ) );
+	}
+
 	/**
 	 * The only domain entrypoint that may transition search runtime state.
 	 * Reconstructs the next profile from persisted fields; client-provided
@@ -204,7 +221,7 @@ final class MAD4B_SCP_Search_Context {
 		}
 		if ( null !== self::$typed_control_scope ) return MAD4B_SCP_Search_Contracts::error( 'search_control_reentrant' );
 		$checked = self::validate( $raw ); if ( is_wp_error( $checked ) ) return $checked;
-		self::$typed_control_scope = array( 'profile_id' => $id, 'revision' => (int) $old['revision'], 'profile_sha256' => MAD4B_SCP_Search_Contracts::digest( $checked ) );
+		self::$typed_control_scope = array( 'action' => $action, 'profile_id' => $id, 'revision' => (int) $old['revision'], 'profile_sha256' => MAD4B_SCP_Search_Contracts::digest( $checked ) );
 		try {
 			$args = array( 'profile' => $raw, 'expected_revision' => (int) $old['revision'] );
 			$plan = self::plan( $args ); if ( is_wp_error( $plan ) ) return $plan;
@@ -221,11 +238,14 @@ final class MAD4B_SCP_Search_Context {
 		// Atomic immutable claims close the simultaneous-create race across profiles.
 		// A failed profile CAS leaves an intentionally reserved identity: fail-closed,
 		// never silently reuse it or claim an unsafe rollback.
-		// Adopt every legacy market into the same immutable, site-scoped claim
-		// protocol. Same-owner claims are idempotent; peers are checked by plan.
-		foreach ( $plan['profile']['markets'] as $market ) {
-			$claim = MAD4B_SCP_Search_Store::immutable( 'market-identity', $market['id'], array( 'profile_id' => $id, 'country' => $market['country'] ) );
-			if ( is_wp_error( $claim ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'The market identifier is reserved by another owner or could not be verified.' );
+		$fail_safe = self::is_scoped_fail_safe( $plan['profile'], $current );
+		// Fail-safe controls must not mint misleading ownership evidence while
+		// a legacy market collision remains in quarantine.
+		if ( ! $fail_safe ) {
+			foreach ( $plan['profile']['markets'] as $market ) {
+				$claim = MAD4B_SCP_Search_Store::immutable( 'market-identity', $market['id'], array( 'profile_id' => $id, 'country' => $market['country'] ) );
+				if ( is_wp_error( $claim ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'The market identifier is reserved by another owner or could not be verified.' );
+			}
 		}
 		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ); if ( is_wp_error( $registry ) ) return $registry;
 		$ids = is_array( $registry ) ? $registry['ids'] : array();
@@ -237,10 +257,10 @@ final class MAD4B_SCP_Search_Context {
 		$row = MAD4B_SCP_Search_Store::cas( 'profile', $id, $current, array( 'profile' => $plan['profile'], 'plan_sha256' => $plan['plan_sha256'] ), 'SEARCH_PROFILE_CHANGED' );
 		if ( is_wp_error( $row ) ) return $row;
 		$verified = self::verify( array( 'profile_id' => $id ) );
-		if ( is_wp_error( $verified ) || empty( $verified['valid'] ) || empty( $verified['market_identity_integrity'] ) || ! hash_equals( (string) $row['profile']['profile_sha256'], (string) $verified['profile_sha256'] ) ) {
-			return MAD4B_SCP_Search_Contracts::error( 'profile_readback_failed', 'Profile commit cannot be certified without matching profile and market identity evidence.' );
-		}
-		return array( 'profile' => $row['profile'], 'applied' => true, 'authorizing' => false );
+		if ( is_wp_error( $verified ) || ! isset( $verified['profile_sha256'] ) || ! hash_equals( (string) $row['profile']['profile_sha256'], (string) $verified['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_readback_failed', 'Persisted profile checksum does not match the committed revision.' );
+		$identity_quarantined = $fail_safe && ( empty( $verified['valid'] ) || empty( $verified['market_claims_certified'] ) );
+		if ( ! $fail_safe && ( empty( $verified['valid'] ) || empty( $verified['market_identity_integrity'] ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_readback_failed', 'Profile commit cannot be certified without matching market ownership evidence.' );
+		return array( 'profile' => $row['profile'], 'applied' => true, 'safe_control_identity_quarantined' => $identity_quarantined, 'authorizing' => false );
 	}
 
 	public static function verify( array $input ) {
