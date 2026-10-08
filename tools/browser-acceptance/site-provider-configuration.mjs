@@ -2,11 +2,19 @@
 // Provider preferences are non-authorizing. Credentials and browser authority remain external.
 const ALLOWED_EXECUTORS = new Set(["auto", "cloudflare", "browserbase", "browserless", "steel"]);
 const ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SITE_ORIGIN = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?::[0-9]{2,5})?\/?$/;
+function siteOrigin(raw) {
+  if (typeof raw !== "string" || !SITE_ORIGIN.test(raw)) {
+    throw new Error("mcp_site_browser_origin_invalid");
+  }
+  return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+}
 
 export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId, requestedExecutor }) {
   if (!capabilities || capabilities.contract !== "mad4b.browser-acceptance-capabilities.v1" || capabilities.read_only !== true || capabilities.authorizing !== false) {
     throw new Error("mcp_site_browser_capabilities_invalid");
   }
+  const boundSiteOrigin = siteOrigin(capabilities.site_origin);
   if (!Array.isArray(capabilities.providers)) throw new Error("mcp_site_browser_provider_registry_invalid");
   const registered = capabilities.providers;
   const ids = registered.map((row) => {
@@ -52,6 +60,7 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
     throw new Error("mcp_site_browser_executor_conflicts_with_operator_selection");
   }
   return Object.freeze({
+    siteOrigin: boundSiteOrigin,
     siteProviderId: "etg-dfsb",
     siteProviderContract: selected.contract,
     profileId,
@@ -65,7 +74,7 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
 
 /** Non-authorizing readback guard, repeated before execution and after reduction. */
 export function assertEtgBrowserBindingUnchanged(initial, current) {
-  for (const key of ["siteProviderId", "siteProviderContract", "profileId", "executor", "configuredExecutor", "configurationRevision"]) {
+  for (const key of ["siteOrigin", "siteProviderId", "siteProviderContract", "profileId", "executor", "configuredExecutor", "configurationRevision"]) {
     if (!initial || !current || initial[key] !== current[key]) {
       throw new Error("mcp_site_browser_operator_selection_changed:" + key);
     }
@@ -75,7 +84,7 @@ export function assertEtgBrowserBindingUnchanged(initial, current) {
 
 /** The MCP server must not return a plan or result for a different target. */
 export function assertEtgBrowserPlanBinding(selection, plan) {
-  if (!plan || plan.provider_id !== selection?.siteProviderId ||
+  if (!plan || siteOrigin(plan.origin) !== selection?.siteOrigin || plan.provider_id !== selection?.siteProviderId ||
       plan.provider_contract !== selection?.siteProviderContract ||
       plan.profile_id !== selection?.profileId || plan.suite !== "browser_runtime" ||
       plan.read_only !== true || plan.authorizing !== false) {
