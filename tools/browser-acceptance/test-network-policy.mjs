@@ -45,7 +45,15 @@ assert.equal(requestBoundaryDecision({
   resourceType: "image",
   origin,
   env
+}).allow, false);
+assert.equal(requestBoundaryDecision({
+  url: "https://cdn.example.com/logo.webp?track=1",
+  resourceType: "image", origin, env
 }).allow, true);
+assert.equal(requestBoundaryDecision({
+  url: "https://other.example/font.woff2",
+  resourceType: "font", origin, env
+}).reason, "cross_origin_not_allowlisted");
 
 assert.equal(requestBoundaryDecision({
   url: "http://staging.egypttourgates.com/insecure.js",
@@ -63,4 +71,7 @@ assert.throws(
   /browser_allowed_asset_domain_invalid/
 );
 
+assert.throws(() => configuredAllowedHosts({
+  MAD4B_BROWSER_ALLOWED_ASSET_DOMAINS: Array.from({length:51}, (_,i)=>"a" + i + ".example.com").join(",")
+}), /browser_allowed_asset_domains_overflow/);
 console.log("MAD4B browser network boundary PASS");
