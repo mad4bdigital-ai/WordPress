@@ -627,6 +627,10 @@ jobs:
           php "$PLUGIN/tests/assistant-convergence-runtime.php"
           php -l "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
           php "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-task-contract.php"
+          php -l "$PLUGIN/tests/assistant-convergence-runtime.php"
+          php "$PLUGIN/tests/assistant-convergence-runtime.php"
 
   oauth-operational-ux:
     name: OAuth consent operating-state denials (PHP ${{ matrix.php }})
