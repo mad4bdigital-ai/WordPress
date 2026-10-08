@@ -42,7 +42,6 @@ final class MAD4B_SCP_Automation_SLO {
 			if ( 'site' !== $scope && 1 !== preg_match( '/^(provider:[a-z0-9_.-]{1,80}|capability:[a-z0-9_.-]{1,80}:[a-z0-9_.-]{1,80})$/D', $scope ) ) return false;
 			foreach ( array( 'started_at', 'attempts', 'errors', 'cooldown_until' ) as $key )
 				if ( ! is_int( $row[ $key ] ?? null ) || $row[ $key ] < 0 ) return false;
-			if ( $row['errors'] > $row['attempts'] ) return false;
 		}
 		foreach ( $state['tickets'] as $token => $ticket ) {
 			if ( ! is_string( $token ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $token )
