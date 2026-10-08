@@ -18,9 +18,20 @@ yes(!r.coverage_complete && r.decision==="DISCOVERY_PARTIAL","partial coverage")
 yes(r.sources.some(s=>s.status==="CROSS_SITE_SCOPE_DENIED"),"foreign site denied");
 yes(r.sources.some(s=>s.status==="NOT_CONNECTED_OR_AUTHORIZED"),"offline not read");
 yes(r.candidates.every(c=>!c.execution_allowed&&!c.authorization_verified),"no grant");
-yes(toWordPressRouterInput(r,{desired:{}},["config"]).external_hints.length===2,"governed WP transport shape");
+assert.throws(()=>toWordPressRouterInput(r,{desired:{}},["config"]));assertions++;
+const wpSite={...site,profile_digest:H("f")};
+const wpCatalog=[{...item("wp-reader"),profile_digest:wpSite.profile_digest}];
+const wpResult=await discoverFederated({target:wpSite,query:"file",
+ enumerate:async()=>wpCatalog,
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
+ observation_sha256:H("c"),capabilities:[{id:"file-support",label:"Site File Workspace"}]})});
+const wpPlan={expected_profile_digest:wpSite.profile_digest,
+ expected_runtime_generation:wpSite.runtime_generation,desired:{},observed:{}};
+yes(toWordPressRouterInput(wpResult,wpPlan,["config"]).external_hints.length===1,"exact WordPress profile bridge");
+assert.throws(()=>toWordPressRouterInput(wpResult,{...wpPlan,expected_profile_digest:H("e")}));assertions++;
+assert.throws(()=>toWordPressRouterInput({...wpResult,external_hints:[{id:"secret",source:"connector",label:"File helper",token:"secret"}]},wpPlan));assertions++;
 assert.throws(()=>checkTarget({...site,origin_sha256:"bad"}));assertions++;
-assert.throws(()=>toWordPressRouterInput(r,{},["https://other.example"]));assertions++;
+assert.throws(()=>toWordPressRouterInput(wpResult,wpPlan,["https://other.example"]));assertions++;
 const fail=await discoverFederated({target:site,query:"site",enumerate:async()=>{throw Error("secret")},inspect});
 yes(fail.decision==="REGISTRY_UNAVAILABLE"&&!JSON.stringify(fail).includes("secret"),"no secret leak");
 const malformed=await discoverFederated({target:site,query:"site",enumerate:async()=>[item("bad")],

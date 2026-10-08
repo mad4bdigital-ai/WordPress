@@ -30,7 +30,8 @@ const safeLabel = (s,max) => {
 };
 const boundTo = (s, target) => isObject(s) &&
   s.site_id === target.site_id && s.environment === target.environment &&
-  s.origin_sha256 === target.origin_sha256 && s.runtime_generation === target.runtime_generation;
+  s.origin_sha256 === target.origin_sha256 && s.runtime_generation === target.runtime_generation &&
+  (!target.profile_digest || s.profile_digest === target.profile_digest);
 
 export function checkTarget(target) {
   if (!isObject(target) || !ID.test(target.site_id ?? "") ||
@@ -38,10 +39,13 @@ export function checkTarget(target) {
       !SHA.test(target.runtime_generation ?? "")) {
     throw new TypeError("INVALID_SITE_BINDING");
   }
+  if (target.profile_digest!==undefined && !SHA.test(target.profile_digest))
+    throw new TypeError("INVALID_WORDPRESS_PROFILE");
   return Object.freeze({
     site_id:target.site_id, environment:target.environment,
     origin_sha256:target.origin_sha256,
-    runtime_generation:target.runtime_generation
+    runtime_generation:target.runtime_generation,
+    ...(target.profile_digest ? {profile_digest:target.profile_digest} : {})
   });
 }
 
@@ -189,12 +193,27 @@ export async function discoverFederated({target,query,enumerate,inspect,
 /** Public no-credential bridge to the existing WordPress assistant router. */
 export function toWordPressRouterInput(result,planning_input,related_terms=[]) {
   if (!isObject(result) || result.contract!==FEDERATION_CONTRACT ||
-      !Array.isArray(result.external_hints) ||
+      result.execution_allowed!==false || result.authorizing!==false ||
+      !isObject(result.binding) || !SHA.test(result.binding.profile_digest??"") ||
+      !Array.isArray(result.external_hints) || result.external_hints.length>MAX_HINTS ||
       !isObject(planning_input) || !Array.isArray(related_terms) ||
       related_terms.length>12 || related_terms.some(x=>!plainText(x,80))) {
     throw new TypeError("INVALID_ROUTER_BRIDGE");
   }
-  // This object is only an optional input to the independently governed
-  // WordPress read ability. Never inject authority, credentials or URLs.
-  return {planning_input, related_terms,external_hints:result.external_hints.slice(0,MAX_HINTS)};
+  // Site profile and runtime are specific to WordPress, not a requirement
+  // on unrelated CMSs. These MUST be present before crossing into WP.
+  if (planning_input.expected_profile_digest!==result.binding.profile_digest ||
+      planning_input.expected_runtime_generation!==result.binding.runtime_generation)
+    throw new TypeError("CROSS_SITE_ROUTER_BINDING");
+  const hints=result.external_hints;
+  for(const h of hints) {
+    if(!isObject(h) || Object.keys(h).some(k=>!["id","source","label","description"].includes(k)) ||
+       !ID.test(h.id??"") || !KINDS.has(h.source) ||
+       !safeLabel(h.label,120) || (h.description!==undefined&&!safeLabel(h.description,180)))
+      throw new TypeError("UNSAFE_ROUTER_HINT");
+  }
+  // No URLs, tokens, executable references or authority material are accepted.
+  return {planning_input,related_terms,external_hints:hints.map(h=>({
+    id:h.id,source:h.source,label:h.label,description:h.description??h.label
+  }))};
 }
