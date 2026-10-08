@@ -9,12 +9,14 @@ require_once __DIR__ . '/class-mad4b-scp-g6-retrieval-evaluation.php';
 /** Repository-foundation review; no claims of AI, vector or live execution parity. */
 final class MAD4B_SCP_G6_Acceptance {
 	const CONTRACT = 'mad4b.feature007-g6-acceptance.v1';
+	const PAGE_SLUG = 'mad4b-ai-knowledge-workspace';
 	private static $booted = false;
 	public static function can_manage() { return current_user_can( 'manage_options' ); }
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 35 );
+		if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 35 );
 	}
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
@@ -90,6 +92,25 @@ final class MAD4B_SCP_G6_Acceptance {
 			) );
 		}
 	}
+
+	public static function menu() {
+		add_submenu_page( 'mad4b-control-plane', 'AI and Knowledge Workspace', 'AI and Knowledge', 'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) );
+	}
+
+	/** Read-only operational status. No POST/GET action can imply model/ingestion success. */
+	public static function render() {
+		if ( ! self::can_manage() ) return;
+		echo '<div class="wrap"><h1>' . esc_html__( 'AI and Knowledge Workspace', 'mad4b-site-control-plane' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Review plans and knowledge provenance here. Provider access, budgets, consent and execution are independent approvals.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<h2>' . esc_html__( 'Available read-only reviews', 'mad4b-site-control-plane' ) . '</h2><ul>';
+		foreach ( array( 'Content candidate and redacted DAG review', 'AI proposal and model routing policy', 'Knowledge source metadata and citation evaluation' ) as $item )
+			echo '<li>' . esc_html( $item ) . '</li>';
+		echo '</ul><h2>' . esc_html__( 'Execution blockers', 'mad4b-site-control-plane' ) . '</h2><ul>';
+		foreach ( array( 'No certified model account or paid generation is implied', 'Knowledge ingestion and vector storage remain disabled until a reviewed provider is certified', 'Dependent DAG steps cannot run without server-owned journal receipts and fresh approval', 'No automatic publication, external fetch, or production grant' ) as $item )
+			echo '<li>' . esc_html( $item ) . '</li>';
+		echo '</ul></div>';
+	}
+
 	public static function status( $input = array() ) {
 		if ( ! self::can_manage() ) return MAD4B_SCP_G6_Contracts::error( 'owner_required', 'G6 acceptance requires administrator authority.' );
 		if ( ! is_array( $input ) || $input ) return MAD4B_SCP_G6_Contracts::error( 'input_schema', 'Acceptance status takes no inputs.' );
@@ -113,3 +134,6 @@ final class MAD4B_SCP_G6_Acceptance {
 		);
 	}
 }
+
+// Declare only this reviewed read-only admin route; preserve parent menu ordering.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_G6_Acceptance::PAGE_SLUG, 'manage_options' );
