@@ -108,6 +108,20 @@ final class MAD4B_SCP_Automation_SLO {
 		// Bind the decision to the exact same record that is atomically replaced.
 		if ( ( null !== $before && serialize( $state ) !== serialize( $before ) ) || ! hash_equals( $decision['state_sha256'], MAD4B_SCP_G8_Record::digest( $state ) ) ) return new WP_Error( 'mad4b_automation_metrics_raced', 'Automation metrics changed during admission.' );
 		try { $token = bin2hex( random_bytes( 16 ) ); } catch ( Throwable $error ) { return new WP_Error( 'mad4b_automation_entropy_unavailable', 'Automatic work identity is unavailable.' ); }
+		// Expired provider/capability windows are no longer retry authority.
+		// Reclaim them without evicting a live ticket scope, an active cooldown,
+		// or the site-wide safety bucket. Retain lifetime outcome counters.
+		$active_scopes = array();
+		foreach ( $state['tickets'] as $active_ticket ) {
+			$active_scopes[ 'provider:' . $active_ticket['provider'] ] = true;
+			$active_scopes[ 'capability:' . $active_ticket['provider'] . ':' . $active_ticket['capability'] ] = true;
+		}
+		$clock = time();
+		foreach ( $state['buckets'] as $existing_scope => $existing_window ) {
+			if ( 'site' === $existing_scope || isset( $active_scopes[ $existing_scope ] ) ) continue;
+			if ( $existing_window['started_at'] + self::WINDOW <= $clock && $existing_window['cooldown_until'] <= $clock )
+				unset( $state['buckets'][ $existing_scope ] );
+		}
 		foreach ( array( 'site', 'provider:' . $provider, 'capability:' . $provider . ':' . $capability ) as $scope ) {
 			$row = $state['buckets'][ $scope ] ?? array( 'started_at' => 0, 'attempts' => 0, 'errors' => 0, 'cooldown_until' => 0 );
 			if ( $row['started_at'] + self::WINDOW <= time() ) $row = array( 'started_at' => time(), 'attempts' => 0, 'errors' => 0, 'cooldown_until' => 0 );
