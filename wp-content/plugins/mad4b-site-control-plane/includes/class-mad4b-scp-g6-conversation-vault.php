@@ -48,6 +48,14 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             || ! in_array( $thread['classification'], array( 'public', 'internal' ), true )
             || ( $thread['deleted'] && $thread['messages'] ) )
             return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Conversation registry contains invalid or non-erased thread data.' );
+        foreach ( $thread['messages'] as $index => $message ) {
+            if ( ! is_array( $message ) || ! isset( $message['aad_version'] )
+                || 2 !== $message['aad_version'] || ! isset( $message['retention_ceiling'], $message['message_index'] )
+                || ! is_int( $message['retention_ceiling'] ) || ! is_int( $message['message_index'] )
+                || $message['message_index'] !== $index
+                || $message['retention_ceiling'] < $thread['expires_at'] )
+                return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Vault retention or message ordering has been altered.' );
+        }
         return true;
     }
 
@@ -134,12 +142,16 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         $message_id = bin2hex( random_bytes( 16 ) );
         // AAD v2 binds authority-relevant cleartext metadata to the ciphertext.
         // Existing v1 records require explicit migration; never silently relabel them.
-        $aad = MAD4B_SCP_G6_Contracts::digest( array( $scope['site'], $scope['owner'], $id, $message_id, $key['id'], $role, $classification, $now ) );
+        $retention_ceiling = min( $thread['expires_at'], $now + $days * DAY_IN_SECONDS );
+        $message_index = count( $thread['messages'] );
+        $aad = MAD4B_SCP_G6_Contracts::digest( array( $scope['site'], $scope['owner'], $id, $message_id, $key['id'], $role, $classification, $now, $retention_ceiling, $message_index ) );
         $nonce = random_bytes( SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES );
         $cipher = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt( $text, $aad, $nonce, $key['secret'] );
-        $thread['expires_at'] = min( $thread['expires_at'], $now + $days * DAY_IN_SECONDS );
+        $thread['expires_at'] = $retention_ceiling;
         $thread['messages'][] = array( 'id' => $message_id, 'role' => $role,
-            'aad_version' => 2, 'key_id' => $key['id'], 'nonce' => base64_encode( $nonce ),
+            'aad_version' => 2, 'key_id' => $key['id'],
+            'retention_ceiling' => $retention_ceiling, 'message_index' => $message_index,
+            'nonce' => base64_encode( $nonce ),
             'ciphertext' => base64_encode( $cipher ),
             'aad_sha256' => hash( 'sha256', $aad ), 'created_at' => $now );
         $items[ $id ] = $thread;
@@ -170,16 +182,20 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         if ( ! is_array( $thread ) || ! empty( $thread['deleted'] ) || $thread['expires_at'] <= time() )
             return MAD4B_SCP_G6_Contracts::error( 'vault_unavailable', 'Thread is missing, expired or deleted.' );
         $messages = array();
-        foreach ( $thread['messages'] as $m ) {
+        foreach ( $thread['messages'] as $position => $m ) {
             if ( ! isset( $m['key_id'], $m['id'], $m['nonce'], $m['ciphertext'], $m['aad_sha256'], $m['role'], $m['created_at'] )
                 || ! hash_equals( $key['id'], $m['key_id'] ) )
                 return MAD4B_SCP_G6_Contracts::error( 'vault_rekey_required', 'Encrypted messages require current reviewed key material.' );
             if ( ! isset( $m['aad_version'] ) || 2 !== $m['aad_version'] )
                 return MAD4B_SCP_G6_Contracts::error( 'vault_aad_version_required', 'Legacy encrypted metadata requires reviewed migration before export.' );
             if ( ! is_int( $m['created_at'] ) || $m['created_at'] <= 0
+                || ! isset( $m['retention_ceiling'], $m['message_index'] )
+                || ! is_int( $m['retention_ceiling'] ) || $m['retention_ceiling'] <= $m['created_at']
+                || ! is_int( $m['message_index'] ) || $m['message_index'] !== $position
+                || $thread['expires_at'] > $m['retention_ceiling']
                 || ! in_array( $m['role'], array( 'user', 'assistant', 'system_note' ), true ) )
-                return MAD4B_SCP_G6_Contracts::error( 'vault_message_corrupt', 'Encrypted message metadata is not valid.' );
-            $aad = MAD4B_SCP_G6_Contracts::digest( array( $scope['site'], $scope['owner'], $thread_id, $m['id'], $m['key_id'], $m['role'], $thread['classification'], $m['created_at'] ) );
+                return MAD4B_SCP_G6_Contracts::error( 'vault_message_corrupt', 'Authenticated message sequence or retention metadata is invalid.' );
+            $aad = MAD4B_SCP_G6_Contracts::digest( array( $scope['site'], $scope['owner'], $thread_id, $m['id'], $m['key_id'], $m['role'], $thread['classification'], $m['created_at'], $m['retention_ceiling'], $m['message_index'] ) );
             if ( ! hash_equals( hash( 'sha256', $aad ), $m['aad_sha256'] ) )
                 return MAD4B_SCP_G6_Contracts::error( 'vault_aad_mismatch', 'Message ownership binding changed.' );
             $nonce = base64_decode( $m['nonce'], true );

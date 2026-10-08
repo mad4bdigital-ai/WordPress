@@ -71,6 +71,14 @@ g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( $input ), 'mad4b_g6_vau
 $input['expected_revision'] = 1; $input['text'] = 'second message'; $input['role'] = 'assistant';
 $second = MAD4B_SCP_G6_Conversation_Vault::append( $input );
 g6_vault_assert( ! is_wp_error( $second ) && $second['revision'] === 2, 'append CAS revision 2' );
+$meta_key_seq = array_keys( $GLOBALS['g6_store'][17] )[0];
+$sequence_record = $GLOBALS['g6_store'][17][$meta_key_seq];
+$GLOBALS['g6_store'][17][$meta_key_seq]['items']['private-thread']['expires_at'] += DAY_IN_SECONDS;
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_vault_corrupt' );
+$GLOBALS['g6_store'][17][$meta_key_seq] = $sequence_record;
+$GLOBALS['g6_store'][17][$meta_key_seq]['items']['private-thread']['messages'] = array_reverse( $sequence_record['items']['private-thread']['messages'] );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_corrupt' );
+$GLOBALS['g6_store'][17][$meta_key_seq] = $sequence_record;
 $injected = $input; $injected['expected_revision'] = 2; $injected['role'] = 'tool';
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( $injected ), 'mad4b_g6_vault_role' );
 $restricted = $input; $restricted['expected_revision'] = 2; $restricted['classification'] = 'restricted';
