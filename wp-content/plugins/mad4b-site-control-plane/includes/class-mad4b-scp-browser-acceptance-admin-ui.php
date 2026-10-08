@@ -113,6 +113,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		$observed = class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ? MAD4B_SCP_Browser_Acceptance_Core::capabilities() : array();
 		$valid_count = isset( $observed['provider_count'] ) ? (int) $observed['provider_count'] : 0;
 		$registered = isset( $observed['registry']['providers'] ) && is_array( $observed['registry']['providers'] ) ? $observed['registry']['providers'] : array();
+		$discovery = isset( $observed['site_discovery'] ) && is_array( $observed['site_discovery'] ) ? $observed['site_discovery'] : array();
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'There are TWO independent provider types: a site-specific WordPress acceptance provider that signs plans/reduces evidence; and an external browser execution service. Saving a preference neither registers a WordPress provider nor configures credentials.', 'mad4b-site-control-plane' ) . '</p>';
@@ -120,6 +121,22 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		if ( empty( $operator_status['preference_valid'] ) ) echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Stored browser selection is invalid. Browser acceptance and queued browser execution are blocked until this administrator re-saves an approved site provider, profile and executor preference.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Preference saved; execution and browser acceptance remain separately unverified.', 'mad4b-site-control-plane' ) . '</p></div>';
+		echo '<h2>' . esc_html__( 'Site capability discovery (read-only)', 'mad4b-site-control-plane' ) . '</h2>';
+		$complete = ! empty( $discovery['discovery_complete'] );
+		$plugins = isset( $discovery['plugins'] ) && is_array( $discovery['plugins'] ) ? $discovery['plugins'] : array();
+		$unmapped = isset( $discovery['unmapped_plugins'] ) && is_array( $discovery['unmapped_plugins'] ) ? $discovery['unmapped_plugins'] : array();
+		$matches = isset( $discovery['provider_matches'] ) && is_array( $discovery['provider_matches'] ) ? $discovery['provider_matches'] : array();
+		echo '<p><strong>' . esc_html( $complete ? 'Observed' : 'Incomplete / blocked' ) . '</strong> | ' . esc_html( count( $plugins ) ) . ' active plugin identities | ' . esc_html( count( $unmapped ) ) . ' unmapped | ' . esc_html( count( $matches ) ) . ' declarative provider matches. Discovery does not certify any test.</p>';
+		if ( ! $complete ) {
+			$reasons = isset( $discovery['blocking_reasons'] ) && is_array( $discovery['blocking_reasons'] ) ? implode( ', ', array_slice( $discovery['blocking_reasons'], 0, 12 ) ) : 'discovery_unavailable';
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( $reasons ) . '</p></div>';
+		}
+		if ( $unmapped ) {
+			echo '<p><strong>Unmapped plugins — no inferred browser execution authority:</strong> ';
+			foreach ( array_slice( $unmapped, 0, 128 ) as $slug ) echo '<code>' . esc_html( (string) $slug ) . '</code> ';
+			echo '</p>';
+		}
+		if ( ! empty( $discovery['snapshot_sha256'] ) ) echo '<p>Snapshot: <code>' . esc_html( (string) $discovery['snapshot_sha256'] ) . '</code></p>';
 		echo '<h2>' . esc_html__( '1. WordPress test provider registry', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p><strong>' . esc_html( (string) $valid_count ) . '</strong> ' . esc_html__( 'valid site-specific providers. Installing a reviewed provider adapter is required for signed browser acceptance plans.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( 0 === $valid_count ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No WordPress Browser Acceptance provider is registered. Tests cannot run yet; entering external API keys cannot resolve this missing adapter.', 'mad4b-site-control-plane' ) . '</p></div>';
@@ -136,7 +153,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		echo '<input type="hidden" name="action" value="mad4b_browser_setup_save">';
 		wp_nonce_field( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
 		echo '<table class="form-table"><tbody><tr><th><label for="mad4b-site-provider">Site acceptance provider</label></th><td><select id="mad4b-site-provider" name="site_provider_id">';
-		echo '<option value="">Auto-select only if one registered test provider exists</option>';
+		echo '<option value="">Auto-select only one discovered, supported site adapter</option>';
 		foreach ( array_slice( $registered, 0, 32 ) as $site_provider ) {
 			if ( empty( $site_provider['valid'] ) || empty( $site_provider['provider_id'] ) ) continue;
 			$id = (string) $site_provider['provider_id'];
