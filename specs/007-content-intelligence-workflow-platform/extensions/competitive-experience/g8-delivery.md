@@ -36,6 +36,9 @@ The supply regression uses a *stubbed* existing signature-verification call to p
 - **T4085:** restore-epoch, stale plan, rollback replay and unknown-field scenarios included; interrupted DB cutover and mixed-runtime acceptance pending.
 - **T4086–T4089:** seeded data-only differential/fault test path implemented. Actual disposable WordPress multi-runtime certification and review receipts pending.
 - **T4090:** evaluator cannot execute production/shared/paid/irreversible providers; live harness network/host isolation proof pending.
+- **T4091–T4095:** `includes/class-mad4b-scp-g8-restore-convergence.php` now reads the pre-existing external Restore Epoch, runtime generation, signed pack registry, internal migration/worker state and external-inventory evidence, and provides bounded data-only external-effect discrepancy proposals. It **does not** acknowledge restore, invalidate/re-enable real permissions, synthesize receipts or replay externally applied effects. Full DB/files/host generation parity, external provider readbacks, governed grant reconciliation, real rollback/downgrade tests and independently signed post-restore acceptance remain open.
+- **Parallel PR integration:** PR #288 (G9) also introduces passive disaster-recovery convergence with independent external resilience anchors. It overlaps this PR in `mad4b-site-control-plane.php` bootstrap only. Resolve the exact bootstrap diff and retain both non-authorizing contracts when composing #288/#289 into #258; never silently remove either registration. No merge is authorized by this note.
+- **Cryptography:** G8 hermetic supply test stubs the existing pack verifier; the G8 CI matrix now separately runs the actual `certification-pack-registry-contract.php`, `crypto-profile-runtime.php` and `restore-epoch-runtime.php`. Passing those does **not** prove a deployed signed package, revocation network or key rotation without runtime evidence.
 
 ## Required promotion sequence
 
