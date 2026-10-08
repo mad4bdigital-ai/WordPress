@@ -400,6 +400,15 @@ scenario( 'legacy_duplicate_market_ids_are_quarantined_before_adoption', static 
 	denied( MAD4B_SCP_Search_Context::plan( $first_input ), 'market_identity_conflict', 'duplicate old ID denies first-side adoption' );
 	denied( MAD4B_SCP_Search_Context::plan( $second_input ), 'market_identity_conflict', 'duplicate old ID denies second-side adoption' );
 	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'shared-old-id' ), 'no arbitrary owner selected for historical collision' );
+	// An identity collision must not prevent an emergency stop.
+	$pause = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'pause', 'expected_revision' => 1 ) ), 'emergency pause survives market collision' );
+	check( ! $pause['profile']['enabled'] && ! empty( $pause['safe_control_identity_quarantined'] ), 'pause changes only execution state and reports unresolved identity' );
+	$freeze = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'freeze_spend', 'expected_revision' => 2 ) ), 'emergency spend freeze survives identity collision' );
+	check( ! empty( $freeze['profile']['provider_policy']['freeze_spend'] ) && ! empty( $freeze['safe_control_identity_quarantined'] ), 'freeze is effective, market identity remains quarantined' );
+	$disabled = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'disable_provider', 'provider_id' => 'alpha', 'expected_revision' => 3 ) ), 'emergency provider disable' );
+	check( in_array( 'alpha', $disabled['profile']['provider_policy']['disabled'], true ) && ! empty( $disabled['safe_control_identity_quarantined'] ), 'provider disable remains fail-safe without ownership laundering' );
+	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'resume', 'expected_revision' => 4 ) ), 'market_identity_conflict', 're-activation stays blocked while market identity conflicts' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'shared-old-id' ), 'safety controls cannot mint conflicting ownership claims' );
 } );
 scenario( 'domain_market_claim_reservation_survives_partial_profile_commit', static function () {
 	$raw = asi_profile( 'pending-domain-profile' ); $raw['markets'][0]['id'] = 'pending-metro'; $raw['markets'][1]['id'] = 'pending-second';
