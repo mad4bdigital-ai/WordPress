@@ -25,6 +25,7 @@ def expect(text: str, markers: tuple[str, ...], context: str) -> None:
         assert marker in text, "MISSING_G9_GUARD:" + context + ":" + marker
 
 
+context = source("class-mad4b-scp-resilience-context.php")
 release = source("class-mad4b-scp-g9-release-fence.php")
 anchor = source("class-mad4b-scp-resilience-anchor.php")
 gates = source("class-mad4b-scp-g9-resilience-gates.php")
@@ -48,6 +49,8 @@ expect(release, (
     "native_execution_uncertain",
     "native_link_unavailable",
     "native_evidence_changed",
+    "if ( array_key_exists( 'execution_receipt_sha256', $link ) )",
+    "'terminal_receipt_sha256' => $receipt['terminal_receipt_sha256']",
     "mad4b.g9.native-release-link.v1",
     "native_request_id",
     "native_target_fingerprint",
@@ -69,6 +72,11 @@ expect(release, (
     "external_record_sha256",
 ), "release")
 assert "wp_register_ability" not in release, "RELEASE_MUTATION_ABILITY_EXPOSED"
+expect(context, (
+    "'current_grant_snapshot_ready'",
+    "'candidate_binding_match'",
+    "self::is_hash( $authority['grant_rows_fingerprint']",
+), "passive-grant-readiness")
 expect(anchor, (
     "mirror_missing",
     "mirror_anchor_mismatch",
@@ -115,5 +123,13 @@ expect(closure, ("native_executor_g9_reservation_binding_unimplemented",
                  "g9_reservation_host_feature_disabled",
                  "g9_host_release_threshold_policy_missing"), "native-admission-blocker")
 expect(closure, ("'operationally_closed' => false", "'ready_for_production' => false"), "closure")
-expect(fleet, ("'cohort_promotion_allowed'=>false", "'automatic_rollback_allowed'=>false"), "fleet")
+expect(fleet, (
+    "'cohort_promotion_allowed'=>false",
+    "'automatic_rollback_allowed'=>false",
+    "'rollback_risk_detected'",
+    "'reported_rollback_completed_sites'",
+    "'partial_rollback_observed'",
+    "$last_operation_state",
+    "'PREPARED'",
+), "fleet")
 print("G9 SOURCE INVARIANTS: PASS (non-authorizing gate markers only; runtime CI still required)")
