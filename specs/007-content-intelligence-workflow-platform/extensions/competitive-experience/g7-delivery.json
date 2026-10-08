@@ -199,8 +199,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "baab08dd2f6ac8ab1f599105e308dd5f38d71a15aa25fa482a872617066e79c5",
-      "bytes": 34008
+      "sha256": "d47c161d7b0beb415eb25bcc32a70cd81ffd7a8cb327fac9e7fa326330aca848",
+      "bytes": 35349
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
