@@ -125,10 +125,15 @@ expect(read, (
     "mad4b/g9-site-observation",
     "mad4b/g9-restore-status",
     "mad4b/g9-closure-status",
-    "MAD4B_SCP_Policy', 'can_read",
+    "'permission_callback' => array( __CLASS__, 'can_read_ability' )",
+    "public static function can_read_ability(",
+    "MAD4B_SCP_Policy::can_read()",
+    "wp_has_ability( $ability )",
+    "! wp_has_ability( $ability )",
 ), "read-only-abilities")
 assert "mad4b/g9-release-reserve" not in read, "RESERVE_EXPOSED_AS_READ_ABILITY"
 assert (BASE / "tests/g9-ability-collision-runtime.php").is_file(), "G9_NAMESPACE_COLLISION_TEST_MISSING"
+assert (BASE / "tests/g9-partial-ability-registration-runtime.php").is_file(), "G9_PARTIAL_ABILITY_TEST_MISSING"
 expect(closure, ("native_executor_g9_reservation_binding_unimplemented",
                  "g9_reservation_host_feature_disabled",
                  "g9_host_release_threshold_policy_missing"), "native-admission-blocker")
