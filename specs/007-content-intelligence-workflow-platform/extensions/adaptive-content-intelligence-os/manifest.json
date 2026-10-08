@@ -39,6 +39,7 @@
     "implementation-slice-01.md",
     "implementation-slice-02.md",
     "implementation-slice-03.md",
+    "implementation-slice-04-acceptance-matrix.md",
     "ledger-contracts.json",
     "operations.md",
     "optimization-policy.json",
@@ -276,5 +277,19 @@
     ],
     "authorizing": false,
     "production_authorized": false
+  },
+  "runtime_slice_04": {
+    "contract": "mad4b.aci01.native-and-recipe-gaps.v1",
+    "source_state": "SOURCE_IMPLEMENTED_NATIVE_RUNTIME_CERTIFICATION_PENDING",
+    "abilities": [
+      "mad4b/aci01-native-relation-audit"
+    ],
+    "human_review_required": true,
+    "provider_rights_certified": false,
+    "wpml_terms_certified": false,
+    "staging_deployed": false,
+    "production_authorized": false,
+    "authorizing": false,
+    "mutation_performed": false
   }
 }

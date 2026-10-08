@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 437,
+  "changed_file_count": 442,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -609,6 +609,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-01.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-02.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-03.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-04-acceptance-matrix.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ledger-contracts.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/manifest.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/operations.md",
@@ -793,8 +794,20 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-capability-browser-provider.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/native-capability-browser-provider-contract.php"
       ]
+    },
+    {
+      "id": "aci01-native-relations-dynamic-recipe-gap-20261009",
+      "semantic_unit": "Read-only exact translation bridge audit, dynamic nonauthorizing content recipe requirement gap, independent PHP fixtures",
+      "revert_boundary": "ACI01 source-only read adapter extension, native relation and recipe gap files, no content mutation, no provider calls, no host access",
+      "certification": "source_lint_and_fixtures_pending_exact_php_staging",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-native-relation-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-recipe-gap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/aci01-native-relation-audit-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/aci01-recipe-gap-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "c91c3651b22750ebe41b0d10999de9d611034ed7aa8dbea82bf4ea7291980deb",
+  "changed_paths_sha256": "df46631daafe48aad35bea829ae612e29b0561e845407b5937c770507f2131ee",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

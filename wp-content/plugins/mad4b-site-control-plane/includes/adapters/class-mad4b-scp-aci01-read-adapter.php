@@ -9,6 +9,7 @@ final class MAD4B_SCP_ACI01_Read_Adapter extends MAD4B_SCP_Adapter_Base {
         return class_exists( 'MAD4B_SCP_ACI01_Intake_Preview', false )
             && class_exists( 'MAD4B_SCP_ACI01_Evidence_Preview', false )
             && class_exists( 'MAD4B_SCP_ACI01_Opportunity_Preview', false )
+            && class_exists( 'MAD4B_SCP_ACI01_Native_Relation_Audit', false )
             && class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false )
             && class_exists( 'MAD4B_SCP_ACI01_Semantic_Recipe', false );
     }
@@ -18,6 +19,7 @@ final class MAD4B_SCP_ACI01_Read_Adapter extends MAD4B_SCP_Adapter_Base {
                 'mad4b/aci01-intake-preview',
                 'mad4b/aci01-evidence-preview',
                 'mad4b/aci01-opportunity-preview',
+                'mad4b/aci01-native-relation-audit',
             ),
             'content' => array(), 'write' => array(), 'admin' => array(),
         );
@@ -27,6 +29,7 @@ final class MAD4B_SCP_ACI01_Read_Adapter extends MAD4B_SCP_Adapter_Base {
         MAD4B_SCP_ACI01_Intake_Preview::register_ability();
         MAD4B_SCP_ACI01_Evidence_Preview::register_ability();
         MAD4B_SCP_ACI01_Opportunity_Preview::register_ability();
+        MAD4B_SCP_ACI01_Native_Relation_Audit::register_ability();
     }
     protected function mutation_requires_certification() { return false; }
     protected function provider_certification( $available ) { return null; }

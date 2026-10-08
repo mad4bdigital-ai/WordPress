@@ -52,6 +52,7 @@ final class MAD4B_SCP_ACI01_Intake_Preview {
     }
 }
 require __DIR__.'/../includes/class-mad4b-scp-aci01-semantic-recipe.php';
+require __DIR__.'/../includes/class-mad4b-scp-aci01-recipe-gap.php';
 require __DIR__.'/../includes/class-mad4b-scp-aci01-opportunity-preview.php';
 function check($ok,$why){if(!$ok){fwrite(STDERR,'FAIL '.$why."\n");exit(1);}}
 $cls='MAD4B_SCP_ACI01_Opportunity_Preview';
