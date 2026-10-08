@@ -184,6 +184,65 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		if ( $retryable ) self::schedule( min( 300, 60 * $event['attempts'] ) );
 	}
 
+	/**
+	 * Non-authorizing operator lane. Automatic observation is already owned by
+	 * the bounded worker; no read path dispatches jobs, repairs or grants.
+	 * Only known states can claim a safe lane; unknown states fail closed.
+	 */
+	public static function remediation_lane( array $capability, $current ) {
+		$state = isset( $capability['state'] ) && is_string( $capability['state'] ) ? $capability['state'] : 'ISOLATED';
+		$action = isset( $capability['next_action'] ) && is_string( $capability['next_action'] ) ? $capability['next_action'] : '';
+		$lane = 'REVIEW_REQUIRED';
+		if ( ! $current || 'STALE_OBSERVATION' === $state ) {
+			$lane = 'SAFE_AUTO_OBSERVATION';
+			$action = 'await_current_provider_observation';
+		} elseif ( 'READ_COMPATIBLE' === $state || 'ACTIVE' === $state ) {
+			$lane = 'NO_OP';
+			$action = '';
+		} elseif ( 'CANARY_REQUIRED' === $state || 'HIGH_RISK_GATED' === $state ) {
+			$lane = 'GOVERNED_CANARY_REQUIRED';
+		} elseif ( 'EXTERNAL_ACTION_REQUIRED' === $state ) {
+			$lane = 'EXTERNAL_ACTION_REQUIRED';
+		}
+		return array(
+			'lane' => $lane, 'next_action' => $action,
+			'worker_may_observe' => 'SAFE_AUTO_OBSERVATION' === $lane,
+			'automatic_mutation_performed' => false, 'authority_created' => false,
+			'production_authorized' => false, 'requires_current_generation' => true,
+		);
+	}
+
+	/**
+	 * Fence before touching managed filesystem or core baselines. A lock is
+	 * necessary but not sufficient: the event, Site Profile and installed
+	 * artifact identity must all remain current at the side-effect boundary.
+	 */
+	private static function worker_fence_current( $lock, array $event, $profile_digest, array $identity ) {
+		if ( is_wp_error( MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lock, 'adaptive_runtime_observation' ) )
+			|| ! self::eligible()
+			|| MAD4B_SCP_Site_Profile::profile_digest() !== $profile_digest
+			|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) return false;
+		$current = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		return ! empty( $current['runtime_manifest_match'] )
+			&& ! empty( $current['build_fingerprint'] )
+			&& ( $current['build_fingerprint'] ?? '' ) === ( $identity['build_fingerprint'] ?? '' )
+			&& ( $current['source_commit_sha'] ?? '' ) === ( $identity['source_commit_sha'] ?? '' )
+			&& ( $current['package_manifest_digest'] ?? '' ) === ( $identity['package_manifest_digest'] ?? '' )
+			&& ( self::event()['event_id'] ?? '' ) === ( $event['event_id'] ?? '' )
+			&& MAD4B_SCP_Site_Profile::profile_digest() === $profile_digest
+			&& self::eligible();
+	}
+
+	/** Only revert a worker-owned checkpoint while its exact seal persists. */
+	private static function restore_worker_checkpoint( $checkpoint_seal, $had_previous, $previous_value ) {
+		if ( '' === $checkpoint_seal ) return;
+		$persisted = get_option( self::OPTION, null );
+		if ( ! is_array( $persisted ) || ! isset( $persisted['seal'] )
+			|| ! hash_equals( $checkpoint_seal, (string) $persisted['seal'] ) ) return;
+		if ( $had_previous ) update_option( self::OPTION, $previous_value, false );
+		elseif ( function_exists( 'delete_option' ) ) delete_option( self::OPTION );
+	}
+
 	/** Each state follows measured capability evidence, never a version comparison. */
 	public static function reduce_capability( array $row ) {
 		$evidence = is_array( $row['behavioral_evidence'] ?? null ) ? $row['behavioral_evidence'] : array();
@@ -247,6 +306,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				$registry['auto_reconcile'] = $auto_reconcile;
 				$decision = isset( $auto_reconcile['decision'] ) ? (string) $auto_reconcile['decision'] : 'REVIEW_REQUIRED';
 				if ( 'SCHEDULE_PROBE' === $decision && ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
+					if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) ) { self::schedule( 5 ); return; }
 					$core_result = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
 					$registry['core_convergence'] = is_wp_error( $core_result )
 						? array( 'state' => 'DEFERRED', 'error_code' => sanitize_key( (string) $core_result->get_error_code() ), 'production_mutation' => false )
@@ -330,30 +390,35 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				$fabric_generation = hash( 'sha256', wp_json_encode( array( 'package' => $generation, 'graph' => $graph ) ) );
 				if ( ( ( $registry['fabric_generation'] ?? '' ) !== $fabric_generation || 'RECONCILED' !== ( $registry['managed_skills']['state'] ?? '' ) ) && class_exists( 'MAD4B_SCP_Skill_Provider_Discovery', false )
 					&& MAD4B_SCP_Site_Profile::skills_enabled() && class_exists( 'MAD4B_SCP_Schema', false ) && MAD4B_SCP_Schema::is_ready() ) {
+					if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) ) {
+						self::restore_worker_checkpoint( $core_checkpoint_seal, $previous_had_value, $previous_raw );
+						self::schedule( 5 );
+						return;
+					}
 					$skills = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
 					$registry['managed_skills'] = is_wp_error( $skills ) ? array( 'state' => 'RECONCILIATION_REQUIRED', 'error_code' => $skills->get_error_code() ) : array( 'state' => 'RECONCILED' );
 				}
 				$registry['fabric_generation'] = $fabric_generation;
 			}
 			if ( ! $pending && class_exists( 'MAD4B_SCP_Post_Update_Continuation', false ) && method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'capture_ready_baseline' ) ) {
+				if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) ) {
+					self::restore_worker_checkpoint( $core_checkpoint_seal, $previous_had_value, $previous_raw );
+					self::schedule( 5 );
+					return;
+				}
 				$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( $lock, 'adaptive_runtime_observation' );
 				$registry['authority_baseline'] = is_wp_error( $baseline ) ? array( 'state' => 'NOT_OBSERVED', 'error_code' => $baseline->get_error_code() ) : $baseline;
 			}
 			$postflight = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 			if ( ! self::eligible() || MAD4B_SCP_Site_Profile::profile_digest() !== $profile_digest
 				|| empty( $postflight['runtime_manifest_match'] ) || ( $postflight['build_fingerprint'] ?? '' ) !== $identity['build_fingerprint']
+				|| ( $postflight['source_commit_sha'] ?? '' ) !== ( $identity['source_commit_sha'] ?? '' )
+				|| ( $postflight['package_manifest_digest'] ?? '' ) !== ( $identity['package_manifest_digest'] ?? '' )
 				|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) {
 				// If this worker persisted only its generation checkpoint before a race was
 				// detected, restore the exact prior value only while that checkpoint is
 				// still the current value. Never overwrite a concurrent writer.
-				if ( '' !== $core_checkpoint_seal ) {
-					$persisted = get_option( self::OPTION, null );
-					if ( is_array( $persisted ) && isset( $persisted['seal'] )
-						&& hash_equals( $core_checkpoint_seal, (string) $persisted['seal'] ) ) {
-						if ( $previous_had_value ) update_option( self::OPTION, $previous_raw, false );
-						elseif ( function_exists( 'delete_option' ) ) delete_option( self::OPTION );
-					}
-				}
+				self::restore_worker_checkpoint( $core_checkpoint_seal, $previous_had_value, $previous_raw );
 				self::schedule( 5 );
 				return;
 			}
@@ -375,13 +440,25 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	private static function valid_registry( $registry ) { return is_array( $registry ) && self::CONTRACT === ( $registry['contract'] ?? '' ) && is_array( $registry['providers'] ?? null ) && is_string( $registry['seal'] ?? null ) && hash_equals( self::seal( $registry ), $registry['seal'] ); }
 
 	public static function status( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'provider_id', 'include_capabilities', 'limit', 'after_provider', 'expected_receipt_sha256' ) ) ) {
+			return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Unsupported adaptive runtime selector.' );
+		}
+		foreach ( array( 'provider_id', 'after_provider' ) as $selector ) {
+			if ( isset( $input[ $selector ] ) && ( ! is_string( $input[ $selector ] ) || strlen( $input[ $selector ] ) > 80
+				|| ( '' !== $input[ $selector ] && 1 !== preg_match( '/^[a-z][a-z0-9._-]{0,79}$/D', $input[ $selector ] ) ) ) ) {
+				return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid provider selector.' );
+			}
+		}
+		if ( isset( $input['limit'] ) && ( ! is_int( $input['limit'] ) || $input['limit'] < 1 || $input['limit'] > 20 ) ) return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid page limit.' );
+		if ( isset( $input['include_capabilities'] ) && ! is_bool( $input['include_capabilities'] ) ) return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid capability selection.' );
+		if ( isset( $input['expected_receipt_sha256'] ) && ( ! is_string( $input['expected_receipt_sha256'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $input['expected_receipt_sha256'] ) ) ) return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid observation digest.' );
 		$registry = get_option( self::OPTION, array() );
 		$valid = self::valid_registry( $registry );
 		if ( ! $valid ) $registry = array( 'state' => 'NOT_OBSERVED', 'providers' => array() );
 		$receipt_sha256 = hash( 'sha256', wp_json_encode( $registry ) );
-		$after = isset( $input['after_provider'] ) ? sanitize_key( (string) $input['after_provider'] ) : '';
+		$after = isset( $input['after_provider'] ) ? $input['after_provider'] : '';
 		if ( '' !== $after && ( ! $valid || ( $input['expected_receipt_sha256'] ?? '' ) !== $receipt_sha256 ) ) return new WP_Error( 'mad4b_adaptive_runtime_page_stale', 'The observation changed between pages. Start with a fresh first page.' );
-		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
+		$provider = isset( $input['provider_id'] ) ? $input['provider_id'] : '';
 		$details = isset( $input['include_capabilities'] ) ? true === $input['include_capabilities'] : '' !== $provider;
 		$limit = isset( $input['limit'] ) ? max( 1, min( 20, (int) $input['limit'] ) ) : 8;
 		ksort( $registry['providers'], SORT_STRING );
@@ -398,16 +475,20 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			if ( ! is_array( $observation ) || ! is_array( $observation['capabilities'] ?? null ) ) { $observation = array( 'state' => 'ISOLATED', 'error_code' => 'malformed_provider_observation', 'capabilities' => array() ); }
 			$observation['observation_current'] = $current && ! empty( $registry['observation_epoch'] ) && ( $observation['observation_epoch'] ?? '' ) === $registry['observation_epoch'];
 			if ( ! $observation['observation_current'] && 'malformed_provider_observation' !== ( $observation['error_code'] ?? '' ) ) $observation['state'] = 'STALE_OBSERVATION';
-			$counts = array();
+			$counts = array(); $lane_counts = array();
 			foreach ( $observation['capabilities'] as &$capability ) {
 				if ( ! is_array( $capability ) ) $capability = array( 'state' => 'ISOLATED', 'next_action' => 'repair_capability_contract' );
 				if ( ! $observation['observation_current'] ) { $capability['last_observed_state'] = $capability['state'] ?? 'ISOLATED'; $capability['state'] = 'STALE_OBSERVATION'; $capability['next_action'] = 'await_current_provider_observation'; }
 				$state = isset( $capability['state'] ) && is_string( $capability['state'] ) ? $capability['state'] : 'ISOLATED';
 				$counts[ $state ] = ( $counts[ $state ] ?? 0 ) + 1;
+				$capability['remediation'] = self::remediation_lane( $capability, $observation['observation_current'] );
+				$lane = $capability['remediation']['lane'];
+				$lane_counts[ $lane ] = ( $lane_counts[ $lane ] ?? 0 ) + 1;
 			}
 			unset( $capability );
 			$observation['capability_count'] = count( $observation['capabilities'] );
 			$observation['capability_state_counts'] = $counts;
+			$observation['remediation_lane_counts'] = $lane_counts;
 			if ( ! $details ) unset( $observation['capabilities'], $observation['capability_diff'] );
 		}
 		unset( $observation );
