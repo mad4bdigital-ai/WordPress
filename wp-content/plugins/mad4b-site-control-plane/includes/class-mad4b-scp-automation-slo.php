@@ -218,7 +218,19 @@ final class MAD4B_SCP_Automation_SLO {
 		if ( ! current_user_can( 'manage_options' ) || ! MAD4B_SCP_G8_Record::staging() ) return;
 		$status = self::status(); $switch = $status['kill_switch'];
 		echo '<section class="card"><h2>' . esc_html__( 'Automatic maintenance controls', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Pause automatic repair while observations and governed manual actions remain available.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<p>' . esc_html( $status['state'] ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Automation telemetry:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( $status['state'] ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Global automatic work:', 'mad4b-site-control-plane' ) . '</strong> '
+			. esc_html( ! $switch['integrity_valid'] ? 'Blocked: switch integrity requires review' : ( ! empty( $switch['scopes']['*'] ) ? 'Paused' : 'Resume permitted by switch only; governed checks still apply' ) ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Admitted workload:', 'mad4b-site-control-plane' ) . '</strong> '
+			. esc_html( null === $status['eligible_workload_count'] ? 'Unknown' : (string) $status['eligible_workload_count'] ) . '</p>';
+		$readiness = array(
+			'Supply-chain' => class_exists( 'MAD4B_SCP_G8_Supply_Provenance', false ) ? MAD4B_SCP_G8_Supply_Provenance::runtime_status()['state'] : 'UNAVAILABLE',
+			'Observation migration' => class_exists( 'MAD4B_SCP_G8_Schema_Migration', false ) ? MAD4B_SCP_G8_Schema_Migration::status()['state'] : 'UNAVAILABLE',
+			'External acceptance' => class_exists( 'MAD4B_SCP_G8_Capability_Convergence', false ) ? MAD4B_SCP_G8_Capability_Convergence::live_acceptance()['state'] : 'UNAVAILABLE',
+		);
+		echo '<h3>' . esc_html__( 'G8 evidence (read-only)', 'mad4b-site-control-plane' ) . '</h3><ul>';
+		foreach ( $readiness as $label => $value ) echo '<li><strong>' . esc_html( $label ) . '</strong>: ' . esc_html( $value ) . '</li>';
+		echo '</ul><p class="description">' . esc_html__( 'Repository checks do not replace signed provider provenance, runtime/browser acceptance or owner authorization.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( $switch['integrity_valid'] ) {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( 'mad4b_automation_kill_switch' );
