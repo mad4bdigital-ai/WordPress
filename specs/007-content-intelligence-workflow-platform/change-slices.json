@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 300,
+  "changed_file_count": 313,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -540,10 +540,11 @@
       "revert_boundary": "Journal governance, atomic event writes and restoration semantics remain with the existing durable operation owner; no extension of executor authority",
       "certification": "exact_head",
       "path_globs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php"
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operation-journal-exact-cas-runtime.php"
       ]
     }
   ],
-  "changed_paths_sha256": "aceaab814451c19d3c44085810535ef89de6deb5e2e084060ef2a9cc0771eb17",
+  "changed_paths_sha256": "9b1fa9f35bef04dd45d9fe160a1bdd50057fb1127ab9efccfd610d4ce360155a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
