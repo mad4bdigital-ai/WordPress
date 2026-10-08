@@ -62,6 +62,14 @@ $changed = $desired; $changed['facts'][1]['value'] = 'fr'; $changed['facts'][] =
 $conflict_plan = MAD4B_SCP_Assistant_Planning::plan( $binding, $changed );
 check_case( 'contradictory facts block proposal', 'CONFLICT_REVIEW_REQUIRED' === $conflict_plan['state'] );
 check_case( 'conflicts do not expose ambiguous configuration', ! isset( $conflict_plan['configuration_proposals']['audience']['language'] ) );
+$secondary = $desired;
+$secondary['facts'][] = array( 'key' => 'audience.market.country', 'value' => 'Egypt', 'provenance' => 'provider' );
+check_case( 'malformed second country rejected rather than masked by conflict', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $secondary ), 'market_invalid' ) );
+$secondary = $desired;
+$secondary['facts'][] = array( 'key' => 'audience.language', 'value' => 'en_US<script>', 'provenance' => 'provider' );
+check_case( 'malformed second language rejected rather than masked by conflict', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $secondary ), 'language_invalid' ) );
+$invalid_site = $binding; $invalid_site['site_uuid'] = 'name<unsafe>';
+check_case( 'unsafe site uuid denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $invalid_site, $desired, $observed ), 'binding_invalid' ) );
 $changed = $desired; $changed['facts'][0]['value'] = 'Egypt';
 check_case( 'invalid country denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $changed ), 'market_invalid' ) );
 $changed = $desired; $changed['facts'][1]['value'] = 'en_US<script>';
