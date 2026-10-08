@@ -117,6 +117,19 @@ final class MAD4B_SCP_G9_Release_Fence {
             || $plan['anchor_revision'] !== $preview['external_anchor_revision'] )
             return self::blocked( 'plan_superseded', 'External fence or release policy changed.' );
 
+        // The fast identity observer checks MANIFEST metadata, not the bytes
+        // of every packaged file. An executable reservation needs full
+        // runtime provenance (current package files and exact digest) and
+        // must not accept a deferred fast identity as that proof.
+        if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+            || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) )
+            return self::blocked( 'runtime_package_unverified', 'Full package provenance verifier is unavailable.' );
+        $full_package = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+        if ( ! is_array( $full_package ) || true !== ( $full_package['runtime_manifest_match'] ?? null )
+            || true !== ( $full_package['manifest_valid'] ?? null )
+            || false !== ( $full_package['stale'] ?? null )
+            || ( $full_package['package_manifest_digest'] ?? '' ) !== $observed['binding']['artifact_sha256'] )
+            return self::blocked( 'runtime_package_unverified', 'Packaged runtime files do not match the exact current build.' );
         // This is an internal, typed reservation only. It is not exposed as an
         // Ability, and can never substitute for provider-specific authorization.
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
@@ -182,6 +195,13 @@ final class MAD4B_SCP_G9_Release_Fence {
                 ) );
                 if ( is_wp_error( $generation ) || ! is_array( $generation ) || empty( $generation['ready'] ) )
                     return self::blocked( 'generation_changed_before_cas', 'Runtime generation changed during rollout admission.' );
+                $full_locked = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+                if ( ! is_array( $full_locked )
+                    || true !== ( $full_locked['runtime_manifest_match'] ?? null )
+                    || true !== ( $full_locked['manifest_valid'] ?? null )
+                    || false !== ( $full_locked['stale'] ?? null )
+                    || ( $full_locked['package_manifest_digest'] ?? '' ) !== $observed['binding']['artifact_sha256'] )
+                    return self::blocked( 'package_changed_before_cas', 'Packaged runtime file content changed before the reservation checkpoint.' );
                 $epoch = MAD4B_SCP_Restore_Epoch::status( false, true );
                 if ( ! is_array( $epoch ) || empty( $epoch['ready'] )
                     || ( $epoch['epoch'] ?? null ) !== $observed['binding']['restore_epoch']

@@ -74,6 +74,12 @@ class MAD4B_SCP_Restore_Epoch {
 }
 class MAD4B_SCP_Live_Acceptance_Observer {
     public static $valid = true;
+    public static $full_valid = true;
+    public static function build_provenance_status() {
+        return array( 'manifest_valid'=>self::$full_valid,
+            'runtime_manifest_match'=>self::$full_valid, 'stale'=>!self::$full_valid,
+            'package_manifest_digest'=>hash( 'sha256', 'package' ) );
+    }
     public static function build_provenance_identity_status() {
         return array( 'package_manifest_digest'=>hash( 'sha256', 'package' ),
             'identity_ready'=>self::$valid, 'manifest_valid'=>self::$valid );
@@ -207,6 +213,9 @@ $lax = $limits; $lax['max_p95_ms'] = 10000000;
 $lax_plan = MAD4B_SCP_G9_Release_Fence::plan( $target, $lax );
 g9_assert( ! is_wp_error( $lax_plan ), 'descriptive threshold preview' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $lax_plan ), 'policy_not_pinned' );
+MAD4B_SCP_Live_Acceptance_Observer::$full_valid = false;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'runtime_package_unverified' );
+MAD4B_SCP_Live_Acceptance_Observer::$full_valid = true;
 $bad = $plan; $bad['expires_at']++;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $bad ), 'plan_tampered' );
 MAD4B_SCP_Policy::$mutable = new WP_Error( 'blocked', 'deny' );
