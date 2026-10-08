@@ -15,8 +15,23 @@ final class MAD4B_SCP_G8_Compatibility_Fuzz {
 		return is_string( $value ) && 1 === preg_match( '/^[a-z0-9_.-]{1,80}$/D', $value );
 	}
 
+	private static function plain_data( $value, $depth = 0 ) {
+		if ( $depth > 7 || is_object( $value ) || is_resource( $value ) ) return false;
+		if ( is_array( $value ) ) {
+			if ( count( $value ) > 64 ) return false;
+			foreach ( $value as $field => $member ) {
+				if ( is_string( $field ) && strlen( $field ) > 100 ) return false;
+				if ( ! self::plain_data( $member, $depth + 1 ) ) return false;
+			}
+			return true;
+		}
+		return null === $value || is_bool( $value ) || is_int( $value )
+			|| ( is_float( $value ) && is_finite( $value ) )
+			|| ( is_string( $value ) && strlen( $value ) <= 4096 );
+	}
+
 	private static function valid_descriptor( $value ) {
-		if ( ! is_array( $value ) || count( $value ) > 16 ) return false;
+		if ( ! is_array( $value ) || count( $value ) > 16 || ! self::plain_data( $value ) ) return false;
 		if ( ! self::identifier( $value['provider'] ?? null ) || ! self::identifier( $value['capability'] ?? null ) ) return false;
 		if ( ! in_array( $value['method'] ?? '', array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' ), true ) ) return false;
 		if ( ! is_bool( $value['readonly'] ?? null ) || ! is_bool( $value['reversible'] ?? null ) ) return false;
@@ -27,7 +42,7 @@ final class MAD4B_SCP_G8_Compatibility_Fuzz {
 	}
 
 	private static function fixture_valid( $fixture ) {
-		if ( ! is_array( $fixture ) || count( $fixture ) > 12 ) return false;
+		if ( ! is_array( $fixture ) || count( $fixture ) > 12 || ! self::plain_data( $fixture ) ) return false;
 		if ( ! in_array( $fixture['fault'] ?? '', array( 'none', 'timeout', 'cancelled', 'duplicate', 'concurrency', 'provider_error', 'malformed_response', 'hidden_effect' ), true ) ) return false;
 		if ( ! is_int( $fixture['latency_ms'] ?? null ) || $fixture['latency_ms'] < 0 || $fixture['latency_ms'] > 300000 ) return false;
 		if ( ! is_int( $fixture['delivery_count'] ?? null ) || $fixture['delivery_count'] < 0 || $fixture['delivery_count'] > 100 ) return false;
