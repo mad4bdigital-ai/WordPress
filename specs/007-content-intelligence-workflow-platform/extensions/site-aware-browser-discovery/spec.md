@@ -35,3 +35,7 @@ Only HTTPS canonical origins are allowed in externally executed plan bindings. D
 3. If an Adapter is recognized but no audited external driver exists, block with `external_driver_not_approved`; no third-party module fetching.
 4. If a plugin is unmapped, expose it in UI; continue other independent read-only observations, but never count its features as covered.
 5. If an installed plugin changes, invalidate the snapshot only when observed signals change; no claim of full update/version detection until exact plugin version evidence is available.
+
+## Review restriction
+
+Auto-discovery is **not** full semantic adaptation. Captured theme/plugin header versions constrain known versioned drift, but cannot attest same-version file rebuilds or asset changes. Browser drivers are still review-owned, not learned, generated or installed from site hints. External browser network egress needs DNS/IP-level controls independent of this source-level allowlist. No one can claim release-ready solely because these negative source tests pass.

@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { buildBrowserWorkerEnvironment } from "./worker-environment.mjs";
 import {
   createMad4bMcpSession,
   requestBrowserPlan,
@@ -86,10 +87,8 @@ const planPath = path.join(tempDir, "signed-plan.json");
 fs.writeFileSync(planPath, JSON.stringify(plan), { mode: 0o600 });
 
 try {
-  const childEnv = {
-    ...process.env,
-    MAD4B_BROWSER_EXECUTION_DEADLINE_EPOCH: String(executionDeadline)
-  };
+  const childEnv = buildBrowserWorkerEnvironment(process.env, executionDeadline);
+  // No ambient MCP/GitHub credentials propagate to this process.
   delete childEnv.MAD4B_MCP_ACCESS_TOKEN;
 
   const runnerPath = path.join(HERE, "run-site-browser-acceptance.mjs");
@@ -119,7 +118,6 @@ try {
     { requestedProfile: profileId, requestedExecutor: browserProvider, approvedDrivers }
   );
   assertSiteBindingUnchanged(configured, postExecution);
-  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const localEvidenceDigest = canonicalSha256(evidence);
   const reducerEvidenceDigest = String(result?.evidence_digest || "");
@@ -129,6 +127,9 @@ try {
   if (!/^[a-f0-9]{64}$/.test(String(result?.receipt_signature || ""))) {
     throw new Error("mad4b_browser_receipt_signature_missing");
   }
+  // Do not persist a reducer response until all exact source and evidence
+  // bindings pass. A local result file is not a release certificate.
+  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const attempts = JSON.parse(fs.readFileSync(attemptsPath, "utf8"));
   const receipt = buildBrowserExecutionReceipt({

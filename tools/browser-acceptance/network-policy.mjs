@@ -4,6 +4,17 @@ function validHostname(value) {
   if (!/^[a-z0-9.-]+$/.test(host)) return "";
   const labels = host.split(".");
   if (labels.some((label) => !label || label.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))) return "";
+  // Hostname checks complement, not replace, provider-level network egress
+  // firewall rules (DNS rebinding must also be denied at connect time).
+  if (host === "localhost" || /\.(?:localhost|local|internal)$/.test(host)) return "";
+  if (/^\d+(?:\.\d+){3}$/.test(host)) {
+    const octets = host.split(".").map(Number);
+    if (octets.some(x => !Number.isInteger(x) || x < 0 || x > 255)) return "";
+    if (octets[0] === 10 || octets[0] === 127 || octets[0] === 0 ||
+        octets[0] === 169 && octets[1] === 254 ||
+        octets[0] === 192 && octets[1] === 168 ||
+        octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return "";
+  }
   return host;
 }
 
@@ -28,23 +39,17 @@ export function configuredAllowedHosts(env = process.env) {
     if (!host) throw new Error("browser_allowed_asset_domain_invalid");
     if (!out.includes(host)) out.push(host);
   }
-  return out.slice(0, 50);
+  if (out.length > 50) throw new Error("browser_allowed_asset_domains_overflow");
+  return out;
 }
 
 export function allowedHostSet(origin, env = process.env) {
   return new Set([originHostname(origin), ...configuredAllowedHosts(env)]);
 }
 
-const ACTIVE_CROSS_ORIGIN_TYPES = new Set([
-  "document",
-  "script",
-  "xhr",
-  "fetch",
-  "eventsource",
-  "websocket",
-  "manifest",
-  "other"
-]);
+// No passive-content exception: remote images/fonts can leak cookies or
+// other browser state through their query strings. Only explicitly reviewed
+// asset hosts are allowed, regardless of resource type.
 
 export function requestBoundaryDecision({ url, resourceType, origin, env = process.env }) {
   const raw = String(url || "");
@@ -59,13 +64,19 @@ export function requestBoundaryDecision({ url, resourceType, origin, env = proce
   const allowedHosts = allowedHostSet(origin, env);
   const host = validHostname(parsed.hostname);
   if (!host) return { allow: false, reason: "invalid_hostname" };
-  if (allowedHosts.has(host)) return { allow: true, reason: "allowlisted_host" };
-
-  const type = String(resourceType || "other").toLowerCase();
-  if (ACTIVE_CROSS_ORIGIN_TYPES.has(type)) {
-    return { allow: false, reason: "cross_origin_active_request_denied" };
+  if (allowedHosts.has(host)) {
+    const declared = new URL(origin);
+    const pageHost = originHostname(origin);
+    if (host === pageHost && parsed.origin !== declared.origin) {
+      return { allow: false, reason: "site_origin_port_mismatch" };
+    }
+    if (host !== pageHost && parsed.port) {
+      return { allow: false, reason: "asset_host_nonstandard_port" };
+    }
+    return { allow: true, reason: "allowlisted_host" };
   }
-  return { allow: true, reason: "passive_asset" };
+
+  return { allow: false, reason: "cross_origin_not_allowlisted" };
 }
 
 export async function installContextNetworkBoundary(context, origin, env = process.env) {
@@ -86,6 +97,6 @@ export async function installContextNetworkBoundary(context, origin, env = proce
     origin_host: originHostname(origin),
     configured_asset_hosts: configuredAllowedHosts(env),
     active_cross_origin_denied: true,
-    passive_cross_origin_assets_allowed: true
+    passive_cross_origin_assets_allowed: false
   };
 }

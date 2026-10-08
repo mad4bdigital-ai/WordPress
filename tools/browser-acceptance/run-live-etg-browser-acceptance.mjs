@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { buildBrowserWorkerEnvironment } from "./worker-environment.mjs";
 import {
   createMad4bMcpSession,
   requestBrowserPlan,
@@ -83,10 +84,8 @@ const planPath = path.join(tempDir, "signed-plan.json");
 fs.writeFileSync(planPath, JSON.stringify(plan), { mode: 0o600 });
 
 try {
-  const childEnv = {
-    ...process.env,
-    MAD4B_BROWSER_EXECUTION_DEADLINE_EPOCH: String(executionDeadline)
-  };
+  const childEnv = buildBrowserWorkerEnvironment(process.env, executionDeadline);
+  // No ambient MCP/GitHub credentials propagate to this process.
   delete childEnv.MAD4B_MCP_ACCESS_TOKEN;
 
   const runnerPath = path.join(HERE, "run-etg-browser-acceptance.mjs");
@@ -106,7 +105,7 @@ try {
   }
 
   const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8"));
-  const result = await submitBrowserEvidence(session, plan, evidence);
+  const result = await submitBrowserEvidence(session, plan, evidence, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" });
   assertEtgBrowserResultBinding(plan, result);
   // A changed administrator preference invalidates the local execution receipt.
   const postExecution = resolveEtgBrowserOperatorConfiguration(

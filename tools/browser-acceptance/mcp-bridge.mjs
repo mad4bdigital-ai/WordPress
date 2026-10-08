@@ -187,7 +187,7 @@ export function validateEvidencePayload(evidence, {
   maxBytes = 131072,
   maxDepth = 8,
   maxNodes = 1024,
-  expectedContract = "etg.dfsb.browser-acceptance-evidence.v1"
+  expectedContract
 } = {}) {
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
     throw new Error("browser_evidence_invalid");
@@ -228,7 +228,7 @@ export function validateEvidencePayload(evidence, {
 }
 
 export async function submitBrowserEvidence(session, plan, evidence, {
-  expectedContract = "etg.dfsb.browser-acceptance-evidence.v1"
+  expectedContract
 } = {}) {
   validateEvidencePayload(evidence, { expectedContract });
   const result = await session.callAbility("mad4b/browser-acceptance-result", {

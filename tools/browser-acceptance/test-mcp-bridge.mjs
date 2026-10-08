@@ -100,16 +100,16 @@ assert.deepEqual(planCall.params.arguments, {
 });
 
 const evidence = { contract: "etg.dfsb.browser-acceptance-evidence.v1", cases: [] };
-const result = await submitBrowserEvidence(session, livePlan, evidence);
+const result = await submitBrowserEvidence(session, livePlan, evidence, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" });
 assert.equal(result.verdict, "PASS");
 
-const evidenceShape = validateEvidencePayload(evidence);
+const evidenceShape = validateEvidencePayload(evidence, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" });
 assert.equal(evidenceShape.contract, "etg.dfsb.browser-acceptance-evidence.v1");
 assert.ok(evidenceShape.bytes > 0);
 assert.ok(evidenceShape.nodes >= 2);
 
 assert.throws(
-  () => validateEvidencePayload({ ...evidence, payload: "x".repeat(140000) }),
+  () => validateEvidencePayload({ ...evidence, payload: "x".repeat(140000) }, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" }),
   /browser_evidence_size_limit_exceeded/
 );
 
@@ -119,11 +119,11 @@ for (let i = 0; i < 9; i += 1) {
   cursor.next = {};
   cursor = cursor.next;
 }
-assert.throws(() => validateEvidencePayload(deep), /browser_evidence_depth_limit_exceeded/);
+assert.throws(() => validateEvidencePayload(deep, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" }), /browser_evidence_depth_limit_exceeded/);
 
 const many = { contract: "etg.dfsb.browser-acceptance-evidence.v1", items: [] };
 for (let i = 0; i < 1100; i += 1) many.items.push(i);
-assert.throws(() => validateEvidencePayload(many), /browser_evidence_node_limit_exceeded/);
+assert.throws(() => validateEvidencePayload(many, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" }), /browser_evidence_node_limit_exceeded/);
 
 const resultCall = JSON.parse(calls[4].options.body);
 assert.equal(resultCall.params.name, "mad4b-browser-acceptance-result");
@@ -135,4 +135,5 @@ await assert.rejects(
   /mcp_resource_must_be_https/
 );
 
+assert.throws(() => validateEvidencePayload(evidence), /browser_evidence_contract_invalid/);
 console.log("MAD4B browser MCP bridge contract PASS");
