@@ -164,9 +164,13 @@ export async function createMad4bMcpSession({
 }
 
 export async function requestBrowserPlan(session, {
-  providerId = "etg-dfsb",
-  profileId = "tours"
+  providerId,
+  profileId
 } = {}) {
+  if (typeof providerId !== "string" || !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(providerId) ||
+      typeof profileId !== "string" || !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(profileId)) {
+    throw new Error("mcp_browser_target_not_resolved");
+  }
   const plan = await session.callAbility("mad4b/browser-acceptance-plan", {
     provider_id: providerId,
     profile_id: profileId,
@@ -182,12 +186,15 @@ export async function requestBrowserPlan(session, {
 export function validateEvidencePayload(evidence, {
   maxBytes = 131072,
   maxDepth = 8,
-  maxNodes = 1024
+  maxNodes = 1024,
+  expectedContract = "etg.dfsb.browser-acceptance-evidence.v1"
 } = {}) {
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
     throw new Error("browser_evidence_invalid");
   }
-  if (evidence.contract !== "etg.dfsb.browser-acceptance-evidence.v1") {
+  if (typeof expectedContract !== "string" ||
+      !/^[a-z0-9][a-z0-9._-]{0,159}$/.test(expectedContract) ||
+      evidence.contract !== expectedContract) {
     throw new Error("browser_evidence_contract_invalid");
   }
 
@@ -220,11 +227,13 @@ export function validateEvidencePayload(evidence, {
   };
 }
 
-export async function submitBrowserEvidence(session, plan, evidence) {
-  validateEvidencePayload(evidence);
+export async function submitBrowserEvidence(session, plan, evidence, {
+  expectedContract = "etg.dfsb.browser-acceptance-evidence.v1"
+} = {}) {
+  validateEvidencePayload(evidence, { expectedContract });
   const result = await session.callAbility("mad4b/browser-acceptance-result", {
-    provider_id: String(plan.provider_id || "etg-dfsb"),
-    profile_id: String(plan.profile_id || "tours"),
+    provider_id: String(plan.provider_id || ""),
+    profile_id: String(plan.profile_id || ""),
     suite: "browser_runtime",
     plan_digest: String(plan.plan_digest || ""),
     plan_signature: String(plan.plan_signature || ""),
