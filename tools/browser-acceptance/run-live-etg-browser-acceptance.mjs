@@ -113,7 +113,6 @@ try {
     { profileId, requestedExecutor: browserProvider }
   );
   assertEtgBrowserBindingUnchanged(configured, postExecution);
-  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const localEvidenceDigest = canonicalSha256(evidence);
   const reducerEvidenceDigest = String(result?.evidence_digest || "");
@@ -123,6 +122,7 @@ try {
   if (!/^[a-f0-9]{64}$/.test(String(result?.receipt_signature || ""))) {
     throw new Error("mad4b_browser_receipt_signature_missing");
   }
+  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const attempts = JSON.parse(fs.readFileSync(attemptsPath, "utf8"));
   const receipt = buildBrowserExecutionReceipt({
