@@ -54,6 +54,7 @@ if ( $throwing_slo ) {
 		public static function finish_existing( $ticket, $result ) { return true; }
 	}
 }
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-record.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-convergence.php';
 $identity = array( 'version' => MAD4B_SCP_VERSION, 'source_commit_sha' => str_repeat( 'a', 40 ),
 	'build_fingerprint' => str_repeat( 'b', 64 ), 'package_manifest_digest' => str_repeat( 'c', 64 ),
