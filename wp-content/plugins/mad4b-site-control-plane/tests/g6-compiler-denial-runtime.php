@@ -68,6 +68,14 @@ $view = MAD4B_SCP_G6_Operation_Compiler::review_projection( $plan );
 g6_test_assert( ! is_wp_error( $view ) && false === strpos( json_encode( $view ), 'PRIVATE-CONTENT-556677' ), 'review redacts private model inputs' );
 g6_test_assert( false === $view['authorizing'] && true === $view['approval_required'], 'review does not grant authority' );
 
+$wrong_strategy_type = $input; $wrong_strategy_type['nodes'][0]['strategy_id'] = array( 'test-reviewed-native' );
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $wrong_strategy_type ), 'mad4b_g6_strategy_missing', 'array strategy id must not trigger illegal offset errors' );
+$bad_dependencies = $input; $bad_dependencies['nodes'][0]['depends_on'] = array( array( 'another-node' ) );
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $bad_dependencies ), 'mad4b_g6_dependency_schema', 'nested dependency payload must fail closed before de-duplication' );
+$assoc_dependencies = $input; $assoc_dependencies['nodes'][0]['depends_on'] = array( 'arbitrary_key' => 'another-node' );
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $assoc_dependencies ), 'mad4b_g6_dependency_schema', 'associative dependency list is rejected' );
+$duplicate_deps = $input; $duplicate_deps['nodes'][0]['depends_on'] = array( 'b', 'b' );
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $duplicate_deps ), 'mad4b_g6_dependency_schema', 'duplicate dependencies are rejected' );
 $cycleA = $node; $cycleA['depends_on'] = array( 'b' );
 $cycleB = $node; $cycleB['node_id'] = 'b'; $cycleB['depends_on'] = array( 'a' );
 $cycle = $input; $cycle['nodes'] = array( $cycleA, $cycleB );
@@ -80,6 +88,10 @@ $poisoned = $input; $poisoned['nodes'][0]['arguments']['approval_override'] = tr
 g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $poisoned ), 'mad4b_g6_untrusted_control_key', 'generated control keys cannot create authority' );
 $publish = $input; $publish['nodes'][0]['arguments']['hidden_publish'] = true;
 g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $publish ), 'mad4b_g6_hidden_publication', 'hidden publication effect denied' );
+$known_job = $GLOBALS['g6_test_job'];
+unset( $GLOBALS['g6_test_job']['site_uuid'] );
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_job_missing', 'missing site identity must fail closed' );
+$GLOBALS['g6_test_job'] = $known_job;
 $GLOBALS['g6_test_job']['state'] = 'FAILED';
 g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_job_recovery_required', 'failed job requires transition through recovery' );
 $GLOBALS['g6_test_job']['state'] = 'WAITING_REVIEW';

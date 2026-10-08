@@ -31,7 +31,7 @@ final class MAD4B_SCP_G6_Durable_DAG_Evidence {
         $job = isset( $job['job'] ) ? $job['job'] : $job;
         if ( ! is_array( $job ) || ! isset( $job['job_revision'], $job['state'], $job['job_id'] )
             || (int) $job['job_revision'] !== (int) $plan['job_revision'] || $job['job_id'] !== $plan['job_id']
-            || 'RUNNING' !== $job['state'] || ( isset( $job['site_uuid'] ) && $job['site_uuid'] !== $current['site_uuid'] ) )
+            || 'RUNNING' !== $job['state'] || ! isset( $job['site_uuid'] ) || $job['site_uuid'] !== $current['site_uuid'] )
             return MAD4B_SCP_G6_Contracts::error( 'dag_job_changed', 'ContentJob is stale, no longer running or belongs to another site.' );
         global $wpdb;
         if ( ! is_object( $wpdb ) || ! method_exists( $wpdb, 'prepare' ) || ! method_exists( $wpdb, 'get_row' ) )

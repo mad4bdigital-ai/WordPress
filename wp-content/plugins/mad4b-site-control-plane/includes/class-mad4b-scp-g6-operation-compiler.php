@@ -65,24 +65,34 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		$job = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => isset( $input['job_id'] ) ? $input['job_id'] : '' ) );
 		if ( is_wp_error( $job ) ) return $job;
 		$job = isset( $job['job'] ) && is_array( $job['job'] ) ? $job['job'] : $job;
+		if ( ! is_array( $job ) || ! isset( $job['job_id'], $job['job_revision'], $job['state'], $job['site_uuid'] )
+			|| ! MAD4B_SCP_G6_Contracts::id( $job['job_id'] ) )
+			return MAD4B_SCP_G6_Contracts::error( 'job_missing', 'ContentJob identity, state, revision and site binding are required.' );
 		$revision = isset( $input['expected_job_revision'] ) ? $input['expected_job_revision'] : null;
 		if ( ! is_int( $revision ) || $revision < 1 || $revision !== (int) $job['job_revision'] ) return MAD4B_SCP_G6_Contracts::error( 'job_revision', 'Exact ContentJob revision changed or is missing.' );
 		if ( in_array( $job['state'], array( 'CANCELLED', 'COMPLETED' ), true ) ) return MAD4B_SCP_G6_Contracts::error( 'job_terminal', 'Terminal jobs cannot receive a mutable operation plan.' );
 		if ( ! self::compilable_job_state( $job['state'] ) ) return MAD4B_SCP_G6_Contracts::error( 'job_recovery_required', 'Blocked or failed ContentJobs require an explicit lifecycle recovery before recompilation.' );
 		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( isset( $input['profile_slug'] ) ? $input['profile_slug'] : '' );
 		if ( is_wp_error( $profile ) ) return $profile;
-		if ( empty( $profile['enabled'] ) || ( isset( $job['target_post_type'] ) && '' !== $job['target_post_type'] && $job['target_post_type'] !== $profile['post_type'] ) ) return MAD4B_SCP_G6_Contracts::error( 'profile_job_mismatch', 'Enabled profile must match the job target post type.' );
+		if ( ! is_array( $profile ) || ! isset( $profile['post_type'] ) || ! MAD4B_SCP_G6_Contracts::id( $profile['post_type'] )
+			|| empty( $profile['enabled'] ) || ( isset( $job['target_post_type'] ) && '' !== $job['target_post_type'] && $job['target_post_type'] !== $profile['post_type'] ) ) return MAD4B_SCP_G6_Contracts::error( 'profile_job_mismatch', 'Enabled profile must match the job target post type.' );
 		$binding = MAD4B_SCP_G6_Contracts::binding( MAD4B_SCP_G6_Contracts::digest( $profile ) ); if ( is_wp_error( $binding ) ) return $binding;
-		if ( isset( $job['site_uuid'] ) && $job['site_uuid'] !== $binding['site_uuid'] ) return MAD4B_SCP_G6_Contracts::error( 'job_site_mismatch', 'ContentJob belongs to another site.' );
+		if ( $job['site_uuid'] !== $binding['site_uuid'] ) return MAD4B_SCP_G6_Contracts::error( 'job_site_mismatch', 'ContentJob belongs to another site.' );
 		$nodes = isset( $input['nodes'] ) ? $input['nodes'] : null;
 		if ( ! is_array( $nodes ) || ! $nodes || count( $nodes ) > self::MAX_NODES || array_keys( $nodes ) !== range( 0, count( $nodes ) - 1 ) ) return MAD4B_SCP_G6_Contracts::error( 'dag_budget', 'DAG requires 1–32 typed nodes.' );
 		$indexed = array(); $edges = 0;
 		foreach ( $nodes as $node ) {
 			if ( ! is_array( $node ) || array_diff( array_keys( $node ), array( 'node_id', 'primitive', 'strategy_id', 'arguments', 'depends_on' ) ) || empty( $node['node_id'] ) || ! MAD4B_SCP_G6_Contracts::id( $node['node_id'] ) || isset( $indexed[ $node['node_id'] ] ) ) return MAD4B_SCP_G6_Contracts::error( 'node_schema', 'Node identities and fields must be typed and unique.' );
-			if ( ! isset( $node['primitive'] ) || ! in_array( $node['primitive'], self::PRIMITIVES, true ) || ! isset( $node['strategy_id'], self::$strategies[ $node['strategy_id'] ] ) || ! in_array( $node['primitive'], self::$strategies[ $node['strategy_id'] ]->primitives(), true ) ) return MAD4B_SCP_G6_Contracts::error( 'strategy_missing', 'Primitive requires a registered reviewed strategy.' );
+			if ( ! isset( $node['primitive'] ) || ! in_array( $node['primitive'], self::PRIMITIVES, true ) || ! isset( $node['strategy_id'] ) || ! MAD4B_SCP_G6_Contracts::id( $node['strategy_id'] ) || ! isset( self::$strategies[ $node['strategy_id'] ] ) || ! in_array( $node['primitive'], self::$strategies[ $node['strategy_id'] ]->primitives(), true ) ) return MAD4B_SCP_G6_Contracts::error( 'strategy_missing', 'Primitive requires a registered reviewed strategy.' );
 			$deps = isset( $node['depends_on'] ) ? $node['depends_on'] : array();
-			if ( ! is_array( $deps ) || count( $deps ) > self::MAX_NODES || array_unique( $deps ) !== $deps ) return MAD4B_SCP_G6_Contracts::error( 'dependency_schema', 'Dependencies must be unique node identities.' );
-			foreach ( $deps as $dep ) if ( ! MAD4B_SCP_G6_Contracts::id( $dep ) || $dep === $node['node_id'] ) return MAD4B_SCP_G6_Contracts::error( 'dag_cycle', 'Self dependencies and malformed dependencies are denied.' );
+			if ( ! is_array( $deps ) || count( $deps ) > self::MAX_NODES || ( $deps && array_keys( $deps ) !== range( 0, count( $deps ) - 1 ) ) )
+				return MAD4B_SCP_G6_Contracts::error( 'dependency_schema', 'Dependencies must be a bounded list of node identities.' );
+			foreach ( $deps as $dep ) {
+				if ( ! MAD4B_SCP_G6_Contracts::id( $dep ) ) return MAD4B_SCP_G6_Contracts::error( 'dependency_schema', 'Every dependency must be a string node identity.' );
+				if ( $dep === $node['node_id'] ) return MAD4B_SCP_G6_Contracts::error( 'dag_cycle', 'Self dependencies are denied.' );
+			}
+			if ( count( array_unique( $deps, SORT_STRING ) ) !== count( $deps ) )
+				return MAD4B_SCP_G6_Contracts::error( 'dependency_schema', 'Duplicate dependencies are denied.' );
 			$edges += count( $deps ); if ( $edges > 128 ) return MAD4B_SCP_G6_Contracts::error( 'dag_budget', 'DAG exceeds the dependency budget.' );
 			if ( ! isset( $node['arguments'] ) || ! is_array( $node['arguments'] ) ) return MAD4B_SCP_G6_Contracts::error( 'node_arguments', 'Exact typed arguments are required; symbolic execution inputs are not admitted.' );
 			sort( $deps, SORT_STRING ); $node['depends_on'] = $deps; $indexed[ $node['node_id'] ] = $node;
