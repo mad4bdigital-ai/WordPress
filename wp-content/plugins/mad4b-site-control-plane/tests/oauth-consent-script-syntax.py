@@ -14,7 +14,7 @@ if source.count(prefix) != 1 or source.count(end_marker) != 1:
     raise SystemExit("CONSENT_SCRIPT_BOUNDARY_INVALID")
 start = source.index(prefix)
 end = source.index(end_marker, start) + len("})();")
-js = "const u='https://example.invalid',nonce='fixture'" + source[start:end]
+js = "(function(){const u='https://example.invalid',nonce='fixture'" + source[start:end]
 required = (
     "developer_execution_blockers", "developer-host-state", "Readback unavailable",
     "lastFingerprint=\"\"", "No displayable grant names", "textContent",
