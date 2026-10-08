@@ -51,6 +51,19 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
             'task_event_sha256' => $record['last_event_sha256'] );
     }
 
+    private static function record_from_metadata( $metadata, $transition = false ) {
+        $fields = array( 'task_id', 'plan_sha256', 'binding_sha256', 'task_revision',
+            'task_state', 'task_event_sha256' );
+        if ( $transition ) $fields[] = 'reason_code';
+        if ( ! is_array( $metadata ) || array_keys( $metadata ) !== $fields ) {
+            return self::deny( 'journal_record_invalid' );
+        }
+        return array( 'contract' => MAD4B_SCP_Assistant_Task_Contract::CONTRACT,
+            'task_id' => $metadata['task_id'], 'plan_sha256' => $metadata['plan_sha256'],
+            'binding_sha256' => $metadata['binding_sha256'], 'revision' => $metadata['task_revision'],
+            'state' => $metadata['task_state'], 'last_event_sha256' => $metadata['task_event_sha256'] );
+    }
+
     private static function consistent_head( array $context, $task_id ) {
         $head = MAD4B_SCP_Operation_Journal::head( $context['operation_id'] );
         if ( is_wp_error( $head ) ) return $head;
@@ -137,24 +150,52 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
             || empty( $trace['chain_valid'] ) || empty( $trace['complete'] )
             || ! isset( $trace['events'] ) || ! is_array( $trace['events'] )
             || count( $trace['events'] ) !== (int) $head['latest_sequence'] ) return self::deny( 'journal_chain_unverified' );
-        $last = end( $trace['events'] );
-        if ( ! is_array( $last ) || ! in_array( $last['event_type'] ?? '', array( 'assistant_task_initialized', 'assistant_task_transition' ), true )
-            || ! hash_equals( (string) $head['latest_event_sha256'], (string) ( $last['event_sha256'] ?? '' ) ) ) return self::deny( 'journal_event_unverified' );
-        $m = $last['safe_metadata'] ?? null;
-        if ( ! is_array( $m ) || array_keys( $m ) !== array( 'task_id', 'plan_sha256', 'binding_sha256',
-            'task_revision', 'task_state', 'task_event_sha256' ) ) return self::deny( 'journal_record_invalid' );
-        $record = array( 'contract' => MAD4B_SCP_Assistant_Task_Contract::CONTRACT,
-            'task_id' => $m['task_id'], 'plan_sha256' => $m['plan_sha256'],
-            'binding_sha256' => $m['binding_sha256'], 'revision' => $m['task_revision'],
-            'state' => $m['task_state'], 'last_event_sha256' => $m['task_event_sha256'] );
+        // Replay every recorded transition using the pure reducer. A valid
+        // hash chain alone cannot prove the intermediate task states were valid.
+        $events = $trace['events'];
+        if ( count( $events ) < 2 ) return self::deny( 'journal_record_invalid' );
+        $initial = $events[1];
+        if ( (int) ( $initial['sequence'] ?? 0 ) !== 2
+            || ( $initial['event_type'] ?? '' ) !== 'assistant_task_initialized'
+            || ( $initial['checkpoint'] ?? '' ) !== 'proposed' ) return self::deny( 'journal_record_invalid' );
+        $record = self::record_from_metadata( $initial['safe_metadata'] ?? null );
+        if ( is_wp_error( $record ) || $record['revision'] !== 1
+            || $record['state'] !== 'proposed'
+            || $record['last_event_sha256'] !== str_repeat( '0', 64 ) ) return self::deny( 'journal_record_invalid' );
         $genesis = self::verify_genesis( $trace, $record );
         if ( is_wp_error( $genesis ) ) return $genesis;
-        if ( ! is_string( $record['task_id'] ) || ! hash_equals( $context['operation_key'], $record['task_id'] )
-            || $record['binding_sha256'] !== $binding || ! is_int( $record['revision'] )
-            || $record['revision'] < 1 || ! is_string( $record['plan_sha256'] )
-            || ! preg_match( '/^[a-f0-9]{64}$/D', $record['plan_sha256'] )
-            || ! is_string( $record['last_event_sha256'] )
-            || ! preg_match( '/^[a-f0-9]{64}$/D', $record['last_event_sha256'] ) ) return self::deny( 'journal_record_invalid' );
+        if ( ! is_string( $record['task_id'] )
+            || ! hash_equals( $context['operation_key'], $record['task_id'] )
+            || $record['binding_sha256'] !== $binding
+            || ! is_string( $record['plan_sha256'] )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $record['plan_sha256'] ) ) return self::deny( 'journal_record_invalid' );
+        for ( $i = 2; $i < count( $events ); $i++ ) {
+            $event = $events[ $i ];
+            if ( (int) ( $event['sequence'] ?? 0 ) !== $i + 1
+                || ( $event['event_type'] ?? '' ) !== 'assistant_task_transition' ) {
+                return self::deny( 'journal_transition_invalid' );
+            }
+            $metadata = $event['safe_metadata'] ?? null;
+            $observed = self::record_from_metadata( $metadata, true );
+            if ( is_wp_error( $observed ) || ! is_string( $metadata['reason_code'] ) ) {
+                return self::deny( 'journal_transition_invalid' );
+            }
+            $expected = MAD4B_SCP_Assistant_Task_Contract::transition( $record, array(
+                'expected_revision' => $record['revision'],
+                'expected_last_event_sha256' => $record['last_event_sha256'],
+                'next_state' => $observed['state'],
+                'reason_code' => $metadata['reason_code'],
+            ) );
+            if ( is_wp_error( $expected )
+                || $expected['candidate_record'] !== $observed
+                || ( $event['checkpoint'] ?? '' ) !== $observed['state'] ) {
+                return self::deny( 'journal_transition_invalid' );
+            }
+            $record = $observed;
+        }
+        $last = end( $events );
+        if ( ! is_array( $last ) || ! hash_equals( (string) $head['latest_event_sha256'],
+            (string) ( $last['event_sha256'] ?? '' ) ) ) return self::deny( 'journal_chain_unverified' );
         return array( 'contract' => self::CONTRACT, 'record' => $record,
             'journal_sequence' => (int) $head['latest_sequence'],
             'journal_head_sha256' => $head['latest_event_sha256'],
@@ -180,7 +221,8 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
             'expected_sequence' => $known['journal_sequence'],
             'expected_event_sha256' => $known['journal_head_sha256'],
             'checkpoint' => $next['state'], 'lifecycle_state' => 'planned',
-            'metadata' => self::metadata( $next ) ) );
+            'metadata' => array_merge( self::metadata( $next ), array(
+                'reason_code' => $request['reason_code'] ) ) ) );
         if ( is_wp_error( $result ) ) return $result;
         $after = self::read( $context );
         if ( is_wp_error( $after ) || $after['record'] !== $next ) return self::deny( 'readback_failed' );
