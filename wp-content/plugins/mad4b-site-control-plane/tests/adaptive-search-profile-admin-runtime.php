@@ -89,6 +89,38 @@ profile_case( 'profile_editor_preserves_policy_and_fences_stale_or_renamed_forms
 	$bad = $raw; $bad['markets'][0]['country'] = array( 'GB' ); $edit['profile_json'] = json_encode( $bad ); profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $edit ) ), 'array country cannot reach the page renderer' );
 } );
 
+profile_case( 'guided_existing_profile_edit_preserves_advanced_state_and_location_safety', static function () {
+	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form( 'guided-existing' ) );
+	profile_check( ! is_wp_error( $saved ), 'created fixture' );
+	$p = $saved['profile'];
+	$raw = array_intersect_key( $p, array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) );
+	$raw['markets'][] = array( 'id' => 'second-market', 'country' => 'DE' );
+	$raw['refresh_policy']['baseline_seconds'] = 86400;
+	$advanced = MAD4B_SCP_Search_Profile_Admin::save( array( 'operation' => 'edit', 'profile_id' => $p['profile_id'], 'expected_revision' => '1', 'profile_json' => json_encode( $raw ) ) );
+	profile_check( ! is_wp_error( $advanced ) && 2 === $advanced['profile']['revision'], 'advanced policy fixture' );
+	ob_start(); MAD4B_SCP_Search_Profile_Admin::render( $p['profile_id'] ); $html = ob_get_clean();
+	foreach ( array( 'Edit audience settings (guided)', 'name="audience_country"', 'name="audience_languages"', 'name="audience_devices"', 'name="objective"', 'name="operation" value="edit_guided"' ) as $text ) profile_check( false !== strpos( $html, $text ), 'guided edit UI: ' . $text );
+	$form = array( 'operation' => 'edit_guided', 'profile_id' => $p['profile_id'], 'expected_revision' => '2', 'audience_country' => 'US', 'audience_languages' => 'en, es', 'audience_devices' => 'mobile, desktop', 'objective' => 'US tourism tours' );
+	$edited = MAD4B_SCP_Search_Profile_Admin::save( $form );
+	profile_check( ! is_wp_error( $edited ) && 3 === $edited['profile']['revision'], 'guided edit applied and verified' );
+	$q = $edited['profile'];
+	profile_check( 'US' === $q['markets'][0]['country'] && 'DE' === $q['markets'][1]['country'], 'other market preserved' );
+	profile_check( array( 'en', 'es' ) === $q['language_policy']['desired'] && array( 'mobile', 'desktop' ) === $q['provider_policy']['devices'], 'audience settings saved' );
+	profile_check( 86400 === $q['refresh_policy']['baseline_seconds'] && ! $q['enabled'] && $q['provider_policy']['freeze_spend'] && array() === $q['budget_policy']['nodes'], 'advanced configuration and frozen state preserved' );
+	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $form ) ), 'stale revision denied' );
+	$form['expected_revision'] = '3';
+	$bad = $form; $bad['audience_devices'] = 'smartwatch'; profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'unknown device denied' );
+	$bad = $form; $bad['audience_languages'] = '<script>'; profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'invalid language denied' );
+	$bad = $form; $bad['audience_country'] = ''; profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'missing country denied' );
+	$bad = $form; $bad['objective'] = ''; profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'empty objective denied' );
+	$map = array_intersect_key( $q, array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) );
+	$map['markets'][0]['provider_locations'] = array( 'alpha' => array( 'id' => 'us-id', 'precision' => 'country' ) );
+	$mapping = MAD4B_SCP_Search_Profile_Admin::save( array( 'operation' => 'edit', 'profile_id' => $p['profile_id'], 'expected_revision' => '3', 'profile_json' => json_encode( $map ) ) );
+	profile_check( ! is_wp_error( $mapping ), 'provider mapping saved' );
+	$form['expected_revision'] = '4'; $form['audience_country'] = 'GB';
+	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $form ) ), 'country changes cannot reuse an existing provider mapping' );
+	profile_check( 0 === count( $GLOBALS['fixture_http'] ), 'guided edit never calls a paid provider' );
+} );
 profile_case( 'profile_runtime_state_controls_are_explicit_revision_fenced_and_read_back', static function () {
 	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form() ); $id = $saved['profile']['profile_id'];
 	ob_start(); MAD4B_SCP_Search_Profile_Admin::render( $id ); $html = ob_get_clean();
