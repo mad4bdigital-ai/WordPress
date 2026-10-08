@@ -143,8 +143,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "bf7bf7a08f475b612cf97d6dcff208767afb2ec593dbde692364eb7a3724bc55",
-      "bytes": 40849
+      "sha256": "667c4f28680e50e03b895a31272e3ab6edf8468d9f873adf5e71a295a500f2af",
+      "bytes": 40940
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php",
