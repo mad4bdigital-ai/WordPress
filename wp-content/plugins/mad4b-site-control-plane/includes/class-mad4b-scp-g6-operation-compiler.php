@@ -24,7 +24,8 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		$id = $strategy->strategy_id();
 		if ( ! MAD4B_SCP_G6_Contracts::id( $id ) || count( self::$strategies ) >= 32 || isset( self::$strategies[ $id ] ) ) return MAD4B_SCP_G6_Contracts::error( 'strategy_collision', 'Strategy identity is invalid or already registered.' );
 		$primitives = $strategy->primitives();
-		if ( ! is_array( $primitives ) || ! $primitives || array_diff( $primitives, self::PRIMITIVES ) ) return MAD4B_SCP_G6_Contracts::error( 'strategy_primitive', 'Strategy declares an unsupported primitive.' );
+		if ( ! is_array( $primitives ) || ! $primitives || count( $primitives ) > count( self::PRIMITIVES ) || array_keys( $primitives ) !== range( 0, count( $primitives ) - 1 ) ) return MAD4B_SCP_G6_Contracts::error( 'strategy_primitive', 'Strategy declares an unsupported primitive list.' );
+		foreach ( $primitives as $primitive ) if ( ! is_string( $primitive ) || ! in_array( $primitive, self::PRIMITIVES, true ) ) return MAD4B_SCP_G6_Contracts::error( 'strategy_primitive', 'Strategy declares an unsupported primitive.' );
 		self::$strategies[ $id ] = $strategy;
 		return true;
 	}
@@ -221,6 +222,7 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		if ( ! is_array( $step ) ) return MAD4B_SCP_G6_Contracts::error( 'step_contract', 'Strategy returned no typed operation plan.' );
 		$budget = MAD4B_SCP_G6_Contracts::data( $step ); if ( is_wp_error( $budget ) ) return $budget;
 		foreach ( array( 'provider_id', 'capability_id', 'ability_name', 'typed_input', 'schema_sha256', 'provider_binding_sha256', 'native_plan_sha256', 'object_pins', 'permissions', 'effects', 'compensation' ) as $field ) if ( ! isset( $step[ $field ] ) ) return MAD4B_SCP_G6_Contracts::error( 'step_contract', 'Strategy omitted exact planning evidence.' );
+		if ( ! MAD4B_SCP_G6_Contracts::id( $step['provider_id'] ) || ! MAD4B_SCP_G6_Contracts::id( $step['capability_id'] ) || ! is_string( $step['ability_name'] ) || strlen( $step['ability_name'] ) > 191 || 1 !== preg_match( '/^[a-z0-9][a-z0-9_.:-]*\/[a-z0-9][a-z0-9_.:-]*$/D', $step['ability_name'] ) ) return MAD4B_SCP_G6_Contracts::error( 'step_identity', 'Strategy provider, capability and namespaced ability identities must be exact strings.' );
 		foreach ( array( 'schema_sha256', 'provider_binding_sha256', 'native_plan_sha256' ) as $field ) if ( ! MAD4B_SCP_G6_Contracts::sha( $step[ $field ] ) ) return MAD4B_SCP_G6_Contracts::error( 'step_pins', 'Exact schema/provider/native plan pins are required.' );
 		if ( ! is_array( $step['typed_input'] ) || ! is_array( $step['object_pins'] ) || ! $step['object_pins'] || ! is_array( $step['permissions'] ) || ! $step['permissions'] || ! is_array( $step['effects'] ) || ! $step['effects'] ) return MAD4B_SCP_G6_Contracts::error( 'step_scope', 'Object pins, permissions and effects cannot be implicit.' );
 		if ( ! function_exists( 'wp_get_ability' ) || ! is_object( wp_get_ability( $step['ability_name'] ) ) ) return MAD4B_SCP_G6_Contracts::error( 'provider_removed', 'Planned existing provider ability is not registered.' );
@@ -293,7 +295,8 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		$input = array_merge( $step['typed_input'], $execution_evidence );
 		$input_sha = MAD4B_SCP_G6_Contracts::digest( $step['typed_input'] );
 		$scope = MAD4B_SCP_Durable_Execution::scope_key( $plan['binding']['site_uuid'], $step['capability_id'], 'compiled_step', $plan['job_id'] . ':' . $node_id );
-		$claim = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope, $plan['plan_sha256'] . ':' . $node_id, $input_sha ); if ( is_wp_error( $claim ) ) return $claim;
+		$key = MAD4B_SCP_G6_Contracts::compiled_step_key( $plan['plan_sha256'], $node_id ); if ( is_wp_error( $key ) ) return $key;
+		$claim = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope, $key, $input_sha ); if ( is_wp_error( $claim ) ) return $claim;
 		// Claim acquisition can block or race a job cancellation/revision change.
 		// A pending claim is retained on denial for durable reconciliation.
 		$valid = self::revalidate( array( 'plan' => $plan ) ); if ( is_wp_error( $valid ) ) return $valid;
@@ -329,8 +332,12 @@ final class MAD4B_SCP_G6_Native_Content_Strategy implements MAD4B_SCP_G6_Operati
 		if ( 'taxonomy' === $primitive ) $allowed[] = 'taxonomies';
 		if ( 'media' === $primitive ) $allowed = array_merge( $allowed, array( 'featured_media_id', 'meta', 'expected_remote_media_state_sha256', 'expected_media_manifest_sha256', 'expected_media_manifest_item_count', 'expected_media_recovery_receipt_sha256', 'expected_media_binding_state_sha256' ) );
 		if ( 'publication' === $primitive ) $allowed[] = 'post_status';
-		if ( array_diff( array_keys( $arguments ), $allowed ) || empty( $arguments['post_id'] ) || ! is_int( $arguments['post_id'] ) ) return MAD4B_SCP_G6_Contracts::error( 'native_arguments', 'Native primitive requires exact bounded fields and an existing post ID.' );
-		if ( 'media' === $primitive && isset( $arguments['meta'] ) && array_diff( array_keys( $arguments['meta'] ), array_keys( isset( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array() ) ) ) return MAD4B_SCP_G6_Contracts::error( 'media_fields', 'Media primitive only binds configured media fields.' );
+		if ( array_diff( array_keys( $arguments ), $allowed ) || ! isset( $arguments['post_id'] ) || ! is_int( $arguments['post_id'] ) || $arguments['post_id'] <= 0 ) return MAD4B_SCP_G6_Contracts::error( 'native_arguments', 'Native primitive requires exact bounded fields and a positive existing post ID.' );
+		foreach ( array( 'meta', 'taxonomies' ) as $field ) if ( array_key_exists( $field, $arguments ) && ! is_array( $arguments[ $field ] ) ) return MAD4B_SCP_G6_Contracts::error( 'native_fields', 'Native metadata and taxonomy fields must be typed maps.' );
+		if ( 'media' === $primitive && isset( $arguments['meta'] ) ) {
+			$media_fields = isset( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
+			if ( ! is_array( $media_fields ) || array_diff( array_keys( $arguments['meta'] ), array_keys( $media_fields ) ) ) return MAD4B_SCP_G6_Contracts::error( 'media_fields', 'Media primitive only binds configured media fields.' );
+		}
 		$object = get_post( $arguments['post_id'] );
 		if ( ! is_object( $object ) || $object->post_type !== $profile['post_type'] || ! current_user_can( 'edit_post', $object->ID ) ) return MAD4B_SCP_G6_Contracts::error( 'native_object', 'Exact post is not editable under this profile.' );
 		if ( 'publication' !== $primitive && in_array( $object->post_status, array( 'publish', 'future', 'private' ), true ) ) return MAD4B_SCP_G6_Contracts::error( 'live_target_requires_publication', 'Compiled content changes require a draft target; live publication needs a separate exact publication plan.' );

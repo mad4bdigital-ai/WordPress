@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 272,
+  "changed_file_count": 276,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -42,6 +42,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/contracts/runtime.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/plan.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/source-adaptive-operations-proposal.ar.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/source-comparison-report.ar.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/source-index.json",
@@ -49,6 +50,8 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/tasks.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_delivery_progress.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/traceability.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
@@ -371,11 +374,12 @@
     {
       "id": "g8-integrated-competitive-experience-delivery",
       "semantic_unit": "G8 adaptive runtime resilience, SLO, provenance and migration child PR integration into Hub #258",
-      "revert_boundary": "Restore only the G8-exclusive 17 paths as a bounded group, preserving shared Hub and already integrated boot/CI/code contracts",
+      "revert_boundary": "Restore the G8-exclusive source, fingerprint and fixture paths as a bounded group, preserving shared Hub and already integrated boot/CI/code contracts",
       "certification": "exact_head",
       "path_globs": [
         ".github/workflows/feature-007-g8-contract.yml",
         ".github/workflows/feature-007-g8-database-cas.yml",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-automation-slo.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-capability-convergence.php",
@@ -424,6 +428,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "eb914dabce210ce3f7d27641c4d04ed6b41c80f36391d5e7b91219e43a28e463",
+  "changed_paths_sha256": "01bcf60bea9f35937172512078a309a78d4ceded7c389f1af8cafc0f490da3c4",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

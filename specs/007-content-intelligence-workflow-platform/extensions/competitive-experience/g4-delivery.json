@@ -68,7 +68,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "05aed3ca045d06b37bb00b73eae284cda450089d710a36a7320c53eaa8e02a04"
+      "sha256": "307f4e5a9dfe5696f5155bb024ce18f6b13068ec3603ba271b0d23977a1fc28f"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
@@ -184,19 +184,19 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
-      "sha256": "052a8cebd27248ec050bb913f87efa9659cb0e8db5b86b40a461fbe938312ea7"
+      "sha256": "8eadb0e8711c3ee2f13fabdc1c8924c9ac7075bf327ea63200c9e2febdcf184f"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "ea2f166afa2c8bd245b723b459ec3f04b0910598017fc2103009ad39cb0b4474"
+      "sha256": "f33165bdbbc0683ddb12bc3a68f39f7891d7719b99a4b8c16831c258e68a7a09"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "4a974a9f1d894b4c4bf9b40445efcca58d5fb36ddc8828b7dcc6bb3af9899285"
+      "sha256": "0f5ffa7c82ef8712fb9d54c75e3730e93a7c38f38d7d8fc726e0630eaf2d8142"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "272b1a3d626122c56ed2fd6b9a5b29651a391eb6fb6cf1d6a53616eab6e311d2"
+      "sha256": "51afa1df8e54b8144d23c041ee4740fcdd7468c827c6b7b614868ad002df0139"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
@@ -248,6 +248,6 @@
     "Native guarded apply, disposable Staging canaries, stock/order/hook concurrency, independent financial/external effects, rendered/frontend readback and exact rollback/uncertainty acceptance.",
     "Real PII read/mask/consent/retention/export/delete and optional-provider readiness; actual Divi/Kadence/FSE/operational/WPML/ACF/BuddyPress/Events Calendar acceptance.",
     "Independent operator/browser/RTL/persisted readback through the established process; no direct live WordPress connection from this window.",
-    "G5–G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
+    "G5\u2013G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
   ]
 }

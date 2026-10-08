@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reproducible Competitive Experience evidence snapshot, history and packaged projection."""
 from __future__ import annotations
-import base64, hashlib, json, re, tempfile
+import argparse, base64, hashlib, json, re, tempfile
 from pathlib import Path
 from copy import deepcopy
 
@@ -370,7 +370,8 @@ def verify_history(snapshot, summary, history_path: Path = HISTORY):
         raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_KNOWN_GOOD_INVALID")
     return history
 
-def verify(root: Path = ROOT, summary_path: Path = SUMMARY, history_path: Path = HISTORY):
+def verify(root: Path = ROOT, summary_path: Path = SUMMARY, history_path: Path = HISTORY,
+           history_resource_path: Path = HISTORY_RESOURCE):
     snapshot = build_snapshot(root)
     expected = operator_summary(snapshot)
     expected_php = render_php_summary(expected)
@@ -379,7 +380,7 @@ def verify(root: Path = ROOT, summary_path: Path = SUMMARY, history_path: Path =
         raise SystemExit("COMPETITIVE_EVIDENCE_SUMMARY_DRIFT")
     history = verify_history(snapshot, expected, history_path)
     expected_history_php = render_php_history(history)
-    current_history_php = Path(HISTORY_RESOURCE).read_text(encoding="utf-8")
+    current_history_php = Path(history_resource_path).read_text(encoding="utf-8")
     if current_history_php != expected_history_php:
         raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_RESOURCE_DRIFT")
     print("mad4b.competitive-evidence-snapshot.v1: PASS")
@@ -389,5 +390,40 @@ def verify(root: Path = ROOT, summary_path: Path = SUMMARY, history_path: Path =
     )
     return snapshot
 
+def refresh_generated(root: Path = ROOT, summary_path: Path = SUMMARY, history_path: Path = HISTORY,
+                      history_resource_path: Path = HISTORY_RESOURCE):
+    """Explicit repository generation: preserve old chain, alerts and acknowledgements."""
+    history = load(history_path)
+    entries = history.get("entries")
+    if not isinstance(entries, list) or not entries:
+        raise SystemExit("COMPETITIVE_EVIDENCE_HISTORY_EMPTY")
+    # Validate the prior journal independently of current source progress. Never
+    # reset a damaged chain to make a new generated projection appear current.
+    previous = entries[-1]
+    verify_history({"generation_sha256": previous.get("generation_sha256", "")},
+                   {"summary_sha256": previous.get("summary_sha256", "")}, history_path)
+    snapshot = build_snapshot(root)
+    summary = operator_summary(snapshot)
+    updated = next_history(history, snapshot, summary)
+    if (updated["entries"][:len(entries)] != entries
+            or updated["alerts"][:len(history.get("alerts", []))] != history.get("alerts", [])
+            or updated["acknowledgements"] != history.get("acknowledgements", [])):
+        raise SystemExit("COMPETITIVE_EVIDENCE_EXISTING_JOURNAL_CHANGED")
+    raw_history = json.dumps(updated, indent=2) + "\n"
+    with tempfile.TemporaryDirectory() as temporary:
+        candidate = Path(temporary) / "competitive-evidence-history.json"
+        candidate.write_text(raw_history, encoding="utf-8")
+        verify_history(snapshot, summary, candidate)
+    Path(summary_path).write_text(render_php_summary(summary), encoding="utf-8")
+    Path(history_path).write_text(raw_history, encoding="utf-8")
+    Path(history_resource_path).write_text(render_php_history(updated), encoding="utf-8")
+    return verify(root, summary_path, history_path, history_resource_path)
+
 if __name__ == "__main__":
-    verify()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--refresh", action="store_true",
+                        help="Refresh inert projections and append valid source progress; never acknowledge drift.")
+    if parser.parse_args().refresh:
+        refresh_generated()
+    else:
+        verify()

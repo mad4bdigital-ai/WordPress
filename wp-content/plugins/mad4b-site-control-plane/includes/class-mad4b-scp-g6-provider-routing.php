@@ -55,6 +55,20 @@ final class MAD4B_SCP_G6_Provider_Routing {
         $options = array();
         foreach ( self::$adapters as $id => $adapter ) {
             $d = $adapter->descriptor();
+            $bounded = MAD4B_SCP_G6_Contracts::data( $d );
+            if ( ! is_array( $d ) || is_wp_error( $bounded ) ) {
+                // A deactivated or broken reviewed adapter may return an error
+                // object instead of metadata. Do not index or encode that object.
+                $options[] = array(
+                    'provider_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $id ),
+                    'descriptor_sha256' => null,
+                    'blockers' => array( 'provider_descriptor_invalid' ),
+                    'review_eligible' => false,
+                    'execution_admitted' => false,
+                    'cost_or_rights_inferred' => false,
+                );
+                continue;
+            }
             $reasons = array();
             // The exact registered descriptor must not change during review.
             if ( ! isset( self::$descriptor_heads[ $id ] )

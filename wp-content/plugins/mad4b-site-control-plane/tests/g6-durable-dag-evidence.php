@@ -20,6 +20,7 @@ class G6_Receipt_Test_DB {
     public function prepare( $sql, ...$args ) { return $args; }
     public function get_row( $query, $format ) {
         $scope = $query[0]; $key = $query[1]; $row = $GLOBALS['test_row'];
+        $GLOBALS['test_read_key'] = $key;
         if ( ! $row ) return null;
         $row['scope_key'] = $scope; $row['idempotency_key'] = $key;
         return $row;
@@ -52,6 +53,14 @@ denial( MAD4B_SCP_G6_Durable_DAG_Evidence::inspect( $plan, 'root' ), 'mad4b_g6_d
 $ok = MAD4B_SCP_G6_Durable_DAG_Evidence::inspect( $plan, 'child' );
 check( ! is_wp_error( $ok ) && $ok['durable_records_integrity_verified'], 'durable record readback verified' );
 check( ! $ok['provider_postconditions_verified'] && ! $ok['dependency_dispatch_admitted'], 'durable record alone never authorizes dependent dispatch' );
+check( $plan['plan_sha256'] . ':root' === $GLOBALS['test_read_key'], 'existing short durable readback key is preserved' );
+$long_dependency = str_repeat( 'n', 191 ); $long_plan = $plan;
+$long_plan['nodes'][ $long_dependency ] = $long_plan['nodes']['root']; unset( $long_plan['nodes']['root'] );
+$long_plan['nodes']['child']['depends_on'] = array( $long_dependency ); unset( $long_plan['plan_sha256'] );
+$long_plan['plan_sha256'] = MAD4B_SCP_G6_Contracts::digest( $long_plan );
+$long_evidence = MAD4B_SCP_G6_Durable_DAG_Evidence::inspect( $long_plan, 'child' );
+check( ! is_wp_error( $long_evidence ) && $long_evidence['durable_records_integrity_verified'] && ! $long_evidence['dependency_dispatch_admitted'], 'full-length dependency identity can be inspected without admitting execution' );
+check( strlen( $GLOBALS['test_read_key'] ) <= 191 && MAD4B_SCP_G6_Contracts::compiled_step_key( $long_plan['plan_sha256'], $long_dependency ) === $GLOBALS['test_read_key'], 'dependency readback shares the bounded dispatch key' );
 $old = $GLOBALS['test_row'];
 $GLOBALS['test_row']['result_sha256'] = str_repeat( 'f', 64 );
 denial( MAD4B_SCP_G6_Durable_DAG_Evidence::inspect( $plan, 'child' ), 'mad4b_g6_dag_durable_completion_missing' );

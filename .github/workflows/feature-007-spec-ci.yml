@@ -233,11 +233,18 @@ jobs:
       - name: Verify reconciled task ledger
         run: python specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
 
+      - name: Verify non-authorizing cumulative delivery fingerprints
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py
+
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
 
       - name: Reject unsafe competitor evidence and false extension completion
-        run: python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_delivery_progress.py
 
       - name: Verify Competitive Experience G1 evidence and classifier contracts
         run: |

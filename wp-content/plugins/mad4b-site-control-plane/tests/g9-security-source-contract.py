@@ -82,7 +82,12 @@ expect(context, (
     "'current_grant_snapshot_ready'",
     "'candidate_binding_match'",
     "self::is_hash( $authority['grant_rows_fingerprint']",
+    "self::assert_observation_identity_current( $binding, $generation, $restore, $identity )",
+    "observation_identity_changed",
+    "MAD4B_SCP_Restore_Epoch::status( false, true )",
 ), "passive-grant-readiness")
+assert context.index("self::$reader->read_local( $binding )") < context.index("::current_execution_readiness()") < context.index("$current = self::assert_observation_identity_current("), "STALE_PRE_OBSERVATION_AUTHORITY"
+assert context.count("::current_execution_readiness()") == 1, "DUPLICATE_OBSERVATION_GRANT_READ"
 expect(anchor, (
     "mirror_missing",
     "mirror_anchor_mismatch",
@@ -130,6 +135,7 @@ expect(read, (
     "$provider_verified",
     "$effects_verified",
     "$health_verified",
+    "false !== ( $provider['revoked'] ?? null )",
     "if ( ! self::$reader_pinned",
     "self::$reader_pinned = true",
     "mad4b/g9-site-observation",
@@ -156,6 +162,7 @@ expect(closure, (
     "'anchor_observation_valid'",
     "'anchor_error_code'",
     "'certified_provider_unready'",
+    "false !== ( $provider['revoked'] ?? null )",
     "'external_effect_unreconciled'",
     "'current_health_window_unverified'",
     "'blind_retry_allowed' => false",

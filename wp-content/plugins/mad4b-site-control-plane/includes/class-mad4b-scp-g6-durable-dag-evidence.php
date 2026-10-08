@@ -76,8 +76,8 @@ final class MAD4B_SCP_G6_Durable_DAG_Evidence {
                 $current['site_uuid'], $dep['capability_id'], 'compiled_step', $plan['job_id'] . ':' . $dep_id
             );
             if ( is_wp_error( $scope ) ) return $scope;
-            $key = $plan['plan_sha256'] . ':' . $dep_id;
-            if ( strlen( $key ) > 191 ) return MAD4B_SCP_G6_Contracts::error( 'dag_idempotency_key', 'Dependency identity exceeds the durable key bound.' );
+            $key = MAD4B_SCP_G6_Contracts::compiled_step_key( $plan['plan_sha256'], $dep_id );
+            if ( is_wp_error( $key ) ) return $key;
             $request_sha256 = MAD4B_SCP_G6_Contracts::digest( $dep['typed_input'] );
             $wpdb->last_error = '';
             $row = $wpdb->get_row( $wpdb->prepare(

@@ -15,7 +15,8 @@ function wp_get_environment_type() { return 'staging'; }
 class G6_Test_Ability {
 	public function execute( $input ) { ++$GLOBALS['g6_test_dispatches']; return array( 'fixture_completed' => true ); }
 }
-function wp_get_ability( $name ) { return 'mad4b/test-native-content-apply' === $name ? new G6_Test_Ability() : null; }
+function wp_get_ability( string $name ) { return 'mad4b/test-native-content-apply' === $name ? new G6_Test_Ability() : null; }
+function get_post( $id ) { ++$GLOBALS['g6_test_post_reads']; return (object) array( 'ID' => $id, 'post_type' => 'tour', 'post_status' => 'draft' ); }
 class MAD4B_SCP_Site_Profile { public static function site_uuid() { return '12345678-1234-1234-1234-123456789abc'; } }
 class MAD4B_SCP_Runtime_Generation_Fence {
 	public static function capture() { return array( 'generation_sha256' => str_repeat( isset( $GLOBALS['g6_test_generation_char'] ) ? $GLOBALS['g6_test_generation_char'] : '1', 64 ), 'material' => array( 'runtime_sha256' => str_repeat( '2', 64 ) ) ); }
@@ -28,6 +29,9 @@ class MAD4B_SCP_Content_Experience_Profiles {
 	public static function profile( $slug ) {
 		return 'test-tour' === $slug ? array( 'slug' => 'test-tour', 'enabled' => $GLOBALS['g6_test_profile_enabled'], 'post_type' => 'tour' ) : new WP_Error( 'unknown_profile' );
 	}
+}
+class MAD4B_SCP_Content_Experience_Runtime {
+	public static function operation_plan( $slug, $operation, $input ) { ++$GLOBALS['g6_test_native_plans']; return new WP_Error( 'fixture_native_plan_stop' ); }
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g6-operation-compiler.php';
 
@@ -42,7 +46,7 @@ final class G6_Test_Strategy implements MAD4B_SCP_G6_Operation_Strategy {
 	public function primitives() { return array( 'content', 'publication' ); }
 	public function prepare( $primitive, array $arguments, array $context ) {
 		if ( ! empty( $GLOBALS['g6_test_prepare_mutation'] ) ) g6_test_interleave( $GLOBALS['g6_test_prepare_mutation'] );
-		return array(
+		$step = array(
 			'provider_id' => 'test-reviewed-provider',
 			'capability_id' => 'content_experience.update',
 			'ability_name' => 'mad4b/test-native-content-apply',
@@ -57,7 +61,16 @@ final class G6_Test_Strategy implements MAD4B_SCP_G6_Operation_Strategy {
 			'before' => array( 'revision' => 1 ),
 			'after' => array( 'private_text' => $arguments['content'] ),
 		);
+		if ( isset( $GLOBALS['g6_test_bad_step_identity'] ) ) $step[ $GLOBALS['g6_test_bad_step_identity'] ] = array( 'untyped-identity' );
+		return $step;
 	}
+}
+final class G6_Bad_Primitive_Strategy implements MAD4B_SCP_G6_Operation_Strategy {
+	private $list;
+	public function __construct( $list ) { $this->list = $list; }
+	public function strategy_id() { return 'test-invalid-primitives'; }
+	public function primitives() { return $this->list; }
+	public function prepare( $primitive, array $arguments, array $context ) { return new WP_Error( 'fixture_not_called' ); }
 }
 
 // Review-only disposable core fakes. Mutations deliberately interleave after
@@ -80,6 +93,8 @@ class MAD4B_SCP_Execution_Fence {
 class MAD4B_SCP_Durable_Execution {
 	public static function scope_key( $site, $capability, $operation, $target ) { return hash( 'sha256', $site . $capability . $operation . $target ); }
 	public static function begin_idempotency( $scope, $key, $sha ) {
+		$GLOBALS['g6_test_claim_key'] = $key;
+		if ( strlen( $key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid' );
 		if ( ! empty( $GLOBALS['g6_test_claim_mutation'] ) ) g6_test_interleave( $GLOBALS['g6_test_claim_mutation'] );
 		return array( 'claimed' => empty( $GLOBALS['g6_test_completed_claim'] ), 'result' => array( 'prior_fixture_result' => true ) );
 	}
@@ -92,6 +107,23 @@ $GLOBALS['g6_test_job'] = array( 'job_id' => 'test-job-17', 'job_revision' => 3,
 g6_test_assert( true === MAD4B_SCP_G6_Operation_Compiler::register_strategy( new G6_Test_Strategy() ), 'server-reviewed strategy registered' );
 $node = array( 'node_id' => 'a', 'primitive' => 'content', 'strategy_id' => 'test-reviewed-native', 'arguments' => array( 'content' => 'PRIVATE-CONTENT-556677' ), 'depends_on' => array() );
 $input = array( 'job_id' => 'test-job-17', 'expected_job_revision' => 3, 'profile_slug' => 'test-tour', 'nodes' => array( $node ), 'reason' => 'review' );
+foreach ( array( array( array( 'content' ) ), array( 'named' => 'content' ), array( 17 ) ) as $bad_primitives )
+	g6_test_error( MAD4B_SCP_G6_Operation_Compiler::register_strategy( new G6_Bad_Primitive_Strategy( $bad_primitives ) ), 'mad4b_g6_strategy_primitive', 'primitive declarations must be a typed list before comparisons' );
+foreach ( array( 'provider_id', 'capability_id', 'ability_name' ) as $identity ) {
+	$GLOBALS['g6_test_bad_step_identity'] = $identity;
+	g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_step_identity', 'untyped ' . $identity . ' must fail before native string APIs' );
+}
+unset( $GLOBALS['g6_test_bad_step_identity'] );
+$native_strategy = new MAD4B_SCP_G6_Native_Content_Strategy();
+$native_context = array( 'profile' => array( 'slug' => 'test-tour', 'revision' => 1, 'post_type' => 'tour', 'media_meta_fields' => array( 'hero_image' => array() ) ) );
+$GLOBALS['g6_test_post_reads'] = 0; $GLOBALS['g6_test_native_plans'] = 0;
+foreach ( array( 'not-a-map', 17, null ) as $bad_meta ) {
+	g6_test_error( $native_strategy->prepare( 'media', array( 'post_id' => 17, 'meta' => $bad_meta ), $native_context ), 'mad4b_g6_native_fields', 'native media metadata must fail as a map before array_keys or planner entry' );
+}
+g6_test_error( $native_strategy->prepare( 'taxonomy', array( 'post_id' => 17, 'taxonomies' => 'not-a-map' ), $native_context ), 'mad4b_g6_native_fields', 'taxonomy data cannot be coerced into a map' );
+g6_test_error( $native_strategy->prepare( 'content', array( 'post_id' => -17 ), $native_context ), 'mad4b_g6_native_arguments', 'native post identity must be positive' );
+g6_test_assert( 0 === $GLOBALS['g6_test_post_reads'] && 0 === $GLOBALS['g6_test_native_plans'], 'malformed native inputs perform no post read or planner call' );
+g6_test_error( $native_strategy->prepare( 'media', array( 'post_id' => 17, 'meta' => array( 'hero_image' => 91 ) ), $native_context ), 'fixture_native_plan_stop', 'well-typed native input still reaches the existing planner boundary' );
 $plan = MAD4B_SCP_G6_Operation_Compiler::compile( $input );
 g6_test_assert( ! is_wp_error( $plan ) && 1 === count( $plan['nodes'] ), 'typed plan compiles only after explicit strategy admission' );
 $view = MAD4B_SCP_G6_Operation_Compiler::review_projection( $plan );
@@ -157,6 +189,13 @@ g6_test_assert( ! is_wp_error( $running_plan ), 'running fixture plan compiles' 
 $GLOBALS['g6_test_frame'] = true; $GLOBALS['g6_test_dispatches'] = 0; $GLOBALS['g6_test_completions'] = 0;
 $executed = MAD4B_SCP_G6_Operation_Compiler::dispatch_step( $running_plan, 'a' );
 g6_test_assert( ! is_wp_error( $executed ) && 1 === $GLOBALS['g6_test_dispatches'] && 1 === $GLOBALS['g6_test_completions'], 'unchanged root fixture enters only its typed child and records completion' );
+g6_test_assert( $running_plan['plan_sha256'] . ':a' === $GLOBALS['g6_test_claim_key'], 'short persisted compiled-step keys remain unchanged' );
+$long_node_id = str_repeat( 'n', 191 ); $long_input = $input; $long_input['nodes'][0]['node_id'] = $long_node_id;
+$long_plan = MAD4B_SCP_G6_Operation_Compiler::compile( $long_input );
+g6_test_assert( ! is_wp_error( $long_plan ), 'full-length declared node identity still compiles' );
+$long_result = MAD4B_SCP_G6_Operation_Compiler::dispatch_step( $long_plan, $long_node_id );
+g6_test_assert( ! is_wp_error( $long_result ) && strlen( $GLOBALS['g6_test_claim_key'] ) <= 191, 'full-length node dispatch fits the real durable key bound' );
+g6_test_assert( MAD4B_SCP_G6_Contracts::compiled_step_key( $long_plan['plan_sha256'], $long_node_id ) === $GLOBALS['g6_test_claim_key'], 'dispatch uses the shared readback key contract' );
 foreach ( array( 'cancel', 'revision', 'generation', 'profile' ) as $interleave ) {
 	$GLOBALS['g6_test_dispatches'] = 0; $GLOBALS['g6_test_completions'] = 0;
 	$GLOBALS['g6_test_claim_mutation'] = $interleave;

@@ -22,6 +22,11 @@ function g6_policy_error( $v, $code ) { g6_policy_assert( is_wp_error( $v ) && $
 
 final class G6_Reviewed_Model_Fixture implements MAD4B_SCP_G6_Model_Routing_Adapter {
     public function descriptor() {
+        if ( isset( $GLOBALS['g6_descriptor_shape'] ) ) {
+            if ( 'object' === $GLOBALS['g6_descriptor_shape'] ) return new WP_Error( 'fixture_provider_unavailable' );
+            if ( 'scalar' === $GLOBALS['g6_descriptor_shape'] ) return 'invalid-descriptor';
+            if ( 'oversized' === $GLOBALS['g6_descriptor_shape'] ) return array( 'provider_id' => 'fixture-reviewed', 'oversized' => str_repeat( 'x', 65537 ) );
+        }
         return array( 'provider_id' => 'fixture-reviewed', 'capabilities' => array( 'content', 'translation' ), 'regions' => array( 'eu' ),
             'privacy_classes' => array( 'public', 'internal' ), 'worst_case_cost_micro' => isset( $GLOBALS['g6_price_override'] ) ? $GLOBALS['g6_price_override'] : 100,
             'account_bound' => true, 'consent_valid' => true, 'runtime_certified' => true,
@@ -38,6 +43,12 @@ g6_policy_error( MAD4B_SCP_G6_Provider_Routing::register( new G6_Reviewed_Model_
 $view = MAD4B_SCP_G6_Provider_Routing::review( $input );
 g6_policy_assert( ! is_wp_error( $view ) && 1 === count( $view['options'] ) && true === $view['options'][0]['review_eligible'], 'exact provider descriptor can be reviewed' );
 g6_policy_assert( ! $view['options'][0]['execution_admitted'] && ! $view['model_invoked'] && ! $view['external_charge_performed'] && null === $view['selected_provider'], 'review cannot activate external model' );
+foreach ( array( 'object', 'scalar', 'oversized' ) as $bad_descriptor ) {
+    $GLOBALS['g6_descriptor_shape'] = $bad_descriptor;
+    $invalid_descriptor = MAD4B_SCP_G6_Provider_Routing::review( $input );
+    g6_policy_assert( ! is_wp_error( $invalid_descriptor ) && ! $invalid_descriptor['options'][0]['review_eligible'] && null === $invalid_descriptor['options'][0]['descriptor_sha256'] && in_array( 'provider_descriptor_invalid', $invalid_descriptor['options'][0]['blockers'], true ), 'malformed ' . $bad_descriptor . ' provider metadata must block without array indexing or encoding it' );
+}
+unset( $GLOBALS['g6_descriptor_shape'] );
 $GLOBALS['g6_price_override'] = 150;
 $changed_descriptor = MAD4B_SCP_G6_Provider_Routing::review( $input );
 g6_policy_assert( ! $changed_descriptor['options'][0]['review_eligible'] && in_array( 'provider_descriptor_drift', $changed_descriptor['options'][0]['blockers'], true ), 'descriptor drift must be denied' );

@@ -199,8 +199,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "5b253078ff7240679756e3412cc4f26dd973303a46b3725918689fc20f1e3d01",
-      "bytes": 24788
+      "sha256": "6e39a7367202ccb56002abf5bae33ecbceb1e065b34b28f229375b601d401e20",
+      "bytes": 26830
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
@@ -229,8 +229,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php",
-      "sha256": "e8f913ace3d854fae8917c1fd16db14f1eecf3bda88b80a2cfa8530e97d02b1c",
-      "bytes": 7360
+      "sha256": "de63d053bdc524d44f9fb2d1c3bbfeb020204347fec9f311830c33aa412a5504",
+      "bytes": 8182
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
@@ -259,8 +259,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "a6ecb32699e84cfba7f48ebcc3bcfc94626dc90db4acc41dbec84bde64c56a37",
-      "bytes": 38594
+      "sha256": "307f4e5a9dfe5696f5155bb024ce18f6b13068ec3603ba271b0d23977a1fc28f",
+      "bytes": 39908
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php",
@@ -274,8 +274,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
-      "sha256": "a0c22a9815691f916f46e7bb4919dd64de7036214b82824fc0a73e1aa6d9c9d8",
-      "bytes": 5493
+      "sha256": "f7ea224a61f6323e9a334609011fea4bdca0b91107518815647e71c5f6130c38",
+      "bytes": 8676
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",

@@ -57,10 +57,6 @@ final class MAD4B_SCP_Resilience_Context {
 		$valid = self::validate_binding( $binding );
 		if ( is_wp_error( $valid ) ) return $valid;
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return self::error( 'origin_not_enrolled', 'Current URLs are not bound to this enrolled Site Profile.' );
-		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness() : array();
-        if ( ! is_array( $authority ) ) $authority = array();
-		$candidate = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
-        if ( ! is_array( $candidate ) ) $candidate = array();
 		$material = isset( $generation['material'] ) && is_array( $generation['material'] ) ? $generation['material'] : array();
 		$base = array(
 			'contract'=>self::CONTRACT,
@@ -73,19 +69,6 @@ final class MAD4B_SCP_Resilience_Context {
 				'runtime_package'=>$binding['artifact_sha256'],
 				'site_profile'=>$binding['site_profile_sha256'],
 				'registry'=>$binding['registry_sha256'],
-			),
-			'authority'=>array(
-				'site_uuid'=>$binding['site_uuid'], 'environment'=>$binding['environment'],
-				'runtime_generation_sha256'=>$binding['runtime_generation_sha256'], 'restore_epoch'=>$binding['restore_epoch'],
-				'grant_snapshot_sha256'=>(string) ( $authority['grant_rows_fingerprint'] ?? '' ),
-				'candidate_binding_sha256'=>self::digest( $candidate ),
-				'eligible'=>true === ( $authority['ready'] ?? null )
-                    && true === ( $authority['current_grant_snapshot_ready'] ?? null )
-                    && true === ( $authority['candidate_binding_match'] ?? null )
-                    && self::is_hash( $authority['grant_rows_fingerprint'] ?? '' )
-                    && true === ( $candidate['match'] ?? null )
-                    && true === ( $restore['ready'] ?? null ) && true === ( $generation['ready'] ?? null )
-                    && empty( $source_blockers ),
 			),
 			'providers'=>array(), 'host'=>array(), 'health'=>array(), 'gates'=>array(), 'external_effects'=>array(),
 			'identity_blockers'=>array_values( array_unique( array_merge( (array) ( $generation['blockers'] ?? array() ), (array) ( $restore['blockers'] ?? array() ), $source_blockers ) ) ),
@@ -101,9 +84,60 @@ final class MAD4B_SCP_Resilience_Context {
 				if ( isset( $observed[ $key ] ) && is_array( $observed[ $key ] ) ) $base[ $key ] = $observed[ $key ];
 			}
 		}
+		// Read grant truth after the passive reader. A reader must not leave a
+		// pre-observation grant snapshot looking current after it was revoked.
+		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness() : array();
+		if ( ! is_array( $authority ) ) $authority = array();
+		$candidate = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
+		if ( ! is_array( $candidate ) ) $candidate = array();
+		$current = self::assert_observation_identity_current( $binding, $generation, $restore, $identity );
+		if ( is_wp_error( $current ) ) return $current;
+		$base['authority'] = array(
+			'site_uuid'=>$binding['site_uuid'], 'environment'=>$binding['environment'],
+			'runtime_generation_sha256'=>$binding['runtime_generation_sha256'], 'restore_epoch'=>$binding['restore_epoch'],
+			'grant_snapshot_sha256'=>(string) ( $authority['grant_rows_fingerprint'] ?? '' ),
+			'candidate_binding_sha256'=>self::digest( $candidate ),
+			'eligible'=>true === ( $authority['ready'] ?? null )
+				&& true === ( $authority['current_grant_snapshot_ready'] ?? null )
+				&& true === ( $authority['candidate_binding_match'] ?? null )
+				&& self::is_hash( $authority['grant_rows_fingerprint'] ?? '' )
+				&& true === ( $candidate['match'] ?? null )
+				&& true === ( $restore['ready'] ?? null ) && true === ( $generation['ready'] ?? null )
+				&& empty( $source_blockers ),
+		);
 		// Runtime observer additions cannot override authority, enrollment or generation truth.
 		$base['snapshot_sha256'] = self::snapshot_digest( $base );
 		return $base;
+	}
+
+	/** Pin passive evidence to the same local sources on both sides of observation. */
+	private static function assert_observation_identity_current( array $binding, array $generation, array $restore, array $identity ) {
+		$current_generation = MAD4B_SCP_Runtime_Generation_Fence::status();
+		$current_restore = MAD4B_SCP_Restore_Epoch::status( false, true );
+		$current_identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		if ( is_wp_error( $current_identity ) || ! is_array( $current_identity ) ) $current_identity = array();
+		$current_registry = class_exists( 'MAD4B_SCP_Certification_Pack_Registry' ) ? MAD4B_SCP_Certification_Pack_Registry::status() : array();
+		if ( is_wp_error( $current_registry ) || ! is_array( $current_registry ) ) $current_registry = array();
+		if ( ! is_array( $current_generation ) || ! is_array( $current_restore )
+			|| ( $current_generation['generation_sha256'] ?? null ) !== $binding['runtime_generation_sha256']
+			|| ( $current_generation['ready'] ?? null ) !== ( $generation['ready'] ?? null )
+			|| self::digest( $current_generation['blockers'] ?? array() ) !== self::digest( $generation['blockers'] ?? array() )
+			|| ( $current_restore['epoch'] ?? null ) !== $binding['restore_epoch']
+			|| ( $current_restore['external_record_sha256'] ?? null ) !== $binding['external_record_sha256']
+			|| ( $current_restore['ready'] ?? null ) !== ( $restore['ready'] ?? null )
+			|| self::digest( $current_restore['blockers'] ?? array() ) !== self::digest( $restore['blockers'] ?? array() )
+			|| self::digest( $current_identity ) !== self::digest( $identity )
+			|| self::digest( $current_registry ) !== $binding['registry_sha256']
+			|| (string) MAD4B_SCP_Site_Profile::site_uuid() !== $binding['site_uuid']
+			|| ( function_exists( 'get_current_blog_id' ) ? (int) get_current_blog_id() : 1 ) !== $binding['blog_id']
+			|| (string) MAD4B_SCP_Site_Profile::current_environment() !== $binding['environment']
+			|| rtrim( (string) MAD4B_SCP_Site_Profile::current_origin(), '/' ) !== $binding['canonical_origin']
+			|| (int) MAD4B_SCP_Site_Profile::revision() !== $binding['site_profile_revision']
+			|| (string) MAD4B_SCP_Site_Profile::profile_digest() !== $binding['site_profile_sha256']
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
+			return self::error( 'observation_identity_changed', 'Local identity or readiness changed while passive evidence was being observed.' );
+		return true;
 	}
 
 	public static function validate_binding( array $binding ) {

@@ -93,6 +93,22 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		return is_array( $event ) ? $event : array();
 	}
 
+	/** An unsigned lifecycle event must stay inert before any hash or rewrite. */
+	private static function event_data_safe( $value, $depth = 0, &$nodes = 0 ) {
+		if ( ++$nodes > 512 || $depth > 8 || is_object( $value ) || is_resource( $value ) ) return false;
+		if ( is_array( $value ) ) {
+			if ( count( $value ) > 32 ) return false;
+			foreach ( $value as $key => $member ) {
+				if ( is_string( $key ) && strlen( $key ) > 80 ) return false;
+				if ( ! self::event_data_safe( $member, $depth + 1, $nodes ) ) return false;
+			}
+			return true;
+		}
+		return null === $value || is_bool( $value ) || is_int( $value )
+			|| ( is_float( $value ) && is_finite( $value ) )
+			|| ( is_string( $value ) && strlen( $value ) <= 512 );
+	}
+
 	private static function candidate_binding_fallback_drift() {
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' ) ) return false;
@@ -114,6 +130,13 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		// Corrupt/unknown failure states never silently downgrade a stop
 		// decision to a retry. Only an explicit bounded retry is nonterminal.
 		return ! is_string( $event['failure_state'] ) || 'RETRY_PENDING' !== $event['failure_state'];
+	}
+
+	private static function lifecycle_fence_current( array $event ) {
+		$current = self::event();
+		return self::event_data_safe( $current ) && ! self::terminal_event( $current )
+			&& is_string( $current['event_id'] ?? null )
+			&& ( $current['event_id'] ?? '' ) === ( $event['event_id'] ?? '' );
 	}
 
 	public static function maybe_schedule() {
@@ -177,6 +200,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 
 	private static function note_failure( $code, $expected_event_id = '' ) {
 		$event = self::event();
+		if ( ! self::event_data_safe( $event ) ) return;
 		if ( ( $event['event_id'] ?? '' ) !== $expected_event_id ) { self::schedule( 5 ); return; }
 		$code = sanitize_key( (string) $code );
 		$policy = class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', false )
@@ -235,7 +259,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		if ( is_wp_error( MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lock, 'adaptive_runtime_observation' ) )
 			|| ! self::eligible()
 			|| MAD4B_SCP_Site_Profile::profile_digest() !== $profile_digest
-			|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) return false;
+			|| ! self::lifecycle_fence_current( $event ) ) return false;
 		$current = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		return ! empty( $current['runtime_manifest_match'] )
 			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', (string) ( $current['source_commit_sha'] ?? '' ) )
@@ -247,7 +271,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			&& ( $current['build_fingerprint'] ?? '' ) === ( $identity['build_fingerprint'] ?? '' )
 			&& ( $current['source_commit_sha'] ?? '' ) === ( $identity['source_commit_sha'] ?? '' )
 			&& ( $current['package_manifest_digest'] ?? '' ) === ( $identity['package_manifest_digest'] ?? '' )
-			&& ( self::event()['event_id'] ?? '' ) === ( $event['event_id'] ?? '' )
+			&& self::lifecycle_fence_current( $event )
 			&& MAD4B_SCP_Site_Profile::profile_digest() === $profile_digest
 			&& self::eligible();
 	}
@@ -362,7 +386,13 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$lock = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'adaptive_runtime_observation' );
 		if ( is_wp_error( $lock ) ) { self::schedule( 60 ); return; }
 		$event = self::event();
-		if ( empty( $event['event_id'] ) ) { self::enqueue(); $event = self::event(); }
+		if ( self::event_data_safe( $event ) && empty( $event['event_id'] ) ) { self::enqueue(); $event = self::event(); }
+		if ( ! self::event_data_safe( $event )
+			|| ! is_string( $event['event_id'] ?? null )
+			|| 1 !== preg_match( '/^[a-zA-Z0-9_-]{1,80}$/D', $event['event_id'] ) ) {
+			MAD4B_SCP_Runtime_Maintenance_Lease::release( $lock, 'adaptive_runtime_observation' );
+			return;
+		}
 		if ( self::terminal_event( $event ) ) {
 			MAD4B_SCP_Runtime_Maintenance_Lease::release( $lock, 'adaptive_runtime_observation' );
 			return;
@@ -575,7 +605,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				|| ( $postflight['source_commit_sha'] ?? '' ) !== ( $identity['source_commit_sha'] ?? '' )
 				|| ( $postflight['package_manifest_digest'] ?? '' ) !== ( $identity['package_manifest_digest'] ?? '' )
 				|| ( $postflight['artifact_identity'] ?? '' ) !== ( $identity['artifact_identity'] ?? '' )
-				|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) {
+				|| ! self::lifecycle_fence_current( $event ) ) {
 				// If this worker persisted only its generation checkpoint before a race was
 				// detected, restore the exact prior value only while that checkpoint is
 				// still the current value. Never overwrite a concurrent writer.
@@ -591,7 +621,8 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$readback = get_option( self::OPTION, array() );
 			if ( ! self::valid_registry( $readback ) || ! hash_equals( $registry['seal'], $readback['seal'] ) ) { self::schedule( 60 ); return; }
 			$latest_event = self::event();
-			if ( isset( $latest_event['failure_code'] ) && ( $latest_event['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) ) {
+			if ( self::event_data_safe( $latest_event ) && ! self::terminal_event( $latest_event )
+				&& isset( $latest_event['failure_code'] ) && ( $latest_event['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) ) {
 				unset( $latest_event['failure_code'], $latest_event['failure_state'], $latest_event['attempts'],
 					$latest_event['failure_decision'], $latest_event['failure_policy_id'], $latest_event['failure_policy_source'] );
 				update_option( self::EVENT_OPTION, $latest_event, false );
@@ -634,7 +665,9 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$registry['providers'] = array_slice( $registry['providers'], 0, $limit, true );
 		$event = self::event();
 		$scheduler_disabled = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
-		$worker_blocked = self::terminal_event( $event );
+		$worker_blocked = self::terminal_event( $event ) || ! self::event_data_safe( $event )
+			|| ( ! empty( $event['event_id'] ) && ( ! is_string( $event['event_id'] )
+				|| 1 !== preg_match( '/^[a-zA-Z0-9_-]{1,80}$/D', $event['event_id'] ) ) );
 		$enrolled_for_observation = self::eligible();
 		$worker_available = $enrolled_for_observation && ! $scheduler_disabled && ! $worker_blocked;
 		$observed_epoch = is_string( $registry['observed_at'] ?? null ) ? strtotime( $registry['observed_at'] ) : false;

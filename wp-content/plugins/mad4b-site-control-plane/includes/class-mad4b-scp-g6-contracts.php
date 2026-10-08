@@ -15,6 +15,12 @@ final class MAD4B_SCP_G6_Contracts {
 	}
 	public static function sha( $value ) { return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/D', $value ); }
 	public static function id( $value ) { return is_string( $value ) && 1 === preg_match( '/^[a-z0-9][a-z0-9_.:-]{0,190}$/D', $value ); }
+	/** Preserve existing short keys; hash only identities the durable store cannot fit. */
+	public static function compiled_step_key( $plan_sha256, $node_id ) {
+		if ( ! self::sha( $plan_sha256 ) || ! self::id( $node_id ) ) return self::error( 'step_identity', 'Compiled step requires exact plan and node identities.' );
+		$key = $plan_sha256 . ':' . $node_id;
+		return strlen( $key ) <= 191 ? $key : 'g6:' . self::digest( array( 'contract' => 'mad4b.g6-compiled-step-key.v1', 'plan_sha256' => $plan_sha256, 'node_id' => $node_id ) );
+	}
 	public static function error( $suffix, $message, $data = array() ) {
 		return new WP_Error( 'mad4b_g6_' . $suffix, $message, array_merge( array( 'authorizing' => false, 'blind_retry_allowed' => false ), $data ) );
 	}

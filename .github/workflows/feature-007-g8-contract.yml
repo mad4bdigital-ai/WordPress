@@ -6,6 +6,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - '.github/workflows/feature-007-g8-contract.yml'
       - 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.md'
+      - 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.json'
 permissions:
   contents: read
 concurrency:

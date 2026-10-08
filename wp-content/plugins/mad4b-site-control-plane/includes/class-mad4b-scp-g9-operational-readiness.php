@@ -40,7 +40,7 @@ final class MAD4B_SCP_G9_Operational_Readiness {
             foreach ( $site['providers'] as $provider ) {
                 if ( ! is_array( $provider )
                     || true !== ( $provider['ready'] ?? null )
-                    || ! empty( $provider['revoked'] )
+                    || false !== ( $provider['revoked'] ?? null )
                     || ( $provider['site_key'] ?? '' ) !== $site_key
                     || ( $provider['generation_sha256'] ?? '' ) !== $binding['runtime_generation_sha256']
                     || ! MAD4B_SCP_Resilience_Context::is_hash( $provider['certification_sha256'] ?? '' ) ) {

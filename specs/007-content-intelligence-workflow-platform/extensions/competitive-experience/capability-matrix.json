@@ -231,7 +231,7 @@
       "phase": 11,
       "title": "Optional AI workspace and governed model use",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3956",
         "T3957",
@@ -251,7 +251,7 @@
       "phase": 12,
       "title": "Grounded knowledge and AI forms",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3961",
         "T3962",
@@ -313,7 +313,7 @@
       "phase": 15,
       "title": "Capability-local convergence and external acceptance",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3976",
         "T3977",
@@ -398,7 +398,7 @@
       "phase": 19,
       "title": "Dynamic Operation Synthesis and Workflow Compiler",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4016",
         "T4017",
@@ -481,7 +481,7 @@
       "phase": 23,
       "title": "Ownership-aware Three-Way Reconciliation",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4036",
         "T4037",
@@ -502,7 +502,7 @@
       "phase": 24,
       "title": "Universal Mutation Journal",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4041",
         "T4042",
@@ -523,7 +523,7 @@
       "phase": 25,
       "title": "Update Acceptance and Safe Remediation Pipeline",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4046",
         "T4047",
@@ -545,7 +545,7 @@
       "phase": 26,
       "title": "Host Capability Registry",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4051",
         "T4052",
@@ -609,7 +609,7 @@
       "phase": 29,
       "title": "Release Rings and Fleet/Multisite Promotion",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4066",
         "T4067",
@@ -631,7 +631,7 @@
       "phase": 30,
       "title": "Automation SLOs, Error Budgets and Kill Switch",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4071",
         "T4072",
@@ -652,7 +652,7 @@
       "phase": 31,
       "title": "Supply-chain Provenance and Trust",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4076",
         "T4077",
@@ -673,7 +673,7 @@
       "phase": 32,
       "title": "Registry and Policy Schema Migration",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4081",
         "T4082",
@@ -694,7 +694,7 @@
       "phase": 33,
       "title": "Adversarial Compatibility Fuzzing and Chaos Certification",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4086",
         "T4087",
@@ -716,7 +716,7 @@
       "phase": 34,
       "title": "Restore and Disaster-Recovery Convergence",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4091",
         "T4092",
@@ -1555,7 +1555,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add a user-facing conversational layer that invokes existing governed tools through exact reviewed plans.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1585,7 +1585,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Choose admitted models by capabilities/privacy/residency/cost with bounded fallback.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "SCOPED_EXTERNAL_READ",
       "task_ids": [
@@ -1616,7 +1616,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Track broader AI Engine application claims as optional proposals with independent availability and rights proof.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1646,7 +1646,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add optional RAG above Context Authority with approved sources and tenant/field filtering.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1677,7 +1677,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Track Pro application feature separately and govern form input/function output/cost boundaries.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1922,7 +1922,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Reuse rc.95 discovery/diff/risk controls and extend per-capability behavioral proof without static patch allowlists.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1953,7 +1953,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Refresh valid external build-bound receipts and collect bounded performance samples through actual providers.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2079,7 +2079,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement schema-derived candidate Content Experience profiles for newly observed CPTs/taxonomies/meta/media/SEO/language/builder bindings.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2207,7 +2207,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement resource/field ownership and lineage over Last Managed, Current Runtime and Desired Policy state with exact revision/CAS contracts.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2239,7 +2239,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement one human-readable journal projection linking operation/actor/agent/why/objects/pre-state/post-state/provider/capability/authority and reversal evidence.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2271,7 +2271,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Capture pre-update artifact/graph/workflows/authority/schema/topology/performance and observe post-update generation without changing update authorization.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2303,7 +2303,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement versioned host observations for filesystem/process/network sandbox/wp-cli/cron/loopback/memory/disk/PHP extensions/database features.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2400,7 +2400,7 @@
       ],
       "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Extend exact update acceptance into site-local release rings and cohort promotion without copying authority across sites.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "HIGH_RISK_EXPLICIT_GATE",
       "task_ids": [
@@ -2432,7 +2432,7 @@
       ],
       "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Bound self-healing with measured SLOs, retry budgets, cooldowns, backpressure and an independent kill switch.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2464,7 +2464,7 @@
       ],
       "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Bind runtime/provider/policy artifacts to source-channel, hash, signer/revocation and dependency provenance without treating provenance as authority.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2496,7 +2496,7 @@
       ],
       "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Evolve signed policy/manifests/registry schemas using explicit reversible migrations and semantic-diff guards.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2528,7 +2528,7 @@
       ],
       "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Add disposable adversarial schema/behavior/concurrency/fault testing around candidate capabilities before broader certification.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2560,7 +2560,7 @@
       ],
       "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Treat restore/time-travel as a new operational epoch requiring rediscovery, authority rebinding and external-effect reconciliation before writes resume.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "HIGH_RISK_EXPLICIT_GATE",
       "task_ids": [

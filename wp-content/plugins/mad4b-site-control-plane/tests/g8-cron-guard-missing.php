@@ -10,6 +10,7 @@ if ( ! mkdir( $root, 0700, true ) ) { fwrite( STDERR, 'Cannot prepare disposable
 define( 'MAD4B_SCP_DIR', $root . '/' );
 define( 'MAD4B_SCP_VERSION', '0.4.0-rc.96' );
 $GLOBALS['g8_checkpoint'] = array();
+function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
 function get_option( $key, $default = false ) {
 	return 'mad4b_scp_runtime_convergence_v1' === $key ? $GLOBALS['g8_checkpoint'] : $default;
 }

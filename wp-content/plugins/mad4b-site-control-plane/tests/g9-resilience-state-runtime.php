@@ -34,19 +34,21 @@ function g9_denied( $value, $reason ) {
 }
 class MAD4B_SCP_Site_Profile {
     public static $revision = 1;
+    public static $enrolled = true;
     public static function site_uuid() { return '11111111-1111-4111-8111-111111111111'; }
     public static function current_environment() { return 'staging'; }
     public static function current_origin() { return 'https://staging.example.invalid'; }
     public static function revision() { return self::$revision; }
     public static function profile_digest() { return hash( 'sha256', 'profile-' . self::$revision ); }
-    public static function origin_enrolled() { return true; }
-    public static function site_urls_match_enrollment() { return true; }
+    public static function origin_enrolled() { return self::$enrolled; }
+    public static function site_urls_match_enrollment() { return self::$enrolled; }
     public static function nonproduction_governed() { return true; }
 }
 class MAD4B_SCP_Runtime_Generation_Fence {
     const CONTRACT = 'mad4b.runtime-generation-fence.v1';
     public static $revoked = false;
     public static $ready_override = null;
+    public static $identity_revision = 1;
     public static function assert_current( array $expected ) {
         $status = self::status();
         if ( self::$revoked || ( $expected['contract'] ?? '' ) !== self::CONTRACT
@@ -56,7 +58,8 @@ class MAD4B_SCP_Runtime_Generation_Fence {
     }
     public static function status() {
         return array(
-            'ready' => self::$ready_override === null ? true : self::$ready_override, 'generation_sha256' => hash( 'sha256', 'generation' ),
+            'ready' => self::$ready_override === null ? true : self::$ready_override,
+            'generation_sha256' => hash( 'sha256', self::$identity_revision === 1 ? 'generation' : 'generation-' . self::$identity_revision ),
             'blockers' => array(), 'material' => array(
                 'schema_installed_version' => 40,
                 'persisted_contract_registry_sha256' => hash( 'sha256', 'registry' ),
@@ -69,9 +72,10 @@ class MAD4B_SCP_Runtime_Generation_Fence {
 }
 class MAD4B_SCP_Restore_Epoch {
     public static $ready_override = null;
+    public static $epoch = 1;
     public static function status( $initialize = false, $refresh = false ) {
-        return array( 'ready'=>self::$ready_override === null ? true : self::$ready_override, 'epoch'=>1,
-            'external_record_sha256'=>hash( 'sha256', 'external-record' ), 'blockers'=>array() );
+        return array( 'ready'=>self::$ready_override === null ? true : self::$ready_override, 'epoch'=>self::$epoch,
+            'external_record_sha256'=>hash( 'sha256', self::$epoch === 1 ? 'external-record' : 'external-record-' . self::$epoch ), 'blockers'=>array() );
     }
 }
 class MAD4B_SCP_Live_Acceptance_Observer {
@@ -90,8 +94,9 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 class MAD4B_SCP_Certification_Pack_Registry {
     const REGISTRY_CONTRACT = 'mad4b.certification-pack-registry.v1';
     public static $epoch = 1;
+    public static $revision = 0;
     public static function status() {
-        return array( 'contract'=>self::REGISTRY_CONTRACT, 'revision'=>0,
+        return array( 'contract'=>self::REGISTRY_CONTRACT, 'revision'=>self::$revision,
             'restore_epoch'=>self::$epoch, 'active'=>array() );
     }
 }
@@ -103,8 +108,11 @@ class MAD4B_SCP_Staging_Write_Authority {
     public static $spoof_ready_on_call = 0;
     public static $revoke_policy_on_call = 0;
     public static $revoke_generation_on_call = 0;
+    public static $drift_profile_on_call = 0;
     public static function current_execution_readiness() {
         self::$call_count++;
+        if ( self::$drift_profile_on_call === self::$call_count )
+            MAD4B_SCP_Site_Profile::$revision++;
         if ( self::$revoke_generation_on_call === self::$call_count )
             MAD4B_SCP_Runtime_Generation_Fence::$revoked = true;
         if ( self::$revoke_policy_on_call === self::$call_count )
@@ -140,18 +148,34 @@ require_once __DIR__ . '/../includes/class-mad4b-scp-g9-read-surface.php';
 class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
     public static $host_certified = true;
     public static $provider_certified = true;
+    public static $provider_revoked = false;
     public static $effect_uncertain = false;
     public static $health_stale = false;
+    public static $drift_during_read = '';
     private $observed_at;
     public function __construct() { $this->observed_at = MAD4B_SCP_Resilience_Context::now(); }
     public function read_local( array $binding ) {
         $key = MAD4B_SCP_Resilience_Context::site_key( $binding );
+        // Keep returned evidence bound to the originally supplied identity,
+        // while a local source changes inside the observation window.
+        switch ( self::$drift_during_read ) {
+            case 'profile': MAD4B_SCP_Site_Profile::$revision++; break;
+            case 'origin': MAD4B_SCP_Site_Profile::$enrolled = false; break;
+            case 'registry': MAD4B_SCP_Certification_Pack_Registry::$revision++; break;
+            case 'restore': MAD4B_SCP_Restore_Epoch::$epoch++; break;
+            case 'worker': MAD4B_SCP_Runtime_Generation_Fence::$identity_revision++; break;
+            case 'artifact': MAD4B_SCP_Live_Acceptance_Observer::$valid = false; break;
+            case 'worker-readiness': MAD4B_SCP_Runtime_Generation_Fence::$ready_override = false; break;
+            case 'restore-readiness': MAD4B_SCP_Restore_Epoch::$ready_override = false; break;
+            case 'grants': MAD4B_SCP_Staging_Write_Authority::$snapshot_current = false; break;
+        }
         return array(
             'binding_sha256' => MAD4B_SCP_Resilience_Context::digest( $binding ),
             'providers' => array( 'certified' => array(
                 'site_key'=>$key, 'generation_sha256'=>$binding['runtime_generation_sha256'],
                 'certification_sha256'=>hash( 'sha256', 'cert' ),
-                'ready'=>self::$provider_certified, 'revoked'=>!self::$provider_certified,
+                'ready'=>self::$provider_certified,
+                'revoked'=>self::$provider_certified ? self::$provider_revoked : true,
             ) ),
             'host' => array( 'isolation_verified'=>self::$host_certified,
                 'local_readback_verified'=>self::$host_certified,
@@ -171,6 +195,34 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
 g9_assert( true === MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader registration' );
 $observation = MAD4B_SCP_Resilience_Context::capture();
 g9_assert( ! is_wp_error( $observation ) && $observation['authority']['eligible'], 'current capture' );
+foreach ( array( 'profile', 'origin', 'registry', 'restore', 'worker', 'artifact',
+    'worker-readiness', 'restore-readiness' ) as $identity_drift ) {
+    G9_Exact_Reader::$drift_during_read = $identity_drift;
+    g9_denied( MAD4B_SCP_Resilience_Context::capture(), 'observation_identity_changed' );
+    G9_Exact_Reader::$drift_during_read = '';
+    MAD4B_SCP_Site_Profile::$revision = 1;
+    MAD4B_SCP_Site_Profile::$enrolled = true;
+    MAD4B_SCP_Certification_Pack_Registry::$revision = 0;
+    MAD4B_SCP_Restore_Epoch::$epoch = 1;
+    MAD4B_SCP_Restore_Epoch::$ready_override = null;
+    MAD4B_SCP_Runtime_Generation_Fence::$identity_revision = 1;
+    MAD4B_SCP_Runtime_Generation_Fence::$ready_override = null;
+    MAD4B_SCP_Live_Acceptance_Observer::$valid = true;
+}
+G9_Exact_Reader::$drift_during_read = 'grants';
+$calls_before_observation = MAD4B_SCP_Staging_Write_Authority::$call_count;
+$revoked_during_read = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $revoked_during_read )
+    && false === $revoked_during_read['authority']['eligible']
+    && MAD4B_SCP_Staging_Write_Authority::$call_count === $calls_before_observation + 1,
+    'grant revocation during observation denies eligibility with one current grant read' );
+G9_Exact_Reader::$drift_during_read = '';
+MAD4B_SCP_Staging_Write_Authority::$snapshot_current = true;
+MAD4B_SCP_Staging_Write_Authority::$drift_profile_on_call =
+    MAD4B_SCP_Staging_Write_Authority::$call_count + 1;
+g9_denied( MAD4B_SCP_Resilience_Context::capture(), 'observation_identity_changed' );
+MAD4B_SCP_Staging_Write_Authority::$drift_profile_on_call = 0;
+MAD4B_SCP_Site_Profile::$revision = 1;
 // Mocked upstream status values must never become eligibility through PHP's
 // truthiness coercion of the non-empty string "false".
 MAD4B_SCP_Staging_Write_Authority::$ready_override = 'false';
@@ -472,6 +524,17 @@ $trace = array( 'contract'=>'mad4b.dynamic-operation-trace.v1',
     'operation_id'=>$operation_id, 'chain_valid'=>true, 'complete'=>true,
     'count'=>5, 'events'=>$events );
 MAD4B_SCP_Operation_Journal::$trace = $trace;
+G9_Exact_Reader::$drift_during_read = 'profile';
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'observation_identity_changed' );
+G9_Exact_Reader::$drift_during_read = '';
+MAD4B_SCP_Site_Profile::$revision = 1;
+$current_for_native = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $current_for_native )
+    && $current_for_native['binding_sha256'] === MAD4B_SCP_Resilience_Context::digest( $binding )
+    && true === $current_for_native['authority']['eligible'],
+    'native verifier fixture retains an independently refreshed exact current site binding' );
 $verified = MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native );
 g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_verified']
@@ -558,6 +621,21 @@ g9_assert( ! is_wp_error( $revoked_closure )
     && in_array( 'certified_provider_unready', $revoked_closure['blockers'], true ),
     'closure names revoked provider even with complete inventory flag' );
 G9_Exact_Reader::$provider_certified = true;
+// Omitted/null or false-like scalar revocation values are unknown, rather than
+// a verified non-revoked provider. Passive projections use the same typed
+// boundary as the release gate and must not display a false green status.
+foreach ( array( null, 0, '0', '' ) as $unknown_revocation ) {
+    G9_Exact_Reader::$provider_revoked = $unknown_revocation;
+    $unknown_provider = MAD4B_SCP_G9_Read_Surface::site_observation();
+    g9_assert( ! is_wp_error( $unknown_provider )
+        && !$unknown_provider['provider_evidence_verified'],
+        'provider status requires an explicit boolean non-revoked observation' );
+    $unknown_closure = MAD4B_SCP_G9_Read_Surface::closure_status();
+    g9_assert( ! is_wp_error( $unknown_closure )
+        && in_array( 'certified_provider_unready', $unknown_closure['blockers'], true ),
+        'closure cannot launder unknown revocation through false-like values' );
+}
+G9_Exact_Reader::$provider_revoked = false;
 G9_Exact_Reader::$effect_uncertain = true;
 $effect_drift = MAD4B_SCP_G9_Read_Surface::site_observation();
 g9_assert( ! is_wp_error( $effect_drift ) && !$effect_drift['external_effect_inventory_verified'],

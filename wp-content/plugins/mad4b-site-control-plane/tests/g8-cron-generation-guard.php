@@ -2,9 +2,9 @@
 /**
  * Hermetic runtime-generation/Cron target guard regression.
  *
- * Does not boot WordPress or invoke plugin lifecycle methods. Only the real
- * private automatic guard is called through reflection against a disposable
- * provenance file. Exact manual invocation remains unchanged.
+ * Does not boot WordPress. Calls the real automatic guard and safe-phase worker
+ * through reflection against a disposable provenance file and effect stubs.
+ * Exact manual invocation remains unchanged.
  */
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 $root = sys_get_temp_dir() . '/mad4b-g8-generation-' . getmypid() . '-' . bin2hex( random_bytes( 4 ) );
@@ -14,6 +14,9 @@ define( 'MAD4B_SCP_VERSION', '0.4.0-rc.96' );
 $GLOBALS['g8_checkpoint'] = array();
 $GLOBALS['g8_ticket_allowed'] = true;
 function get_option( $name, $default = false ) {
+	if ( 'mad4b_scp_runtime_convergence_v1' === $name && is_callable( $GLOBALS['g8_checkpoint_read_hook'] ?? null ) ) {
+		$callback = $GLOBALS['g8_checkpoint_read_hook']; $GLOBALS['g8_checkpoint_read_hook'] = null; $callback();
+	}
 	return 'mad4b_scp_runtime_convergence_v1' === $name ? $GLOBALS['g8_checkpoint'] : $default;
 }
 // Loading Runtime Convergence registers its existing lifecycle hooks.
@@ -143,5 +146,45 @@ g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_kill_switch' === $d
 	'persisting Skills certification also obeys the managed Skills scope' );
 g8_guard_assert( true === $guard->invoke( null, null, 'reconcile' ),
 	'explicit governed manual reconciliation retains its separate authority path' );
+$GLOBALS['g8_skills_scope_paused'] = false;
+$GLOBALS['g8_checkpoint_read_hook'] = static function () { $GLOBALS['g8_ticket_allowed'] = false; };
+$denied = $run( $ticket );
+g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_ticket_not_live' === $denied->get_error_code(),
+	'pause during checkpoint readback revokes the next automatic effect' );
+$GLOBALS['g8_ticket_allowed'] = true;
+$GLOBALS['g8_checkpoint_read_hook'] = static function () { $GLOBALS['g8_skills_scope_paused'] = true; };
+$denied = $guard->invoke( null, $ticket, 'reconcile' );
+g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_kill_switch' === $denied->get_error_code(),
+	'scoped pause during checkpoint readback revokes the next managed-file effect' );
+
+// Exercise the real worker boundary, not only its private ticket validator:
+// adapter registration can invoke discovery hooks before the first seed write.
+function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $value ) ); }
+class MAD4B_SCP_Runtime_Maintenance_Lease {
+	public static function acquire( $owner ) { return 'g8-disposable-runtime-lease'; }
+	public static function refresh( $lease, $owner ) { return true; }
+	public static function release( $lease, $owner ) {}
+}
+class MAD4B_SCP_Schema { public static function status( $physical = false ) { return array( 'ready' => true ); } }
+class MAD4B_SCP_Site_Profile { public static function status() { return array( 'skills_enabled' => true ); } }
+class MAD4B_SCP_Skill_Runtime_Certification { public static function current_status() { return array( 'ready' => false ); } }
+class MAD4B_SCP_Adapter_Registry {
+	public static function instance() { return new self(); }
+	public function register_defaults() { $GLOBALS['g8_skills_scope_paused'] = true; }
+}
+class MAD4B_SCP_Skill_Seeder {
+	public static function reconcile() { ++$GLOBALS['g8_seed_effects']; return array(); }
+}
+class MAD4B_SCP_Skill_Provider_Discovery {
+	public static function reconcile() { ++$GLOBALS['g8_provider_effects']; return array(); }
+}
+$GLOBALS['g8_ticket_allowed'] = true; $GLOBALS['g8_skills_scope_paused'] = false;
+$GLOBALS['g8_seed_effects'] = 0; $GLOBALS['g8_provider_effects'] = 0;
+$worker = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'run_safe_phases' );
+$worker->setAccessible( true );
+$denied = $worker->invoke( null, 'post_update_cron', array(), $ticket );
+g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_kill_switch' === $denied->get_error_code()
+	&& 0 === $GLOBALS['g8_seed_effects'] && 0 === $GLOBALS['g8_provider_effects'],
+	'pause from adapter discovery stops the real worker before any seed/provider effect' );
 @unlink( $path ); @rmdir( $root );
 echo 'G8_CRON_GENERATION_GUARD: PASS' . PHP_EOL;

@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
+define( 'MAD4B_SCP_VERSION', 'fixture-g8' );
 $GLOBALS['g8_options'] = array();
 $GLOBALS['g8_environment'] = 'staging';
 $GLOBALS['g8_epoch'] = 1;
@@ -70,7 +71,9 @@ class MAD4B_SCP_Runtime_Convergence {
   if ( is_callable( $GLOBALS['g8_core_effect_hook'] ?? null ) ) {
    $callback = $GLOBALS['g8_core_effect_hook']; $GLOBALS['g8_core_effect_hook'] = null; $callback();
   }
-  return array( 'state' => 'pending' );
+  $identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+  unset( $identity['identity_ready'] ); $identity['version'] = MAD4B_SCP_VERSION;
+  return array( 'scheduled' => true, 'state' => 'pending_safe_phases', 'target_identity' => $identity );
  }
  public static function status() { return array( 'required_blockers' => self::$ready ? array() : array( 'repair_pending' ) ); }
 }
@@ -171,6 +174,9 @@ g8_handoff_reset( false );
 g8_handoff_run( 0, 0, 0, 'default global pause denies all real automatic handoffs' );
 g8_handoff_reset();
 g8_handoff_run( 1, 1, 1, 'unpaused existing handoffs pass without adding authority' );
+$scheduled_core = MAD4B_SCP_Adaptive_Runtime_Convergence::status()['core_convergence'];
+g8_handoff_assert( 'SCHEDULED' === $scheduled_core['state'] && true === $scheduled_core['scheduled'],
+ 'real worker accepts only a scheduled exact-target core handoff' );
 g8_handoff_assert( 3 === MAD4B_SCP_Automation_SLO::status()['eligible_workload_count'],
  'all three existing automatic handoffs have durable admission evidence' );
 foreach ( array(
@@ -212,4 +218,42 @@ foreach ( array( 'reconcile', 'certify' ) as $phase ) {
   'provider pause applies within generic ticket to ' . $phase );
 }
 MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $denied );
+g8_handoff_reset();
+$GLOBALS['g8_assessment_hook'] = static function () {
+ $event = $GLOBALS['g8_options'][ MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION ];
+ $event['failure_state'] = 'REVIEW_REQUIRED'; $event['failure_code'] = 'operator_review_required';
+ $GLOBALS['g8_options'][ MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION ] = $event;
+};
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+g8_handoff_assert( 1 === MAD4B_SCP_Runtime_Convergence::$calls
+ && 0 === MAD4B_SCP_Skill_Provider_Discovery::$calls && 0 === MAD4B_SCP_Post_Update_Continuation::$calls
+ && 'REVIEW_REQUIRED' === $GLOBALS['g8_options'][ MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION ]['failure_state']
+ && 0 === MAD4B_SCP_Automation_SLO::status()['pending_count'],
+ 'a mid-flight terminal lifecycle decision revokes later effects even with the same event id' );
+class G8_Unsafe_Lifecycle_Event {
+ public function __serialize() { $GLOBALS['g8_event_object_serialized'] = true; return array( 'effect' => true ); }
+}
+g8_handoff_reset();
+$unsafe_event = $GLOBALS['g8_options'][ MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION ];
+$unsafe_event['event_id'] = new G8_Unsafe_Lifecycle_Event();
+$GLOBALS['g8_options'][ MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION ] = $unsafe_event;
+$writes_before_unsafe_event = $GLOBALS['g8_writes'];
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+g8_handoff_assert( empty( $GLOBALS['g8_event_object_serialized'] )
+ && 0 === MAD4B_SCP_Runtime_Convergence::$calls && 0 === MAD4B_SCP_Skill_Provider_Discovery::$calls
+ && 0 === MAD4B_SCP_Post_Update_Continuation::$calls && $writes_before_unsafe_event === $GLOBALS['g8_writes'],
+ 'an executable lifecycle event is rejected before ticket hashing or any rewrite/effect' );
+$unsafe_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+g8_handoff_assert( false === $unsafe_status['auto_observation_available']
+ && 'BLOCKED_BY_WORKER_POLICY' === $unsafe_status['scheduler_state']
+ && empty( $GLOBALS['g8_event_object_serialized'] ), 'passive operator status must not advertise an executable event as schedulable' );
+g8_handoff_reset();
+$GLOBALS['g8_assessment_hook'] = static function () {
+ $GLOBALS['g8_options'][ MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION ]['unexpected'] = new G8_Unsafe_Lifecycle_Event();
+};
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+g8_handoff_assert( 1 === MAD4B_SCP_Runtime_Convergence::$calls
+ && 0 === MAD4B_SCP_Skill_Provider_Discovery::$calls && 0 === MAD4B_SCP_Post_Update_Continuation::$calls
+ && empty( $GLOBALS['g8_event_object_serialized'] ) && 0 === MAD4B_SCP_Automation_SLO::status()['pending_count'],
+ 'a mid-flight executable event member revokes later effects without serialization' );
 echo 'G8_ADAPTIVE_AUTOMATIC_HANDOFFS: PASS' . PHP_EOL;

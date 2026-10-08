@@ -120,4 +120,37 @@ assert acknowledged["acknowledgements"][-1]["authorizing"] is False
 assert acknowledged["previous_known_good_generation_sha256"] == expected_previous_known_good
 
 m.verify()
+
+with tempfile.TemporaryDirectory() as temporary:
+    root = Path(temporary)
+    for name in ("artifact-manifest.json", "capability-matrix.json", "source-index.json", "task-ledger.generated.json"):
+        (root / name).write_text((HERE / name).read_text(encoding="utf-8"), encoding="utf-8")
+    prior = deepcopy(history)
+    history_path = root / "competitive-evidence-history.json"
+    history_path.write_text(json.dumps(prior, indent=2) + "\n", encoding="utf-8")
+    summary_path, resource_path = root / "summary.php", root / "history.php"
+    ledger = json.loads((root / "task-ledger.generated.json").read_text(encoding="utf-8"))
+    ledger["tasks"][0]["reason"] += " Repository-only fixture; no runtime acceptance."
+    (root / "task-ledger.generated.json").write_text(json.dumps(ledger), encoding="utf-8")
+    m.refresh_generated(root, summary_path, history_path, resource_path)
+    refreshed = json.loads(history_path.read_text(encoding="utf-8"))
+    assert refreshed["entries"][:len(prior["entries"])] == prior["entries"]
+    assert refreshed["alerts"][:len(prior["alerts"])] == prior["alerts"]
+    assert refreshed["acknowledgements"] == prior["acknowledgements"]
+    assert refreshed["entries"][-1]["state"] == "drifted"
+    assert refreshed["authorizing"] is False
+    exact = [path.read_bytes() for path in (summary_path, history_path, resource_path)]
+    m.refresh_generated(root, summary_path, history_path, resource_path)
+    assert [path.read_bytes() for path in (summary_path, history_path, resource_path)] == exact
+    damaged = deepcopy(refreshed)
+    damaged["entries"][0]["source_generation"] = "0" * 64
+    history_path.write_text(json.dumps(damaged), encoding="utf-8")
+    before = [path.read_bytes() for path in (summary_path, history_path, resource_path)]
+    try:
+        m.refresh_generated(root, summary_path, history_path, resource_path)
+        raise AssertionError("refresh reset a damaged history")
+    except SystemExit as error:
+        assert str(error) == "COMPETITIVE_EVIDENCE_HISTORY_ENTRY_DIGEST_INVALID"
+    assert [path.read_bytes() for path in (summary_path, history_path, resource_path)] == before
+
 print("mad4b.competitive-evidence-tests.v3: PASS")

@@ -1312,25 +1312,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( null === $ticket ) return true; // governed explicit/manual path remains unchanged.
 		if ( ! is_array( $ticket ) || ! class_exists( 'MAD4B_SCP_Automation_SLO', false ) )
 			return new WP_Error( 'mad4b_automation_guard_missing', 'Automatic safety admission cannot be verified.' );
-		try {
-			$allowed = MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket );
-		} catch ( Throwable $error ) {
-			return new WP_Error( 'mad4b_automation_ticket_verification_exception', 'Automatic ticket verification failed unexpectedly.' );
-		}
+		$allowed = self::guard_automatic_scope( $ticket, $skills_capability );
 		if ( is_wp_error( $allowed ) ) return $allowed;
-		if ( true !== $allowed )
-			return new WP_Error( 'mad4b_automation_ticket_denied', 'Automatic ticket verifier did not explicitly permit the mutation.' );
-		if ( '' !== $skills_capability ) {
-			if ( ! method_exists( 'MAD4B_SCP_Automation_SLO', 'additional_scope_allowed' ) )
-				return new WP_Error( 'mad4b_automation_scope_guard_missing', 'Managed Skills scope cannot be checked.' );
-			try {
-				$scope = MAD4B_SCP_Automation_SLO::additional_scope_allowed( $ticket, 'managed-skills', $skills_capability );
-			} catch ( Throwable $error ) {
-				return new WP_Error( 'mad4b_automation_scope_verification_exception', 'Automatic phase scope verification failed.' );
-			}
-			if ( is_wp_error( $scope ) ) return $scope;
-			if ( true !== $scope ) return new WP_Error( 'mad4b_automation_scope_denied', 'Automatic phase scope was not explicitly permitted.' );
-		}
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$target = is_array( $checkpoint ) && is_array( $checkpoint['target_identity'] ?? null )
 			? $checkpoint['target_identity'] : array();
@@ -1358,6 +1341,31 @@ final class MAD4B_SCP_Runtime_Convergence {
 				&& hash_equals( $ticket['generation'], $checkpoint['g8_completion_generation'] );
 			if ( ! $completion_owner )
 				return new WP_Error( 'mad4b_automation_checkpoint_not_schedulable', 'Current checkpoint is paused, terminal or reserved for manual reconciliation.' );
+		}
+		// Checkpoint filters and disk readback can run after the first switch
+		// check. A pause during either read must still stop the next effect.
+		return self::guard_automatic_scope( $ticket, $skills_capability );
+	}
+
+	private static function guard_automatic_scope( array $ticket, $skills_capability ) {
+		try {
+			$allowed = MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_automation_ticket_verification_exception', 'Automatic ticket verification failed unexpectedly.' );
+		}
+		if ( is_wp_error( $allowed ) ) return $allowed;
+		if ( true !== $allowed )
+			return new WP_Error( 'mad4b_automation_ticket_denied', 'Automatic ticket verifier did not explicitly permit the mutation.' );
+		if ( '' !== $skills_capability ) {
+			if ( ! method_exists( 'MAD4B_SCP_Automation_SLO', 'additional_scope_allowed' ) )
+				return new WP_Error( 'mad4b_automation_scope_guard_missing', 'Managed Skills scope cannot be checked.' );
+			try {
+				$scope = MAD4B_SCP_Automation_SLO::additional_scope_allowed( $ticket, 'managed-skills', $skills_capability );
+			} catch ( Throwable $error ) {
+				return new WP_Error( 'mad4b_automation_scope_verification_exception', 'Automatic phase scope verification failed.' );
+			}
+			if ( is_wp_error( $scope ) ) return $scope;
+			if ( true !== $scope ) return new WP_Error( 'mad4b_automation_scope_denied', 'Automatic phase scope was not explicitly permitted.' );
 		}
 		return true;
 	}
@@ -1425,6 +1433,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket, 'reconcile' );
 					if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 					if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
+					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket, 'reconcile' );
+					if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 					$seed = MAD4B_SCP_Skill_Seeder::reconcile();
 					if ( is_wp_error( $seed ) ) return $seed;
 					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket, 'reconcile' );

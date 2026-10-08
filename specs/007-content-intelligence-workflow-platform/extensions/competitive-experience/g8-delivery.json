@@ -1,0 +1,291 @@
+{
+  "contract": "mad4b.competitive-g8-delivery.v1",
+  "status": "REPOSITORY_G8_GUARDED_FOUNDATION_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 289,
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "task_scope": [
+    "T3976",
+    "T3977",
+    "T3978",
+    "T3979",
+    "T3980",
+    "T4071",
+    "T4072",
+    "T4073",
+    "T4074",
+    "T4075",
+    "T4076",
+    "T4077",
+    "T4078",
+    "T4079",
+    "T4080",
+    "T4081",
+    "T4082",
+    "T4083",
+    "T4084",
+    "T4085",
+    "T4086",
+    "T4087",
+    "T4088",
+    "T4089",
+    "T4090"
+  ],
+  "partial_task_ids": [
+    "T3976",
+    "T3977",
+    "T3978",
+    "T3979",
+    "T3980",
+    "T4071",
+    "T4072",
+    "T4073",
+    "T4074",
+    "T4075",
+    "T4076",
+    "T4077",
+    "T4078",
+    "T4079",
+    "T4080",
+    "T4081",
+    "T4082",
+    "T4083",
+    "T4084",
+    "T4085",
+    "T4086",
+    "T4087",
+    "T4088",
+    "T4089",
+    "T4090"
+  ],
+  "capability_ids": [
+    "CE039",
+    "CE040",
+    "CE055",
+    "CE056",
+    "CE057",
+    "CE058"
+  ],
+  "authorizing": false,
+  "production_authorized": false,
+  "runtime_parity_claimed": false,
+  "live_staging_acceptance": false,
+  "live_browser_acceptance": false,
+  "provider_behavior_certified": false,
+  "host_isolation_verified": false,
+  "disposable_database_acceptance_verified": false,
+  "automation_rate_measured": false,
+  "new_grants_created": false,
+  "all_task_done_claimed": false,
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-record.php",
+      "sha256": "97f2a1483ea7fec1538bb429e252624a01dc8f371a2dd97d66873bee787bc746",
+      "bytes": 6965
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-capability-convergence.php",
+      "sha256": "ba0ad7eef74bef8195292536442d034a2c6491a89a36f10f0dd6743074aeceb3",
+      "bytes": 13088
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-supply-provenance.php",
+      "sha256": "f5f140b72e7b9bafc28ca19f4f417dda77b6278ed89e9254f358e98b2a040e68",
+      "bytes": 7823
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-schema-migration.php",
+      "sha256": "af2cb729cf69031020db27b2a1c58150d75d7f4abb69ed5370a93d2035c9fbca",
+      "bytes": 15894
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-compatibility-fuzz.php",
+      "sha256": "577cac2c262a93388035829509bd94ffc978d007aba886f5b1c73ab9e8d0d46a",
+      "bytes": 7733
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-automation-slo.php",
+      "sha256": "cdd3e6e4925888e78df49af98f0386cc5edad84d3ae0638a77b59994c5fca1d5",
+      "bytes": 37466
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php",
+      "sha256": "ca8869a5e40b0770e55e8e7b858143b18dd948ceed0042f701cdb3f2f13107a7",
+      "bytes": 49923
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "sha256": "3628f102282e1bb6f41d29a535912822f1f5c5a231a4ca5b297b1f24a57d4ebc",
+      "bytes": 111473
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
+      "sha256": "6ac40e70a981579d8375689bae62db78c8c85ed41f80cfd5698b2841ae86e754",
+      "bytes": 17344
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-restore-convergence.php",
+      "sha256": "f7bef94a16220f5279516cb7e67720cde6c25f23164bfd6c03370438165e5658",
+      "bytes": 12869
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "307f4e5a9dfe5696f5155bb024ce18f6b13068ec3603ba271b0d23977a1fc28f",
+      "bytes": 39908
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-cron-guard-missing.php",
+      "sha256": "bf06a842897e7158a2131a980edcfc824b140ee3e83b406e2c1ae90d3ed22740",
+      "bytes": 8387
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php",
+      "sha256": "461080645620176b06760757a24f1f9d1c868761af27b1f108a4e6d725c2a9b6",
+      "bytes": 33732
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-automation-slo-runtime.php",
+      "sha256": "4a0f79701e3f0dee5c337d98bba14798df1e45e000ea4edf74d501eed1fb67d2",
+      "bytes": 17316
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-adaptive-automatic-handoffs.php",
+      "sha256": "67637975b4d0d95c4447d8912ca0cdc755f6682908a3284d18d25bfb97a58ada",
+      "bytes": 15351
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-staging-acceptance-readonly.php",
+      "sha256": "df34f0767a53118d6c97b6857209bb7a690133a6642857b64b562313b0cfc11d",
+      "bytes": 4456
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-extended-runtime.php",
+      "sha256": "bae3b5e292429dba41ac0056f8fa8bd0b61614e1b96a8f7363027690a06d2ea6",
+      "bytes": 33146
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",
+      "sha256": "6568058d7802677a926f6378ceea42474b1f8bbf810f83e5cff8972240c70591",
+      "bytes": 8385
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-cron-generation-guard.php",
+      "sha256": "8174a833c5c9228e1b4acf2f43f0ff04ab75b55a4272739285d5180d806a685c",
+      "bytes": 11142
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php",
+      "sha256": "2153f08c576fb7ef183b0abcc79631d1dad255cc93e917a704a9ff0ece77d239",
+      "bytes": 7693
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.md",
+      "sha256": "9e4e5d433f8ae2e9e8b9c4019af0b976463f73fed7f7e1eb74dad7ffb72c8395",
+      "bytes": 33282
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "sha256": "51afa1df8e54b8144d23c041ee4740fcdd7468c827c6b7b614868ad002df0139",
+      "bytes": 51714
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
+      "sha256": "f33165bdbbc0683ddb12bc3a68f39f7891d7719b99a4b8c16831c258e68a7a09",
+      "bytes": 61121
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
+      "sha256": "0f5ffa7c82ef8712fb9d54c75e3730e93a7c38f38d7d8fc726e0630eaf2d8142",
+      "bytes": 100575
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_delivery_progress.py",
+      "sha256": "2b287372840911b1872393370455559e5906a5acf1786a017a404e8cf164e5f3",
+      "bytes": 8958
+    }
+  ],
+  "workflow_paths": [
+    {
+      "path": ".github/workflows/feature-007-g8-contract.yml",
+      "sha256": "28e0beb9a036527b9dd115c57475680d58212b5019742ccd75c3d28b886f90d0",
+      "bytes": 3973
+    },
+    {
+      "path": ".github/workflows/feature-007-g8-database-cas.yml",
+      "sha256": "37ed5d4e674a9da2f0f59cde93e6cd5ea52b1e388be392b148cfa816f71169a8",
+      "bytes": 2486
+    }
+  ],
+  "repository_foundations": [
+    {
+      "task_ids": [
+        "T3976",
+        "T3977",
+        "T3978",
+        "T3979",
+        "T3980"
+      ],
+      "source_behavior": "Capability-local passive drift classification and existing guarded canary, rollback, Skills and automatic handoff eligibility",
+      "pending": "Actual signed provider readbacks, MCP initialize/tools-list, governed reversible canary and three current frontend/browser samples"
+    },
+    {
+      "task_ids": [
+        "T4071",
+        "T4072",
+        "T4073",
+        "T4074",
+        "T4075"
+      ],
+      "source_behavior": "Paused-by-default automatic admission, independent scoped switches, bounded budgets/cooldowns/backpressure and locally HMAC-bound causal outcome chain",
+      "pending": "Live concurrency, native correlated repair/rollback postconditions and trustworthy false-repair, quarantine, intervention and cost measurements"
+    },
+    {
+      "task_ids": [
+        "T4076",
+        "T4077",
+        "T4078",
+        "T4079",
+        "T4080"
+      ],
+      "source_behavior": "Existing verifier-bound per-capability supply provenance, dependency/mirror/revocation denials and passive operator view",
+      "pending": "Real signed provider packages, key rotation/revocation ingestion, source-mirror attack tests and operator acceptance"
+    },
+    {
+      "task_ids": [
+        "T4081",
+        "T4082",
+        "T4083",
+        "T4084",
+        "T4085"
+      ],
+      "source_behavior": "Owned observation documents only: declarative additive migration, N/N-1 reader window, unknown-field preservation, CAS cutover and rollback receipts",
+      "pending": "Interrupted real MySQL/MariaDB cutover and mixed-runtime/restore readbacks; authoritative registry, grants, risk and policy migration remain separately governed"
+    },
+    {
+      "task_ids": [
+        "T4086",
+        "T4087",
+        "T4088",
+        "T4089",
+        "T4090"
+      ],
+      "source_behavior": "Seeded inert differential fixtures and data-only timeout, cancellation, duplication, concurrency and provider-fault representations",
+      "pending": "Actual disposable WordPress/provider execution isolation, process/network fault injection and native review/canary evidence linkage"
+    }
+  ],
+  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091\u2013T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
+  "remaining_acceptance": [
+    "Final exact-head PHP 7.4/8.3 Actions and disposable MySQL 8.4/MariaDB 11.4 CAS matrix must complete; source fixtures are not a passing runtime receipt",
+    "Existing governed Staging host, identity, context, consent, signing-key and native journal boundaries require independent current readbacks",
+    "Real signed provider package and revocation/mirror/dependency tests plus reversible governed canary/rollback receipts",
+    "Passive external MCP initialize/tools-list, current frontend acceptance on at least three distinct samples and browser evidence",
+    "Live automatic queue/kill-switch/concurrency/fault acceptance and measured eligible workload with independently correlated native repair/rollback/cost evidence",
+    "Owned observation-only real database interrupted migration and N/N-1 restoration; no authority/risk/grant state migration is certified",
+    "Disposable WordPress/PHP/provider fuzz and chaos host/network isolation; no Production/shared/paid/irreversible execution",
+    "Cumulative Hub verification and exact-head owner/release acceptance remain separate; no new grants, automatic mount widening or Production permission"
+  ]
+}

@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-identifiers.php';
 require_once __DIR__ . '/class-mad4b-scp-structural-redaction.php';
 
 /**
@@ -14,6 +15,17 @@ final class MAD4B_SCP_G7_Operator_Journal {
         if ( ! is_string( $operation_id ) || 1 !== preg_match( '/^[A-Za-z0-9._:-]{1,191}$/D', $operation_id ) ) {
             return self::error( 'operation_id_invalid' );
         }
+        // Resolve the same read identity as the native journal: UUIDv4 case
+        // normalizes, while admitted legacy identities keep their exact bytes.
+        $lookup = MAD4B_SCP_Identifiers::operation_lookup( $operation_id );
+        if ( is_wp_error( $lookup ) ) return $lookup;
+        if ( ! is_array( $lookup ) || ( $lookup['contract'] ?? null ) !== MAD4B_SCP_Identifiers::POLICY_CONTRACT ||
+            ( $lookup['kind'] ?? null ) !== 'operation_id' || true !== ( $lookup['read_eligible'] ?? null ) ||
+            ! is_string( $lookup['value'] ?? null ) ||
+            1 !== preg_match( '/^[A-Za-z0-9._:-]{1,191}$/D', $lookup['value'] ) ) {
+            return self::error( 'operation_id_invalid' );
+        }
+        $operation_id = $lookup['value'];
         if ( ! class_exists( 'MAD4B_SCP_Operation_Journal' ) ) {
             return self::error( 'operation_journal_unavailable' );
         }

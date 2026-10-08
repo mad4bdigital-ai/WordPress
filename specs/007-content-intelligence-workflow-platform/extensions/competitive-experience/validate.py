@@ -41,6 +41,91 @@ EXPECTED_REPORTS = {
     "source-adaptive-operations-proposal.ar.md": "ce1ebc723b90481fbdb7b01d51335a68cf72a6d989177f703a38b03573447f69",
 }
 
+PLUGIN_PREFIX = "wp-content/plugins/mad4b-site-control-plane/"
+EXTENSION_PREFIX = "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/"
+PROGRESS_DELIVERIES = {
+    "g6": {
+        "contract": "mad4b.competitive-g6-delivery.v1",
+        "status": "REPOSITORY_FOUNDATION_PARTIAL_EXTERNAL_ACCEPTANCE_PENDING",
+        "pr": 287, "scope_field": "scope_task_ids",
+        "tasks": tuple(f"T{i}" for i in (*range(3956, 3966), *range(4016, 4021))),
+        "pending_field": "external_acceptance_required",
+        "workflow_paths": (".github/workflows/feature-007-spec-ci.yml",),
+        "false_fields": ("authorizing", "production_authorized", "runtime_parity_claimed",
+                         "provider_execution_certified", "vector_ingestion_certified",
+                         "dependency_execution_certified", "live_browser_acceptance",
+                         "new_grants_created", "all_task_done_claimed"),
+    },
+    "g8": {
+        "contract": "mad4b.competitive-g8-delivery.v1",
+        "status": "REPOSITORY_G8_GUARDED_FOUNDATION_EXTERNAL_ACCEPTANCE_PENDING",
+        "pr": 289, "scope_field": "task_scope",
+        "tasks": tuple(f"T{i}" for i in (*range(3976, 3981), *range(4071, 4091))),
+        "pending_field": "remaining_acceptance",
+        "workflow_paths": (".github/workflows/feature-007-g8-contract.yml",
+                           ".github/workflows/feature-007-g8-database-cas.yml"),
+        "false_fields": ("authorizing", "production_authorized", "runtime_parity_claimed",
+                         "live_staging_acceptance", "live_browser_acceptance",
+                         "provider_behavior_certified", "host_isolation_verified",
+                         "disposable_database_acceptance_verified", "automation_rate_measured",
+                         "new_grants_created", "all_task_done_claimed"),
+    },
+    "g9": {
+        "contract": "mad4b.feature007-g9-delivery.v1",
+        "status": "REPOSITORY_G9_GUARDED_FOUNDATION_EXTERNAL_ACCEPTANCE_PENDING",
+        "pr": 288, "scope_field": "task_ids",
+        "tasks": tuple(f"T{i}" for i in (*range(4066, 4071), *range(4091, 4096))),
+        "pending_field": "remaining_acceptance",
+        "workflow_paths": (".github/workflows/feature-007-g9-resilience.yml",),
+        "false_fields": ("authorizing", "production_authorized", "runtime_parity_claimed",
+                         "live_staging_acceptance", "live_host_isolation_verified",
+                         "native_fleet_rollback_dispatched", "external_effect_reconciliation_verified",
+                         "post_restore_acceptance_receipt_issued", "all_task_done_claimed",
+                         "new_grants_created", "source_files_include_real_execution_adapter",
+                         "native_journal_linkage_provider_implemented"),
+    },
+}
+
+# Each delivery must retain the source foundations for all tasks it marks partial.
+# Integration helpers can be added, but one placeholder class cannot stand in for
+# another slice's implementation or denial fixtures.
+PROGRESS_SOURCES = {
+    "g6": {
+        "code_paths": tuple(PLUGIN_PREFIX + "includes/class-mad4b-scp-g6-" + stem + ".php"
+                            for stem in ("contracts", "operation-compiler", "ai-workspace",
+                                         "knowledge-admission", "provider-routing", "retrieval-evaluation",
+                                         "acceptance", "conversation-vault", "durable-dag-evidence")),
+        "test_paths": tuple(PLUGIN_PREFIX + "tests/g6-" + stem for stem in
+                            ("private-preview-contract.php", "compiler-denial-runtime.php",
+                             "admission-denial-runtime.php", "provider-retrieval-denials.php",
+                             "delivery-integrity.py", "conversation-vault-runtime.php",
+                             "durable-dag-evidence.php")),
+    },
+    "g8": {
+        "code_paths": tuple(PLUGIN_PREFIX + "includes/class-mad4b-scp-" + stem + ".php" for stem in
+                            ("g8-record", "g8-capability-convergence", "g8-supply-provenance",
+                             "g8-schema-migration", "g8-compatibility-fuzz", "automation-slo",
+                             "adaptive-runtime-convergence", "runtime-convergence", "operator-workspace")),
+        "test_paths": tuple(PLUGIN_PREFIX + "tests/" + stem for stem in
+                            ("g8-cron-guard-missing.php", "adaptive-runtime-convergence-runtime.php",
+                             "g8-automation-slo-runtime.php", "g8-adaptive-automatic-handoffs.php",
+                             "g8-staging-acceptance-readonly.php", "g8-extended-runtime.php",
+                             "runtime-convergence-contract.py", "g8-cron-generation-guard.php",
+                             "g8-mysql-cas-integration.php")),
+    },
+    "g9": {
+        "code_paths": tuple(PLUGIN_PREFIX + "includes/class-mad4b-scp-" + stem + ".php" for stem in
+                            ("resilience-context", "resilience-anchor", "g9-resilience-gates",
+                             "g9-local-reader", "g9-release-fence", "g9-fleet-rollout",
+                             "g9-restore-convergence", "g9-read-surface", "g9-operational-readiness")),
+        "test_paths": tuple(PLUGIN_PREFIX + "tests/g9-" + stem for stem in
+                            ("resilience-gates-runtime.php", "resilience-state-runtime.php",
+                             "fleet-rollout-runtime.php", "security-source-contract.py", "boot-runtime.php",
+                             "delivery-contract.py", "ability-collision-runtime.php",
+                             "partial-ability-registration-runtime.php")),
+    },
+}
+
 
 def digest(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
@@ -138,6 +223,95 @@ def build_ledger(root: Path = ROOT) -> dict:
             "tasks": rows}
 
 
+def validate_progress_delivery(group: str, root: Path, repo: Path, ledger: dict) -> None:
+    """Bind partial repository work to real sources without promoting acceptance."""
+    rules = PROGRESS_DELIVERIES[group]
+    delivery = load(root, group + "-delivery.json")
+    expected_tasks = set(rules["tasks"])
+
+    def exact_tasks(key):
+        values = delivery.get(key)
+        return (isinstance(values, list) and all(isinstance(value, str) for value in values)
+                and len(values) == len(expected_tasks) and set(values) == expected_tasks)
+
+    pending = delivery.get(rules["pending_field"])
+    if (delivery.get("contract") != rules["contract"] or delivery.get("status") != rules["status"]
+            or delivery.get("implementation_pr") != rules["pr"] or delivery.get("integration_pr") != 258
+            or delivery.get("exact_head_binding") != "supplied_by_ci_not_embedded_in_commit"
+            or not exact_tasks(rules["scope_field"]) or not exact_tasks("partial_task_ids")
+            or any(delivery.get(key) is not False for key in rules["false_fields"])
+            or not isinstance(pending, list) or not pending
+            or any(not isinstance(value, str) or not value.strip() for value in pending)
+            or (group == "g9" and delivery.get("task_status") != "PARTIAL")):
+        raise ValueError(group + "_delivery_boundary_or_progress_invalid")
+
+    declared, records, inventory = set(), [], {}
+    prefixes = {"code_paths": PLUGIN_PREFIX + "includes/", "test_paths": PLUGIN_PREFIX + "tests/",
+                "spec_paths": EXTENSION_PREFIX, "workflow_paths": ".github/workflows/"}
+    for name in ("code_paths", "test_paths", "spec_paths") + (() if group == "g9" else ("workflow_paths",)):
+        items = delivery.get(name)
+        if not isinstance(items, list) or not items:
+            raise ValueError(group + "_delivery_requires_code_tests_and_spec")
+        inventory[name] = set()
+        for item in items:
+            path = item if group == "g9" else item.get("path") if isinstance(item, dict) else None
+            if (not isinstance(path, str) or not path or "\\" in path
+                    or PurePosixPath(path).as_posix() != path or ".." in PurePosixPath(path).parts
+                    or not (path.startswith(prefixes[name])
+                            or name == "code_paths" and path == PLUGIN_PREFIX + "mad4b-site-control-plane.php")):
+                raise ValueError(group + "_delivery_path_outside_scope:" + name)
+            if path in declared:
+                raise ValueError(group + "_delivery_duplicate_evidence_path")
+            declared.add(path)
+            inventory[name].add(path)
+            if group != "g9":
+                records.append(item)
+    if any(not set(paths) <= inventory[name] for name, paths in PROGRESS_SOURCES[group].items()):
+        raise ValueError(group + "_delivery_source_slice_missing")
+    if (not any(path.startswith(PLUGIN_PREFIX + "includes/class-mad4b-scp-" + group + "-")
+                for path in declared)
+            or not any(path.startswith(PLUGIN_PREFIX + "tests/" + group + "-") for path in declared)
+            or EXTENSION_PREFIX + group + "-delivery.md" not in declared):
+        raise ValueError(group + "_delivery_missing_domain_source_or_test")
+
+    required = {PLUGIN_PREFIX + "mad4b-site-control-plane.php", *rules["workflow_paths"]}
+    if group == "g9":
+        required.add(PLUGIN_PREFIX + "tests/g9-delivery-contract.py")
+        records = delivery.get("evidence_integrity")
+        if not isinstance(records, list):
+            raise ValueError(group + "_delivery_missing_evidence_integrity")
+    elif {item["path"] for item in delivery["workflow_paths"]} != set(rules["workflow_paths"]):
+        raise ValueError(group + "_delivery_workflow_scope_invalid")
+    expected_paths = declared | required
+    seen = set()
+    for item in records:
+        if (not isinstance(item, dict) or set(item) != {"path", "sha256", "bytes"}
+                or not isinstance(item["path"], str) or item["path"] not in expected_paths
+                or item["path"] in seen or not isinstance(item["sha256"], str)
+                or not re.fullmatch(r"[a-f0-9]{64}", item["sha256"])
+                or type(item["bytes"]) is not int or item["bytes"] < 1):
+            raise ValueError(group + "_delivery_evidence_record_invalid")
+        path = item["path"]
+        source = local_file(repo, path)
+        raw = source.read_bytes()
+        if len(raw) < 20 or digest(raw) != item["sha256"] or len(raw) != item["bytes"]:
+            raise ValueError(group + "_delivery_source_evidence_drift:" + path)
+        seen.add(path)
+    if seen != expected_paths:
+        raise ValueError(group + "_delivery_evidence_inventory_invalid")
+    rows = [row for row in ledger["tasks"] if row["task_id"] in expected_tasks]
+    if len(rows) != len(expected_tasks) or {row["task_id"] for row in rows} != expected_tasks:
+        raise ValueError(group + "_delivery_canonical_task_scope_invalid")
+    for row in rows:
+        if (row["status"] != "PARTIAL" or not isinstance(row.get("reason"), str)
+                or not row["reason"].strip()):
+            raise ValueError(group + "_delivery_canonical_partial_required:" + row["task_id"])
+        refs = row.get("evidence_refs")
+        if (not isinstance(refs, list) or any(not isinstance(ref, str) for ref in refs)
+                or not {group + "-delivery.json", group + "-delivery.md"} <= set(refs)):
+            raise ValueError(group + "_partial_task_missing_delivery_binding:" + row["task_id"])
+
+
 def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     feature = load(root, "extension.json")
     for name in ("README.md", "spec.md", "plan.md", "traceability.md", "contracts/runtime.md",
@@ -227,8 +401,9 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     g3_partial_ids = {f"T40{i:02}" for i in range(11, 16)} | {f"T40{i:02}" for i in range(21, 36)}
     g4_partial_ids = {f"T39{i:02}" for i in range(31, 46)} | {f"T39{i:02}" for i in range(66, 76)}
     g5_partial_ids = {f"T39{i:02}" for i in range(26, 31)} | {f"T39{i:02}" for i in range(46, 51)} | {f"T40{i:02}" for i in range(56, 61)}
+    new_partial_ids = {task for rules in PROGRESS_DELIVERIES.values() for task in rules["tasks"]}
     g7_partial_ids = {f"T40{i:02}" for i in range(36, 56)} | {"T4061", "T4063", "T4064", "T4065"}
-    supported_partial_ids = ui_partial_ids | g1_partial_ids | g2_partial_ids | g3_partial_ids | g4_partial_ids | g5_partial_ids | g7_partial_ids
+    supported_partial_ids = ui_partial_ids | g1_partial_ids | g2_partial_ids | g3_partial_ids | g4_partial_ids | g5_partial_ids | g7_partial_ids | new_partial_ids
     if partial - supported_partial_ids:
         raise ValueError("implementation_partial_task_owner_invalid:" + ",".join(sorted(partial - supported_partial_ids)))
 
@@ -242,6 +417,10 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     if partial:
         if feature.get("status") not in {"UI_IMPLEMENTATION_IN_PROGRESS", "IMPLEMENTATION_IN_PROGRESS"}:
             raise ValueError("implementation_progress_requires_implementation_state")
+
+        for group, rules in PROGRESS_DELIVERIES.items():
+            if partial.intersection(rules["tasks"]) or (root / (group + "-delivery.json")).exists():
+                validate_progress_delivery(group, root, repo, ledger)
 
         if ui_partial:
             delivery = load(root, "ui-delivery.json")
