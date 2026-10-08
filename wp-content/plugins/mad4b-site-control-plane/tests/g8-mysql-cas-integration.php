@@ -8,6 +8,16 @@ if ( '1' !== getenv( 'G8_CAS_DISPOSABLE' ) ) {
 	fwrite( STDERR, "G8_CAS_DISPOSABLE=1 required; refusing any DB access\n" ); exit( 2 );
 }
 if ( ! extension_loaded( 'mysqli' ) ) { fwrite( STDERR, "mysqli required\n" ); exit( 2 ); }
+// Both protections are mandatory. This harness drops only its own fixture
+// table, and must never be redirected at a real Staging/Production database.
+if ( 'g8_ci_contract' !== getenv( 'G8_CAS_DATABASE' )
+	|| ! in_array( getenv( 'G8_CAS_HOST' ), array( '127.0.0.1', 'localhost' ), true )
+	|| 'root' !== getenv( 'G8_CAS_USER' )
+	|| 'g8_ci_only_not_a_site_secret' !== getenv( 'G8_CAS_PASSWORD' )
+	|| '3306' !== getenv( 'G8_CAS_PORT' ) ) {
+	fwrite( STDERR, "Disposable loopback CI database identity mismatch; refusing DB access\n" );
+	exit( 2 );
+}
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 class WP_Error {
 	private $code;
@@ -28,11 +38,11 @@ class G8_Disposable_WPDB {
 	public $db;
 	public function __construct() {
 		$this->db = new mysqli(
-			getenv( 'G8_CAS_HOST' ) ?: '127.0.0.1',
-			getenv( 'G8_CAS_USER' ) ?: 'root',
-			getenv( 'G8_CAS_PASSWORD' ) ?: '',
-			getenv( 'G8_CAS_DATABASE' ) ?: 'g8_ci_contract',
-			(int) ( getenv( 'G8_CAS_PORT' ) ?: 3306 )
+			'127.0.0.1',
+			'root',
+			'g8_ci_only_not_a_site_secret',
+			'g8_ci_contract',
+			3306
 		);
 		$this->db->set_charset( 'utf8mb4' );
 	}
