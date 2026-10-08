@@ -1125,6 +1125,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 	public static function resume_safe_phases() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) ) return;
+		// A previously scheduled Cron event is not execution authority.
+		// Terminal, manual, restore-wait and explicitly paused checkpoints
+		// must never re-enter the automatic worker merely because the event
+		// was already present in the WordPress Cron queue.
+		$scheduled_state = $checkpoint['state'] ?? '';
+		if ( ! in_array( $scheduled_state, array( 'pending_restart', 'pending_safe_phases' ), true )
+			|| ( array_key_exists( 'automatic_retry_allowed', $checkpoint )
+				&& false === $checkpoint['automatic_retry_allowed'] ) ) return;
 		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) ) return;
 		$not_before = self::maintenance_not_before();
 		if ( $not_before > time() ) {
