@@ -35,6 +35,7 @@ assert.equal(royalResult.siteProviderId,"royal-provider");
 assert.equal(royalResult.profileId,"site.v1");
 assert.throws(()=>resolve(example("royal"),{approvedDrivers:[etg]}),/site_browser_external_driver_not_approved/);
 const unknown=example();unknown.providers=[];unknown.provider_count=0;unknown.site_discovery.provider_matches=[];
+unknown.site_discovery.unmapped_plugins = unknown.site_discovery.plugins.slice();
 assert.throws(()=>resolve(unknown,options),/site_browser_site_adapter_missing/);
 const badTheme=example();badTheme.site_discovery.theme_version_complete=false;
 assert.throws(()=>resolve(badTheme,options),/site_browser_discovery_invalid_or_incomplete/);
@@ -48,6 +49,18 @@ const traversal=example();traversal.site_discovery.plugin_versions[0].basename="
 assert.throws(()=>resolve(traversal,options),/site_browser_discovery_invalid_or_incomplete/);
 const changed=example();changed.site_discovery.snapshot_sha256="b".repeat(64);
 assert.throws(()=>assertSiteBindingUnchanged(etgResult,resolve(changed,options)),/site_browser_binding_changed:discoverySha256/);
+const misleading=example();
+misleading.site_discovery.plugin_versions[0].basename="elsewhere/main.php";
+assert.throws(()=>resolve(misleading,options),/site_browser_discovery_invalid_or_incomplete/);
+const malformedType=example();malformedType.site_discovery.post_types.push({evil:"cpt"});
+assert.throws(()=>resolve(malformedType,options),/site_browser_discovery_invalid_or_incomplete/);
+const missingMatch=example();missingMatch.site_discovery.provider_matches=[];
+assert.throws(()=>resolve(missingMatch,options),/site_browser_discovery_match_incomplete/);
+const duplicateMatch=example();duplicateMatch.site_discovery.provider_matches.push(
+  {...duplicateMatch.site_discovery.provider_matches[0]});
+assert.throws(()=>resolve(duplicateMatch,options),/site_browser_discovery_match_invalid/);
+const fakeUnmapped=example();fakeUnmapped.site_discovery.unmapped_plugins=[];
+assert.throws(()=>resolve(fakeUnmapped,options),/site_browser_unmapped_plugin_projection_invalid/);
 const fake=example();fake.site_discovery.provider_matches[0].matched_plugins=0;
 assert.throws(()=>resolve(fake,options),/site_browser_discovery_match_invalid/);
 fake.site_discovery.provider_matches[0].matched_plugins=1;fake.site_discovery.certification_issued=true;
@@ -67,6 +80,7 @@ cpt.providers[0].descriptor.recognition = {
 };
 cpt.site_discovery.plugins = [];
 cpt.site_discovery.plugin_versions = [];
+cpt.site_discovery.unmapped_plugins = [];
 cpt.site_discovery.provider_matches = [{
   provider_id:"royal-provider",source_plugins:[],source_post_types:["tour"],
   source_taxonomies:["tour_type"],matched_plugins:0,matched_post_types:1,matched_taxonomies:1,
