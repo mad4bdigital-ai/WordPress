@@ -130,11 +130,20 @@ final class MAD4B_SCP_Search_Context {
 		$old_ids = array();
 		foreach ( isset( $previous['markets'] ) && is_array( $previous['markets'] ) ? $previous['markets'] : array() as $market ) if ( is_array( $market ) && isset( $market['id'] ) ) $old_ids[ $market['id'] ] = true;
 		$new_ids = array();
-		foreach ( $candidate['markets'] as $market ) if ( ! isset( $old_ids[ $market['id'] ] ) ) $new_ids[ $market['id'] ] = true;
+		foreach ( $candidate['markets'] as $market ) if ( ! isset( $old_ids[ $market['id'] ] ) ) $new_ids[ $market['id'] ] = $market['country'];
 		if ( ! $new_ids ) return true;
 		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
 		if ( is_wp_error( $registry ) ) return $registry;
 		if ( null !== $registry && ( ! is_array( $registry ) || ! isset( $registry['ids'] ) || ! is_array( $registry['ids'] ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+		foreach ( $new_ids as $market_id => $country ) {
+			// An interrupted previous admission can own a durable claim even
+			// when the registry has no complete profile to compare against.
+			$claim = MAD4B_SCP_Search_Store::read( 'market-identity', $market_id );
+			if ( is_wp_error( $claim ) ) return $claim;
+			if ( null === $claim ) continue;
+			$expected = array( 'profile_id' => $candidate['profile_id'], 'country' => $country );
+			if ( ! is_array( $claim ) || ! isset( $claim['digest'], $claim['payload'] ) || ! is_string( $claim['digest'] ) || ! is_array( $claim['payload'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $expected ), $claim['digest'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $claim['payload'] ), $claim['digest'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'This market ID has a different or invalid durable owner claim.' );
+		}
 		foreach ( is_array( $registry ) ? $registry['ids'] : array() as $other_id ) {
 			if ( $other_id === $candidate['profile_id'] ) continue;
 			$other = MAD4B_SCP_Search_Store::read( 'profile', $other_id );
