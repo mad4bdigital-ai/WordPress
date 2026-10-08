@@ -57,9 +57,12 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 				}
 				if ( count( $active ) > self::MAX_PLUGINS ) $blockers[] = 'combined_plugin_inventory_overflow';
 				if ( ! $blockers ) {
+					$seen_basename = array();
 					foreach ( $active as $item ) {
 						$slug = self::plugin_slug( $item );
 						if ( '' === $slug ) { $blockers[] = 'plugin_basename_invalid'; break; }
+						if ( isset( $seen_basename[ $item ] ) ) continue; // Same plugin active per-site and network-wide.
+						$seen_basename[ $item ] = true;
 						if ( isset( $plugins[ $slug ] ) ) { $blockers[] = 'duplicate_plugin_slug'; break; }
 						$plugins[ $slug ] = true;
 						$version = '';
