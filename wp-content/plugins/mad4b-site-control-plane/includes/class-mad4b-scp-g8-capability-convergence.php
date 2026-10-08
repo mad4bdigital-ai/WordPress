@@ -18,6 +18,14 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 	public static function observe( $provider ) {
 		if ( ! self::identifier( $provider ) || ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification', false ) )
 			return new WP_Error( 'mad4b_g8_convergence_provider_invalid', 'Registered provider inspection required.' );
+		// Identity admission must precede provider inspection, not follow it.
+		if ( ! class_exists( 'MAD4B_SCP_G8_Record', false ) || ! MAD4B_SCP_G8_Record::staging() )
+			return new WP_Error( 'mad4b_g8_convergence_staging_required', 'Enrolled Staging required for exact scope observation.' );
+		$binding = MAD4B_SCP_G8_Record::binding();
+		$profile = MAD4B_SCP_G8_Record::profile();
+		if ( is_wp_error( $binding ) || ! is_array( $binding )
+			|| ! is_string( $profile ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $profile ) )
+			return new WP_Error( 'mad4b_g8_convergence_site_binding_unavailable', 'Restore epoch and exact Site Profile are required.' );
 		$assessment = MAD4B_SCP_Provider_Compatibility_Certification::assess_provider( $provider );
 		if ( is_wp_error( $assessment ) ) return $assessment;
 		if ( ! is_array( $assessment ) || ! is_array( $assessment['capabilities'] ?? null )
@@ -45,13 +53,6 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			);
 		}
 		ksort( $capabilities, SORT_STRING );
-		if ( ! class_exists( 'MAD4B_SCP_G8_Record', false ) || ! MAD4B_SCP_G8_Record::staging() )
-			return new WP_Error( 'mad4b_g8_convergence_staging_required', 'Enrolled Staging required for exact scope observation.' );
-		$binding = MAD4B_SCP_G8_Record::binding();
-		$profile = MAD4B_SCP_G8_Record::profile();
-		if ( is_wp_error( $binding ) || ! is_array( $binding )
-			|| ! is_string( $profile ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $profile ) )
-			return new WP_Error( 'mad4b_g8_convergence_site_binding_unavailable', 'Restore epoch and exact Site Profile are required.' );
 		return array( 'contract' => self::CONTRACT, 'site_profile_sha256' => $profile,
 			'restore_binding' => $binding, 'provider' => $provider,
 			'artifact_sha256' => $fingerprint, 'capabilities' => $capabilities,
