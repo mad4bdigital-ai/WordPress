@@ -50,6 +50,13 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             || ! in_array( $thread['classification'], array( 'public', 'internal' ), true )
             || ( $thread['deleted'] && $thread['messages'] ) )
             return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Conversation registry contains invalid or non-erased thread data.' );
+        // Unknown tombstone keys may preserve private data after declared erasure.
+        // Active transcript authentication does not cover unknown top-level keys.
+        $allowed = array( 'thread_id', 'classification', 'messages', 'expires_at', 'deleted' );
+        if ( ! $thread['deleted'] )
+            $allowed = array_merge( $allowed, array( 'sealed_count', 'sealed_key_id', 'sealed_mac' ) );
+        if ( array_diff( array_keys( $thread ), $allowed ) || ( $thread['deleted'] && 5 !== count( $thread ) ) )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Conversation record contains unrecognized or retained private fields.' );
         foreach ( $thread['messages'] as $index => $message ) {
             if ( ! is_array( $message ) || ! isset( $message['aad_version'] ) || 3 !== $message['aad_version'] )
                 return MAD4B_SCP_G6_Contracts::error( 'vault_aad_version_required', 'Legacy encrypted records need reviewed migration.' );
