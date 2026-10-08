@@ -37,7 +37,14 @@ function wp_salt( $scheme = '' ) { return str_repeat( 'native-secret-', 5 ); }
 function get_posts( $args ) {
     native_expect( $args['post_type'] === 'page' && $args['post_status'] === 'publish',
         'only publicly published pages qualify' );
-    return array( (object) array( 'ID' => 42 ) );
+    return array(
+        (object) array( 'ID' => 3, 'post_type' => 'page', 'post_status' => 'publish',
+            'post_password' => 'protected' ),
+        (object) array( 'ID' => 4, 'post_type' => 'page', 'post_status' => 'draft',
+            'post_password' => '' ),
+        (object) array( 'ID' => 42, 'post_type' => 'page', 'post_status' => 'publish',
+            'post_password' => '' )
+    );
 }
 function get_permalink( $id ) { return 'https://demo.example' . $GLOBALS['native_path']; }
 function wp_get_canonical_url( $id ) { return 'https://demo.example' . $GLOBALS['native_path']; }
@@ -51,7 +58,8 @@ native_expect( $c::capabilities()['independent_reducer'] === true, 'reducer decl
 $plan = $c::plan( array( 'profile_id' => $c::PROFILE, 'suite' => 'browser_runtime' ) );
 native_expect( $plan['state'] === 'ready' && $plan['case_count'] === 1,
     'native read oracle generates signed plan' );
-native_expect( $plan['cases'][0]['expected']['path'] === '/public/', 'server-side path oracle' );
+native_expect( $plan['cases'][0]['expected']['path'] === '/public/' &&
+    $plan['cases'][0]['case_id'] === 'page-42', 'password pages and nonpublished post records excluded' );
 native_expect( strlen( $plan['plan_signature'] ) === 64, 'HMAC plan signature produced' );
 $evidence = array(
     'contract' => $c::EVIDENCE, 'plan_digest' => $plan['plan_digest'],
