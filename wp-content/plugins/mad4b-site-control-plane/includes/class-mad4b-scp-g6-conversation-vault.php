@@ -49,8 +49,9 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             || ( $thread['deleted'] && $thread['messages'] ) )
             return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Conversation registry contains invalid or non-erased thread data.' );
         foreach ( $thread['messages'] as $index => $message ) {
-            if ( ! is_array( $message ) || ! isset( $message['aad_version'] )
-                || 3 !== $message['aad_version'] || ! isset( $message['retention_ceiling'], $message['message_index'] )
+            if ( ! is_array( $message ) || ! isset( $message['aad_version'] ) || 3 !== $message['aad_version'] )
+                return MAD4B_SCP_G6_Contracts::error( 'vault_aad_version_required', 'Legacy encrypted records need reviewed migration.' );
+            if ( ! isset( $message['retention_ceiling'], $message['message_index'] )
                 || ! is_int( $message['retention_ceiling'] ) || ! is_int( $message['message_index'] )
                 || $message['message_index'] !== $index
                 || $message['retention_ceiling'] < $thread['expires_at'] )

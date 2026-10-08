@@ -65,7 +65,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",
-      "sha256": "e0f27a9661f0fb2c1ff167424973338787970053c2bbd4fd79322708a9081472"
+      "sha256": "d3c5eb0bcdf79f3485240143d7ce077213e8cd259f2be6f5cabc3c9ab10a8e28"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-durable-dag-evidence.php",
