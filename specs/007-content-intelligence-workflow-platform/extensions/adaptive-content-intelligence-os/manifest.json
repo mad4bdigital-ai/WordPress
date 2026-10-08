@@ -28,6 +28,7 @@
     "contracts/orchestration-budget.md",
     "contracts/publication-growth.md",
     "data-model.md",
+    "design-closure.md",
     "disposition-rules.json",
     "domain-fact-authority.json",
     "dynamic-foundation.md",
@@ -228,5 +229,7 @@
     "P1_EXECUTION_LEDGER",
     "P1_BOUNDED_OPTIMIZATION",
     "P1_SCOPED_DAG"
-  ]
+  ],
+  "design_closure_document": "design-closure.md",
+  "design_closure_status": "IMPLEMENTED_PENDING_EXACT_EXECUTION_AND_REVIEW"
 }
