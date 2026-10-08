@@ -49,3 +49,20 @@ The supply regression uses a *stubbed* existing signature-verification call to p
 5. Obtain exact-head owner attestation and separately authorized merge into `#258`. Promotion of `#258` to master is independent.
 
 **This document does not authorize release or merging.**
+
+## Review and remediation — 2026-10-08
+
+Security and correctness review of the current PR branch identified and patched these defects:
+
+| Severity | Confirmed source defect | Remediation in this PR |
+|---|---|---|
+| P0 | Runtime Convergence marked a repair verified from reported completion without independent current runtime blockers; a switched ticket could inflate success evidence. | Require independent runtime status and live ticket recheck before `verified_repair`; claim-only and switch-race fixtures added. |
+| P0 | Capability diff could call newly eligible writes `UNCHANGED` and preserve reads after eligibility loss. | Explicit expansion review and READ_FENCED classifications, including certification/evidence changes and exact site/restore binding. |
+| P1 | Schema v3 could be read by undeclared v1 worker, permitting stale readers to interpret future fields. | Explicit N/N-1 observation reader window; N-2 denied and unknown fields preserved. |
+| P1 | Signed, expired provider retry buckets accumulated forever and could exhaust scope capacity despite elapsed windows. | Bounded deterministic pruning of old, cooldown-free buckets without evicting active ticket scopes or site bucket. |
+| P1 | Malformed fuzz fixtures containing closures/objects hit `serialize` before type validation. | Validate entire fixture tree before serialization; closure fixture yields stable denial. |
+| P1 | Automatic worker had late checkpoint/retry/version metadata writes after its last ticket fence. | Recheck independent automatic ticket before late writes and retry scheduling, without changing governed manual paths. |
+| P1 | GitHub Actions G8 concurrency group contained the exact commit SHA and could not cancel superseded PR runs. | Stable PR-number concurrency group, retaining exact-head checkout guard. |
+| P1 | Rollback receipts relied on row integrity but did not independently revalidate the stored historical snapshot shape/digest. | Verify receipt prestate digest, schema, scope, order and restore binding before readback or rollback. |
+
+Remaining acceptance limitations are **not** solved by these source patches: a successful PHP 7.4/8.3 GitHub Actions run at the final exact head, provider and signed-package integration, real MySQL/MariaDB fault matrix, browser/MCP/host proofs, live 3+ frontend samples, and independent governed Staging/release approval. GitHub queues are not a passing test receipt. Repository code must not re-enable Production writes or grant broad new capabilities on the strength of this document.
