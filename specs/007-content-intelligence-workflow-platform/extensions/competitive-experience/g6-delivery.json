@@ -57,7 +57,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
-      "sha256": "f8392b29b7e41da86fe8b4b1d8865305b66467eea873040f6e205fa75534dc2b"
+      "sha256": "b487272d21ad0e3353ea7f9ee1618776853dbe777aafe800f0d1a8d73a5b78e0"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -75,7 +75,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-private-preview-contract.php",
-      "sha256": "a8d0f544cad2abcb96ec4c4c82b8290b972b57340414d9b32a2176c4116e9801"
+      "sha256": "33a3971603d76589c43c0093383bb47f42a8d9c90eb576afa589703efba29d45"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-compiler-denial-runtime.php",
@@ -109,7 +109,7 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.md",
-      "sha256": "c7b5d81991c273c6abe131606b5b930f438be2602b2e3ad3f81383c1fa49fdb7"
+      "sha256": "a59338630000c288459999dafbaab32e9b74e22dc3f5f5e7232b8211b09e8e03"
     }
   ],
   "acceptance_contracts": [
