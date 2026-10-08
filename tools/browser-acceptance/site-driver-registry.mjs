@@ -29,8 +29,7 @@ export function resolveSiteDriverForPlan(plan) {
   // The adapter's own validator is the final authority on its format.
   // A generic envelope alone is NOT enough to certify provider-specific semantics.
   const validated = driver.validatePlan(plan);
-  if (validated.provider_contract !== driver.provider_contract &&
-      plan.provider_contract !== driver.provider_contract) {
+  if (validated.provider_contract !== driver.provider_contract) {
     throw new Error("site_browser_driver_contract_drift");
   }
   return Object.freeze({ driver_id: driver.driver_id,
