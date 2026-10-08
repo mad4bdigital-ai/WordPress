@@ -150,10 +150,10 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
 			'capabilities' => array(
 				'read' => array( 'capability_contract_digest' => str_repeat( '2', 64 ),
 					'structural_compatible' => true, 'behavioral_evidence' => array( 'behavioral_verified' => true, 'rollback_verified' => false ),
-					'write_eligible' => false, 'certification_level' => 'READ_COMPATIBLE' ),
+					'read_eligible' => true, 'write_eligible' => false, 'certification_level' => 'READ_COMPATIBLE' ),
 				'write' => array( 'capability_contract_digest' => str_repeat( '3', 64 ),
 					'structural_compatible' => true, 'behavioral_evidence' => array( 'behavioral_verified' => true, 'rollback_verified' => true ),
-					'write_eligible' => true, 'certification_level' => 'REVERSIBLE_WRITE_CERTIFIED' ),
+					'read_eligible' => false, 'write_eligible' => true, 'certification_level' => 'REVERSIBLE_WRITE_CERTIFIED' ),
 			) );
 	}
 }
@@ -169,6 +169,18 @@ $after['capabilities']['read']['contract_sha256'] = str_repeat( '5', 64 );
 $diff = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $after );
 g8_check( 'STRUCTURE_CHANGED' === $diff['changed_capabilities']['read']['state']
 	&& 'analytics:read' === $diff['changed_capabilities']['read']['quarantine_scope'], 'structural change quarantines exact read capability' );
+$became_ineligible = $prior;
+$became_ineligible['capabilities']['read']['read_eligible'] = false;
+$fenced = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $became_ineligible );
+g8_check( 'READ_FENCED' === $fenced['changed_capabilities']['read']['state']
+	&& ! in_array( 'read', $fenced['unrelated_compatible_capabilities'], true ),
+	'previously certified read is not preserved after read eligibility loss' );
+$new_eligibility = $prior;
+$new_eligibility['capabilities']['write']['write_eligible'] = false;
+$promotion = MAD4B_SCP_G8_Capability_Convergence::diff( $new_eligibility, $prior );
+g8_check( 'ELIGIBILITY_EXPANSION_REQUIRES_GOVERNED_REVIEW' === $promotion['changed_capabilities']['write']['state']
+	&& false === $promotion['candidate_promotion_allowed'], 'write eligibility expansion cannot be classified unchanged' );
+
 $external = MAD4B_SCP_G8_Capability_Convergence::live_acceptance();
 g8_check( 'EXTERNAL_ACCEPTANCE_PENDING' === $external['state']
 	&& false === $external['release_acceptance']
