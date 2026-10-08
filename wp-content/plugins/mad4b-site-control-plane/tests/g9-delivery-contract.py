@@ -4,7 +4,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
+# tests/ -> plugin/ -> plugins/ -> wp-content/ -> repository root
+ROOT = Path(__file__).resolve().parents[3]
+assert (ROOT / "wp-content/plugins/mad4b-site-control-plane").is_dir(), "G9_REPOSITORY_ROOT_UNRESOLVED"
+assert (ROOT / ".github/workflows/feature-007-g9-resilience.yml").is_file(), "G9_REPOSITORY_WORKFLOW_UNAVAILABLE"
 DOC = ROOT / "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.json"
 TASKS = ROOT / "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/tasks.md"
 payload = json.loads(DOC.read_text(encoding="utf-8"))
