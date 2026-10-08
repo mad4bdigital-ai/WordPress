@@ -52,7 +52,14 @@ final class MAD4B_SCP_Search_Profile_Admin {
 				}
 				if ( '' === $profile_id ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			}
-			if ( '' === $market_id ) $market_id = 'market-' . strtolower( $market_country );
+			if ( '' === $market_id ) {
+				$prefix = 'search-' . strtolower( $market_country );
+				// Target identities use market_id but not profile_id: generated markets
+				// must not alias one another across Search Profiles.
+				if ( $profile_id === $prefix ) $market_id = 'market-' . strtolower( $market_country );
+				elseif ( 0 === strpos( $profile_id, $prefix . '-' ) && preg_match( '/^[0-9]{1,3}$/D', substr( $profile_id, strlen( $prefix ) + 1 ) ) ) $market_id = 'market-' . strtolower( $market_country ) . '-' . substr( $profile_id, strlen( $prefix ) + 1 );
+				else $market_id = 'market-' . strtolower( $market_country ) . '-' . substr( hash( 'sha256', $profile_id ), 0, 12 );
+			}
 			if ( ! MAD4B_SCP_Search_Contracts::id( $profile_id ) || ! MAD4B_SCP_Search_Contracts::id( $market_id ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$providers = isset( $input['providers'] ) ? $input['providers'] : array();
 			if ( ! is_array( $providers ) || count( $providers ) > 64 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
