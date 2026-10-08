@@ -17,3 +17,18 @@
 - [ ] B015 Obtain production-independent Staging acceptance receipt and owner release approval
 
 Checkboxes B001-B010 describe **code implementation**, not site runtime certification.
+
+## Adversarial hardening extensions
+
+- [x] B016 Reject relative plugin basenames and collisions; compare active file header versions
+- [x] B017 Include active theme and parent theme release provenance in read-only discovery fingerprint
+- [x] B018 Enforce complete/unambiguous Provider/CPT/Taxonomy and Unmapped-projection parity
+- [x] B019 Reject cross-session evidence reordering, nonce mismatch, incomplete or duplicated cases (generic and legacy workers)
+- [x] B020 Deny private/localhost hosts, unallowlisted passive egress and same-host port escapes
+- [x] B021 Isolate each Playwright run from existing provider browser tabs, cookies and service workers
+- [x] B022 Restrict worker env to explicit provider secrets, remove implicit ETG evidence defaults
+- [x] B023 Register local negative suites in browser workflow
+- [ ] B024 Native PHP 7.4/8.3 and Node execution of all new regression tests
+- [ ] B025 Provider-level DNS rebinding / IP firewall certification and live ETG parity
+- [ ] B026 Version-preserving updates (full plugin/theme asset hashes and monotonic invalidation)
+- [ ] B027 All Royal per-domain oracle/adapter and signed runtime acceptance, with build identity
