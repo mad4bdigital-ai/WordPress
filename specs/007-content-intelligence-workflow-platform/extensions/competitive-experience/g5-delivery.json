@@ -39,7 +39,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-growth-evidence.php",
-      "sha256": "6297d7b2c06ee45836c853e84877c17718cf2674727ba37399a2e19b4fedbb01"
+      "sha256": "f3f334444826d5e83684969bc3b570ac0e9cd7dff241556e81cee0036527a0af"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-provider-profiles.php",
@@ -47,7 +47,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php",
-      "sha256": "7d461e84106187fd509f9f47d45657a2f38943e9aa82ba6e03bc776a844f5aff"
+      "sha256": "c0ce9e2f2cc5044a96c2bc31c5050271d30939d16cbdb93ee383e3dd9b04a74b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-acceptance.php",
@@ -65,7 +65,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-growth-evidence-runtime.php",
-      "sha256": "4ffd3c3f75df2363e03ce7b9ccea25f8e749c3686106f43c5de3d58faa7ee807"
+      "sha256": "ef05daebac75d5df1a8b1ed80553453b9424fb8ff9a2ef10d08da4c9fb42b2b0"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-provider-profile-contract.php",
@@ -73,7 +73,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-seo-provider-family-contract.php",
-      "sha256": "78e36a2f72ffd9a6329b6acf59ba086cc9185ffeaf220efc3963d3f28bc99f48"
+      "sha256": "4eb4d77453a5f8a47f1f74f9d223680cc093b0b9e3d2b75522383d0589e679e4"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-acceptance-contract.php",
