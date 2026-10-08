@@ -137,6 +137,21 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			echo '</p>';
 		}
 		if ( ! empty( $discovery['snapshot_sha256'] ) ) echo '<p>Snapshot: <code>' . esc_html( (string) $discovery['snapshot_sha256'] ) . '</code></p>';
+		// Shared capability layer across all plugin families and registered browser
+		// Providers. This is an inventory view, never a provider approval.
+		if ( class_exists( 'MAD4B_SCP_Capability_Atlas' ) && class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) {
+			$family_coverage = MAD4B_SCP_Plugin_Discovery::functional_coverage_report();
+			$atlas = MAD4B_SCP_Capability_Atlas::compose( $observed, $family_coverage );
+			$items = isset( $atlas['capabilities'] ) && is_array( $atlas['capabilities'] ) ? $atlas['capabilities'] : array();
+			$shared = 0;
+			foreach ( $items as $unit ) if ( ! empty( $unit['candidate_ambiguous'] ) ) ++$shared;
+			echo '<h2>Cross-provider capability atlas (unverified)</h2>';
+			echo '<p><strong>' . esc_html( (string) count( $items ) ) . '</strong> capability/family nodes; '
+				. esc_html( (string) $shared ) . ' shared by multiple candidates. Inventory grants no execution or certification.</p>';
+			if ( empty( $atlas['complete'] ) ) echo '<div class="notice notice-warning inline"><p>'
+				. esc_html( implode( ', ', array_slice( (array) ( $atlas['blocking_reasons'] ?? array( 'inventory_incomplete' ) ), 0, 10 ) ) )
+				. '</p></div>';
+		}
 		echo '<h2>' . esc_html__( '1. WordPress test provider registry', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p><strong>' . esc_html( (string) $valid_count ) . '</strong> ' . esc_html__( 'valid site-specific providers. Installing a reviewed provider adapter is required for signed browser acceptance plans.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( 0 === $valid_count ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No WordPress Browser Acceptance provider is registered. Tests cannot run yet; entering external API keys cannot resolve this missing adapter.', 'mad4b-site-control-plane' ) . '</p></div>';
