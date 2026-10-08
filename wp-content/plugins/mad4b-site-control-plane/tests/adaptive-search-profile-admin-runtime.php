@@ -56,10 +56,10 @@ profile_case( 'audience_country_and_languages_are_explicit', static function () 
 	profile_check( false !== strpos( $html, 'name="market_country" value=""' ), 'country starts unselected' );
 	profile_check( false !== strpos( $html, 'name="additional_languages"' ) && false !== strpos( $html, 'name="languages[]" value="en"' ), 'extra languages and English are selectable' );
 	profile_check( ! preg_match( '/name="languages\\[\\]"[^>]* checked/', $html ), 'site languages are not automatically targeted' );
-	$args = profile_form( '' ); $args['market_id'] = ''; $args['market_country'] = 'us'; $args['languages'] = array(); $args['additional_languages'] = 'en, es';
+	$args = profile_form( '' ); $args['market_id'] = ''; $args['market_country'] = 'us'; $args['languages'] = array(); $args['additional_languages'] = 'EN_us, ES';
 	$first = MAD4B_SCP_Search_Profile_Admin::save( $args );
 	profile_check( ! is_wp_error( $first ) && 'search-us' === $first['profile']['profile_id'] && 'market-us' === $first['profile']['markets'][0]['id'], 'IDs derive from US target market' );
-	profile_check( array( 'en', 'es' ) === $first['profile']['language_policy']['desired'] && ! $first['profile']['enabled'] && $first['profile']['provider_policy']['freeze_spend'], 'selected audience languages remain paused and frozen' );
+	profile_check( array( 'en-us', 'es' ) === $first['profile']['language_policy']['desired'] && ! $first['profile']['enabled'] && $first['profile']['provider_policy']['freeze_spend'], 'selected audience languages remain paused and frozen' );
 	$second = MAD4B_SCP_Search_Profile_Admin::save( $args );
 	profile_check( ! is_wp_error( $second ) && 'search-us-2' === $second['profile']['profile_id'], 'second market profile gets collision-safe ID' );
 	$args['profile_id'] = 'custom-us-audience'; $args['market_id'] = 'custom-market';
@@ -100,12 +100,12 @@ profile_case( 'guided_existing_profile_edit_preserves_advanced_state_and_locatio
 	profile_check( ! is_wp_error( $advanced ) && 2 === $advanced['profile']['revision'], 'advanced policy fixture' );
 	ob_start(); MAD4B_SCP_Search_Profile_Admin::render( $p['profile_id'] ); $html = ob_get_clean();
 	foreach ( array( 'Edit audience settings (guided)', 'name="audience_country"', 'name="audience_languages"', 'name="audience_devices"', 'name="objective"', 'name="operation" value="edit_guided"' ) as $text ) profile_check( false !== strpos( $html, $text ), 'guided edit UI: ' . $text );
-	$form = array( 'operation' => 'edit_guided', 'profile_id' => $p['profile_id'], 'expected_revision' => '2', 'audience_country' => 'US', 'audience_languages' => 'en, es', 'audience_devices' => 'mobile, desktop', 'objective' => 'US tourism tours' );
+	$form = array( 'operation' => 'edit_guided', 'profile_id' => $p['profile_id'], 'expected_revision' => '2', 'audience_country' => 'US', 'audience_languages' => 'EN_us, ES', 'audience_devices' => 'mobile, desktop', 'objective' => 'US tourism tours' );
 	$edited = MAD4B_SCP_Search_Profile_Admin::save( $form );
 	profile_check( ! is_wp_error( $edited ) && 3 === $edited['profile']['revision'], 'guided edit applied and verified' );
 	$q = $edited['profile'];
 	profile_check( 'US' === $q['markets'][0]['country'] && 'DE' === $q['markets'][1]['country'], 'other market preserved' );
-	profile_check( array( 'en', 'es' ) === $q['language_policy']['desired'] && array( 'mobile', 'desktop' ) === $q['provider_policy']['devices'], 'audience settings saved' );
+	profile_check( array( 'en-us', 'es' ) === $q['language_policy']['desired'] && array( 'mobile', 'desktop' ) === $q['provider_policy']['devices'], 'audience settings saved' );
 	profile_check( 86400 === $q['refresh_policy']['baseline_seconds'] && ! $q['enabled'] && $q['provider_policy']['freeze_spend'] && array() === $q['budget_policy']['nodes'], 'advanced configuration and frozen state preserved' );
 	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $form ) ), 'stale revision denied' );
 	$form['expected_revision'] = '3';
