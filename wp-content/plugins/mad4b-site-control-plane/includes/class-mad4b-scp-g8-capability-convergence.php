@@ -113,7 +113,8 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			? $observer::external_handshake_attestation_status() : array();
 		$performance = class_exists( $observer, false ) && method_exists( $observer, 'frontend_performance_status' )
 			? $observer::frontend_performance_status() : array();
-		$valid_external = is_array( $external ) && true === ( $external['verified'] ?? false )
+		$valid_external = class_exists( 'MAD4B_SCP_G8_Record', false ) && MAD4B_SCP_G8_Record::staging()
+			&& is_array( $external ) && true === ( $external['verified'] ?? false )
 			&& true === ( $external['inventory_match'] ?? false )
 			&& true === ( $external['package_identity_match'] ?? false );
 		$samples = is_array( $performance ) ? (int) ( $performance['evaluation_window']['sample_count'] ?? 0 ) : 0;
