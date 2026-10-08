@@ -113,8 +113,11 @@ final class MAD4B_SCP_G9_Release_Fence {
             return self::blocked( 'execution_authority_unavailable', 'Core mutation guard is disabled.' );
         $ready = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
         if ( ! is_array( $ready ) || empty( $ready['ready'] )
-            || empty( $ready['current_grant_snapshot_ready'] ) )
-            return self::blocked( 'grants_stale', 'Current exact site-local grants are not reconciled.' );
+            || empty( $ready['current_grant_snapshot_ready'] )
+            || empty( $ready['candidate_binding_match'] )
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $ready['grant_rows_fingerprint'] ?? '' )
+            || ! hash_equals( $observed['authority']['grant_snapshot_sha256'], $ready['grant_rows_fingerprint'] ) )
+            return self::blocked( 'grants_stale', 'Current exact site-local grants and candidate generation differ from the captured plan.' );
         $auth = MAD4B_SCP_Authorization::authorize_mutation(
             'mad4b/g9-release-reserve', 'mad4b-admin', 'core',
             array( 'plan_sha256' => $plan['plan_sha256'] )
@@ -138,7 +141,17 @@ final class MAD4B_SCP_G9_Release_Fence {
         $entry_key = 'g9:release:' . $operation_sha;
         $result = MAD4B_SCP_Resilience_Anchor::transact(
             $observed['binding'], $plan['anchor_revision'],
-            function ( $current ) use ( $entry_key, $plan, $operation_sha, $now ) {
+            function ( $current ) use ( $entry_key, $plan, $operation_sha, $now, $observed ) {
+                // Recheck the authoritative grant and candidate binding after
+                // acquiring the external lock. If an administrator revoked a
+                // permission in the admission-to-CAS window, do not reserve.
+                $fresh = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
+                if ( ! is_array( $fresh ) || empty( $fresh['ready'] )
+                    || empty( $fresh['current_grant_snapshot_ready'] )
+                    || empty( $fresh['candidate_binding_match'] )
+                    || ! MAD4B_SCP_Resilience_Context::is_hash( $fresh['grant_rows_fingerprint'] ?? '' )
+                    || ! hash_equals( $observed['authority']['grant_snapshot_sha256'], $fresh['grant_rows_fingerprint'] ) )
+                    return self::blocked( 'grants_changed_before_cas', 'Authority was revoked or changed before the external fence was reserved.' );
                 if ( count( $current['scopes'] ) >= self::MAX_EVENTS
                     || array_key_exists( $entry_key, $current['scopes'] ) )
                     return self::blocked( 'replay_or_capacity', 'Duplicate release or fence capacity exceeded.' );

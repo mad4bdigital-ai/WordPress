@@ -67,8 +67,13 @@ class MAD4B_SCP_Certification_Pack_Registry {
     public static function status() { return array( 'revision'=>0, 'active'=>array() ); }
 }
 class MAD4B_SCP_Staging_Write_Authority {
+    public static $call_count = 0;
+    public static $deny_on_call = 0;
     public static function current_execution_readiness() {
-        return array( 'ready'=>true, 'current_grant_snapshot_ready'=>true,
+        self::$call_count++;
+        $ready = self::$deny_on_call !== self::$call_count;
+        return array( 'ready'=>$ready, 'current_grant_snapshot_ready'=>$ready,
+            'candidate_binding_match'=>$ready,
             'grant_rows_fingerprint'=>hash( 'sha256', 'grants' ) );
     }
     public static function candidate_binding_status() { return array( 'match'=>true ); }
@@ -131,6 +136,12 @@ MAD4B_SCP_Policy::$mutable = true;
 MAD4B_SCP_Authorization::$admitted = false;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'not_admitted' );
 MAD4B_SCP_Authorization::$admitted = true;
+// Revoke exact current authority between first grant check and locked
+// external CAS. Neither reservation nor provider dispatch is permitted.
+MAD4B_SCP_Staging_Write_Authority::$deny_on_call =
+    MAD4B_SCP_Staging_Write_Authority::$call_count + 3;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'grants_changed_before_cas' );
+MAD4B_SCP_Staging_Write_Authority::$deny_on_call = 0;
 $reserved = MAD4B_SCP_G9_Release_Fence::reserve( $plan );
 g9_assert( ! is_wp_error( $reserved ) && 2 === $reserved['anchor_revision']
     && $reserved['state'] === 'fenced_not_dispatched'
