@@ -167,7 +167,9 @@ extra = deepcopy(extended['tasks']['tasks'][0])
 extra['id'] = 'ACI-T8888'
 extended['tasks']['tasks'].append(extra)
 extended['gates']['gates'][0]['task_ids'].append('ACI-T8888')
-extended['requirements']['requirements'][0]['task_ids'].append('ACI-T8888')
+for requirement in extended['requirements']['requirements']:
+    if requirement['id'] in extra['requirement_ids']:
+        requirement['task_ids'].append('ACI-T8888')
 v2 = m.validate_model(extended['tasks'], extended['gates'],
                       extended['requirements'], extended['system_map'])
 check(v2['tasks'] == 72, 'additive semantic task registry without runtime code edits')
