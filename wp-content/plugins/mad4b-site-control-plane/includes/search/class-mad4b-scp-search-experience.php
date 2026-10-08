@@ -88,7 +88,8 @@ final class MAD4B_SCP_Search_Experience {
 			$result = MAD4B_SCP_Search_Context::control_transition( $input );
 			if ( is_wp_error( $result ) ) return $result;
 			$verify = MAD4B_SCP_Search_Context::verify( array( 'profile_id' => $id ) );
-			if ( is_wp_error( $verify ) || empty( $verify['valid'] ) || ! isset( $result['profile']['profile_sha256'] ) || ! hash_equals( (string) $result['profile']['profile_sha256'], (string) $verify['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			$quarantined_safe = ! empty( $result['safe_control_identity_quarantined'] ) && in_array( $control, array( 'pause', 'freeze_spend', 'disable_provider' ), true );
+			if ( is_wp_error( $verify ) || ( empty( $verify['valid'] ) && ! $quarantined_safe ) || ! isset( $verify['profile_sha256'], $result['profile']['profile_sha256'] ) || ! hash_equals( (string) $result['profile']['profile_sha256'], (string) $verify['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'pause' === $control && ! empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'resume' === $control && empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'freeze_spend' === $control && empty( $result['profile']['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
