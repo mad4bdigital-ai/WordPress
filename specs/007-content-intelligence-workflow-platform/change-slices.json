@@ -521,14 +521,16 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-operator-workspace.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-read-work-operations.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-task-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-convergence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-operator-workspace-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-read-work-runtime.php"
       ]
     }
   ],
-  "changed_paths_sha256": "ae4e3937ac3fd2f623028e15cfa53e9f735c6aad5a042c6ccebf2efaec502cc2",
+  "changed_paths_sha256": "75a2ffa8eb63d0a7dfd2a9bd1f863cbf1ab0912a80a02d235d67586410895c5d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
