@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 275,
+  "changed_file_count": 281,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -425,8 +425,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py"
       ]
+    },
+    {
+      "id": "autonomous-assistants-ga-gb-foundation",
+      "semantic_unit": "Non-authorizing autonomous assistant planning and typed desired-state proposals; GA/GB foundation only",
+      "revert_boundary": "Revert assistant planner, standalone fixture, docs and Agent Registry read-only registration together; do not affect existing executor authority, G8/G9 or Search Intelligence editor",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/AUTONOMOUS-ASSISTANTS-GA-GB.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-planning.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-bootstrap-diagnostic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-planning-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "9f4ebd42da90a40a994b7b7a630e53e841f261b8b7df20737b02a6e92cfdbd85",
+  "changed_paths_sha256": "a7172c88ca24afc3c5461984d99e1510c0c728dd963d122a97d5b6f4d61b888e",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
