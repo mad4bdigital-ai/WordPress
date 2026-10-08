@@ -170,8 +170,19 @@ final class MAD4B_SCP_Automation_SLO {
 			&& is_array( $readback ) && 'mad4b.skill-runtime-certification.v2' === ( $readback['contract'] ?? '' ) && true === ( $readback['ready'] ?? false )
 			&& is_array( $persisted = MAD4B_SCP_Skill_Runtime_Certification::persisted_status() ) && true === ( $persisted['build_identity_current'] ?? false ) ) $outcome = 'verified_repair';
 		if ( false === ( $ticket['pre_ready'] ?? null ) && 'runtime-convergence' === ( $ticket['provider'] ?? '' ) && 'safe-phases' === ( $ticket['capability'] ?? '' )
-			&& is_array( $result ) && 'completed' === ( $result['state'] ?? '' ) && is_array( $result['readback'] ?? null )
-			&& empty( $result['readback']['required_blockers'] ) ) $outcome = 'verified_repair';
+			&& is_array( $result ) && 'completed' === ( $result['state'] ?? '' )
+			&& is_array( $result['readback'] ?? null ) && empty( $result['readback']['required_blockers'] )
+			&& class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
+			$actual = MAD4B_SCP_Runtime_Convergence::status();
+			if ( is_array( $actual ) && array_key_exists( 'required_blockers', $actual )
+				&& is_array( $actual['required_blockers'] ) && empty( $actual['required_blockers'] ) )
+				$outcome = 'verified_repair';
+		}
+		// A verified repair cannot be recorded after its independent switch,
+		// restore binding or exact worker ticket becomes stale. Post-hoc
+		// counters are evidence, never permission to execute another action.
+		if ( 'verified_repair' === $outcome && is_wp_error( self::ticket_allowed( $ticket ) ) )
+			$outcome = 'handoff';
 		return self::finish( $ticket, $outcome );
 	}
 
