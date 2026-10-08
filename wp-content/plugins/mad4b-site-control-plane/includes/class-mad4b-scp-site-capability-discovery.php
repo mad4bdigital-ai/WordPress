@@ -77,20 +77,35 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 			}
 			$descriptor = isset( $provider['descriptor'] ) && is_array( $provider['descriptor'] ) ? $provider['descriptor'] : array();
 			$recognition = isset( $descriptor['recognition'] ) && is_array( $descriptor['recognition'] ) ? $descriptor['recognition'] : array();
-			$requires = isset( $recognition['source_plugins'] ) ? $recognition['source_plugins'] : array();
-			if ( ! is_array( $requires ) || count( $requires ) > self::MAX_MATCHES ) { $blockers[] = 'provider_recognition_invalid'; break; }
-			$expected = self::names( $requires, self::MAX_MATCHES, '/^[a-z0-9][a-z0-9._-]{0,63}$/D' );
-			if ( null === $expected ) { $blockers[] = 'provider_recognition_invalid'; break; }
-			// Absence of metadata means "unknown", not a guessed provider match.
-			if ( ! $expected ) continue;
-			$matched = count( array_intersect( $expected, $plugin_ids ) );
-			$complete = $matched === count( $expected );
-			$matches[] = array(
-				'provider_id' => $provider_id, 'source_plugins' => $expected,
-				'matched_plugins' => $matched, 'recognized' => $complete,
-				'certified' => false, 'authorizing' => false,
+			$evidence = array(
+				'source_plugins' => array( isset( $recognition['source_plugins'] ) ? $recognition['source_plugins'] : array(), $plugin_ids ),
+				'source_post_types' => array( isset( $recognition['source_post_types'] ) ? $recognition['source_post_types'] : array(), $post_types ),
+				'source_taxonomies' => array( isset( $recognition['source_taxonomies'] ) ? $recognition['source_taxonomies'] : array(), $taxonomies ),
 			);
-			if ( $complete ) foreach ( $expected as $plugin_slug ) $mapped[ $plugin_slug ] = true;
+			$expected = array();
+			$observed_matches = array();
+			foreach ( $evidence as $kind => $pair ) {
+				$pattern = 'source_plugins' === $kind ? '/^[a-z0-9][a-z0-9._-]{0,63}$/D' : '/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/D';
+				$expected[ $kind ] = self::names( $pair[0], self::MAX_MATCHES, $pattern );
+				if ( null === $expected[ $kind ] ) { $blockers[] = 'provider_recognition_invalid'; break; }
+				$observed_matches[ $kind ] = count( array_intersect( $expected[ $kind ], (array) $pair[1] ) );
+			}
+			if ( null === $expected['source_plugins'] || count( $expected ) < 3 ) break;
+			$total = count( $expected['source_plugins'] ) + count( $expected['source_post_types'] ) + count( $expected['source_taxonomies'] );
+			if ( ! $total ) continue; // Missing recognition metadata cannot become an inferred driver.
+			$matched = array_sum( $observed_matches );
+			$complete = $matched === $total;
+			$matches[] = array(
+				'provider_id' => $provider_id,
+				'source_plugins' => $expected['source_plugins'],
+				'source_post_types' => $expected['source_post_types'],
+				'source_taxonomies' => $expected['source_taxonomies'],
+				'matched_plugins' => $observed_matches['source_plugins'],
+				'matched_post_types' => $observed_matches['source_post_types'],
+				'matched_taxonomies' => $observed_matches['source_taxonomies'],
+				'recognized' => $complete, 'certified' => false, 'authorizing' => false,
+			);
+			if ( $complete ) foreach ( $expected['source_plugins'] as $plugin_slug ) $mapped[ $plugin_slug ] = true;
 		}
 		$unmapped = array_values( array_diff( $plugin_ids, array_keys( $mapped ) ) );
 		$complete = ! $blockers;
