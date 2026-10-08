@@ -53,7 +53,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-retrieval-evaluation.php",
-      "sha256": "c51b2e575c9066ab0142668aa81bede35e1b9efdce3af37dc10c0ed66201dc30"
+      "sha256": "330d46745326b830e60615f98f4495eb7694a6329f6671d4c3d541f3015c85bc"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
