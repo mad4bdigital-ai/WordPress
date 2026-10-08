@@ -186,7 +186,8 @@ final class MAD4B_SCP_Assistant_Planning {
         // Tasks are stable for identical site, restore generation and inputs.
         // These proposal identifiers are NOT durable execution identifiers.
         $input_digest = hash( 'sha256', serialize( array( $desired, $observed ) ) );
-        $task_binding = array( $binding['site_uuid'], $binding['profile_digest'],
+        $task_binding = array( $binding['site_uuid'], $binding['environment'],
+            $binding['profile_digest'], $binding['origin_sha256'],
             $binding['runtime_generation'], $binding['artifact_sha256'],
             $binding['restore_epoch'], $binding['external_record_sha256'], $input_digest );
         $tasks = array(); $seen = array(); $review_reasons = array();
