@@ -202,6 +202,13 @@ $after['capabilities']['read']['contract_sha256'] = str_repeat( '5', 64 );
 $diff = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $after );
 g8_check( 'STRUCTURE_CHANGED' === $diff['changed_capabilities']['read']['state']
 	&& 'analytics:read' === $diff['changed_capabilities']['read']['quarantine_scope'], 'structural change quarantines exact read capability' );
+$removed = $prior;
+$removed['capabilities'] = array();
+$provider_lost = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $removed );
+g8_check( true === $provider_lost['provider_wide_quarantine']
+	&& false === $provider_lost['whole_provider_deactivation']
+	&& 'no_current_eligible_capabilities' === $provider_lost['provider_quarantine_reason'],
+	'no current provider capabilities must be reported quarantined, without mutation' );
 $became_ineligible = $prior;
 $became_ineligible['capabilities']['read']['read_eligible'] = false;
 $fenced = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $became_ineligible );
