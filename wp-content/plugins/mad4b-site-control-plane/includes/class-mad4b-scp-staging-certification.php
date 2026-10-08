@@ -607,7 +607,16 @@ final class MAD4B_SCP_Staging_Certification {
 		elseif ( count( $ids ) > 1 ) $blockers[] = 'site_browser_provider_selection_required';
 		else $blockers[] = 'site_browser_provider_missing';
 		$profile_id = isset( $operator['profile_id'] ) && is_string( $operator['profile_id'] ) ? $operator['profile_id'] : '';
-		if ( '' === $profile_id && 'etg-dfsb' === $chosen && ! $blockers ) $profile_id = 'tours';
+		// Never infer site identity from a provider name. Profiles are advertised by
+		// the registered provider and remain subject to the signed-plan reducer.
+		if ( '' === $profile_id && '' !== $chosen && ! $blockers ) {
+			foreach ( $providers as $provider ) {
+				if ( ! is_array( $provider ) || ( isset( $provider['provider_id'] ) ? $provider['provider_id'] : '' ) !== $chosen ) continue;
+				$candidate = isset( $provider['capabilities']['default_profile_id'] ) ? $provider['capabilities']['default_profile_id'] : '';
+				if ( is_string( $candidate ) && preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $candidate ) ) $profile_id = $candidate;
+				break;
+			}
+		}
 		if ( '' === $profile_id && ! $blockers ) $blockers[] = 'site_browser_acceptance_profile_required';
 		if ( $blockers ) return array(
 			'contract' => 'mad4b.staging-browser-certification-view.v3', 'ready' => false,
