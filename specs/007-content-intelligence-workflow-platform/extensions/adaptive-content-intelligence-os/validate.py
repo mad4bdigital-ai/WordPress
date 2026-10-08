@@ -145,11 +145,12 @@ def validate(root=ROOT):
     except Exception as error:
         reason = str(error)
         if 'requirement_' in reason:
-            faults.append('requirement_registry_coverage_invalid:' + reason)
+            faults.append('requirement_registry_coverage_invalid')
         elif 'gate_' in reason or 'unreviewed_conditional' in reason:
-            faults.append('gate_registry_coverage_invalid:' + reason)
+            faults.append('gate_registry_coverage_invalid')
         else:
-            faults.append('dynamic_model_invalid:' + reason)
+            faults.append('dynamic_model_invalid')
+        faults.append('dynamic_model_detail:' + reason)
     for title, registry, declared, category in (
         ('task-registry',tasks,task_ids,'task'),('requirement-registry',reqs,req_ids,'requirement'),
         ('gate-registry',gates,gate_ids,'gate')):
