@@ -48,8 +48,29 @@ profile_case( 'guided_profile_accepts_checkbox_lists_and_renders_site_aware_defa
 	profile_check( ! is_wp_error( $result ) && array( 'en', 'ar' ) === $result['profile']['language_policy']['desired'], 'flat checkbox language list accepted and normalized' );
 	profile_check( 'EG' === $result['profile']['markets'][0]['country'], 'lowercase country input normalized to ISO uppercase' );
 	ob_start(); MAD4B_SCP_Search_Profile_Admin::render( '' ); $html = ob_get_clean();
-	foreach ( array( 'Guided setup', '1. Target market', '2. Site languages', '3. Search engines', '4. Provider accounts', 'Technical identifiers (auto-filled)', 'name="languages[]"', 'name="engines[]"' ) as $text ) profile_check( false !== strpos( $html, $text ), 'guided setup element visible: ' . $text );
+	foreach ( array( 'Guided setup', '1. Target market', '2. Audience languages', '3. Search engines', '4. Provider accounts', 'Technical identifiers (auto-filled)', 'name="languages[]"', 'name="engines[]"' ) as $text ) profile_check( false !== strpos( $html, $text ), 'guided setup element visible: ' . $text );
 });
+profile_case( 'audience_country_and_languages_are_explicit', static function () {
+	ob_start(); MAD4B_SCP_Search_Profile_Admin::render( '' ); $html = ob_get_clean();
+	profile_check( false !== strpos( $html, 'WordPress timezone are intentionally ignored' ), 'hosting timezone not used to infer target market' );
+	profile_check( false !== strpos( $html, 'name="market_country" value=""' ), 'country starts unselected' );
+	profile_check( false !== strpos( $html, 'name="additional_languages"' ) && false !== strpos( $html, 'name="languages[]" value="en"' ), 'extra languages and English are selectable' );
+	profile_check( ! preg_match( '/name="languages\\[\\]"[^>]* checked/', $html ), 'site languages are not automatically targeted' );
+	$args = profile_form( '' ); $args['market_id'] = ''; $args['market_country'] = 'us'; $args['languages'] = array(); $args['additional_languages'] = 'en, es';
+	$first = MAD4B_SCP_Search_Profile_Admin::save( $args );
+	profile_check( ! is_wp_error( $first ) && 'search-us' === $first['profile']['profile_id'] && 'market-us' === $first['profile']['markets'][0]['id'], 'IDs derive from US target market' );
+	profile_check( array( 'en', 'es' ) === $first['profile']['language_policy']['desired'] && ! $first['profile']['enabled'] && $first['profile']['provider_policy']['freeze_spend'], 'selected audience languages remain paused and frozen' );
+	$second = MAD4B_SCP_Search_Profile_Admin::save( $args );
+	profile_check( ! is_wp_error( $second ) && 'search-us-2' === $second['profile']['profile_id'], 'second market profile gets collision-safe ID' );
+	$args['profile_id'] = 'custom-us-audience'; $args['market_id'] = 'custom-market';
+	$custom = MAD4B_SCP_Search_Profile_Admin::save( $args );
+	profile_check( ! is_wp_error( $custom ) && 'custom-market' === $custom['profile']['markets'][0]['id'], 'explicit IDs supported' );
+	$bad = $args; $bad['additional_languages'] = 'en, <script>';
+	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'invalid audience language denied' );
+	$bad = $args; $bad['market_country'] = '';
+	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'missing audience country denied' );
+	profile_check( 0 === count( $GLOBALS['fixture_http'] ), 'guided setup does not call search providers' );
+} );
 profile_case( 'profile_editor_preserves_policy_and_fences_stale_or_renamed_forms', static function () {
 	$saved = MAD4B_SCP_Search_Profile_Admin::save( profile_form() ); $p = $saved['profile']; $raw = array_intersect_key( $p, array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) );
 	$raw['markets'][] = array( 'id' => 'second-market', 'country' => 'FR', 'provider_locations' => array( 'alpha' => array( 'id' => 'fixture-location', 'precision' => 'country' ) ) );
