@@ -250,6 +250,17 @@ final class MAD4B_SCP_G9_Release_Fence {
             || ( $receipt['provider_id'] ?? '' ) !== 'core'
             || ! MAD4B_SCP_Resilience_Context::is_hash( $receipt['terminal_receipt_sha256'] ?? '' ) )
             return self::blocked( 'native_receipt_unbound', 'The native release executor, operation and signed terminal receipt must be bound together.' );
+        // The signed unified receipt treats operation_journal as an optional
+        // stage for generic mutations. G9 MUST require an explicit PASS
+        // stage bound to this exact journal operation ID, otherwise a signed
+        // release-set receipt could be paired with an unrelated COMMITTED
+        // journal and reported as verified native G9 execution.
+        $journal_stage = $receipt['stages']['operation_journal'] ?? array();
+        if ( ! is_array( $journal_stage )
+            || ( $journal_stage['status'] ?? '' ) !== 'PASS'
+            || ( $journal_stage['evidence_type'] ?? '' ) !== 'operation_id'
+            || ( $journal_stage['evidence_sha256'] ?? '' ) !== hash( 'sha256', $operation_id ) )
+            return self::blocked( 'native_receipt_unbound', 'Signed native operation journal stage is missing or belongs to a different operation.' );
         $verified = MAD4B_SCP_Execution_Receipt::verify( $receipt );
         if ( is_wp_error( $verified ) || ! is_array( $verified )
             || empty( $verified['valid'] ) || empty( $verified['cryptographic_signature_verified'] )

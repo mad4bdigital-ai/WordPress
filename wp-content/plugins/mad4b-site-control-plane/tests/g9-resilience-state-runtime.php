@@ -305,7 +305,20 @@ $native = array( 'request_id'=>$operation_id,
     'target_fingerprint'=>$reserved['operation_sha256'],
     'ability'=>'mad4b/runtime-release-set-apply',
     'provider_id'=>'core',
-    'terminal_receipt_sha256'=>hash( 'sha256', 'native-terminal' ) );
+    'terminal_receipt_sha256'=>hash( 'sha256', 'native-terminal' ),
+    'stages'=>array( 'operation_journal'=>array(
+        'status'=>'PASS', 'evidence_type'=>'operation_id',
+        'evidence_sha256'=>hash( 'sha256', $operation_id ),
+    ) ) );
+$missing_journal = $native; unset( $missing_journal['stages']['operation_journal'] );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $missing_journal ),
+    'native_receipt_unbound' );
+$other_journal = $native; $other_journal['stages']['operation_journal']['evidence_sha256'] =
+    hash( 'sha256', 'different-operation' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $other_journal ),
+    'native_receipt_unbound' );
 $wrong_ability = $native; $wrong_ability['ability'] = 'mad4b/content-update-post';
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $wrong_ability ),

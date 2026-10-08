@@ -80,3 +80,7 @@ The earlier DB loss marker recorded only `anchor_seen` and the site identity; a 
 ## P0 — Same-cycle generation/restore CAS admission (2026-10-08)
 
 The earlier G9 reservation rechecked only current Staging write-grant fingerprint and candidate under its external lock; a runtime swap or restore epoch change after the initial snapshot could still precede fence reservation. G9 now calls the existing `Runtime_Generation_Fence::assert_current()` with the exact captured generation and independently rereads `Restore_Epoch::status(false,true)` while holding the external CAS lock, rejecting any drift before publishing a reservation. The hermetic test injects generation revocation after first admission. This does not eliminate cross-host races or replace an executor-side same-cycle assertion before dispatch.
+
+## P0 — Signed receipt and native journal join (2026-10-08)
+
+`MAD4B_SCP_Execution_Receipt::build()` allows the `operation_journal` stage to be `NOT_REQUIRED` for general mutations. G9 previously verified that a release receipt and independently read `Operation_Journal` were each plausible, but did not require the receipt's signed stages to reference the **same** journal operation. G9 now requires a signed `operation_journal` stage with `status=PASS`, `evidence_type=operation_id` and `evidence_sha256=sha256(exact_operation_id)` before its verifier accepts the receipt. Negative fixtures cover missing and mismatched stages. This is still not a standalone release/rollback acceptance certificate; native executor dispatch itself remains unimplemented.
