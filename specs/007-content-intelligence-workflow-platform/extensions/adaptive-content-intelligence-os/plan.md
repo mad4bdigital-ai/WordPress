@@ -61,3 +61,16 @@ Threat model, model/adapter version skew, Staging QA, provider accounts, restore
 - Reconcile concurrent #258 and #303 changes with exact-head proof before applying their implementation claims.
 - First vertical slice: one locale/topic, no-paid-calls fixture, one typed native relations family, a reviewed blueprint and draft. No publish or Production.
 - Add provider and browser acceptance only after staging site identity, candidate binding and Skills are current. Developer host isolation is a separate external prerequisite; never downgrade to unsandboxed execution.
+
+## Design closure overrides (v3)
+
+Read [design-closure.md](design-closure.md) as the normative source for exact trust, evidence, effect and release semantics. ACI-G0 design deliverables close only when the full Spec tests have actually executed on one exact reviewed SHA; the implementation tasks in `task-registry.json` remain OPEN until later evidence-backed execution.
+
+The release profile `staging_publish` explicitly excludes `ACI-G9` post-publication growth as a prerequisite. The task graph similarly has no hard `ACI-T0064 -> ACI-T0071` release dependency, and isolated native CAS implementation does not hard-depend on reconciling a specific live Staging site. Read-only evidence, context, native relations and workflow mechanics can progress in parallel when their own prerequisites are satisfied. `effect-contracts.json` controls independent external effects and can never be bypassed by a successful draft.
+
+Implementation acceptance order:
+1. Exact-source Spec tests and design authority crosswalk on a stable Hub HEAD.
+2. Disposable, no-effect WordPress content inventory/recipe/facts/incident reasoning.
+3. Certified disposable provider adapters, budgets, journal/CAS and multilingual readback.
+4. Explicit owner-reviewed Staging side-effect gates with real browser/native certificates.
+5. Separately authorized Production. No release path inherits authority from the documentation.
