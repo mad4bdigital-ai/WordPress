@@ -350,6 +350,7 @@ jobs:
             php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
           done
           php "$PLUGIN/tests/g7-ownership-reconciliation-runtime.php"
+          php "$PLUGIN/tests/g7-native-receipt-baseline-runtime.php"
           php "$PLUGIN/tests/g7-operator-journal-runtime.php"
           php "$PLUGIN/tests/g7-update-host-action-runtime.php"
           php "$PLUGIN/tests/g7-read-surfaces-contract.php"

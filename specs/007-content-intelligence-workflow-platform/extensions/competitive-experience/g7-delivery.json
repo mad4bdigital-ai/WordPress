@@ -46,7 +46,8 @@
       ],
       "evidence_paths": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php"
       ],
       "remaining_acceptance": [
         "Native typed consumer must bind signed persisted Last Managed snapshot to current site/runtime/restore epoch before Last Managed can be trusted",
@@ -197,8 +198,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "59a203e2c84bb7941b14694885998f7657f89c104377ab2e2da77af3f126127f",
-      "bytes": 24719
+      "sha256": "5b253078ff7240679756e3412cc4f26dd973303a46b3725918689fc20f1e3d01",
+      "bytes": 24788
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
@@ -259,6 +260,11 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php",
       "sha256": "13b370eaf386ec85cae86740302d7c3b57e78f11a27a9ca3095fad7083be7d35",
       "bytes": 5774
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php",
+      "sha256": "d8a62e2c25ff6acab468cefda4b07499b69f972ac43971b245eed671a7f94be4",
+      "bytes": 7566
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
