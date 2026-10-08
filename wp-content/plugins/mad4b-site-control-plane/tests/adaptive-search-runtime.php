@@ -385,6 +385,17 @@ scenario( 'domain_market_claim_readback_proves_ownership_and_flags_legacy', stat
 	$claimed = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'legacy-no-claim' ) ), 'post-migration exact readback' );
 	check( $claimed['valid'] && $claimed['market_claims_certified'] && 0 === $claimed['legacy_unclaimed_market_count'], 'historical identity adoption uses owned immutable claims' );
 } );
+scenario( 'orphaned_committed_profiles_still_reserve_historical_market_ids', static function () {
+	$orphan = asi_profile( 'orphan-committed-profile' );
+	$orphan['markets'][0]['id'] = 'orphan-market-id'; $orphan['markets'][1]['id'] = 'orphan-other-id';
+	$original = ok( MAD4B_SCP_Search_Context::plan( array( 'profile' => $orphan, 'expected_revision' => 0 ) ), 'prepare old committed profile' );
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'orphan-committed-profile', null, array( 'profile' => $original['profile'], 'plan_sha256' => $original['plan_sha256'] ), 'OLD_PROFILE_ADMISSION' ), 'commit legacy profile outside registry' );
+	check( null === MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ), 'legacy fixture has no registry record' );
+	$alias = asi_profile( 'attempted-identity-alias' );
+	$alias['markets'][0]['id'] = 'orphan-market-id'; $alias['markets'][1]['id'] = 'separate-market-id';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $alias, 'expected_revision' => 0 ) ), 'market_identity_conflict', 'bounded store scan detects alias even without registry admission' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'separate-market-id' ), 'failed preflight remains free of new reservations' );
+} );
 scenario( 'legacy_duplicate_market_ids_are_quarantined_before_adoption', static function () {
 	$first = asi_profile( 'legacy-peer-one' ); $first['markets'][0]['id'] = 'shared-old-id'; $first['markets'][1]['id'] = 'old-one-only';
 	$second = asi_profile( 'legacy-peer-two' ); $second['markets'][0]['id'] = 'shared-old-id'; $second['markets'][1]['id'] = 'old-two-only';
