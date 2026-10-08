@@ -82,9 +82,11 @@ def validate_model(task_registry, gate_registry, requirement_registry, system_ma
     tasks = task_registry.get('tasks')
     gates = gate_registry.get('gates')
     reqs = requirement_registry.get('requirements')
-    require(isinstance(tasks, list) and len(tasks) == 71, 'task_count_invalid')
-    require(isinstance(gates, list) and len(gates) == 11, 'gate_count_invalid')
-    require(isinstance(reqs, list) and len(reqs) == 43, 'requirement_count_invalid')
+    # The frozen ACI01 kit counts live in its manifest; the pure plan compiler
+    # accepts reviewed, versioned additive registries within bounded limits.
+    require(isinstance(tasks, list) and 0 < len(tasks) <= 10000, 'task_count_invalid')
+    require(isinstance(gates, list) and 0 < len(gates) <= 128, 'gate_count_invalid')
+    require(isinstance(reqs, list) and 0 < len(reqs) <= 10000, 'requirement_count_invalid')
     def keyed(items, key, category):
         require(all(isinstance(x, dict) and isinstance(x.get(key), str) for x in items),
                 category + '_row_invalid')
@@ -112,7 +114,7 @@ def validate_model(task_registry, gate_registry, requirement_registry, system_ma
         require(g.get('requirement_ids') == refs, 'gate_requirement_mismatch:' + gid)
         cond = g.get('conditional_dependencies', [])
         require(isinstance(cond, list) and all(isinstance(x, dict)
-                and x.get('gate') in gmap and x.get('when') == 'native_relation_in_scope' for x in cond),
+                and x.get('gate') in gmap and x.get('when') in ('native_relation_in_scope', 'paid_provider_in_scope', 'publication_requested', 'browser_render_in_scope', 'commercial_claim_in_scope', 'media_rights_in_scope') for x in cond),
                 'unreviewed_conditional_dependency:' + gid)
         gate_dag[gid] = g.get('depends_on', []) + [x['gate'] for x in cond]
     topological(gate_dag)
@@ -187,6 +189,36 @@ def compile_candidate(intent, scope, state, model, policy):
     profile = intent.get('content_profile', {})
     require(isinstance(profile, dict) and type(profile.get('native_relation_in_scope', False)) is bool,
             'content_profile_invalid')
+    selected_requested_gates = {taskmap[i]['gate'] for i in requested}
+    recipe_required = bool(selected_requested_gates & {'ACI-G5', 'ACI-G6', 'ACI-G8'})
+    registered_recipes = model.get('content_recipes')
+    recipe_id = intent.get('content_recipe_id')
+    recipe = None
+    if recipe_required or recipe_id is not None:
+        require(isinstance(registered_recipes, dict)
+                and registered_recipes.get('contract') == 'mad4b.aci-os.content-recipes.v1'
+                and registered_recipes.get('authorizing') is False,
+                'content_recipe_registry_required')
+        candidate_rows = registered_recipes.get('recipes', [])
+        require(isinstance(candidate_rows, list)
+                and len({r.get('id') for r in candidate_rows if isinstance(r, dict)})
+                == len(candidate_rows), 'content_recipe_registry_invalid')
+        recipe = next((r for r in candidate_rows if r.get('id') == recipe_id), None)
+        require(isinstance(recipe, dict)
+                and type(recipe.get('requires_native_relations')) is bool,
+                'content_recipe_unknown_or_invalid')
+    # User-supplied intent may ADD a restriction, but cannot remove a native
+    # relation gate mandated by an approved recipe or publish-manifest content.
+    requires_native = (bool(recipe and recipe['requires_native_relations'])
+                       or profile.get('native_relation_in_scope') is True
+                       or intent.get('publish_manifest_contains_native_relations') is True)
+    conditional_scope = {'native_relation_in_scope': requires_native,
+                         'paid_provider_in_scope': intent.get('effect_class') == 'PAID',
+                         'publication_requested': intent.get('effect_class') == 'WORDPRESS_WRITE',
+                         'browser_render_in_scope': intent.get('require_browser_readback') is True,
+                         'commercial_claim_in_scope': bool(recipe and recipe_id == 'tour'),
+                         'media_rights_in_scope': intent.get('requires_media_assets') is True}
+
     task_dependencies = checked['task_dag']
     selected = set()
     def expand(task):
@@ -243,7 +275,7 @@ def compile_candidate(intent, scope, state, model, policy):
         for predecessor in gate.get('depends_on', []):
             include_gate(predecessor)
         for condition in gate.get('conditional_dependencies', []):
-            if profile.get(condition['when'], False):
+            if conditional_scope.get(condition['when'], True):
                 include_gate(condition['gate'])
     expanded_gates = set()
     for gate_id in needed_gates:
