@@ -62,6 +62,21 @@ require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-record.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-automation-slo.php';
 function g8_check( $assertion, $reason ) { if ( ! $assertion ) { fwrite( STDERR, 'FAIL: ' . $reason . PHP_EOL ); exit( 1 ); } }
 function g8_is_error( $result, $code ) { return is_wp_error( $result ) && $code === $result->get_error_code(); }
+// HMAC validation must reject objects without invoking their serialization
+// callbacks. This is separate from an invalid MAC or a malformed scalar.
+class G8_Test_Untrusted_Serialize {
+	public function __serialize() {
+		$GLOBALS['g8_untrusted_record_serialize_invoked'] = true;
+		return array( 'side_effect' => true );
+	}
+}
+$malformed_record = array( 'contract' => 'mad4b.test.v1', 'authorizing' => false,
+	'payload' => array( 'innocent' => new G8_Test_Untrusted_Serialize() ),
+	'seal' => str_repeat( '0', 64 ) );
+g8_check( false === MAD4B_SCP_G8_Record::valid( $malformed_record, 'mad4b.test.v1' )
+	&& empty( $GLOBALS['g8_untrusted_record_serialize_invoked'] ),
+	'stored record HMAC validation must reject an object without invoking __serialize' );
+
 $provider = 'runtime-convergence'; $capability = 'safe-phases'; $generation = str_repeat( 'e', 64 );
 $switch = MAD4B_SCP_Automation_SLO::switch_status();
 g8_check( $switch['integrity_valid'] && ! empty( $switch['scopes']['*'] ), 'default must pause' );
