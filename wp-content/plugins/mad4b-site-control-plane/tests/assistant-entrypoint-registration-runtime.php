@@ -6,10 +6,18 @@ define( 'ABSPATH', __DIR__ . '/' );
 $GLOBALS['assistant_hooks'] = array();
 $GLOBALS['assistant_abilities'] = array();
 $GLOBALS['assistant_register_calls'] = 0;
+$GLOBALS['assistant_action_runs'] = array();
 function add_action( $hook, $callback, $priority = 10 ) {
     $GLOBALS['assistant_hooks'][ $hook ][] = array( 'callback' => $callback, 'priority' => $priority );
     return true;
 }
+function has_action( $hook, $callback ) {
+    foreach ( $GLOBALS['assistant_hooks'][ $hook ] ?? array() as $row ) {
+        if ( $row['callback'] === $callback ) return $row['priority'];
+    }
+    return false;
+}
+function did_action( $name ) { return $GLOBALS['assistant_action_runs'][ $name ] ?? 0; }
 function wp_register_ability( $name, $args ) {
     ++$GLOBALS['assistant_register_calls'];
     $GLOBALS['assistant_abilities'][ $name ] = $args;
@@ -25,16 +33,22 @@ class WP_Error {
 class MAD4B_SCP_Adapter_Base {}
 class AssistantEntryRegistry {
     public $registered = array();
+    public function get( $name ) { return $this->registered[ $name ] ?? null; }
     public function register( $adapter ) {
         if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false;
         $this->registered[ $adapter->id() ] = $adapter;
         return true;
     }
 }
+class MAD4B_SCP_Adapter_Registry {
+    public static $current;
+    public static function instance() { return self::$current; }
+}
 function assistant_check( $value, $message ) {
     if ( ! $value ) { fwrite( STDERR, 'FAIL ' . $message . PHP_EOL ); exit( 1 ); }
 }
 function assistant_action( $name, $argument = null ) {
+    $GLOBALS['assistant_action_runs'][ $name ] = ( $GLOBALS['assistant_action_runs'][ $name ] ?? 0 ) + 1;
     $hooks = isset( $GLOBALS['assistant_hooks'][ $name ] ) ? $GLOBALS['assistant_hooks'][ $name ] : array();
     usort( $hooks, static function ( $left, $right ) { return $left['priority'] <=> $right['priority']; } );
     foreach ( $hooks as $row ) {
@@ -60,6 +74,7 @@ MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
 assistant_check( 2 === count( $GLOBALS['assistant_hooks']['wp_abilities_api_init'] ), 'both native WordPress Abilities callbacks bound' );
 assistant_check( 2 === count( $GLOBALS['assistant_hooks']['mad4b_scp_register_adapters'] ), 'both governed adapters callbacks bound' );
 $registry = new AssistantEntryRegistry();
+MAD4B_SCP_Adapter_Registry::$current = $registry;
 assistant_action( 'mad4b_scp_register_adapters', $registry );
 assistant_check( isset( $registry->registered['assistant-planning'], $registry->registered['assistant-bootstrap'] ), 'both adapters registered' );
 assistant_action( 'wp_abilities_api_init' );
@@ -83,4 +98,13 @@ foreach ( $registry->registered as $adapter ) {
     $adapter->register_abilities();
 }
 assistant_check( 2 === $GLOBALS['assistant_register_calls'], 'adapter lifecycle does not duplicate WordPress Ability definitions' );
+$witness = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
+assistant_check( ! empty( $witness['assistant_read_registration']['read_catalog_local_ready'] )
+    && ! $witness['assistant_read_registration']['external_mcp_catalog_verified']
+    && ! $witness['ready_for_mutation'], 'local dual-registration evidence never certifies external MCP or execution' );
+unset( $registry->registered['assistant-bootstrap'] );
+$missing = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
+assistant_check( ! $missing['assistant_read_registration']['read_catalog_local_ready']
+    && in_array( 'assistant_runtime_registration_unverified', $missing['blockers'], true ),
+    'lost adapter appears as a fail-closed diagnostics blocker' );
 echo 'ASSISTANT_ENTRYPOINT_REGISTRATION: PASS' . PHP_EOL;
