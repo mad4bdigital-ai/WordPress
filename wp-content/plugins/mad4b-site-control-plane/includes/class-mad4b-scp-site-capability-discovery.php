@@ -39,7 +39,7 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 	public static function observe( $site_origin, array $providers = array() ) {
 		$blockers = array();
 		$origin = is_string( $site_origin ) ? $site_origin : '';
-		if ( ! preg_match( '~^https://[a-zA-Z0-9.-]+(?::[0-9]{2,5})?$~D', $origin ) ) $blockers[] = 'site_origin_invalid';
+		if ( ! preg_match( '~^https://[a-zA-Z0-9.-]+(?::[0-9]{2,5})?(?:/[a-zA-Z0-9][a-zA-Z0-9._-]{0,63})*$~D', $origin ) ) $blockers[] = 'site_origin_invalid';
 		$plugins = array();
 		$plugin_versions = array();
 		$version_evidence_complete = true;
