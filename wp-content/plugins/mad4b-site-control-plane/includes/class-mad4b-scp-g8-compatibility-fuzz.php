@@ -78,7 +78,9 @@ final class MAD4B_SCP_G8_Compatibility_Fuzz {
 			|| ! self::valid_descriptor( $certified ) || ! self::valid_descriptor( $candidate )
 			|| ( $candidate['provider'] ?? '' ) !== $certified['provider']
 			|| ( $candidate['capability'] ?? '' ) !== $certified['capability']
-			|| ! $fixtures || count( $fixtures ) > self::MAX_CASES || strlen( serialize( $fixtures ) ) > self::MAX_BYTES )
+			|| ! $fixtures || count( $fixtures ) > self::MAX_CASES
+			|| ! self::plain_data( $fixtures )
+			|| strlen( serialize( $fixtures ) ) > self::MAX_BYTES )
 			return new WP_Error( 'mad4b_g8_fuzz_contract_invalid', 'Exact matching descriptor and bounded fixtures required.' );
 
 		$findings = array();
