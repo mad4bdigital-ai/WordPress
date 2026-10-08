@@ -3,6 +3,11 @@
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ );
 class WP_Error { private $code; public function __construct( $c, $m = '', $d = array() ) { $this->code = $c; } public function get_error_code() { return $this->code; } }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
+$GLOBALS['plugin_version'] = '2.1.0';
+$GLOBALS['fail_ability_registry'] = false;
+$GLOBALS['fail_plugin_registry'] = false;
+function is_multisite() { return true; }
+function is_plugin_active_for_network( $file ) { return $file === 'unknown-file-ops/alternate.php'; }
 $GLOBALS['is_admin'] = true;
 function current_user_can( $cap ) { return $cap === 'manage_options' && $GLOBALS['is_admin']; }
 $GLOBALS['tests'] = 0; $GLOBALS['hooks'] = array(); $GLOBALS['abilities'] = array();
@@ -11,10 +16,12 @@ function add_action( $hook, $callback, $priority=10 ) { $GLOBALS['hooks'][$hook]
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
 function wp_register_ability( $name, $conf ) { $GLOBALS['abilities'][$name] = $conf; }
 function get_option( $key, $default=array() ) { return $key === 'active_plugins' ? array( 'unknown-file-ops/tool.php', 'plain-cache/cache.php' ) : $default; }
-function get_plugins() { return array(
+function get_plugins() {
+    if ( $GLOBALS['fail_plugin_registry'] ) throw new RuntimeException('plugin registry');
+    return array(
     'unknown-file-ops/tool.php' => array( 'Name' => 'Generic File Workspace' ),
     'plain-cache/cache.php' => array( 'Name' => 'Caching Layers' ),
-    'unknown-file-ops/alternate.php' => array( 'Name' => 'Alternate File Panel', 'Version' => '2.1.0' ),
+    'unknown-file-ops/alternate.php' => array( 'Name' => 'Alternate File Panel', 'Version' => $GLOBALS['plugin_version'] ),
     'malformed-path' => array( 'Name' => 'Untrusted' ),
 ); }
 class FixtureAbility {
@@ -26,13 +33,25 @@ class PrivateFixtureAbility extends FixtureAbility {
     public function get_label() { return 'Rotate Private Keys'; }
     public function get_meta() { return array('show_in_rest'=>false); }
 }
-function wp_get_abilities() { return array(
+function wp_get_abilities() {
+    if ( $GLOBALS['fail_ability_registry'] ) throw new RuntimeException('ability registry');
+    return array(
     'demo/file-inspect' => new FixtureAbility(),
     'private/rotate-keys' => new PrivateFixtureAbility(),
 ); }
 class MAD4B_SCP_Adapter_Base {}
 class Registry { public $adapters=array(); public function register( $v ) { $this->adapters[$v->id()]=$v; } }
-class MAD4B_SCP_Adaptive_Operations_Context { public static $binding; public static function current() { return self::$binding; } }
+class MAD4B_SCP_Adaptive_Operations_Context {
+    public static $binding; public static $flip = false; public static $calls = 0;
+    public static function current() {
+        ++self::$calls;
+        if ( self::$flip && self::$calls === 2 ) {
+            $changed=self::$binding; $changed['runtime_generation']=str_repeat('f',64);
+            return $changed;
+        }
+        return self::$binding;
+    }
+}
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-solution-discovery.php';
 $b = array( 'profile_digest'=>str_repeat('a',64), 'runtime_generation'=>str_repeat('b',64),
     'site_uuid'=>'site-uuid', 'restore_epoch'=>1, 'artifact_sha256'=>str_repeat('c',64) );
@@ -45,6 +64,8 @@ ok( count($inventory['rows']) === 4, 'dynamic inventory includes same-directory 
 ok( count(array_unique(array_column($inventory['rows'],'id'))) === 4, 'stable unique main-file IDs' );
 ok( !in_array('ability:private/rotate-keys',array_column($inventory['rows'],'id'),true), 'private ability hidden from read discovery' );
 ok( $inventory['plugin_inventory_complete'] && $inventory['ability_inventory_complete'], 'coverage' );
+$network=array_values(array_filter($inventory['rows'],function($x){return $x['id']==='plugin:unknown-file-ops/alternate.php';}));
+ok(count($network)===1 && $network[0]['observed_state']==='active','network plugin active');
 $r = MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( is_array($r) && count($r['candidates']) === 3, 'unmapped plugin and ability discovered dynamically' );
 ok( $r['candidates'][0]['lexical_score'] >= $r['candidates'][1]['lexical_score'], 'ranked' );
@@ -55,6 +76,10 @@ ok( $r['coverage']['ability_visibility_scope'] === 'show_in_rest_only', 'WordPre
 ok( count(array_filter($r['candidates'], function($c) { return !empty($c['metadata_digest']); })) === 2, 'plugin version/state digest recorded' );
 $again = MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $r['snapshot_sha256'] === $again['snapshot_sha256'] && $r['candidates'] === $again['candidates'], 'deterministic' );
+$GLOBALS['plugin_version']='2.2.0';
+$changed=MAD4B_SCP_Solution_Discovery::read_discover($in);
+ok(is_array($changed) && $changed['snapshot_sha256']!==$r['snapshot_sha256'],'version change invalidates candidate snapshot');
+$GLOBALS['plugin_version']='2.1.0';
 $in['mode']='inventory'; $in['limit']=1; $all=MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $all['total_matches']===4 && $all['next_offset']===1, 'inventory pagination' );
 $in['offset']=1; $next=MAD4B_SCP_Solution_Discovery::read_discover($in);
@@ -69,6 +94,19 @@ ok( $hint['total_matches']===4 && $hint['candidates'][0]['behavior_verified']===
 $GLOBALS['is_admin']=false;
 ok( is_wp_error(MAD4B_SCP_Solution_Discovery::read_discover($in)), 'non-admin rejected before inventory' );
 $GLOBALS['is_admin']=true;
+$GLOBALS['fail_ability_registry']=true;
+$degraded=MAD4B_SCP_Solution_Discovery::read_discover($in);
+ok(is_array($degraded) && $degraded['inventory_incomplete']===true
+    && $degraded['coverage']['ability_inventory_complete']===false,'ability exception marks incomplete');
+$GLOBALS['fail_ability_registry']=false;
+$GLOBALS['fail_plugin_registry']=true;
+$degraded=MAD4B_SCP_Solution_Discovery::read_discover($in);
+ok(is_array($degraded) && $degraded['inventory_incomplete']===true
+    && $degraded['coverage']['plugin_inventory_complete']===false,'plugin exception marks incomplete');
+$GLOBALS['fail_plugin_registry']=false;
+MAD4B_SCP_Adaptive_Operations_Context::$calls=0; MAD4B_SCP_Adaptive_Operations_Context::$flip=true;
+ok(is_wp_error(MAD4B_SCP_Solution_Discovery::read_discover($in)),'mid-inventory generation drift denied');
+MAD4B_SCP_Adaptive_Operations_Context::$flip=false;
 $bad=$in; $bad['unknown']=true;
 ok( is_wp_error(MAD4B_SCP_Solution_Discovery::read_discover($bad)), 'reject arbitrary input' );
 $bad=$in; $bad['external_hints'][0]['source']='admin';
