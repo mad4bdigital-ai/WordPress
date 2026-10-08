@@ -202,7 +202,9 @@ def compile_candidate(intent, scope, state, model, policy):
     profile = intent.get('content_profile', {})
     require(isinstance(profile, dict) and type(profile.get('native_relation_in_scope', False)) is bool,
             'content_profile_invalid')
-    recipe_required = bool(affected_gates & {'ACI-G5', 'ACI-G6', 'ACI-G8'})
+    recipe_required = (bool(affected_gates & {'ACI-G5', 'ACI-G6', 'ACI-G8'})
+                       or intent.get('depends_on_new_publication') is True
+                       or intent.get('effect_class') == 'WORDPRESS_WRITE')
     registered_recipes = model.get('content_recipes')
     recipe_id = intent.get('content_recipe_id')
     recipe = None
