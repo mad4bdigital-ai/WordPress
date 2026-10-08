@@ -556,12 +556,16 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			}
 			if ( ! hash_equals( (string) ( isset( $job['executor_id'] ) ? $job['executor_id'] : '' ), $executor_id ) ) return new WP_Error( 'mad4b_remote_work_executor_mismatch', 'Remote work executor does not own the active lease.' );
 			if ( ! hash_equals( (string) ( isset( $job['lease_token_sha256'] ) ? $job['lease_token_sha256'] : '' ), hash( 'sha256', $lease_token ) ) ) return new WP_Error( 'mad4b_remote_work_lease_mismatch', 'Remote work lease token does not match the active claim.' );
-			// Claim-time identity can drift across a restore/deploy while an
-			// external read worker is in flight. Never mark a stale assistant
-			// result completed, even if an executor still holds its old lease.
-			// Recovery must perform an independent new-generation review.
+			// An in-flight assistant result cannot be positively completed after
+			// Site/Origin/Restore drift. Preserve the existing verified no-effect
+			// reconciliation path so stale cancelled work can safely terminate.
 			if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
-				&& ! self::assistant_job_binding_matches( $job ) ) return self::assistant_binding_error();
+				&& ! self::assistant_job_binding_matches( $job ) ) {
+				$verified_no_effect = $reconciling
+					&& 'no_effect' === ( $verified_result['provider_effect_state'] ?? null )
+					&& self::reconciliation_completion_valid( $verified_result, $job );
+				if ( ! $verified_no_effect ) return self::assistant_binding_error();
+			}
 			$resolved_no_effect = $reconciling && 'no_effect' === sanitize_key( isset( $verified_result['provider_effect_state'] ) ? (string) $verified_result['provider_effect_state'] : '' );
 			$job['status'] = $resolved_no_effect ? 'cancelled_no_effect' : 'completed';
 			$job['completed_at'] = gmdate( 'c' );
