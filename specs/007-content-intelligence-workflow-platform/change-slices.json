@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 180,
+  "changed_file_count": 193,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -290,8 +290,29 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g4-site-operations-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/g4-wordpress-contract.php"
       ]
+    },
+    {
+      "id": "g5-growth-seo-external-provider-framework",
+      "semantic_unit": "G5 bounded Growth/Analytics evidence, SEO family contracts, external provider profile setup and acceptance",
+      "revert_boundary": "Revert the 13 G5-owned delivery, provider service and contract test paths as one bounded slice; preserve shared Hub/bootstrap/spec ownership and earlier groups.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g5-delivery.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g5-delivery.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-acceptance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-external-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-growth-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-provider-profiles.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g5-acceptance-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g5-external-provider-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g5-growth-evidence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g5-provider-profile-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g5-registration-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g5-seo-provider-family-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "b58a4106cea034ae53ee3de42c484593fe55f9fc6450c2a6bbc7cea71d677d51",
+  "changed_paths_sha256": "0852ca13ba0b72f16f69eacba4fcf2fe049d97a0ea41f1c7b913c3327dc70f1d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

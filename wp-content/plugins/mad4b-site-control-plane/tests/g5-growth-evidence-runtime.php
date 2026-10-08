@@ -27,6 +27,8 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 	public $consent = true;
 	public $scope_reads = 0;
 	public $payload_reads = 0;
+	public $certificate_expires_at = null;
+	public $expire_during_read = false;
 	public function descriptor() {
 		return array(
 			'contract' => MAD4B_SCP_G5_External_Providers::CONTRACT,
@@ -39,7 +41,7 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 			'account_ref' => str_repeat( 'd', 64 ),
 			'tenant_ref' => str_repeat( 'e', 64 ),
 			'certified' => true,
-			'expires_at' => time() + 3600,
+			'expires_at' => null === $this->certificate_expires_at ? time() + 3600 : $this->certificate_expires_at,
 			'site_uuid' => 'site-g5',
 			'required_scopes' => array( 'analytics.readonly' ),
 			'property_refs' => array( 'property-1' ),
@@ -66,6 +68,7 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 	public function observation_scope( $observation_id ) { ++$this->scope_reads; return $this->scope_value(); }
 	public function read_observation( $observation_id, array $authorized_scope ) {
 		++$this->payload_reads;
+		if ( $this->expire_during_read ) sleep( 3 );
 		if ( $authorized_scope !== $this->scope_value() ) return new WP_Error( 'fixture_scope_mismatch' );
 		$currency = substr( $observation_id, 0, 1 ) === 'f' ? 'EUR' : 'USD';
 		return array(
@@ -128,5 +131,21 @@ $denied = MAD4B_SCP_G5_Growth_Evidence::preview( array( 'observation_refs' => ar
 mad4b_g5_growth_assert( is_wp_error( $denied ) && 'mad4b_g5_observation_access_denied' === $denied->get_error_code(), 'missing provider consent must fail closed' );
 mad4b_g5_growth_assert( $GLOBALS['g5_adapter']->scope_reads > $before_denied_scope_reads, 'authorization must use metadata-only scope lookup' );
 mad4b_g5_growth_assert( $GLOBALS['g5_adapter']->payload_reads === $before_denied_payload_reads, 'denied consent must prevent retained payload access' );
+
+// A descriptor with the exact same bytes must not remain eligible after its
+// expiration passes during a retained read. This checks current eligibility,
+// not merely descriptor-hash equality.
+$GLOBALS['g5_adapter']->consent = true;
+$GLOBALS['g5_adapter']->certificate_expires_at = time() + 2;
+$GLOBALS['g5_adapter']->expire_during_read = true;
+$expired_during_read = MAD4B_SCP_G5_Growth_Evidence::preview( array( 'observation_refs' => array(
+	array( 'provider_id' => 'ga4', 'observation_id' => str_repeat( 'a', 64 ) ),
+) ) );
+mad4b_g5_growth_assert(
+	is_wp_error( $expired_during_read ) && 'mad4b_g5_descriptor_stale_or_foreign' === $expired_during_read->get_error_code(),
+	'expired unchanged descriptor must fail closed after retained payload access'
+);
+$GLOBALS['g5_adapter']->expire_during_read = false;
+$GLOBALS['g5_adapter']->certificate_expires_at = null;
 
 echo "mad4b.feature007-g5-growth-observation.v1: PASS\n";
