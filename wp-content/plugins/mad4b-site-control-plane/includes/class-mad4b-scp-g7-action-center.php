@@ -33,6 +33,12 @@ final class MAD4B_SCP_G7_Action_Center {
                 'verified_repair' => false, 'requires_existing_governance' => true );
         }
         if ( count( $reasons ) > 16 || count( $actions ) > 16 ) $trust = false;
+        foreach ( $actions as $action ) {
+            if ( ! is_string( $action ) || 1 !== preg_match( '/^[a-z0-9_]{1,100}$/D', $action ) ) {
+                $trust = false;
+                break;
+            }
+        }
         if ( in_array( $state, array( 'BLOCKED', 'DEGRADED', 'RECOVERY_REQUIRED' ), true ) && empty( $records ) ) $trust = false;
         if ( ! $trust ) {
             $records = array( array( 'reason' => 'untrusted_or_unbounded_operator_snapshot',

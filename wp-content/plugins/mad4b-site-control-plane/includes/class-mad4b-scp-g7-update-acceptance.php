@@ -18,13 +18,7 @@ final class MAD4B_SCP_G7_Update_Acceptance {
         if ( is_wp_error( $graph ) ) return $graph;
         if ( ! is_array( $graph ) || ( $graph['contract'] ?? '' ) !== MAD4B_SCP_Runtime_Evidence_Graph::CONTRACT ||
             ! MAD4B_SCP_Adaptive_Operations_Context::sha( $graph['generation_sha256'] ?? '' ) ) return self::error( 'graph_invalid' );
-        $complete = true === ( $graph['complete_for_absence'] ?? false ) &&
-            true === ( $graph['edge_status']['trustworthy_for_impact'] ?? false );
-        $discovery = isset( $graph['discovery'] ) && is_array( $graph['discovery'] ) ? $graph['discovery'] : array();
-        foreach ( array( 'callbacks_executed', 'unknown_plugin_code_executed', 'unknown_endpoints_invoked',
-            'secret_values_read', 'writes_performed' ) as $key ) {
-            if ( false !== ( $discovery[ $key ] ?? null ) ) $complete = false;
-        }
+        $complete = self::graph_complete( $graph );
         $material = array(
             'contract' => self::CONTRACT, 'binding' => $binding, 'observed_at' => time(),
             'graph_generation_sha256' => $graph['generation_sha256'], 'graph_complete' => $complete,
@@ -57,7 +51,8 @@ final class MAD4B_SCP_G7_Update_Acceptance {
         $live_graph = MAD4B_SCP_Runtime_Evidence_Graph::snapshot( array( 'refresh' => true ) );
         if ( ! is_array( $live_graph ) || ( $live_graph['contract'] ?? '' ) !== MAD4B_SCP_Runtime_Evidence_Graph::CONTRACT ||
             ! MAD4B_SCP_Adaptive_Operations_Context::sha( $live_graph['generation_sha256'] ?? '' ) ||
-            ! hash_equals( $new['graph_generation_sha256'], $live_graph['generation_sha256'] ) ) {
+            ! hash_equals( $new['graph_generation_sha256'], $live_graph['generation_sha256'] ) ||
+            self::graph_complete( $live_graph ) !== $new['graph_complete'] ) {
             return self::error( 'post_observation_graph_drift' );
         }
         $runtime_changed = ! hash_equals( $old['binding']['runtime_generation'], $new['binding']['runtime_generation'] ) ||
@@ -89,6 +84,18 @@ final class MAD4B_SCP_G7_Update_Acceptance {
         if ( is_wp_error( $digest ) ) return $digest;
         $comparison['comparison_sha256'] = $digest;
         return $comparison;
+    }
+
+    /** Completeness is separately checked from the graph hash on fresh readback. */
+    private static function graph_complete( array $graph ) {
+        if ( true !== ( $graph['complete_for_absence'] ?? null ) ||
+             true !== ( $graph['edge_status']['trustworthy_for_impact'] ?? null ) ) return false;
+        $discovery = isset( $graph['discovery'] ) && is_array( $graph['discovery'] ) ? $graph['discovery'] : array();
+        foreach ( array( 'callbacks_executed', 'unknown_plugin_code_executed', 'unknown_endpoints_invoked',
+            'secret_values_read', 'writes_performed' ) as $key ) {
+            if ( false !== ( $discovery[ $key ] ?? null ) ) return false;
+        }
+        return true;
     }
 
     private static function read( array $observation ) {

@@ -78,7 +78,8 @@ final class MAD4B_SCP_G7_Read_Surfaces {
 
     public static function action( $input = array() ) {
         $valid = self::empty_input( $input ); if ( is_wp_error( $valid ) ) return $valid;
-        if ( ! class_exists( 'MAD4B_SCP_Operator_Control_Center' ) ) return self::error( 'operator_unavailable' );
+        if ( ! class_exists( 'MAD4B_SCP_Operator_Control_Center' ) ||
+             ! class_exists( 'MAD4B_SCP_G7_Action_Center' ) ) return self::error( 'operator_unavailable' );
         $snapshot = MAD4B_SCP_Operator_Control_Center::execute();
         if ( is_wp_error( $snapshot ) ) return $snapshot;
         if ( ! is_array( $snapshot ) || ! isset( $snapshot['g7_action_center'] ) ||

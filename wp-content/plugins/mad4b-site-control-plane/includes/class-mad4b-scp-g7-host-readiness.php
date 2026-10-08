@@ -54,14 +54,14 @@ final class MAD4B_SCP_G7_Host_Readiness {
         if ( ! class_exists( 'MAD4B_SCP_Developer_Host_Capabilities' ) ) return self::error( 'probe_unavailable' );
         $snapshot = MAD4B_SCP_Developer_Host_Capabilities::snapshot();
         if ( ! is_array( $snapshot ) || ( $snapshot['contract'] ?? '' ) !== MAD4B_SCP_Developer_Host_Capabilities::CONTRACT ||
-            ! isset( $snapshot['capability_fingerprint'] ) ||
-            ! is_string( $snapshot['capability_fingerprint'] ) ||
+            ! MAD4B_SCP_Adaptive_Operations_Context::sha( $snapshot['capability_fingerprint'] ?? '' ) ||
             ! hash_equals( $material['host_capability_fingerprint'], $snapshot['capability_fingerprint'] ) ) return self::error( 'host_drift' );
         return self::assess_snapshot( $snapshot );
     }
 
     /** Diagnostic only. A certified binary name never proves functional isolation. */
     public static function assess_snapshot( array $snapshot ) {
+        if ( ! class_exists( 'MAD4B_SCP_Developer_Host_Capabilities' ) ) return self::error( 'probe_unavailable' );
         $blockers = array();
         if ( ( $snapshot['contract'] ?? '' ) !== MAD4B_SCP_Developer_Host_Capabilities::CONTRACT ) $blockers[] = 'source_contract_invalid';
         if ( true !== ( $snapshot['resource_limiter_binary_present'] ?? null ) ||

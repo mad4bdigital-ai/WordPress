@@ -201,8 +201,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php",
-      "sha256": "2830b55903d0a405a01cabbbd29770fc9a053683275e342c581c594a86e7ad27",
-      "bytes": 5874
+      "sha256": "3c8491629ab275653a4ba9a5222dea6d1b4f9b91ebefcb03010213d09224679e",
+      "bytes": 6095
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php",
@@ -211,8 +211,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php",
-      "sha256": "6a462d1c98f6a2c2120816d72f47f336e76e4011eab8a9b91524221632fe825f",
-      "bytes": 6194
+      "sha256": "20f2523cce57166dfe9547549f28dcf95187b96dd2f20fcba67ff6d71a7d00b2",
+      "bytes": 6287
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php",
@@ -221,8 +221,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
-      "sha256": "534e518728bbd643c0c34a65dbd2ab164a7f9bce260df85f729c0e667d60bb19",
-      "bytes": 6346
+      "sha256": "47a862aa669f6cbe3db6ef13bfa6ac23620ab7465cb0b60e84330e0a2c4457fa",
+      "bytes": 6409
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
@@ -231,8 +231,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
-      "sha256": "958444f14ce83c67ae60bb89fd27182be989181fca6344aaa0333814ba0696b3",
-      "bytes": 8352
+      "sha256": "4f83d48b3a50f6718644c17eb62dc9a9c627e5390395d5d11540875b9deb4cf5",
+      "bytes": 8658
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php",
@@ -281,8 +281,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-update-host-action-runtime.php",
-      "sha256": "0a02f5cc7107ae8598d2d3bd5579d6fe8db6980ae503c21ac025bca3d0821fc3",
-      "bytes": 11323
+      "sha256": "5cb270cb2cd810d068e81691be3376681b8b65e0fc878f192ad47d57bd585b5f",
+      "bytes": 12415
     }
   ]
 }

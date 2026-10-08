@@ -49,6 +49,7 @@ class MAD4B_SCP_Runtime_Evidence_Graph {
     const CONTRACT = 'mad4b.runtime-evidence-graph.v2';
     public static $generation;
     public static $complete = true;
+    public static $side_effect_observed = false;
     public static function snapshot( $input = array() ) {
         return array(
             'contract' => self::CONTRACT, 'generation_sha256' => self::$generation,
@@ -57,7 +58,7 @@ class MAD4B_SCP_Runtime_Evidence_Graph {
             'discovery' => array(
                 'callbacks_executed' => false, 'unknown_plugin_code_executed' => false,
                 'unknown_endpoints_invoked' => false, 'secret_values_read' => false,
-                'writes_performed' => false
+                'writes_performed' => self::$side_effect_observed
             )
         );
     }
@@ -116,6 +117,12 @@ $after = MAD4B_SCP_G7_Update_Acceptance::capture();
 $changed = MAD4B_SCP_G7_Update_Acceptance::compare( $before, $after );
 g7_check( ! is_wp_error( $changed ) && 'APPROVAL_REQUIRED' === $changed['state'] &&
     $changed['skills_recertification_required'] && ! $changed['automatic_rollback_allowed'], 'runtime replacement requires recertification and review' );
+MAD4B_SCP_Runtime_Evidence_Graph::$complete = false;
+g7_denied( MAD4B_SCP_G7_Update_Acceptance::compare( $before, $after ), 'fresh graph completeness downgrade with same hash denied' );
+MAD4B_SCP_Runtime_Evidence_Graph::$complete = true;
+MAD4B_SCP_Runtime_Evidence_Graph::$side_effect_observed = true;
+g7_denied( MAD4B_SCP_G7_Update_Acceptance::compare( $before, $after ), 'fresh side effect with unchanged hash denied' );
+MAD4B_SCP_Runtime_Evidence_Graph::$side_effect_observed = false;
 MAD4B_SCP_Runtime_Evidence_Graph::$generation = str_repeat( '2', 64 );
 $after_graph = MAD4B_SCP_G7_Update_Acceptance::capture();
 $graph_diff = MAD4B_SCP_G7_Update_Acceptance::compare( $before, $after_graph );
@@ -159,6 +166,13 @@ $bad_operator = MAD4B_SCP_G7_Action_Center::from_operator_snapshot( array(
     'authorizing' => true, 'mutation_performed' => false, 'production_authorized' => false
 ) );
 g7_check( 'RECONCILIATION_REQUIRED' === $bad_operator['state'], 'claimed authority is never accepted from projection' );
+$injected_actions = MAD4B_SCP_G7_Action_Center::from_operator_snapshot( array(
+    'contract' => 'mad4b.operator-control-center.v1', 'state' => 'HEALTHY',
+    'authorizing' => false, 'mutation_performed' => false, 'production_authorized' => false,
+    'reasons' => array(), 'next_actions' => array( 'safe_status', array( 'unexpected_callback' ) )
+) );
+g7_check( 'RECONCILIATION_REQUIRED' === $injected_actions['state'] &&
+    false === $injected_actions['trustworthy_operator_projection'], 'malformed actions deny operator trust' );
 $healthy = MAD4B_SCP_G7_Action_Center::from_operator_snapshot( array(
     'contract' => 'mad4b.operator-control-center.v1', 'state' => 'HEALTHY',
     'authorizing' => false, 'mutation_performed' => false, 'production_authorized' => false,
