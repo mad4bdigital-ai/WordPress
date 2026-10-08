@@ -28,14 +28,20 @@
     "contracts/orchestration-budget.md",
     "contracts/publication-growth.md",
     "data-model.md",
+    "disposition-rules.json",
     "domain-fact-authority.json",
     "dynamic-foundation.md",
     "dynamic-policy.json",
+    "effect-contracts.json",
+    "evidence-trust.json",
+    "ledger-contracts.json",
     "operations.md",
+    "optimization-policy.json",
     "plan.md",
     "preexecution-clarity-review.md",
     "project-charter.md",
     "quickstart.md",
+    "release-profiles.json",
     "requirements.json",
     "research.md",
     "spec.md",
@@ -47,7 +53,9 @@
     "use-cases.json"
   ],
   "required_code": [
+    "design_closure.py",
     "dynamic_core.py",
+    "test_design_closure.py",
     "test_dynamic_core.py",
     "test_validate.py",
     "validate.py"
@@ -208,5 +216,17 @@
     "system_map": "system-map.json",
     "dynamic_policy": "dynamic-policy.json",
     "product_scope": "project-charter.md"
-  }
+  },
+  "design_closure_scope": "STATIC_CONTRACTS_ONLY",
+  "design_reviewer_acceptance": "PENDING_EXACT_EXECUTED_PYTHON_AND_PARENT_REVIEW",
+  "design_objections_addressed": [
+    "P0_TRUST_BOUNDARY",
+    "P0_SIX_STATE_DISPOSITION",
+    "P0_RECIPE_FACT_REQUIREMENTS",
+    "P0_EFFECT_AUTHORITY",
+    "P1_RELEASE_PROFILES",
+    "P1_EXECUTION_LEDGER",
+    "P1_BOUNDED_OPTIMIZATION",
+    "P1_SCOPED_DAG"
+  ]
 }
