@@ -1199,9 +1199,20 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 	private static function guard_automatic_ticket( $ticket ) {
 		if ( null === $ticket ) return true; // governed explicit/manual path remains unchanged.
-		return class_exists( 'MAD4B_SCP_Automation_SLO', false )
-			? MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket )
-			: new WP_Error( 'mad4b_automation_guard_missing', 'Automatic safety admission cannot be verified.' );
+		if ( ! is_array( $ticket ) || ! class_exists( 'MAD4B_SCP_Automation_SLO', false ) )
+			return new WP_Error( 'mad4b_automation_guard_missing', 'Automatic safety admission cannot be verified.' );
+		$allowed = MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket );
+		if ( is_wp_error( $allowed ) ) return $allowed;
+		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		$target = is_array( $checkpoint ) && is_array( $checkpoint['target_identity'] ?? null )
+			? $checkpoint['target_identity'] : array();
+		$current = self::current_identity();
+		if ( ! self::identity_matches( $target, $current ) )
+			return new WP_Error( 'mad4b_automation_target_identity_drift', 'Automatic worker target is no longer the exact current runtime.' );
+		$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
+		if ( ! is_string( $ticket['generation'] ?? null ) || ! hash_equals( $generation, $ticket['generation'] ) )
+			return new WP_Error( 'mad4b_automation_checkpoint_generation_drift', 'Automatic worker checkpoint changed after admission.' );
+		return true;
 	}
 
 	private static function run_safe_phases( $source, array $plan, $automatic_ticket = null ) {
@@ -1413,6 +1424,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'source' => $checkpoint_source,
 				'last_execution_source' => sanitize_key( (string) $source ),
 				'current_identity' => self::current_identity(),
+				// Preserve the exact Cron admission target through late checkpoint
+				// and version writes; otherwise the last ticket fence would lose
+				// the reference needed to reject a mid-slice runtime change.
+				'target_identity' => is_array( $existing_checkpoint['target_identity'] ?? null ) ? $existing_checkpoint['target_identity'] : array(),
 				'changed_safe_phases' => $changed,
 				'required_blockers' => isset( $status['required_blockers'] ) ? $status['required_blockers'] : array(),
 				'continuation' => $final_continuation,
