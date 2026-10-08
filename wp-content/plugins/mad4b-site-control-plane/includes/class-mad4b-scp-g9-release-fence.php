@@ -216,6 +216,13 @@ final class MAD4B_SCP_G9_Release_Fence {
                     || ! MAD4B_SCP_Resilience_Context::is_hash( $fresh['grant_rows_fingerprint'] ?? '' )
                     || ! hash_equals( $observed['authority']['grant_snapshot_sha256'], $fresh['grant_rows_fingerprint'] ) )
                     return self::blocked( 'grants_changed_before_cas', 'Authority was revoked or changed before the external fence was reserved.' );
+                // A current grant fingerprint does not waive core mutation policy.
+                // Re-read that independent gate AFTER grant/candidate verification
+                // while still holding the external CAS lock; a concurrent
+                // maintenance pause or policy revocation must not publish a fence.
+                $core_mutable = MAD4B_SCP_Policy::can_mutate();
+                if ( is_wp_error( $core_mutable ) || true !== $core_mutable )
+                    return self::blocked( 'policy_changed_before_cas', 'Core mutation policy changed before external fence publication.' );
                 if ( count( $current['scopes'] ) >= self::MAX_EVENTS
                     || array_key_exists( $entry_key, $current['scopes'] ) )
                     return self::blocked( 'replay_or_capacity', 'Duplicate release or fence capacity exceeded.' );
