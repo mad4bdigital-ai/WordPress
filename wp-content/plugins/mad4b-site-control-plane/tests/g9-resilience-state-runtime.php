@@ -131,6 +131,9 @@ class MAD4B_SCP_Authorization {
 require_once __DIR__ . '/../includes/class-mad4b-scp-g9-read-surface.php';
 class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
     public static $host_certified = true;
+    public static $provider_certified = true;
+    public static $effect_uncertain = false;
+    public static $health_stale = false;
     private $observed_at;
     public function __construct() { $this->observed_at = MAD4B_SCP_Resilience_Context::now(); }
     public function read_local( array $binding ) {
@@ -139,14 +142,18 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
             'binding_sha256' => MAD4B_SCP_Resilience_Context::digest( $binding ),
             'providers' => array( 'certified' => array(
                 'site_key'=>$key, 'generation_sha256'=>$binding['runtime_generation_sha256'],
-                'certification_sha256'=>hash( 'sha256', 'cert' ), 'ready'=>true, 'revoked'=>false,
+                'certification_sha256'=>hash( 'sha256', 'cert' ),
+                'ready'=>self::$provider_certified, 'revoked'=>!self::$provider_certified,
             ) ),
             'host' => array( 'isolation_verified'=>self::$host_certified,
                 'local_readback_verified'=>self::$host_certified,
                 'single_host_exclusive_verified'=>self::$host_certified ),
             'health' => array( 'sample_count'=>90, 'error_rate_bps'=>1, 'p95_ms'=>40,
-                'observed_at'=>$this->observed_at ),
-            'external_effects' => array(), 'gates'=>array(
+                'observed_at'=>self::$health_stale ? $this->observed_at - 1000 : $this->observed_at ),
+            'external_effects' => self::$effect_uncertain
+                ? array( 'mail'=>array( 'site_key'=>$key, 'state'=>'unknown',
+                    'receipt_sha256'=>hash( 'sha256', 'unsafe-effect' ) ) ) : array(),
+            'gates'=>array(
                 'prior_ring_health_accepted'=>false,
                 'provider_inventory_complete'=>true, 'host_inventory_complete'=>true,
                 'external_effect_inventory_complete'=>true, 'health_sample_window_complete'=>true ),
@@ -490,6 +497,23 @@ g9_assert( ! is_wp_error( $unverified_host )
     && $unverified_host['host_evidence_present'] && !$unverified_host['host_isolation_verified'],
     'host diagnostics are not host-isolation certification' );
 G9_Exact_Reader::$host_certified = true;
+G9_Exact_Reader::$provider_certified = false;
+$revoked_provider = MAD4B_SCP_G9_Read_Surface::site_observation();
+g9_assert( ! is_wp_error( $revoked_provider )
+    && $revoked_provider['provider_evidence_present']
+    && !$revoked_provider['provider_evidence_verified'],
+    'provider completeness flag does not mask revoked provider' );
+G9_Exact_Reader::$provider_certified = true;
+G9_Exact_Reader::$effect_uncertain = true;
+$effect_drift = MAD4B_SCP_G9_Read_Surface::site_observation();
+g9_assert( ! is_wp_error( $effect_drift ) && !$effect_drift['external_effect_inventory_verified'],
+    'claimed complete inventory does not verify uncertain external effect' );
+G9_Exact_Reader::$effect_uncertain = false;
+G9_Exact_Reader::$health_stale = true;
+$stale_health = MAD4B_SCP_G9_Read_Surface::site_observation();
+g9_assert( ! is_wp_error( $stale_health ) && !$stale_health['health_window_verified'],
+    'fresh health window cannot be inferred from old sample with complete flag' );
+G9_Exact_Reader::$health_stale = false;
 $marker_backup = $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ];
 $marker_foreign = $marker_backup; $marker_foreign['site']['canonical_origin'] = 'https://foreign.example.invalid';
 $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $marker_foreign;

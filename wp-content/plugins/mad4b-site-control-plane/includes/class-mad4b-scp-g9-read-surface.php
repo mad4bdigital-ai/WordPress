@@ -74,6 +74,49 @@ final class MAD4B_SCP_G9_Read_Surface {
         if ( is_wp_error( $snapshot ) ) return $snapshot;
         $anchor = MAD4B_SCP_Resilience_Anchor::read( $snapshot['binding'] );
         if ( is_wp_error( $anchor ) ) return $anchor;
+        $site_key = MAD4B_SCP_Resilience_Context::site_key( $snapshot['binding'] );
+        // Completeness from a code-owned observer is not enough by itself:
+        // each claimed provider and effect must be fresh-generation/site-bound
+        // and in a terminal, non-revoked state. No signature or executable
+        // release acceptance is inferred by these passive booleans.
+        $provider_verified = true === ( $snapshot['gates']['provider_inventory_complete'] ?? null )
+            && is_array( $snapshot['providers'] ?? null )
+            && count( $snapshot['providers'] ) >= 1
+            && count( $snapshot['providers'] ) <= 32;
+        if ( $provider_verified ) foreach ( $snapshot['providers'] as $provider ) {
+            if ( ! is_array( $provider )
+                || true !== ( $provider['ready'] ?? null )
+                || ! empty( $provider['revoked'] )
+                || ( $provider['site_key'] ?? '' ) !== $site_key
+                || ( $provider['generation_sha256'] ?? '' ) !== $snapshot['binding']['runtime_generation_sha256']
+                || ! MAD4B_SCP_Resilience_Context::is_hash( $provider['certification_sha256'] ?? '' ) ) {
+                $provider_verified = false;
+                break;
+            }
+        }
+        $effects_verified = true === ( $snapshot['gates']['external_effect_inventory_complete'] ?? null )
+            && is_array( $snapshot['external_effects'] ?? null )
+            && count( $snapshot['external_effects'] ) <= 128;
+        if ( $effects_verified ) foreach ( $snapshot['external_effects'] as $effect ) {
+            if ( ! is_array( $effect )
+                || ! in_array( $effect['state'] ?? null,
+                    array( 'verified_no_effect', 'verified_reconciled' ), true )
+                || ( $effect['site_key'] ?? '' ) !== $site_key
+                || ! MAD4B_SCP_Resilience_Context::is_hash( $effect['receipt_sha256'] ?? '' ) ) {
+                $effects_verified = false;
+                break;
+            }
+        }
+        $health = $snapshot['health'] ?? array();
+        $now = MAD4B_SCP_Resilience_Context::now();
+        $health_verified = true === ( $snapshot['gates']['health_sample_window_complete'] ?? null )
+            && is_array( $health )
+            && is_int( $health['observed_at'] ?? null )
+            && $health['observed_at'] <= $now && $health['observed_at'] >= $now - 120
+            && is_int( $health['sample_count'] ?? null ) && $health['sample_count'] > 0
+            && is_int( $health['error_rate_bps'] ?? null )
+            && $health['error_rate_bps'] >= 0 && $health['error_rate_bps'] <= 10000
+            && is_int( $health['p95_ms'] ?? null ) && $health['p95_ms'] >= 0;
         return array(
             'contract' => 'mad4b.g9.read-site-observation.v1',
             'site_key' => MAD4B_SCP_Resilience_Context::site_key( $snapshot['binding'] ),
@@ -88,15 +131,14 @@ final class MAD4B_SCP_G9_Read_Surface {
             // Keep descriptive presence separate from explicitly verified
             // site-local completeness, isolation and readback facts.
             'provider_evidence_present' => ! empty( $snapshot['providers'] ),
-            'provider_evidence_verified' => ! empty( $snapshot['providers'] )
-                && true === ( $snapshot['gates']['provider_inventory_complete'] ?? null ),
+            'provider_evidence_verified' => $provider_verified,
             'host_evidence_present' => ! empty( $snapshot['host'] ),
             'host_isolation_verified' => true === ( $snapshot['host']['isolation_verified'] ?? null )
                 && true === ( $snapshot['host']['local_readback_verified'] ?? null )
                 && true === ( $snapshot['host']['single_host_exclusive_verified'] ?? null )
                 && true === ( $snapshot['gates']['host_inventory_complete'] ?? null ),
-            'health_window_verified' => true === ( $snapshot['gates']['health_sample_window_complete'] ?? null ),
-            'external_effect_inventory_verified' => true === ( $snapshot['gates']['external_effect_inventory_complete'] ?? null ),
+            'health_window_verified' => $health_verified,
+            'external_effect_inventory_verified' => $effects_verified,
             'release_execution_supported' => false,
             'authorizing' => false, 'mutation_performed' => false,
         );
