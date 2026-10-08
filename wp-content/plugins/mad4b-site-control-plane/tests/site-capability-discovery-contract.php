@@ -48,6 +48,14 @@ expect_site( $cpt['provider_matches'][0]['recognized'] === true &&
 expect_site( $observed['unmapped_plugins'] === array( 'unknown-widget' ), 'unknown plugin retained as unmapped, not guessed' );
 expect_site( in_array( 'tour', $observed['post_types'], true ) && in_array( 'tour_type', $observed['taxonomies'], true ), 'runtime post types and taxonomies observed' );
 expect_site( strlen( $observed['snapshot_sha256'] ) === 64, 'fingerprint' );
+$subdir = $c::observe( 'https://staging.egypttourgates.com/travel', $providers );
+expect_site( $subdir['discovery_complete'] === true &&
+  $subdir['origin'] === 'https://staging.egypttourgates.com/travel',
+  'nested WordPress installation origin observed without hostname hardcoding' );
+$bad_subdir = $c::observe( 'https://staging.egypttourgates.com/../private', $providers );
+expect_site( ! $bad_subdir['discovery_complete'] &&
+  in_array( 'site_origin_invalid', $bad_subdir['blocking_reasons'], true ),
+  'nested traversal origin blocked' );
 expect_site( $observed['plugin_versions_complete'] === true && count( $observed['plugin_versions'] ) === 2, 'active plugin versions observed without activation' );
 expect_site( $observed['theme_version_complete'] === true && $observed['theme']['stylesheet'] === 'test-theme', 'theme metadata captured' );
 $GLOBALS['site_theme_version'] = '1.1.0';

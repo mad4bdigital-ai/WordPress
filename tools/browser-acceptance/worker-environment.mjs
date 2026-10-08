@@ -9,7 +9,8 @@ const ALLOWED = Object.freeze([
   "MAD4B_CLOUDFLARE_ALLOWED_DOMAINS",
   "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_BROWSER_RUN_API_TOKEN",
   "BROWSERBASE_API_KEY", "BROWSERLESS_TOKEN", "BROWSERLESS_REGION",
-  "STEEL_API_KEY"
+  "STEEL_API_KEY",
+  "MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64"
 ]);
 export function buildBrowserWorkerEnvironment(env, deadline) {
   if (!env || typeof env !== "object" || Array.isArray(env) ||

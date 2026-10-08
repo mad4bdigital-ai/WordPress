@@ -8,7 +8,7 @@ const base = () => ({
  provider_id:"wordpress-native", profile_id:"public-observations",
  state:"ready",suite:"browser_runtime",read_only:true,authorizing:false,
  origin:"https://sample.example/",plan_digest:"a".repeat(64),plan_signature:"b".repeat(64),
- build_identity:{git_sha:"c".repeat(40),tree_sha:"d".repeat(40)},
+ build_identity:{git_sha:"c".repeat(40),build_fingerprint:"d".repeat(64)},
  challenge:{nonce:"e".repeat(32),signature:"f".repeat(64),issued_at:now-3,expires_at:now+120},
  cases:[
   {case_id:"title-test",capability_id:"content.title",probe_type:"public.document_title_digest",
@@ -23,6 +23,14 @@ const plan=base();plan.case_count=plan.cases.length;
 const validate=(x)=>validateDeclarativePlan(x);
 assert.equal(validate(plan).provider_id,"wordpress-native");
 assert.equal(validate(plan).cases.length,3);
+const subsite=structuredClone(plan);
+subsite.origin="https://sample.example/travel/";
+subsite.cases=subsite.cases.map(c=>({...c,page_path:"/travel"+c.page_path,
+ expected:c.probe_type==="public.canonical_path"?{path:"/travel/tours/"}:c.expected}));
+assert.equal(validate(subsite).origin,"https://sample.example/travel/");
+const escapeSubsite=structuredClone(subsite);
+escapeSubsite.cases[0].page_path="/another-site/page/";
+assert.throws(()=>validate(escapeSubsite),/capability_browser_case_outside_site_scope/);
 function denies(modifier, pattern=/capability_browser_/){
  const invalid=structuredClone(plan);modifier(invalid);
  assert.throws(()=>validate(invalid),pattern);
@@ -32,7 +40,7 @@ denies(p=>p.provider_id="All Royal Egypt");
 denies(p=>p.origin="http://sample.example/");
 denies(p=>p.origin="https://sample.example/scope/");
 denies(p=>p.read_only=false);
-denies(p=>p.build_identity.tree_sha="");
+denies(p=>p.build_identity.build_fingerprint="");
 denies(p=>p.challenge.expires_at=now-1);
 denies(p=>p.case_count=2);
 denies(p=>p.cases[0].page_path="//different.example/path");

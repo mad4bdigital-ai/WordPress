@@ -3,6 +3,7 @@ import { buildBrowserWorkerEnvironment } from "./worker-environment.mjs";
 const env={
  PATH:"/usr/bin",HOME:"/home/runner",BROWSERBASE_API_KEY:"browserkey",
  CLOUDFLARE_BROWSER_RUN_API_TOKEN:"providersecret",
+ MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64:"TEST-SIGNER-BASE64",
  MAD4B_BROWSER_ALLOWED_ASSET_DOMAINS:"cdn.example.com",
  MAD4B_MCP_ACCESS_TOKEN:"jwt-secret",GITHUB_TOKEN:"ghp-secret",
  OPENAI_API_KEY:"unrelated",MAD4B_AUTH_STEP_UP:"authority",
@@ -13,6 +14,7 @@ const isolated=buildBrowserWorkerEnvironment(env,1890000000);
 assert.equal(isolated.PATH,"/usr/bin");
 assert.equal(isolated.BROWSERBASE_API_KEY,"browserkey");
 assert.equal(isolated.CLOUDFLARE_BROWSER_RUN_API_TOKEN,"providersecret");
+assert.equal(isolated.MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64,"TEST-SIGNER-BASE64");
 assert.equal(isolated.MAD4B_BROWSER_ALLOWED_ASSET_DOMAINS,"cdn.example.com");
 assert.equal(isolated.MAD4B_BROWSER_EXECUTION_DEADLINE_EPOCH,"1890000000");
 for (const forbidden of ["MAD4B_MCP_ACCESS_TOKEN","GITHUB_TOKEN","OPENAI_API_KEY",

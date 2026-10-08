@@ -15,6 +15,7 @@ import {
 } from "./scheduler.mjs";
 import { resolveSiteDriverForPlan } from "./site-driver-registry.mjs";
 import { createEvidenceAssembler } from "./evidence-assembler.mjs";
+import { signDeclarativeEvidence, assertSigningConfigured } from "./browser-attestation.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -34,6 +35,10 @@ if (!planPath) {
 }
 
 const driver = resolveSiteDriverForPlan(JSON.parse(fs.readFileSync(planPath, "utf8")));
+if (driver.evidence_contract === "mad4b.capability-browser-evidence.v1") {
+  // Fail before starting costly remote browser sessions if signer is missing.
+  assertSigningConfigured(process.env);
+}
 const plan = driver.plan;
 const contracts = loadProviderContracts();
 const budget = new BrowserRunBudget(contracts);
@@ -167,6 +172,8 @@ if (!finalEvidence) {
 }
 
 fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
+// Never emit unsigned generic evidence, even as a local file.
+finalEvidence = signDeclarativeEvidence(finalEvidence);
 fs.writeFileSync(outPath, JSON.stringify(finalEvidence, null, 2));
 console.log(JSON.stringify({
   contract: "mad4b.browser-execution-run.v2",

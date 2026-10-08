@@ -4,7 +4,7 @@ const ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const CONTRACT = /^[a-z0-9][a-z0-9._-]{0,159}$/;
 const SHA = /^[a-f0-9]{64}$/;
 const REV = /^[a-f0-9]{32}$/;
-const HOST = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?::[0-9]{2,5})?\/?$/;
+const HOST = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?::[0-9]{2,5})?(?:\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,63})*\/?$/;
 const EXECUTORS = new Set(["auto", "cloudflare", "browserbase", "browserless", "steel"]);
 
 function origin(raw) {
@@ -154,8 +154,14 @@ export function resolveSiteBrowserAdapter(caps, {
   if (providerId && !recognized.has(providerId)) fail("selected_provider_not_discovered");
   if (!providerId) {
     if (!eligible.length) fail("site_adapter_missing");
-    if (eligible.length > 1) fail("site_adapter_ambiguous");
-    providerId = eligible[0];
+    // Provider profile selection is a *declared contract*, not site-name
+    // inference. Only an explicit requested profile can disambiguate it.
+    let possible = eligible;
+    if (requestedProfile) possible = eligible.filter(id =>
+      providers.get(id).capabilities.default_profile_id === requestedProfile);
+    if (!possible.length) fail("site_adapter_profile_unmatched");
+    if (possible.length > 1) fail("site_adapter_ambiguous");
+    providerId = possible[0];
   }
   const selected = providers.get(providerId);
   const driver = candidates.get(selected.contract);

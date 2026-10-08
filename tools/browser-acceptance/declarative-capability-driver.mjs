@@ -23,10 +23,11 @@ function pathValid(s) {
     !/(?:^|\/)(?:wp-admin|wp-json|wp-login\.php|xmlrpc\.php|wp-cron\.php)(?:\/|$)/i.test(s);
 }
 function origin(raw) {
-  if (typeof raw !== "string" || !/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?\/$/.test(raw)) deny("origin_invalid");
+  if (typeof raw !== "string" || !/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?(?:\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,63})*\/$/.test(raw)) deny("origin_invalid");
   const parsed = new URL(raw);
-  if (parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") deny("origin_invalid");
-  return parsed.origin;
+  if (parsed.username || parsed.password || parsed.search || parsed.hash ||
+      !/^\/(?:[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}\/)*$/.test(parsed.pathname)) deny("origin_invalid");
+  return parsed.origin + parsed.pathname.slice(0, -1);
 }
 export function validateDeclarativePlan(plan) {
   if (!plan || typeof plan !== "object" || Array.isArray(plan) ||
@@ -38,7 +39,7 @@ export function validateDeclarativePlan(plan) {
       plan.read_only !== true || plan.authorizing !== false ||
       !SHA.test(plan.plan_digest || "") || !SHA.test(plan.plan_signature || "") ||
       !HEX40.test(plan.build_identity?.git_sha || "") ||
-      !HEX40.test(plan.build_identity?.tree_sha || "")) deny("plan_invalid");
+      !SHA.test(plan.build_identity?.build_fingerprint || "")) deny("plan_invalid");
   const canonicalOrigin = origin(plan.origin);
   const challenge = plan.challenge;
   const now = Math.floor(Date.now() / 1000);
@@ -70,8 +71,10 @@ export function validateDeclarativePlan(plan) {
           !IDENT.test(expected.marker_key || "") ||
           !Number.isSafeInteger(expected.count) || expected.count < 0 || expected.count > 5000) deny("oracle_invalid");
     }
-    const u = new URL(item.page_path, canonicalOrigin);
-    if (u.origin !== canonicalOrigin) deny("case_cross_origin");
+    const u = new URL(item.page_path, canonicalOrigin + "/");
+    if (u.origin !== new URL(canonicalOrigin + "/").origin) deny("case_cross_origin");
+    const scope = new URL(canonicalOrigin + "/").pathname;
+    if (scope !== "/" && !u.pathname.startsWith(scope)) deny("case_outside_site_scope");
   }
   // A signed-shaped plan is still untrusted until the native provider independently
   // verifies its challenge, semantic expected data, and reducer receipt.
@@ -130,7 +133,8 @@ export async function runDeclarativeBrowserPlan({ browser, providerId, plan }) {
       observer: {
         contract: "mad4b.capability-browser-observer.v1",
         javascript_runtime: true, browser_engine: providerId + ":" + String(engine),
-        execution_mode: "managed_browser_agent"
+        execution_mode: "managed_browser_agent",
+        plan_issued_at: validated.challenge.issued_at
       },
       cases
     };
