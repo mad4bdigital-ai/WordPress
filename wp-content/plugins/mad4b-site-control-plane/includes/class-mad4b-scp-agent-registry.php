@@ -216,3 +216,7 @@ final class MAD4B_SCP_Agent_Registry {
 		);
 	}
 }
+
+// Feature 007 assistant planning exposes a READ-only proposal, never an agent grant.
+require_once __DIR__ . '/class-mad4b-scp-assistant-planning.php';
+MAD4B_SCP_Assistant_Planning::boot();
