@@ -40,3 +40,8 @@ jobs:
           php -l "$PLUGIN/mad4b-site-control-plane.php"
           php -l "$PLUGIN/tests/g8-automation-slo-runtime.php"
           php "$PLUGIN/tests/g8-automation-slo-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-supply-provenance.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-schema-migration.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-compatibility-fuzz.php"
+          php -l "$PLUGIN/tests/g8-extended-runtime.php"
+          php "$PLUGIN/tests/g8-extended-runtime.php"
