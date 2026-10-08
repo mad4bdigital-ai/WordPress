@@ -1182,8 +1182,24 @@ final class MAD4B_SCP_Runtime_Convergence {
 			? true : new WP_Error( 'mad4b_automation_checkpoint_readback_uncertain', 'Automatic checkpoint requires governed reconciliation.' );
 	}
 
+	/** No stale or terminal checkpoint can serve as an automatic outcome prestate. */
+	private static function automatic_outcome_prestate( array $target ) {
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::CHECKPOINT_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		$checkpoint = get_option( self::CHECKPOINT_OPTION, null );
+		$gate = self::automatic_checkpoint_gate( $checkpoint );
+		if ( true !== $gate['checkpoint_schedulable']
+			|| ! is_array( $checkpoint )
+			|| ( $checkpoint['target_identity'] ?? null ) !== $target )
+			return new WP_Error( 'mad4b_automation_checkpoint_disposition_raced', 'A terminal, manual or foreign checkpoint cannot be overwritten by Cron.' );
+		return $checkpoint;
+	}
+
 	public static function resume_safe_phases() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		$checkpoint_prestate = $checkpoint;
 		// A previously scheduled event is not execution authority. Use
 		// the same read-only state gate shown to the operator, then obtain
 		// a separate exact, live SLO ticket before any automatic mutation.
@@ -1202,7 +1218,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['state'] = 'waiting_for_exact_runtime_restart';
 			$checkpoint['current_identity'] = $current;
 			$checkpoint['updated_at'] = gmdate( 'c' );
-			self::automatic_checkpoint_cas( get_option( self::CHECKPOINT_OPTION, null ), $checkpoint );
+			self::automatic_checkpoint_cas( $checkpoint_prestate, $checkpoint );
 			return;
 		}
 		// G8 admission is an independent, non-authorizing boundary around the existing Cron worker.
@@ -1217,7 +1233,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['resume_blocker'] = 'mad4b_automation_guard_missing';
 			$checkpoint['automatic_retry_allowed'] = false;
 			$checkpoint['updated_at'] = gmdate( 'c' );
-			self::automatic_checkpoint_cas( get_option( self::CHECKPOINT_OPTION, null ), $checkpoint );
+			self::automatic_checkpoint_cas( $checkpoint_prestate, $checkpoint );
 			return;
 		}
 		$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
@@ -1234,7 +1250,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['resume_blocker'] = is_wp_error( $ticket ) ? $ticket->get_error_code() : 'mad4b_automation_ticket_invalid';
 			$checkpoint['automatic_retry_allowed'] = false;
 			$checkpoint['updated_at'] = gmdate( 'c' );
-			self::automatic_checkpoint_cas( get_option( self::CHECKPOINT_OPTION, null ), $checkpoint );
+			self::automatic_checkpoint_cas( $checkpoint_prestate, $checkpoint );
 			return;
 		}
 		try {
@@ -1251,17 +1267,21 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 		if ( is_array( $ticket ) ) {
 			if ( is_wp_error( $finished ) || true !== $finished ) {
-				$checkpoint = get_option( self::CHECKPOINT_OPTION, $checkpoint );
-				if ( ! is_array( $checkpoint ) ) $checkpoint = array();
+				$checkpoint = self::automatic_outcome_prestate( $target );
+				if ( is_wp_error( $checkpoint ) ) return;
+				$prestate = $checkpoint;
 				$checkpoint['state'] = 'pending_manual_resume';
 				$checkpoint['resume_blocker'] = is_wp_error( $finished ) ? $finished->get_error_code() : 'mad4b_automation_outcome_persist_invalid';
 				$checkpoint['automatic_retry_allowed'] = false;
 				$checkpoint['updated_at'] = gmdate( 'c' );
-				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+				self::automatic_checkpoint_cas( $prestate, $checkpoint );
 				return;
 			}
 		}
 		if ( is_wp_error( $result ) ) {
+			$checkpoint = self::automatic_outcome_prestate( $target );
+			if ( is_wp_error( $checkpoint ) ) return;
+			$prestate = $checkpoint;
 			$error_code = sanitize_key( (string) $result->get_error_code() );
 			$retry_count = isset( $checkpoint['transient_retry_count'] ) ? absint( $checkpoint['transient_retry_count'] ) : 0;
 			$policy = self::worker_error_policy( $error_code );
@@ -1276,8 +1296,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				$checkpoint['retry_policy'] = 'automatic_bounded_retry';
 				$checkpoint['automatic_retry_allowed'] = true;
 				$checkpoint['updated_at'] = gmdate( 'c' );
-				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
-				self::schedule_resume();
+				if ( true === self::automatic_checkpoint_cas( $prestate, $checkpoint ) ) self::schedule_resume();
 				return;
 			}
 			$checkpoint['state'] = 'blocked';
@@ -1285,7 +1304,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['automatic_retry_allowed'] = false;
 			$checkpoint['auto_reconcile_terminal_reason'] = 'DEFER' === $decision ? 'bounded_defer_exhausted' : ( 'HARD_BLOCK' === $decision ? 'hard_block_repair_required' : 'explicit_review_required' );
 			$checkpoint['updated_at'] = gmdate( 'c' );
-			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			self::automatic_checkpoint_cas( $prestate, $checkpoint );
 		}
 	}
 
