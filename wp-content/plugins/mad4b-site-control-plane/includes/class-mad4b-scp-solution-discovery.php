@@ -326,6 +326,7 @@ final class MAD4B_SCP_Solution_Discovery {
                 'metadata_digest' => $row['metadata_digest'] ?? null,
                 'matched_terms' => $matches, 'lexical_score' => $score,
                 'classification' => 'UNMAPPED_OR_UNVERIFIED',
+                'metadata_is_untrusted' => true, 'instructions_in_metadata_ignored' => true,
                 'behavior_verified' => false, 'authorization_verified' => false,
                 'execution_allowed' => false, 'requires' => array( 'capability_attestation', 'scope_review', 'governed_execution_path' ) );
         }

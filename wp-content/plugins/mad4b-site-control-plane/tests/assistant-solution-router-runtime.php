@@ -39,6 +39,9 @@ ok($r['tasks'][0]['total_matches']===2 && count($r['tasks'][0]['candidates'])===
 ok($r['tasks'][0]['execution_allowed']===false && $r['authorizing']===false
     && $r['provider_executed']===false && $r['automatic_install_allowed']===false,'inert');
 ok($r['registry_coverage']['external_inventory_complete']===false,'external coverage unknown');
+ok($r['tasks'][0]['fallback_has_no_match_evidence']===false &&
+    $r['tasks'][0]['unranked_fallback_candidates']===array(),
+    'matching results never claim a fallback was evaluated');
 $second=MAD4B_SCP_Assistant_Solution_Router::read_plan($arg);
 ok($r['tasks'][0]['snapshot_sha256']===$second['tasks'][0]['snapshot_sha256'],'deterministic');
 $arg['external_hints']=array(array('id'=>'hosting','label'=>'File Host Configuration','source'=>'connector'));

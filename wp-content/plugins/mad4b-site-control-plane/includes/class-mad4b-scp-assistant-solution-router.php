@@ -152,7 +152,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                 'candidates' => $result['candidates'],
                 'unranked_fallback_candidates' => $fallback['candidates'],
                 'unranked_fallback_next_offset' => $fallback['next_offset'],
-                'fallback_has_no_match_evidence' => true,
+                'fallback_has_no_match_evidence' => ! $result['total_matches'],
                 'snapshot_sha256' => $result['snapshot_sha256'],
                 'execution_allowed' => false );
         }
