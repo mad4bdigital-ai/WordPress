@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 296,
+  "changed_file_count": 297,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -502,8 +502,17 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/docs/FEATURE007-CI-OUTAGE-ACCEPTANCE.md"
       ]
+    },
+    {
+      "id": "feature007-disposable-g8-sql-cas-php-matrix",
+      "semantic_unit": "Optional explicit-opt-in exact-head local four-cell disposable MariaDB/MySQL CAS matrix, with no site credentials and loopback binding",
+      "revert_boundary": "Remove matrix script without changing runtime, authority, grants, Production or release gates",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/feature007-disposable-db-matrix.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "7fd0500a2cfcc3fc1b9d77380f682407c746279efe55d6233eb8c853f5c90768",
+  "changed_paths_sha256": "84473ef51e1a0ccc4084dda1c56d2c2e6add559d2a282754d8caa4244bb6b953",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
