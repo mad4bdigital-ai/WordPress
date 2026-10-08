@@ -111,6 +111,7 @@ class MAD4B_SCP_Authorization {
 }
 require_once __DIR__ . '/../includes/class-mad4b-scp-g9-read-surface.php';
 class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
+    public static $host_certified = true;
     private $observed_at;
     public function __construct() { $this->observed_at = MAD4B_SCP_Resilience_Context::now(); }
     public function read_local( array $binding ) {
@@ -121,8 +122,9 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
                 'site_key'=>$key, 'generation_sha256'=>$binding['runtime_generation_sha256'],
                 'certification_sha256'=>hash( 'sha256', 'cert' ), 'ready'=>true, 'revoked'=>false,
             ) ),
-            'host' => array( 'isolation_verified'=>true, 'local_readback_verified'=>true,
-                'single_host_exclusive_verified'=>true ),
+            'host' => array( 'isolation_verified'=>self::$host_certified,
+                'local_readback_verified'=>self::$host_certified,
+                'single_host_exclusive_verified'=>self::$host_certified ),
             'health' => array( 'sample_count'=>90, 'error_rate_bps'=>1, 'p95_ms'=>40,
                 'observed_at'=>$this->observed_at ),
             'external_effects' => array(), 'gates'=>array(
@@ -331,6 +333,15 @@ foreach ( $GLOBALS['g9_registered_abilities'] as $ability => $args ) {
         && $args['input_schema']['additionalProperties'] === false, 'read-only ability ' . $ability );
 }
 $read = MAD4B_SCP_G9_Read_Surface::site_observation();
+g9_assert( ! is_wp_error( $read ) && $read['provider_evidence_verified']
+    && $read['host_isolation_verified'] && $read['health_window_verified'],
+    'complete certified fixture is reported separately from evidence presence' );
+G9_Exact_Reader::$host_certified = false;
+$unverified_host = MAD4B_SCP_G9_Read_Surface::site_observation();
+g9_assert( ! is_wp_error( $unverified_host )
+    && $unverified_host['host_evidence_present'] && !$unverified_host['host_isolation_verified'],
+    'host diagnostics are not host-isolation certification' );
+G9_Exact_Reader::$host_certified = true;
 $marker_backup = $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ];
 $marker_foreign = $marker_backup; $marker_foreign['site']['canonical_origin'] = 'https://foreign.example.invalid';
 $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $marker_foreign;

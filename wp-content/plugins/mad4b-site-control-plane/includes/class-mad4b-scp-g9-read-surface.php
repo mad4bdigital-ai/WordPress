@@ -78,8 +78,19 @@ final class MAD4B_SCP_G9_Read_Surface {
             'anchor_revision' => $anchor['revision'],
             'identity_blockers' => $snapshot['identity_blockers'],
             'authority_eligible' => ! empty( $snapshot['authority']['eligible'] ),
+            // An inventory object or host diagnostic is not a certificate.
+            // Keep descriptive presence separate from explicitly verified
+            // site-local completeness, isolation and readback facts.
             'provider_evidence_present' => ! empty( $snapshot['providers'] ),
+            'provider_evidence_verified' => ! empty( $snapshot['providers'] )
+                && true === ( $snapshot['gates']['provider_inventory_complete'] ?? null ),
             'host_evidence_present' => ! empty( $snapshot['host'] ),
+            'host_isolation_verified' => true === ( $snapshot['host']['isolation_verified'] ?? null )
+                && true === ( $snapshot['host']['local_readback_verified'] ?? null )
+                && true === ( $snapshot['host']['single_host_exclusive_verified'] ?? null )
+                && true === ( $snapshot['gates']['host_inventory_complete'] ?? null ),
+            'health_window_verified' => true === ( $snapshot['gates']['health_sample_window_complete'] ?? null ),
+            'external_effect_inventory_verified' => true === ( $snapshot['gates']['external_effect_inventory_complete'] ?? null ),
             'release_execution_supported' => false,
             'authorizing' => false, 'mutation_performed' => false,
         );
