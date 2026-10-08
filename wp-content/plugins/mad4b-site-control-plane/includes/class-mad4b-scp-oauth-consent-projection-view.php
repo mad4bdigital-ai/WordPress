@@ -49,11 +49,17 @@ final class MAD4B_SCP_OAuth_Consent_Projection_View {
         if ( ! $backend || ! $network ) {
             if ( ! $blockers ) $blockers['host_execution_not_certified'] = true;
         }
-        $operational = true === $authority_ready && $backend && $network;
+        $prerequisites = $backend && $network;
+        // OS binary/path probes are not an independent no-network execution
+        // certificate. Until a bound host canary receipt is independently
+        // verified, this presentation projection MUST fail closed.
+        if ( $prerequisites ) $blockers['host_behavior_uncertified'] = true;
         return array(
             'contract' => self::CONTRACT, 'authority_ready' => true === $authority_ready,
-            'host_execution_ready' => $backend && $network,
-            'operational_ready' => $operational, 'blockers' => array_keys( $blockers ),
+            'host_prerequisites_ready' => $prerequisites,
+            'host_execution_ready' => false,
+            'host_execution_certification' => 'NOT_CERTIFIED',
+            'operational_ready' => false, 'blockers' => array_keys( $blockers ),
             'read_only' => true, 'mutation_performed' => false,
             'host_installation_performed' => false, 'authorizing' => false,
         );
