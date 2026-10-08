@@ -32,3 +32,5 @@ Every candidate is `UNMAPPED_OR_UNVERIFIED`; `execution_allowed=false` always. A
 The test covers dynamic unmapped candidates, introspected Abilities, ambiguous hints, deterministic ranking, pagination, input injections, duplicate refusal, stale generation and absence of write authority.
 
 Source tests are not staging/real browser/host or external provider certification. Re-run on the latest exact PR HEAD before any release claim.
+
+The follow-up connector `mad4b/assistant-solution-discover` is a read-only adapter wrapping the existing Assistant Planning GAP decisions, described in `docs/ASSISTANT-SOLUTION-ROUTER.md`. Private Abilities appear to the admin only as opaque canonical names (their descriptions are redacted); the discovery result is NEVER a permission grant.
