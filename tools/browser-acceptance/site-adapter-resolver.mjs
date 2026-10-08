@@ -32,6 +32,14 @@ export function resolveSiteBrowserAdapter(caps, {
       !Array.isArray(observed.taxonomies) || observed.taxonomies.length > 96 ||
       new Set(observed.plugins).size !== observed.plugins.length ||
       observed.plugins.some(x => !valid(x, ID)) ||
+      observed.theme_version_complete !== true ||
+      !observed.theme || !valid(observed.theme.stylesheet, ID) ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,99}$/.test(observed.theme.version || "") ||
+      typeof observed.theme.parent_stylesheet !== "string" ||
+      typeof observed.theme.parent_version !== "string" ||
+      (observed.theme.parent_stylesheet &&
+        (!valid(observed.theme.parent_stylesheet, ID) ||
+         !/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,99}$/.test(observed.theme.parent_version))) ||
       observed.plugin_versions_complete !== true ||
       !Array.isArray(observed.plugin_versions) ||
       observed.plugin_versions.length !== observed.plugins.length ||
