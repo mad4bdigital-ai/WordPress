@@ -9,7 +9,7 @@ function wp_has_ability( $id ) { return isset( $GLOBALS['registered'][ $id ] ); 
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 class WP_Error { private $code; public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; } public function get_error_code() { return $this->code; } }
-$binding = array( 'profile_digest' => str_repeat( 'a', 64 ), 'runtime_generation' => str_repeat( 'b', 64 ), 'artifact_sha256' => str_repeat( 'c', 64 ), 'environment' => 'staging' );
+$binding = array( 'profile_digest' => str_repeat( 'a', 64 ), 'runtime_generation' => str_repeat( 'b', 64 ), 'artifact_sha256' => str_repeat( 'c', 64 ), 'environment' => 'staging', 'site_uuid' => 'fixture-site-uuid', 'restore_epoch' => 1 );
 class MAD4B_SCP_Adaptive_Operations_Context {
     public static $binding;
     public static function current() { return self::$binding; }
@@ -36,6 +36,8 @@ check_case( 'required missing discovers alternatives', 'DISCOVER_ALTERNATIVES' =
 check_case( 'optional missing does not install', 'OPTIONAL_NO_INSTALL' === $plan['tasks'][1]['decision'] );
 check_case( 'tasks cannot expand authority', false === $plan['tasks'][0]['execution_allowed'] && false === $plan['tasks'][0]['authority_expansion_allowed'] );
 check_case( 'stable identity-bound plan hash', $plan['plan_sha256'] === MAD4B_SCP_Assistant_Planning::read_plan( $input )['plan_sha256'] );
+$change_facts = $desired; $change_facts['facts'][0]['value'] = 'GB';
+check_case( 'fact changes produce distinct exact input hash', MAD4B_SCP_Assistant_Planning::plan( $binding, $change_facts, $observed )['plan_sha256'] !== $plan['plan_sha256'] );
 $changed = $input; $changed['expected_runtime_generation'] = str_repeat( 'd', 64 );
 check_case( 'stale generation rejects', rejected( MAD4B_SCP_Assistant_Planning::read_plan( $changed ), 'stale_binding' ) );
 $changed = $desired; unset( $changed['facts'] );
@@ -46,6 +48,8 @@ $changed = $desired; $changed['facts'][0]['value'] = 'Egypt';
 check_case( 'invalid country denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $changed ), 'market_invalid' ) );
 $changed = $desired; $changed['facts'][1]['value'] = 'en_US<script>';
 check_case( 'invalid language denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $changed ), 'language_invalid' ) );
+$changed = $desired; $changed['capabilities']['unexpected_index'] = array( 'capability' => 'other.workflow', 'required' => false );
+check_case( 'associative capability index denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $changed ), 'budget_invalid' ) );
 $changed = $desired; $changed['capabilities'][] = $changed['capabilities'][0];
 check_case( 'duplicate capability denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $changed ), 'capabilities_invalid' ) );
 $changed = $observed; $changed['capabilities'][] = $changed['capabilities'][0];
