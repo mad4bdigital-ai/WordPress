@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Business configuration is independent of Site Profile and cannot grant authority. */
 final class MAD4B_SCP_Search_Context {
 	/** A private, synchronous privilege boundary for typed runtime controls only. */
-	private static $typed_control_in_progress = false;
+	private static $typed_control_scope = null;
 	public static function policy() {
 		$raw = file_get_contents( dirname( __DIR__, 2 ) . '/config/search-runtime-policy.json' );
 		$data = json_decode( (string) $raw, true );
@@ -129,7 +129,12 @@ final class MAD4B_SCP_Search_Context {
 		if ( $target_change && ( ! empty( $old['enabled'] ) || ! empty( $next['enabled'] ) || ! $old_frozen || ! $next_frozen ) ) {
 			return MAD4B_SCP_Search_Contracts::error( 'profile_targeting_requires_pause_and_spend_freeze', 'Pause observations and freeze spend in an independent step before any material profile edit.' );
 		}
-		if ( $state_change && ! self::$typed_control_in_progress ) return MAD4B_SCP_Search_Contracts::error( 'profile_state_requires_explicit_control', 'Runtime state transitions require the dedicated typed control operation.' );
+		if ( $state_change ) {
+			$scope = self::$typed_control_scope;
+			$expected_sha = MAD4B_SCP_Search_Contracts::digest( $next );
+			$authorized = is_array( $scope ) && isset( $scope['profile_id'], $scope['revision'], $scope['profile_sha256'] ) && $scope['profile_id'] === $next['profile_id'] && (int) $scope['revision'] === (int) $old['revision'] && hash_equals( $scope['profile_sha256'], $expected_sha );
+			if ( ! $authorized ) return MAD4B_SCP_Search_Contracts::error( 'profile_state_requires_explicit_control', 'Runtime state transitions require an exact-bound typed control operation.' );
+		}
 		return true;
 	}
 
@@ -181,6 +186,9 @@ final class MAD4B_SCP_Search_Context {
 			$provided = $input['expected_revision'];
 			if ( ! ( is_int( $provided ) || ( is_string( $provided ) && preg_match( '/^[1-9][0-9]{0,8}$/D', $provided ) ) ) || (int) $provided !== (int) $old['revision'] ) return MAD4B_SCP_Search_Contracts::error( 'search_control_stale' );
 		}
+		// High-impact operations require an exact operator revision, even when
+		// the caller invokes the control API without the wp-admin form.
+		if ( in_array( $action, array( 'resume', 'unfreeze_spend', 'enable_provider' ), true ) && ! isset( $input['expected_revision'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_revision_required' );
 		$policy = self::policy(); if ( is_wp_error( $policy ) ) return $policy;
 		$raw = array_intersect_key( $old, array_flip( $policy['profile_fields'] ) );
 		if ( 'pause' === $action ) $raw['enabled'] = false;
@@ -194,16 +202,18 @@ final class MAD4B_SCP_Search_Context {
 			else $disabled = array_diff( $disabled, array( $provider ) );
 			$raw['provider_policy']['disabled'] = array_values( array_unique( $disabled ) );
 		}
-		if ( self::$typed_control_in_progress ) return MAD4B_SCP_Search_Contracts::error( 'search_control_reentrant' );
-		self::$typed_control_in_progress = true;
+		if ( null !== self::$typed_control_scope ) return MAD4B_SCP_Search_Contracts::error( 'search_control_reentrant' );
+		$checked = self::validate( $raw ); if ( is_wp_error( $checked ) ) return $checked;
+		self::$typed_control_scope = array( 'profile_id' => $id, 'revision' => (int) $old['revision'], 'profile_sha256' => MAD4B_SCP_Search_Contracts::digest( $checked ) );
 		try {
 			$args = array( 'profile' => $raw, 'expected_revision' => (int) $old['revision'] );
 			$plan = self::plan( $args ); if ( is_wp_error( $plan ) ) return $plan;
 			return self::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) );
-		} finally { self::$typed_control_in_progress = false; }
+		} finally { self::$typed_control_scope = null; }
 	}
 
 	public static function apply( array $input ) {
+		if ( ! MAD4B_SCP_Search_Runtime::can_configure() ) return MAD4B_SCP_Search_Contracts::error( 'configuration_unauthorized' );
 		$plan = self::plan( $input ); if ( is_wp_error( $plan ) ) return $plan;
 		if ( empty( $input['plan_sha256'] ) || ! hash_equals( $plan['plan_sha256'], (string) $input['plan_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_plan_drift' );
 		$id = $plan['profile']['profile_id']; $current = MAD4B_SCP_Search_Store::read( 'profile', $id );
