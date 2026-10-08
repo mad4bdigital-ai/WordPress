@@ -71,7 +71,15 @@ final class MAD4B_SCP_Search_Context {
 
 	public static function plan( array $input ) {
 		if ( ! isset( $input['profile'], $input['expected_revision'] ) || ! is_array( $input['profile'] ) || ! is_int( $input['expected_revision'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_plan_invalid' );
-		$profile = self::validate( $input['profile'] ); if ( is_wp_error( $profile ) ) return $profile;
+		// Legacy clients may omit a spend state when drafting a new Profile.
+		// Default ONLY that omission to frozen; explicit false still fails closed.
+		// No existing profile is silently paused or reconfigured.
+		$raw = $input['profile'];
+		if ( 0 === $input['expected_revision'] && ( ! isset( $raw['provider_policy'] ) || is_array( $raw['provider_policy'] ) ) ) {
+			if ( ! isset( $raw['provider_policy'] ) ) $raw['provider_policy'] = array();
+			if ( ! array_key_exists( 'freeze_spend', $raw['provider_policy'] ) ) $raw['provider_policy']['freeze_spend'] = true;
+		}
+		$profile = self::validate( $raw ); if ( is_wp_error( $profile ) ) return $profile;
 		$current = MAD4B_SCP_Search_Store::read( 'profile', $profile['profile_id'] ); if ( is_wp_error( $current ) ) return $current;
 		$revision = is_array( $current ) ? (int) $current['_revision'] : 0;
 		if ( $revision !== $input['expected_revision'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_revision_drift' );
