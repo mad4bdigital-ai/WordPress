@@ -485,7 +485,7 @@ g9_assert( !$GLOBALS['g9_registered_abilities'], 'failed boot never publishes re
 // A direct manual registration call after failed reader pinning must still
 // NOT expose any Abilities. A separate positive bootstrap fixture certifies
 // the three private read schemas on a clean request.
-MAD4B_SCP_G9_Read_Surface::register_abilities();
+g9_denied( MAD4B_SCP_G9_Read_Surface::register_abilities(), 'reader_not_pinned' );
 g9_assert( !$GLOBALS['g9_registered_abilities'],
     'untrusted observer cannot expose Abilities through direct registration' );
 $read = MAD4B_SCP_G9_Read_Surface::site_observation();
