@@ -29,7 +29,7 @@ def valid_scope(scope):
         v = scope[field]
         require(isinstance(v, str) and bool(re.fullmatch(r'[a-zA-Z0-9_.-]{1,80}', v)),
                 'invalid_scope_' + field)
-    require(isinstance(scope['site_uuid'], str) and re.fullmatch(r'[0-9a-fA-F-]{36}', scope['site_uuid']),
+    require(isinstance(scope['site_uuid'], str) and re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', scope['site_uuid']),
             'site_uuid_invalid')
     require(isinstance(scope['runtime_generation'], str)
             and re.fullmatch(r'[0-9a-f]{64}', scope['runtime_generation']),
@@ -204,7 +204,7 @@ def compile_candidate(intent, scope, state, model, policy):
             'content_profile_invalid')
     recipe_required = (bool(affected_gates & {'ACI-G5', 'ACI-G6', 'ACI-G8'})
                        or intent.get('depends_on_new_publication') is True
-                       or intent.get('effect_class') == 'WORDPRESS_WRITE')
+                       or intent.get('effect_class') in ('WORDPRESS_WRITE', 'WORDPRESS_MUTATION'))
     registered_recipes = model.get('content_recipes')
     recipe_id = intent.get('content_recipe_id')
     recipe = None
@@ -228,8 +228,8 @@ def compile_candidate(intent, scope, state, model, policy):
                        or intent.get('publish_manifest_contains_native_relations') is True)
     conditional_scope = {
         'native_relation_in_scope': requires_native,
-        'paid_provider_in_scope': intent.get('effect_class') == 'PAID',
-        'publication_requested': intent.get('effect_class') == 'WORDPRESS_WRITE',
+        'paid_provider_in_scope': intent.get('effect_class') in ('PAID', 'PAID_EXTERNAL'),
+        'publication_requested': intent.get('effect_class') in ('WORDPRESS_WRITE', 'WORDPRESS_MUTATION'),
         'browser_render_in_scope': intent.get('require_browser_readback') is True,
         'commercial_claim_in_scope': bool(recipe and recipe_id == 'tour'),
         'media_rights_in_scope': intent.get('requires_media_assets') is True,
@@ -295,16 +295,16 @@ def compile_candidate(intent, scope, state, model, policy):
     if any(x not in gate_certificates for x in needed_gates):
         reasons.append('certification_gate_incomplete')
     effect = intent.get('effect_class', 'NONE')
-    require(effect in ('NONE', 'READ_ONLY', 'PAID', 'WORDPRESS_WRITE', 'HOST_WRITE'),
+    require(effect in ('NONE', 'READ_ONLY', 'PURE_READ', 'PAID', 'PAID_EXTERNAL', 'WORDPRESS_WRITE', 'WORDPRESS_MUTATION', 'HOST_WRITE', 'HOST_MUTATION', 'IRREVERSIBLE_EXTERNAL'),
             'effect_class_unknown')
-    if effect in ('PAID', 'WORDPRESS_WRITE', 'HOST_WRITE'):
+    if effect in ('PAID', 'PAID_EXTERNAL', 'WORDPRESS_WRITE', 'WORDPRESS_MUTATION', 'HOST_WRITE', 'HOST_MUTATION', 'IRREVERSIBLE_EXTERNAL'):
         reasons.append('effect_requires_separate_MAD4B_authority')
-    if effect == 'PAID' and state.get('account_budget_reserved') is not True:
+    if effect in ('PAID', 'PAID_EXTERNAL') and state.get('account_budget_reserved') is not True:
         reasons.append('account_cost_reservation_unverified')
     # This is a non-authorizing compiler. An effect request is a denial,
     # never 'ready' or a work ticket disguised as a grant.
     result_status = 'DENIED' if scope['environment'] == 'production' or effect in (
-        'PAID', 'WORDPRESS_WRITE', 'HOST_WRITE') else (
+        'PAID', 'PAID_EXTERNAL', 'WORDPRESS_WRITE', 'WORDPRESS_MUTATION', 'HOST_WRITE', 'HOST_MUTATION', 'IRREVERSIBLE_EXTERNAL') else (
         'READY_FOR_NON_AUTHORITATIVE_PLAN' if not reasons else
         'WAITING_DEPENDENCIES' if 'unfinished_execution_dependencies' in reasons else
         'NEEDS_EVIDENCE')
