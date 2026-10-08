@@ -14,6 +14,7 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
   if (!pref || pref.contract !== "mad4b.browser-operator-preference.v1" || pref.authorizing !== false || pref.read_only !== true) {
     throw new Error("mcp_site_browser_operator_preference_unavailable");
   }
+  if (pref.preference_valid === false) throw new Error("mcp_site_browser_operator_preference_invalid");
   if (pref.credential_verified !== false || pref.external_runner_connected !== false || pref.site_provider_registered_by_preference !== false) {
     throw new Error("mcp_site_browser_operator_preference_authority_mismatch");
   }

@@ -24,6 +24,13 @@ check_browser( $pref['executor']==='steel' && !isset($pref['secret']), 'credenti
 foreach (array('credential_verified','external_runner_connected','site_provider_registered_by_preference','authorizing') as $k) check_browser( $pref[$k] === false, 'no false authority' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'auto','profile_id'=>'','site_provider_id'=>'etg-dfsb');
 check_browser( $c::public_selection()['site_provider_id'] === 'etg-dfsb', 'site provider preference projected' );
+$GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'auto','site_provider_id'=>'site-a','profile_id'=>'royal');
+check_browser( $c::runtime_target_guard('site-a','royal') === true, 'exact configured target permitted' );
+check_browser( is_wp_error($c::runtime_target_guard('site-b','royal')), 'mismatched selected provider denied' );
+check_browser( is_wp_error($c::runtime_target_guard('site-a','other')), 'mismatched profile denied' );
+$GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'not-configured','profile_id'=>'');
+check_browser( is_wp_error($c::runtime_target_guard('site-a','royal')), 'corrupt preference cannot run browser acceptance' );
+check_browser( $c::public_selection()['preference_valid'] === false, 'invalid stored preference must be visible to external runner' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'unknown','profile_id'=>'');
 check_browser( $c::selection()['executor']==='auto', 'invalid option fail-closed' );
 $main=file_get_contents(dirname(__DIR__).'/mad4b-site-control-plane.php');

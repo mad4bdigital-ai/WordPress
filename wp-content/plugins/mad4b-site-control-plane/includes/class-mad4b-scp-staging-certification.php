@@ -616,6 +616,13 @@ final class MAD4B_SCP_Staging_Certification {
 			'browser_runtime_parity_verified' => false, 'durable_receipt_used' => false,
 		);
 		$provider_id = $chosen;
+		$selection_check = MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id );
+		if ( is_wp_error( $selection_check ) ) return array(
+			'contract' => 'mad4b.staging-browser-certification-view.v3', 'ready' => false,
+			'provider_count' => count( $ids ), 'selected_provider_id' => $provider_id,
+			'selected_profile_id' => $profile_id, 'blockers' => array( $selection_check->get_error_code() ),
+			'browser_runtime_parity_verified' => false, 'durable_receipt_used' => false,
+		);
 		$plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => $provider_id, 'profile_id' => $profile_id, 'suite' => 'browser_runtime' ) );
 		$result = array();
 		$durable_job_id = '';

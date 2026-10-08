@@ -31,6 +31,7 @@ denied(x => { x.operator_preference.executor = "steel"; }, "mcp_site_browser_exe
 denied(x => { x.operator_preference.executor = "unknown"; }, "mcp_site_browser_executor_invalid");
 denied(x => { delete x.operator_preference; }, "mcp_site_browser_operator_preference_unavailable");
 denied(x => { x.operator_preference.credential_verified = true; }, "mcp_site_browser_operator_preference_authority_mismatch");
+denied(x => { x.operator_preference.preference_valid = false; }, "mcp_site_browser_operator_preference_invalid");
 denied(x => { x.read_only = false; }, "mcp_site_browser_capabilities_invalid");
 denied(x => { x.operator_preference.site_provider_id = "etg-dfsb"; x.providers.push({provider_id: "other"}); }, "mcp_site_browser_requested_profile_invalid", { profileId: "invalid/profile", requestedExecutor: "auto" });
 console.log("MAD4B_BROWSER_SITE_CONFIGURATION: PASS");

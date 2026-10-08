@@ -2023,6 +2023,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$provider_id = sanitize_key( isset( $input['provider_id'] ) ? (string) $input['provider_id'] : '' );
 		$profile_id = sanitize_key( isset( $input['profile_id'] ) ? (string) $input['profile_id'] : '' );
 		if ( '' === $provider_id || '' === $profile_id ) return new WP_Error( 'mad4b_browser_acceptance_selector_invalid', 'Browser Acceptance requires bounded provider_id and profile_id selectors.' );
+		if ( class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ) {
+			$operator_guard = MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id );
+			if ( is_wp_error( $operator_guard ) ) return $operator_guard;
+		}
 		$plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => $provider_id, 'profile_id' => $profile_id, 'suite' => 'browser_runtime' ) );
 		if ( ! is_array( $plan ) || 'ready' !== ( isset( $plan['state'] ) ? (string) $plan['state'] : '' ) ) return new WP_Error( 'mad4b_browser_acceptance_plan_not_ready', 'Browser Acceptance plan is not ready.', array( 'plan' => is_array( $plan ) ? $plan : array() ) );
 		$plan_digest = strtolower( trim( (string) ( isset( $plan['plan_digest'] ) ? $plan['plan_digest'] : '' ) ) );

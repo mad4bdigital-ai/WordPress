@@ -38,10 +38,25 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		return is_wp_error( $valid ) ? array( 'executor' => 'auto', 'profile_id' => '', 'site_provider_id' => '' ) : $valid;
 	}
 
+	/** Check the raw persisted operator selection, not the UI's display fallback. */
+	public static function runtime_target_guard( $provider_id, $profile_id ) {
+		$raw = get_option( self::OPTION, array() );
+		$setting = self::normalize( $raw );
+		if ( is_wp_error( $setting ) ) return new WP_Error( 'mad4b_browser_operator_preference_corrupt', 'Browser operator selection is invalid; re-save the approved profile before running tests.' );
+		if ( '' !== $setting['site_provider_id'] && $setting['site_provider_id'] !== (string) $provider_id )
+			return new WP_Error( 'mad4b_browser_operator_site_provider_mismatch', 'Requested Browser Acceptance site provider differs from the configured operator preference.' );
+		if ( '' !== $setting['profile_id'] && $setting['profile_id'] !== (string) $profile_id )
+			return new WP_Error( 'mad4b_browser_operator_profile_mismatch', 'Requested Browser Acceptance profile differs from the configured operator preference.' );
+		return true;
+	}
+
 	public static function public_selection() {
 		$value = self::selection();
+		$stored = get_option( self::OPTION, array() );
+		$preference_valid = ! is_wp_error( self::normalize( $stored ) );
 		return array(
 			'contract' => 'mad4b.browser-operator-preference.v1',
+			'preference_valid' => $preference_valid,
 			'executor' => $value['executor'],
 			'profile_id' => $value['profile_id'],
 			'site_provider_id' => $value['site_provider_id'],
