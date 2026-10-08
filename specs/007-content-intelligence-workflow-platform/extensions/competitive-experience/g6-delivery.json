@@ -45,7 +45,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-knowledge-admission.php",
-      "sha256": "00452543e22390a989fbcd6850ab0e2060847ab22c7add75679601610d83b4e4"
+      "sha256": "4e871500ccdf731dd3c32c0c23f5e77c39490f3d1f0be0f795609b40eff9b501"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-provider-routing.php",
@@ -83,7 +83,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-admission-denial-runtime.php",
-      "sha256": "ddf69c57c0ca9540b6c9d03540aeb890845af3ddad90f49e45a266e01dc91834"
+      "sha256": "fb99951486f8d538e2ccf9b7d19c214d54077d5fbc7550f9e1f7407777e17389"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-provider-retrieval-denials.php",
