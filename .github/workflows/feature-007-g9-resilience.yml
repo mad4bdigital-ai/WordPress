@@ -39,3 +39,4 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php
