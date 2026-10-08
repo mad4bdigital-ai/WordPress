@@ -280,9 +280,43 @@ scenario( 'local_checkpoint_resume_does_not_repurchase', static function () {
 	$r = ok( MAD4B_SCP_Search_Worker::reconcile( array( 'job_id' => $plan['job_id'] ) ), 'local resume' ); check( 'COMPLETE' === $r['state'] && 1 === $GLOBALS['fixture_providers'][0]->calls, 'resume reuses immutable pending evidence and settled charge' );
 	check( 99 === MAD4B_SCP_Search_Budgets::status( asi_account( 'alpha' ) )['remaining'], 'settlement idempotent' );
 } );
+scenario( 'domain_profile_market_identity_and_safe_retarget_invariants', static function () {
+	$input = array( 'profile' => asi_profile( 'domain-safety' ), 'expected_revision' => 0 );
+	$initial = ok( MAD4B_SCP_Search_Context::plan( $input ), 'direct profile plan' );
+	$created = ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $initial['plan_sha256'] ) ) ), 'direct profile commit' );
+	$id = $created['profile']['profile_id'];
+	$current = $created['profile'];
+	$fields = array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] );
+	$raw = array_intersect_key( $current, $fields );
+	$country = $raw; $country['markets'][0]['country'] = 'AU';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $country, 'expected_revision' => 1 ) ), 'market_identity_locked', 'direct API cannot reassign market country' );
+	$removed = $raw; array_shift( $removed['markets'] );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $removed, 'expected_revision' => 1 ) ), 'market_identity_locked', 'direct API cannot erase historical market IDs' );
+	$lang = $raw; $lang['language_policy']['desired'][] = 'es';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $lang, 'expected_revision' => 1 ) ), 'targeting_requires_pause_and_spend_freeze', 'active and spend-unfrozen retarget denied' );
+	// An attempt to pause/freeze and retarget in the *same* transaction is rejected.
+	$mixed = $lang; $mixed['enabled'] = false; $mixed['provider_policy']['freeze_spend'] = true;
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $mixed, 'expected_revision' => 1 ) ), 'targeting_requires_pause_and_spend_freeze', 'combined pause freeze retarget denied' );
+	$paused = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'pause', 'expected_revision' => 1 ) ), 'explicit pause works' );
+	$frozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'freeze_spend', 'expected_revision' => $paused['profile']['revision'] ) ), 'explicit freeze works' );
+	$mixed['markets'][] = array( 'id' => 'new-market', 'country' => 'JP' );
+	$safe = array( 'profile' => $mixed, 'expected_revision' => $frozen['profile']['revision'] );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $safe ), 'safe new market and language plan' );
+	$result = ok( MAD4B_SCP_Search_Context::apply( array_merge( $safe, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'safe new market and language apply' );
+	check( 'US' === $result['profile']['markets'][0]['country'] && 'JP' === $result['profile']['markets'][2]['country'], 'existing geo history unchanged and new market added' );
+	check( ! $result['profile']['enabled'] && $result['profile']['provider_policy']['freeze_spend'], 'safe update never activates observations or spend' );
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $safe, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'revision_drift', 'stale direct API apply denied' );
+} );
 scenario( 'composed_profile_language_surface_drift_preserves_history', static function () {
 	$input = asi_seed(); list( $result ) = capture( $input ); $original = MAD4B_SCP_Search_Store::evidence( 'snapshot', $result['snapshot_id'] );
-	$raw = asi_profile(); $raw['language_policy']['desired'][] = 'de'; $args = array( 'profile' => $raw, 'expected_revision' => 1 ); $plan = MAD4B_SCP_Search_Context::plan( $args ); ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'changed profile' );
+	$raw = asi_profile(); $raw['language_policy']['desired'][] = 'de';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $raw, 'expected_revision' => 1 ) ), 'targeting_requires_pause_and_spend_freeze', 'live profile cannot be retargeted directly' );
+	$paused = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'fixture.search', 'control' => 'pause', 'expected_revision' => 1 ) ), 'pause before drift experiment' );
+	$frozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'fixture.search', 'control' => 'freeze_spend', 'expected_revision' => $paused['profile']['revision'] ) ), 'freeze spend before drift experiment' );
+	$raw['enabled'] = false; $raw['provider_policy']['freeze_spend'] = true;
+	$args = array( 'profile' => $raw, 'expected_revision' => $frozen['profile']['revision'] );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'paused and frozen retarget plan' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'changed profile only after pause and freeze' );
 	$input['observation_epoch']--; denied( MAD4B_SCP_Search_Worker::plan( $input ), 'profile_drift', 'old target suspends until recomposed' );
 	check( $original === MAD4B_SCP_Search_Store::evidence( 'snapshot', $result['snapshot_id'] ), 'historical observation immutable across profile drift' );
 	$target = MAD4B_SCP_Search_Store::read( 'target', $input['target_id'] ); $changed = $target['target']; $changed['cluster_id'] = 'replacement'; ok( MAD4B_SCP_Search_Targets::persist( $changed ), 'new target version' );
