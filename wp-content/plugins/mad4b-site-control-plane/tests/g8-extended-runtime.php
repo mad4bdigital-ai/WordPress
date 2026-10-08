@@ -328,7 +328,8 @@ $operation_id = 'g8-effect-operation-1';
 $correlation = hash( 'sha256', $operation_id );
 $effect_sha = str_repeat( 'a', 64 );
 $one_effect = array( $correlation => array( 'state' => 'applied', 'effect_sha256' => $effect_sha ) );
-$native = array( 'request_id' => $operation_id, 'target_fingerprint' => $effect_sha,
+$native = array( 'receipt_sha256' => str_repeat( 'e', 64 ),
+	'request_id' => $operation_id, 'target_fingerprint' => $effect_sha,
 	'provider_id' => 'external-provider', 'ability' => 'demo/provider-effect',
 	'mock_native_signature_verified' => true );
 $evidence = MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_effect,
