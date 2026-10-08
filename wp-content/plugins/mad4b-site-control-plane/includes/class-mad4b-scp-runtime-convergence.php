@@ -1148,6 +1148,40 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'mutation_performed' => false, 'authorizing' => false );
 	}
 
+	/** Exact SQL compare-and-swap for a live, already-existing Cron checkpoint. */
+	private static function automatic_checkpoint_cas( $before, array $next ) {
+		if ( ! class_exists( 'MAD4B_SCP_G8_Record', false )
+			|| ! MAD4B_SCP_G8_Record::inert( $before )
+			|| ! MAD4B_SCP_G8_Record::inert( $next ) )
+			return new WP_Error( 'mad4b_automation_checkpoint_invalid', 'Automatic checkpoint contains non-passive data.' );
+		global $wpdb;
+		if ( ! is_array( $before ) || ! is_object( $wpdb ) || ! isset( $wpdb->options )
+			|| ! method_exists( $wpdb, 'prepare' ) || ! method_exists( $wpdb, 'query' )
+			|| ! function_exists( 'maybe_serialize' ) )
+			return new WP_Error( 'mad4b_automation_checkpoint_atomic_unavailable', 'Atomic checkpoint update is required.' );
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::CHECKPOINT_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		$stored = get_option( self::CHECKPOINT_OPTION, null );
+		if ( ! MAD4B_SCP_G8_Record::inert( $stored ) || serialize( $before ) !== serialize( $stored ) )
+			return new WP_Error( 'mad4b_automation_checkpoint_raced', 'Automatic checkpoint was changed by another owner.' );
+		if ( serialize( $before ) === serialize( $next ) ) return true;
+		$affected = $wpdb->query( $wpdb->prepare(
+			"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+			maybe_serialize( $next ), self::CHECKPOINT_OPTION, maybe_serialize( $before )
+		) );
+		if ( 1 !== (int) $affected ) return new WP_Error( 'mad4b_automation_checkpoint_raced', 'Automatic checkpoint changed before atomic update.' );
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::CHECKPOINT_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		$readback = get_option( self::CHECKPOINT_OPTION, null );
+		return MAD4B_SCP_G8_Record::inert( $readback )
+			&& serialize( $readback ) === serialize( $next )
+			? true : new WP_Error( 'mad4b_automation_checkpoint_readback_uncertain', 'Automatic checkpoint requires governed reconciliation.' );
+	}
+
 	public static function resume_safe_phases() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		// A previously scheduled event is not execution authority. Use
@@ -1168,7 +1202,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['state'] = 'waiting_for_exact_runtime_restart';
 			$checkpoint['current_identity'] = $current;
 			$checkpoint['updated_at'] = gmdate( 'c' );
-			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			self::automatic_checkpoint_cas( get_option( self::CHECKPOINT_OPTION, null ), $checkpoint );
 			return;
 		}
 		// G8 admission is an independent, non-authorizing boundary around the existing Cron worker.
@@ -1183,7 +1217,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['resume_blocker'] = 'mad4b_automation_guard_missing';
 			$checkpoint['automatic_retry_allowed'] = false;
 			$checkpoint['updated_at'] = gmdate( 'c' );
-			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			self::automatic_checkpoint_cas( get_option( self::CHECKPOINT_OPTION, null ), $checkpoint );
 			return;
 		}
 		$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
@@ -1200,7 +1234,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['resume_blocker'] = is_wp_error( $ticket ) ? $ticket->get_error_code() : 'mad4b_automation_ticket_invalid';
 			$checkpoint['automatic_retry_allowed'] = false;
 			$checkpoint['updated_at'] = gmdate( 'c' );
-			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			self::automatic_checkpoint_cas( get_option( self::CHECKPOINT_OPTION, null ), $checkpoint );
 			return;
 		}
 		try {
