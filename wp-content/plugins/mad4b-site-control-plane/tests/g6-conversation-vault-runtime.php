@@ -56,6 +56,17 @@ g6_vault_assert( false === strpos( json_encode( $GLOBALS['g6_store'] ), $input['
 g6_vault_assert( false === strpos( json_encode( $status ), $input['text'] ), 'plaintext never returned in read-only status' );
 $export = MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 );
 g6_vault_assert( ! is_wp_error( $export ) && $export['messages'][0]['text'] === $input['text'], 'owner-only exact export decrypts authenticated ciphertext' );
+$crypto_meta_key = array_keys( $GLOBALS['g6_store'][17] )[0];
+$untampered_record = $GLOBALS['g6_store'][17][$crypto_meta_key];
+$GLOBALS['g6_store'][17][$crypto_meta_key]['items']['private-thread']['messages'][0]['role'] = 'system_note';
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_aad_mismatch' );
+$GLOBALS['g6_store'][17][$crypto_meta_key] = $untampered_record;
+$GLOBALS['g6_store'][17][$crypto_meta_key]['items']['private-thread']['messages'][0]['created_at'] += 3600;
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_aad_mismatch' );
+$GLOBALS['g6_store'][17][$crypto_meta_key] = $untampered_record;
+unset( $GLOBALS['g6_store'][17][$crypto_meta_key]['items']['private-thread']['messages'][0]['aad_version'] );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 1 ), 'mad4b_g6_vault_aad_version_required' );
+$GLOBALS['g6_store'][17][$crypto_meta_key] = $untampered_record;
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( $input ), 'mad4b_g6_vault_revision_conflict' );
 $input['expected_revision'] = 1; $input['text'] = 'second message'; $input['role'] = 'assistant';
 $second = MAD4B_SCP_G6_Conversation_Vault::append( $input );
