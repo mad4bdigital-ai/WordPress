@@ -396,7 +396,6 @@ $link = array(
     'native_request_id'=>$native['request_id'],
     'native_target_fingerprint'=>$native['target_fingerprint'],
     'resource_set_sha256'=>$native['resource_set_sha256'],
-    'execution_receipt_sha256'=>$native['receipt_sha256'],
     'terminal_receipt_sha256'=>$native['terminal_receipt_sha256'],
 );
 $events = array();
@@ -421,13 +420,19 @@ g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_ve
 
 foreach ( array( 'g9_operation_sha256', 'g9_plan_sha256', 'site_binding_sha256',
     'native_request_id', 'native_target_fingerprint', 'resource_set_sha256',
-    'execution_receipt_sha256', 'terminal_receipt_sha256' ) as $field ) {
+    'terminal_receipt_sha256' ) as $field ) {
     MAD4B_SCP_Operation_Journal::$trace = $trace;
     MAD4B_SCP_Operation_Journal::$trace['events'][4]['safe_metadata'][ $field ] = hash( 'sha256', 'foreign-' . $field );
     g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
         $binding, $reserved['operation_sha256'], $operation_id, $native ),
         'native_link_unavailable' );
 }
+MAD4B_SCP_Operation_Journal::$trace = $trace;
+MAD4B_SCP_Operation_Journal::$trace['events'][4]['safe_metadata']['execution_receipt_sha256'] =
+    $native['receipt_sha256'];
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_link_unavailable' ); // Self-referential terminal producer is forbidden.
 foreach ( array( 'chain_valid', 'complete' ) as $field ) {
     MAD4B_SCP_Operation_Journal::$trace = $trace;
     MAD4B_SCP_Operation_Journal::$trace[ $field ] = false;

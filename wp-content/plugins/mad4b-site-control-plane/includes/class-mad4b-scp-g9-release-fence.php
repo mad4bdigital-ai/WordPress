@@ -338,9 +338,19 @@ final class MAD4B_SCP_G9_Release_Fence {
             'native_request_id' => $receipt['request_id'],
             'native_target_fingerprint' => $receipt['target_fingerprint'],
             'resource_set_sha256' => $receipt['resource_set_sha256'],
-            'execution_receipt_sha256' => $verified['receipt_sha256'],
+            // A unified Execution Receipt is constructed from an already
+            // durable terminal receipt. Its own digest is not a field which
+            // the prior immutable terminal journal event can necessarily
+            // know. Linking to it here creates an ordering cycle. The signed
+            // receipt is authenticated separately; the prior journal event
+            // binds its request, native target, resource set, operation and
+            // pre-existing terminal receipt instead.
             'terminal_receipt_sha256' => $receipt['terminal_receipt_sha256'],
         );
+        // Self-reference to the subsequent unified signed receipt is
+        // deliberately excluded from the terminal event link contract.
+        if ( array_key_exists( 'execution_receipt_sha256', $link ) )
+            return self::blocked( 'native_link_unavailable', 'Terminal journal cannot require a later execution receipt digest.' );
         foreach ( $expected as $key => $value ) {
             if ( ! is_string( $link[ $key ] ?? null ) || ! hash_equals( $value, $link[ $key ] ) )
                 return self::blocked( 'native_link_unavailable', 'The native journal has no exact signed-claim-to-G9 reservation linkage.' );
