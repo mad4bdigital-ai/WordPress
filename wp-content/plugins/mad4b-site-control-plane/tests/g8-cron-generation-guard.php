@@ -25,6 +25,9 @@ class WP_Error {
 }
 class MAD4B_SCP_Automation_SLO {
 	public static function ticket_allowed( $ticket ) {
+		if ( 'exception' === ( $GLOBALS['g8_ticket_allowed'] ?? null ) )
+			throw new RuntimeException( 'simulated partial update verifier exception' );
+		if ( 'untrusted_false' === ( $GLOBALS['g8_ticket_allowed'] ?? null ) ) return false;
 		return $GLOBALS['g8_ticket_allowed'] ? true : new WP_Error( 'mad4b_automation_ticket_not_live' );
 	}
 }
@@ -75,5 +78,13 @@ $GLOBALS['g8_ticket_allowed'] = false;
 $denied = $run( $ticket );
 g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_ticket_not_live' === $denied->get_error_code(),
 	'independent revoked ticket checked before candidate generation' );
+$GLOBALS['g8_ticket_allowed'] = 'untrusted_false';
+$denied = $run( $ticket );
+g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_ticket_denied' === $denied->get_error_code(),
+	'non-true verifier result must never allow a mutation' );
+$GLOBALS['g8_ticket_allowed'] = 'exception';
+$denied = $run( $ticket );
+g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_ticket_verification_exception' === $denied->get_error_code(),
+	'exception in partial update verifier must be a stable guard denial' );
 @unlink( $path ); @rmdir( $root );
 echo 'G8_CRON_GENERATION_GUARD: PASS' . PHP_EOL;
