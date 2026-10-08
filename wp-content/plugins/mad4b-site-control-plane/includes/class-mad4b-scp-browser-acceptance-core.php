@@ -441,7 +441,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 	}
 
 	private static function clean_id( $value ) {
-		$value = strtolower( trim( (string) $value ) );
-		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/', $value ) ? $value : '';
+		if ( ! is_string( $value ) ) return '';
+		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/D', $value ) ? $value : '';
 	}
 }
