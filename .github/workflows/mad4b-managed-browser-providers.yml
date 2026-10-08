@@ -75,6 +75,7 @@ jobs:
           node tools/browser-acceptance/test-site-neutral-boundaries.mjs
           php wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/capability-atlas-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php
           node tools/browser-acceptance/test-scheduler.mjs
           node tools/browser-acceptance/test-network-policy.mjs
