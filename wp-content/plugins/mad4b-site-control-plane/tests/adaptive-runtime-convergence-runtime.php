@@ -231,6 +231,16 @@ MAD4B_SCP_Live_Acceptance_Observer::$valid = false; $GLOBALS['scheduled'] = 0;
 for ( $i = 0; $i < 6; ++$i ) { $GLOBALS['scheduled'] = 0; MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); }
 $failed = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) )['last_worker_failure'];
 check( 6 === $failed['attempts'] && 'EXTERNAL_ACTION_REQUIRED' === $failed['state'] && 0 === $GLOBALS['scheduled'], 'Manifest failure retried without a bound' );
+$terminal_event = get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION );
+$before_probe_writes = $GLOBALS['writes'];
+MAD4B_SCP_Staging_Write_Authority::$stored_bound = true;
+MAD4B_SCP_Staging_Write_Authority::$match = false;
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::FALLBACK_PROBE_OPTION] = 0;
+MAD4B_SCP_Adaptive_Runtime_Convergence::maybe_schedule();
+check( $terminal_event === get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION )
+    && $before_probe_writes === $GLOBALS['writes'], 'Recurring identical binding drift bypassed terminal worker policy' );
+MAD4B_SCP_Staging_Write_Authority::$stored_bound = false;
+MAD4B_SCP_Staging_Write_Authority::$match = false;
 MAD4B_SCP_Live_Acceptance_Observer::$valid = true;
 $terminal_writes = $GLOBALS['writes'];
 $terminal_probes = MAD4B_SCP_Live_Acceptance_Observer::$calls;

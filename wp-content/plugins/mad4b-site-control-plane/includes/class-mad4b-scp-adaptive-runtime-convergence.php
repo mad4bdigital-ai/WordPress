@@ -108,6 +108,10 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		return $current_complete;
 	}
 
+	private static function terminal_event( $event ) {
+		return is_array( $event ) && in_array( $event['failure_state'] ?? '', array( 'HARD_BLOCKED', 'REVIEW_REQUIRED', 'EXTERNAL_ACTION_REQUIRED' ), true );
+	}
+
 	public static function maybe_schedule() {
 		$admin_lifecycle = false;
 		if ( is_admin() ) {
@@ -124,6 +128,10 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			self::enqueue( array( 'source' => 'build_stamp_drift' ) );
 			return;
 		}
+		// The same unchanging candidate-binding mismatch must not reopen an
+		// event that already exhausted its retry/review budget. A genuinely
+		// changed local build stamp or WordPress update hook can create a new event.
+		if ( self::terminal_event( $event ) ) return;
 		if ( self::candidate_binding_fallback_drift() ) self::enqueue( array( 'source' => 'candidate_binding_probe' ) );
 	}
 
@@ -287,7 +295,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		if ( empty( $event['event_id'] ) ) { self::enqueue(); $event = self::event(); }
 		// A stale Cron delivery cannot override the terminal decision for the
 		// same event. A new lifecycle event supplies a new event_id explicitly.
-		if ( in_array( $event['failure_state'] ?? '', array( 'HARD_BLOCKED', 'REVIEW_REQUIRED', 'EXTERNAL_ACTION_REQUIRED' ), true ) ) {
+		if ( self::terminal_event( $event ) ) {
 			MAD4B_SCP_Runtime_Maintenance_Lease::release( $lock, 'adaptive_runtime_observation' );
 			return;
 		}
@@ -530,7 +538,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$registry['providers'] = array_slice( $registry['providers'], 0, $limit, true );
 		$event = self::event();
 		$scheduler_disabled = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
-		$worker_blocked = in_array( $event['failure_state'] ?? '', array( 'HARD_BLOCKED', 'REVIEW_REQUIRED', 'EXTERNAL_ACTION_REQUIRED' ), true );
+		$worker_blocked = self::terminal_event( $event );
 		$enrolled_for_observation = self::eligible();
 		$worker_available = $enrolled_for_observation && ! $scheduler_disabled && ! $worker_blocked;
 		$observed_epoch = is_string( $registry['observed_at'] ?? null ) ? strtotime( $registry['observed_at'] ) : false;
