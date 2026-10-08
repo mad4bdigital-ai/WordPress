@@ -116,7 +116,7 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 		$valid_external = is_array( $external ) && true === ( $external['verified'] ?? false )
 			&& true === ( $external['inventory_match'] ?? false )
 			&& true === ( $external['package_identity_match'] ?? false );
-		$samples = is_array( $performance ) ? (int) ( $performance['window']['sample_count'] ?? 0 ) : 0;
+		$samples = is_array( $performance ) ? (int) ( $performance['evaluation_window']['sample_count'] ?? 0 ) : 0;
 		$valid_frontend = is_array( $performance ) && true === ( $performance['ready'] ?? false ) && $samples >= 3;
 		return array( 'contract' => self::CONTRACT, 'state' => $valid_external && $valid_frontend ? 'PASSIVE_EVIDENCE_READY' : 'EXTERNAL_ACCEPTANCE_PENDING',
 			'verified_external_inventory' => $valid_external, 'verified_frontend_samples' => $samples,
