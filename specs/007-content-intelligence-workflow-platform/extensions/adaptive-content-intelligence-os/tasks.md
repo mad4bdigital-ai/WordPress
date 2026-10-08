@@ -51,8 +51,8 @@ Contract `mad4b.aci-os.task-registry.v2`. Task dependencies are materialized inp
 
 ## ACI-G5 — blueprint_authors
 
-- [ ] ACI-T0033 [OPEN] Resolve content intent and existing asset ownership — requirements: ACI-013, ACI-020; dependencies: ACI-T0019, ACI-T0008; exit: ACI-G5 / mad4b.aci.task.0033.v1.
-- [ ] ACI-T0034 [OPEN] Build cited per-locale ContentBlueprint — requirements: ACI-015; dependencies: ACI-T0021, ACI-T0017, ACI-T0010; exit: ACI-G5 / mad4b.aci.task.0034.v1.
+- [ ] ACI-T0033 [OPEN] Resolve content intent and existing asset ownership — requirements: ACI-013, ACI-020; dependencies: ACI-T0008; exit: ACI-G5 / mad4b.aci.task.0033.v1.
+- [ ] ACI-T0034 [OPEN] Build cited per-locale ContentBlueprint — requirements: ACI-015; dependencies: ACI-T0017, ACI-T0010, ACI-T0033; exit: ACI-G5 / mad4b.aci.task.0034.v1.
 - [ ] ACI-T0035 [OPEN] Version author voice and editorial profiles — requirements: ACI-016; dependencies: ACI-T0011; exit: ACI-G5 / mad4b.aci.task.0035.v1.
 - [ ] ACI-T0036 [OPEN] Preview commercial CTA and native internal links — requirements: ACI-015, ACI-019; dependencies: ACI-T0034; exit: ACI-G5 / mad4b.aci.task.0036.v1.
 - [ ] ACI-T0037 [OPEN] Preserve human edits in three-way diff — requirements: ACI-020; dependencies: ACI-T0033; exit: ACI-G5 / mad4b.aci.task.0037.v1.
@@ -81,7 +81,7 @@ Contract `mad4b.aci-os.task-registry.v2`. Task dependencies are materialized inp
 
 - [ ] ACI-T0052 [OPEN] Freeze native PublishManifest and reviewer roles — requirements: ACI-031, ACI-039; dependencies: ACI-T0044, ACI-T0046, ACI-T0037; exit: ACI-G8 / mad4b.aci.task.0052.v1.
 - [ ] ACI-T0053 [OPEN] Preview WordPress media/SEO/translated relationships — requirements: ACI-019, ACI-031; dependencies: ACI-T0052; exit: ACI-G8 / mad4b.aci.task.0053.v1.
-- [ ] ACI-T0054 [OPEN] Implement exact postmeta/content CAS apply — requirements: ACI-032; dependencies: ACI-T0053, ACI-T0051, ACI-T0065; exit: ACI-G8 / mad4b.aci.task.0054.v1.
+- [ ] ACI-T0054 [OPEN] Implement exact postmeta/content CAS apply — requirements: ACI-032; dependencies: ACI-T0053, ACI-T0051; exit: ACI-G8 / mad4b.aci.task.0054.v1.
 - [ ] ACI-T0055 [OPEN] Verify native and rendered multilingual readback — requirements: ACI-027, ACI-032; dependencies: ACI-T0054; exit: ACI-G8 / mad4b.aci.task.0055.v1.
 - [ ] ACI-T0056 [OPEN] Certify Undo and partial effect reconciliation — requirements: ACI-027, ACI-032; dependencies: ACI-T0054; exit: ACI-G8 / mad4b.aci.task.0056.v1.
 - [ ] ACI-T0057 [OPEN] Prove browser/SEO/hreflang/AJAX accessibility — requirements: ACI-018, ACI-032, ACI-042; dependencies: ACI-T0055; exit: ACI-G8 / mad4b.aci.task.0057.v1.
@@ -89,7 +89,7 @@ Contract `mad4b.aci-os.task-registry.v2`. Task dependencies are materialized inp
 
 ## ACI-G9 — growth
 
-- [ ] ACI-T0059 [OPEN] Bind GSC/GA4 properties and comparative windows — requirements: ACI-034; dependencies: ACI-T0013, ACI-T0014; exit: ACI-G9 / mad4b.aci.task.0059.v1.
+- [ ] ACI-T0059 [OPEN] Bind GSC/GA4 properties and comparative windows — requirements: ACI-034; dependencies: ACI-T0008, ACI-T0045; exit: ACI-G9 / mad4b.aci.task.0059.v1.
 - [ ] ACI-T0060 [OPEN] Normalize currency/device/attribution by market — requirements: ACI-034; dependencies: ACI-T0059; exit: ACI-G9 / mad4b.aci.task.0060.v1.
 - [ ] ACI-T0061 [OPEN] Analyze SEO and conversion impact uncertainty — requirements: ACI-035; dependencies: ACI-T0060; exit: ACI-G9 / mad4b.aci.task.0061.v1.
 - [ ] ACI-T0062 [OPEN] Generate optimization proposal only — requirements: ACI-035, ACI-036; dependencies: ACI-T0061; exit: ACI-G9 / mad4b.aci.task.0062.v1.
@@ -104,4 +104,4 @@ Contract `mad4b.aci-os.task-registry.v2`. Task dependencies are materialized inp
 - [ ] ACI-T0068 [OPEN] Run real browser/RTL/accessibility journeys — requirements: ACI-038, ACI-042; dependencies: ACI-T0055, ACI-T0066; exit: ACI-G10 / mad4b.aci.task.0068.v1.
 - [ ] ACI-T0069 [OPEN] Benchmark workload and failure budgets — requirements: ACI-030, ACI-041, ACI-042; dependencies: ACI-T0050, ACI-T0066; exit: ACI-G10 / mad4b.aci.task.0069.v1.
 - [ ] ACI-T0070 [OPEN] Certify restore epoch, rollback and idempotency — requirements: ACI-027, ACI-041; dependencies: ACI-T0056, ACI-T0046; exit: ACI-G10 / mad4b.aci.task.0070.v1.
-- [ ] ACI-T0071 [OPEN] Record separate owner release/promotion decision — requirements: ACI-033, ACI-042, ACI-043; dependencies: ACI-T0058, ACI-T0064, ACI-T0067, ACI-T0068, ACI-T0069, ACI-T0070; exit: ACI-G10 / mad4b.aci.task.0071.v1.
+- [ ] ACI-T0071 [OPEN] Record separate owner release/promotion decision — requirements: ACI-033, ACI-042, ACI-043; dependencies: ACI-T0058, ACI-T0067, ACI-T0068, ACI-T0069, ACI-T0070; exit: ACI-G10 / mad4b.aci.task.0071.v1.
