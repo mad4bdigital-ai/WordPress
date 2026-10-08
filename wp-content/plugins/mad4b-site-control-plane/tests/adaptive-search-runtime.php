@@ -322,6 +322,39 @@ scenario( 'domain_profile_market_identity_and_safe_retarget_invariants', static 
 	check( ! $result['profile']['enabled'] && $result['profile']['provider_policy']['freeze_spend'], 'safe update never activates observations or spend' );
 	denied( MAD4B_SCP_Search_Context::apply( array_merge( $safe, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'revision_drift', 'stale direct API apply denied' );
 } );
+scenario( 'typed_control_scope_blocks_nested_profile_api_escalation', static function () {
+	$owner = asi_profile( 'control-scope-owner' );
+	$owner['markets'][0]['id'] = 'scope-owner-us'; $owner['markets'][1]['id'] = 'scope-owner-fr';
+	$peer = asi_profile( 'control-scope-peer' );
+	$peer['markets'][0]['id'] = 'scope-peer-us'; $peer['markets'][1]['id'] = 'scope-peer-fr';
+	foreach ( array( $owner, $peer ) as $raw ) {
+		$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+		$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'scope fixture create plan' );
+		ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'scope fixture create' );
+	}
+	$owner_key = MAD4B_SCP_Search_Store::key( 'profile', 'control-scope-owner' );
+	$GLOBALS['scope_nested_checked'] = false; $GLOBALS['scope_nested_denial'] = null;
+	$GLOBALS['fixture_cas_failure'] = static function ( $key, $old, $next ) use ( $owner_key, $peer ) {
+		if ( $key !== $owner_key || $GLOBALS['scope_nested_checked'] ) return false;
+		$GLOBALS['scope_nested_checked'] = true;
+		$raw = $peer; $raw['enabled'] = false;
+		$GLOBALS['scope_nested_denial'] = MAD4B_SCP_Search_Context::plan( array( 'profile' => $raw, 'expected_revision' => 1 ) );
+		return false;
+	};
+	$paused = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => 'control-scope-owner', 'control' => 'pause', 'expected_revision' => 1 ) ), 'exact control during simulated reentrancy' );
+	$GLOBALS['fixture_cas_failure'] = null;
+	check( $GLOBALS['scope_nested_checked'] && is_wp_error( $GLOBALS['scope_nested_denial'] ) && false !== strpos( $GLOBALS['scope_nested_denial']->get_error_code(), 'state_requires_explicit_control' ), 'peer cannot borrow scoped control state during nested store callback' );
+	check( 2 === $paused['profile']['revision'] && ! $paused['profile']['enabled'], 'outer typed transition remains correct' );
+	denied( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => 'control-scope-owner', 'control' => 'resume' ) ), 'revision_required', 'high-impact resume cannot omit exact revision' );
+	$restarted = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => 'control-scope-owner', 'control' => 'resume', 'expected_revision' => 2 ) ), 'typed resume after reentrant callback' );
+	check( 3 === $restarted['profile']['revision'] && $restarted['profile']['enabled'], 'typed control scope is released after completion' );
+	$next = asi_profile( 'unauthorized-domain-apply' ); $next['markets'][0]['id'] = 'unauthorized-us'; $next['markets'][1]['id'] = 'unauthorized-fr';
+	$input = array( 'profile' => $next, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'read-only plan available to unauthorized executor' );
+	$GLOBALS['fixture_write'] = false;
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'configuration_unauthorized', 'domain apply itself enforces config authority' );
+	$GLOBALS['fixture_write'] = true;
+} );
 scenario( 'domain_market_claim_readback_proves_ownership_and_flags_legacy', static function () {
 	$raw = asi_profile( 'claim-readback' ); $raw['markets'][0]['id'] = 'claim-metro'; $raw['markets'][1]['id'] = 'claim-second';
 	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
