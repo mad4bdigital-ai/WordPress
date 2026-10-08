@@ -322,6 +322,8 @@ $closure = MAD4B_SCP_G9_Read_Surface::closure_status();
 g9_assert( ! is_wp_error( $closure ) && !$closure['operationally_closed']
     && !$closure['ready_for_production'] && $closure['blocker_count'] >= 3
     && in_array( 'g7_signed_host_and_release_acceptance_integration_missing',
+        $closure['blockers'], true )
+    && in_array( 'native_executor_g9_reservation_binding_unimplemented',
         $closure['blockers'], true ), 'closure truth remains fail-closed' );
 g9_denied( MAD4B_SCP_G9_Read_Surface::closure_status( array( 'site_id'=>2 ) ), 'read_input_invalid' );
 $state = MAD4B_SCP_G9_Restore_Convergence::status();

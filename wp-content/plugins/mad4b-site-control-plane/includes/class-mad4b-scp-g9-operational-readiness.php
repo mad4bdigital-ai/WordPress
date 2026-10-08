@@ -53,6 +53,18 @@ final class MAD4B_SCP_G9_Operational_Readiness {
             || ! class_exists( 'MAD4B_SCP_G8_Supply_Provenance' )
             || ! class_exists( 'MAD4B_SCP_G8_Schema_Migration' ) )
             $blockers[] = 'g8_schema_supply_and_capability_integration_missing';
+        // The internal fence currently asks native authorize_mutation for an
+        // unregistered G9 reserve Ability. It cannot become executable by
+        // merely setting a host feature flag: a reviewed native Capability
+        // Descriptor, exact grant and executor dispatch integration are absent.
+        // Never provision permissions or synthesize one here.
+        $blockers[] = 'native_executor_g9_reservation_binding_unimplemented';
+        if ( ! defined( 'MAD4B_SCP_G9_RELEASE_FENCE_ENABLED' )
+            || true !== MAD4B_SCP_G9_RELEASE_FENCE_ENABLED )
+            $blockers[] = 'g9_reservation_host_feature_disabled';
+        if ( ! defined( 'MAD4B_SCP_G9_RELEASE_LIMITS' )
+            || ! is_array( MAD4B_SCP_G9_RELEASE_LIMITS ) )
+            $blockers[] = 'g9_host_release_threshold_policy_missing';
         // Native signed execution/rollback and post-restore provider/host
         // readbacks are always separate. Repository readiness cannot waive them.
         $blockers[] = 'native_signed_release_and_rollback_acceptance_pending';
