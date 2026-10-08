@@ -30,6 +30,9 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
     throw new Error("mcp_site_browser_operator_preference_unavailable");
   }
   if (pref.preference_valid !== true) throw new Error("mcp_site_browser_operator_preference_invalid");
+  if (typeof pref.configuration_revision !== "string" || !/^[a-f0-9]{32}$/.test(pref.configuration_revision)) {
+    throw new Error("mcp_site_browser_operator_revision_missing_or_invalid");
+  }
   if (pref.credential_verified !== false || pref.external_runner_connected !== false || pref.site_provider_registered_by_preference !== false) {
     throw new Error("mcp_site_browser_operator_preference_authority_mismatch");
   }
@@ -54,6 +57,7 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
     profileId,
     executor: requestedExecutor === "auto" ? pref.executor : requestedExecutor,
     configuredExecutor: pref.executor,
+    configurationRevision: pref.configuration_revision,
     operatorSelectionValidated: true,
     externallyCertified: false,
   });
@@ -61,7 +65,7 @@ export function resolveEtgBrowserOperatorConfiguration(capabilities, { profileId
 
 /** Non-authorizing readback guard, repeated before execution and after reduction. */
 export function assertEtgBrowserBindingUnchanged(initial, current) {
-  for (const key of ["siteProviderId", "siteProviderContract", "profileId", "executor", "configuredExecutor"]) {
+  for (const key of ["siteProviderId", "siteProviderContract", "profileId", "executor", "configuredExecutor", "configurationRevision"]) {
     if (!initial || !current || initial[key] !== current[key]) {
       throw new Error("mcp_site_browser_operator_selection_changed:" + key);
     }
