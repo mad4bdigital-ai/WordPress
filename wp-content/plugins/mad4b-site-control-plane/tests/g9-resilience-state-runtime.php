@@ -9,10 +9,12 @@ define( 'MAD4B_SCP_G9_RELEASE_LIMITS', array(
 define( 'MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY',
     sys_get_temp_dir() . '/mad4b-g9-state-' . bin2hex( random_bytes( 8 ) ) );
 $GLOBALS['g9_test_options'] = array();
+$GLOBALS['g9_test_option_fail'] = false;
 $GLOBALS['g9_registered_abilities'] = array();
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function get_option( $key, $default = false ) { return $GLOBALS['g9_test_options'][ $key ] ?? $default; }
 function update_option( $key, $value, $autoload = false ) {
+    if ( ! empty( $GLOBALS['g9_test_option_fail'] ) ) return false;
     $GLOBALS['g9_test_options'][ $key ] = $value; return true;
 }
 function add_action( $action, $cb, $priority = 10 ) { return true; }
@@ -132,6 +134,15 @@ $wrong_blog = $binding; $wrong_blog['blog_id'] = 2;
 g9_denied( MAD4B_SCP_Resilience_Anchor::read( $wrong_blog ), 'local_blog_mismatch' );
 $wrong_origin = $binding; $wrong_origin['canonical_origin'] = 'https://clone.example.invalid';
 g9_denied( MAD4B_SCP_Resilience_Anchor::read( $wrong_origin ), 'local_site_mismatch' );
+$GLOBALS['g9_test_option_fail'] = true;
+g9_denied( MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function( $record ) {
+    $record['scopes']['g9:unsafe-before-marker'] = array( 'present'=>true );
+    return $record;
+} ), 'mirror_failed' );
+$uninitialized = MAD4B_SCP_Resilience_Anchor::read( $binding );
+g9_assert( ! is_wp_error( $uninitialized ) && 0 === $uninitialized['revision'],
+    'marker failure must not publish external reservation' );
+$GLOBALS['g9_test_option_fail'] = false;
 $init = MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $record ) {
     $record['scopes']['g9:init'] = array( 'initialized'=>true ); return $record;
 } );

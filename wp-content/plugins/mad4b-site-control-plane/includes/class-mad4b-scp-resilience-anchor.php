@@ -56,6 +56,17 @@ final class MAD4B_SCP_Resilience_Anchor {
 			$next['anchor_sha256'] = MAD4B_SCP_Resilience_Context::digest( $next );
 			$json = json_encode( $next, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			if ( ! is_string( $json ) || strlen( $json ) + 1 > self::MAX_BYTES ) return self::error( 'capacity', 'Resilience history is full; old fences must not be evicted automatically.' );
+			// The DB loss marker must be written and confirmed BEFORE publishing the
+			// external file. Otherwise a crash after rename but before update_option
+			// can make later anchor loss look like a clean first initialization.
+			// A failed subsequent file commit deliberately leaves a quarantine
+			// marker and requires reconciliation rather than unsafe blind retry.
+			if ( function_exists( 'update_option' ) && function_exists( 'get_option' ) ) {
+				$mirror = array( 'site' => $next['site'], 'anchor_seen' => true );
+				update_option( self::MIRROR_OPTION, $mirror, false );
+				if ( get_option( self::MIRROR_OPTION, false ) !== $mirror )
+					return self::error( 'mirror_failed', 'Could not persist external-anchor loss marker before publishing the new state.' );
+			} else return self::error( 'mirror_unavailable', 'Durable database loss marker APIs are required before any external-anchor mutation.' );
 			$tmp = @tempnam( $dir, '.mad4b-resilience-' );
 			if ( false === $tmp ) return self::error( 'write_failed', 'Could not stage the external resilience record.' );
 			@chmod( $tmp, 0600 );
@@ -64,11 +75,11 @@ final class MAD4B_SCP_Resilience_Anchor {
 			@chmod( $path, 0600 );
 			$readback = self::read_path( $path, $binding );
 			if ( is_wp_error( $readback ) || ! hash_equals( $next['anchor_sha256'], (string) ( $readback['anchor_sha256'] ?? '' ) ) ) return self::error( 'readback_failed', 'External resilience commit is uncertain; reconciliation is required.' );
-			if ( function_exists( 'update_option' ) && function_exists( 'get_option' ) ) {
-				$mirror = array( 'site' => $next['site'], 'anchor_seen' => true );
-				update_option( self::MIRROR_OPTION, $mirror, false );
-				if ( get_option( self::MIRROR_OPTION, false ) !== $mirror ) return self::error( 'mirror_failed', 'External record committed but the database loss marker could not be confirmed.' );
-			}
+			// Verify the marker did not regress after the file commit. A concurrent
+			// DB restore may have removed it; such an outcome is uncertain and
+			// never accepted as a successful reservation.
+			if ( get_option( self::MIRROR_OPTION, false ) !== $mirror )
+				return self::error( 'mirror_lost_after_commit', 'External record was written while the persisted loss marker changed.' );
 			return $readback;
 		} finally { flock( $lock, LOCK_UN ); fclose( $lock ); }
 	}
