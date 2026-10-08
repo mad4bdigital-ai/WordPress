@@ -3,7 +3,8 @@ import { resolveSiteBrowserAdapter as resolve, assertSiteBindingUnchanged, asser
 const etg = { provider_contract:"etg.dfsb.browser-acceptance-provider.v2",driver_id:"etg-dfsb",evidence_contract:"etg.dfsb.browser-acceptance-evidence.v1" };
 const royal = { provider_contract:"demo.royal-provider.v1",driver_id:"demo-royal",evidence_contract:"demo.royal-evidence.v1" };
 const provider = (id,driver,slug,profile) => ({provider_id:id,contract:driver.provider_contract,
-  descriptor:{provider_id:id,contract:driver.provider_contract,read_only:true,authorizing:false},
+  descriptor:{provider_id:id,contract:driver.provider_contract,read_only:true,authorizing:false,
+    recognition:{source_plugins:[slug]}},
   capabilities:{provider_id:id,provider_contract:driver.provider_contract,read_only:true,authorizing:false,default_profile_id:profile}});
 const match=(id,slug)=>({provider_id:id,source_plugins:[slug],matched_plugins:1,recognized:true,certified:false,authorizing:false});
 const example=(where="etg")=>{
@@ -36,12 +37,18 @@ const fake=example();fake.site_discovery.provider_matches[0].matched_plugins=0;
 assert.throws(()=>resolve(fake,options),/site_browser_discovery_match_invalid/);
 fake.site_discovery.provider_matches[0].matched_plugins=1;fake.site_discovery.certification_issued=true;
 assert.throws(()=>resolve(fake,options),/site_browser_discovery_invalid_or_incomplete/);
+const mismatched=example();
+mismatched.providers[0].descriptor.recognition.source_plugins=["unmapped-plugin"];
+assert.throws(()=>resolve(mismatched,options),/site_browser_provider_recognition_mismatch/);
 const duplicated=example();duplicated.providers.push(provider("another",royal,"royal-plugin","v1"));
 duplicated.provider_count=2;duplicated.site_discovery.plugins.push("royal-plugin");duplicated.site_discovery.provider_matches.push(match("another","royal-plugin"));
 assert.throws(()=>resolve(duplicated,options),/site_browser_site_adapter_ambiguous/);
 duplicated.operator_preference.site_provider_id="etg-dfsb";
 assert.equal(resolve(duplicated,options).siteProviderId,"etg-dfsb");
 const cpt = example("royal");
+cpt.providers[0].descriptor.recognition = {
+  source_plugins:[],source_post_types:["tour"],source_taxonomies:["tour_type"]
+};
 cpt.site_discovery.plugins = [];
 cpt.site_discovery.provider_matches = [{
   provider_id:"royal-provider",source_plugins:[],source_post_types:["tour"],
