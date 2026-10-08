@@ -93,6 +93,16 @@ if ( $malicious_checkpoint ) {
 	};
 }
 $before_stale = $GLOBALS['g8_checkpoint'];
+$gate = MAD4B_SCP_Runtime_Convergence::automatic_checkpoint_gate();
+$expected_gate = $malicious_checkpoint ? 'checkpoint_untrusted_data'
+	: ( '' !== $stale_state ? 'checkpoint_state_not_scheduled'
+	: ( $paused_cron ? 'checkpoint_automatic_retry_paused' : 'awaiting_independent_slo_ticket' ) );
+if ( $expected_gate !== ( $gate['reason'] ?? '' )
+	|| ( 'awaiting_independent_slo_ticket' === $expected_gate ) !== ( $gate['checkpoint_schedulable'] ?? null )
+	|| false !== ( $gate['slo_ticket_verified'] ?? null ) ) {
+	fwrite( STDERR, 'FAIL: read-only Cron gate reported the wrong checkpoint admission reason' . PHP_EOL );
+	exit( 1 );
+}
 if ( ! $throwing_slo && ! $throwing_worker && class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for missing-class fixture' . PHP_EOL ); exit( 1 ); }
 MAD4B_SCP_Runtime_Convergence::resume_safe_phases();
 $checkpoint = $GLOBALS['g8_checkpoint'];
