@@ -1156,7 +1156,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 			return;
 		}
 		$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
-		$ticket = MAD4B_SCP_Automation_SLO::reserve( 'runtime-convergence', 'safe-phases', $generation );
+		try {
+			$ticket = MAD4B_SCP_Automation_SLO::reserve( 'runtime-convergence', 'safe-phases', $generation );
+		} catch ( Throwable $error ) {
+			// The admission implementation may itself be broken during a
+			// partial update. Keep all automatic writes parked, without
+			// exposing exception detail or falling through as manual.
+			$ticket = new WP_Error( 'mad4b_automation_admission_exception', 'Automatic safety admission failed unexpectedly.' );
+		}
 		if ( is_wp_error( $ticket ) || ! is_array( $ticket ) ) {
 			$checkpoint['state'] = 'pending_manual_resume';
 			$checkpoint['resume_blocker'] = is_wp_error( $ticket ) ? $ticket->get_error_code() : 'mad4b_automation_ticket_invalid';
