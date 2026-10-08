@@ -49,6 +49,8 @@ final class MAD4B_SCP_G9_Resilience_Gates {
             return self::deny( 'cohort_bounds', 'Fleet inspection requires 1 to 16 explicit site-local observations.' );
         }
         $sites = array();
+        $uuids = array();
+        $origins = array();
         foreach ( $observations as $observation ) {
             if ( ! is_array( $observation ) ) return self::deny( 'observation_invalid', 'Fleet member is not a typed observation.' );
             $valid = self::check_snapshot( $observation );
@@ -56,6 +58,13 @@ final class MAD4B_SCP_G9_Resilience_Gates {
             $binding = $observation['binding'];
             $site_key = MAD4B_SCP_Resilience_Context::site_key( $binding );
             if ( isset( $sites[ $site_key ] ) ) return self::deny( 'duplicate_site', 'A site cannot occur twice in one cohort.' );
+            if ( isset( $uuids[ $binding['site_uuid'] ] ) )
+                return self::deny( 'cloned_site_uuid', 'The same site UUID cannot claim multiple fleet origins or blogs.' );
+            $origin_key = MAD4B_SCP_Resilience_Context::digest( array( $binding['canonical_origin'], $binding['blog_id'] ) );
+            if ( isset( $origins[ $origin_key ] ) )
+                return self::deny( 'cloned_origin', 'Two site identities cannot claim the same canonical origin and blog.' );
+            $uuids[ $binding['site_uuid'] ] = true;
+            $origins[ $origin_key ] = true;
             $sites[ $site_key ] = array(
                 'site_key' => $site_key,
                 'environment' => $binding['environment'],
@@ -74,11 +83,48 @@ final class MAD4B_SCP_G9_Resilience_Gates {
             'mutation_performed' => false, 'cross_site_grants_inferred' => false );
     }
 
+    /**
+     * Pure cohort diff: independent site/grant/provider state is never copied
+     * into the next cohort. This is a planning aid, not a promotion decision.
+     */
+    public static function fleet_diff( array $old_observations, array $new_observations ) {
+        $old = self::fleet_inventory( $old_observations );
+        if ( is_wp_error( $old ) ) return $old;
+        $new = self::fleet_inventory( $new_observations );
+        if ( is_wp_error( $new ) ) return $new;
+        $previous = array();
+        $current = array();
+        foreach ( $old['sites'] as $row ) $previous[ $row['site_key'] ] = $row;
+        foreach ( $new['sites'] as $row ) $current[ $row['site_key'] ] = $row;
+        $added = array(); $removed = array(); $changed = array(); $unchanged = array();
+        foreach ( $previous as $key => $row ) {
+            if ( ! isset( $current[ $key ] ) ) { $removed[] = $key; continue; }
+            $fingerprint = MAD4B_SCP_Resilience_Context::digest( $row );
+            $updated = MAD4B_SCP_Resilience_Context::digest( $current[ $key ] );
+            if ( hash_equals( $fingerprint, $updated ) ) $unchanged[] = $key;
+            else $changed[] = $key;
+        }
+        foreach ( $current as $key => $row ) if ( ! isset( $previous[ $key ] ) ) $added[] = $key;
+        return array(
+            'contract' => 'mad4b.g9.fleet-diff.v1',
+            'added' => $added, 'removed' => $removed,
+            'changed' => $changed, 'unchanged' => $unchanged,
+            'local_per_site_readback_required' => true,
+            'promotion_authorized' => false, 'cross_site_authority_inferred' => false,
+            'authorizing' => false, 'mutation_performed' => false,
+        );
+    }
+
     /** A green pilot only permits consideration by the existing governed executor. */
     public static function release_preview( array $observation, array $target, array $limits ) {
         $valid = self::check_snapshot( $observation );
         if ( is_wp_error( $valid ) ) return $valid;
         $binding = $observation['binding'];
+        $now = MAD4B_SCP_Resilience_Context::now();
+        if ( ! is_int( $observation['captured_at'] ?? null )
+            || $observation['captured_at'] > $now
+            || $observation['captured_at'] < $now - 120 )
+            return self::deny( 'observation_stale', 'Release evidence must be captured locally within 120 seconds.' );
         if ( 'production' === $binding['environment'] )
             return self::deny( 'production_ring_denied', 'A nonproduction ring can never imply Production promotion.' );
         if ( ( $target['contract'] ?? '' ) !== self::RING_CONTRACT
@@ -94,6 +140,17 @@ final class MAD4B_SCP_G9_Resilience_Gates {
             || empty( $observation['authority']['eligible'] )
             || ! MAD4B_SCP_Resilience_Context::is_hash( $observation['authority']['grant_snapshot_sha256'] ?? '' ) )
             return self::deny( 'local_authority_unready', 'Current site identity, authority or restore binding is unready.' );
+        // All completeness flags belong to the pinned code-owned observer.
+        // Empty or omitted inventories are never proof that no risk exists.
+        foreach ( array(
+            'provider_inventory_complete',
+            'host_inventory_complete',
+            'external_effect_inventory_complete',
+            'health_sample_window_complete',
+        ) as $complete ) {
+            if ( true !== ( $observation['gates'][ $complete ] ?? null ) )
+                return self::deny( 'inventory_incomplete', 'Pilot lacks complete current site-local evidence.');
+        }
         // Missing/foreign/revoked providers and uncertain external effects are
         // blockers; a green WordPress health probe cannot override them.
         if ( ! isset( $observation['providers'] ) || ! is_array( $observation['providers'] )
@@ -125,6 +182,10 @@ final class MAD4B_SCP_G9_Resilience_Gates {
                 || empty( $observation['gates']['prior_ring_health_accepted'] ) ) )
             return self::deny( 'prior_ring_missing', 'Wider rings require evidence from an already accepted prior ring.' );
         $health = $observation['health'] ?? array();
+        if ( ! is_int( $health['observed_at'] ?? null )
+            || $health['observed_at'] > $now
+            || $health['observed_at'] < $now - 120 )
+            return self::deny( 'health_stale', 'Pilot health readings are missing or older than 120 seconds.' );
         foreach ( array( 'sample_count', 'error_rate_bps', 'p95_ms' ) as $field ) {
             if ( ! isset( $health[ $field ] ) || ! is_int( $health[ $field ] ) || $health[ $field ] < 0 )
                 return self::deny( 'health_missing', 'Pilot requires typed current local health readings.' );

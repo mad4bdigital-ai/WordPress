@@ -95,8 +95,12 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
                 'certification_sha256'=>hash( 'sha256', 'cert' ), 'ready'=>true, 'revoked'=>false,
             ) ),
             'host' => array( 'isolation_verified'=>true, 'local_readback_verified'=>true ),
-            'health' => array( 'sample_count'=>90, 'error_rate_bps'=>1, 'p95_ms'=>40 ),
-            'external_effects' => array(), 'gates'=>array( 'prior_ring_health_accepted'=>false ),
+            'health' => array( 'sample_count'=>90, 'error_rate_bps'=>1, 'p95_ms'=>40,
+                'observed_at'=>MAD4B_SCP_Resilience_Context::now() ),
+            'external_effects' => array(), 'gates'=>array(
+                'prior_ring_health_accepted'=>false,
+                'provider_inventory_complete'=>true, 'host_inventory_complete'=>true,
+                'external_effect_inventory_complete'=>true, 'health_sample_window_complete'=>true ),
         );
     }
 }
