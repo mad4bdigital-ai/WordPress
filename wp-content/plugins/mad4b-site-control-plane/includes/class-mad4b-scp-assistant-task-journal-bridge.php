@@ -55,10 +55,12 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
         $head = MAD4B_SCP_Operation_Journal::head( $context['operation_id'] );
         if ( is_wp_error( $head ) ) return $head;
         if ( ! is_array( $head ) || ! isset( $head['operation_key'], $head['operation_binding_sha256'],
-            $head['latest_sequence'], $head['latest_event_sha256'] )
+            $head['latest_sequence'], $head['latest_event_sha256'], $head['hard_deadline_at'] )
             || ! hash_equals( $task_id, (string) $head['operation_key'] )
             || ! hash_equals( $context['operation_binding_sha256'], (string) $head['operation_binding_sha256'] )
             || ! is_numeric( $head['latest_sequence'] )
+            || false === strtotime( (string) $head['hard_deadline_at'] . ' UTC' )
+            || strtotime( (string) $head['hard_deadline_at'] . ' UTC' ) !== strtotime( (string) $context['hard_deadline_at'] )
             || ! preg_match( '/^[a-f0-9]{64}$/D', (string) $head['latest_event_sha256'] ) ) return self::deny( 'journal_identity_conflict' );
         return $head;
     }
