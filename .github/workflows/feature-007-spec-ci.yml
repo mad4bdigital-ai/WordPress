@@ -59,6 +59,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g4-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g5-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g6-*.php'
 
 permissions:
   contents: read
@@ -305,6 +307,47 @@ jobs:
             php "$PLUGIN/tests/$contract-contract.php"
           done
           python3 "$PLUGIN/tests/receipt-crypto-profile-contract.py"
+
+  g6-runtime:
+    name: Feature 007 G6 private preview (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify G6 private planning boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          for source in g6-contracts g6-operation-compiler g6-ai-workspace g6-knowledge-admission g6-provider-routing g6-retrieval-evaluation g6-conversation-vault g6-durable-dag-evidence g6-acceptance; do
+            php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
+          done
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          php "$PLUGIN/tests/g6-private-preview-contract.php"
+          php "$PLUGIN/tests/g6-compiler-denial-runtime.php"
+          php "$PLUGIN/tests/g6-admission-denial-runtime.php"
+          php "$PLUGIN/tests/g6-provider-retrieval-denials.php"
+          php "$PLUGIN/tests/g6-conversation-vault-runtime.php"
+          php "$PLUGIN/tests/g6-durable-dag-evidence.php"
+          python3 "$PLUGIN/tests/g6-delivery-integrity.py"
 
   g5-runtime:
     name: Feature 007 G5 runtime (PHP ${{ matrix.php }})

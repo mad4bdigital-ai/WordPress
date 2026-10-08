@@ -1,0 +1,132 @@
+{
+  "contract": "mad4b.competitive-g6-delivery.v1",
+  "status": "REPOSITORY_FOUNDATION_PARTIAL_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 287,
+  "implementation_branch": "feat/007-g6-ai-knowledge-synthesis-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "51e1f08ad5aafbea1656a0325f1070b438586c98",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "authorizing": false,
+  "production_authorized": false,
+  "provider_execution_certified": false,
+  "vector_ingestion_certified": false,
+  "dependency_execution_certified": false,
+  "live_browser_acceptance": false,
+  "scope_task_ids": [
+    "T3956",
+    "T3957",
+    "T3958",
+    "T3959",
+    "T3960",
+    "T3961",
+    "T3962",
+    "T3963",
+    "T3964",
+    "T3965",
+    "T4016",
+    "T4017",
+    "T4018",
+    "T4019",
+    "T4020"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-contracts.php",
+      "sha256": "ad15c482b6ee80290fda8e78c3e202f6a63fc4cda8e17f9f99a638cdd8615b63"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-operation-compiler.php",
+      "sha256": "6bf78473443dc196552ba5ddc0de887d634fd260be76997b3a5247f855785fe6"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-ai-workspace.php",
+      "sha256": "4cb49ec7aa73a91ba9e3576f0c871f13530328a6bb50ef8c4e4ffe14202a92e7"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-knowledge-admission.php",
+      "sha256": "4e871500ccdf731dd3c32c0c23f5e77c39490f3d1f0be0f795609b40eff9b501"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-provider-routing.php",
+      "sha256": "5b2765b857b5b9d8efb9f38a8b43312507243377ba6ab5ae83701dddbb00b2ba"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-retrieval-evaluation.php",
+      "sha256": "330d46745326b830e60615f98f4495eb7694a6329f6671d4c3d541f3015c85bc"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
+      "sha256": "b487272d21ad0e3353ea7f9ee1618776853dbe777aafe800f0d1a8d73a5b78e0"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "05aed3ca045d06b37bb00b73eae284cda450089d710a36a7320c53eaa8e02a04"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",
+      "sha256": "2b88b35321ec6062fd1f7d61f1e45ac5addeb4ddf709f3b76ca26ed825bee582"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-durable-dag-evidence.php",
+      "sha256": "23773833abbf59320c20e7e96cf803112fd45548b6689cefc56857084f66d45a"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-private-preview-contract.php",
+      "sha256": "33a3971603d76589c43c0093383bb47f42a8d9c90eb576afa589703efba29d45"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-compiler-denial-runtime.php",
+      "sha256": "03ef4cf6f07c27176b08acebdf223f4f1cdac3b76a17765ae9029e79413d3d13"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-admission-denial-runtime.php",
+      "sha256": "fb99951486f8d538e2ccf9b7d19c214d54077d5fbc7550f9e1f7407777e17389"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-provider-retrieval-denials.php",
+      "sha256": "55cf8b5a178586538bc1e7efebebd3ddd64399e31e48f07a50a4fd8495739405"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "sha256": "da50aa07d151083759b9d9261698aa8f6c605f6195904c87ae6c027e56297e06"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-delivery-integrity.py",
+      "sha256": "8056b02cde36ce4af9075c93b4442911d42c41c74f5bd5ca536ce0dc7dedd2f6"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-conversation-vault-runtime.php",
+      "sha256": "89be7bc93bd00945c0f1cc1f5326c67f2db5b990a68229320c993845e178430b"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",
+      "sha256": "92445de4241c25c69c2d5a3a8bf298f624c69852fc31492cd75f177ee291c1e2"
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.md",
+      "sha256": "a59338630000c288459999dafbaab32e9b74e22dc3f5f5e7232b8211b09e8e03"
+    }
+  ],
+  "acceptance_contracts": [
+    "bounded_reviewed_dag",
+    "private_redacted_review",
+    "metadata_only_provider_router",
+    "tenant_rights_residency_and_citation_denial",
+    "no_paid_model_or_vector_ingestion",
+    "no_dep_execution_without_journal_and_fresh_approval",
+    "admin_route_smoke_and_php_matrix"
+  ],
+  "external_acceptance_required": [
+    "certify_live_model_accounts_consents_regions_and_cost_readbacks",
+    "staging_encryption_key_rotation_purge_backup_and_export_governance",
+    "private_conversation_and_prompt_library_end_to_end",
+    "licensed_documents_and_vector_tenant_isolation_source_deletion",
+    "journal_verified_provider_postconditions_with_approval_and_rollback",
+    "staging_provider_browser_and_hub_cumulative_certification"
+  ]
+}
