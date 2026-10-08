@@ -34,3 +34,7 @@ Workflow: `.github/workflows/feature-007-g9-resilience.yml`; matrix PHP 7.4 and 
 ## Task ownership
 
 G9 owns T4066-T4070 and T4091-T4095 only. Runtime code covers a conservative repository foundation for each family, while execution/acceptance gates remain separate and require exact evidence. Changes to other G groups' ownership are forbidden.
+
+## Independent source review
+
+See `g9-review.md` for severity-ranked findings and outstanding Staging, cross-host, cryptographic and Hub admission gates. The plugin exposes three read-only G9 Abilities including `mad4b/g9-closure-status`. No G9 source file makes a runtime Production acceptance claim.

@@ -31,6 +31,8 @@ jobs:
           for f in wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-{context,anchor}.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php; do php -l "$f" || exit 1; done
       - name: Verify G9 non-authorizing delivery contract
         run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py
+      - name: Verify G9 source security invariants
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py
       - name: Run G9 isolation and restore fixtures
         run: |
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php

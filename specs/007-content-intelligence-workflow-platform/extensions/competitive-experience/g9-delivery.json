@@ -31,10 +31,12 @@
   "test_paths": [
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php",
-    "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php"
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py"
   ],
   "spec_paths": [
-    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md"
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-review.md"
   ],
   "source_files_include_real_execution_adapter": false,
   "runtime_parity_claimed": false,
