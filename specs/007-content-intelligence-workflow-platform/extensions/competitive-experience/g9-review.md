@@ -144,3 +144,7 @@ O29–O32 in `g9-adversarial-closure.md` cover operator-facing anchor corruption
 ## Registration readback hardening (2026-10-08)
 
 G9 WordPress Ability registration now refuses null/false/WP_Error results **and** independently requires `wp_has_ability(name)` immediately after each apparent registration success. The three-Ability group remains permission-denied until all registrations have been verified, preventing a partial registry from becoming callable. A separate hermetic mid-registration failure test was added to the PHP 7.4/8.3 workflow; exact-head Actions execution is still unconfirmed.
+
+## Continued source hardening — read permission and partial registry (2026-10-08)
+
+The WordPress Ability registry can fail after adding only the first of three G9 read tools. The read Ability permission callback is now a code-owned group-activation gate: `reader_pinned && abilities_registered && MAD4B_SCP_Policy::can_read()`. It remains denied until the **entire trio** returns successfully and each name passes native `wp_has_ability` readback. Independent PHP fixtures exercise a second-call WP_Error, null and false-positive success, without leaking callable partial registration. Also, `site_observation()`, `restore_status()` and `closure_status()` now each enforce current read policy internally, so direct PHP invocation cannot bypass the outer WordPress Ability callback. These are code-only controls; the exact-head workflow still needs completed results.

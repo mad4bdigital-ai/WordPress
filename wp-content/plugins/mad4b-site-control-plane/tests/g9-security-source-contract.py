@@ -128,6 +128,9 @@ expect(read, (
     "'permission_callback' => array( __CLASS__, 'can_read_ability' )",
     "public static function can_read_ability(",
     "MAD4B_SCP_Policy::can_read()",
+    "private static function read_policy()",
+    "'mad4b_g9_read_permission_denied'",
+    "$policy = self::read_policy()",
     "wp_has_ability( $ability )",
     "! wp_has_ability( $ability )",
 ), "read-only-abilities")
