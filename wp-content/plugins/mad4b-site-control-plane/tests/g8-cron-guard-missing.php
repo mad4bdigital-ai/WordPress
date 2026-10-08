@@ -17,6 +17,25 @@ function update_option( $key, $value, $autoload = false ) {
 	if ( 'mad4b_scp_runtime_convergence_v1' === $key ) $GLOBALS['g8_checkpoint'] = $value;
 	return true;
 }
+function maybe_serialize( $value ) { return is_array( $value ) || is_object( $value ) ? serialize( $value ) : $value; }
+function wp_cache_delete( $key, $group = '' ) { return true; }
+class G8_Checkpoint_Disposable_WPDB {
+	public $options = 'wp_options';
+	public function prepare( $sql, ...$args ) { return $args; }
+	public function query( $args ) {
+		list( $next, $key, $expected ) = $args;
+		if ( 'mad4b_scp_runtime_convergence_v1' !== $key ) return false;
+		if ( '1' === getenv( 'G8_CHECKPOINT_CAS_RACE' ) ) {
+			// Another operator changes the checkpoint between read and SQL CAS.
+			$GLOBALS['g8_checkpoint']['state'] = 'blocked';
+			$GLOBALS['g8_checkpoint']['automatic_retry_allowed'] = false;
+		}
+		if ( maybe_serialize( $GLOBALS['g8_checkpoint'] ) !== $expected ) return 0;
+		$GLOBALS['g8_checkpoint'] = unserialize( $next );
+		return 1;
+	}
+}
+$GLOBALS['wpdb'] = new G8_Checkpoint_Disposable_WPDB();
 function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\\-]/', '', (string) $v ) ); }
 function sanitize_text_field( $v ) { return trim( (string) $v ); }
 function wp_get_environment_type() { return 'staging'; }
@@ -106,6 +125,15 @@ if ( $expected_gate !== ( $gate['reason'] ?? '' )
 if ( ! $throwing_slo && ! $throwing_worker && class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for missing-class fixture' . PHP_EOL ); exit( 1 ); }
 MAD4B_SCP_Runtime_Convergence::resume_safe_phases();
 $checkpoint = $GLOBALS['g8_checkpoint'];
+if ( '1' === getenv( 'G8_CHECKPOINT_CAS_RACE' ) ) {
+	if ( 'blocked' !== ( $checkpoint['state'] ?? '' )
+		|| false !== ( $checkpoint['automatic_retry_allowed'] ?? null )
+		|| isset( $checkpoint['resume_blocker'] ) ) {
+		fwrite( STDERR, 'FAIL: lost SQL CAS overwrote the operator block' . PHP_EOL ); exit( 1 );
+	}
+	echo 'G8_CHECKPOINT_ATOMIC_RACE: PASS' . PHP_EOL;
+	exit( 0 );
+}
 if ( '' !== $stale_state || $paused_cron || $malicious_checkpoint ) {
 	if ( $before_stale !== $checkpoint || ! empty( $GLOBALS['g8_worker_finished_error'] )
 		|| ! empty( $GLOBALS['g8_executable_checkpoint_serialized'] ) ) {
