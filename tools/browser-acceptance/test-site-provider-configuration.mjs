@@ -8,7 +8,7 @@ import {
 
 const base = () => ({
   contract: "mad4b.browser-acceptance-capabilities.v1", read_only: true, authorizing: false,
-  provider_count: 1, providers: [{ provider_id: "etg-dfsb", contract: "etg.dfsb.browser-acceptance-provider.v2" }],
+  site_origin: "https://staging.egypttourgates.com", provider_count: 1, providers: [{ provider_id: "etg-dfsb", contract: "etg.dfsb.browser-acceptance-provider.v2" }],
   operator_preference: {
     contract: "mad4b.browser-operator-preference.v1", authorizing: false, read_only: true,
     executor: "auto", profile_id: "", site_provider_id: "", preference_valid: true, configuration_revision: "a".repeat(32),
@@ -54,7 +54,7 @@ const changeContract = base(); changeContract.providers[0].contract = "etg.dfsb.
 assert.throws(() => assertEtgBrowserBindingUnchanged(snapshot, resolve(changeContract, args)), /mcp_site_browser_operator_selection_changed:siteProviderContract/);
 const changeExecutor = base(); changeExecutor.operator_preference.executor = "steel";
 assert.throws(() => assertEtgBrowserBindingUnchanged(snapshot, resolve(changeExecutor, args)), /mcp_site_browser_operator_selection_changed:executor/);
-const plan = { provider_id: snapshot.siteProviderId, provider_contract: snapshot.siteProviderContract, profile_id: snapshot.profileId, suite: "browser_runtime", read_only: true, authorizing: false, plan_digest: "a".repeat(64) };
+const plan = { origin: snapshot.siteOrigin + "/", provider_id: snapshot.siteProviderId, provider_contract: snapshot.siteProviderContract, profile_id: snapshot.profileId, suite: "browser_runtime", read_only: true, authorizing: false, plan_digest: "a".repeat(64) };
 assertEtgBrowserPlanBinding(snapshot, plan);
 assert.throws(() => assertEtgBrowserPlanBinding(snapshot, { ...plan, provider_id: "all-royal" }), /mcp_site_browser_plan_binding_mismatch/);
 assert.throws(() => assertEtgBrowserPlanBinding(snapshot, { ...plan, authorizing: true }), /mcp_site_browser_plan_binding_mismatch/);
@@ -66,4 +66,9 @@ denied(x => { delete x.operator_preference.configuration_revision; }, "mcp_site_
 denied(x => { x.operator_preference.configuration_revision = "bad"; }, "mcp_site_browser_operator_revision_missing_or_invalid");
 const changedRevision = base(); changedRevision.operator_preference.configuration_revision = "b".repeat(32);
 assert.throws(() => assertEtgBrowserBindingUnchanged(snapshot, resolve(changedRevision, args)), /mcp_site_browser_operator_selection_changed:configurationRevision/);
+const badOrigin = base(); badOrigin.site_origin = "http://staging.egypttourgates.com";
+assert.throws(() => resolve(badOrigin, args), /mcp_site_browser_origin_invalid/);
+const wrongSite = base(); wrongSite.site_origin = "https://other.example";
+assert.throws(() => assertEtgBrowserBindingUnchanged(snapshot, resolve(wrongSite, args)), /mcp_site_browser_operator_selection_changed:siteOrigin/);
+assert.throws(() => assertEtgBrowserPlanBinding(snapshot, { ...plan, origin: "https://other.example/" }), /mcp_site_browser_plan_binding_mismatch/);
 console.log("MAD4B_BROWSER_SITE_CONFIGURATION: PASS");
