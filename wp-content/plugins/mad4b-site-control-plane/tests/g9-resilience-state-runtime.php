@@ -64,12 +64,19 @@ class MAD4B_SCP_Restore_Epoch {
     }
 }
 class MAD4B_SCP_Live_Acceptance_Observer {
+    public static $valid = true;
     public static function build_provenance_identity_status() {
-        return array( 'package_manifest_digest'=>hash( 'sha256', 'package' ) );
+        return array( 'package_manifest_digest'=>hash( 'sha256', 'package' ),
+            'identity_ready'=>self::$valid, 'manifest_valid'=>self::$valid );
     }
 }
 class MAD4B_SCP_Certification_Pack_Registry {
-    public static function status() { return array( 'revision'=>0, 'active'=>array() ); }
+    const REGISTRY_CONTRACT = 'mad4b.certification-pack-registry.v1';
+    public static $epoch = 1;
+    public static function status() {
+        return array( 'contract'=>self::REGISTRY_CONTRACT, 'revision'=>0,
+            'restore_epoch'=>self::$epoch, 'active'=>array() );
+    }
 }
 class MAD4B_SCP_Staging_Write_Authority {
     public static $call_count = 0;
@@ -128,6 +135,21 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
 g9_assert( true === MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader registration' );
 $observation = MAD4B_SCP_Resilience_Context::capture();
 g9_assert( ! is_wp_error( $observation ) && $observation['authority']['eligible'], 'current capture' );
+// An apparently well-formed manifest digest is not accepted while provenance
+// identity_ready / manifest_valid is false. A restored registry epoch cannot
+// silently be reused under a different restore binding.
+MAD4B_SCP_Live_Acceptance_Observer::$valid = false;
+$invalid_artifact = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $invalid_artifact ) && !$invalid_artifact['authority']['eligible']
+    && in_array( 'artifact_identity_unready', $invalid_artifact['identity_blockers'], true ),
+    'unsigned or unverified artifact identity denied' );
+MAD4B_SCP_Live_Acceptance_Observer::$valid = true;
+MAD4B_SCP_Certification_Pack_Registry::$epoch = 2;
+$invalid_epoch = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $invalid_epoch ) && !$invalid_epoch['authority']['eligible']
+    && in_array( 'registry_restore_epoch_mismatch', $invalid_epoch['identity_blockers'], true ),
+    'restored registry epoch cannot inherit current authority' );
+MAD4B_SCP_Certification_Pack_Registry::$epoch = 1;
 g9_denied( MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader_already_registered' );
 $binding = $observation['binding'];
 // A world-writable leaf directory allows another OS account to replace

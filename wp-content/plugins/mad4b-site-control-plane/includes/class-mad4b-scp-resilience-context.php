@@ -26,8 +26,20 @@ final class MAD4B_SCP_Resilience_Context {
 		$restore = MAD4B_SCP_Restore_Epoch::status( false, true ); // Never initializes or acknowledges a restore.
 		if ( ! is_array( $generation ) || ! is_array( $restore ) ) return self::error( 'source_invalid', 'An exact local identity source returned invalid state.' );
 		$identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) $identity = array();
 		$registry = class_exists( 'MAD4B_SCP_Certification_Pack_Registry' ) ? MAD4B_SCP_Certification_Pack_Registry::status() : array();
-		if ( is_wp_error( $registry ) ) $registry = array();
+		if ( is_wp_error( $registry ) || ! is_array( $registry ) ) $registry = array();
+		$source_blockers = array();
+		if ( true !== ( $identity['identity_ready'] ?? null )
+			|| true !== ( $identity['manifest_valid'] ?? null )
+			|| ! self::is_hash( $identity['package_manifest_digest'] ?? '' ) )
+			$source_blockers[] = 'artifact_identity_unready';
+		if ( ! class_exists( 'MAD4B_SCP_Certification_Pack_Registry' )
+			|| ( $registry['contract'] ?? '' ) !== MAD4B_SCP_Certification_Pack_Registry::REGISTRY_CONTRACT )
+			$source_blockers[] = 'certification_registry_unready';
+		if ( ! is_int( $registry['restore_epoch'] ?? null )
+			|| $registry['restore_epoch'] !== (int) ( $restore['epoch'] ?? 0 ) )
+			$source_blockers[] = 'registry_restore_epoch_mismatch';
 		$binding = array(
 			'site_uuid'=>(string) MAD4B_SCP_Site_Profile::site_uuid(),
 			'blog_id'=>function_exists( 'get_current_blog_id' ) ? (int) get_current_blog_id() : 1,
@@ -67,10 +79,10 @@ final class MAD4B_SCP_Resilience_Context {
 				'runtime_generation_sha256'=>$binding['runtime_generation_sha256'], 'restore_epoch'=>$binding['restore_epoch'],
 				'grant_snapshot_sha256'=>(string) ( $authority['grant_rows_fingerprint'] ?? '' ),
 				'candidate_binding_sha256'=>self::digest( $candidate ),
-				'eligible'=>! empty( $authority['ready'] ) && ! empty( $candidate['match'] ) && ! empty( $restore['ready'] ) && ! empty( $generation['ready'] ),
+				'eligible'=>! empty( $authority['ready'] ) && ! empty( $candidate['match'] ) && ! empty( $restore['ready'] ) && ! empty( $generation['ready'] ) && empty( $source_blockers ),
 			),
 			'providers'=>array(), 'host'=>array(), 'health'=>array(), 'gates'=>array(), 'external_effects'=>array(),
-			'identity_blockers'=>array_values( array_unique( array_merge( (array) ( $generation['blockers'] ?? array() ), (array) ( $restore['blockers'] ?? array() ) ) ) ),
+			'identity_blockers'=>array_values( array_unique( array_merge( (array) ( $generation['blockers'] ?? array() ), (array) ( $restore['blockers'] ?? array() ), $source_blockers ) ) ),
 			'restore_bound'=>! empty( $restore['ready'] ),
 			'worker_current'=>! empty( $generation['ready'] ),
 			'authorizing'=>false, 'mutation_performed'=>false,
