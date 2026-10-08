@@ -15,3 +15,6 @@ This source-only change is not deployed or runtime certified by a GitHub tree up
 ### Unmapped external catalog candidates
 
 Optional `external_hints` can contain vetted-shape descriptions from an eligible connector, skill, external service or operator. They are untrusted candidates, never authoritative grants. The router validates them even on plans with no actionable gaps. It does not see ChatGPT's plugin list itself; the external client must collect approved public/safe descriptors and pass them through the governed MCP invocation. No automatic Hostinger/SSH session is inferred.
+
+
+When there are no candidates, the router distinguishes `INVENTORY_INCOMPLETE_RETRY` from `EXPAND_DISCOVERY` using the local registry completeness flags. Separate `extension_inventory_complete` reports MU/drop-in registry availability. If an existing WordPress extension cannot be examined, the assistant must explore a permissioned external provider inventory rather than falsely conclude no solution exists.

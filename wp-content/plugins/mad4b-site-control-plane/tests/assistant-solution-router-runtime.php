@@ -11,6 +11,8 @@ function get_option($k,$d=array()){return $k==='active_plugins' ? array('file-op
 function get_plugins(){return array('file-ops/one.php'=>array('Name'=>'File Workspace'),
     'file-ops/two.php'=>array('Name'=>'File Explorer'));}
 function wp_get_abilities(){return array();}
+function get_mu_plugins(){return array();}
+function get_dropins(){return array();}
 class MAD4B_SCP_Adapter_Base {}
 class MAD4B_SCP_Adaptive_Operations_Context {
     public static $binding;

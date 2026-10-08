@@ -34,3 +34,9 @@ The test covers dynamic unmapped candidates, introspected Abilities, ambiguous h
 Source tests are not staging/real browser/host or external provider certification. Re-run on the latest exact PR HEAD before any release claim.
 
 The follow-up connector `mad4b/assistant-solution-discover` is a read-only adapter wrapping the existing Assistant Planning GAP decisions, described in `docs/ASSISTANT-SOLUTION-ROUTER.md`. Private WordPress Abilities (`show_in_rest=false`) remain completely absent from this general discovery response. Governed MAD4B private operations must be discovered through their separately authorized MCP catalog; the discovery result is NEVER a permission grant.
+
+## Other WordPress capability surfaces (2026-10-09)
+
+The live registry now explicitly reads **ordinary plugins, must-use plugins and core drop-ins**, as well as REST-visible WordPress Abilities, without vendor-specific lookup tables. WordPress supplies `get_plugins()`, `get_mu_plugins()`, and `get_dropins()` from its trusted core plugin admin helper. Must-use plugin presence is active by core semantics; drop-in **presence** is only `registered` (not automatically proven loaded or usable).
+
+All metadata is treated as a non-executable hint. A failed function, malformed plugin main-file path, unsupported/inaccessible helper, or truncated inventory marks a corresponding `*_inventory_complete=false`; a no-match result on incomplete coverage returns `INVENTORY_INCOMPLETE_RETRY`. Offset pagination is available past the old 400-result boundary, subject to a hard 1024-result safety ceiling. Scanning never invokes the unknown provider code or grants a file/host write.

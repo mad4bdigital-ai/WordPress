@@ -132,7 +132,9 @@ final class MAD4B_SCP_Assistant_Solution_Router {
             if ( is_wp_error( $result ) ) return $result;
             $tasks[] = array( 'task_id' => $task['task_id'], 'capability' => $capability,
                 'planner_decision' => $decision, 'total_matches' => $result['total_matches'],
-                'status' => $result['total_matches'] ? 'VERIFY_CANDIDATE_BEHAVIOR' : 'EXPAND_DISCOVERY',
+                'status' => $result['total_matches'] ? 'VERIFY_CANDIDATE_BEHAVIOR'
+                    : ( ! empty( $result['inventory_incomplete'] ) ? 'INVENTORY_INCOMPLETE_RETRY' : 'EXPAND_DISCOVERY' ),
+                'inventory_incomplete' => $result['inventory_incomplete'],
                 'candidates' => $result['candidates'],
                 'snapshot_sha256' => $result['snapshot_sha256'],
                 'execution_allowed' => false );
@@ -146,6 +148,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
             'registry_coverage' => array(
                 'plugin_inventory_complete' => ! empty( $inventory['plugin_inventory_complete'] ),
                 'ability_inventory_complete' => ! empty( $inventory['ability_inventory_complete'] ),
+                'extension_inventory_complete' => ! empty( $inventory['extension_inventory_complete'] ),
                 'external_inventory_complete' => false ),
             'authorizing' => false, 'execution_allowed' => false, 'mutation_performed' => false,
             'provider_executed' => false, 'automatic_install_allowed' => false );
