@@ -350,6 +350,20 @@ $unsafe_effect['descriptor_callback'] = function () { $d = browser_safe_descript
 $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'unsafe-effect' => $unsafe_effect );
 browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ), 'browser provider opening SEO mutation must be rejected' );
 
+// Signed digest inputs and explicit selectors must never be normalized.
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
+$null_plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => null, 'profile_id' => 'site.v1' ) );
+browser_expect( 'blocked' === $null_plan['state'] && in_array( 'provider_id_invalid', $null_plan['blocking_reasons'], true ), 'explicit null cannot invoke provider auto-selection' );
+foreach ( array( strtoupper( hash( 'sha256', 'x' ) ), ' ' . hash( 'sha256', 'x' ), hash( 'sha256', 'x' ) . ' ' ) as $altered_digest ) {
+	$invalid = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+		'provider_id' => 'fake-browser', 'profile_id' => 'site.v1',
+		'plan_digest' => $altered_digest, 'plan_signature' => hash( 'sha256', 'x' ),
+	) );
+	browser_expect( 'BLOCKED' === $invalid['verdict'] && in_array( 'plan_digest_invalid', $invalid['blocking_reasons'], true ), 'digest case or whitespace normalization forbidden' );
+}
+$plan_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-plan']['input_schema'];
+browser_expect( false === $plan_schema['additionalProperties'], 'unexpected plan schema properties denied' );
+
 // A provider cannot assert PASS without signed, plan-bound browser evidence.
 $untrusted_pass = browser_safe_provider( 'untrusted-pass' );
 $untrusted_pass['result_callback'] = function ( array $request ) {
