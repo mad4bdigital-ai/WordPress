@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Business configuration is independent of Site Profile and cannot grant authority. */
 final class MAD4B_SCP_Search_Context {
+	/** A private, synchronous privilege boundary for typed runtime controls only. */
+	private static $typed_control_in_progress = false;
 	public static function policy() {
 		$raw = file_get_contents( dirname( __DIR__, 2 ) . '/config/search-runtime-policy.json' );
 		$data = json_decode( (string) $raw, true );
@@ -117,6 +119,12 @@ final class MAD4B_SCP_Search_Context {
 		if ( isset( $before['provider_policy'] ) && is_array( $before['provider_policy'] ) ) unset( $before['provider_policy']['freeze_spend'], $before['provider_policy']['disabled'] );
 		if ( isset( $after['provider_policy'] ) && is_array( $after['provider_policy'] ) ) unset( $after['provider_policy']['freeze_spend'], $after['provider_policy']['disabled'] );
 		$target_change = MAD4B_SCP_Search_Contracts::digest( $before ) !== MAD4B_SCP_Search_Contracts::digest( $after );
+		// Domain callers using the generic profile-plan/apply lane cannot change
+		// runtime state. Only a separately typed, scoped control transition may.
+		$old_disabled = isset( $old['provider_policy']['disabled'] ) ? $old['provider_policy']['disabled'] : array();
+		$new_disabled = isset( $next['provider_policy']['disabled'] ) ? $next['provider_policy']['disabled'] : array();
+		$state_change = $old['enabled'] !== $next['enabled'] || $old['provider_policy']['freeze_spend'] !== $next['provider_policy']['freeze_spend'] || MAD4B_SCP_Search_Contracts::digest( $old_disabled ) !== MAD4B_SCP_Search_Contracts::digest( $new_disabled );
+		if ( $state_change && ! self::$typed_control_in_progress ) return MAD4B_SCP_Search_Contracts::error( 'profile_state_requires_explicit_control', 'Runtime state transitions require the dedicated typed control operation.' );
 		$old_frozen = ! empty( $old['provider_policy']['freeze_spend'] );
 		$next_frozen = ! empty( $next['provider_policy']['freeze_spend'] );
 		if ( $target_change && ( ! empty( $old['enabled'] ) || ! empty( $next['enabled'] ) || ! $old_frozen || ! $next_frozen ) ) {
@@ -153,6 +161,43 @@ final class MAD4B_SCP_Search_Context {
 			foreach ( $other['profile']['markets'] as $market ) if ( isset( $market['id'] ) && isset( $new_ids[ $market['id'] ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'Market IDs must be unique between Search Profiles because target identities use them.' );
 		}
 		return true;
+	}
+
+	/**
+	 * The only domain entrypoint that may transition search runtime state.
+	 * Reconstructs the next profile from persisted fields; client-provided
+	 * profile JSON, budgets, enabled and freeze_spend are never trusted.
+	 */
+	public static function control_transition( array $input ) {
+		if ( ! MAD4B_SCP_Search_Runtime::can_configure() ) return MAD4B_SCP_Search_Contracts::error( 'configuration_unauthorized' );
+		$id = isset( $input['profile_id'] ) ? $input['profile_id'] : '';
+		$action = isset( $input['control'] ) ? $input['control'] : '';
+		if ( ! MAD4B_SCP_Search_Contracts::id( $id ) || ! is_string( $action ) || ! in_array( $action, array( 'pause', 'resume', 'freeze_spend', 'unfreeze_spend', 'disable_provider', 'enable_provider' ), true ) ) return MAD4B_SCP_Search_Contracts::error( 'control_invalid' );
+		$old = self::profile( $id ); if ( is_wp_error( $old ) ) return $old;
+		if ( isset( $input['expected_revision'] ) ) {
+			$provided = $input['expected_revision'];
+			if ( ! ( is_int( $provided ) || ( is_string( $provided ) && preg_match( '/^[1-9][0-9]{0,8}$/D', $provided ) ) ) || (int) $provided !== (int) $old['revision'] ) return MAD4B_SCP_Search_Contracts::error( 'search_control_stale' );
+		}
+		$policy = self::policy(); if ( is_wp_error( $policy ) ) return $policy;
+		$raw = array_intersect_key( $old, array_flip( $policy['profile_fields'] ) );
+		if ( 'pause' === $action ) $raw['enabled'] = false;
+		if ( 'resume' === $action ) $raw['enabled'] = true;
+		if ( 'freeze_spend' === $action || 'unfreeze_spend' === $action ) $raw['provider_policy']['freeze_spend'] = 'freeze_spend' === $action;
+		if ( 'disable_provider' === $action || 'enable_provider' === $action ) {
+			$provider = isset( $input['provider_id'] ) ? $input['provider_id'] : '';
+			if ( ! MAD4B_SCP_Search_Contracts::id( $provider ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_id_invalid' );
+			$disabled = isset( $raw['provider_policy']['disabled'] ) ? $raw['provider_policy']['disabled'] : array();
+			if ( 'disable_provider' === $action ) $disabled[] = $provider;
+			else $disabled = array_diff( $disabled, array( $provider ) );
+			$raw['provider_policy']['disabled'] = array_values( array_unique( $disabled ) );
+		}
+		if ( self::$typed_control_in_progress ) return MAD4B_SCP_Search_Contracts::error( 'search_control_reentrant' );
+		self::$typed_control_in_progress = true;
+		try {
+			$args = array( 'profile' => $raw, 'expected_revision' => (int) $old['revision'] );
+			$plan = self::plan( $args ); if ( is_wp_error( $plan ) ) return $plan;
+			return self::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) );
+		} finally { self::$typed_control_in_progress = false; }
 	}
 
 	public static function apply( array $input ) {
