@@ -1142,18 +1142,28 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 		// G8 admission is an independent, non-authorizing boundary around the existing Cron worker.
 		// Explicit governed/manual apply remains separate from this automatic ticket.
-		$ticket = null;
-		if ( class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) {
-			$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
-			$ticket = MAD4B_SCP_Automation_SLO::reserve( 'runtime-convergence', 'safe-phases', $generation );
-			if ( is_wp_error( $ticket ) ) {
-				$checkpoint['state'] = 'pending_manual_resume';
-				$checkpoint['resume_blocker'] = $ticket->get_error_code();
-				$checkpoint['automatic_retry_allowed'] = false;
-				$checkpoint['updated_at'] = gmdate( 'c' );
-				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
-				return;
-			}
+		// A partial update, stale autoloader or incomplete bootstrap must never
+		// downgrade an automatic Cron invocation into the explicit/manual lane.
+		if ( ! class_exists( 'MAD4B_SCP_Automation_SLO', false )
+			|| ! method_exists( 'MAD4B_SCP_Automation_SLO', 'reserve' )
+			|| ! method_exists( 'MAD4B_SCP_Automation_SLO', 'ticket_allowed' )
+			|| ! method_exists( 'MAD4B_SCP_Automation_SLO', 'finish_existing' ) ) {
+			$checkpoint['state'] = 'pending_manual_resume';
+			$checkpoint['resume_blocker'] = 'mad4b_automation_guard_missing';
+			$checkpoint['automatic_retry_allowed'] = false;
+			$checkpoint['updated_at'] = gmdate( 'c' );
+			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			return;
+		}
+		$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
+		$ticket = MAD4B_SCP_Automation_SLO::reserve( 'runtime-convergence', 'safe-phases', $generation );
+		if ( is_wp_error( $ticket ) || ! is_array( $ticket ) ) {
+			$checkpoint['state'] = 'pending_manual_resume';
+			$checkpoint['resume_blocker'] = is_wp_error( $ticket ) ? $ticket->get_error_code() : 'mad4b_automation_ticket_invalid';
+			$checkpoint['automatic_retry_allowed'] = false;
+			$checkpoint['updated_at'] = gmdate( 'c' );
+			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			return;
 		}
 		$result = self::run_safe_phases( 'post_update_cron', array(), $ticket );
 		if ( is_array( $ticket ) ) {
