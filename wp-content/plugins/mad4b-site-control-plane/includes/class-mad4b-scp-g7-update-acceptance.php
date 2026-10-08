@@ -53,6 +53,13 @@ final class MAD4B_SCP_G7_Update_Acceptance {
         if ( is_wp_error( $current ) ) return $current;
         $same_current = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $new['binding'], $current );
         if ( is_wp_error( $same_current ) ) return $same_current;
+        if ( ! class_exists( 'MAD4B_SCP_Runtime_Evidence_Graph' ) ) return self::error( 'graph_unavailable' );
+        $live_graph = MAD4B_SCP_Runtime_Evidence_Graph::snapshot( array( 'refresh' => true ) );
+        if ( ! is_array( $live_graph ) || ( $live_graph['contract'] ?? '' ) !== MAD4B_SCP_Runtime_Evidence_Graph::CONTRACT ||
+            ! MAD4B_SCP_Adaptive_Operations_Context::sha( $live_graph['generation_sha256'] ?? '' ) ||
+            ! hash_equals( $new['graph_generation_sha256'], $live_graph['generation_sha256'] ) ) {
+            return self::error( 'post_observation_graph_drift' );
+        }
         $runtime_changed = ! hash_equals( $old['binding']['runtime_generation'], $new['binding']['runtime_generation'] ) ||
             ! hash_equals( $old['binding']['artifact_sha256'], $new['binding']['artifact_sha256'] );
         $graph_changed = ! hash_equals( $old['graph_generation_sha256'], $new['graph_generation_sha256'] );
