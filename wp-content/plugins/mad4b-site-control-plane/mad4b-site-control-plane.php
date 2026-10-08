@@ -172,6 +172,7 @@ MAD4B_SCP_Assistant_Planning::boot();
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
 MAD4B_SCP_Assistant_Convergence::boot();
 MAD4B_SCP_Solution_Discovery::boot();
+MAD4B_SCP_Capability_Atlas::boot();
 MAD4B_SCP_Assistant_Solution_Router::boot();
 MAD4B_SCP_Assistant_Operator_Workspace::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-runtime-gates.php';
@@ -448,6 +449,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-browser-acceptance-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-capability-discovery.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-atlas.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';

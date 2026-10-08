@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const files = [
   "site-adapter-resolver.mjs",
+  "declarative-capability-driver.mjs",
   "run-site-browser-acceptance.mjs",
   "run-live-site-browser-acceptance.mjs",
   "mcp-bridge.mjs",
@@ -23,6 +24,12 @@ for (const file of files) {
 const registry = fs.readFileSync(path.join(here, "site-driver-registry.mjs"), "utf8");
 assert(registry.includes('import { validatePlan as etgValidatePlan'), "legacy ETG adapter remains supported explicitly");
 assert(registry.includes('throw new Error("site_browser_driver_not_approved")'), "unmapped driver must block");
+assert(registry.includes("DECLARATIVE_PROVIDER_CONTRACT"), "generic capability probe adapter is reviewed explicitly");
+const genericDriver = fs.readFileSync(path.join(here, "declarative-capability-driver.mjs"), "utf8");
+assert(genericDriver.includes("certification_issued: false"), "generic observations must not certify themselves");
+assert(genericDriver.includes("permittedCaseKeys"), "untrusted case actions must be blocked");
+assert(!genericDriver.includes("eval(") && !genericDriver.includes("new Function("),
+  "no arbitrary executable site JS");
 const generic = fs.readFileSync(path.join(here, "run-live-site-browser-acceptance.mjs"), "utf8");
 assert(generic.includes("assertSiteBindingUnchanged(configured, preExecution)"), "preflight drift readback required");
 assert(generic.includes("assertSiteBindingUnchanged(configured, postExecution)"), "postflight drift readback required");

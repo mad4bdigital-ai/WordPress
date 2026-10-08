@@ -1,6 +1,10 @@
 // Review-owned driver registry. A WordPress site cannot inject module paths,
 // arbitrary scripts, selectors or URLs into the external browser process.
 import { validatePlan as etgValidatePlan, runBrowserPlan as etgRunBrowserPlan } from "./etg-driver.mjs";
+import {
+  validateDeclarativePlan, runDeclarativeBrowserPlan,
+  DECLARATIVE_PROVIDER_CONTRACT, DECLARATIVE_EVIDENCE_CONTRACT
+} from "./declarative-capability-driver.mjs";
 
 const DRIVERS = Object.freeze([
   Object.freeze({
@@ -9,6 +13,13 @@ const DRIVERS = Object.freeze([
     evidence_contract: "etg.dfsb.browser-acceptance-evidence.v1",
     validatePlan: etgValidatePlan,
     runBrowserPlan: etgRunBrowserPlan
+  }),
+  Object.freeze({
+    provider_contract: DECLARATIVE_PROVIDER_CONTRACT,
+    driver_id: "mad4b-declarative-capabilities",
+    evidence_contract: DECLARATIVE_EVIDENCE_CONTRACT,
+    validatePlan: validateDeclarativePlan,
+    runBrowserPlan: runDeclarativeBrowserPlan
   })
 ]);
 

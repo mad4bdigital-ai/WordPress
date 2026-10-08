@@ -7,6 +7,9 @@ function get_option( $name, $default = false ) { return isset( $GLOBALS['browser
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-browser-acceptance-admin-ui.php';
 function check_browser( $ok, $message ) { if ( ! $ok ) { fwrite(STDERR,"FAIL $message\n"); exit(1); } }
 $c='MAD4B_SCP_Browser_Acceptance_Admin_UI';
+$defaults=$c::public_selection();
+check_browser( $defaults['preference_valid'] === true && $defaults['preference_source'] === 'default_observed' &&
+  preg_match( '/^[a-f0-9]{32}$/D', $defaults['configuration_revision'] ), 'pristine site uses read-only observed default without manual preference save' );
 check_browser( count($c::managed_executors()) === 4, 'catalog' );
 foreach (array('auto','cloudflare','browserbase','browserless','steel') as $p) check_browser( !is_wp_error($c::normalize(array('executor'=>$p,'profile_id'=>'s-1'))), 'valid executor' );
 foreach (array(
