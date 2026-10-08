@@ -355,6 +355,69 @@ scenario( 'typed_control_scope_blocks_nested_profile_api_escalation', static fun
 	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'configuration_unauthorized', 'domain apply itself enforces config authority' );
 	$GLOBALS['fixture_write'] = true;
 } );
+scenario( 'profile_registry_malformed_denial_before_claims_or_profile_write', static function () {
+	$invalid = array(
+		'missing_ids' => array( 'unknown' => true ),
+		'string_ids' => array( 'ids' => 'not-an-array' ),
+		'associative_ids' => array( 'ids' => array( 'named' => 'valid-profile' ) ),
+		'duplicate_ids' => array( 'ids' => array( 'duplicated', 'duplicated' ) ),
+		'invalid_profile_id' => array( 'ids' => array( 'invalid profile' ) ),
+		'foreign_fields' => array( 'ids' => array(), 'unexpected' => true ),
+	);
+	foreach ( $invalid as $label => $bad ) {
+		asi_reset();
+		$raw = asi_profile( 'corrupt-' . str_replace( '_', '-', $label ) );
+		$args = array( 'profile' => $raw, 'expected_revision' => 0 );
+		$preplan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'clean pre-corruption plan: ' . $label );
+		ok( MAD4B_SCP_Search_Store::cas( 'registry', 'profiles', null, $bad, 'CORRUPT_REGISTRY_FIXTURE' ), 'fixture corrupt registry: ' . $label );
+		denied( MAD4B_SCP_Search_Context::plan( $args ), 'profile_registry_invalid', 'reject malformed registry on creation plan: ' . $label );
+		denied( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $preplan['plan_sha256'] ) ) ), 'profile_registry_invalid', 'reject registry changed between plan and apply: ' . $label );
+		check( null === MAD4B_SCP_Search_Store::read( 'profile', $raw['profile_id'] ), 'corrupt registry cannot create a profile: ' . $label );
+		foreach ( $raw['markets'] as $market ) check( null === MAD4B_SCP_Search_Store::read( 'market-identity', $market['id'] ), 'no orphan market claim: ' . $label );
+		check( 0 === $GLOBALS['fixture_providers'][0]->calls && 0 === $GLOBALS['fixture_providers'][1]->calls, 'no paid provider traffic: ' . $label );
+	}
+} );
+scenario( 'profile_registry_corruption_rejected_for_existing_no_new_market_edit', static function () {
+	foreach ( array( 'missing' => null, 'scalar' => 'bad', 'duplicated' => array( 'a', 'a' ), 'unversioned' => null, 'event_tamper' => null, 'payload_tamper' => array( 'foreign-profile' ) ) as $label => $value ) {
+		asi_reset();
+		$raw = asi_profile( 'existing-registry-' . $label );
+		$args = array( 'profile' => $raw, 'expected_revision' => 0 );
+		$plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'valid initial plan: ' . $label );
+		$created = ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'valid initial create: ' . $label );
+		$profile_before = MAD4B_SCP_Search_Store::read( 'profile', $raw['profile_id'] );
+		$edit = array( 'profile' => $raw, 'expected_revision' => $created['profile']['revision'] );
+		$clean = ok( MAD4B_SCP_Search_Context::plan( $edit ), 'clean no-new-market edit plan: ' . $label );
+		$key = MAD4B_SCP_Search_Store::key( 'registry', 'profiles' );
+		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
+		$corrupt = $registry;
+		if ( 'missing' === $label ) unset( $corrupt['ids'] );
+		elseif ( 'unversioned' === $label ) unset( $corrupt['_revision'] );
+		elseif ( 'event_tamper' === $label ) $corrupt['_event_sha256'] = str_repeat( '0', 64 );
+		else $corrupt['ids'] = $value;
+		check( $GLOBALS['fixture_store']->compare_exchange( $key, $registry, $corrupt ), 'fixture registry corruption persisted: ' . $label );
+		denied( MAD4B_SCP_Search_Context::plan( $edit ), 'profile_registry_invalid', 'no-new-market plan must still validate registry: ' . $label );
+		denied( MAD4B_SCP_Search_Context::apply( array_merge( $edit, array( 'plan_sha256' => $clean['plan_sha256'] ) ) ), 'profile_registry_invalid', 'no-new-market apply must fail closed: ' . $label );
+		check( MAD4B_SCP_Search_Store::read( 'profile', $raw['profile_id'] ) === $profile_before, 'corruption cannot mutate existing profile: ' . $label );
+	}
+} );
+scenario( 'corrupt_registry_does_not_disable_scoped_emergency_stop', static function () {
+	$raw = asi_profile( 'emergency-when-registry-corrupt' );
+	$raw['markets'][0]['id'] = 'emergency-metro';
+	$raw['markets'][1]['id'] = 'emergency-second';
+	$args = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'register emergency-test profile' );
+	$created = ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'persist emergency-test profile' );
+	$key = MAD4B_SCP_Search_Store::key( 'registry', 'profiles' );
+	$before = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
+	$corrupt = $before; $corrupt['ids'] = 'invalid';
+	check( $GLOBALS['fixture_store']->compare_exchange( $key, $before, $corrupt ), 'inject malformed registry' );
+	$pause = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'pause', 'expected_revision' => $created['profile']['revision'] ) ), 'scoped emergency pause still allowed' );
+	check( empty( $pause['profile']['enabled'] ) && ! empty( $pause['control_readback_verified'] ), 'pause readback proves stopped observations' );
+	$freeze = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $raw['profile_id'], 'control' => 'freeze_spend', 'expected_revision' => $pause['profile']['revision'] ) ), 'scoped emergency spend freeze still allowed' );
+	check( ! empty( $freeze['profile']['provider_policy']['freeze_spend'] ) && ! empty( $freeze['control_readback_verified'] ), 'freeze readback proves spend stopped' );
+	check( MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ) === $corrupt, 'emergency control must not silently rewrite corrupt registry' );
+	check( 0 === $GLOBALS['fixture_providers'][0]->calls && 0 === $GLOBALS['fixture_providers'][1]->calls, 'no paid provider calls' );
+} );
 scenario( 'domain_market_claim_readback_proves_ownership_and_flags_legacy', static function () {
 	$raw = asi_profile( 'claim-readback' ); $raw['markets'][0]['id'] = 'claim-metro'; $raw['markets'][1]['id'] = 'claim-second';
 	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
