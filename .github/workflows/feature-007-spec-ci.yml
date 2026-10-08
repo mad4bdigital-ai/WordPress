@@ -259,6 +259,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-intake-preview.php
           php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
           php wp-content/plugins/mad4b-site-control-plane/tests/aci01-intake-preview-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-evidence-preview.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-evidence-read-contract.php
 
       - name: Reject unsafe competitor evidence and false extension completion
         run: |

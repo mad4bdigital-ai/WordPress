@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 396,
+  "changed_file_count": 399,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -606,6 +606,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/effect-contracts.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/evidence-trust.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-01.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-02.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ledger-contracts.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/manifest.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/operations.md",
@@ -704,8 +705,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-capability-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php"
       ]
+    },
+    {
+      "id": "aci01-evidence-read-slice02",
+      "semantic_unit": "ACI01 governed ContentJob and ContextPack evidence projection; exact scoped research artifact read, expiry, provenance, no leakage",
+      "revert_boundary": "Pure-read evidence preview and hermetic PHP fixture only; no ContentJob or Artifact mutation",
+      "certification": "source_implemented_php_fixture_pending_staging_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-evidence-preview.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/aci01-evidence-read-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "be0e9d1390cbafac1d1657161187b7047b845a2d89ac6f18eedb34794bfa7789",
+  "changed_paths_sha256": "ff9e9be0553af5cace9e874ab99e1a5e69a67e9cef4bdae6fab24b6f2aab03fe",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
