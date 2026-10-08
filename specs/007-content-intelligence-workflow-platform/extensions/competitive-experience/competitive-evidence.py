@@ -419,7 +419,6 @@ def refresh_generated(root: Path = ROOT, summary_path: Path = SUMMARY, history_p
     Path(history_resource_path).write_text(render_php_history(updated), encoding="utf-8")
     return verify(root, summary_path, history_path, history_resource_path)
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--refresh", action="store_true",
