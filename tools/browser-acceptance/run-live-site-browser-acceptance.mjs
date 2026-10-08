@@ -119,7 +119,6 @@ try {
     { requestedProfile: profileId, requestedExecutor: browserProvider, approvedDrivers }
   );
   assertSiteBindingUnchanged(configured, postExecution);
-  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const localEvidenceDigest = canonicalSha256(evidence);
   const reducerEvidenceDigest = String(result?.evidence_digest || "");
@@ -129,6 +128,9 @@ try {
   if (!/^[a-f0-9]{64}$/.test(String(result?.receipt_signature || ""))) {
     throw new Error("mad4b_browser_receipt_signature_missing");
   }
+  // Do not persist a reducer response until all exact source and evidence
+  // bindings pass. A local result file is not a release certificate.
+  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const attempts = JSON.parse(fs.readFileSync(attemptsPath, "utf8"));
   const receipt = buildBrowserExecutionReceipt({
