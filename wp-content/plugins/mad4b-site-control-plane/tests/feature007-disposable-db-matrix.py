@@ -307,7 +307,7 @@ def self_test():
             assert len(report["containers_left"]) == len(live) == 2
         if scenario in ("missing_docker", "missing_php"):
             assert not any(args[0:2] == ["docker", "run"] for args in calls)
-    print("DISPOSABLE_DB_MATRIX_SELFTEST_PASS; 15 mocked scenarios, including false-PASS denial; no Docker, PHP, or database tested")
+    print(f"DISPOSABLE_DB_MATRIX_SELFTEST_PASS; {len(scenarios)} mocked scenarios, including false-PASS denial; no Docker, PHP, or database tested")
     return 0
 
 def main():
