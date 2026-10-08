@@ -114,7 +114,7 @@ def validate_model(task_registry, gate_registry, requirement_registry, system_ma
         require(g.get('requirement_ids') == refs, 'gate_requirement_mismatch:' + gid)
         cond = g.get('conditional_dependencies', [])
         require(isinstance(cond, list) and all(isinstance(x, dict)
-                and x.get('gate') in gmap and x.get('when') in ('native_relation_in_scope', 'paid_provider_in_scope', 'publication_requested', 'browser_render_in_scope', 'commercial_claim_in_scope', 'media_rights_in_scope') for x in cond),
+                and x.get('gate') in gmap and x.get('when') in ('native_relation_in_scope', 'paid_provider_in_scope', 'publication_requested', 'browser_render_in_scope', 'commercial_claim_in_scope', 'media_rights_in_scope', 'opportunity_research_in_scope', 'new_content_publication_in_scope', 'growth_learning_in_scope') for x in cond),
                 'unreviewed_conditional_dependency:' + gid)
         gate_dag[gid] = g.get('depends_on', []) + [x['gate'] for x in cond]
     topological(gate_dag)
@@ -186,11 +186,23 @@ def compile_candidate(intent, scope, state, model, policy):
     require(isinstance(requested, list) and 0 < len(requested) <= len(taskmap)
             and len(set(requested)) == len(requested)
             and all(i in taskmap for i in requested), 'requested_tasks_invalid')
+    # Evaluate complete task dependencies BEFORE deciding content-specific checks.
+    task_dependencies = checked['task_dag']
+    selected = set()
+    def expand(task):
+        if task in selected:
+            return
+        selected.add(task)
+        for dependency in task_dependencies[task]:
+            expand(dependency)
+    for task in requested:
+        expand(task)
+    ordered = [t for t in topological(task_dependencies) if t in selected]
+    affected_gates = {taskmap[t]['gate'] for t in ordered}
     profile = intent.get('content_profile', {})
     require(isinstance(profile, dict) and type(profile.get('native_relation_in_scope', False)) is bool,
             'content_profile_invalid')
-    selected_requested_gates = {taskmap[i]['gate'] for i in requested}
-    recipe_required = bool(selected_requested_gates & {'ACI-G5', 'ACI-G6', 'ACI-G8'})
+    recipe_required = bool(affected_gates & {'ACI-G5', 'ACI-G6', 'ACI-G8'})
     registered_recipes = model.get('content_recipes')
     recipe_id = intent.get('content_recipe_id')
     recipe = None
@@ -201,34 +213,29 @@ def compile_candidate(intent, scope, state, model, policy):
                 'content_recipe_registry_required')
         candidate_rows = registered_recipes.get('recipes', [])
         require(isinstance(candidate_rows, list)
-                and len({r.get('id') for r in candidate_rows if isinstance(r, dict)})
-                == len(candidate_rows), 'content_recipe_registry_invalid')
-        recipe = next((r for r in candidate_rows if r.get('id') == recipe_id), None)
+                and all(isinstance(r, dict) and isinstance(r.get('id'), str) for r in candidate_rows)
+                and len({r['id'] for r in candidate_rows}) == len(candidate_rows),
+                'content_recipe_registry_invalid')
+        recipe = next((r for r in candidate_rows if r['id'] == recipe_id), None)
         require(isinstance(recipe, dict)
                 and type(recipe.get('requires_native_relations')) is bool,
                 'content_recipe_unknown_or_invalid')
-    # User-supplied intent may ADD a restriction, but cannot remove a native
-    # relation gate mandated by an approved recipe or publish-manifest content.
+    # Caller input may strengthen, but never waive, recipe-required proofs.
     requires_native = (bool(recipe and recipe['requires_native_relations'])
                        or profile.get('native_relation_in_scope') is True
                        or intent.get('publish_manifest_contains_native_relations') is True)
-    conditional_scope = {'native_relation_in_scope': requires_native,
-                         'paid_provider_in_scope': intent.get('effect_class') == 'PAID',
-                         'publication_requested': intent.get('effect_class') == 'WORDPRESS_WRITE',
-                         'browser_render_in_scope': intent.get('require_browser_readback') is True,
-                         'commercial_claim_in_scope': bool(recipe and recipe_id == 'tour'),
-                         'media_rights_in_scope': intent.get('requires_media_assets') is True}
+    conditional_scope = {
+        'native_relation_in_scope': requires_native,
+        'paid_provider_in_scope': intent.get('effect_class') == 'PAID',
+        'publication_requested': intent.get('effect_class') == 'WORDPRESS_WRITE',
+        'browser_render_in_scope': intent.get('require_browser_readback') is True,
+        'commercial_claim_in_scope': bool(recipe and recipe_id == 'tour'),
+        'media_rights_in_scope': intent.get('requires_media_assets') is True,
+        'opportunity_research_in_scope': intent.get('requires_opportunity_research') is True,
+        'new_content_publication_in_scope': intent.get('depends_on_new_publication') is True,
+        'growth_learning_in_scope': intent.get('requires_growth_certificate') is True,
+    }
 
-    task_dependencies = checked['task_dag']
-    selected = set()
-    def expand(task):
-        selected.add(task)
-        for dep in task_dependencies[task]:
-            if dep not in selected:
-                expand(dep)
-    for task in requested:
-        expand(task)
-    ordered = [t for t in topological(task_dependencies) if t in selected]
     current_capabilities = state.get('capabilities', {})
     completed = state.get('completed_tasks', [])
     gate_certificates = state.get('certified_gates', [])
