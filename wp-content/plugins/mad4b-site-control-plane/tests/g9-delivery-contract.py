@@ -7,6 +7,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import re
+import runpy
 
 
 def require(condition: bool, reason: str) -> None:
@@ -18,7 +19,8 @@ def require(condition: bool, reason: str) -> None:
 ROOT = Path(__file__).resolve().parents[4]
 BASE = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 EXT = ROOT / "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience"
-WORKFLOW = ".github/workflows/feature-007-g9-resilience.yml"
+WORKFLOW = ".github/workflows/feature-007-spec-ci.yml"
+WORKFLOW_JOB = "g9-resilience"
 BOOTSTRAP = "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
 VALIDATOR = "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py"
 EXPECTED = {f"T{i}" for i in (4066, 4067, 4068, 4069, 4070, 4091, 4092, 4093, 4094, 4095)}
@@ -51,6 +53,10 @@ def exact_scope(value: object, label: str) -> None:
 
 require(BASE.is_dir(), "G9_REPOSITORY_ROOT_UNRESOLVED")
 require((ROOT / WORKFLOW).is_file(), "G9_REPOSITORY_WORKFLOW_UNAVAILABLE")
+workflow_contract = runpy.run_path(str(BASE / "tests/g9-security-source-contract.py"))
+require(workflow_contract["WORKFLOW"] == WORKFLOW and workflow_contract["WORKFLOW_JOB"] == WORKFLOW_JOB,
+        "G9_WORKFLOW_JOB_BINDING_DRIFT")
+workflow_contract["verify_g9_workflow"]()
 payload = json.loads((EXT / "g9-delivery.json").read_text(encoding="utf-8"))
 require(payload.get("contract") == "mad4b.feature007-g9-delivery.v1", "G9_DELIVERY_CONTRACT_INVALID")
 require(payload.get("status") == "REPOSITORY_G9_GUARDED_FOUNDATION_EXTERNAL_ACCEPTANCE_PENDING",

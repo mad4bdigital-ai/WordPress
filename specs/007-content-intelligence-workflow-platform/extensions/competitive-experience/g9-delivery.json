@@ -77,9 +77,9 @@
   ],
   "evidence_integrity": [
     {
-      "path": ".github/workflows/feature-007-g9-resilience.yml",
-      "sha256": "e297be13f11ee1b531d318c616a254dc9a8d18f79fd192cf9b922d86162be72c",
-      "bytes": 2553
+      "path": ".github/workflows/feature-007-spec-ci.yml",
+      "sha256": "badf3365bec3318c0410516b0851f917d6b17b58caf6c1890b87fa5d80030498",
+      "bytes": 32733
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md",
@@ -88,8 +88,8 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
-      "sha256": "ad0b5a4daf1fd2e63379b186fd4a2f411966bae1ea5bb95f2dfc39bd3c8a6dc3",
-      "bytes": 4766
+      "sha256": "0010f9594abe709ed27bb9d692532fb356a1cda52f9247bbe6fc592466d29efe",
+      "bytes": 5321
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-review.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
-      "sha256": "c131720cead9613507e771b2fde22fffd5924c1241f1fd3a360008fda043f727",
-      "bytes": 8690
+      "sha256": "5e03735c9bb1fb3e44f7e6222e0fec23c3e8171ec8da1658e0758b809fad26a6",
+      "bytes": 9003
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php",
@@ -183,8 +183,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py",
-      "sha256": "1828a54a7fc96ad8b6e24e635d69f87a9be09be7af8bd4565105134d3136a0fa",
-      "bytes": 7578
+      "sha256": "bfedf60d046acb0fea35bf6141efefd48aefd1fbeaecd009342a790fc77da3a7",
+      "bytes": 16954
     }
   ]
 }

@@ -106,8 +106,26 @@ class ProgressDeliveryDenials(unittest.TestCase):
                 self.write(group)
 
     def test_unbound_workflow_cannot_be_substituted(self):
-        self.payloads["g6"]["workflow_paths"][0]["path"] = ".github/workflows/feature-007-critical-kernel.yml"
-        self.rejects("g6", "g6_delivery_workflow_scope_invalid")
+        for group in ("g6", "g8"):
+            with self.subTest(group=group):
+                original = deepcopy(self.payloads[group])
+                self.payloads[group]["workflow_paths"][0]["path"] = ".github/workflows/feature-007-critical-kernel.yml"
+                self.rejects(group, group + "_delivery_workflow_scope_invalid")
+                self.payloads[group] = original
+                self.write(group)
+
+    def test_g8_shared_database_workflow_cannot_be_omitted(self):
+        self.payloads["g8"]["workflow_paths"] = [
+            item for item in self.payloads["g8"]["workflow_paths"]
+            if item["path"] != ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+        ]
+        self.rejects("g8", "g8_delivery_workflow_scope_invalid")
+
+    def test_g9_shared_workflow_binding_cannot_be_substituted(self):
+        record = next(item for item in self.payloads["g9"]["evidence_integrity"]
+                      if item["path"] == ".github/workflows/feature-007-spec-ci.yml")
+        record["path"] = ".github/workflows/feature-007-critical-kernel.yml"
+        self.rejects("g9", "g9_delivery_evidence_record_invalid")
 
     def test_traversal_or_path_alias_cannot_count_as_another_source(self):
         original = deepcopy(self.payloads["g8"])

@@ -117,7 +117,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "51afa1df8e54b8144d23c041ee4740fcdd7468c827c6b7b614868ad002df0139"
+      "sha256": "876c4b428dfef541794d9ccf3e906612092c74b7e6fd06a953e72abc5fba73d1"
     }
   ],
   "acceptance_contracts": [

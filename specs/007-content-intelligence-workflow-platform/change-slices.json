@@ -1,14 +1,14 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 276,
+  "changed_file_count": 273,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
     {
       "id": "optional-extension-parent-binding",
-      "semantic_unit": "Register optional CE01 and validate it without changing frozen release/runtime authority",
-      "revert_boundary": "Revert CE01 registration and feature-owned Spec CI as one binding slice.",
+      "semantic_unit": "Register optional CE01 and validate shared feature-owned Spec CI jobs, including G8/G9, without changing frozen release/runtime authority",
+      "revert_boundary": "Revert CE01 registration and feature-owned Spec CI as one binding slice; shared jobs remain outside G8/G9-exclusive source slices.",
       "certification": "exact_head",
       "path_globs": [
         ".github/workflows/feature-007-spec-ci.yml",
@@ -73,8 +73,8 @@
     },
     {
       "id": "admin-workspace-ui-runtime",
-      "semantic_unit": "Shared administrator navigation, Arabic/RTL Action Center, existing setup handoffs and presentation acceptance",
-      "revert_boundary": "Revert rc.96 UI assets, presentation, integration and acceptance as one slice; baseline services continue to own authority.",
+      "semantic_unit": "Shared administrator navigation, Arabic/RTL Action Center, existing setup handoffs, presentation acceptance and shared Pre-Staging CI including G8 disposable database CAS",
+      "revert_boundary": "Revert rc.96 UI assets, presentation, integration and shared Pre-Staging CI as one slice; baseline services continue to own authority and G8-exclusive source ownership stays separate.",
       "certification": "exact_head",
       "path_globs": [
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
@@ -377,8 +377,6 @@
       "revert_boundary": "Restore the G8-exclusive source, fingerprint and fixture paths as a bounded group, preserving shared Hub and already integrated boot/CI/code contracts",
       "certification": "exact_head",
       "path_globs": [
-        ".github/workflows/feature-007-g8-contract.yml",
-        ".github/workflows/feature-007-g8-database-cas.yml",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-automation-slo.php",
@@ -400,10 +398,9 @@
     {
       "id": "g9-integrated-competitive-experience-delivery",
       "semantic_unit": "G9 release fleet, restore fencing and operational readback child PR integration into Hub #258",
-      "revert_boundary": "Restore only the G9-exclusive 22 paths as a bounded group, preserving shared Hub and already integrated boot/CI/code contracts",
+      "revert_boundary": "Restore only the G9-exclusive 21 paths as a bounded group, preserving shared Hub and already integrated boot/CI/code contracts",
       "certification": "exact_head",
       "path_globs": [
-        ".github/workflows/feature-007-g9-resilience.yml",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
@@ -428,6 +425,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "01bcf60bea9f35937172512078a309a78d4ceded7c389f1af8cafc0f490da3c4",
+  "changed_paths_sha256": "a9cf906e121a3fdc7ff32ac30b07c92ff6bc87ececca7d8a245849341931f4fa",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

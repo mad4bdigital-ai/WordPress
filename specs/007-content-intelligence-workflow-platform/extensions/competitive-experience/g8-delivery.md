@@ -20,7 +20,7 @@ Paths are relative to `wp-content/plugins/mad4b-site-control-plane/`, except thi
 
 - `tests/g8-automation-slo-runtime.php` — exact ticket, CAS, switch revision and repair accounting.
 - `tests/g8-extended-runtime.php` — capability scope, signer-verifier rejection, mirror/dependency/downgrade denial, additive migration+rollback, differential fuzz, queue storm, metric corruption and site cooldown.
-- `.github/workflows/feature-007-g8-contract.yml` — exact-head checkout, PHP 7.4 and PHP 8.3 syntax and hermetic fixture checks.
+- `.github/workflows/feature-007-spec-ci.yml`, job `g8-automatic-maintenance` — exact-head checkout, PHP 7.4 and PHP 8.3 syntax and hermetic fixture checks. These repository checks do not establish live Staging or release acceptance.
 
 The supply regression uses a *stubbed* existing signature-verification call to prove how G8 handles valid/invalid verifier outcomes. It is **not** cryptographic signature coverage; the real existing Certification Pack signature CI remains mandatory.
 
@@ -118,8 +118,9 @@ implicitly certifies Staging or authorizes a merge / Production.**
 
 - Added `tests/g8-mysql-cas-integration.php`, requiring the exact
   `G8_CAS_DISPOSABLE=1` opt-in and a disposable database.
-- `.github/workflows/feature-007-g8-database-cas.yml` runs two independent
-  processes against a real InnoDB options-like table, for PHP 7.4/8.3 and
+- Job `disposable-database-cas` in
+  `.github/workflows/feature-007-pre-staging-hybrid-audit.yml` runs two
+  independent processes against a real InnoDB options-like table, for PHP 7.4/8.3 and
   MySQL 8.4/MariaDB 11.4. Both workers read the same prestate behind a
   barrier, then compete for one SQL BINARY prestate CAS.
 - Contract: exactly **one winner**, **one conflict**, signed readback,

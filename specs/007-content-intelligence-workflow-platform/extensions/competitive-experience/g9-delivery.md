@@ -20,7 +20,7 @@ Integration target: PR #258. Child implementation: PR #288. This document never 
 
 `tests/g9-resilience-state-runtime.php`: exact current capture, single-reader pinning, CAS reservations, existing authority denial, stale plans, idempotency, foreign site reads, restore drift, real core Execution State View and Execution Receipt builder/verifier against distinct native UUID/request/target identities, rejection of unlinked current claims, a synthetic future journal-link fixture, read drift and registered read-only abilities.
 
-Workflow: `.github/workflows/feature-007-g9-resilience.yml`; matrix PHP 7.4 and PHP 8.3. CI results must be checked on the final exact HEAD; queued tests are not pass evidence.
+Workflow: `.github/workflows/feature-007-spec-ci.yml`, job `g9-resilience`; matrix PHP 7.4 and PHP 8.3. The job checks out `${{ github.event.pull_request.head.sha || github.sha }}` and independently asserts that `git rev-parse HEAD` matches it before lint and fixtures. It retains all G9 source/test lint targets and eight native fixture commands, including the `null` and `pretend` registration cases, with explicit fail-closed shell settings. Both Python contracts verify this job's own structure and commands; unrelated jobs or commented commands cannot satisfy the contract. Migration uses the permitted shared workflow without new grants. CI results must be checked on the final exact HEAD; queued tests are not pass evidence.
 
 ## Boundaries and unfinished operational acceptance
 

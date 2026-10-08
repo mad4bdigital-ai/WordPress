@@ -184,13 +184,13 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.md",
-      "sha256": "9e4e5d433f8ae2e9e8b9c4019af0b976463f73fed7f7e1eb74dad7ffb72c8395",
-      "bytes": 33282
+      "sha256": "1c0769fe1d4ec72c6b6a0bfa7976fc0e2065bb899b58f2ddd9d6599706846e03",
+      "bytes": 33431
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "51afa1df8e54b8144d23c041ee4740fcdd7468c827c6b7b614868ad002df0139",
-      "bytes": 51714
+      "sha256": "876c4b428dfef541794d9ccf3e906612092c74b7e6fd06a953e72abc5fba73d1",
+      "bytes": 51713
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
@@ -204,20 +204,20 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_delivery_progress.py",
-      "sha256": "2b287372840911b1872393370455559e5906a5acf1786a017a404e8cf164e5f3",
-      "bytes": 8958
+      "sha256": "d0c18f48f8850a0f45d4a16ba579910de844fcb2bb59d48854bf29596f23dba6",
+      "bytes": 9932
     }
   ],
   "workflow_paths": [
     {
-      "path": ".github/workflows/feature-007-g8-contract.yml",
-      "sha256": "28e0beb9a036527b9dd115c57475680d58212b5019742ccd75c3d28b886f90d0",
-      "bytes": 3973
+      "path": ".github/workflows/feature-007-spec-ci.yml",
+      "sha256": "badf3365bec3318c0410516b0851f917d6b17b58caf6c1890b87fa5d80030498",
+      "bytes": 32733
     },
     {
-      "path": ".github/workflows/feature-007-g8-database-cas.yml",
-      "sha256": "37ed5d4e674a9da2f0f59cde93e6cd5ea52b1e388be392b148cfa816f71169a8",
-      "bytes": 2486
+      "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+      "sha256": "aaf4b4fa5857d5a15ee2875421289868d5456c7a3edf5f0588cf0d431c9d38de",
+      "bytes": 40666
     }
   ],
   "repository_foundations": [
