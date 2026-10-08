@@ -7,6 +7,60 @@
     "DEFERRED"
   ],
   "overrides": {
+    "T0013": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:b5d697f05a939d87ca0b2ede1a08eb9e15f97312",
+        "git_tree:9e4ee7de1ad86a7adadadbb171b4585f04a08014",
+        "semantic_classification:EQUIVALENT_NO_TREE_DELTA"
+      ],
+      "reason": "EQUIVALENT_NO_TREE_DELTA: This two-parent merge commit's Git tree 9e4ee7de1ad86a7adadadbb171b4585f04a08014 exactly equals its first parent's ced93ea7148f4b8adc74499cd0df42fdf350c4ba tree. It contributes no additional tree change beyond the first-parent lineage; no cherry-pick of the merge wrapper is necessary."
+    },
+    "T0011": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:8775f56cc25cf66e6c22b091a3af2bc00e57ad00",
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "semantic_classification:SUPERSEDED_WITH_SEMANTIC_EQUIVALENCE"
+      ],
+      "reason": "SUPERSEDED_WITH_SEMANTIC_EQUIVALENCE: The historical rc.59 README release literal and detailed wording have been superseded by rc.96, while the reviewed live README still identifies the nine governed MCP servers including chatgpt, enrollment, developer, developer-breakglass and excluded default breakglass. This classifies documentation topology, not real endpoint acceptance."
+    },
+    "T0010": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:173985efded8f53279e864bcc48f4236562c0897",
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+        "semantic_classification:SUPERSEDED"
+      ],
+      "reason": "SUPERSEDED: The commit's only change was release=0.4.0-rc.58 to rc.59. The exact current source file has release=0.4.0-rc.96 and retains runtime-build evidence purpose/contract; rc.59 identity is historical and must not be restored."
+    },
+    "T0007": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:b0f2c8a6a0849303df94f7f4b84c1a42ef3d4d9d",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "semantic_classification:SUPERSEDED_WITH_FUNCTIONAL_EQUIVALENCE"
+      ],
+      "reason": "SUPERSEDED_WITH_FUNCTIONAL_EQUIVALENCE: The historical rc.59 plugin header and MAD4B_SCP_VERSION literal are superseded by rc.96; the commit's functional developer-runtime require_once remains present in the Hub. No rc.59 downgrade, duplicate boot include or new authority is needed."
+    },
+    "T0006": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:5ea91a70cc5750689f29ed4571bdab53149f5cfb",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+        "semantic_classification:EQUIVALENT"
+      ],
+      "reason": "EQUIVALENT: The sole added exact provider mapping mad4b/context-ai-review => core remains present in the current reviewed, explicit grant-allowlist source. Mapping existence alone does not provision a grant or enable review."
+    },
+    "T0005": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:a533de8ae815e78fe43f9a1b74d8db909272dfb9",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php",
+        "semantic_classification:EQUIVALENT"
+      ],
+      "reason": "EQUIVALENT: Both two developer impact-policy additions from the exact PR #45 commit remain present verbatim in current Hub: developer-breakglass is exceptional and non-status developer actions are high impact. This classifies the delta only, not end-to-end grant/runtime certification."
+    },
     "T0003": {
       "status": "DONE",
       "evidence_refs": [

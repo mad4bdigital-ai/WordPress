@@ -7,15 +7,15 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T0002 P0 GATE Snapshot PR #45 head and merge base.
 - [x] T0003 P0 Extract the 10 PR #45-only commits.
 - [ ] T0004 P0 Classify 0313e03 semantics.
-- [ ] T0005 P0 Classify a533de8 semantics.
-- [ ] T0006 P0 Classify 5ea91a7 semantics.
-- [ ] T0007 P0 Classify b0f2c8a semantics.
+- [x] T0005 P0 Classify a533de8 semantics.
+- [x] T0006 P0 Classify 5ea91a7 semantics.
+- [x] T0007 P0 Classify b0f2c8a semantics.
 - [ ] T0008 P0 Classify 93f99fb semantics.
 - [ ] T0009 P0 Classify 218bf66 semantics.
-- [ ] T0010 P0 Classify 173985e semantics.
-- [ ] T0011 P0 Classify 8775f56 semantics.
+- [x] T0010 P0 Classify 173985e semantics.
+- [x] T0011 P0 Classify 8775f56 semantics.
 - [ ] T0012 P0 Classify ced93ea semantics.
-- [ ] T0013 P0 Classify b5d697f semantics.
+- [x] T0013 P0 Classify b5d697f semantics.
 - [ ] T0014 P0 GATE Require evidence-backed SUPERSEDED/EQUIVALENT/REQUIRED for every commit.
 - [ ] T0015 P0 Port any REQUIRED semantics deliberately; no blind cherry-pick.
 - [ ] T0016 P0 Rerun exact-head CI.
