@@ -74,8 +74,37 @@ $GLOBALS['g6_site'] = $original_site;
 putenv( 'MAD4B_G6_VAULT_KEY_BASE64=' . base64_encode( random_bytes( 32 ) ) );
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 2 ), 'mad4b_g6_vault_decrypt_failed' );
 putenv( 'MAD4B_G6_VAULT_KEY_BASE64=' . $key );
-$deleted = MAD4B_SCP_G6_Conversation_Vault::delete( 'private-thread', 2 );
-g6_vault_assert( ! is_wp_error( $deleted ) && $deleted['revision'] === 3 && ! $deleted['backup_erasure_certified'], 'deletion tombstones thread and declares backup caveat' );
+$none = MAD4B_SCP_G6_Conversation_Vault::purge_expired( 2 );
+g6_vault_assert( ! is_wp_error( $none ) && 0 === $none['purged_threads'] && 2 === $none['revision'], 'no-expiry purge is read-only' );
+$expiring = array(
+    'thread_id' => 'expired-thread', 'expected_revision' => 2,
+    'classification' => 'internal', 'role' => 'user',
+    'text' => 'PRIVATE-EXPIRED-CIPHERTEXT-DO-NOT-LEAK',
+    'retention_days' => 1,
+);
+$created_expiring = MAD4B_SCP_G6_Conversation_Vault::append( $expiring );
+g6_vault_assert( ! is_wp_error( $created_expiring ) && 3 === $created_expiring['revision'], 'expiry fixture stored encrypted' );
+// Simulate the passage of time in the in-memory fixture without a public clock override.
+foreach ( $GLOBALS['g6_store'][17] as &$stored_record ) {
+    if ( isset( $stored_record['items']['expired-thread'] ) )
+        $stored_record['items']['expired-thread']['expires_at'] = time() - 1;
+}
+unset( $stored_record );
+putenv( 'MAD4B_G6_VAULT_KEY_BASE64' );
+$purged = MAD4B_SCP_G6_Conversation_Vault::purge_expired( 3 );
+g6_vault_assert( ! is_wp_error( $purged ) && 1 === $purged['purged_threads'] && 4 === $purged['revision'], 'expiry purge erases ciphertext even when encryption key is unavailable' );
+g6_vault_assert( false === strpos( json_encode( $GLOBALS['g6_store'] ), 'PRIVATE-EXPIRED-CIPHERTEXT-DO-NOT-LEAK' ), 'expired plaintext never entered storage' );
+g6_vault_assert( 0 === count( array_filter( $GLOBALS['g6_store'][17], function ( $record ) {
+    return isset( $record['items']['expired-thread'] ) &&
+        ! empty( $record['items']['expired-thread']['messages'] );
+} ) ), 'expired ciphertext erased from current live registry' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::purge_expired( 3 ), 'mad4b_g6_vault_revision_conflict' );
+putenv( 'MAD4B_G6_VAULT_KEY_BASE64=' . $key );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'expired-thread', 4 ), 'mad4b_g6_vault_unavailable' );
+$expired_retry = $expiring; $expired_retry['expected_revision'] = 4;
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( $expired_retry ), 'mad4b_g6_vault_thread_ineligible' );
+$deleted = MAD4B_SCP_G6_Conversation_Vault::delete( 'private-thread', 4 );
+g6_vault_assert( ! is_wp_error( $deleted ) && $deleted['revision'] === 5 && ! $deleted['backup_erasure_certified'], 'deletion tombstones thread and declares backup caveat' );
 g6_vault_assert( false === strpos( json_encode( $GLOBALS['g6_store'] ), '"ciphertext"' ), 'live ciphertext erased' );
-g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 3 ), 'mad4b_g6_vault_unavailable' );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::export( 'private-thread', 5 ), 'mad4b_g6_vault_unavailable' );
 echo "mad4b.g6-conversation-vault-runtime.v1: PASS\n";

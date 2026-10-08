@@ -164,6 +164,62 @@ final class MAD4B_SCP_G6_Conversation_Vault {
             'messages' => $messages, 'owner_only_internal_export' => true, 'authorizing' => false );
     }
 
+    /**
+     * Explicit owner-only expiry purge. This is intentionally not a public Ability,
+     * scheduled worker or read-side effect: the caller must supply a fresh CAS
+     * revision. Ciphertexts are erased from live user meta while stable tombstones
+     * prevent silent resurrection. Backup/replica erasure is a separate gate.
+     */
+    public static function purge_expired( $expected_revision ) {
+        $scope = self::owner_scope();
+        if ( is_wp_error( $scope ) ) return $scope;
+        if ( ! is_int( $expected_revision ) || $expected_revision < 0 )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_purge_schema', 'Exact registry revision is required for retention purge.' );
+        $before = MAD4B_SCP_G6_Contracts::load( self::KIND, $scope['owner'] );
+        if ( is_wp_error( $before ) ) return $before;
+        if ( (int) $before['revision'] !== $expected_revision )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_revision_conflict', 'Private registry changed before purge.' );
+        if ( count( $before['items'] ) > self::MAX_THREADS )
+            return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Thread count exceeds governed retention limits.' );
+
+        $items = $before['items'];
+        $now = time();
+        $purged = 0;
+        foreach ( $items as $thread_id => $thread ) {
+            if ( ! MAD4B_SCP_G6_Contracts::id( $thread_id ) || ! is_array( $thread )
+                || ! isset( $thread['thread_id'], $thread['classification'], $thread['expires_at'], $thread['messages'] )
+                || $thread['thread_id'] !== $thread_id || ! is_int( $thread['expires_at'] )
+                || ! is_array( $thread['messages'] ) )
+                return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Retention record is malformed; no partial purge allowed.' );
+            if ( $thread['expires_at'] > $now && empty( $thread['deleted'] ) ) continue;
+            if ( empty( $thread['messages'] ) && ! empty( $thread['deleted'] ) ) continue;
+            $items[ $thread_id ] = array(
+                'thread_id' => $thread_id,
+                'classification' => $thread['classification'],
+                'expires_at' => min( $thread['expires_at'], $now ),
+                'deleted' => true,
+                'messages' => array(),
+            );
+            ++$purged;
+        }
+        if ( 0 === $purged ) return array(
+            'contract' => self::CONTRACT, 'revision' => (int) $before['revision'],
+            'purged_threads' => 0, 'registry_changed' => false,
+            'backup_erasure_certified' => false, 'authorizing' => false,
+        );
+        $after = MAD4B_SCP_G6_Contracts::save(
+            self::KIND, $scope['owner'], $before,
+            array( 'revision' => $before['revision'], 'items' => $items )
+        );
+        if ( is_wp_error( $after ) ) return $after;
+        return array(
+            'contract' => self::CONTRACT, 'revision' => (int) $after['revision'],
+            'purged_threads' => $purged, 'registry_changed' => true,
+            'live_ciphertext_erased' => true, 'backup_erasure_certified' => false,
+            'scheduled_retention_certified' => false, 'authorizing' => false,
+        );
+    }
+
     /** Exact tombstone with ciphertext erasure from live registry; backups need independent policy. */
     public static function delete( $thread_id, $expected_revision ) {
         $scope = self::owner_scope(); if ( is_wp_error( $scope ) ) return $scope;
