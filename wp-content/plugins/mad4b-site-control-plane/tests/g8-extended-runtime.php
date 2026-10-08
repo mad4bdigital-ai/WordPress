@@ -268,4 +268,25 @@ g8_check( is_array( $recovered ), 'expired supplier windows reclaimed before sit
 g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $recovered, new WP_Error( 'simulated_error' ) ),
 	'after reclamation automatic outcome remains durable' );
 
+// A worker's self-reported 'completed' payload cannot fake an independently
+// observed repair. A switch revision race also revokes its repair classification.
+MAD4B_SCP_Runtime_Convergence::$ready = false;
+$claimed = MAD4B_SCP_Automation_SLO::reserve( 'runtime-convergence', 'safe-phases', str_repeat( 'e', 64 ) );
+g8_check( is_array( $claimed ) && false === $claimed['pre_ready'], 'capture unready runtime before forged result' );
+$claimed_success = array( 'state' => 'completed', 'readback' => array( 'required_blockers' => array() ) );
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $claimed, $claimed_success ),
+	'unverified completion remains a handoff' );
+$metrics = MAD4B_SCP_Automation_SLO::status();
+g8_check( 1 === $metrics['outcomes']['verified_repair'], 'unobserved repair never increments verified numerator' );
+$revoked_ticket = MAD4B_SCP_Automation_SLO::reserve( 'runtime-convergence', 'safe-phases', str_repeat( 'e', 64 ) );
+g8_check( is_array( $revoked_ticket ) && false === $revoked_ticket['pre_ready'], 'second repair starts unready' );
+MAD4B_SCP_Runtime_Convergence::$ready = true;
+$rev = MAD4B_SCP_Automation_SLO::switch_status()['revision'];
+g8_check( true === MAD4B_SCP_Automation_SLO::change_switch( '*', false, $rev ),
+	'a resume revision invalidates active ticket even when scope remains enabled' );
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $revoked_ticket, $claimed_success ),
+	'switch-raced completion recorded only as unverified handoff' );
+g8_check( 1 === MAD4B_SCP_Automation_SLO::status()['outcomes']['verified_repair'],
+	'raced ticket never adds a verified repair' );
+
 echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
