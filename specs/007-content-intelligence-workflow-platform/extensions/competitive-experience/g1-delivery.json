@@ -101,7 +101,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/native-relation-evidence.py",
-      "sha256": "d2d15e311100e53e4daa920f8435715c597d55938f2d6f83ba88543f8e594430"
+      "sha256": "603de1bbd923d59b13507cd6742110b6424de4d462b40847594ee7a8340d52ea"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
@@ -117,7 +117,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_native_relation_evidence.py",
-      "sha256": "798b88f6a8dc8c995e1bcabec44aa2521cc3490481e88aa6123de5f1bb51c572"
+      "sha256": "f3e113cc66f84fcc9c90c386ef591600972962d2e4ce8ce83dc56bfb1c369262"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
