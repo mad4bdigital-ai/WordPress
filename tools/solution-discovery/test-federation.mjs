@@ -103,6 +103,25 @@ const prodRegistry=await discoverFederated({target:prodTarget,query:"file",
 const prod=planRemediation({target:prodTarget,discovery:prodRegistry,
  operation_id:"configuration_update",requested_effect:"write",
  desired_state:"production environment explicit"});
+
+const now=2000000000;
+const stale=await discoverFederated({target:site,query:"files",
+ nowEpochSeconds:now,enumerate:async()=>({...envelope,sources:[item("stale-source")]}),
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,
+ read_only:true,authorizing:false,observation_sha256:H("c"),
+ observed_at:now-1000,valid_until:now-1,capabilities:[{id:"files",label:"File Workspace"}]})});
+yes(stale.candidate_total===0&&!stale.coverage_complete,
+ "expired provider inventory cannot be surfaced as current");
+yes(stale.sources.some(x=>x.status==="STALE_OR_INVALID_OBSERVATION"),
+ "stale source reason explicit");
+const fresh=await discoverFederated({target:site,query:"files",
+ nowEpochSeconds:now,enumerate:async()=>({...envelope,sources:[item("fresh-source")]}),
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,
+ read_only:true,authorizing:false,observation_sha256:H("c"),
+ observed_at:now-10,valid_until:now+300,capabilities:[{id:"files",label:"File Workspace"}]})});
+yes(fresh.freshness_complete&&fresh.candidate_total===1,
+ "fresh bounded observations remain possible read-only candidates");
+
 yes(prod.requirements.includes("separate_production_promotion_authority"),
  "production cannot inherit staging approval");
 assert.throws(()=>planRemediation({target:prodTarget,discovery:risky,

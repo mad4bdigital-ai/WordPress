@@ -74,10 +74,12 @@ const continuity = input => {
  * connected apps are visible until the host enumerates and attests them.
  */
 export async function discoverFederated({target,query,enumerate,inspect,
-  limit=24,offset=0,expectedSnapshot=null,maxSources=MAX_SOURCES} = {}) {
+  limit=24,offset=0,expectedSnapshot=null,maxSources=MAX_SOURCES,
+  nowEpochSeconds=Math.floor(Date.now()/1000)} = {}) {
   const site = checkTarget(target);
   if (!plainText(query,180) || !Number.isInteger(limit) || limit<1 || limit>MAX_HINTS ||
       !Number.isInteger(offset) || offset<0 || offset>1024 ||
+      !Number.isSafeInteger(nowEpochSeconds) || nowEpochSeconds<0 ||
       (offset>0 && !/^[a-f0-9]{16}$/.test(expectedSnapshot??"")) ||
       (offset===0 && expectedSnapshot!==null && !/^[a-f0-9]{16}$/.test(expectedSnapshot)) ||
       !Number.isInteger(maxSources) || maxSources<1 || maxSources>MAX_SOURCES ||
@@ -108,6 +110,7 @@ export async function discoverFederated({target,query,enumerate,inspect,
   };
   const seenSources = new Set(), seenCandidates = new Set(), records=[], candidates=[];
   let complete=registryComplete;
+  let freshnessComplete=true;
   // Registry sorting is stable, independent of connector discovery ordering.
   const ordered = [...registered].sort((a,b)=>String(a?.id??"").localeCompare(String(b?.id??"")));
   for(const source of ordered) {
@@ -138,6 +141,16 @@ export async function discoverFederated({target,query,enumerate,inspect,
       complete=false; records.push(summary(source,"INSPECTION_INVALID_OR_STALE"));continue;
     }
     let accepted=0, invalid=false;
+    const clocked=Number.isSafeInteger(observed.observed_at) &&
+      Number.isSafeInteger(observed.valid_until);
+    if (clocked && (observed.observed_at>nowEpochSeconds+60 ||
+        observed.valid_until<nowEpochSeconds ||
+        observed.valid_until<observed.observed_at ||
+        observed.valid_until-observed.observed_at>86400)) {
+      complete=false;freshnessComplete=false;
+      records.push(summary(source,"STALE_OR_INVALID_OBSERVATION"));continue;
+    }
+    if(!clocked) freshnessComplete=false;
     for(const item of observed.capabilities) {
       const title=isObject(item)?safeLabel(item.label,120):null;
       const detail=isObject(item) && item.description!==undefined ?
@@ -172,7 +185,8 @@ export async function discoverFederated({target,query,enumerate,inspect,
       accepted++;
     }
     if(invalid) complete=false;
-    records.push(summary(source,invalid?"PARTIAL_INVALID_ROWS":"INSPECTED") );
+    records.push(summary(source,invalid?"PARTIAL_INVALID_ROWS":
+      clocked?"INSPECTED_FRESH":"INSPECTED_UNDATED") );
   }
   // Lexical score only ranks candidates, it cannot verify their behavior.
   candidates.sort((a,b)=>(b.lexical_score-a.lexical_score)||a.id.localeCompare(b.id));
@@ -191,7 +205,8 @@ export async function discoverFederated({target,query,enumerate,inspect,
   return {
     contract:FEDERATION_CONTRACT, binding:site, decision:
       !complete?"DISCOVERY_PARTIAL":candidates.length?"VERIFY_BEHAVIOR":"EXPAND_DISCOVERY",
-    coverage_complete:complete, registry_scope_verified:Boolean(scoped),
+    coverage_complete:complete, freshness_complete:freshnessComplete,
+    registry_scope_verified:Boolean(scoped),
     candidate_total:candidates.length, snapshot_continuity_id:snapshot, offset, limit,
     source_count:records.length, sources:records, candidates:selected,
     external_hints:hints,
