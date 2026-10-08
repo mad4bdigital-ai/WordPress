@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "da679f1b60e29849e952635189884e9620e4d36b",
-  "override_git_blob_sha": "46b8df967f41d0ac64f595b4f2103d631f0eb218",
+  "source_tasks_git_blob_sha": "5d5f55be7d4400719f42dc194277ab2d6d3e1936",
+  "override_git_blob_sha": "755b77196ec9a16de48ee35090be5119b4e9530c",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,15 +10,15 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 214,
-    "OPEN": 553,
+    "DONE": 216,
+    "OPEN": 551,
     "PARTIAL": 68
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 164,
-      "OPEN": 447,
+      "DONE": 166,
+      "OPEN": 445,
       "PARTIAL": 43
     },
     "P1": {
@@ -41,20 +41,31 @@
       "phase": 0,
       "priority": "P0",
       "summary": "GATE Snapshot PR #47 exact head and CI.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "PR:#47",
+        "pr_head:4b6e72efe9eb74ca31259eb571745198dd9fdea4",
+        "workflow_run:36003069773",
+        "workflow_run:36003069722",
+        "ci:58_completed_success_at_exact_head"
+      ],
+      "reason": "GitHub PR #47 exact HEAD was read back as 4b6e72efe9eb74ca31259eb571745198dd9fdea4; all 58 observed PR-head workflow runs are completed with success. This closes only the historical exact-head CI snapshot, not current PR #258 release acceptance."
     },
     {
       "task_id": "T0002",
       "phase": 0,
       "priority": "P0",
       "summary": "GATE Snapshot PR #45 head and merge base.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "PR:#45",
+        "pr_head:b5d697f05a939d87ca0b2ede1a08eb9e15f97312",
+        "merge_base:f43ec3bead478749ead2c3939c8d362922f4b80a",
+        "compare:pr45_head...pr47_head"
+      ],
+      "reason": "GitHub PR #45 exact HEAD was read back as b5d697f05a939d87ca0b2ede1a08eb9e15f97312 and the comparative merge-base with PR #47 as f43ec3bead478749ead2c3939c8d362922f4b80a. This closes the historical snapshot only; PR #45 itself is closed unmerged and 10 of its workflow checks failed."
     },
     {
       "task_id": "T0003",

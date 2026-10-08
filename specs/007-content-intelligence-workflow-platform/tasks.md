@@ -3,8 +3,8 @@
 Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ## Phase 0 — rc.59 canonicalization
-- [ ] T0001 P0 GATE Snapshot PR #47 exact head and CI.
-- [ ] T0002 P0 GATE Snapshot PR #45 head and merge base.
+- [x] T0001 P0 GATE Snapshot PR #47 exact head and CI.
+- [x] T0002 P0 GATE Snapshot PR #45 head and merge base.
 - [ ] T0003 P0 Extract the 10 PR #45-only commits.
 - [ ] T0004 P0 Classify 0313e03 semantics.
 - [ ] T0005 P0 Classify a533de8 semantics.

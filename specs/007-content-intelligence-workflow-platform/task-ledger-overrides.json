@@ -7,6 +7,27 @@
     "DEFERRED"
   ],
   "overrides": {
+    "T0001": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#47",
+        "pr_head:4b6e72efe9eb74ca31259eb571745198dd9fdea4",
+        "workflow_run:36003069773",
+        "workflow_run:36003069722",
+        "ci:58_completed_success_at_exact_head"
+      ],
+      "reason": "GitHub PR #47 exact HEAD was read back as 4b6e72efe9eb74ca31259eb571745198dd9fdea4; all 58 observed PR-head workflow runs are completed with success. This closes only the historical exact-head CI snapshot, not current PR #258 release acceptance."
+    },
+    "T0002": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#45",
+        "pr_head:b5d697f05a939d87ca0b2ede1a08eb9e15f97312",
+        "merge_base:f43ec3bead478749ead2c3939c8d362922f4b80a",
+        "compare:pr45_head...pr47_head"
+      ],
+      "reason": "GitHub PR #45 exact HEAD was read back as b5d697f05a939d87ca0b2ede1a08eb9e15f97312 and the comparative merge-base with PR #47 as f43ec3bead478749ead2c3939c8d362922f4b80a. This closes the historical snapshot only; PR #45 itself is closed unmerged and 10 of its workflow checks failed."
+    },
     "T3601": {
       "status": "DONE",
       "evidence_refs": [
