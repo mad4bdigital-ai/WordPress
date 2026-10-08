@@ -36,9 +36,32 @@ final class MAD4B_SCP_G8_Record {
 		return hash_hmac( 'sha256', serialize( $record ), wp_salt( 'auth' ) );
 	}
 
+	/** Only passive, bounded scalars may be interpreted as a stored record. */
+	private static function plain_data( $value, $depth, &$nodes ) {
+		if ( ++$nodes > 8192 || $depth > 16 || is_object( $value ) || is_resource( $value ) ) return false;
+		if ( is_array( $value ) ) {
+			if ( count( $value ) > 512 ) return false;
+			foreach ( $value as $key => $item ) {
+				if ( is_string( $key ) && strlen( $key ) > 255 ) return false;
+				if ( ! self::plain_data( $item, $depth + 1, $nodes ) ) return false;
+			}
+			return true;
+		}
+		return null === $value || is_bool( $value ) || is_int( $value )
+			|| ( is_float( $value ) && is_finite( $value ) )
+			|| ( is_string( $value ) && strlen( $value ) <= 65536 );
+	}
+
 	public static function valid( $record, $contract ) {
-		return is_array( $record ) && $contract === ( $record['contract'] ?? '' ) && false === ( $record['authorizing'] ?? null )
-			&& is_string( $record['seal'] ?? null ) && hash_equals( self::seal( $record ), $record['seal'] );
+		if ( ! is_array( $record ) || $contract !== ( $record['contract'] ?? '' )
+			|| false !== ( $record['authorizing'] ?? null )
+			|| ! is_string( $record['seal'] ?? null )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $record['seal'] ) ) return false;
+		// Before HMAC verification, reject PHP objects and over-sized trees:
+		// serialize() could otherwise invoke a provider-controlled __serialize.
+		$nodes = 0;
+		if ( ! self::plain_data( $record, 0, $nodes ) || strlen( serialize( $record ) ) > 262144 ) return false;
+		return hash_equals( self::seal( $record ), $record['seal'] );
 	}
 
 	public static function profile() {
