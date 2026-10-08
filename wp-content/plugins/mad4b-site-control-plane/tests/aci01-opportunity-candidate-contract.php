@@ -9,7 +9,7 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
     public static $denied=false;
     public static function preview($input) {
         if(self::$denied)return array('status'=>'DENIED');
-        return array('status'=>'NEEDS_EVIDENCE','scope'=>array(
+        return array('contract'=>'mad4b.aci01.evidence-preview.v1','authorizing'=>false,'mutation_performed'=>false,'status'=>'NEEDS_EVIDENCE','scope'=>array(
             'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
             'origin'=>'https://example.org','environment'=>'staging',
             'brand_id'=>'b1','locale'=>'ar','market'=>'EG'),
@@ -20,7 +20,7 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
 final class MAD4B_SCP_ACI01_Intake_Preview {
     public static $relation=false;
     public static function preview($input) {
-        return array('status'=>'NEEDS_EVIDENCE','scope'=>array(
+        return array('contract'=>'mad4b.aci01.intake-preview.v1','authorizing'=>false,'mutation_performed'=>false,'status'=>'NEEDS_EVIDENCE','scope'=>array(
             'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
             'origin'=>'https://example.org','environment'=>'staging',
             'brand_id'=>$input['brand_id'],'locale'=>$input['locale'],'market'=>$input['market']),
@@ -39,7 +39,7 @@ check($def['meta']['annotations']['readonly']===true&&$def['meta']['mcp']['surfa
 check($def['input_schema']['additionalProperties']===false,'schema bounded');
 $input=array('job_id'=>'11111111-1111-4111-8111-111111111111','post_type'=>'post','goal'=>'Useful market guide');
 $out=$cls::preview($input);
-check($out['status']==='NEEDS_REVIEW','no auto approval');
+check($out['status']==='NEEDS_EVIDENCE'&&$out['review_status']==='NEEDS_REVIEW','no auto approval');
 check($out['candidate_kind']==='OpportunityHypothesis_BlueprintCandidate','candidate type');
 check($out['target_post_type']==='post','exact target');
 check($out['synthetic_candidate_only']===true&&$out['authorizing']===false,'non-authorizing');
