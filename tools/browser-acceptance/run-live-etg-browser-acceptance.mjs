@@ -12,6 +12,7 @@ import {
 } from "./mcp-bridge.mjs";
 import { buildBrowserExecutionReceipt, canonicalSha256 } from "./receipt.mjs";
 import { loadProviderContracts } from "./providers.mjs";
+import { resolveEtgBrowserOperatorConfiguration } from "./site-provider-configuration.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -50,7 +51,9 @@ if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(profileId)) {
 }
 
 const session = await createMad4bMcpSession({ resource, accessToken });
-const plan = await requestBrowserPlan(session, { providerId: "etg-dfsb", profileId });
+const capabilities = await session.callAbility("mad4b/browser-acceptance-capabilities", {});
+const configured = resolveEtgBrowserOperatorConfiguration(capabilities, { profileId, requestedExecutor: browserProvider });
+const plan = await requestBrowserPlan(session, { providerId: configured.siteProviderId, profileId: configured.profileId });
 
 const contracts = loadProviderContracts();
 const now = Math.floor(Date.now() / 1000);
@@ -78,7 +81,7 @@ try {
   const child = spawnSync(process.execPath, [
     runnerPath,
     "--plan", planPath,
-    "--provider", browserProvider,
+    "--provider", configured.executor,
     "--out", evidencePath,
     "--attempts-out", attemptsPath
   ], {
