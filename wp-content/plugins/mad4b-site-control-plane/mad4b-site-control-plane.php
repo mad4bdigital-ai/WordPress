@@ -158,8 +158,11 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
 // native WordPress Abilities/Adapter lifecycle and never grants execution.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-planning.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-convergence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-task-contract.php';
 MAD4B_SCP_Assistant_Planning::boot();
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
+MAD4B_SCP_Assistant_Convergence::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-runtime-gates.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php';
