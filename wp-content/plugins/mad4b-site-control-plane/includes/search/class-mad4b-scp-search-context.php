@@ -133,32 +133,35 @@ final class MAD4B_SCP_Search_Context {
 		return true;
 	}
 
-	/** Check only newly introduced market IDs against committed peer profiles. */
+	/**
+	 * All market IDs carry historical target identity. Existing unclaimed
+	 * legacy IDs must be checked against committed peers before safely
+	 * adopting an immutable claim. This is deliberately bounded by the
+	 * registry's max_profiles constraint.
+	 */
 	private static function market_id_unique( array $candidate, array $previous ) {
-		$old_ids = array();
-		foreach ( isset( $previous['markets'] ) && is_array( $previous['markets'] ) ? $previous['markets'] : array() as $market ) if ( is_array( $market ) && isset( $market['id'] ) ) $old_ids[ $market['id'] ] = true;
-		$new_ids = array();
-		foreach ( $candidate['markets'] as $market ) if ( ! isset( $old_ids[ $market['id'] ] ) ) $new_ids[ $market['id'] ] = $market['country'];
-		if ( ! $new_ids ) return true;
-		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
-		if ( is_wp_error( $registry ) ) return $registry;
-		if ( null !== $registry && ( ! is_array( $registry ) || ! isset( $registry['ids'] ) || ! is_array( $registry['ids'] ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
-		foreach ( $new_ids as $market_id => $country ) {
-			// An interrupted previous admission can own a durable claim even
-			// when the registry has no complete profile to compare against.
-			$claim = MAD4B_SCP_Search_Store::read( 'market-identity', $market_id );
+		$check_ids = array(); $unclaimed = array();
+		foreach ( $candidate['markets'] as $market ) {
+			$id = $market['id']; $country = $market['country'];
+			$claim = MAD4B_SCP_Search_Store::read( 'market-identity', $id );
 			if ( is_wp_error( $claim ) ) return $claim;
-			if ( null === $claim ) continue;
+			if ( null === $claim ) { $unclaimed[ $id ] = $country; $check_ids[ $id ] = true; continue; }
 			$expected = array( 'profile_id' => $candidate['profile_id'], 'country' => $country );
 			if ( ! is_array( $claim ) || ! isset( $claim['digest'], $claim['payload'] ) || ! is_string( $claim['digest'] ) || ! is_array( $claim['payload'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $expected ), $claim['digest'] ) || ! hash_equals( MAD4B_SCP_Search_Contracts::digest( $claim['payload'] ), $claim['digest'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'This market ID has a different or invalid durable owner claim.' );
 		}
+		if ( ! $unclaimed ) return true;
+		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
+		if ( is_wp_error( $registry ) ) return $registry;
+		if ( null !== $registry && ( ! is_array( $registry ) || ! isset( $registry['ids'] ) || ! is_array( $registry['ids'] ) || count( $registry['ids'] ) > self::policy()['max_profiles'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
 		foreach ( is_array( $registry ) ? $registry['ids'] : array() as $other_id ) {
+			if ( ! MAD4B_SCP_Search_Contracts::id( $other_id ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
 			if ( $other_id === $candidate['profile_id'] ) continue;
 			$other = MAD4B_SCP_Search_Store::read( 'profile', $other_id );
 			if ( is_wp_error( $other ) ) return $other;
-			if ( ! is_array( $other ) ) continue; // A pending reservation is fenced by immutable market claim at apply.
-			if ( ! isset( $other['profile']['markets'] ) || ! is_array( $other['profile']['markets'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
-			foreach ( $other['profile']['markets'] as $market ) if ( isset( $market['id'] ) && isset( $new_ids[ $market['id'] ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'Market IDs must be unique between Search Profiles because target identities use them.' );
+			if ( null === $other ) continue; // Pending reservations are covered by claims at apply.
+			if ( ! is_array( $other ) || ! isset( $other['profile']['markets'] ) || ! is_array( $other['profile']['markets'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+			foreach ( $other['profile']['markets'] as $market ) if ( ! is_array( $market ) || ! isset( $market['id'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+			else if ( isset( $check_ids[ $market['id'] ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'The market ID appears in another historical Search Profile and cannot be silently adopted.' );
 		}
 		return true;
 	}
@@ -208,10 +211,9 @@ final class MAD4B_SCP_Search_Context {
 		// Atomic immutable claims close the simultaneous-create race across profiles.
 		// A failed profile CAS leaves an intentionally reserved identity: fail-closed,
 		// never silently reuse it or claim an unsafe rollback.
-		$old_ids = array();
-		if ( is_array( $current ) && isset( $current['profile']['markets'] ) ) foreach ( $current['profile']['markets'] as $market ) $old_ids[ $market['id'] ] = true;
+		// Adopt every legacy market into the same immutable, site-scoped claim
+		// protocol. Same-owner claims are idempotent; peers are checked by plan.
 		foreach ( $plan['profile']['markets'] as $market ) {
-			if ( isset( $old_ids[ $market['id'] ] ) ) continue;
 			$claim = MAD4B_SCP_Search_Store::immutable( 'market-identity', $market['id'], array( 'profile_id' => $id, 'country' => $market['country'] ) );
 			if ( is_wp_error( $claim ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'The market identifier is reserved by another owner or could not be verified.' );
 		}
