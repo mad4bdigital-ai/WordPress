@@ -80,6 +80,14 @@ final class MAD4B_SCP_Solution_Discovery {
             && preg_match_all( '/./us', $value ) <= $max;
     }
 
+    /** Sanitize ecosystem labels without allowing an unusual label to block inventory. */
+    private static function safe_label( $label, $fallback ) {
+        $candidate = is_string( $label ) ? preg_replace( '/[^\\p{L}\\p{N} ._-]+/u', ' ', $label ) : '';
+        if ( self::safe_text( trim( (string) $candidate ), 120 ) ) return trim( $candidate );
+        $candidate = preg_replace( '/[^A-Za-z0-9._-]+/', ' ', (string) $fallback );
+        return self::safe_text( trim( (string) $candidate ), 120 ) ? trim( $candidate ) : 'Unverified metadata';
+    }
+
     private static function tokens( $value ) {
         $result = array();
         $matches = array();
@@ -146,7 +154,7 @@ final class MAD4B_SCP_Solution_Discovery {
             $slug = dirname( $file );
             if ( '.' === $slug ) $slug = pathinfo( $file, PATHINFO_FILENAME );
             $label = isset( $data['Name'] ) && is_string( $data['Name'] ) ? trim( strip_tags( $data['Name'] ) ) : $slug;
-            if ( ! self::safe_text( $label, 120 ) ) $label = $slug;
+            if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $slug );
             $rows[] = array( 'id' => 'plugin:' . $slug, 'label' => $label,
                 'source' => 'installed_plugin', 'observed_state' => in_array( $file, $active, true ) ? 'active' : 'inactive',
                 'match_text' => $label . ' ' . str_replace( array( '/', '-', '_' ), ' ', $slug ) );
@@ -162,7 +170,7 @@ final class MAD4B_SCP_Solution_Discovery {
                         || ! is_object( $ability ) || ! method_exists( $ability, 'get_label' )
                         || ! method_exists( $ability, 'get_description' ) ) continue;
                     $label = $ability->get_label(); $description = $ability->get_description();
-                    if ( ! self::safe_text( $label, 120 ) ) $label = $name;
+                    if ( ! self::safe_text( $label, 120 ) ) $label = self::safe_label( $label, $name );
                     $description = self::safe_text( $description, 180 ) ? $description : '';
                     $rows[] = array( 'id' => 'ability:' . $name, 'label' => $label,
                         'source' => 'registered_ability', 'observed_state' => 'registered',
