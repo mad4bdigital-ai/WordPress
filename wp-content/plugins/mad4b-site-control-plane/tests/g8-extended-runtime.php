@@ -128,4 +128,40 @@ g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $paid, $certif
 $GLOBALS['g8_environment'] = 'production';
 g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $certified, $valid_fixture, 42 ),
 	'mad4b_g8_fuzz_isolation_required' ), 'Production fuzz forbidden' );
+// Capability-local artifact drift preserves compatible read visibility.
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-capability-convergence.php';
+class MAD4B_SCP_Provider_Compatibility_Certification {
+	public static function assess_provider( $provider ) {
+		if ( 'analytics' !== $provider ) return new WP_Error( 'unknown_provider' );
+		return array( 'artifact' => array( 'runtime_artifact_fingerprint' => str_repeat( '1', 64 ) ),
+			'capabilities' => array(
+				'read' => array( 'capability_contract_digest' => str_repeat( '2', 64 ),
+					'structural_compatible' => true, 'behavioral_evidence' => array( 'behavioral_verified' => true, 'rollback_verified' => false ),
+					'write_eligible' => false, 'certification_level' => 'READ_COMPATIBLE' ),
+				'write' => array( 'capability_contract_digest' => str_repeat( '3', 64 ),
+					'structural_compatible' => true, 'behavioral_evidence' => array( 'behavioral_verified' => true, 'rollback_verified' => true ),
+					'write_eligible' => true, 'certification_level' => 'REVERSIBLE_WRITE_CERTIFIED' ),
+			) );
+	}
+}
+$prior = MAD4B_SCP_G8_Capability_Convergence::observe( 'analytics' );
+g8_check( is_array( $prior ) && 2 === count( $prior['capabilities'] ), 'current provider observation normalized' );
+$after = $prior; $after['artifact_sha256'] = str_repeat( '4', 64 );
+$diff = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $after );
+g8_check( in_array( 'read', $diff['unrelated_compatible_capabilities'], true )
+	&& 'IDENTITY_CHANGED_RECHECK_REQUIRED' === $diff['changed_capabilities']['write']['state']
+	&& false === $diff['whole_provider_deactivation']
+	&& false === $diff['candidate_promotion_allowed'], 'artifact drift fences only affected write capability' );
+$after['capabilities']['read']['contract_sha256'] = str_repeat( '5', 64 );
+$diff = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $after );
+g8_check( 'STRUCTURE_CHANGED' === $diff['changed_capabilities']['read']['state']
+	&& 'analytics:read' === $diff['changed_capabilities']['read']['quarantine_scope'], 'structural change quarantines exact read capability' );
+$external = MAD4B_SCP_G8_Capability_Convergence::live_acceptance();
+g8_check( 'EXTERNAL_ACCEPTANCE_PENDING' === $external['state']
+	&& false === $external['release_acceptance']
+	&& false === $external['candidate_promotion_allowed'], 'repository test cannot invent live/browser acceptance' );
+$GLOBALS['g8_environment'] = 'production';
+$live = MAD4B_SCP_G8_Capability_Convergence::live_acceptance();
+g8_check( false === $live['release_acceptance'], 'Production cannot gain auto acceptance' );
+
 echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
