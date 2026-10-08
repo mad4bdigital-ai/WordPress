@@ -114,7 +114,8 @@ profile_case( 'guided_existing_profile_edit_preserves_advanced_state_and_locatio
 	$bad = $form; $bad['audience_country'] = ''; profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'missing country denied' );
 	$bad = $form; $bad['objective'] = ''; profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'empty objective denied' );
 	$bad = $form; $bad['audience_country'] = 'US';
-	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $bad ) ), 'existing market country immutable even when no provider locations are configured' );
+	$market_denied = MAD4B_SCP_Search_Profile_Admin::save( $bad );
+	profile_check( is_wp_error( $market_denied ) && 'mad4b_search_profile_market_identity_locked' === $market_denied->get_error_code(), 'existing market country immutable even when no provider locations are configured' );
 	$bad_json = array_intersect_key( $q, array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) );
 	$bad_json['markets'][0]['country'] = 'US';
 	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( array( 'operation' => 'edit', 'profile_id' => $p['profile_id'], 'expected_revision' => '3', 'profile_json' => json_encode( $bad_json ) ) ) ), 'advanced JSON editor cannot change country while retaining market ID' );
@@ -128,7 +129,8 @@ profile_case( 'guided_existing_profile_edit_preserves_advanced_state_and_locatio
 	$resume = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $p['profile_id'], 'control' => 'resume', 'expected_revision' => 4 ) );
 	profile_check( ! is_wp_error( $resume ) && 5 === $resume['profile']['revision'], 'fixture resumes through explicit control' );
 	$form['expected_revision'] = '5'; $form['audience_languages'] = 'fr';
-	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $form ) ), 'guided target mutation denied while observations run' );
+	$blocked_active = MAD4B_SCP_Search_Profile_Admin::save( $form );
+	profile_check( is_wp_error( $blocked_active ) && 'mad4b_search_profile_targeting_requires_pause_and_spend_freeze' === $blocked_active->get_error_code(), 'guided target mutation denied while observations run' );
 	$active_raw = array_intersect_key( $resume['profile'], array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) );
 	$active_raw['language_policy']['desired'] = array( 'fr' );
 	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( array( 'operation' => 'edit', 'profile_id' => $p['profile_id'], 'expected_revision' => '5', 'profile_json' => json_encode( $active_raw ) ) ) ), 'advanced JSON cannot bypass the active profile retarget fence' );
@@ -137,7 +139,8 @@ profile_case( 'guided_existing_profile_edit_preserves_advanced_state_and_locatio
 	$unfreeze = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $p['profile_id'], 'control' => 'unfreeze_spend', 'expected_revision' => 6 ) );
 	profile_check( ! is_wp_error( $unfreeze ) && 7 === $unfreeze['profile']['revision'], 'fixture unfreezes through explicit control' );
 	$form['expected_revision'] = '7';
-	profile_check( is_wp_error( MAD4B_SCP_Search_Profile_Admin::save( $form ) ), 'guided target mutation denied while provider spend is unfrozen' );
+	$blocked_spend = MAD4B_SCP_Search_Profile_Admin::save( $form );
+	profile_check( is_wp_error( $blocked_spend ) && 'mad4b_search_profile_targeting_requires_pause_and_spend_freeze' === $blocked_spend->get_error_code(), 'guided target mutation denied while provider spend is unfrozen' );
 	$freeze = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $p['profile_id'], 'control' => 'freeze_spend', 'expected_revision' => 7 ) );
 	profile_check( ! is_wp_error( $freeze ) && 8 === $freeze['profile']['revision'], 'fixture refreezes via explicit control' );
 	$form['expected_revision'] = '8';
