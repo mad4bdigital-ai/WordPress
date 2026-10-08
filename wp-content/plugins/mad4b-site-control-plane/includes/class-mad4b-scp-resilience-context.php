@@ -79,7 +79,13 @@ final class MAD4B_SCP_Resilience_Context {
 				'runtime_generation_sha256'=>$binding['runtime_generation_sha256'], 'restore_epoch'=>$binding['restore_epoch'],
 				'grant_snapshot_sha256'=>(string) ( $authority['grant_rows_fingerprint'] ?? '' ),
 				'candidate_binding_sha256'=>self::digest( $candidate ),
-				'eligible'=>! empty( $authority['ready'] ) && ! empty( $candidate['match'] ) && ! empty( $restore['ready'] ) && ! empty( $generation['ready'] ) && empty( $source_blockers ),
+				'eligible'=>! empty( $authority['ready'] )
+                    && true === ( $authority['current_grant_snapshot_ready'] ?? null )
+                    && true === ( $authority['candidate_binding_match'] ?? null )
+                    && self::is_hash( $authority['grant_rows_fingerprint'] ?? '' )
+                    && ! empty( $candidate['match'] )
+                    && ! empty( $restore['ready'] ) && ! empty( $generation['ready'] )
+                    && empty( $source_blockers ),
 			),
 			'providers'=>array(), 'host'=>array(), 'health'=>array(), 'gates'=>array(), 'external_effects'=>array(),
 			'identity_blockers'=>array_values( array_unique( array_merge( (array) ( $generation['blockers'] ?? array() ), (array) ( $restore['blockers'] ?? array() ), $source_blockers ) ) ),
