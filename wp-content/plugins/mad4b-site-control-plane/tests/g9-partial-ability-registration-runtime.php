@@ -13,8 +13,12 @@ function add_action( $hook, $callback, $priority = 10 ) { return true; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['g9_read_abilities'][ $name ] ); }
 function wp_register_ability( $name, $schema ) {
     ++$GLOBALS['g9_registration_attempts'];
-    if ( 2 === $GLOBALS['g9_registration_attempts'] )
+    if ( 2 === $GLOBALS['g9_registration_attempts'] ) {
+        $mode = isset( $GLOBALS['argv'][1] ) ? (string) $GLOBALS['argv'][1] : 'error';
+        if ( 'pretend' === $mode ) return true; // API lies: name not persisted.
+        if ( 'null' === $mode ) return null;  // Adapter forgets return.
         return new WP_Error( 'g9_simulated_registry_error', 'The second Ability cannot be registered.' );
+    }
     $GLOBALS['g9_read_abilities'][ $name ] = $schema;
     return true;
 }

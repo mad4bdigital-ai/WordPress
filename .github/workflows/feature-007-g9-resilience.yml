@@ -42,3 +42,5 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php null
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php pretend
