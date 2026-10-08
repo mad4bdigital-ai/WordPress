@@ -17,6 +17,19 @@ final class MAD4B_SCP_G6_Durable_DAG_Evidence {
         return JSON_ERROR_NONE === json_last_error();
     }
 
+    /** Canonical SQL integer identity: reject coercible strings and overflow. */
+    private static function valid_claim_epoch( $value ) {
+        if ( is_int( $value ) ) return $value > 0;
+        if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) return false;
+        return false !== filter_var( $value, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 1 ) ) );
+    }
+
+    private static function unexpired_utc( $value ) {
+        if ( ! is_string( $value ) || 1 !== preg_match( '/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/D', $value ) ) return false;
+        $date = DateTimeImmutable::createFromFormat( '!Y-m-d H:i:s', $value, new DateTimeZone( 'UTC' ) );
+        return false !== $date && $date->format( 'Y-m-d H:i:s' ) === $value && $date->getTimestamp() > time();
+    }
+
     public static function inspect( array $plan, $node_id ) {
         $owner = MAD4B_SCP_G6_Contracts::owner();
         if ( is_wp_error( $owner ) ) return $owner;
@@ -37,7 +50,7 @@ final class MAD4B_SCP_G6_Durable_DAG_Evidence {
         if ( is_wp_error( $job ) ) return $job;
         $job = isset( $job['job'] ) ? $job['job'] : $job;
         if ( ! is_array( $job ) || ! isset( $job['job_revision'], $job['state'], $job['job_id'] )
-            || (int) $job['job_revision'] !== (int) $plan['job_revision'] || $job['job_id'] !== $plan['job_id']
+            || ! is_int( $job['job_revision'] ) || ! is_int( $plan['job_revision'] ) || $job['job_revision'] !== $plan['job_revision'] || $job['job_id'] !== $plan['job_id']
             || 'RUNNING' !== $job['state'] || ! isset( $job['site_uuid'] ) || $job['site_uuid'] !== $current['site_uuid'] )
             return MAD4B_SCP_G6_Contracts::error( 'dag_job_changed', 'ContentJob is stale, no longer running or belongs to another site.' );
         global $wpdb;
@@ -78,14 +91,11 @@ final class MAD4B_SCP_G6_Durable_DAG_Evidence {
                 || ! hash_equals( $scope, (string) $row['scope_key'] )
                 || ! hash_equals( $key, (string) $row['idempotency_key'] )
                 || ! hash_equals( $request_sha256, (string) $row['request_sha256'] )
-                || 'completed' !== $row['status'] || (int) $row['claim_epoch'] < 1
+                || 'completed' !== $row['status'] || ! self::valid_claim_epoch( $row['claim_epoch'] )
                 || ! MAD4B_SCP_G6_Contracts::sha( $row['result_sha256'] )
                 || ! is_string( $row['result_json'] ) || strlen( $row['result_json'] ) > 262144
                 || ! hash_equals( hash( 'sha256', $row['result_json'] ), $row['result_sha256'] )
-                || ! is_string( $row['expires_at'] )
-                || ! preg_match( '/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/D', $row['expires_at'] )
-                || false === strtotime( $row['expires_at'] . ' UTC' )
-                || strtotime( $row['expires_at'] . ' UTC' ) <= time()
+                || ! self::unexpired_utc( $row['expires_at'] )
                 || ! self::valid_result_json( $row['result_json'] ) )
                 return MAD4B_SCP_G6_Contracts::error( 'dag_durable_completion_missing', 'Dependency lacks exact current completed durable evidence.' );
             $observed[] = array(
