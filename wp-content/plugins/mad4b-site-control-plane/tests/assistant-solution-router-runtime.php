@@ -39,6 +39,13 @@ ok($r['tasks'][0]['execution_allowed']===false && $r['authorizing']===false
 ok($r['registry_coverage']['external_inventory_complete']===false,'external coverage unknown');
 $second=MAD4B_SCP_Assistant_Solution_Router::read_plan($arg);
 ok($r['tasks'][0]['snapshot_sha256']===$second['tasks'][0]['snapshot_sha256'],'deterministic');
+$arg['external_hints']=array(array('id'=>'hosting','label'=>'File Host Configuration','source'=>'connector'));
+$external=MAD4B_SCP_Assistant_Solution_Router::read_plan($arg);
+ok(is_array($external) && $external['tasks'][0]['total_matches']===3
+    && $external['tasks'][0]['execution_allowed']===false, 'external hint observed only');
+$arg['external_hints'][0]['source']='privileged_shell';
+ok(is_wp_error(MAD4B_SCP_Assistant_Solution_Router::read_plan($arg)),'unsafe external hint rejected');
+unset($arg['external_hints']);
 $arg['planning_input']['expected_runtime_generation']=str_repeat('f',64);
 ok(is_wp_error(MAD4B_SCP_Assistant_Solution_Router::read_plan($arg)),'stale plan denied');
 $arg['planning_input']=$p;$arg['override']=true;

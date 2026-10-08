@@ -12,3 +12,6 @@ Native fixture:
 `php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php`
 
 This source-only change is not deployed or runtime certified by a GitHub tree update.
+### Unmapped external catalog candidates
+
+Optional `external_hints` can contain vetted-shape descriptions from an eligible connector, skill, external service or operator. They are untrusted candidates, never authoritative grants. The router validates them even on plans with no actionable gaps. It does not see ChatGPT's plugin list itself; the external client must collect approved public/safe descriptors and pass them through the governed MCP invocation. No automatic Hostinger/SSH session is inferred.
