@@ -312,11 +312,11 @@ final class MAD4B_SCP_Automation_SLO {
 	/** No success boolean is accepted; verified repair is recorded only by exact known readback. */
 	public static function finish_existing( array $ticket, $result ) {
 		$outcome = is_wp_error( $result ) ? 'failed' : 'handoff';
-		$readback = 'managed-skills' === ( $ticket['provider'] ?? '' ) && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
-			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : null;
-		if ( false === ( $ticket['pre_ready'] ?? null ) && 'managed-skills' === ( $ticket['provider'] ?? '' ) && 'reconcile' === ( $ticket['capability'] ?? '' ) && ! is_wp_error( $result )
-			&& is_array( $readback ) && 'mad4b.skill-runtime-certification.v2' === ( $readback['contract'] ?? '' ) && true === ( $readback['ready'] ?? false )
-			&& is_array( $persisted = MAD4B_SCP_Skill_Runtime_Certification::persisted_status() ) && true === ( $persisted['build_identity_current'] ?? false ) ) $outcome = 'verified_repair';
+		// A transition from not-ready to ready can have been made by another
+		// worker, or can be a stale projection. Until Managed Skills produces
+		// an exact ticket-bound, independently persisted postcondition receipt,
+		// do not attribute that transition to this ticket. This lane remains
+		// an observed handoff, never an invented verified repair numerator.
 		if ( false === ( $ticket['pre_ready'] ?? null ) && 'runtime-convergence' === ( $ticket['provider'] ?? '' ) && 'safe-phases' === ( $ticket['capability'] ?? '' )
 			&& is_array( $result ) && 'mad4b.runtime-convergence-apply.v1' === ( $result['contract'] ?? '' )
 			&& 'completed' === ( $result['state'] ?? '' )
