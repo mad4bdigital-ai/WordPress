@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { canonicalEvidenceBytes, signDeclarativeEvidence } from "./browser-attestation.mjs";
+import { canonicalEvidenceBytes, signDeclarativeEvidence, assertSigningConfigured } from "./browser-attestation.mjs";
 const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
 const pem=privateKey.export({type:"pkcs8",format:"pem"});
 const env={MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64:Buffer.from(pem).toString("base64")};
@@ -19,6 +19,7 @@ const mutated={...evidence,cases:[{case_id:"page-2",observed:{path:"/changed/"}}
 assert.equal(crypto.verify("sha256",canonicalEvidenceBytes(mutated),publicKey,
   Buffer.from(signed.attestation.signature,"base64")),false);
 assert.throws(()=>signDeclarativeEvidence(evidence,{}),/browser_attestation_signer_unconfigured/);
+assert.throws(()=>assertSigningConfigured({}),/browser_attestation_signer_unconfigured/);
 assert.throws(()=>canonicalEvidenceBytes(signed),/browser_attestation_payload_invalid/);
 const { privateKey:weak }=crypto.generateKeyPairSync("rsa",{modulusLength:1024});
 const weakEnv={MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64:Buffer.from(
