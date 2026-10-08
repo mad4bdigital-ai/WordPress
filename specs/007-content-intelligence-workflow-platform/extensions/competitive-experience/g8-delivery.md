@@ -36,7 +36,7 @@ The supply regression uses a *stubbed* existing signature-verification call to p
 - **T4085:** restore-epoch, stale plan, rollback replay and unknown-field scenarios included; interrupted DB cutover and mixed-runtime acceptance pending.
 - **T4086–T4089:** seeded data-only differential/fault test path implemented. Actual disposable WordPress multi-runtime certification and review receipts pending.
 - **T4090:** evaluator cannot execute production/shared/paid/irreversible providers; live harness network/host isolation proof pending.
-- **T4091–T4095:** `includes/class-mad4b-scp-g8-restore-convergence.php` now reads the pre-existing external Restore Epoch, runtime generation, signed pack registry, internal migration/worker state and external-inventory evidence, and provides bounded data-only external-effect discrepancy proposals. It **does not** acknowledge restore, invalidate/re-enable real permissions, synthesize receipts or replay externally applied effects. Full DB/files/host generation parity, external provider readbacks, governed grant reconciliation, real rollback/downgrade tests and independently signed post-restore acceptance remain open.
+- **G9 dependency (T4091–T4095, owned by G9; excluded from G8 completion):** `includes/class-mad4b-scp-g8-restore-convergence.php` now reads the pre-existing external Restore Epoch, runtime generation, signed pack registry, internal migration/worker state and external-inventory evidence, and provides bounded data-only external-effect discrepancy proposals. It **does not** acknowledge restore, invalidate/re-enable real permissions, synthesize receipts or replay externally applied effects. Full DB/files/host generation parity, external provider readbacks, governed grant reconciliation, real rollback/downgrade tests and independently signed post-restore acceptance remain open.
 - **Parallel PR integration:** PR #288 (G9) also introduces passive disaster-recovery convergence with independent external resilience anchors. It overlaps this PR in `mad4b-site-control-plane.php` bootstrap only. Resolve the exact bootstrap diff and retain both non-authorizing contracts when composing #288/#289 into #258; never silently remove either registration. No merge is authorized by this note.
 - **Cryptography:** G8 hermetic supply test stubs the existing pack verifier; the G8 CI matrix now separately runs the actual `certification-pack-registry-contract.php`, `crypto-profile-runtime.php` and `restore-epoch-runtime.php`. Passing those does **not** prove a deployed signed package, revocation network or key rotation without runtime evidence.
 
@@ -256,3 +256,32 @@ exact-own-ticket completed metadata, forged/foreign completion owner,
 old queued blocked/completed/manual/restart-wait events, valid pending
 restart and malicious object-bearing checkpoints. All tests are wired
 into the exact-head PHP 7.4/8.3 matrix but are not yet claimed successful.
+
+
+## Automatic handoff closure — 2026-10-08
+
+G8 owns exactly **25 tasks: T3976–T3980 and T4071–T4090**. The restore helper
+is passive integration support for G9; it does not transfer G9 task ownership.
+
+- Imported the current Hub's exact event/profile/lease/provenance fences and
+  explicit Managed Skills result plus inspect readback into the Adaptive worker.
+- The actual automatic core enqueue, managed-file reconciliation and authority
+  baseline capture now require separate durable SLO tickets. Each call rechecks
+  its exact event generation, runtime, restore binding and independent switch
+  immediately before and after the handoff. Global, provider and capability
+  pauses retain passive signed observations and existing governed manual paths.
+- Generic Runtime Convergence tickets additionally check managed-skills scope
+  before seeding/provider reconciliation and before certification persistence.
+  A managed-skills:* pause cannot be bypassed by a runtime-convergence ticket.
+- Fixed the Production-to-Staging fixture state leak and the missing lifecycle
+  add_action fixture. The PHP 7.4/8.3 Actions matrix includes the real Adaptive
+  worker plus real SLO admission/CAS fixture, scoped pauses, post-reservation
+  cancellation, mid-scan pause, running-call pause and generic-ticket denial.
+
+**Verification:** These are source changes. The execution environment is
+unavailable; no local PHP execution or passing final-head CI is asserted.
+GitHub Actions must finish on the published exact HEAD. A switch cannot undo
+an effect already executing inside a long-running call; later handoffs stop
+and uncertain outcomes require governed reconciliation. Live Staging/browser,
+provider signatures, host/DB fault certification and release approval remain
+separate acceptance gates. No authority expansion, live call or merge occurs.

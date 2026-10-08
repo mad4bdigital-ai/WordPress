@@ -226,6 +226,25 @@ final class MAD4B_SCP_Automation_SLO {
 		return true;
 	}
 
+	/** Additional denial scopes for a phase inside an already admitted worker. */
+	public static function additional_scope_allowed( array $ticket, $provider, $capability ) {
+		foreach ( array( $provider, $capability ) as $id ) {
+			if ( ! is_string( $id ) || 1 !== preg_match( '/^[a-z0-9_.-]{1,80}$/D', $id ) )
+				return new WP_Error( 'mad4b_automation_scope_invalid', 'Exact automatic phase scope is required.' );
+		}
+		$live = self::ticket_allowed( $ticket );
+		if ( true !== $live ) return $live;
+		$switch = self::switch_status();
+		if ( ! $switch['integrity_valid'] || $switch['revision'] !== ( $ticket['switch_revision'] ?? null ) )
+			return new WP_Error( 'mad4b_automation_switch_raced', 'Automatic phase switch changed during verification.' );
+		foreach ( array( '*', $provider . ':*', $provider . ':' . $capability ) as $scope ) {
+			if ( ! empty( $switch['scopes'][ $scope ] ) )
+				return new WP_Error( 'mad4b_automation_kill_switch', 'Automatic phase was paused by its independent scope.' );
+		}
+		// This is a further denial fence, never a second admission or grant.
+		return self::ticket_allowed( $ticket );
+	}
+
 	/**
 	 * Locally witnessed execution correlation (NOT a provider signature,
 	 * independent acceptance or permission). Issued only by an already-fenced

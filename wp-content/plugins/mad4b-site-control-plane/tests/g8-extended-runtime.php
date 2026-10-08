@@ -160,6 +160,8 @@ g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $paid, $certif
 $GLOBALS['g8_environment'] = 'production';
 g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $certified, $valid_fixture, 42 ),
 	'mad4b_g8_fuzz_isolation_required' ), 'Production fuzz forbidden' );
+// Restore Staging before exercising Staging-only provider observation.
+$GLOBALS['g8_environment'] = 'staging';
 // Capability-local artifact drift preserves compatible read visibility.
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-capability-convergence.php';
 class MAD4B_SCP_Provider_Compatibility_Certification {

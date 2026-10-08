@@ -1255,7 +1255,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 	}
 
-	private static function guard_automatic_ticket( $ticket ) {
+	private static function guard_automatic_ticket( $ticket, $skills_capability = '' ) {
 		if ( null === $ticket ) return true; // governed explicit/manual path remains unchanged.
 		if ( ! is_array( $ticket ) || ! class_exists( 'MAD4B_SCP_Automation_SLO', false ) )
 			return new WP_Error( 'mad4b_automation_guard_missing', 'Automatic safety admission cannot be verified.' );
@@ -1267,6 +1267,17 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( is_wp_error( $allowed ) ) return $allowed;
 		if ( true !== $allowed )
 			return new WP_Error( 'mad4b_automation_ticket_denied', 'Automatic ticket verifier did not explicitly permit the mutation.' );
+		if ( '' !== $skills_capability ) {
+			if ( ! method_exists( 'MAD4B_SCP_Automation_SLO', 'additional_scope_allowed' ) )
+				return new WP_Error( 'mad4b_automation_scope_guard_missing', 'Managed Skills scope cannot be checked.' );
+			try {
+				$scope = MAD4B_SCP_Automation_SLO::additional_scope_allowed( $ticket, 'managed-skills', $skills_capability );
+			} catch ( Throwable $error ) {
+				return new WP_Error( 'mad4b_automation_scope_verification_exception', 'Automatic phase scope verification failed.' );
+			}
+			if ( is_wp_error( $scope ) ) return $scope;
+			if ( true !== $scope ) return new WP_Error( 'mad4b_automation_scope_denied', 'Automatic phase scope was not explicitly permitted.' );
+		}
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$target = is_array( $checkpoint ) && is_array( $checkpoint['target_identity'] ?? null )
 			? $checkpoint['target_identity'] : array();
@@ -1358,12 +1369,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 					return self::yield_safe_phases( $source, $changed, 'managed_skills', $automatic_ticket );
 				}
 				if ( $skills_pending ) {
-					if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
-					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket, 'reconcile' );
 					if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
+					if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
 					$seed = MAD4B_SCP_Skill_Seeder::reconcile();
 					if ( is_wp_error( $seed ) ) return $seed;
-					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket, 'reconcile' );
 					if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 					$provider = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
 					if ( is_wp_error( $provider ) ) return $provider;
@@ -1376,7 +1387,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				// A healthy live Skill graph still needs build-bound persisted evidence
 				// after every package replacement. This is explicit lifecycle work and is
 				// never performed by passive/protocol status reads.
-				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket, 'certify' );
 				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$observed = MAD4B_SCP_Skill_Runtime_Certification::observe( true );
 				if ( ! is_array( $observed ) || empty( $observed['ready'] ) ) {

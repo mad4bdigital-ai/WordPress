@@ -16,6 +16,8 @@ $GLOBALS['g8_ticket_allowed'] = true;
 function get_option( $name, $default = false ) {
 	return 'mad4b_scp_runtime_convergence_v1' === $name ? $GLOBALS['g8_checkpoint'] : $default;
 }
+// Loading Runtime Convergence registers its existing lifecycle hooks.
+function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
 function sanitize_text_field( $value ) { return trim( (string) $value ); }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 class WP_Error {
@@ -24,6 +26,10 @@ class WP_Error {
 	public function get_error_code() { return $this->code; }
 }
 class MAD4B_SCP_Automation_SLO {
+	public static function additional_scope_allowed( $ticket, $provider, $capability ) {
+		if ( ! empty( $GLOBALS['g8_skills_scope_paused'] ) ) return new WP_Error( 'mad4b_automation_kill_switch' );
+		return true;
+	}
 	public static function ticket_allowed( $ticket ) {
 		if ( 'exception' === ( $GLOBALS['g8_ticket_allowed'] ?? null ) )
 			throw new RuntimeException( 'simulated partial update verifier exception' );
@@ -127,5 +133,15 @@ $GLOBALS['g8_ticket_allowed'] = 'exception';
 $denied = $run( $ticket );
 g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_ticket_verification_exception' === $denied->get_error_code(),
 	'exception in partial update verifier must be a stable guard denial' );
+$GLOBALS['g8_ticket_allowed'] = true;
+$GLOBALS['g8_skills_scope_paused'] = true;
+$denied = $guard->invoke( null, $ticket, 'reconcile' );
+g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_kill_switch' === $denied->get_error_code(),
+	'real automatic phase guard rejects a managed Skills pause inside a generic ticket' );
+$denied = $guard->invoke( null, $ticket, 'certify' );
+g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_kill_switch' === $denied->get_error_code(),
+	'persisting Skills certification also obeys the managed Skills scope' );
+g8_guard_assert( true === $guard->invoke( null, null, 'reconcile' ),
+	'explicit governed manual reconciliation retains its separate authority path' );
 @unlink( $path ); @rmdir( $root );
 echo 'G8_CRON_GENERATION_GUARD: PASS' . PHP_EOL;
