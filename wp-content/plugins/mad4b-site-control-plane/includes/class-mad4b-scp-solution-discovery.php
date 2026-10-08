@@ -45,6 +45,7 @@ final class MAD4B_SCP_Solution_Discovery {
                 'properties' => array(
                     'expected_profile_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                     'expected_runtime_generation' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+                    'expected_snapshot_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                     'intent' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
                     'related_terms' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 80 ) ),
                     'mode' => array( 'type' => 'string', 'enum' => array( 'match', 'inventory' ) ),
@@ -110,12 +111,15 @@ final class MAD4B_SCP_Solution_Discovery {
     private static function validate( $input ) {
         if ( ! is_array( $input ) ) return false;
         $allowed = array( 'expected_profile_digest', 'expected_runtime_generation', 'intent',
-            'related_terms', 'mode', 'offset', 'limit', 'external_hints' );
+            'related_terms', 'mode', 'offset', 'limit', 'external_hints', 'expected_snapshot_sha256' );
         foreach ( $input as $key => $val ) if ( ! in_array( $key, $allowed, true ) ) return false;
         foreach ( array( 'expected_profile_digest', 'expected_runtime_generation' ) as $key )
             if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] )
                 || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $input[ $key ] ) ) return false;
         if ( ! self::safe_text( $input['intent'] ?? null ) ) return false;
+        if ( isset( $input['expected_snapshot_sha256'] ) && (
+            ! is_string( $input['expected_snapshot_sha256'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $input['expected_snapshot_sha256'] ) ) ) return false;
         if ( ! in_array( $input['mode'] ?? 'match', array( 'match', 'inventory' ), true )
             || ! is_int( $input['offset'] ?? 0 ) || ( $input['offset'] ?? 0 ) < 0 || ( $input['offset'] ?? 0 ) > 1024
             || ! is_int( $input['limit'] ?? 20 ) || ( $input['limit'] ?? 20 ) < 1 || ( $input['limit'] ?? 20 ) > 40 ) return false;
@@ -331,6 +335,9 @@ final class MAD4B_SCP_Solution_Discovery {
         } );
         $limit = $input['limit'] ?? 20; $offset = $input['offset'] ?? 0;
         $snapshot = hash( 'sha256', serialize( array( $binding, $inventory, $input['external_hints'] ?? array(), $goal ) ) );
+        if ( isset( $input['expected_snapshot_sha256'] ) &&
+            ! hash_equals( $snapshot, $input['expected_snapshot_sha256'] ) )
+            return self::fail( 'snapshot_changed' );
         return array( 'contract' => self::CONTRACT,
             'binding' => array( 'site_uuid' => $binding['site_uuid'] ?? '', 'profile_digest' => $binding['profile_digest'],
                 'runtime_generation' => $binding['runtime_generation'], 'restore_epoch' => $binding['restore_epoch'],
@@ -343,6 +350,8 @@ final class MAD4B_SCP_Solution_Discovery {
                 'plugin_inventory_scope' => $inventory['plugin_inventory_scope'] ?? 'unknown',
                 'external_inventory_complete' => false ),
             'total_matches' => count( $candidates ), 'offset' => $offset, 'limit' => $limit,
+            'candidate_ranking' => 'LEXICAL_ONLY_UNVERIFIED',
+            'unmatched_inventory_available' => count( $candidates ) === 0 && count( $all ) > 0,
             'inventory_incomplete' => empty( $inventory['plugin_inventory_complete'] )
                 || empty( $inventory['ability_inventory_complete'] )
                 || empty( $inventory['extension_inventory_complete'] ),
