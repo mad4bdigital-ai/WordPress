@@ -290,16 +290,29 @@ scenario( 'domain_profile_market_identity_and_safe_retarget_invariants', static 
 	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $collision, 'expected_revision' => 0 ) ), 'market_identity_conflict', 'existing market ID cannot be shared across profiles' );
 	$fields = array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] );
 	$raw = array_intersect_key( $current, $fields );
+	// A direct generic profile API cannot resume, freeze, unfreeze, disable or
+	// enable providers; these are typed operational controls only.
+	$pausing = $raw; $pausing['enabled'] = false;
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $pausing, 'expected_revision' => 1 ) ), 'state_requires_explicit_control', 'generic API cannot pause observations' );
+	$freezing = $raw; $freezing['provider_policy']['freeze_spend'] = true;
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $freezing, 'expected_revision' => 1 ) ), 'state_requires_explicit_control', 'generic API cannot freeze or unfreeze spend' );
+	$disabled = $raw; $disabled['provider_policy']['disabled'] = array( 'alpha' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $disabled, 'expected_revision' => 1 ) ), 'state_requires_explicit_control', 'generic API cannot change provider enabled state' );
+	$control = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => $id, 'control' => 'pause', 'expected_revision' => 1, 'profile' => array( 'enabled' => true, 'budget_policy' => array( 'nodes' => array( 'forged' ) ) ) ) ), 'typed pause ignores supplied profile JSON' );
+	check( ! $control['profile']['enabled'] && 2 === $control['profile']['revision'], 'typed pause applies only requested state and current policy' );
+	$control = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => $id, 'control' => 'resume', 'expected_revision' => 2 ) ), 'typed resume still works' );
+	check( $control['profile']['enabled'] && 3 === $control['profile']['revision'], 'typed resume readback' );
+	$raw = array_intersect_key( $control['profile'], $fields );
 	$country = $raw; $country['markets'][0]['country'] = 'AU';
-	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $country, 'expected_revision' => 1 ) ), 'market_identity_locked', 'direct API cannot reassign market country' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $country, 'expected_revision' => 3 ) ), 'market_identity_locked', 'direct API cannot reassign market country' );
 	$removed = $raw; array_shift( $removed['markets'] );
-	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $removed, 'expected_revision' => 1 ) ), 'market_identity_locked', 'direct API cannot erase historical market IDs' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $removed, 'expected_revision' => 3 ) ), 'market_identity_locked', 'direct API cannot erase historical market IDs' );
 	$lang = $raw; $lang['language_policy']['desired'][] = 'es';
-	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $lang, 'expected_revision' => 1 ) ), 'targeting_requires_pause_and_spend_freeze', 'active and spend-unfrozen retarget denied' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $lang, 'expected_revision' => 3 ) ), 'targeting_requires_pause_and_spend_freeze', 'active and spend-unfrozen retarget denied' );
 	// An attempt to pause/freeze and retarget in the *same* transaction is rejected.
 	$mixed = $lang; $mixed['enabled'] = false; $mixed['provider_policy']['freeze_spend'] = true;
-	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $mixed, 'expected_revision' => 1 ) ), 'targeting_requires_pause_and_spend_freeze', 'combined pause freeze retarget denied' );
-	$paused = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'pause', 'expected_revision' => 1 ) ), 'explicit pause works' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $mixed, 'expected_revision' => 3 ) ), 'targeting_requires_pause_and_spend_freeze', 'combined pause freeze retarget denied' );
+	$paused = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'pause', 'expected_revision' => 3 ) ), 'explicit pause works' );
 	$frozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'freeze_spend', 'expected_revision' => $paused['profile']['revision'] ) ), 'explicit freeze works' );
 	$mixed['markets'][] = array( 'id' => 'new-market', 'country' => 'JP' );
 	$safe = array( 'profile' => $mixed, 'expected_revision' => $frozen['profile']['revision'] );
