@@ -215,6 +215,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-record.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-supply-provenance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-schema-migration.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-restore-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-capability-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-compatibility-fuzz.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-automation-slo.php';
