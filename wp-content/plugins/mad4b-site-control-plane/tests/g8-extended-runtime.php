@@ -295,4 +295,21 @@ g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $revoked_ticket, $
 g8_check( 1 === MAD4B_SCP_Automation_SLO::status()['outcomes']['verified_repair'],
 	'raced ticket never adds a verified repair' );
 
+// A crashed/expired worker outcome remains uncertain. Do not purge its
+// sealed ticket or allow another capability to work around the site breaker.
+$orphan = MAD4B_SCP_Automation_SLO::reserve( 'abandoned-provider', 'repair', str_repeat( 'e', 64 ) );
+g8_check( is_array( $orphan ), 'orphan fixture ticket admitted before simulated crash' );
+$orphan_record = $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ];
+$orphan_record['tickets'][ $orphan['token'] ]['started_at'] = time() - 1300;
+$orphan_record['tickets'][ $orphan['token'] ]['expires_at'] = time() - 100;
+$orphan_record['seal'] = MAD4B_SCP_G8_Record::seal( $orphan_record );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $orphan_record;
+$uncertain = MAD4B_SCP_Automation_SLO::admission( 'unrelated-provider', 'read' );
+g8_check( false === $uncertain['allowed'] && 'expired_automation_outcome_uncertain' === $uncertain['reason'],
+	'unknown expired outcome site-fences automatic retry' );
+g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::ticket_allowed( $orphan ),
+	'mad4b_automation_ticket_not_live' ), 'expired worker ticket cannot resume execution' );
+g8_check( 1 === MAD4B_SCP_Automation_SLO::status()['pending_count'],
+	'expired uncertain ticket is retained for governed reconciliation' );
+
 echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
