@@ -37,6 +37,7 @@ final class MAD4B_SCP_G9_Fleet_Rollout {
                 'last_reported_state'=>'NO_EVENT',
                 'event_count'=>0,
                 'reported_rollback'=>false,
+                'reported_rollback_completed'=>false,
                 'reported_native_commit'=>false,
                 'local_release_acceptance_verified'=>false,
                 'external_effect_readback_verified'=>false,
@@ -84,8 +85,14 @@ final class MAD4B_SCP_G9_Fleet_Rollout {
             $sites[ $key ]['last_sequence'] = $event['sequence'];
             $sites[ $key ]['last_reported_state'] = $event['state'];
             $sites[ $key ]['event_count']++;
-            if ( 'rollback' === $event['action'] )
+            if ( 'rollback' === $event['action'] ) {
+                // A PREPARED/RECONCILING rollback is only intent, not evidence
+                // that any rollback finished. Do not label it "observed
+                // rollback completed" in fleet summaries.
                 $sites[ $key ]['reported_rollback'] = true;
+                if ( 'COMMITTED' === $event['state'] )
+                    $sites[ $key ]['reported_rollback_completed'] = true;
+            }
             if ( 'promote' === $event['action'] && 'COMMITTED' === $event['state'] )
                 $sites[ $key ]['reported_native_commit'] = true;
             $ledger[] = array(
@@ -98,13 +105,24 @@ final class MAD4B_SCP_G9_Fleet_Rollout {
         }
         $uncertain = array(); $missing = array();
         $reported_committed = array(); $reported_rollbacks = array();
+        $completed_rollback_claims = array();
         foreach ( $sites as $key => $site ) {
             if ( 0 === $site['event_count'] ) $missing[] = $key;
-            if ( in_array( $site['last_reported_state'],
-                array( 'UNKNOWN', 'RECONCILING', 'EXECUTING', 'FAILED' ), true ) )
-                $uncertain[] = $key;
+            // Last event of a different operation must not obscure an older
+            // PREPARED, FAILED or uncertain operation at the same site.
+            // A PREPARED operation has not reached a terminal outcome.
+            $site_uncertain = false;
+            foreach ( $last_operation_state as $operation_key => $operation_state ) {
+                if ( 0 === strpos( $operation_key, $key . ':' )
+                    && 'COMMITTED' !== $operation_state ) {
+                    $site_uncertain = true;
+                    break;
+                }
+            }
+            if ( $site_uncertain ) $uncertain[] = $key;
             if ( $site['reported_native_commit'] ) $reported_committed[] = $key;
             if ( $site['reported_rollback'] ) $reported_rollbacks[] = $key;
+            if ( $site['reported_rollback_completed'] ) $completed_rollback_claims[] = $key;
         }
         ksort( $sites, SORT_STRING );
         return array(
@@ -117,8 +135,15 @@ final class MAD4B_SCP_G9_Fleet_Rollout {
             'uncertain_site_evidence'=>$uncertain,
             'reported_committed_sites'=>$reported_committed,
             'reported_rollback_sites'=>$reported_rollbacks,
-            'partial_rollback_observed'=>! empty( $reported_rollbacks )
-                && ( count( $reported_rollbacks ) < count( $sites ) || ! empty( $uncertain ) ),
+            'reported_rollback_completed_sites'=>$completed_rollback_claims,
+            'rollback_risk_detected'=>! empty( $reported_rollbacks )
+                && ( count( $completed_rollback_claims ) < count( $sites )
+                    || ! empty( $uncertain ) || ! empty( $missing ) ),
+            // Only a claimed terminal rollback can count as "observed";
+            // even then this is NOT cryptographically verified acceptance.
+            'partial_rollback_observed'=>! empty( $completed_rollback_claims )
+                && ( count( $completed_rollback_claims ) < count( $sites )
+                    || ! empty( $uncertain ) || ! empty( $missing ) ),
             'release_acceptance_verified'=>false,
             'all_site_effects_reconciled'=>false,
             'cohort_promotion_allowed'=>false,

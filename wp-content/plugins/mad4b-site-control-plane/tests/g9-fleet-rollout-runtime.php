@@ -62,9 +62,27 @@ $rollback['action'] = 'rollback';
 $rollback['state'] = 'RECONCILING';
 $rollback['operation_sha256'] = str_repeat( 'b', 64 );
 $result = MAD4B_SCP_G9_Fleet_Rollout::inspect( array( $a, $b ), array( $event, $rollback ) );
-g9_assert( ! is_wp_error( $result ) && $result['partial_rollback_observed']
+g9_assert( ! is_wp_error( $result ) && !$result['partial_rollback_observed']
+    && $result['rollback_risk_detected']
+    && !$result['reported_rollback_completed_sites']
     && count( $result['uncertain_site_evidence'] )===1
-    && !$result['automatic_rollback_allowed'], 'mixed fleet rollback uncertainty' );
+    && !$result['automatic_rollback_allowed'],
+    'rollback RECONCILING is only reported intent, not a completed rollback' );
+$rollback_completed = $rollback; $rollback_completed['state']='COMMITTED';
+$terminal_rollback = MAD4B_SCP_G9_Fleet_Rollout::inspect(
+    array( $a, $b ), array( $event, $rollback_completed ) );
+g9_assert( ! is_wp_error( $terminal_rollback )
+    && $terminal_rollback['partial_rollback_observed']
+    && count( $terminal_rollback['reported_rollback_completed_sites'] )===1
+    && !$terminal_rollback['release_acceptance_verified'],
+    'claimed completed rollback is still not verified signed acceptance' );
+$prepared = $event; $prepared['state']='PREPARED';
+$other = $event; $other['sequence']=2;
+$other['operation_sha256']=str_repeat('b', 64);
+$masked = MAD4B_SCP_G9_Fleet_Rollout::inspect( array($a,$b), array($prepared,$other) );
+g9_assert( ! is_wp_error($masked)
+    && in_array($aKey, $masked['uncertain_site_evidence'], true),
+    'later COMMITTED operation cannot conceal older PREPARED operation' );
 $unknown = $event; $unknown['site_key'] = 'foreign:abc';
 g9_error( MAD4B_SCP_G9_Fleet_Rollout::inspect( array( $a, $b ), array( $unknown ) ), 'event_invalid' );
 $gap = $event; $gap['sequence'] = 3;
