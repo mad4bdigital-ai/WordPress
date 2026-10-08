@@ -7,6 +7,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-core.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php'
@@ -28,6 +29,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-core.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php'
@@ -83,6 +85,7 @@ jobs:
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-core.php \
             wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php \
             wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php \
             wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php \
             wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php; do
               php -l "$file"
@@ -91,6 +94,8 @@ jobs:
         run: php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php
       - name: Verify admin setup denies secret fields and false provider readiness
         run: php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php
+      - name: Verify Staging chooses exact site acceptance provider and signed receipt
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php
 
   observer-js:
     name: ETG Browser Observer JS contract

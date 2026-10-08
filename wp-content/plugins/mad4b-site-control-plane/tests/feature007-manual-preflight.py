@@ -43,6 +43,7 @@ FIXTURES = (
     "operation-journal-exact-cas-runtime.php",
     "staging-write-authority-postcondition-runtime.php",
     "browser-acceptance-admin-setup-contract.php",
+    "staging-browser-site-selection-contract.php",
     "assistant-read-work-runtime.php",
     "assistant-entrypoint-registration-runtime.php",
     "oauth-consent-projection-view-runtime.php",
