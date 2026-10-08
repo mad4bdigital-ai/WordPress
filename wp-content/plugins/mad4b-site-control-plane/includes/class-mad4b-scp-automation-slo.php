@@ -232,6 +232,7 @@ final class MAD4B_SCP_Automation_SLO {
 		$binding = MAD4B_SCP_G8_Record::binding();
 		$valid = ! is_wp_error( $binding ) && ( null === $raw || ( MAD4B_SCP_G8_Record::valid( $raw, self::SWITCH_CONTRACT ) && is_array( $raw['scopes'] ?? null )
 			&& count( $raw['scopes'] ) <= 64 && is_int( $raw['revision'] ?? null ) && $raw['revision'] >= 0
+			&& is_int( $raw['updated_at'] ?? null ) && $raw['updated_at'] > 0 && $raw['updated_at'] <= time() + 30
 			&& serialize( $raw['restore_binding'] ?? null ) === serialize( $binding ) ) );
 		if ( $valid && is_array( $raw ) ) foreach ( $raw['scopes'] as $scope => $enabled ) {
 			if ( ! is_string( $scope ) || 1 !== preg_match( '/^(\\*|[a-z0-9_.-]{1,80}:(\\*|[a-z0-9_.-]{1,80}))$/D', $scope ) || ! is_bool( $enabled ) ) { $valid = false; break; }
