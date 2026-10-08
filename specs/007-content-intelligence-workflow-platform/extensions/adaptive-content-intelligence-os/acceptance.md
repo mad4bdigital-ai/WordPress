@@ -41,3 +41,34 @@ Every closed task references `task_id`, exact `commit_sha`, `build_fingerprint`,
 ## Release red lines
 
 No Production authority, Breakglass, host shell or paid provider execution is granted by this Spec Kit. Missing WPML mapper semantics prevents relation auto-remap and related publication changes. All optional autonomy work honors CE01 levels and cannot bypass original MAD4B policy/capability/admission/commit guards.
+
+## Dynamic-by-default review and product clarity gates (ACI01 v2)
+
+**Design acceptance is separate from repository/CI and live release acceptance.** The current design remains `DESIGN_REVIEW_REQUIRED` until these validations run on one exact reviewed HEAD:
+
+- Registry-to-Markdown and reverse requirement/task/gate coverage, with individual task meaning, output evidence and denial cases; no blanket group-wide mapping.
+- DAG conformance: execution dependencies acyclic, certification dependencies separately acyclic, optional G4 only when native relations are actually required.
+- Actual graph-path analysis: every route into WordPress native write effect must cross commit guard and governed dispatch. Added edges with unexpected write reachability are rejected.
+- Pure candidate simulation: current site UUID/origin/generation/restore epoch required; simulated provider certificate cannot become write authority; all paid/WordPress/host effect requests denied by Spec Kit planner.
+- Six ContentRecipes and domain-specific FactAuthority profiles; unknown price/availability/rights/translation source blocks only the dependent operation.
+- 30 use-case fixtures with expected state, named failure, content recipe and relevant gate. These are **declared scenarios**, not live tests.
+- Negative tests against stale runtime, mixed locale/account/currency, poisoned evidence, unsafe media, human edit, duplicate paid effect, uncertain publish, restore replay, Original-ID WPML fallback and missing native/browser readback.
+- Test `validate.py`, `test_validate.py`, `test_dynamic_core.py` on exact source; repository PASS is only structural. Independently record disposable/native, external-provider, browser, Staging, performance and eventual release receipts.
+
+A failed or unexecuted validation makes design certification `BLOCKED` or `NOT_VERIFIED`; it must not silently promote task, gate, release or authority status. See `project-charter.md` for the product's complete preexecution STOP gate.
+
+## Formal ACI01 design closure (v3)
+
+The following are mandatory independently falsifiable **repository** proofs, not live acceptance:
+- Exact 43 requirements, 71 tasks and 11 gates with bidirectional semantic mapping, no execution or certification DAG cycle and no native write path bypass in the declared system graph.
+- All 30 use cases classified through independent `disposition-rules.json`, spanning all six states. A scenario assertion alone cannot count as a passing test.
+- No new release profile requires future organic-growth results to certify first Staging publication; no disposable native code task depends on an unreconciled live Staging actor.
+- All six ContentRecipes have required fact names; fail closed on missing, wrong-site, stale or externally claimed-but-untrusted receipts.
+- Five EffectContracts have independently owned existing-MAD4B guards and explicit cost/rollback/unknown-effect semantics; unknown effect is denied.
+- Caller-provided `certified=true`, digest equality or incident observation alone never establishes signed trusted runtime authority.
+- Mutable execution, decision and certification ledgers cannot rewrite immutable Spec task states or authorize a new Production action.
+- Optimization with unknown business thresholds/budgets/control window cannot apply changes automatically.
+- `validate.py`, `test_validate.py`, `test_dynamic_core.py` and `test_design_closure.py` must execute against exact Source HEAD and report authentic exit codes.
+- Parent Hub exact-head change-slices/ownership, CI configuration and concurrent-branch integration must be verified independently.
+
+`DESIGN_CLOSED` may be recorded only once these proofs and a named human/independent design reviewer acceptance exist. The implementation/runtime acceptance states are unrelated and cannot be filled from this evidence.

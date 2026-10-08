@@ -1,0 +1,84 @@
+{
+  "contract": "mad4b.aci-os.domain-fact-authority.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "profiles": [
+    {
+      "id": "generic",
+      "site_uuid": null,
+      "scope": "DYNAMIC",
+      "fields": [
+        {
+          "id": "article_claim",
+          "authoritative_source": "PROVENANCE_VERIFIED_EVIDENCE",
+          "freshness_policy": "PER_CLAIM",
+          "fallback": "REVIEW"
+        },
+        {
+          "id": "post_title",
+          "authoritative_source": "NATIVE_WORDPRESS_PLUS_EDITOR_OWNERSHIP",
+          "freshness_policy": "REVISION_BOUND",
+          "fallback": "REVIEW"
+        },
+        {
+          "id": "canonical_url",
+          "authoritative_source": "NATIVE_WORDPRESS_SEO_ADAPTER",
+          "freshness_policy": "NATIVE_READBACK",
+          "fallback": "BLOCK_PUBLISH"
+        },
+        {
+          "id": "locale_relation",
+          "authoritative_source": "CERTIFIED_WPML_TRANSLATION_BRIDGE",
+          "freshness_policy": "GENERATION_BOUND",
+          "fallback": "REVIEW"
+        }
+      ]
+    },
+    {
+      "id": "tourism_reference_profile",
+      "site_uuid": null,
+      "scope": "OPT_IN_EXAMPLE_NOT_GLOBAL",
+      "fields": [
+        {
+          "id": "tour_price",
+          "authoritative_source": "CERTIFIED_PRICING_PROVIDER_SELECTED_BY_SITE",
+          "freshness_policy": "PER_OFFER_EXPIRY",
+          "fallback": "BLOCK_PRICE_CLAIM"
+        },
+        {
+          "id": "tour_availability",
+          "authoritative_source": "CERTIFIED_BOOKING_INVENTORY_PROVIDER",
+          "freshness_policy": "REQUEST_TIME_OR_DECLARED_TTL",
+          "fallback": "BLOCK_AVAILABILITY_CLAIM"
+        },
+        {
+          "id": "cancellation_policy",
+          "authoritative_source": "CONTRACTED_SUPPLIER_OR_TRAVEL_POLICY_SOURCE",
+          "freshness_policy": "DOCUMENT_REVISION",
+          "fallback": "NEEDS_REVIEW"
+        },
+        {
+          "id": "tour_duration",
+          "authoritative_source": "VERIFIED_NATIVE_PRODUCT_OR_SUPPLIER_SOURCE",
+          "freshness_policy": "PRODUCT_REVISION",
+          "fallback": "NEEDS_REVIEW"
+        },
+        {
+          "id": "translation_identity",
+          "authoritative_source": "WPML_WITH_SEMANTIC_PROVIDER_EVIDENCE",
+          "freshness_policy": "RUNTIME_AND_FIELD_POLICY",
+          "fallback": "BLOCK_RELATION_MUTATION"
+        }
+      ]
+    }
+  ],
+  "rules": [
+    "SOURCE_IDENTITY_REQUIRED",
+    "NO_HARDCODED_VENDOR",
+    "NO_GLOBAL_TOURISM_DEFAULT",
+    "UNKNOWN_SOURCE_FAILS_CLOSED",
+    "RIGHTS_AND_LICENSE_SCOPE_MUST_MATCH",
+    "CURRENCY_AND_MARKET_ANNOTATED",
+    "FRESHNESS_VERIFIED_BEFORE_PUBLICATION"
+  ]
+}

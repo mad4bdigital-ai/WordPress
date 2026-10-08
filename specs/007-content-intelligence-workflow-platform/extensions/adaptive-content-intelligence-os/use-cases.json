@@ -1,0 +1,1117 @@
+{
+  "contract": "mad4b.aci-os.use-case-acceptance.v2",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "use_cases": [
+    {
+      "id": "UC-01",
+      "scenario": "missing_brand_guidelines",
+      "recipe_id": "article",
+      "expected_state": "NEEDS_EVIDENCE",
+      "required_gate": "ACI-G1",
+      "expected_behavior": "writing must pause, scoped read-only inventory remains possible",
+      "negative_case": "missing_brand_context",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "context-steward",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "missing_brand_context"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-02",
+      "scenario": "existing_600_posts_cannibalization",
+      "recipe_id": "article",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G3",
+      "expected_behavior": "inventory and intent ownership before new page",
+      "negative_case": "canonical_conflict",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "growth-strategist",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "canonical_conflict"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-03",
+      "scenario": "SERP_source_injection",
+      "recipe_id": "comparison",
+      "expected_state": "QUARANTINED",
+      "required_gate": "ACI-G2",
+      "expected_behavior": "source text must never route tools",
+      "negative_case": "poisoned_scrape",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "poisoned_scrape"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "comparison",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-04",
+      "scenario": "marketing_claim_without_primary_evidence",
+      "recipe_id": "landing",
+      "expected_state": "NEEDS_EVIDENCE",
+      "required_gate": "ACI-G3",
+      "expected_behavior": "request corroboration, no fact promotion",
+      "negative_case": "unsupported_claim",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "growth-strategist",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "unsupported_claim"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "landing",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-05",
+      "scenario": "tour_high_traffic_low_booking",
+      "recipe_id": "tour",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G9",
+      "expected_behavior": "propose CTA experiment not blind rewrite",
+      "negative_case": "attribution_mismatch",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "growth-analyst",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "attribution_mismatch"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-06",
+      "scenario": "existing_editor_modified_copy",
+      "recipe_id": "article",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G5",
+      "expected_behavior": "three-way ownership diff",
+      "negative_case": "edit_conflict",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "editor",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "edit_conflict"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-07",
+      "scenario": "french_missing_localized_tour",
+      "recipe_id": "tour",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G4",
+      "expected_behavior": "mark unverified translation not original fallback",
+      "negative_case": "wpml_original_fallback",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "wpml_original_fallback"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-08",
+      "scenario": "term_id_vs_term_taxonomy_id",
+      "recipe_id": "taxonomy",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G4",
+      "expected_behavior": "namespace mismatch blocks remap",
+      "negative_case": "wrong_term_namespace",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "wrong_term_namespace"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-09",
+      "scenario": "shared_properties_copy_policy",
+      "recipe_id": "tour",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G4",
+      "expected_behavior": "inspect field mode and mapper owner",
+      "negative_case": "translated_id_fallback",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "translated_id_fallback"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-10",
+      "scenario": "duplicate_post_ID_across_sites",
+      "recipe_id": "tour",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G4",
+      "expected_behavior": "site-qualified identity required",
+      "negative_case": "unapproved_cross_site_identity",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "unapproved_cross_site_identity"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-11",
+      "scenario": "new_market_french_currency",
+      "recipe_id": "destination",
+      "expected_state": "NEEDS_EVIDENCE",
+      "required_gate": "ACI-G2",
+      "expected_behavior": "no mixed currency/window claims",
+      "negative_case": "evidence_noncomparable",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "evidence_noncomparable"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "destination",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-12",
+      "scenario": "batch_200_taxonomy_pages",
+      "recipe_id": "taxonomy",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G7",
+      "expected_behavior": "bounded fanout/cost/quality admission",
+      "negative_case": "quota_exhaustion",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "quota_exhaustion"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-13",
+      "scenario": "external_paid_timeout_after_charge",
+      "recipe_id": "article",
+      "expected_state": "QUARANTINED",
+      "required_gate": "ACI-G7",
+      "expected_behavior": "remote effect reconciliation before retry",
+      "negative_case": "external_effect_unknown",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "external_effect_unknown"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-14",
+      "scenario": "shared_account_three_sites",
+      "recipe_id": "article",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G7",
+      "expected_behavior": "atomic shared account cost reservation",
+      "negative_case": "provider_spend_race",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "provider_spend_race"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-15",
+      "scenario": "AI_model_crash_during_draft",
+      "recipe_id": "article",
+      "expected_state": "WAITING_DEPENDENCIES",
+      "required_gate": "ACI-G7",
+      "expected_behavior": "resume immutable artifact DAG checkpoint",
+      "negative_case": "model_failure",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "DEPENDENCY_WAIT",
+      "observed_finding_codes": [
+        "model_failure"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-16",
+      "scenario": "OAuth_revoke_mid_workflow",
+      "recipe_id": "tour",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G7",
+      "expected_behavior": "fence dependent writes and preserve safe reads",
+      "negative_case": "grant_revoked",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "grant_revoked"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-17",
+      "scenario": "native_save_succeeded_but_frontend_404",
+      "recipe_id": "tour",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G8",
+      "expected_behavior": "committed native but rendered unverified",
+      "negative_case": "missing_browser_readback",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "publisher-approver",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "missing_browser_readback"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-18",
+      "scenario": "restore_epoch_changed",
+      "recipe_id": "article",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G7",
+      "expected_behavior": "invalidate stale approvals and execution leases",
+      "negative_case": "restore_epoch_replay",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "restore_epoch_replay"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-19",
+      "scenario": "seasonal_organic_drop",
+      "recipe_id": "article",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G9",
+      "expected_behavior": "no causal claim without comparable control",
+      "negative_case": "seasonal_false_causality",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "growth-analyst",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "seasonal_false_causality"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-20",
+      "scenario": "wordpress_write_enabled_but_authority_drift",
+      "recipe_id": "tour",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G10",
+      "expected_behavior": "effective grants and candidate binding must match",
+      "negative_case": "stale_authority",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "release-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "stale_authority"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-21",
+      "scenario": "provider_upgrade_changes_serialization",
+      "recipe_id": "taxonomy",
+      "expected_state": "QUARANTINED",
+      "required_gate": "ACI-G4",
+      "expected_behavior": "recertify exact field owner/adapter behavior",
+      "negative_case": "provider_schema_drift",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "provider_schema_drift"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-22",
+      "scenario": "site_subdomain_cross_reference",
+      "recipe_id": "destination",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G4",
+      "expected_behavior": "explicit cross-site link policy only, no shared writes",
+      "negative_case": "declared_cross_site_link_needs_review",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "declared_cross_site_link_needs_review"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "destination",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-23",
+      "scenario": "unauthorized_media_rights",
+      "recipe_id": "article",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G6",
+      "expected_behavior": "media rights evidence required",
+      "negative_case": "unsafe_media",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "independent-qa",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "unsafe_media"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-24",
+      "scenario": "stale_publish_manifest",
+      "recipe_id": "landing",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G8",
+      "expected_behavior": "CAS and fresh reviewer required",
+      "negative_case": "publish_cas_conflict",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "publisher-approver",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "publish_cas_conflict"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "landing",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-25",
+      "scenario": "production_action_requested_from_content_approval",
+      "recipe_id": "tour",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G10",
+      "expected_behavior": "publication approval is not Production authority",
+      "negative_case": "scope_escalation",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "release-owner",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "scope_escalation"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-26",
+      "scenario": "research_fixture_non_paid_safe",
+      "recipe_id": "article",
+      "expected_state": "READY_FOR_NON_AUTHORITATIVE_PLAN",
+      "required_gate": "ACI-G2",
+      "expected_behavior": "compile read-only candidate only",
+      "negative_case": "none",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "SIMULATION_CANDIDATE",
+      "observed_finding_codes": [
+        "NO_FINDING"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-27",
+      "scenario": "unsupported_new_provider",
+      "recipe_id": "article",
+      "expected_state": "QUARANTINED",
+      "required_gate": "ACI-G2",
+      "expected_behavior": "unknown provider cannot create arbitrary executor",
+      "negative_case": "provider_unauthorized",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "research-operator",
+      "disposition_class": "ISOLATED_INCIDENT",
+      "observed_finding_codes": [
+        "provider_unauthorized"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "article",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-28",
+      "scenario": "partial_wpml_scan_no_results",
+      "recipe_id": "taxonomy",
+      "expected_state": "NEEDS_EVIDENCE",
+      "required_gate": "ACI-G4",
+      "expected_behavior": "empty or unsealed scan not complete",
+      "negative_case": "pagination_incomplete",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "native-content-steward",
+      "disposition_class": "EVIDENCE_GAP",
+      "observed_finding_codes": [
+        "pagination_incomplete"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "taxonomy",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-29",
+      "scenario": "operator_Arabic_RTL_disabled_action",
+      "recipe_id": "tour",
+      "expected_state": "NEEDS_REVIEW",
+      "required_gate": "ACI-G7",
+      "expected_behavior": "show blockers and enabled safe alternative",
+      "negative_case": "missing_authority",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "operations-owner",
+      "disposition_class": "HUMAN_DECISION",
+      "observed_finding_codes": [
+        "missing_authority"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    },
+    {
+      "id": "UC-30",
+      "scenario": "unknown_booking_inventory_freshness",
+      "recipe_id": "tour",
+      "expected_state": "DENIED",
+      "required_gate": "ACI-G8",
+      "expected_behavior": "never publish assumed live availability",
+      "negative_case": "unsupported_business_claim",
+      "site_scope": "DYNAMIC_FIXTURE",
+      "effect_class": "NONE_SPEC_SIMULATION",
+      "evidence_level": "TEST_FIXTURE_NOT_LIVE",
+      "authorizing": false,
+      "decision_owner": "publisher-approver",
+      "disposition_class": "POLICY_DENIAL",
+      "observed_finding_codes": [
+        "unsupported_business_claim"
+      ],
+      "test_level": "PURE_FIXTURE",
+      "trust_source": "SYNTHETIC_NOT_CERTIFIED",
+      "test_inputs": {
+        "site_profile": "isolated_disposable_fixture",
+        "content_recipe": "tour",
+        "effect_class": "NONE"
+      },
+      "required_evidence": [
+        "fixture_generation",
+        "contract_version",
+        "asserted_reason_code"
+      ],
+      "assertions": [
+        "expected_state",
+        "reason_code",
+        "non_authorizing",
+        "no_side_effects"
+      ],
+      "execution_state": "NOT_RUN"
+    }
+  ]
+}
