@@ -43,7 +43,8 @@ class MAD4B_SCP_Operation_Journal {
         }
         $new_hash = hash( 'sha256', serialize( array( $type, $args, self::$head['latest_event_sha256'] ) ) );
         $event = array( 'sequence' => self::$head['latest_sequence'] + 1,
-            'event_type' => $type, 'safe_metadata' => $args['metadata'],
+            'event_type' => $type, 'checkpoint' => $args['checkpoint'],
+            'lifecycle_state' => $args['lifecycle_state'], 'safe_metadata' => $args['metadata'],
             'event_sha256' => $new_hash );
         self::$events[] = $event;
         self::$head['latest_sequence']++;
@@ -112,6 +113,13 @@ assert_task( 'CAS transition stored and remains non-authorizing', is_array( $nex
     && 2 === $next['record']['revision'] && 'evidence_pending' === $next['record']['state']
     && ! $next['executable'] && ! $next['provider_entry_allowed'] );
 assert_task( 'stale client record rejected', is_wp_error( MAD4B_SCP_Assistant_Task_Journal_Bridge::transition( $context, $record, $request ) ) );
+$real_transition = MAD4B_SCP_Operation_Journal::$events[2];
+MAD4B_SCP_Operation_Journal::$events[2]['safe_metadata']['reason_code'] = 'rewritten_reason';
+assert_task( 'valid hash-chain hint alone cannot bypass semantic task replay', is_wp_error(
+    MAD4B_SCP_Assistant_Task_Journal_Bridge::read( $context ) ) );
+MAD4B_SCP_Operation_Journal::$events[2] = $real_transition;
+assert_task( 'original transition restores consistent replay', is_array(
+    MAD4B_SCP_Assistant_Task_Journal_Bridge::read( $context ) ) );
 $GLOBALS['assistant_staging'] = false;
 assert_task( 'Production cannot mutate ticket', is_wp_error( MAD4B_SCP_Assistant_Task_Journal_Bridge::transition( $context, $next['record'],
     array( 'expected_revision' => 2, 'expected_last_event_sha256' => $next['record']['last_event_sha256'],
