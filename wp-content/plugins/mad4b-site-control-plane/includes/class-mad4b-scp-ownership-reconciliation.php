@@ -86,6 +86,9 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	public static function commit_guard( array $plan, array $current, array $policies, array $binding ) {
 		$basis = self::basis( $plan ); if ( is_wp_error( $basis ) ) return $basis;
 		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $basis['binding'], $binding ); if ( is_wp_error( $v ) ) return $v;
+		$live_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+		if ( is_wp_error( $live_binding ) ) return $live_binding;
+		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $live_binding ); if ( is_wp_error( $v ) ) return $v;
 		$v = self::snapshot_valid( $current ); if ( is_wp_error( $v ) ) return $v;
 		if ( true !== $basis['baseline_valid'] ) return self::error( 'missing_managed_baseline' );
 		if ( time() >= $basis['expires_at'] ) return self::error( 'plan_expired' );
@@ -100,6 +103,9 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	public static function verify_readback( array $plan, array $after, array $binding ) {
 		$basis = self::basis( $plan ); if ( is_wp_error( $basis ) ) return $basis;
 		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $basis['binding'], $binding ); if ( is_wp_error( $v ) ) return $v;
+		$live_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+		if ( is_wp_error( $live_binding ) ) return $live_binding;
+		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $live_binding ); if ( is_wp_error( $v ) ) return $v;
 		$v = self::snapshot_valid( $after ); if ( is_wp_error( $v ) ) return $v;
 		if ( true !== $basis['baseline_valid'] ) return self::error( 'missing_managed_baseline' );
 		if ( ! empty( $basis['conflicts'] ) || $after['resource_id'] !== $basis['resource_id'] || $after['revision'] !== $basis['expected_revision'] + ( empty( $basis['changes'] ) ? 0 : 1 ) || $after['owner_revision'] !== $basis['owner_revision'] ) return self::error( 'readback_revision_conflict' );
