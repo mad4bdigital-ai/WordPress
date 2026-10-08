@@ -153,6 +153,13 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abuse-budget.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-legacy-dispatch-migration.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
+// Assistant read-only GA/GB bootstrap is a first-class plugin lifecycle contract,
+// not a side effect of loading NHI Agent Registry. Hook registration precedes the
+// native WordPress Abilities/Adapter lifecycle and never grants execution.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-planning.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php';
+MAD4B_SCP_Assistant_Planning::boot();
+MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-runtime-gates.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php';
