@@ -63,7 +63,7 @@
     {
       "id": "governed_wordpress_dispatch",
       "role": "existing_authority_only",
-      "authorizing": "existing_authority_only"
+      "authorizing": false
     },
     {
       "id": "native_browser_readback",
@@ -127,5 +127,101 @@
     ]
   ],
   "release_boundary": "owner_governed_exact_staging_then_independent_production",
-  "existing_authority_reuse_required": true
+  "existing_authority_reuse_required": true,
+  "graph_contract": "mad4b.aci-os.dynamic-flow.v2",
+  "nodes": [
+    "operator_action_center",
+    "decision_policy",
+    "durable_job_artifact_graph",
+    "context_writer_registry",
+    "provider_budget_resolver",
+    "discovery_research",
+    "evidence_registry",
+    "native_wpml_relations",
+    "blueprint_draft_media",
+    "quality_gates",
+    "publish_manifest",
+    "governed_wordpress_dispatch",
+    "native_browser_readback",
+    "growth_learning",
+    "untrusted_input",
+    "commit_guard",
+    "native_write_effect"
+  ],
+  "edges": [
+    {
+      "source": "untrusted_input",
+      "target": "discovery_research"
+    },
+    {
+      "source": "discovery_research",
+      "target": "evidence_registry"
+    },
+    {
+      "source": "evidence_registry",
+      "target": "decision_policy"
+    },
+    {
+      "source": "context_writer_registry",
+      "target": "decision_policy"
+    },
+    {
+      "source": "native_wpml_relations",
+      "target": "decision_policy"
+    },
+    {
+      "source": "decision_policy",
+      "target": "durable_job_artifact_graph"
+    },
+    {
+      "source": "durable_job_artifact_graph",
+      "target": "blueprint_draft_media"
+    },
+    {
+      "source": "blueprint_draft_media",
+      "target": "quality_gates"
+    },
+    {
+      "source": "quality_gates",
+      "target": "publish_manifest"
+    },
+    {
+      "source": "publish_manifest",
+      "target": "commit_guard"
+    },
+    {
+      "source": "commit_guard",
+      "target": "governed_wordpress_dispatch"
+    },
+    {
+      "source": "governed_wordpress_dispatch",
+      "target": "native_write_effect"
+    },
+    {
+      "source": "native_write_effect",
+      "target": "native_browser_readback"
+    },
+    {
+      "source": "native_browser_readback",
+      "target": "growth_learning"
+    },
+    {
+      "source": "growth_learning",
+      "target": "decision_policy"
+    },
+    {
+      "source": "operator_action_center",
+      "target": "decision_policy"
+    },
+    {
+      "source": "provider_budget_resolver",
+      "target": "durable_job_artifact_graph"
+    }
+  ],
+  "effect_target": "native_write_effect",
+  "mandatory_authority_dominators": [
+    "commit_guard",
+    "governed_wordpress_dispatch"
+  ],
+  "unknown_new_edges": "DENY"
 }
