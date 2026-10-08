@@ -46,7 +46,9 @@ final class MAD4B_SCP_Resilience_Context {
 		if ( is_wp_error( $valid ) ) return $valid;
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return self::error( 'origin_not_enrolled', 'Current URLs are not bound to this enrolled Site Profile.' );
 		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness() : array();
+        if ( ! is_array( $authority ) ) $authority = array();
 		$candidate = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
+        if ( ! is_array( $candidate ) ) $candidate = array();
 		$material = isset( $generation['material'] ) && is_array( $generation['material'] ) ? $generation['material'] : array();
 		$base = array(
 			'contract'=>self::CONTRACT,

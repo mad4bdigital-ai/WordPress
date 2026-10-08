@@ -103,12 +103,14 @@ final class MAD4B_SCP_G9_Release_Fence {
         // This is an internal, typed reservation only. It is not exposed as an
         // Ability, and can never substitute for provider-specific authorization.
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
-            || ! MAD4B_SCP_Site_Profile::nonproduction_governed()
+            || true !== MAD4B_SCP_Site_Profile::nonproduction_governed()
             || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
             || ! class_exists( 'MAD4B_SCP_Authorization' )
-            || ! class_exists( 'MAD4B_SCP_Policy' )
-            || ! MAD4B_SCP_Policy::can_mutate() )
+            || ! class_exists( 'MAD4B_SCP_Policy' ) )
             return self::blocked( 'execution_authority_unavailable', 'Existing mutation guard is unavailable.' );
+        $mutable = MAD4B_SCP_Policy::can_mutate();
+        if ( is_wp_error( $mutable ) || true !== $mutable )
+            return self::blocked( 'execution_authority_unavailable', 'Core mutation guard is disabled.' );
         $ready = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
         if ( ! is_array( $ready ) || empty( $ready['ready'] )
             || empty( $ready['current_grant_snapshot_ready'] ) )
@@ -171,6 +173,11 @@ final class MAD4B_SCP_G9_Release_Fence {
     public static function inspect( array $binding, $operation_sha256 ) {
         if ( ! MAD4B_SCP_Resilience_Context::is_hash( $operation_sha256 ) )
             return self::blocked( 'operation_identity', 'Exact operation digest is required.' );
+        // No caller-selected foreign-site reads, even for the passive receipt view.
+        $current = self::live_observation();
+        if ( is_wp_error( $current ) ) return $current;
+        if ( MAD4B_SCP_Resilience_Context::digest( $binding ) !== $current['binding_sha256'] )
+            return self::blocked( 'foreign_site', 'External history is limited to this exact currently enrolled site.');
         $record = MAD4B_SCP_Resilience_Anchor::read( $binding );
         if ( is_wp_error( $record ) ) return $record;
         $key = 'g9:release:' . $operation_sha256;

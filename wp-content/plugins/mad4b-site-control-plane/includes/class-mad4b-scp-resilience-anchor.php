@@ -29,7 +29,8 @@ final class MAD4B_SCP_Resilience_Anchor {
 			$current = self::read_path( $path, $binding );
 			if ( is_wp_error( $current ) ) return $current;
 			if ( ! is_int( $expected_revision ) || $expected_revision < 0 || $expected_revision !== (int) $current['revision'] ) return self::error( 'revision_conflict', 'External resilience revision changed; reread before proceeding.' );
-			$next = $transform( $current );
+			if ( ! is_callable( $transform ) ) return self::error( 'transition_invalid', 'Resilience transaction requires a pinned internal handler.' );
+            $next = $transform( $current );
 			if ( is_wp_error( $next ) ) return $next;
 			if ( ! is_array( $next ) || ! isset( $next['scopes'] ) || ! is_array( $next['scopes'] ) ) return self::error( 'transition_invalid', 'Resilience transition did not return a bounded state document.' );
 			// The transaction owns identity, revision and monotonic time, not its transform.
@@ -39,7 +40,15 @@ final class MAD4B_SCP_Resilience_Anchor {
                         !== MAD4B_SCP_Resilience_Context::digest( $_ ) )
                     return self::error( 'history_truncation', 'Existing resilience scope history is append-only and cannot be removed or rewritten.' );
 			}
-			$next['contract'] = self::CONTRACT;
+			// Ignore every caller-supplied top-level field except append-only scopes.
+            // The anchor owns clock, identity, revision and all metadata.
+            $next = array( 'scopes' => $next['scopes'] );
+            $keys = array_keys( $next['scopes'] );
+            foreach ( $keys as $scope_key ) {
+                if ( ! is_string( $scope_key ) || 1 !== preg_match( '/^[a-z][a-z0-9.:-]{1,126}$/D', $scope_key ) )
+                    return self::error( 'scope_invalid', 'Resilience scope key must be a bounded code-owned identifier.' );
+            }
+            $next['contract'] = self::CONTRACT;
 			$next['site'] = self::site_identity( $binding );
 			$next['revision'] = (int) $current['revision'] + 1;
 			$next['clock_floor'] = max( (int) $current['clock_floor'], MAD4B_SCP_Resilience_Context::now() );

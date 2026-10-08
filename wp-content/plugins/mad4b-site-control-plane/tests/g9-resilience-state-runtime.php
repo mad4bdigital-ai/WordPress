@@ -1,0 +1,168 @@
+<?php
+/* Isolated G9 site-local kernel tests, PHP 7.4/8.3; no live site or provider. */
+define( 'ABSPATH', __DIR__ . '/' );
+$_SERVER['DOCUMENT_ROOT'] = __DIR__;
+define( 'MAD4B_SCP_G9_RELEASE_FENCE_ENABLED', true );
+define( 'MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY',
+    sys_get_temp_dir() . '/mad4b-g9-state-' . bin2hex( random_bytes( 8 ) ) );
+$GLOBALS['g9_test_options'] = array();
+$GLOBALS['g9_registered_abilities'] = array();
+function is_wp_error( $v ) { return $v instanceof WP_Error; }
+function get_option( $key, $default = false ) { return $GLOBALS['g9_test_options'][ $key ] ?? $default; }
+function update_option( $key, $value, $autoload = false ) {
+    $GLOBALS['g9_test_options'][ $key ] = $value; return true;
+}
+function add_action( $action, $cb, $priority = 10 ) { return true; }
+function wp_register_ability( $name, $args ) { $GLOBALS['g9_registered_abilities'][ $name ] = $args; return true; }
+function wp_has_ability( $name ) { return isset( $GLOBALS['g9_registered_abilities'][ $name ] ); }
+function get_current_blog_id() { return 1; }
+class WP_Error {
+    private $code;
+    public function __construct( $code, $message, $data = null ) { $this->code = $code; }
+    public function get_error_code() { return $this->code; }
+}
+function g9_assert( $ok, $reason ) {
+    if ( ! $ok ) { fwrite( STDERR, 'G9 state FAIL: ' . $reason . "\n" ); exit( 1 ); }
+}
+function g9_denied( $value, $reason ) {
+    g9_assert( is_wp_error( $value ) && false !== strpos( $value->get_error_code(), $reason ), $reason );
+}
+class MAD4B_SCP_Site_Profile {
+    public static $revision = 1;
+    public static function site_uuid() { return '11111111-1111-4111-8111-111111111111'; }
+    public static function current_environment() { return 'staging'; }
+    public static function current_origin() { return 'https://staging.example.invalid'; }
+    public static function revision() { return self::$revision; }
+    public static function profile_digest() { return hash( 'sha256', 'profile-' . self::$revision ); }
+    public static function origin_enrolled() { return true; }
+    public static function site_urls_match_enrollment() { return true; }
+    public static function nonproduction_governed() { return true; }
+}
+class MAD4B_SCP_Runtime_Generation_Fence {
+    public static function status() {
+        return array(
+            'ready' => true, 'generation_sha256' => hash( 'sha256', 'generation' ),
+            'blockers' => array(), 'material' => array(
+                'schema_installed_version' => 40,
+                'persisted_contract_registry_sha256' => hash( 'sha256', 'registry' ),
+                'disk_runtime_file_sha256' => hash( 'sha256', 'file' ),
+                'disk_provenance_sha256' => hash( 'sha256', 'provenance' ),
+                'config_generation_sha256' => hash( 'sha256', 'config' ),
+            ),
+        );
+    }
+}
+class MAD4B_SCP_Restore_Epoch {
+    public static function status( $initialize = false, $refresh = false ) {
+        return array( 'ready'=>true, 'epoch'=>1,
+            'external_record_sha256'=>hash( 'sha256', 'external-record' ), 'blockers'=>array() );
+    }
+}
+class MAD4B_SCP_Live_Acceptance_Observer {
+    public static function build_provenance_identity_status() {
+        return array( 'package_manifest_digest'=>hash( 'sha256', 'package' ) );
+    }
+}
+class MAD4B_SCP_Certification_Pack_Registry {
+    public static function status() { return array( 'revision'=>0, 'active'=>array() ); }
+}
+class MAD4B_SCP_Staging_Write_Authority {
+    public static function current_execution_readiness() {
+        return array( 'ready'=>true, 'current_grant_snapshot_ready'=>true,
+            'grant_rows_fingerprint'=>hash( 'sha256', 'grants' ) );
+    }
+    public static function candidate_binding_status() { return array( 'match'=>true ); }
+}
+class MAD4B_SCP_Policy {
+    public static $mutable = true;
+    public static function can_mutate() { return self::$mutable; }
+    public static function can_read() { return true; }
+}
+class MAD4B_SCP_Authorization {
+    public static $admitted = true;
+    public static function authorize_mutation( $ability, $category, $provider, $input ) {
+        return self::$admitted && $ability === 'mad4b/g9-release-reserve';
+    }
+}
+require_once __DIR__ . '/../includes/class-mad4b-scp-g9-read-surface.php';
+class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
+    public function read_local( array $binding ) {
+        $key = MAD4B_SCP_Resilience_Context::site_key( $binding );
+        return array(
+            'binding_sha256' => MAD4B_SCP_Resilience_Context::digest( $binding ),
+            'providers' => array( 'certified' => array(
+                'site_key'=>$key, 'generation_sha256'=>$binding['runtime_generation_sha256'],
+                'certification_sha256'=>hash( 'sha256', 'cert' ), 'ready'=>true, 'revoked'=>false,
+            ) ),
+            'host' => array( 'isolation_verified'=>true, 'local_readback_verified'=>true ),
+            'health' => array( 'sample_count'=>90, 'error_rate_bps'=>1, 'p95_ms'=>40 ),
+            'external_effects' => array(), 'gates'=>array( 'prior_ring_health_accepted'=>false ),
+        );
+    }
+}
+g9_assert( true === MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader registration' );
+$observation = MAD4B_SCP_Resilience_Context::capture();
+g9_assert( ! is_wp_error( $observation ) && $observation['authority']['eligible'], 'current capture' );
+g9_denied( MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader_already_registered' );
+$binding = $observation['binding'];
+$init = MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $record ) {
+    $record['scopes']['g9:init'] = array( 'initialized'=>true ); return $record;
+} );
+g9_assert( ! is_wp_error( $init ) && 1 === $init['revision'], 'durable initialize' );
+$key = MAD4B_SCP_Resilience_Context::site_key( $binding );
+$target = array(
+    'contract'=>MAD4B_SCP_G9_Resilience_Gates::RING_CONTRACT,
+    'ring'=>'pilot', 'cohort_id'=>'alpha-one',
+    'site_key'=>$key, 'binding_sha256'=>$observation['binding_sha256'],
+    'baseline_snapshot_sha256'=>$observation['snapshot_sha256'],
+);
+$limits = array( 'min_samples'=>30, 'max_error_rate_bps'=>10, 'max_p95_ms'=>80 );
+$plan = MAD4B_SCP_G9_Release_Fence::plan( $target, $limits );
+g9_assert( ! is_wp_error( $plan ) && !$plan['authorizing'] && !$plan['execution_supported'], 'bounded read plan' );
+$bad = $plan; $bad['expires_at']++;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $bad ), 'plan_tampered' );
+MAD4B_SCP_Policy::$mutable = new WP_Error( 'blocked', 'deny' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'execution_authority_unavailable' );
+MAD4B_SCP_Policy::$mutable = true;
+MAD4B_SCP_Authorization::$admitted = false;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'not_admitted' );
+MAD4B_SCP_Authorization::$admitted = true;
+$reserved = MAD4B_SCP_G9_Release_Fence::reserve( $plan );
+g9_assert( ! is_wp_error( $reserved ) && 2 === $reserved['anchor_revision']
+    && $reserved['state'] === 'fenced_not_dispatched'
+    && !$reserved['release_accepted'] && !$reserved['provider_mutation_performed'],
+    'site-local immutable reservation' );
+$receipt = MAD4B_SCP_G9_Release_Fence::inspect( $binding, $reserved['operation_sha256'] );
+g9_assert( ! is_wp_error( $receipt ) && $receipt['external_effect_unknown']
+    && !$receipt['blind_retry_allowed'], 'unknown external effect remains uncertain' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'plan_superseded' );
+$foreign = $binding; $foreign['site_uuid'] = '22222222-2222-4222-8222-222222222222';
+g9_denied( MAD4B_SCP_G9_Release_Fence::inspect( $foreign, $reserved['operation_sha256'] ), 'foreign_site' );
+$baseline = MAD4B_SCP_Resilience_Context::capture();
+$effects = array( 'payment'=>array( 'state'=>'unknown', 'site_key'=>$key,
+    'receipt_sha256'=>hash( 'sha256', 'effect' ) ) );
+$dr = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, $effects );
+g9_assert( ! is_wp_error( $dr ) && $dr['requires_quarantine']
+    && count( $dr['unresolved_effect_keys'] )===1 && !$dr['post_restore_acceptance_issued'],
+    'unrewound external effects remain quarantined' );
+MAD4B_SCP_Site_Profile::$revision = 2;
+$changed = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, array() );
+g9_assert( ! is_wp_error( $changed ) && $changed['requires_quarantine']
+    && in_array( 'site_profile', $changed['changed_facets'], true ), 'profile restore drift' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'live_drift' );
+MAD4B_SCP_G9_Read_Surface::boot();
+MAD4B_SCP_G9_Read_Surface::register_abilities();
+g9_assert( count( $GLOBALS['g9_registered_abilities'] ) === 2, 'two read-only abilities' );
+foreach ( $GLOBALS['g9_registered_abilities'] as $ability => $args ) {
+    g9_assert( $args['meta']['annotations']['readonly'] === true
+        && $args['meta']['mcp']['surface'] === 'read'
+        && $args['input_schema']['additionalProperties'] === false, 'read-only ability ' . $ability );
+}
+$read = MAD4B_SCP_G9_Read_Surface::site_observation();
+g9_assert( ! is_wp_error( $read ) && !$read['release_execution_supported'], 'site observation not executing' );
+g9_denied( MAD4B_SCP_G9_Read_Surface::site_observation( array('site'=>'foreign') ), 'read_input_invalid' );
+$state = MAD4B_SCP_G9_Restore_Convergence::status();
+g9_assert( ! is_wp_error( $state ) && !$state['write_reenabled'], 'restore status never grants' );
+$path = MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY . '/resilience-' . $binding['site_uuid'] . '-1-staging.json';
+@unlink( $path ); @unlink( $path . '.lock' ); @rmdir( MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY );
+echo "G9 release/DR site-local runtime: PASS (admission, drift, replay, isolation, bounded receipts)\n";
