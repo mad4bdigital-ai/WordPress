@@ -270,4 +270,5 @@ final class MAD4B_SCP_Assistant_Planning {
  */
 require_once __DIR__ . '/class-mad4b-scp-assistant-convergence.php';
 require_once __DIR__ . '/class-mad4b-scp-assistant-task-contract.php';
+require_once __DIR__ . '/class-mad4b-scp-assistant-read-work-operations.php';
 MAD4B_SCP_Assistant_Convergence::boot();
