@@ -92,7 +92,9 @@ final class MAD4B_SCP_G7_Update_Acceptance {
     }
 
     private static function read( array $observation ) {
-        $material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $observation['sealed_observation'] ?? array() );
+        $sealed = $observation['sealed_observation'] ?? array();
+        if ( ! is_array( $sealed ) ) return self::error( 'observation_format_invalid' );
+        $material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $sealed );
         if ( is_wp_error( $material ) ) return $material;
         if ( ! is_array( $material ) || ( $material['contract'] ?? '' ) !== self::CONTRACT ||
             ! isset( $material['binding'] ) || ! is_array( $material['binding'] ) ||

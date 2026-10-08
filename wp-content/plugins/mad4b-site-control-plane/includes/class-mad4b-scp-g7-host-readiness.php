@@ -16,11 +16,12 @@ final class MAD4B_SCP_G7_Host_Readiness {
         if ( is_wp_error( $binding ) ) return $binding;
         $snapshot = MAD4B_SCP_Developer_Host_Capabilities::snapshot();
         if ( ! is_array( $snapshot ) || ( $snapshot['contract'] ?? '' ) !== MAD4B_SCP_Developer_Host_Capabilities::CONTRACT ) return self::error( 'snapshot_untrusted' );
+        $now = time();
         $material = array(
             'contract' => self::CONTRACT,
             'binding' => $binding,
-            'observed_at' => time(),
-            'expires_at' => time() + self::TTL,
+            'observed_at' => $now,
+            'expires_at' => $now + self::TTL,
             'host_capability_fingerprint' => $snapshot['capability_fingerprint'] ?? '',
             'source_contract' => MAD4B_SCP_Developer_Host_Capabilities::CONTRACT,
         );
@@ -33,7 +34,9 @@ final class MAD4B_SCP_G7_Host_Readiness {
     }
 
     public static function verify( array $observation ) {
-        $material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $observation['sealed_observation'] ?? array() );
+        $sealed = $observation['sealed_observation'] ?? array();
+        if ( ! is_array( $sealed ) ) return self::error( 'observation_format_invalid' );
+        $material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $sealed );
         if ( is_wp_error( $material ) ) return $material;
         if ( ! is_array( $material ) || ( $material['contract'] ?? '' ) !== self::CONTRACT ||
             ( $material['source_contract'] ?? '' ) !== MAD4B_SCP_Developer_Host_Capabilities::CONTRACT ||

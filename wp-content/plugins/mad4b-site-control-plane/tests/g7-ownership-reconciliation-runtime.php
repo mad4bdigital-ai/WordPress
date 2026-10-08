@@ -48,6 +48,8 @@ $concurrent = $current; $concurrent['revision']++;
 g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $plan, $concurrent, $policy, g7_binding() ), 'concurrent_edit' );
 $other_binding = g7_binding(); $other_binding['restore_epoch'] = 2;
 g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $plan, $current, $policy, $other_binding ), 'binding_restore_epoch_changed' );
+$bad_plan_type = $plan; $bad_plan_type['sealed_plan'] = 'invalid-object';
+g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $bad_plan_type, $current, $policy, g7_binding() ), 'plan_evidence_format_invalid' );
 $tampered = $plan; $tampered['plan_sha256'] = array( 'not-a-hash' );
 g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $tampered, $current, $policy, g7_binding() ), 'plan_digest_changed' );
 $unknown = $current; $unknown['owners']['title'] = 'nobody';
@@ -59,6 +61,8 @@ g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $locked, $current, $
 $provider = $current; $provider['owners']['title'] = 'provider';
 $pplan = MAD4B_SCP_Ownership_Reconciliation::plan( $baseline, $provider, $desired, $policy, g7_binding() );
 g7_assert( 'APPROVAL_REQUIRED' === $pplan['state'], 'provider ownership change requires review' );
+$invalid_lineage = $baseline; $invalid_lineage['lineage_proof'] = 'invalid-object';
+g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $invalid_lineage, $current, $desired, $policy, g7_binding() ), 'baseline_lineage_format_invalid' );
 $missing = $baseline; unset( $missing['lineage_proof'] );
 $missing_plan = MAD4B_SCP_Ownership_Reconciliation::plan( $missing, $current, $desired, $policy, g7_binding() );
 g7_assert( 'APPROVAL_REQUIRED' === $missing_plan['state'], 'missing managed lineage blocks auto-repair' );

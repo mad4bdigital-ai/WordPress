@@ -32,7 +32,9 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		$v = MAD4B_SCP_Adaptive_Operations_Context::validate( $binding ); if ( is_wp_error( $v ) ) return $v;
 		foreach ( array( $current, $desired ) as $snapshot ) { $v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v; }
 		if ( $current['resource_id'] !== $desired['resource_id'] ) return self::error( 'resource_mismatch' );
-		$baseline_material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::BASELINE_CONTRACT, $last_managed['lineage_proof'] ?? array() );
+		$lineage = $last_managed['lineage_proof'] ?? array();
+        if ( ! is_array( $lineage ) ) return self::error( 'baseline_lineage_format_invalid' );
+        $baseline_material = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::BASELINE_CONTRACT, $lineage );
 		$baseline_value = $last_managed; unset( $baseline_value['lineage_proof'] );
 		$baseline_valid = ! is_wp_error( self::snapshot_valid( $last_managed ) ) && ! is_wp_error( $baseline_material ) && ( $baseline_material['snapshot'] ?? null ) === $baseline_value && ! is_wp_error( MAD4B_SCP_Adaptive_Operations_Context::assert_same( $baseline_material['binding'] ?? array(), $binding ) ) && $last_managed['resource_id'] === $current['resource_id'];
 		$fields = array_unique( array_merge( array_keys( $current['fields'] ), array_keys( $desired['fields'] ), array_keys( $last_managed['fields'] ?? array() ) ) );
@@ -107,7 +109,9 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	}
 
 	private static function basis( array $plan ) {
-		$basis = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $plan['sealed_plan'] ?? array() );
+		$sealed = $plan['sealed_plan'] ?? array();
+        if ( ! is_array( $sealed ) ) return self::error( 'plan_evidence_format_invalid' );
+        $basis = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $sealed );
 		if ( is_wp_error( $basis ) ) return $basis;
 		if ( ! is_array( $basis ) || ! isset( $plan['plan_sha256'] ) || ! MAD4B_SCP_Adaptive_Operations_Context::sha( $plan['plan_sha256'] ) || ! hash_equals( $plan['plan_sha256'], $plan['sealed_plan']['sha256'] ) ) return self::error( 'plan_digest_changed' );
 		if ( ( $basis['contract'] ?? '' ) !== self::CONTRACT || ! isset( $basis['binding'], $basis['resource_id'], $basis['expected_revision'], $basis['owner_revision'], $basis['current_sha256'], $basis['expected_after_sha256'], $basis['policy_sha256'], $basis['changes'], $basis['preserved'], $basis['conflicts'], $basis['expires_at'] ) || ! is_array( $basis['binding'] ) || ! is_array( $basis['changes'] ) || ! is_array( $basis['preserved'] ) || ! is_array( $basis['conflicts'] ) || ! is_int( $basis['expected_revision'] ) || ! is_int( $basis['owner_revision'] ) || ! is_int( $basis['expires_at'] ) ) return self::error( 'plan_material_invalid' );

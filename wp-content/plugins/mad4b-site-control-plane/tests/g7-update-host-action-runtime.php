@@ -94,6 +94,8 @@ g7_check( in_array( 'network_sandbox_required', $missing['blockers'], true ) &&
     false === $missing['execution_eligible'], 'missing network isolation remains external action' );
 MAD4B_SCP_Developer_Host_Capabilities::$snapshot['capability_fingerprint'] = str_repeat( 'f', 64 );
 MAD4B_SCP_Developer_Host_Capabilities::$snapshot['network_sandbox_binary_present'] = true;
+$host_bad_type = $host; $host_bad_type['sealed_observation'] = 'invalid-object';
+g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $host_bad_type ), 'malformed host proof fail closed without TypeError' );
 $host_tampered = $host; $host_tampered['sealed_observation']['sha256'] = str_repeat( '0', 64 );
 g7_denied( MAD4B_SCP_G7_Host_Readiness::verify( $host_tampered ), 'forged host envelope denied' );
 $material = $host['sealed_observation']['material'];
@@ -127,6 +129,8 @@ MAD4B_SCP_Runtime_Evidence_Graph::$complete = true;
 MAD4B_SCP_Restore_Epoch::$epoch = 2;
 g7_denied( MAD4B_SCP_G7_Update_Acceptance::compare( $before, $after_graph ), 'restore epoch drift denied' );
 MAD4B_SCP_Restore_Epoch::$epoch = 1;
+$bad_update_type = $after_graph; $bad_update_type['sealed_observation'] = 'invalid-object';
+g7_denied( MAD4B_SCP_G7_Update_Acceptance::compare( $before, $bad_update_type ), 'malformed update proof fail closed without TypeError' );
 $fake = $after_graph; $fake['sealed_observation']['sha256'] = str_repeat( '0', 64 );
 g7_denied( MAD4B_SCP_G7_Update_Acceptance::compare( $before, $fake ), 'tampered update evidence denied' );
 $stale_material = $before['sealed_observation']['material'];
