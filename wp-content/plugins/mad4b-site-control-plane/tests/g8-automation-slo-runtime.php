@@ -148,6 +148,29 @@ g8_check( is_array( $healthy ) && true === $healthy['pre_ready'], 'healthy prest
 g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $healthy, $completed ), 'already ready finish' );
 $status = MAD4B_SCP_Automation_SLO::status();
 g8_check( 1 === $status['outcomes']['verified_repair'] && 2 === $status['outcomes']['handoff'], 'no false repair count' );
+// Readiness is NOT an exact ticket-bound causal repair receipt. Even
+// an externally observed ready transition may have been made by another worker.
+class MAD4B_SCP_Skill_Runtime_Certification {
+	public static $ready = false;
+	public static function persisted_status() {
+		return array( 'ready' => self::$ready, 'build_identity_current' => true );
+	}
+	public static function current_status() {
+		return array( 'contract' => 'mad4b.skill-runtime-certification.v2',
+			'ready' => self::$ready, 'build_identity_current' => true );
+	}
+}
+$skills_ticket = MAD4B_SCP_Automation_SLO::reserve( 'managed-skills', 'reconcile', $generation );
+g8_check( is_array( $skills_ticket ) && false === $skills_ticket['pre_ready'],
+	'Managed Skills begins genuinely unready' );
+MAD4B_SCP_Skill_Runtime_Certification::$ready = true;
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $skills_ticket,
+	array( 'state' => 'ready', 'current_request_observed' => true, 'skipped_conflict' => array() ) ),
+	'Managed Skills readiness observation is settled as a handoff' );
+$skills_status = MAD4B_SCP_Automation_SLO::status();
+g8_check( 1 === ( $skills_status['outcomes']['verified_repair'] ?? 0 )
+	&& 3 === ( $skills_status['outcomes']['handoff'] ?? 0 ),
+	'unattributed Managed Skills transition cannot inflate the verified repair numerator' );
 $GLOBALS['g8_after_slo_cas'] = static function () {
  $revision = MAD4B_SCP_Automation_SLO::switch_status()['revision'];
  g8_check( true === MAD4B_SCP_Automation_SLO::change_switch( '*', false, $revision ), 'switch ABA revision advance' );
