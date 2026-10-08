@@ -1271,7 +1271,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				$skills = MAD4B_SCP_Skill_Runtime_Certification::current_status();
 				$skills_pending = empty( $skills['ready'] );
 				if ( $schema_changed_this_slice && 'post_update_cron' === sanitize_key( (string) $source ) && $skills_pending ) {
-					return self::yield_safe_phases( $source, $changed, 'managed_skills' );
+					return self::yield_safe_phases( $source, $changed, 'managed_skills', $automatic_ticket );
 				}
 				if ( $skills_pending ) {
 					if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
@@ -1482,7 +1482,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 	}
 
-	private static function yield_safe_phases( $source, array $changed, $next_phase ) {
+	private static function yield_safe_phases( $source, array $changed, $next_phase, $automatic_ticket = null ) {
+		$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+		if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 		$current = self::current_identity();
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) ) $checkpoint = array();
@@ -1502,7 +1504,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$checkpoint['maintenance_sliced'] = true;
 		$checkpoint['updated_at'] = gmdate( 'c' );
 		$checkpoint['production_mutation'] = false;
+		$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+		if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		// A subsequent slice must acquire a fresh exact-bound ticket.
+		// It is not permissible to carry this ticket into the next Cron run.
 		$scheduled = self::schedule_resume( time() + 5 );
 		return array(
 			'contract' => 'mad4b.runtime-convergence-apply.v1',
