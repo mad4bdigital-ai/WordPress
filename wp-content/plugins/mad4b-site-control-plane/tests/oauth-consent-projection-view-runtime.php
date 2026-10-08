@@ -47,4 +47,11 @@ t( 'stale fetch timestamp updates on unchanged fingerprint', is_string( $source 
 t( 'grant list always reports missing labels', is_string( $source ) && false !== strpos( $source, 'No displayable grant names' ) );
 t( 'OAuth consent labels executable host separately', is_string( $consent ) && false !== strpos( $consent, 'Developer host execution' ) );
 t( 'consent remains OAuth server POST, unchanged submission', is_string( $source ) && false !== strpos( $source, 'name="decision" value="approve"' ) );
+$developer_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-developer-runtime.php' );
+$host_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-developer-host-capabilities.php' );
+t( 'all Developer subprocess entrypoints deny unknown non-root identity', is_string( $developer_source )
+    && 3 === substr_count( $developer_source, "mad4b_developer_non_root_identity_unverified" )
+    && 3 === substr_count( $developer_source, "! function_exists( 'posix_geteuid' )" ) );
+t( 'host prereq projection blocks unknown non-root identity', is_string( $host_source )
+    && false !== strpos( $host_source, "if ( null === \$root_state ) \$process_blockers[] = 'non_root_identity_unverified'" ) );
 echo 'OAUTH_CONSENT_PROJECTION_VIEW: PASS' . PHP_EOL;
