@@ -77,12 +77,14 @@ export function resolveSiteBrowserAdapter(caps, {
       !EXECUTORS.has(pref.executor) || !EXECUTORS.has(requestedExecutor) ||
       (requestedProfile && !valid(requestedProfile, ID))) fail("operator_preference_invalid");
   if (pref.executor !== "auto" && requestedExecutor !== "auto" && pref.executor !== requestedExecutor) fail("executor_conflict");
-  const eligible = [...recognized].filter(id => candidates.has(providers.get(id).contract)).sort();
+  // A discovered provider without a reviewed driver is visible but not executable.
+  // Never silently replace it with a different installed provider.
+  const eligible = [...recognized].sort();
   let providerId = pref.site_provider_id;
   if (providerId && !providers.has(providerId)) fail("selected_provider_unregistered");
   if (providerId && !recognized.has(providerId)) fail("selected_provider_not_discovered");
   if (!providerId) {
-    if (!eligible.length) fail("approved_site_adapter_missing");
+    if (!eligible.length) fail("site_adapter_missing");
     if (eligible.length > 1) fail("site_adapter_ambiguous");
     providerId = eligible[0];
   }
