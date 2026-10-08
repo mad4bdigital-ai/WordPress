@@ -130,6 +130,32 @@ Important limitations requiring independent work:
 No UI, external AI call, secret lookup, package download/install,
 configuration persistence, grant change or production mutation is made.
 
+## Enrollment-unready bootstrap advisor
+
+The new read-only `mad4b/assistant-bootstrap-diagnostic` returns a bounded
+prerequisite state even when the exact Site Profile is unconfigured or the
+external restore epoch is missing. It does not call the exact runtime binding
+on an unconfigured or origin-unbound site. It only reads current runtime
+evidence when enrollment and origin have already passed.
+
+- It does not enroll, repair, install dependencies, initialize an epoch,
+  grant access, run providers or enable Production writes.
+- It reports actionable **review codes** without secrets or absolute host
+  paths.
+- It remains protected by `MAD4B_SCP_Policy::can_read`. A site with no usable
+  OAuth identity may only be able to view it through an enrolled WordPress
+  administrator. No unauthenticated transport is created.
+- Its `preview_eligible` field means **only** that the existing exact read
+  planner can be considered. It does not mean implementation or mutation
+  eligibility.
+- The hermetic fixture covers unconfigured, unbound, restore-epoch-blocked,
+  ready, unknown-input and denial boundaries. Actual native 7.4/8.3 CI and
+  WordPress integration remain release gates.
+
+Durable task CAS storage, independent provider attestations, signed
+Desired-State authority, safe package solvers, governed configuration apply
+and browser/host acceptance remain separate implementation groups.
+
 ## Next reviewed child groups
 
 1. GA: durable typed task envelopes, CAS journal, provenance, task ownership
