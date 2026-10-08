@@ -63,7 +63,7 @@ final class MAD4B_SCP_Automation_SLO {
 			if ( $row['cooldown_until'] > time() ) return array( 'allowed' => false, 'reason' => 'error_budget_cooldown', 'scope' => $scope, 'authorizing' => false );
 			if ( $row['started_at'] + self::WINDOW > time() && $row['attempts'] >= $limit ) return array( 'allowed' => false, 'reason' => 'retry_budget_exhausted', 'scope' => $scope, 'authorizing' => false );
 		}
-		return array( 'allowed' => true, 'reason' => 'within_budget', 'state_sha256' => MAD4B_SCP_G8_Record::digest( $state ), 'authorizing' => false );
+		return array( 'allowed' => true, 'reason' => 'within_budget', 'state_sha256' => MAD4B_SCP_G8_Record::digest( $state ), 'switch_revision' => $switch['revision'], 'authorizing' => false );
 	}
 
 	/** Called only at the existing internal automatic handoff; never creates execution permission. */
@@ -84,14 +84,24 @@ final class MAD4B_SCP_Automation_SLO {
 		if ( count( $state['buckets'] ) > self::MAX_BUCKETS ) return new WP_Error( 'mad4b_automation_scope_capacity', 'Automation budget scope capacity is reached.' );
 		$runtime_binding = MAD4B_SCP_G8_Record::runtime_binding();
 		if ( is_wp_error( $runtime_binding ) ) return $runtime_binding;
+		$pre_ready = null;
+		if ( 'managed-skills' === $provider && 'reconcile' === $capability && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false ) ) {
+			$prior = MAD4B_SCP_Skill_Runtime_Certification::persisted_status();
+			$pre_ready = is_array( $prior ) && true === ( $prior['ready'] ?? false ) && true === ( $prior['build_identity_current'] ?? false );
+		}
+		if ( 'runtime-convergence' === $provider && 'safe-phases' === $capability && class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
+			$prior = MAD4B_SCP_Runtime_Convergence::status();
+			$pre_ready = is_array( $prior ) && empty( $prior['required_blockers'] );
+		}
 		$ticket = array( 'token' => $token, 'provider' => $provider, 'capability' => $capability, 'generation' => $generation, 'runtime_binding' => $runtime_binding, 'restore_binding' => $state['restore_binding'],
+			'pre_ready' => $pre_ready,
 			'profile_digest' => MAD4B_SCP_G8_Record::profile(), 'started_at' => time(), 'expires_at' => time() + self::TICKET_TTL );
 		$state['tickets'][ $token ] = $ticket; ++$state['revision']; ++$state['eligible_workload_count']; $state['seal'] = MAD4B_SCP_G8_Record::seal( $state );
 		$ok = MAD4B_SCP_G8_Record::replace( self::OPTION, $before, $state );
 		if ( is_wp_error( $ok ) ) return $ok;
 		// A switch changed while reserving: no action may run under the old decision.
 		$after = self::switch_status();
-		if ( ! $after['integrity_valid'] || ! empty( $after['scopes']['*'] ) || ! empty( $after['scopes'][ $provider . ':*' ] ) || ! empty( $after['scopes'][ $provider . ':' . $capability ] ) ) {
+		if ( ! $after['integrity_valid'] || $after['revision'] !== $decision['switch_revision'] || ! empty( $after['scopes']['*'] ) || ! empty( $after['scopes'][ $provider . ':*' ] ) || ! empty( $after['scopes'][ $provider . ':' . $capability ] ) ) {
 			self::finish( $ticket, 'cancelled' ); return new WP_Error( 'mad4b_automation_switch_raced', 'Automatic maintenance was cancelled by its independent switch.' );
 		}
 		return $ticket;
@@ -102,8 +112,12 @@ final class MAD4B_SCP_Automation_SLO {
 		$outcome = is_wp_error( $result ) ? 'failed' : 'handoff';
 		$readback = 'managed-skills' === ( $ticket['provider'] ?? '' ) && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
 			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : null;
-		if ( 'managed-skills' === $ticket['provider'] && 'reconcile' === $ticket['capability'] && ! is_wp_error( $result )
-			&& is_array( $readback ) && 'mad4b.skill-runtime-certification.v2' === ( $readback['contract'] ?? '' ) && true === ( $readback['ready'] ?? false ) ) $outcome = 'verified_repair';
+		if ( false === ( $ticket['pre_ready'] ?? null ) && 'managed-skills' === ( $ticket['provider'] ?? '' ) && 'reconcile' === ( $ticket['capability'] ?? '' ) && ! is_wp_error( $result )
+			&& is_array( $readback ) && 'mad4b.skill-runtime-certification.v2' === ( $readback['contract'] ?? '' ) && true === ( $readback['ready'] ?? false )
+			&& is_array( $persisted = MAD4B_SCP_Skill_Runtime_Certification::persisted_status() ) && true === ( $persisted['build_identity_current'] ?? false ) ) $outcome = 'verified_repair';
+		if ( false === ( $ticket['pre_ready'] ?? null ) && 'runtime-convergence' === ( $ticket['provider'] ?? '' ) && 'safe-phases' === ( $ticket['capability'] ?? '' )
+			&& is_array( $result ) && 'completed' === ( $result['state'] ?? '' ) && is_array( $result['readback'] ?? null )
+			&& empty( $result['readback']['required_blockers'] ) ) $outcome = 'verified_repair';
 		return self::finish( $ticket, $outcome );
 	}
 
@@ -129,7 +143,12 @@ final class MAD4B_SCP_Automation_SLO {
 	public static function switch_status() {
 		$raw = MAD4B_SCP_G8_Record::read( self::SWITCH_OPTION );
 		$binding = MAD4B_SCP_G8_Record::binding();
-		$valid = ! is_wp_error( $binding ) && ( null === $raw || ( MAD4B_SCP_G8_Record::valid( $raw, self::SWITCH_CONTRACT ) && is_array( $raw['scopes'] ?? null ) && is_int( $raw['revision'] ?? null ) && serialize( $raw['restore_binding'] ?? null ) === serialize( $binding ) ) );
+		$valid = ! is_wp_error( $binding ) && ( null === $raw || ( MAD4B_SCP_G8_Record::valid( $raw, self::SWITCH_CONTRACT ) && is_array( $raw['scopes'] ?? null )
+			&& count( $raw['scopes'] ) <= 64 && is_int( $raw['revision'] ?? null ) && $raw['revision'] >= 0
+			&& serialize( $raw['restore_binding'] ?? null ) === serialize( $binding ) ) );
+		if ( $valid && is_array( $raw ) ) foreach ( $raw['scopes'] as $scope => $enabled ) {
+			if ( ! is_string( $scope ) || 1 !== preg_match( '/^(\\*|[a-z0-9_.-]{1,80}:(\\*|[a-z0-9_.-]{1,80}))$/D', $scope ) || ! is_bool( $enabled ) ) { $valid = false; break; }
+		}
 		return array( 'integrity_valid' => $valid, 'revision' => $valid && is_array( $raw ) ? $raw['revision'] : 0,
 			'scopes' => $valid && is_array( $raw ) ? $raw['scopes'] : array( '*' => true ), 'authorizing' => false );
 	}

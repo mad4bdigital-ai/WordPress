@@ -1137,7 +1137,35 @@ final class MAD4B_SCP_Runtime_Convergence {
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			return;
 		}
+		// G8 admission is an independent, non-authorizing boundary around the existing Cron worker.
+		// Explicit governed/manual apply remains separate from this automatic ticket.
+		$ticket = null;
+		if ( class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) {
+			$generation = hash( 'sha256', serialize( array( $target, $current ) ) );
+			$ticket = MAD4B_SCP_Automation_SLO::reserve( 'runtime-convergence', 'safe-phases', $generation );
+			if ( is_wp_error( $ticket ) ) {
+				$checkpoint['state'] = 'pending_manual_resume';
+				$checkpoint['resume_blocker'] = $ticket->get_error_code();
+				$checkpoint['automatic_retry_allowed'] = false;
+				$checkpoint['updated_at'] = gmdate( 'c' );
+				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+				return;
+			}
+		}
 		$result = self::run_safe_phases( 'post_update_cron', array() );
+		if ( is_array( $ticket ) ) {
+			$finished = MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $result );
+			if ( is_wp_error( $finished ) ) {
+				$checkpoint = get_option( self::CHECKPOINT_OPTION, $checkpoint );
+				if ( ! is_array( $checkpoint ) ) $checkpoint = array();
+				$checkpoint['state'] = 'pending_manual_resume';
+				$checkpoint['resume_blocker'] = $finished->get_error_code();
+				$checkpoint['automatic_retry_allowed'] = false;
+				$checkpoint['updated_at'] = gmdate( 'c' );
+				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+				return;
+			}
+		}
 		if ( is_wp_error( $result ) ) {
 			$error_code = sanitize_key( (string) $result->get_error_code() );
 			$retry_count = isset( $checkpoint['transient_retry_count'] ) ? absint( $checkpoint['transient_retry_count'] ) : 0;
