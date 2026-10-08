@@ -209,6 +209,11 @@ g8_check( true === $provider_lost['provider_wide_quarantine']
 	&& false === $provider_lost['whole_provider_deactivation']
 	&& 'no_current_eligible_capabilities' === $provider_lost['provider_quarantine_reason'],
 	'no current provider capabilities must be reported quarantined, without mutation' );
+$replacement_receipt = $prior;
+$replacement_receipt['capabilities']['read']['behavioral_evidence_sha256'] = str_repeat( 'e', 64 );
+$receipt_diff = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $replacement_receipt );
+g8_check( 'CERTIFICATION_EVIDENCE_CHANGED' === $receipt_diff['changed_capabilities']['read']['state'],
+	'behavioral receipt replacement is not unchanged even with identical verification flags' );
 $became_ineligible = $prior;
 $became_ineligible['capabilities']['read']['read_eligible'] = false;
 $fenced = MAD4B_SCP_G8_Capability_Convergence::diff( $prior, $became_ineligible );
