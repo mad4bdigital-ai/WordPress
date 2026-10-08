@@ -231,9 +231,27 @@ MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( 'OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['state'], 'Worker could not recover after exact identity returned' );
 
+// Production must never suggest automatic observation based on an old
+// signed Staging receipt. The read-only status surface remains accessible.
 MAD4B_SCP_Site_Profile::$environment = 'production'; $before = $GLOBALS['writes'];
+$prod_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'provider_id' => 'alpha', 'include_capabilities' => true ) );
+check( false === $prod_status['auto_observation_available'] && 'NOT_ELIGIBLE' === $prod_status['scheduler_state'], 'Production incorrectly advertised automatic observation' );
+check( ! $prod_status['providers']['alpha']['observation_current']
+    && 'REVIEW_REQUIRED' === $prod_status['providers']['alpha']['capabilities']['read']['remediation']['lane']
+    && ! $prod_status['providers']['alpha']['capabilities']['read']['remediation']['worker_may_observe'], 'Production stale evidence was routed into an automatic lane' );
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( $before === $GLOBALS['writes'], 'Production observation mutated state' );
 check( 'HIGH_RISK_GATED' === MAD4B_SCP_Adaptive_Runtime_Convergence::reduce_capability( array( 'risk' => 'high_risk_write', 'structural_compatible' => true ) )['state'], 'High-risk capability auto-promoted' );
 check( 'EXTERNAL_ACTION_REQUIRED' === MAD4B_SCP_Adaptive_Runtime_Convergence::reduce_capability( array( 'risk' => 'bounded_write', 'structural_compatible' => true, 'artifact_authority_required' => true ) )['state'], 'New artifact authority was not gated' );
+// A disabled WP-Cron scheduler cannot promise hands-off observation even in
+// Staging. No read should repair or mutate the current persisted receipt.
+MAD4B_SCP_Site_Profile::$environment = 'staging';
+define( 'DISABLE_WP_CRON', true );
+$writes_before_disabled_status = $GLOBALS['writes'];
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+$disabled_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'provider_id' => 'alpha', 'include_capabilities' => true ) );
+check( false === $disabled_status['auto_observation_available'] && 'EXTERNAL_ACTION_REQUIRED' === $disabled_status['scheduler_state'], 'Disabled WP-Cron was treated as an active automatic scheduler' );
+check( 'REVIEW_REQUIRED' === $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['lane']
+    && ! $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['worker_may_observe'], 'Disabled scheduler offered false automatic repair' );
+check( $writes_before_disabled_status + 1 === $GLOBALS['writes'], 'Passive disabled-Cron status read persisted changes' );
 echo "Adaptive runtime convergence runtime: PASS\n";
