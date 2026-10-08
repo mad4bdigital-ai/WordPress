@@ -16,8 +16,7 @@ export function canonicalEvidenceBytes(evidence) {
   }
   return Buffer.from(JSON.stringify(canonicalize(evidence)), "utf8");
 }
-export function signDeclarativeEvidence(evidence, env = process.env) {
-  if (evidence?.contract !== "mad4b.capability-browser-evidence.v1") return evidence;
+export function assertSigningConfigured(env = process.env) {
   const material = env.MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64;
   if (typeof material !== "string" || material.length > 12000 ||
       !/^[a-zA-Z0-9+/=]+$/.test(material)) {
@@ -32,6 +31,11 @@ export function signDeclarativeEvidence(evidence, env = process.env) {
   if (key.asymmetricKeyType !== "rsa" || (key.asymmetricKeyDetails?.modulusLength || 0) < 2048) {
     throw new Error("browser_attestation_key_strength_invalid");
   }
+  return key;
+}
+export function signDeclarativeEvidence(evidence, env = process.env) {
+  if (evidence?.contract !== "mad4b.capability-browser-evidence.v1") return evidence;
+  const key = assertSigningConfigured(env);
   const signature = crypto.sign("sha256", canonicalEvidenceBytes(evidence), key).toString("base64");
   return {
     ...evidence,
