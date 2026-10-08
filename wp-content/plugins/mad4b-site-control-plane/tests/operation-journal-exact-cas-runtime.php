@@ -1,0 +1,101 @@
+<?php
+/** Hermetic test of the real Operation_Journal::append opt-in CAS branch.
+ * It exercises transactional rejection with a mock database, not MariaDB.
+ */
+if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ );
+define( 'ARRAY_A', 'ARRAY_A' );
+class WP_Error {
+    private $code;
+    public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; }
+    public function get_error_code() { return $this->code; }
+}
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
+function sanitize_key( $key ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $key ) ); }
+function wp_json_encode( $value, $options = 0 ) { return json_encode( $value, $options ); }
+class MAD4B_SCP_Identifiers {
+    public static function operation_id_for_write( $id ) {
+        return is_string( $id ) && preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D', $id ) ? $id : '';
+    }
+}
+class MAD4B_SCP_Schema {
+    public static function tables() { return array( 'operation_heads' => 'heads', 'operation_events' => 'events' ); }
+}
+class MAD4B_SCP_Canonicalization {
+    public static function digest( $version, $value ) { return hash( 'sha256', serialize( array( $version, $value ) ) ); }
+}
+class MAD4B_SCP_Database_Failure_Semantics {
+    public static function classify( $phase, $error, $rollback ) {
+        return array( 'reconciliation_required' => ! $rollback, 'blind_retry_allowed' => false );
+    }
+}
+class MAD4B_SCP_Database_Transaction_Guard {
+    public static $begin = 0, $commit = 0, $rollback = 0;
+    public static function begin( $name, $tables, $readonly ) { ++self::$begin; return array( 'name' => $name ); }
+    public static function commit( $t ) { ++self::$commit; return true; }
+    public static function rollback( $t ) { ++self::$rollback; return true; }
+}
+class FixtureJournalDB {
+    public $last_error = '';
+    public $inserted = 0, $updated = 0;
+    public $head;
+    public function prepare( $sql ) { return array( $sql, array_slice( func_get_args(), 1 ) ); }
+    public function get_row( $prepared, $output ) { return $this->head; }
+    public function query( $prepared ) {
+        $sql = $prepared[0]; $args = $prepared[1];
+        if ( 0 === strpos( $sql, 'INSERT INTO ' ) ) { ++$this->inserted; return 1; }
+        if ( 0 === strpos( $sql, 'UPDATE ' ) ) {
+            ++$this->updated;
+            $this->head['latest_sequence'] = $args[0];
+            $this->head['latest_event_sha256'] = $args[1];
+            return 1;
+        }
+        return false;
+    }
+}
+$wpdb = new FixtureJournalDB();
+$context = array( 'operation_id' => 'fd154c93-24ed-495a-90aa-52a5c3e0b3f6',
+    'operation_key' => 'proposal-' . str_repeat( '1', 32 ),
+    'operation_binding_sha256' => str_repeat( 'b', 64 ),
+    'hard_deadline_at' => gmdate( 'c', time() + 600 ) );
+$wpdb->head = array( 'operation_key' => $context['operation_key'],
+    'operation_binding_sha256' => $context['operation_binding_sha256'],
+    'latest_sequence' => 1, 'latest_event_sha256' => str_repeat( 'a', 64 ) );
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-operation-journal.php';
+$GLOBALS['tests'] = 0;
+function assert_journal( $what, $condition ) {
+    ++$GLOBALS['tests']; if ( ! $condition ) {
+        fwrite( STDERR, 'FAIL ' . $what . PHP_EOL ); exit( 1 );
+    }
+    echo 'PASS ' . $what . PHP_EOL;
+}
+$args = array( 'expected_sequence' => 1, 'expected_event_sha256' => str_repeat( 'a', 64 ),
+    'metadata' => array( 'task_id' => $context['operation_key'] ) );
+$bad = $args; unset( $bad['expected_event_sha256'] );
+$denial = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition', $bad );
+assert_journal( 'partial expected head must be rejected before DB', is_wp_error( $denial )
+    && 'mad4b_operation_journal_cas_invalid' === $denial->get_error_code()
+    && MAD4B_SCP_Database_Transaction_Guard::$begin === 0 );
+$bad = $args; $bad['expected_sequence'] = 0;
+$denial = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition', $bad );
+assert_journal( 'stale exact sequence rejected', is_wp_error( $denial )
+    && 'mad4b_operation_journal_cas_stale' === $denial->get_error_code()
+    && 0 === $wpdb->inserted && 0 === $wpdb->updated
+    && 1 === MAD4B_SCP_Database_Transaction_Guard::$rollback );
+$bad = $args; $bad['expected_event_sha256'] = str_repeat( 'c', 64 );
+$denial = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition', $bad );
+assert_journal( 'same sequence but wrong hash rejected', is_wp_error( $denial )
+    && 'mad4b_operation_journal_cas_stale' === $denial->get_error_code()
+    && 0 === $wpdb->inserted && 0 === $wpdb->updated );
+$ok = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition', $args );
+assert_journal( 'matching exact journal CAS commits one event and head', is_array( $ok )
+    && 2 === $ok['sequence'] && 1 === $wpdb->inserted && 1 === $wpdb->updated
+    && 1 === MAD4B_SCP_Database_Transaction_Guard::$commit );
+$replay = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition', $args );
+assert_journal( 'reused journal expected head cannot replay', is_wp_error( $replay )
+    && 'mad4b_operation_journal_cas_stale' === $replay->get_error_code()
+    && 1 === $wpdb->inserted );
+$legacy = MAD4B_SCP_Operation_Journal::append( $context, 'existing_legacy_journal_event',
+    array( 'metadata' => array( 'operation_phase' => 'readback' ) ) );
+assert_journal( 'unrelated producers without opt-in CAS retain contract', is_array( $legacy )
+    && 3 === $legacy['sequence'] && 2 === $wpdb->inserted );
+echo 'OPERATION_JOURNAL_EXACT_CAS: PASS ' . $GLOBALS['tests'] . ' checks (hermetic DB stub)' . PHP_EOL;
