@@ -66,7 +66,7 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			elseif ( ! $b['behavioral_verified'] && $a['behavioral_verified'] || ! $b['rollback_verified'] && $a['rollback_verified'] )
 				$state = 'BEHAVIOR_RECHECK_REQUIRED';
 			elseif ( ! $b['write_eligible'] && $a['write_eligible'] ) $state = 'WRITE_FENCED';
-			elseif ( $identity_drift ) $state = 'IDENTITY_CHANGED_RECHECK_REQUIRED';
+			elseif ( $identity_drift && ( $a['write_eligible'] || $b['write_eligible'] ) ) $state = 'IDENTITY_CHANGED_RECHECK_REQUIRED';
 			else $state = 'UNCHANGED';
 			if ( 'UNCHANGED' === $state ) $preserved[] = $id;
 			else $changed[ $id ] = array( 'state' => $state, 'quarantine_scope' => $old['provider'] . ':' . $id,
