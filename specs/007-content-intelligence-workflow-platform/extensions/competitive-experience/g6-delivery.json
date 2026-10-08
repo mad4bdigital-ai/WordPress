@@ -69,7 +69,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-durable-dag-evidence.php",
-      "sha256": "4657ee278a937b52b23b9997c4eb7ac63f75e2805aa214db4ff518c00eb4616e"
+      "sha256": "23773833abbf59320c20e7e96cf803112fd45548b6689cefc56857084f66d45a"
     }
   ],
   "test_paths": [
@@ -103,7 +103,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",
-      "sha256": "da04b12bab730c45cbb7938f17ef197263f42b63e41b31f0e88c33313ab16d48"
+      "sha256": "92445de4241c25c69c2d5a3a8bf298f624c69852fc31492cd75f177ee291c1e2"
     }
   ],
   "spec_paths": [
