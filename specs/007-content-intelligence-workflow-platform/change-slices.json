@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 294,
+  "changed_file_count": 295,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -484,8 +484,17 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py"
       ]
+    },
+    {
+      "id": "feature007-offline-exact-head-ci-preflight",
+      "semantic_unit": "CI-outage native source preflight; fail-closed exact head, ledger fingerprint, G6/G8 manifest, PHP 7.4/8.3 and operator-only report",
+      "revert_boundary": "Only non-authorizing offline preflight runner; never changes existing release approvals, grants, OAuth or production settings",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/feature007-manual-preflight.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "6eff05cd961c57da9f62bb88506f052ff0125f250a34af0b6a9698fbbf50f0f6",
+  "changed_paths_sha256": "e004f38845769f0bf3c978c0cda0ddaa68c873f6d63cda3bbb4644011f8d7843",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
