@@ -15,6 +15,10 @@ final class MAD4B_SCP_G7_Compensation_Audit {
             'contract' => self::CONTRACT, 'state' => 'RECONCILIATION_REQUIRED',
             'signed_receipts_verified' => false, 'exact_resource_lineage' => false,
             'readback_stages_present' => false, 'external_effects_verified' => false,
+            'receipt_site_binding_verified' => false,
+            'independent_evidence_verified' => false,
+            'evidence_consistent' => false,
+            'caller_hash_claims_consistent' => false,
             'compensation_performed' => false, 'undo_certified' => false,
             'history_only_rollback_denied' => true, 'execution_performed' => false,
             'authorizing' => false, 'mutation_performed' => false
@@ -77,9 +81,10 @@ final class MAD4B_SCP_G7_Compensation_Audit {
             true !== ( $context['compensation_outcome_committed'] ?? null ) ) {
             return self::result( $base, 'external_effect_or_independent_readback_unproven' );
         }
-        // Caller-declared booleans alone are not independent audit evidence.
+        // Caller-declared booleans and hashes are only consistency CLAIMS.
+        // They cannot become independent evidence or site-bound Undo proof.
         $base['state'] = 'APPROVAL_REQUIRED';
-        $base['evidence_consistent'] = true;
+        $base['caller_hash_claims_consistent'] = true;
         return self::result( $base, 'independent_executor_and_external_effect_receipts_required' );
     }
 

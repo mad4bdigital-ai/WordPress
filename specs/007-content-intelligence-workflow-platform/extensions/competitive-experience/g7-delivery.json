@@ -71,8 +71,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php"
       ],
       "remaining_acceptance": [
-        "Source native journal trace/status contract and hash-chain parity, independently signed execution provenance, and real actor/agent authority remain separate gates",
-        "Native compensation execution and signed return receipt plus irreversible external effect reconciliation"
+        "Native signed original and compensation receipt plus independent site-bound readback and external side-effect closure",
+        "Caller-asserted inverse hashes must not be presented as independently verified compensation evidence"
       ]
     },
     {
@@ -219,8 +219,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php",
-      "sha256": "8ca48773a778602a7dff7546f4cf89c8c605b4b162d80ace001a0544db64e71f",
-      "bytes": 5491
+      "sha256": "c9d580759c9ba05a4a1febd0e9cc5663b3d3122f6a866b7d927883fad400329d",
+      "bytes": 5782
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php",
@@ -264,8 +264,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php",
-      "sha256": "13b370eaf386ec85cae86740302d7c3b57e78f11a27a9ca3095fad7083be7d35",
-      "bytes": 5774
+      "sha256": "d1f66c4a9bef42fed190e04c0f29c7ebc32e1a1c24fa4c4b886a5ffa15432067",
+      "bytes": 5935
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php",

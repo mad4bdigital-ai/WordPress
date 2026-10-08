@@ -47,7 +47,9 @@ $ctx = array( 'binding' => $bind, 'original_before_sha256' => str_repeat( '2', 6
   'original_outcome_committed' => true, 'compensation_outcome_committed' => true );
 $result = MAD4B_SCP_G7_Compensation_Audit::assess( $original, $compensation, $ctx );
 verify_gate( $result['state'] === 'APPROVAL_REQUIRED' && ! $result['undo_certified'] &&
-  $result['evidence_consistent'] && ! $result['compensation_performed'], 'signed evidence still not Undo proof' );
+  ! $result['evidence_consistent'] && $result['caller_hash_claims_consistent'] &&
+  ! $result['receipt_site_binding_verified'] && ! $result['independent_evidence_verified'] &&
+  ! $result['compensation_performed'], 'caller claims are not independently verified Undo proof' );
 MAD4B_SCP_Execution_Receipt::$foreign_digest = true;
 $result = MAD4B_SCP_G7_Compensation_Audit::assess( $original, $compensation, $ctx );
 verify_gate( $result['reason'] === 'signature_or_receipt_invalid' && ! $result['signed_receipts_verified'], 'native verification digest must match the submitted signed receipt' );
