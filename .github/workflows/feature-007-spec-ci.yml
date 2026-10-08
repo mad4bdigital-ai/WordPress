@@ -342,6 +342,7 @@ jobs:
           done
           php -l "$PLUGIN/mad4b-site-control-plane.php"
           php "$PLUGIN/tests/g6-private-preview-contract.php"
+          php "$PLUGIN/tests/g6-compiler-denial-runtime.php"
 
   g5-runtime:
     name: Feature 007 G5 runtime (PHP ${{ matrix.php }})
