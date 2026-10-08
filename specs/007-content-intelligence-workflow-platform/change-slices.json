@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 399,
+  "changed_file_count": 402,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -607,6 +607,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/evidence-trust.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-01.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-02.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-03.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ledger-contracts.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/manifest.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/operations.md",
@@ -715,8 +716,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-evidence-preview.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-evidence-read-contract.php"
       ]
+    },
+    {
+      "id": "aci01-opportunity-candidate-slice03",
+      "semantic_unit": "No-effect OpportunityHypothesis and BlueprintCandidate scoped to existing ContentJob and exact source preview hashes",
+      "revert_boundary": "Read-only pure candidate composer and negative contract fixture; never creates ContentJob/Artifact or calls provider",
+      "certification": "source_implemented_php_and_staging_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-opportunity-preview.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/aci01-opportunity-candidate-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "ff9e9be0553af5cace9e874ab99e1a5e69a67e9cef4bdae6fab24b6f2aab03fe",
+  "changed_paths_sha256": "28dfb32a9c088dae0cf2fc241c85bd8193b8812982d22734ad001133d2663010",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
