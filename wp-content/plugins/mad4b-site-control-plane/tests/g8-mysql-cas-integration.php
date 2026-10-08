@@ -364,15 +364,18 @@ try {
     $trace = MAD4B_SCP_Operation_Journal::trace( $context['operation_id'] );
     g8_journal_assert( is_array( $trace ) && ! empty( $trace['chain_valid'] )
         && ! empty( $trace['complete'] ) && 2 === $trace['count'], 'native_hash_chain_readback' );
-    echo "G8_JOURNAL_TRANSACTION: PASS (atomic genesis, rollback, exact CAS, replay denial, chain readback)\n";
 } catch ( Throwable $e ) {
-    fwrite( STDERR, 'G8_JOURNAL_FAIL: ' . substr( $e->getMessage(), 0, 160 ) . PHP_EOL );
-    exit( 1 );
+    $journal_error = substr( $e->getMessage(), 0, 160 );
 } finally {
     $GLOBALS['wpdb'] = $old_wpdb;
-    $db->query( 'DROP TABLE IF EXISTS g8_ci_journal_events' );
-    $db->query( 'DROP TABLE IF EXISTS g8_ci_journal_heads' );
+    $drop_events = $db->query( 'DROP TABLE IF EXISTS g8_ci_journal_events' );
+    $drop_heads = $db->query( 'DROP TABLE IF EXISTS g8_ci_journal_heads' );
 }
+if ( isset( $journal_error ) || false === $drop_events || false === $drop_heads ) {
+    fwrite( STDERR, 'G8_JOURNAL_FAIL: ' . ( isset( $journal_error ) ? $journal_error : 'cleanup_unverified' ) . PHP_EOL );
+    exit( 1 );
+}
+echo "G8_JOURNAL_TRANSACTION: PASS (atomic genesis, rollback, exact CAS, replay denial, chain readback, cleanup)\n";
 
 $db->query( 'DROP TABLE IF EXISTS `g8_ci_cas_options`' );
 foreach ( array( '1.ready', '2.ready', 'go' ) as $name ) @unlink( $gate . '/' . $name );

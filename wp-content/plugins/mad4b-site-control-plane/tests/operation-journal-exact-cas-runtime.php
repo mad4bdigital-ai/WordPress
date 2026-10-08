@@ -67,6 +67,7 @@ class FixtureJournalDB {
     public $last_error = '';
     public $inserted = 0, $updated = 0;
     public $head, $tx_snapshot;
+    public $simulate_truncated_head = false;
     public $events = array();
     public $fail_next_event_insert = false, $fail_next_head_update = false;
     public function prepare( $sql ) { return array( $sql, array_slice( func_get_args(), 1 ) ); }
@@ -75,9 +76,10 @@ class FixtureJournalDB {
         $sql = $prepared[0]; $args = $prepared[1];
         if ( 0 === strpos( $sql, 'INSERT IGNORE INTO ' ) ) {
             if ( is_array( $this->head ) ) return 0;
-            $this->head = array( 'operation_key' => $args[1],
+            $this->head = array( 'operation_key' => $this->simulate_truncated_head ? substr( $args[1], 0, 8 ) : $args[1],
                 'operation_binding_sha256' => $args[2], 'latest_sequence' => 0,
-                'latest_event_sha256' => str_repeat( '0', 64 ) );
+                'latest_event_sha256' => str_repeat( '0', 64 ),
+                'hard_deadline_at' => gmdate( 'Y-m-d H:i:s', strtotime( $args[7] ) ) );
             return 1;
         }
         if ( 0 === strpos( $sql, 'INSERT INTO ' ) ) {
@@ -162,6 +164,21 @@ $again = MAD4B_SCP_Operation_Journal::begin( $new_ctx, 'planned', array( 'ticket
 assert_journal( 'same journal begin cannot generate duplicate genesis', is_wp_error( $again )
     && 'mad4b_operation_journal_head_already_exists' === $again->get_error_code()
     && 1 === $wpdb->inserted && 1 === $wpdb->updated );
+$wpdb = new FixtureJournalDB();
+$oversized_key_context = $new_ctx;
+$oversized_key_context['operation_key'] = str_repeat( 'z', 192 );
+$invalid_key = MAD4B_SCP_Operation_Journal::begin( $oversized_key_context );
+assert_journal( 'oversized operation key refused before SQL insertion',
+    is_wp_error( $invalid_key ) && null === $wpdb->head );
+$bad_deadline_context = $new_ctx;
+$bad_deadline_context['hard_deadline_at'] = 'not-a-datetime';
+$invalid_deadline = MAD4B_SCP_Operation_Journal::begin( $bad_deadline_context );
+assert_journal( 'invalid deadline refused instead of fallback to implicit expiry',
+    is_wp_error( $invalid_deadline ) && null === $wpdb->head );
+$wpdb->simulate_truncated_head = true;
+$truncated = MAD4B_SCP_Operation_Journal::begin( $new_ctx, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'coerced journal head identity must roll back before genesis event',
+    is_wp_error( $truncated ) && null === $wpdb->head && array() === $wpdb->events );
 $wpdb = new FixtureJournalDB();
 $failure_context = $new_ctx;
 $failure_context['operation_id'] = '08728fa8-166a-468d-9b93-89adb51db64e';

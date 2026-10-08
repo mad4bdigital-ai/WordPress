@@ -17,6 +17,15 @@ final class MAD4B_SCP_Operation_Journal {
 		$valid = self::validate_context( $context );
 		if ( is_wp_error( $valid ) ) return $valid;
 		// Preflight untrusted metadata before touching durable state.
+		if ( ! is_string( $context['operation_key'] ) || strlen( $context['operation_key'] ) > 191
+			|| ! is_string( $context['hard_deadline_at'] ) || false === strtotime( $context['hard_deadline_at'] )
+			|| ! is_string( $lifecycle_state ) ) {
+			return new WP_Error( 'mad4b_operation_genesis_context_invalid', 'The genesis identity or deadline cannot be represented exactly.' );
+		}
+		$lifecycle_key = sanitize_key( $lifecycle_state );
+		if ( '' === $lifecycle_key || strlen( $lifecycle_key ) > 32 ) {
+			return new WP_Error( 'mad4b_operation_genesis_lifecycle_invalid', 'Genesis lifecycle exceeds schema bounds.' );
+		}
 		$metadata = self::safe_metadata( $metadata );
 		if ( is_wp_error( $metadata ) ) return $metadata;
 		$metadata_json = wp_json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -38,6 +47,23 @@ final class MAD4B_SCP_Operation_Journal {
 			) );
 			if ( false === $inserted ) throw new RuntimeException( 'operation_head_create_failed' );
 			if ( 1 !== (int) $inserted ) throw new RuntimeException( 'operation_head_already_exists' );
+			// INSERT IGNORE can coerce oversized values to schema bounds; never
+			// certify a genesis until its locked row matches the full caller identity.
+			$locked = $wpdb->get_row( $wpdb->prepare(
+				"SELECT * FROM {$t['operation_heads']} WHERE BINARY operation_id=BINARY %s FOR UPDATE",
+				$context['operation_id']
+			), ARRAY_A );
+			if ( ! is_array( $locked )
+				|| ! isset( $locked['operation_key'], $locked['operation_binding_sha256'],
+					$locked['latest_sequence'], $locked['latest_event_sha256'], $locked['hard_deadline_at'] )
+				|| ! hash_equals( $context['operation_key'], (string) $locked['operation_key'] )
+				|| ! hash_equals( $context['operation_binding_sha256'], (string) $locked['operation_binding_sha256'] )
+				|| 0 !== (int) $locked['latest_sequence']
+				|| ! hash_equals( $zero, (string) $locked['latest_event_sha256'] )
+				|| ! hash_equals( $deadline, (string) $locked['hard_deadline_at'] ) ) {
+				throw new RuntimeException( 'operation_genesis_head_readback_mismatch' );
+			}
+
 			$basis = array(
 				'operation_id' => (string) $context['operation_id'],
 				'operation_key' => (string) $context['operation_key'],
