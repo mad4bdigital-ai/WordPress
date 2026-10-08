@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 427,
+  "changed_file_count": 430,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -767,8 +767,19 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-semantic-recipe.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-p0-governed-contract.php"
       ]
+    },
+    {
+      "id": "feature007-portable-federation-20261009",
+      "semantic_unit": "Site-neutral bounded read-only cross-connector discovery with Node fixture and provenance documentation",
+      "revert_boundary": "Revert portable federation module, native fixture and operator guide without mutating WordPress runtime or credential grants",
+      "certification": "source_v8_pass_native_node_pending",
+      "path_globs": [
+        "tools/solution-discovery/federation.mjs",
+        "tools/solution-discovery/test-federation.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/docs/UNIVERSAL-FEDERATED-DISCOVERY.md"
+      ]
     }
   ],
-  "changed_paths_sha256": "0ba5ed6f6cdd17c93f6856fcbf4cbae2898693e88ca7d9a1d778d467dfd28eb8",
+  "changed_paths_sha256": "8550ef095d3cfda04d447ffdf2574d76dea0d5b0231af4e5d77361a6a0c5959d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
