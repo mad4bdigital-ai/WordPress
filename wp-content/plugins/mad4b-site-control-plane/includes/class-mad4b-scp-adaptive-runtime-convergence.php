@@ -230,6 +230,9 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', (string) ( $current['source_commit_sha'] ?? '' ) )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $current['package_manifest_digest'] ?? '' ) )
 			&& ! empty( $current['build_fingerprint'] )
+			&& is_string( $current['artifact_identity'] ?? null )
+			&& '' !== $current['artifact_identity']
+			&& ( $current['artifact_identity'] ?? '' ) === ( $identity['artifact_identity'] ?? '' )
 			&& ( $current['build_fingerprint'] ?? '' ) === ( $identity['build_fingerprint'] ?? '' )
 			&& ( $current['source_commit_sha'] ?? '' ) === ( $identity['source_commit_sha'] ?? '' )
 			&& ( $current['package_manifest_digest'] ?? '' ) === ( $identity['package_manifest_digest'] ?? '' )
@@ -279,7 +282,9 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			if ( empty( $identity['runtime_manifest_match'] )
 				|| 1 !== preg_match( '/^[a-f0-9]{40}$/D', (string) ( $identity['source_commit_sha'] ?? '' ) )
 				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['package_manifest_digest'] ?? '' ) )
-				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['build_fingerprint'] ?? '' ) ) {
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['build_fingerprint'] ?? '' ) )
+				|| ! is_string( $identity['artifact_identity'] ?? null )
+				|| '' === $identity['artifact_identity'] ) {
 				self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' );
 				return;
 			}
@@ -420,12 +425,15 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 					if ( $skills_ready && $inspection_ready ) {
 						$registry['managed_skills'] = array( 'state' => 'RECONCILED', 'readback_verified' => true );
 					} else {
-						$registry['managed_skills'] = array(
-							'state' => 'RECONCILIATION_REQUIRED',
-							'readback_verified' => false,
-							'reason' => is_wp_error( $skills ) ? sanitize_key( (string) $skills->get_error_code() )
-								: ( $skills_ready ? 'skill_mapping_readback_incomplete' : sanitize_key( (string) ( $skills['state'] ?? 'skill_result_unverified' ) ) ),
-						);
+						$reason = 'skill_result_unverified';
+						if ( is_wp_error( $skills ) ) $reason = sanitize_key( (string) $skills->get_error_code() );
+						elseif ( is_array( $skills ) ) {
+							if ( ! empty( $skills['skipped_conflict'] ) ) $reason = 'skill_reconciliation_conflicts';
+							elseif ( 'ready' !== ( $skills['state'] ?? '' ) ) $reason = sanitize_key( (string) ( $skills['state'] ?? 'skill_result_unverified' ) );
+							elseif ( empty( $skills['current_request_observed'] ) ) $reason = 'skill_receipt_unverified';
+							else $reason = 'skill_mapping_readback_incomplete';
+						}
+						$registry['managed_skills'] = array( 'state' => 'RECONCILIATION_REQUIRED', 'readback_verified' => false, 'reason' => $reason );
 						self::schedule( 300 );
 					}
 
@@ -446,6 +454,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				|| empty( $postflight['runtime_manifest_match'] ) || ( $postflight['build_fingerprint'] ?? '' ) !== $identity['build_fingerprint']
 				|| ( $postflight['source_commit_sha'] ?? '' ) !== ( $identity['source_commit_sha'] ?? '' )
 				|| ( $postflight['package_manifest_digest'] ?? '' ) !== ( $identity['package_manifest_digest'] ?? '' )
+				|| ( $postflight['artifact_identity'] ?? '' ) !== ( $identity['artifact_identity'] ?? '' )
 				|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) {
 				// If this worker persisted only its generation checkpoint before a race was
 				// detected, restore the exact prior value only while that checkpoint is

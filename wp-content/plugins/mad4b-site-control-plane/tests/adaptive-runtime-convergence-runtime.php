@@ -56,14 +56,14 @@ class MAD4B_SCP_Skill_Provider_Discovery {
  static function inspect() { return array( 'state' => self::$inspect_ready ? 'ready' : 'drifted', 'ready' => self::$inspect_ready ); }
 }
 class MAD4B_SCP_Live_Acceptance_Observer {
- static $calls = 0; static $race = false; static $event_race = false; static $valid = true; static $throw = false; static $drift_at_call = 0; static $identity_incomplete = false;
+ static $calls = 0; static $race = false; static $event_race = false; static $valid = true; static $throw = false; static $drift_at_call = 0; static $identity_incomplete = false; static $artifact_missing = false;
  static function build_provenance_status() {
   ++self::$calls;
   if ( self::$drift_at_call === self::$calls ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$throw ) { MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); throw new RuntimeException( 'PRIVATE worker path' ); }
   if ( self::$race && 0 === self::$calls % 2 ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$event_race && 0 === self::$calls % 2 ) MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
-  return array( 'runtime_manifest_match' => self::$valid, 'source_commit_sha' => self::$identity_incomplete ? '' : str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ), 'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture' );
+  return array( 'runtime_manifest_match' => self::$valid, 'source_commit_sha' => self::$identity_incomplete ? '' : str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ), 'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => self::$artifact_missing ? '' : 'mad4b-site-control-plane-fixture' );
  }
 }
 class MAD4B_SCP_Provider_Contracts { static function all() { return array_fill_keys( array( 'alpha', 'beta', 'gamma', 'delta', 'epsilon' ), array() ); } }
@@ -239,6 +239,12 @@ $bad_readback = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
 check( 'RECONCILIATION_REQUIRED' === $bad_readback['managed_skills']['state']
     && 'skill_mapping_readback_incomplete' === $bad_readback['managed_skills']['reason'], 'Unverified skill files were treated as current' );
 MAD4B_SCP_Skill_Provider_Discovery::$inspect_ready = true;
+MAD4B_SCP_Skill_Provider_Discovery::$conflicts = array( 'alpha:owner_changed' );
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$conflicted = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'RECONCILIATION_REQUIRED' === $conflicted['managed_skills']['state']
+    && 'skill_reconciliation_conflicts' === $conflicted['managed_skills']['reason'], 'Owner conflict falsely reported as ready' );
+MAD4B_SCP_Skill_Provider_Discovery::$conflicts = array();
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 $ready_skills = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
 check( 'RECONCILED' === $ready_skills['managed_skills']['state'] && ! empty( $ready_skills['managed_skills']['readback_verified'] ), 'Recovered skills were not marked reconciled after exact readback' );
@@ -258,6 +264,15 @@ MAD4B_SCP_Live_Acceptance_Observer::$identity_incomplete = false;
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( 'OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['state'], 'Worker could not recover after exact identity returned' );
+MAD4B_SCP_Live_Acceptance_Observer::$artifact_missing = true;
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$missing_artifact = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'installed_package_manifest_unverified' === $missing_artifact['last_worker_failure']['code'], 'Missing artifact identity did not fail closed' );
+MAD4B_SCP_Live_Acceptance_Observer::$artifact_missing = false;
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+check( 'OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['state'], 'Artifact recovery did not restore observation' );
 
 // Production must never suggest automatic observation based on an old
 // signed Staging receipt. The read-only status surface remains accessible.
