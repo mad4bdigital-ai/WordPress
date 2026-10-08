@@ -34,7 +34,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
     public static function descriptor() {
         return array(
             'contract' => self::CONTRACT, 'provider_id' => self::ID,
-            'recognition' => array( 'source_plugins' => array( 'mad4b-site-control-plane' ) ),
+            'recognition' => array( 'source_post_types' => array( 'page' ) ),
             'read_only' => true, 'authorizing' => false,
             'execution_mode' => 'external_browser_agent',
             'transport_owned_by_provider' => false,
