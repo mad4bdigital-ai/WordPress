@@ -18,7 +18,7 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
                 'blind_retry_allowed' => false ) );
     }
 
-    private static function preflight( array $context ) {
+    private static function preflight( array $context, $writing = false ) {
         if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return self::deny( 'operator_required' );
         if ( ! class_exists( 'MAD4B_SCP_Adaptive_Operations_Context', false )
             || ! class_exists( 'MAD4B_SCP_Operation_Journal', false )
@@ -38,7 +38,7 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
             || ! hash_equals( $digest, $context['operation_binding_sha256'] )
             || ! is_string( $context['operation_id'] ) || ! is_string( $context['operation_key'] ) ) return self::deny( 'identity_mismatch' );
         $deadline = is_string( $context['hard_deadline_at'] ) ? strtotime( $context['hard_deadline_at'] ) : false;
-        if ( false === $deadline || $deadline <= time() || $deadline > time() + DAY_IN_SECONDS ) return self::deny( 'deadline_invalid' );
+        if ( false === $deadline || $deadline > time() + DAY_IN_SECONDS || ( $writing && $deadline <= time() ) ) return self::deny( 'deadline_invalid' );
         return $digest;
     }
 
@@ -65,7 +65,7 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
 
     /** Initialize a task ONLY inside a preexisting, single-owner journal head. */
     public static function initialize( array $context, array $record ) {
-        $binding = self::preflight( $context );
+        $binding = self::preflight( $context, true );
         if ( is_wp_error( $binding ) ) return $binding;
         if ( array_keys( $record ) !== array( 'contract', 'task_id', 'plan_sha256', 'binding_sha256', 'revision', 'state', 'last_event_sha256' )
             || ( $record['contract'] ?? null ) !== MAD4B_SCP_Assistant_Task_Contract::CONTRACT
@@ -133,6 +133,8 @@ final class MAD4B_SCP_Assistant_Task_Journal_Bridge {
         $known = self::read( $context );
         if ( is_wp_error( $known ) ) return $known;
         if ( $record !== $known['record'] ) return self::deny( 'ticket_stale' );
+        $write_preflight = self::preflight( $context, true );
+        if ( is_wp_error( $write_preflight ) ) return $write_preflight;
         $candidate = MAD4B_SCP_Assistant_Task_Contract::transition( $record, $request );
         if ( is_wp_error( $candidate ) ) return $candidate;
         $next = $candidate['candidate_record'];
