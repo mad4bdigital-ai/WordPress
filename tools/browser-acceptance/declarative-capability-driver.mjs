@@ -49,8 +49,10 @@ export function validateDeclarativePlan(plan) {
   if (!Array.isArray(plan.cases) || plan.cases.length < 1 || plan.cases.length > 8 ||
       plan.case_count !== plan.cases.length) deny("case_count_invalid");
   const seen = new Set();
+  const permittedCaseKeys = new Set(["case_id", "capability_id", "probe_type", "page_path", "expected"]);
   for (const item of plan.cases) {
     if (!item || typeof item !== "object" || Array.isArray(item) ||
+        Object.keys(item).some(key => !permittedCaseKeys.has(key)) ||
         !IDENT.test(item.case_id || "") || seen.has(item.case_id) ||
         !IDENT.test(item.capability_id || "") ||
         !PROBE_TYPES.includes(item.probe_type) || !pathValid(item.page_path) ||
