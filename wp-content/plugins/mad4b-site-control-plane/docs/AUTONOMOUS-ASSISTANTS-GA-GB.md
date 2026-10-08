@@ -296,3 +296,38 @@ initializes a missing enrollment, triggers provider work, or mutates
 WordPress settings. `LOCAL_NATIVE_REGISTRATION_PASS` is **not**
 independent MCP `initialize`/`tools/list` proof, a site deployment
 certificate, an authorization grant or a release approval.
+
+## Durable *read-only* assistant work — existing queue integration
+
+The GA–GF preview now also registers three narrowly scoped semantic work
+operations in `MAD4B_SCP_Remote_Work_Queue`:
+
+- `assistant_provider_catalog_snapshot`
+- `assistant_dependency_readback`
+- `assistant_configuration_diff`
+
+All three use the existing queue's durable idempotency, exact-build identity,
+leases, cancellation and uncertain-execution reconciliation. They do **not**
+create a new worker, automatically enqueue tasks, invoke a model, purchase a
+plugin, call an installer, grant authority or run shell/SQL.
+
+The assistant payload has only `task_id`, `plan_sha256`,
+`binding_sha256`, bounded canonical capability/provider IDs and a
+purpose-specific read-only operation. The queue refuses payload/operation
+mismatches, unknown fields, URLs, PHP/SQL/command arguments, object values,
+and any live identity other than **Staging**. The binding fingerprint is
+the SHA256 of PHP serialization of these *ordered* current-context fields:
+`site_uuid, environment, profile_digest, origin_sha256, runtime_generation,
+artifact_sha256, restore_epoch, external_record_sha256`. It is rechecked
+against `MAD4B_SCP_Adaptive_Operations_Context::current()` at enqueue, not
+trusted from caller input. A changed restore epoch, origin, runtime generation,
+source artifact or environment makes the job fail closed.
+
+These are semantic work **registration contracts**, not evidence that a
+compatible external browser executor has actually processed any job. A
+separate governed dispatcher/actor must still obtain the required permissions,
+supply a certified read-only executor, prove postconditions, and close G7/G8/G9
+native acceptance. Unfinished leases cannot be blindly retried. The included
+hermetic regression checks `tests/assistant-read-work-runtime.php` cover
+operation/purpose mapping, stale identity, Production denial, unsafe payload
+fields and absence of privileged operations.
