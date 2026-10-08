@@ -1,0 +1,131 @@
+{
+  "contract": "mad4b.aci-os.system-map.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "production_authorized": false,
+  "governance_owner": "existing_mad4b_site_control_plane",
+  "components": [
+    {
+      "id": "operator_action_center",
+      "role": "human_ui",
+      "authorizing": false
+    },
+    {
+      "id": "decision_policy",
+      "role": "non_authorizing",
+      "authorizing": false
+    },
+    {
+      "id": "durable_job_artifact_graph",
+      "role": "reused_platform",
+      "authorizing": false
+    },
+    {
+      "id": "context_writer_registry",
+      "role": "reused_platform",
+      "authorizing": false
+    },
+    {
+      "id": "provider_budget_resolver",
+      "role": "governed_platform",
+      "authorizing": false
+    },
+    {
+      "id": "discovery_research",
+      "role": "proposed_domain",
+      "authorizing": false
+    },
+    {
+      "id": "evidence_registry",
+      "role": "proposed_domain",
+      "authorizing": false
+    },
+    {
+      "id": "native_wpml_relations",
+      "role": "existing_native_and_proposed_verifier",
+      "authorizing": false
+    },
+    {
+      "id": "blueprint_draft_media",
+      "role": "proposed_domain",
+      "authorizing": false
+    },
+    {
+      "id": "quality_gates",
+      "role": "proposed_domain",
+      "authorizing": false
+    },
+    {
+      "id": "publish_manifest",
+      "role": "proposed_domain",
+      "authorizing": false
+    },
+    {
+      "id": "governed_wordpress_dispatch",
+      "role": "existing_authority_only",
+      "authorizing": "existing_authority_only"
+    },
+    {
+      "id": "native_browser_readback",
+      "role": "independent_acceptance",
+      "authorizing": false
+    },
+    {
+      "id": "growth_learning",
+      "role": "proposal_only",
+      "authorizing": false
+    }
+  ],
+  "loops": [
+    {
+      "id": "discovery",
+      "trigger": "user_or_schedule",
+      "output": "OpportunityHypothesis",
+      "hard_stop": "non_comparable_signal_or_missing_consent"
+    },
+    {
+      "id": "evidence",
+      "trigger": "accepted_hypothesis",
+      "output": "EvidencePack",
+      "hard_stop": "rights_or_provider_uncertainty"
+    },
+    {
+      "id": "content",
+      "trigger": "reviewed_blueprint_intent",
+      "output": "DraftArtifact",
+      "hard_stop": "unsupported_claim_or_unknown_relationship"
+    },
+    {
+      "id": "validation",
+      "trigger": "candidate_publish_change",
+      "output": "PublishEligibilityDecision",
+      "hard_stop": "missing_exact_approval_or_cas_or_native_readback"
+    },
+    {
+      "id": "optimization",
+      "trigger": "comparable_growth_window",
+      "output": "OptimizationProposal",
+      "hard_stop": "confounded_outcome_or_unbounded_spend"
+    }
+  ],
+  "forbidden_shortcuts": [
+    [
+      "growth_learning",
+      "governed_wordpress_dispatch"
+    ],
+    [
+      "discovery_research",
+      "governed_wordpress_dispatch"
+    ],
+    [
+      "blueprint_draft_media",
+      "governed_wordpress_dispatch"
+    ],
+    [
+      "native_wpml_relations",
+      "governed_wordpress_dispatch"
+    ]
+  ],
+  "release_boundary": "owner_governed_exact_staging_then_independent_production",
+  "existing_authority_reuse_required": true
+}
