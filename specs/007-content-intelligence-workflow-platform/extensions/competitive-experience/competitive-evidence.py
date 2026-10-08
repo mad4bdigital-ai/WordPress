@@ -232,6 +232,17 @@ def next_history(history, snapshot, summary):
         "matrix": bool(previous) and previous.get("matrix_source_sha") != snapshot["matrix_source_sha"],
         "packages": bool(previous) and previous.get("package_fingerprints") != current_packages,
     }
+    # Metadata reconciliation must not silently convert an unresolved drifted generation
+    # into known-good. Carry its exact drift classes forward until that generation's
+    # alert is explicitly acknowledged.
+    prior_open = bool(previous) and previous.get("state") == "drifted" and any(
+        alert.get("generation_sha256") == previous_generation and alert.get("state") == "open"
+        for alert in history.get("alerts", [])
+    )
+    if prior_open:
+        prior_flags = previous.get("drift_flags", {})
+        for key in drift_flags:
+            drift_flags[key] = bool(drift_flags[key] or prior_flags.get(key))
     drifted = any(drift_flags.values())
     entry = history_entry(snapshot, summary, len(entries) + 1, previous_generation, previous_entry, "drifted" if drifted else "known_good", drift_flags)
     entries.append(entry)
