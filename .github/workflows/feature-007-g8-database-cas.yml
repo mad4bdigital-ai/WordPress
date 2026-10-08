@@ -59,4 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
+          # Verify the guard rejects a non-disposable DB before connection,
+          # and demand its specific safe-refusal exit code (not any fatal).
+          set +e
+          G8_CAS_DATABASE=forbidden_database php wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
+          refusal_status=$?
+          set -e
+          test "$refusal_status" -eq 2
           php wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
