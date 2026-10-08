@@ -31,6 +31,7 @@ LINT = (
     "class-mad4b-scp-developer-host-capabilities.php",
     "class-mad4b-scp-full-staging-authority.php",
     "class-mad4b-scp-staging-write-authority-convergence.php",
+    "class-mad4b-scp-browser-acceptance-admin-ui.php",
     "class-mad4b-scp-local-oauth-server.php",
     "class-mad4b-scp-assistant-operator-workspace.php",
 )
@@ -41,6 +42,7 @@ FIXTURES = (
     "assistant-task-journal-bridge-runtime.php",
     "operation-journal-exact-cas-runtime.php",
     "staging-write-authority-postcondition-runtime.php",
+    "browser-acceptance-admin-setup-contract.php",
     "assistant-read-work-runtime.php",
     "assistant-entrypoint-registration-runtime.php",
     "oauth-consent-projection-view-runtime.php",

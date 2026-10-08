@@ -66,7 +66,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	public static function save() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.', '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
-		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', 'executor', 'profile_id', 'submit' ) ) )
+		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', '_wp_http_referer', 'executor', 'profile_id', 'submit' ) ) )
 			wp_die( 'Unsupported or secret-bearing request fields are forbidden.', '', array( 'response' => 400 ) );
 		$value = self::normalize( array(
 			'executor' => isset( $_POST['executor'] ) ? wp_unslash( $_POST['executor'] ) : 'auto',
