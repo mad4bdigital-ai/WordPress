@@ -80,6 +80,10 @@ final class MAD4B_SCP_Search_Context {
 			$guard = self::guard_profile_update( $current['profile'], $profile );
 			if ( is_wp_error( $guard ) ) return $guard;
 		}
+		// A market identifier participates in target_id but profile_id does not.
+		// Reject cross-profile aliasing before reserving identities on apply.
+		$unique = self::market_id_unique( $profile, is_array( $current ) ? $current['profile'] : array() );
+		if ( is_wp_error( $unique ) ) return $unique;
 		$profile['revision'] = $revision + 1;
 		$profile['profile_sha256'] = MAD4B_SCP_Search_Contracts::digest( $profile );
 		$plan = array( 'contract' => 'mad4b.search-profile-plan.v1', 'profile' => $profile, 'expected_revision' => $revision, 'policy_fingerprint' => MAD4B_SCP_Search_Contracts::digest( self::policy() ), 'site_binding' => MAD4B_SCP_Search_Store::scope(), 'authorizing' => false, 'mutation_performed' => false );
@@ -121,11 +125,42 @@ final class MAD4B_SCP_Search_Context {
 		return true;
 	}
 
+	/** Check only newly introduced market IDs against committed peer profiles. */
+	private static function market_id_unique( array $candidate, array $previous ) {
+		$old_ids = array();
+		foreach ( isset( $previous['markets'] ) && is_array( $previous['markets'] ) ? $previous['markets'] : array() as $market ) if ( is_array( $market ) && isset( $market['id'] ) ) $old_ids[ $market['id'] ] = true;
+		$new_ids = array();
+		foreach ( $candidate['markets'] as $market ) if ( ! isset( $old_ids[ $market['id'] ] ) ) $new_ids[ $market['id'] ] = true;
+		if ( ! $new_ids ) return true;
+		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
+		if ( is_wp_error( $registry ) ) return $registry;
+		if ( null !== $registry && ( ! is_array( $registry ) || ! isset( $registry['ids'] ) || ! is_array( $registry['ids'] ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+		foreach ( is_array( $registry ) ? $registry['ids'] : array() as $other_id ) {
+			if ( $other_id === $candidate['profile_id'] ) continue;
+			$other = MAD4B_SCP_Search_Store::read( 'profile', $other_id );
+			if ( is_wp_error( $other ) ) return $other;
+			if ( ! is_array( $other ) ) continue; // A pending reservation is fenced by immutable market claim at apply.
+			if ( ! isset( $other['profile']['markets'] ) || ! is_array( $other['profile']['markets'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_registry_invalid' );
+			foreach ( $other['profile']['markets'] as $market ) if ( isset( $market['id'] ) && isset( $new_ids[ $market['id'] ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'Market IDs must be unique between Search Profiles because target identities use them.' );
+		}
+		return true;
+	}
+
 	public static function apply( array $input ) {
 		$plan = self::plan( $input ); if ( is_wp_error( $plan ) ) return $plan;
 		if ( empty( $input['plan_sha256'] ) || ! hash_equals( $plan['plan_sha256'], (string) $input['plan_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_plan_drift' );
 		$id = $plan['profile']['profile_id']; $current = MAD4B_SCP_Search_Store::read( 'profile', $id );
 		if ( is_wp_error( $current ) || ( null === $current ? 0 : $current['_revision'] ) !== $plan['expected_revision'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_revision_drift' );
+		// Atomic immutable claims close the simultaneous-create race across profiles.
+		// A failed profile CAS leaves an intentionally reserved identity: fail-closed,
+		// never silently reuse it or claim an unsafe rollback.
+		$old_ids = array();
+		if ( is_array( $current ) && isset( $current['profile']['markets'] ) ) foreach ( $current['profile']['markets'] as $market ) $old_ids[ $market['id'] ] = true;
+		foreach ( $plan['profile']['markets'] as $market ) {
+			if ( isset( $old_ids[ $market['id'] ] ) ) continue;
+			$claim = MAD4B_SCP_Search_Store::immutable( 'market-identity', $market['id'], array( 'profile_id' => $id, 'country' => $market['country'] ) );
+			if ( is_wp_error( $claim ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_conflict', 'The market identifier is reserved by another owner or could not be verified.' );
+		}
 		$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ); if ( is_wp_error( $registry ) ) return $registry;
 		$ids = is_array( $registry ) ? $registry['ids'] : array();
 		if ( ! in_array( $id, $ids, true ) ) {
