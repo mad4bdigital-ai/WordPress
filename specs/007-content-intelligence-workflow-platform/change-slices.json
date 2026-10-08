@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 277,
+  "changed_file_count": 279,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -432,11 +432,13 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/docs/AUTONOMOUS-ASSISTANTS-GA-GB.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-planning.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-bootstrap-diagnostic-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-planning-runtime.php"
       ]
     }
   ],
-  "changed_paths_sha256": "1625e72acaf28602fc8c9b9ad5b1f9c0807f6ff0073f8c11f42dec223fd85257",
+  "changed_paths_sha256": "619ca4c768144a03e5a89d3fe13197f578d86da5ea1dd0f8df1dda92f9b591ac",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
