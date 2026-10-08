@@ -111,8 +111,9 @@ class MAD4B_SCP_Staging_Write_Authority {
 }
 class MAD4B_SCP_Policy {
     public static $mutable = true;
+    public static $read_allowed = true;
     public static function can_mutate() { return self::$mutable; }
-    public static function can_read() { return true; }
+    public static function can_read() { return self::$read_allowed; }
 }
 class MAD4B_SCP_Authorization {
     public static $admitted = true;
@@ -527,6 +528,15 @@ g9_assert( ! is_wp_error( $stale_health_closure )
     && in_array( 'current_health_window_unverified', $stale_health_closure['blockers'], true ),
     'closure reports expired health window rather than accepting complete flag' );
 G9_Exact_Reader::$health_stale = false;
+// Execute callbacks are public PHP methods as well as WordPress Abilities.
+// Direct invocation cannot skip the current user's read capability.
+MAD4B_SCP_Policy::$read_allowed = false;
+g9_denied( MAD4B_SCP_G9_Read_Surface::site_observation(), 'read_permission_denied' );
+g9_denied( MAD4B_SCP_G9_Read_Surface::restore_status(), 'read_permission_denied' );
+g9_denied( MAD4B_SCP_G9_Read_Surface::closure_status(), 'read_permission_denied' );
+g9_assert( MAD4B_SCP_G9_Read_Surface::can_read_ability() === false,
+    'registered permission callback also rejects revoked reader' );
+MAD4B_SCP_Policy::$read_allowed = true;
 $marker_backup = $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ];
 $marker_foreign = $marker_backup; $marker_foreign['site']['canonical_origin'] = 'https://foreign.example.invalid';
 $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $marker_foreign;

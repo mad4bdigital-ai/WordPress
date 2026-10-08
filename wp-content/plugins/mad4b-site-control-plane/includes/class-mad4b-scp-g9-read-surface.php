@@ -109,6 +109,8 @@ final class MAD4B_SCP_G9_Read_Surface {
 
     public static function site_observation( $input = array() ) {
         if ( ! is_array( $input ) || $input ) return self::invalid_input();
+        $policy = self::read_policy();
+        if ( is_wp_error( $policy ) ) return $policy;
         $snapshot = MAD4B_SCP_Resilience_Context::capture();
         if ( is_wp_error( $snapshot ) ) return $snapshot;
         $anchor = MAD4B_SCP_Resilience_Anchor::read( $snapshot['binding'] );
@@ -185,12 +187,24 @@ final class MAD4B_SCP_G9_Read_Surface {
 
     public static function restore_status( $input = array() ) {
         if ( ! is_array( $input ) || $input ) return self::invalid_input();
+        $policy = self::read_policy();
+        if ( is_wp_error( $policy ) ) return $policy;
         return MAD4B_SCP_G9_Restore_Convergence::status();
     }
 
     public static function closure_status( $input = array() ) {
         if ( ! is_array( $input ) || $input ) return self::invalid_input();
+        $policy = self::read_policy();
+        if ( is_wp_error( $policy ) ) return $policy;
         return MAD4B_SCP_G9_Operational_Readiness::status();
+    }
+
+    private static function read_policy() {
+        if ( ! class_exists( 'MAD4B_SCP_Policy' )
+            || true !== MAD4B_SCP_Policy::can_read() )
+            return new WP_Error( 'mad4b_g9_read_permission_denied',
+                'G9 site-local operational diagnostics require current authorized read access.' );
+        return true;
     }
 
     private static function invalid_input() {
