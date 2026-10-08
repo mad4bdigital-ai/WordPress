@@ -16,36 +16,73 @@ final class MAD4B_SCP_Operation_Journal {
 		global $wpdb;
 		$valid = self::validate_context( $context );
 		if ( is_wp_error( $valid ) ) return $valid;
-		// Fail before the non-transactional head insert when the genesis event
-		// cannot safely be serialized. An orphan sequence-zero head would refuse
-		// later begins and require explicit reconciliation.
-		$safe_genesis = self::safe_metadata( $metadata );
-		if ( is_wp_error( $safe_genesis ) ) return $safe_genesis;
-		if ( ! is_string( wp_json_encode( $safe_genesis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ) ) {
-			return new WP_Error( 'mad4b_operation_metadata_encode_failed', 'Operation metadata could not be encoded.' );
-		}
-		$transaction_preflight = MAD4B_SCP_Database_Transaction_Guard::preflight( array( 'operation_heads', 'operation_events' ), true );
-		if ( is_wp_error( $transaction_preflight ) ) return $transaction_preflight;
+		// Preflight untrusted metadata before touching durable state.
+		$metadata = self::safe_metadata( $metadata );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$metadata_json = wp_json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $metadata_json ) ) return new WP_Error( 'mad4b_operation_metadata_encode_failed', 'Operation metadata could not be encoded.' );
 		$t = MAD4B_SCP_Schema::tables();
-		$now = gmdate( 'Y-m-d H:i:s' );
-		$deadline = self::mysql_time( $context['hard_deadline_at'] );
-		$inserted = $wpdb->query( $wpdb->prepare(
-			"INSERT IGNORE INTO {$t['operation_heads']} (operation_id,operation_key,operation_binding_sha256,latest_sequence,latest_event_sha256,lifecycle_state,terminal_outcome,heartbeat_at,lock_expires_at,stale_after,hard_deadline_at,created_at,updated_at) VALUES (%s,%s,%s,0,%s,%s,'',%s,NULL,%s,%s,%s,%s)",
-			$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], str_repeat( '0', 64 ), sanitize_key( $lifecycle_state ), $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $deadline, $now, $now
-		) );
-		if ( false === $inserted ) return MAD4B_SCP_Database_Failure_Semantics::error( 'mad4b_operation_journal_head_create_failed', 'Unable to initialize operation journal.', 'operation_journal_head_create', (string) $wpdb->last_error, null );
-		// INSERT IGNORE returns zero when the head already exists. Never append
-		// a second operation_started event or rewrite a competing owner identity.
-		if ( 1 !== (int) $inserted ) {
-			return new WP_Error( 'mad4b_operation_journal_head_already_exists',
-				'Journal head already exists or creation is uncertain. Reconcile before retry.',
-				array( 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+		$tx = MAD4B_SCP_Database_Transaction_Guard::begin( 'operation_journal_genesis', array( 'operation_heads', 'operation_events' ), true );
+		if ( is_wp_error( $tx ) ) return $tx;
+		try {
+			$now = gmdate( 'Y-m-d H:i:s' );
+			$deadline = self::mysql_time( $context['hard_deadline_at'] );
+			$lifecycle = sanitize_key( (string) $lifecycle_state );
+			$zero = str_repeat( '0', 64 );
+			// Creation and first event are ONE InnoDB transaction. INSERT IGNORE
+			// prevents duplicate owners; an unsuccessful genesis rolls back the head.
+			$inserted = $wpdb->query( $wpdb->prepare(
+				"INSERT IGNORE INTO {$t['operation_heads']} (operation_id,operation_key,operation_binding_sha256,latest_sequence,latest_event_sha256,lifecycle_state,terminal_outcome,heartbeat_at,lock_expires_at,stale_after,hard_deadline_at,created_at,updated_at) VALUES (%s,%s,%s,0,%s,%s,'',%s,NULL,%s,%s,%s,%s)",
+				$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], $zero, $lifecycle,
+				$now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $deadline, $now, $now
+			) );
+			if ( false === $inserted ) throw new RuntimeException( 'operation_head_create_failed' );
+			if ( 1 !== (int) $inserted ) throw new RuntimeException( 'operation_head_already_exists' );
+			$basis = array(
+				'operation_id' => (string) $context['operation_id'],
+				'operation_key' => (string) $context['operation_key'],
+				'operation_binding_sha256' => (string) $context['operation_binding_sha256'],
+				'sequence' => 1, 'event_type' => 'operation_started',
+				'checkpoint' => 'planned', 'lifecycle_state' => $lifecycle, 'terminal_outcome' => '',
+				'safe_metadata' => $metadata, 'previous_event_sha256' => $zero,
+			);
+			$event_sha = MAD4B_SCP_Canonicalization::digest( self::EVENT_CONTRACT, $basis );
+			if ( is_wp_error( $event_sha ) || ! is_string( $event_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $event_sha ) ) throw new RuntimeException( 'operation_genesis_hash_failed' );
+			$event_inserted = $wpdb->query( $wpdb->prepare(
+				"INSERT INTO {$t['operation_events']} (operation_id,operation_key,operation_binding_sha256,sequence,event_type,checkpoint,lifecycle_state,terminal_outcome,safe_metadata_json,previous_event_sha256,event_sha256,created_at) VALUES (%s,%s,%s,%d,%s,%s,%s,%s,%s,%s,%s,%s)",
+				$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], 1,
+				'operation_started', 'planned', $lifecycle, '', $metadata_json, $zero, $event_sha, $now
+			) );
+			if ( 1 !== (int) $event_inserted ) throw new RuntimeException( 'operation_genesis_event_insert_failed' );
+			$updated = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['operation_heads']} SET latest_sequence=%d,latest_event_sha256=%s,lifecycle_state=%s,terminal_outcome=%s,heartbeat_at=%s,stale_after=%s,updated_at=%s WHERE BINARY operation_id=BINARY %s AND latest_sequence=%d AND BINARY latest_event_sha256=BINARY %s",
+				1, $event_sha, $lifecycle, '', $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ),
+				$now, $context['operation_id'], 0, $zero
+			) );
+			if ( 1 !== (int) $updated ) throw new RuntimeException( 'operation_genesis_head_cas_failed' );
+			$commit = MAD4B_SCP_Database_Transaction_Guard::commit( $tx );
+			if ( true !== $commit ) return new WP_Error( 'mad4b_operation_journal_genesis_commit_uncertain',
+				'Genesis commit unverified; reconcile the journal before retry.',
+				array( 'cause' => is_wp_error( $commit ) ? $commit->get_error_code() : 'commit_unverified',
+					'reconciliation_required' => true, 'blind_retry_allowed' => false, 'authorizing' => false, 'provider_entry_allowed' => false ) );
+			return array( 'contract' => self::CONTRACT, 'operation_id' => $context['operation_id'],
+				'sequence' => 1, 'event_sha256' => $event_sha, 'journal_head_sha256' => $event_sha,
+				'lifecycle_state' => $lifecycle, 'terminal_outcome' => '' );
+		} catch ( Throwable $e ) {
+			$db_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
+			$rollback = MAD4B_SCP_Database_Transaction_Guard::rollback( $tx );
+			$semantics = MAD4B_SCP_Database_Failure_Semantics::classify( 'operation_journal_genesis', $db_error . ' ' . $e->getMessage(), true === $rollback );
+			$uncertain = true !== $rollback || ! empty( $semantics['reconciliation_required'] );
+			$code = $uncertain ? 'mad4b_operation_journal_genesis_persistence_uncertain'
+				: ( 'operation_head_already_exists' === $e->getMessage()
+					? 'mad4b_operation_journal_head_already_exists' : 'mad4b_operation_journal_genesis_failed' );
+			return new WP_Error( $code, 'Unable to durably initialize operation journal.',
+				array_merge( $semantics, array( 'reconciliation_required' => $uncertain || 'operation_head_already_exists' === $e->getMessage(),
+					'blind_retry_allowed' => false, 'authorizing' => false, 'provider_entry_allowed' => false,
+					'reason' => substr( $e->getMessage(), 0, 100 ),
+					'db_error' => substr( $db_error, 0, 191 ),
+					'rollback_error' => is_wp_error( $rollback ) ? $rollback->get_error_code() : '' ) ) );
 		}
-		return self::append( $context, 'operation_started', array(
-			'expected_sequence' => 0,
-			'expected_event_sha256' => str_repeat( '0', 64 ),
-			'checkpoint' => 'planned', 'lifecycle_state' => $lifecycle_state,
-			'metadata' => $metadata ) );
 	}
 
 	public static function append( array $context, $event_type, array $args = array() ) {

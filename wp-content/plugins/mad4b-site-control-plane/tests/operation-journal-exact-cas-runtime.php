@@ -5,9 +5,10 @@
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ );
 define( 'ARRAY_A', 'ARRAY_A' );
 class WP_Error {
-    private $code;
-    public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; }
+    private $code, $data;
+    public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; $this->data = $data; }
     public function get_error_code() { return $this->code; }
+    public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $key ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $key ) ); }
@@ -30,15 +31,44 @@ class MAD4B_SCP_Database_Failure_Semantics {
 }
 class MAD4B_SCP_Database_Transaction_Guard {
     public static $begin = 0, $commit = 0, $rollback = 0;
+    public static $simulate_commit_uncertain = false, $simulate_rollback_uncertain = false;
     public static function preflight( $tables, $write ) { return true; }
-    public static function begin( $name, $tables, $readonly ) { ++self::$begin; return array( 'name' => $name ); }
-    public static function commit( $t ) { ++self::$commit; return true; }
-    public static function rollback( $t ) { ++self::$rollback; return true; }
+    public static function begin( $name, $tables, $readonly ) {
+        global $wpdb;
+        ++self::$begin;
+        $wpdb->tx_snapshot = array( $wpdb->head, $wpdb->inserted, $wpdb->updated, $wpdb->events );
+        return array( 'name' => $name );
+    }
+    public static function commit( $t ) {
+        global $wpdb;
+        ++self::$commit;
+        $wpdb->tx_snapshot = null;
+        if ( self::$simulate_commit_uncertain ) {
+            self::$simulate_commit_uncertain = false;
+            return new WP_Error( 'simulated_commit_lost_response' );
+        }
+        return true;
+    }
+    public static function rollback( $t ) {
+        global $wpdb;
+        ++self::$rollback;
+        if ( self::$simulate_rollback_uncertain ) {
+            self::$simulate_rollback_uncertain = false;
+            return new WP_Error( 'simulated_rollback_unverified' );
+        }
+        if ( is_array( $wpdb->tx_snapshot ) ) {
+            list( $wpdb->head, $wpdb->inserted, $wpdb->updated, $wpdb->events ) = $wpdb->tx_snapshot;
+        }
+        $wpdb->tx_snapshot = null;
+        return true;
+    }
 }
 class FixtureJournalDB {
     public $last_error = '';
     public $inserted = 0, $updated = 0;
-    public $head;
+    public $head, $tx_snapshot;
+    public $events = array();
+    public $fail_next_event_insert = false, $fail_next_head_update = false;
     public function prepare( $sql ) { return array( $sql, array_slice( func_get_args(), 1 ) ); }
     public function get_row( $prepared, $output ) { return $this->head; }
     public function query( $prepared ) {
@@ -50,8 +80,12 @@ class FixtureJournalDB {
                 'latest_event_sha256' => str_repeat( '0', 64 ) );
             return 1;
         }
-        if ( 0 === strpos( $sql, 'INSERT INTO ' ) ) { ++$this->inserted; return 1; }
+        if ( 0 === strpos( $sql, 'INSERT INTO ' ) ) {
+            if ( $this->fail_next_event_insert ) { $this->fail_next_event_insert = false; return false; }
+            ++$this->inserted; $this->events[] = $args; return 1;
+        }
         if ( 0 === strpos( $sql, 'UPDATE ' ) ) {
+            if ( $this->fail_next_head_update ) { $this->fail_next_head_update = false; return false; }
             ++$this->updated;
             $this->head['latest_sequence'] = $args[0];
             $this->head['latest_event_sha256'] = $args[1];
@@ -128,4 +162,40 @@ $again = MAD4B_SCP_Operation_Journal::begin( $new_ctx, 'planned', array( 'ticket
 assert_journal( 'same journal begin cannot generate duplicate genesis', is_wp_error( $again )
     && 'mad4b_operation_journal_head_already_exists' === $again->get_error_code()
     && 1 === $wpdb->inserted && 1 === $wpdb->updated );
+$wpdb = new FixtureJournalDB();
+$failure_context = $new_ctx;
+$failure_context['operation_id'] = '08728fa8-166a-468d-9b93-89adb51db64e';
+$wpdb->fail_next_event_insert = true;
+$bad_event = MAD4B_SCP_Operation_Journal::begin( $failure_context, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'failed genesis event rolls back head atomically', is_wp_error( $bad_event )
+    && 'mad4b_operation_journal_genesis_failed' === $bad_event->get_error_code()
+    && null === $wpdb->head && 0 === $wpdb->inserted && 0 === $wpdb->updated && array() === $wpdb->events );
+$recovered = MAD4B_SCP_Operation_Journal::begin( $failure_context, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'verified rollback permits clean new genesis', is_array( $recovered )
+    && 1 === $wpdb->head['latest_sequence'] && 1 === count( $wpdb->events ) );
+$wpdb = new FixtureJournalDB();
+$wpdb->fail_next_head_update = true;
+$bad_cas = MAD4B_SCP_Operation_Journal::begin( $failure_context, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'genesis CAS failure rolls back both rows', is_wp_error( $bad_cas )
+    && null === $wpdb->head && 0 === $wpdb->inserted && 0 === $wpdb->updated && array() === $wpdb->events );
+$wpdb = new FixtureJournalDB();
+$wpdb->fail_next_event_insert = true;
+MAD4B_SCP_Database_Transaction_Guard::$simulate_rollback_uncertain = true;
+$uncertain_rollback = MAD4B_SCP_Operation_Journal::begin( $failure_context, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'unknown rollback refuses success and blind retry', is_wp_error( $uncertain_rollback )
+    && 'mad4b_operation_journal_genesis_persistence_uncertain' === $uncertain_rollback->get_error_code()
+    && true === $uncertain_rollback->get_error_data()['reconciliation_required']
+    && false === $uncertain_rollback->get_error_data()['blind_retry_allowed'] );
+$wpdb = new FixtureJournalDB();
+MAD4B_SCP_Database_Transaction_Guard::$simulate_commit_uncertain = true;
+$unknown_commit = MAD4B_SCP_Operation_Journal::begin( $failure_context, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'unknown commit is not a success certificate', is_wp_error( $unknown_commit )
+    && 'mad4b_operation_journal_genesis_commit_uncertain' === $unknown_commit->get_error_code()
+    && true === $unknown_commit->get_error_data()['reconciliation_required']
+    && false === $unknown_commit->get_error_data()['blind_retry_allowed']
+    && 1 === $wpdb->head['latest_sequence'] && 1 === count( $wpdb->events ) );
+$duplicate = MAD4B_SCP_Operation_Journal::begin( $failure_context, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'uncertain commit cannot be duplicated on retry', is_wp_error( $duplicate )
+    && 'mad4b_operation_journal_head_already_exists' === $duplicate->get_error_code()
+    && 1 === count( $wpdb->events ) );
 echo 'OPERATION_JOURNAL_EXACT_CAS: PASS ' . $GLOBALS['tests'] . ' checks (hermetic DB stub)' . PHP_EOL;
