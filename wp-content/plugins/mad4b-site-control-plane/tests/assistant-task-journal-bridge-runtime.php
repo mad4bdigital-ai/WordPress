@@ -8,6 +8,7 @@ class WP_Error {
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
+function wp_json_encode( $data, $flags = 0 ) { return json_encode( $data, $flags ); }
 $GLOBALS['assistant_allowed'] = true; $GLOBALS['assistant_staging'] = true;
 function current_user_can( $cap ) { return $GLOBALS['assistant_allowed'] && 'manage_options' === $cap; }
 class MAD4B_SCP_Adaptive_Operations_Context {
@@ -73,9 +74,19 @@ $context = array( 'operation_id' => '4fcd585e-ac71-46f2-91ce-8bd69ad9a621',
 MAD4B_SCP_Operation_Journal::$head = array( 'operation_key' => $context['operation_key'],
     'operation_binding_sha256' => $bound, 'latest_sequence' => 1,
     'latest_event_sha256' => str_repeat( 'f', 64 ) );
+$genesis_json = wp_json_encode( MAD4B_SCP_Assistant_Task_Journal_Bridge::genesis_claim( $record ),
+    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 MAD4B_SCP_Operation_Journal::$events = array( array( 'sequence' => 1,
-    'event_type' => 'operation_started', 'safe_metadata' => array(),
+    'event_type' => 'operation_started', 'checkpoint' => 'planned',
+    'lifecycle_state' => 'planned',
+    'safe_metadata' => array( 'metadata' => array( 'sha256' => hash( 'sha256', $genesis_json ),
+        'length' => strlen( $genesis_json ) ) ),
     'event_sha256' => str_repeat( 'f', 64 ) ) );
+$original_genesis = MAD4B_SCP_Operation_Journal::$events[0];
+MAD4B_SCP_Operation_Journal::$events[0]['safe_metadata']['metadata']['sha256'] = str_repeat( '8', 64 );
+assert_task( 'forged journal genesis cannot initialize', is_wp_error(
+    MAD4B_SCP_Assistant_Task_Journal_Bridge::initialize( $context, $record ) ) );
+MAD4B_SCP_Operation_Journal::$events[0] = $original_genesis;
 $GLOBALS['assistant_allowed'] = false;
 assert_task( 'anonymous cannot initialize a ticket', is_wp_error( MAD4B_SCP_Assistant_Task_Journal_Bridge::initialize( $context, $record ) ) );
 $GLOBALS['assistant_allowed'] = true;
@@ -89,6 +100,10 @@ assert_task( 'same operation cannot initialize again', is_wp_error( MAD4B_SCP_As
 $read = MAD4B_SCP_Assistant_Task_Journal_Bridge::read( $context );
 assert_task( 'authoritative journal readback matches record', is_array( $read )
     && $record === $read['record'] && $read['chain_valid'] && $read['read_only'] );
+MAD4B_SCP_Operation_Journal::$events[0]['safe_metadata']['metadata']['sha256'] = str_repeat( '8', 64 );
+assert_task( 'journal genesis remains anchored after subsequent events', is_wp_error(
+    MAD4B_SCP_Assistant_Task_Journal_Bridge::read( $context ) ) );
+MAD4B_SCP_Operation_Journal::$events[0] = $original_genesis;
 $request = array( 'expected_revision' => 1, 'expected_last_event_sha256' => $record['last_event_sha256'],
     'next_state' => 'evidence_pending', 'reason_code' => 'needs_native_evidence' );
 $next = MAD4B_SCP_Assistant_Task_Journal_Bridge::transition( $context, $record, $request );
