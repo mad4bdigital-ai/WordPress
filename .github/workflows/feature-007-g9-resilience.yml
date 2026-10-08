@@ -1,0 +1,46 @@
+name: Feature 007 G9 Resilience
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g9-*.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/feature-007-g9-resilience.yml'
+      - 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g9-resilience:
+    name: G9 hermetic runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+      - name: Lint G9 runtime
+        run: |
+          for f in wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-{context,anchor}.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php; do php -l "$f" || exit 1; done
+      - name: Verify G9 non-authorizing delivery contract
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py
+      - name: Verify G9 source security invariants
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py
+      - name: Run G9 isolation and restore fixtures
+        run: |
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php null
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php pretend

@@ -39,7 +39,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-growth-evidence.php",
-      "sha256": "6297d7b2c06ee45836c853e84877c17718cf2674727ba37399a2e19b4fedbb01"
+      "sha256": "0e9d7958f9ec2c863c19990d857f44ea9bae6a13af92855a7895298e46082a86"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-provider-profiles.php",
@@ -47,7 +47,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php",
-      "sha256": "7d461e84106187fd509f9f47d45657a2f38943e9aa82ba6e03bc776a844f5aff"
+      "sha256": "ba76f7fae23dd736059e3614c64c45613c2700a7ef9799b65afd84d8c524aa1b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-acceptance.php",
@@ -55,7 +55,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "a6ecb32699e84cfba7f48ebcc3bcfc94626dc90db4acc41dbec84bde64c56a37"
+      "sha256": "05aed3ca045d06b37bb00b73eae284cda450089d710a36a7320c53eaa8e02a04"
     }
   ],
   "test_paths": [
@@ -65,7 +65,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-growth-evidence-runtime.php",
-      "sha256": "4ffd3c3f75df2363e03ce7b9ccea25f8e749c3686106f43c5de3d58faa7ee807"
+      "sha256": "dc7c94a7d6253667ae26dbbf2cf828703ec55f8fa037b47658415f152eaef9a1"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-provider-profile-contract.php",
@@ -73,7 +73,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-seo-provider-family-contract.php",
-      "sha256": "78e36a2f72ffd9a6329b6acf59ba086cc9185ffeaf220efc3963d3f28bc99f48"
+      "sha256": "400fbd795a3a094294f3102778f4e69f254ad1b5328c897348f7e8bf64d6be0f"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-acceptance-contract.php",
@@ -85,7 +85,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
-      "sha256": "f4201599dde42939d838b53ee72d7eb8ef0f46d06a9693ff41a0d835de2ef795"
+      "sha256": "da50aa07d151083759b9d9261698aa8f6c605f6195904c87ae6c027e56297e06"
     }
   ],
   "spec_paths": [

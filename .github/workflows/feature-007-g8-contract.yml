@@ -1,0 +1,73 @@
+name: Feature 007 G8 Automatic Maintenance Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/feature-007-g8-contract.yml'
+      - 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.md'
+permissions:
+  contents: read
+concurrency:
+  group: feature-007-g8-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  g8-automatic-maintenance:
+    name: G8 admission and evidence (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify exact source head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Prove G8 admission, kill-switch and outcome regression matrix
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-record.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-automation-slo.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-runtime-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          php -l "$PLUGIN/tests/g8-automation-slo-runtime.php"
+          php "$PLUGIN/tests/g8-automation-slo-runtime.php"
+          php -l "$PLUGIN/tests/g8-cron-generation-guard.php"
+          php "$PLUGIN/tests/g8-cron-generation-guard.php"
+          php -l "$PLUGIN/tests/g8-cron-guard-missing.php"
+          php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_THROWING_SLO=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_THROWING_WORKER=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=blocked php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=completed php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=pending_manual_resume php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=waiting_for_exact_runtime_restart php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_PAUSED=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_MALICIOUS_CHECKPOINT=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_PENDING_RESTART=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_CHECKPOINT_CAS_RACE=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-supply-provenance.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-schema-migration.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-restore-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-capability-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-compatibility-fuzz.php"
+          php -l "$PLUGIN/tests/g8-extended-runtime.php"
+          php "$PLUGIN/tests/g8-extended-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-adaptive-runtime-convergence.php"
+          php -l "$PLUGIN/tests/g8-adaptive-automatic-handoffs.php"
+          php "$PLUGIN/tests/g8-adaptive-automatic-handoffs.php"
+          php "$PLUGIN/tests/adaptive-runtime-convergence-runtime.php"
+          php "$PLUGIN/tests/certification-pack-registry-contract.php"
+          php "$PLUGIN/tests/crypto-profile-runtime.php"
+          php "$PLUGIN/tests/restore-epoch-runtime.php"
+          php -l "$PLUGIN/tests/g8-mysql-cas-integration.php"
+          php -l "$PLUGIN/tests/g8-staging-acceptance-readonly.php"

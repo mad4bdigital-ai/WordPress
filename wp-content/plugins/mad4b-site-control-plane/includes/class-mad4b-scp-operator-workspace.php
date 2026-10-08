@@ -141,6 +141,7 @@ final class MAD4B_SCP_Operator_Workspace {
 		}
 		self::setup_path();
 		self::external_notices();
+		if ( class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) MAD4B_SCP_Automation_SLO::render_controls();
 		self::capabilities( $adaptive );
 		if ( class_exists( 'MAD4B_SCP_Competitive_Evidence' ) ) MAD4B_SCP_Competitive_Evidence::render_operator_view();
 		self::autonomy_reference();
