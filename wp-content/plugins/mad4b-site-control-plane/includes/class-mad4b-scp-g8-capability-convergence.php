@@ -39,6 +39,16 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			if ( ! self::identifier( $id ) || ! is_array( $row ) )
 				return new WP_Error( 'mad4b_g8_convergence_capability_invalid', 'Capability scope invalid.' );
 			$behavior = is_array( $row['behavioral_evidence'] ?? null ) ? $row['behavioral_evidence'] : array();
+			// Preserve receipt identity, not merely booleans: a replaced or
+			// revoked source of behavioral evidence must trigger review even
+			// when verified/rollback flags happen to remain true.
+			$receipt = $behavior['accepted_receipt'] ?? array();
+			if ( ! is_array( $receipt ) || strlen( serialize( $receipt ) ) > 8192 )
+				return new WP_Error( 'mad4b_g8_convergence_receipt_invalid', 'Behavioral evidence receipt exceeds the passive observation bounds.' );
+			$receipt_digest = MAD4B_SCP_G8_Record::digest( array(
+				'state' => is_string( $behavior['state'] ?? null ) ? $behavior['state'] : 'unknown',
+				'accepted_receipt' => $receipt,
+			) );
 			$contract_hash = $row['capability_contract_digest'] ?? '';
 			if ( ! is_string( $contract_hash ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $contract_hash ) )
 				return new WP_Error( 'mad4b_g8_convergence_contract_unverified', 'Capability contract digest unavailable.' );
@@ -46,6 +56,7 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 				'contract_sha256' => $contract_hash,
 				'structural_compatible' => true === ( $row['structural_compatible'] ?? false ),
 				'behavioral_verified' => true === ( $behavior['behavioral_verified'] ?? false ),
+				'behavioral_evidence_sha256' => $receipt_digest,
 				'rollback_verified' => true === ( $behavior['rollback_verified'] ?? false ),
 				'read_eligible' => true === ( $row['read_eligible'] ?? false ),
 				'write_eligible' => true === ( $row['write_eligible'] ?? false ),
@@ -90,7 +101,8 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			elseif ( ! $b['write_eligible'] && $a['write_eligible'] ) $state = 'WRITE_FENCED';
 			elseif ( $a['certification_level'] !== $b['certification_level']
 				|| $a['behavioral_verified'] !== $b['behavioral_verified']
-				|| $a['rollback_verified'] !== $b['rollback_verified'] )
+				|| $a['rollback_verified'] !== $b['rollback_verified']
+				|| ! hash_equals( $a['behavioral_evidence_sha256'], $b['behavioral_evidence_sha256'] ) )
 				$state = 'CERTIFICATION_EVIDENCE_CHANGED';
 			elseif ( $identity_drift && ( $a['write_eligible'] || $b['write_eligible'] ) ) $state = 'IDENTITY_CHANGED_RECHECK_REQUIRED';
 			elseif ( ! $b['read_eligible'] && ! $b['write_eligible'] ) $state = 'INELIGIBLE_CAPABILITY';
@@ -150,6 +162,8 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 				|| ! is_string( $row['contract_sha256'] ?? null )
 				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $row['contract_sha256'] )
 				|| ! is_bool( $row['structural_compatible'] ?? null )
+				|| ! is_string( $row['behavioral_evidence_sha256'] ?? null )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $row['behavioral_evidence_sha256'] )
 				|| ! is_bool( $row['behavioral_verified'] ?? null )
 				|| ! is_bool( $row['rollback_verified'] ?? null )
 				|| ! is_bool( $row['read_eligible'] ?? null )
