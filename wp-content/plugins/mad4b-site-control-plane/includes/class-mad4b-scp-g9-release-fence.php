@@ -166,6 +166,48 @@ final class MAD4B_SCP_G9_Release_Fence {
     }
 
     /**
+     * Correlate an existing native operation with a signed execution receipt.
+     * This never concludes release acceptance: the site-local host, provider,
+     * rendered and external-effect acceptance remain independent requirements.
+     * Unknown/contradictory journal state can never be called committed.
+     */
+    public static function native_execution_evidence( array $binding, $operation_sha256, $operation_id, array $receipt ) {
+        $reservation = self::inspect( $binding, $operation_sha256 );
+        if ( is_wp_error( $reservation ) ) return $reservation;
+        if ( ! is_string( $operation_id )
+            || 1 !== preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9:_-]{3,127}$/D', $operation_id ) )
+            return self::blocked( 'native_operation_invalid', 'Exact native operation identifier is required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Execution_State_View' )
+            || ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) )
+            return self::blocked( 'native_evidence_unavailable', 'Existing execution state and signed receipt verifier are unavailable.' );
+        if ( ( $receipt['request_id'] ?? '' ) !== $operation_id
+            || ( $receipt['target_fingerprint'] ?? '' ) !== $operation_sha256 )
+            return self::blocked( 'native_receipt_unbound', 'Native receipt does not identify this exact fenced operation.' );
+        $verified = MAD4B_SCP_Execution_Receipt::verify( $receipt );
+        if ( is_wp_error( $verified ) || ! is_array( $verified )
+            || empty( $verified['valid'] ) || empty( $verified['cryptographic_signature_verified'] ) )
+            return self::blocked( 'native_signature_invalid', 'Native execution receipt signature is unavailable or invalid.' );
+        $state = MAD4B_SCP_Execution_State_View::operation( $operation_id );
+        if ( is_wp_error( $state ) || ! is_array( $state )
+            || ( $state['contract'] ?? '' ) !== MAD4B_SCP_Execution_State_View::CONTRACT
+            || ( $state['canonical_state'] ?? '' ) !== MAD4B_SCP_Execution_State_View::COMMITTED
+            || empty( $state['terminal'] ) || ! empty( $state['reconciliation_required'] ) )
+            return self::blocked( 'native_execution_uncertain', 'Canonical execution state is missing, contradictory or uncommitted.' );
+        return array(
+            'contract' => 'mad4b.g9.native-execution-evidence.v1',
+            'operation_sha256' => $operation_sha256,
+            'native_operation_id' => $operation_id,
+            'signed_receipt_sha256' => $verified['receipt_sha256'] ?? '',
+            'native_execution_state' => 'COMMITTED',
+            'native_execution_evidence_verified' => true,
+            'site_local_release_accepted' => false,
+            'fresh_provider_host_and_external_effect_readback_required' => true,
+            'production_authorized' => false,
+            'authorizing' => false, 'mutation_performed' => false,
+        );
+    }
+
+    /**
      * Read-only uncertainty projection. A missing terminal event is never
      * success or retryable; an observed external outcome requires independent
      * provider readback through the existing executor/acceptance plane.

@@ -2,6 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-g9-release-fence.php';
 require_once __DIR__ . '/class-mad4b-scp-g9-restore-convergence.php';
+require_once __DIR__ . '/class-mad4b-scp-g9-local-reader.php';
 
 /** G9 exposes only passive exact-site reads; release/restore mutations remain private. */
 final class MAD4B_SCP_G9_Read_Surface {
@@ -10,6 +11,9 @@ final class MAD4B_SCP_G9_Read_Surface {
     public static function boot() {
         if ( self::$booted ) return;
         self::$booted = true;
+        // Pin one server-owned passive observer; never instantiate a class or
+        // callback from a request or discovered manifest.
+        MAD4B_SCP_Resilience_Context::register_reader( new MAD4B_SCP_G9_Local_Reader() );
         if ( function_exists( 'add_action' ) )
             add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 38 );
     }

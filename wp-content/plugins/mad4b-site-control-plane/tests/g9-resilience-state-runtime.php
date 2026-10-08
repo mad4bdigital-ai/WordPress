@@ -154,6 +154,47 @@ $changed = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, array() );
 g9_assert( ! is_wp_error( $changed ) && $changed['requires_quarantine']
     && in_array( 'site_profile', $changed['changed_facets'], true ), 'profile restore drift' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'live_drift' );
+// Native journal/receipt correlation cannot turn a foreign or unknown result
+// into a release certificate. Real cryptographic verification is owned by
+// existing WordPress runtime; this hermetic stub checks fail-closed wiring.
+class MAD4B_SCP_Execution_State_View {
+    const CONTRACT = 'mad4b.execution-state-view.v1';
+    const COMMITTED = 'COMMITTED';
+    public static $state = 'RECONCILING';
+    public static function operation( $id ) { return array(
+        'contract'=>self::CONTRACT, 'canonical_state'=>self::$state,
+        'terminal'=>self::$state==='COMMITTED',
+        'reconciliation_required'=>self::$state!=='COMMITTED',
+    ); }
+}
+class MAD4B_SCP_Execution_Receipt {
+    public static $valid = true;
+    public static function verify( array $receipt ) {
+        if ( ! self::$valid ) return new WP_Error( 'crypto_invalid', 'signature denied' );
+        return array( 'valid'=>true, 'cryptographic_signature_verified'=>true,
+            'receipt_sha256'=>hash( 'sha256', 'verified-native' ) );
+    }
+}
+$operation_id = 'g9-native:operation-0001';
+$native = array( 'request_id'=>$operation_id,
+    'target_fingerprint'=>$reserved['operation_sha256'] );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_execution_uncertain' );
+MAD4B_SCP_Execution_State_View::$state = 'COMMITTED';
+$incorrect = $native; $incorrect['target_fingerprint'] = hash( 'sha256', 'foreign' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $incorrect ),
+    'native_receipt_unbound' );
+MAD4B_SCP_Execution_Receipt::$valid = false;
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_signature_invalid' );
+MAD4B_SCP_Execution_Receipt::$valid = true;
+$verified = MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native );
+g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_verified']
+    && !$verified['site_local_release_accepted'], 'native receipt is not release acceptance' );
 MAD4B_SCP_G9_Read_Surface::boot();
 MAD4B_SCP_G9_Read_Surface::register_abilities();
 g9_assert( count( $GLOBALS['g9_registered_abilities'] ) === 2, 'two read-only abilities' );
