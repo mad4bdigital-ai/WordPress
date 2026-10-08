@@ -76,7 +76,10 @@ for marker in (
     "'ready_semantics' => 'authority_and_runtime_flags_only'",
     "'process_backend_ready' => $process_ready",
     "'normal_no_network_execution_ready' => $normal_no_network_ready",
-    "'execution_ready' => $process_ready && $normal_no_network_ready",
+    "'host_prerequisites_ready' => $prerequisites",
+    "'execution_certification' => 'NOT_CERTIFIED'",
+    "'execution_ready' => false",
+    "'host_behavior_uncertified'",
     "'developer_authority_ready' => $normal_ready",
     "'developer_breakglass_authority_ready' => $breakglass_ready",
     "'developer_execution' => $developer_execution",
@@ -91,6 +94,8 @@ developer_projection = full.split("private static function developer_execution_p
 for source in ("process_backend_blockers", "normal_no_network_execution_blockers"):
     assert source in developer_projection, source
 assert "'host_recovery' => self::developer_host_recovery( $blockers )" in developer_projection, "Developer execution projection must carry host recovery guidance"
+assert "'execution_ready' => $process_ready && $normal_no_network_ready" not in developer_projection, "Binary presence must never count as certified execution readiness"
+assert "certify_host_resource_and_network_isolation_using_independent_canary" in developer_projection, "Host recovery must require external isolated canary proof"
 assert "ready_to_apply" not in developer_projection, "host execution projection must remain diagnostic and must not silently redefine authority apply eligibility"
 
 fixable = full.split("'fixable_write_drift' => array(", 1)[1].split("),", 1)[0]
