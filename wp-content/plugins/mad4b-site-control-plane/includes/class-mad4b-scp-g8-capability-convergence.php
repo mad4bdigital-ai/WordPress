@@ -100,13 +100,25 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			else $changed[ $id ] = array( 'state' => $state, 'quarantine_scope' => $old['provider'] . ':' . $id,
 				'canary_required_for_promotion' => true, 'governed_authority_required' => true );
 		}
+		// A provider with zero currently eligible capabilities must not
+		// advertise capability-local continuity. Quarantine is advisory;
+		// this comparison does not stop a plugin or mutate any mount.
+		$any_eligible = false;
+		foreach ( $after as $row ) {
+			if ( $row['structural_compatible'] && ( $row['read_eligible'] || $row['write_eligible'] ) ) {
+				$any_eligible = true;
+				break;
+			}
+		}
+		$provider_quarantined = ! $any_eligible;
 		return array(
 			'contract' => self::CONTRACT,
 			'provider' => $old['provider'],
 			'artifact_identity_changed' => $identity_drift,
 			'changed_capabilities' => $changed,
 			'unrelated_compatible_capabilities' => $preserved,
-			'provider_wide_quarantine' => false,
+			'provider_wide_quarantine' => $provider_quarantined,
+			'provider_quarantine_reason' => $provider_quarantined ? 'no_current_eligible_capabilities' : '',
 			'whole_provider_deactivation' => false,
 			'candidate_promotion_allowed' => false,
 			'new_grants' => array(),
