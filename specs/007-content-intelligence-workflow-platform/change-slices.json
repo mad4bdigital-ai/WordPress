@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 281,
+  "changed_file_count": 287,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -439,8 +439,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-bootstrap-diagnostic-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-planning-runtime.php"
       ]
+    },
+    {
+      "id": "oauth-consent-operator-readiness-and-grant-presentation",
+      "semantic_unit": "Non-authorizing OAuth consent operator UX, validated exact grant list, and independently gated Developer host operational readiness",
+      "revert_boundary": "Revert consent presentation/read-only projection helper and OAuth PHP fixture only; token, scope, nonce, grant and sandbox authority unchanged",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/OAUTH-CONSENT-OPERATIONAL-READINESS.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-consent-projection-view.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-projection-view-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-script-syntax.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "a7172c88ca24afc3c5461984d99e1510c0c728dd963d122a97d5b6f4d61b888e",
+  "changed_paths_sha256": "6d80ed2f9c8eb2674c838eda7a801598ecf408f9cf0e571b586ba35b673de053",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

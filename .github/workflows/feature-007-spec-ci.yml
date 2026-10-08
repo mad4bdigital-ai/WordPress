@@ -621,3 +621,33 @@ jobs:
           php -l "$PLUGIN/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php"
           php -l "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
           php "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
+
+  oauth-operational-ux:
+    name: OAuth consent operating-state denials (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact source checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+      - name: OAuth projection view cannot create authority or blank grant names
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-oauth-consent-projection-view.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-local-oauth-server.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-local-oauth-consent-ui.php"
+          php -l "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
+          php "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
+          python3 "$PLUGIN/tests/oauth-consent-script-syntax.py"
