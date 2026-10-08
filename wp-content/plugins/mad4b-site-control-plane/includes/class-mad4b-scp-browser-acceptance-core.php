@@ -171,7 +171,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		$unknown = array_diff( array_keys( $input ), array( 'provider_id', 'profile_id', 'suite' ) );
 		if ( $unknown ) $reasons[] = 'unsupported_request_fields';
 		$provider_id = self::clean_id( isset( $input['provider_id'] ) ? $input['provider_id'] : '' );
-		if ( isset( $input['provider_id'] ) && '' === $provider_id ) $reasons[] = 'provider_id_invalid';
+		if ( array_key_exists( 'provider_id', $input ) && '' === $provider_id ) $reasons[] = 'provider_id_invalid';
 		$profile_id = self::clean_id( isset( $input['profile_id'] ) ? $input['profile_id'] : '' );
 		if ( '' === $profile_id ) $reasons[] = 'profile_id_required';
 		$suite = self::clean_id( isset( $input['suite'] ) ? $input['suite'] : 'browser_runtime' );
@@ -191,8 +191,9 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		$reasons = $selector['blocking_reasons'];
 		$unknown = array_diff( array_keys( $input ), array( 'provider_id', 'profile_id', 'suite', 'plan_digest', 'plan_signature', 'evidence' ) );
 		if ( $unknown ) $reasons[] = 'unsupported_request_fields';
-		$plan_digest = isset( $input['plan_digest'] ) && is_scalar( $input['plan_digest'] ) ? strtolower( trim( (string) $input['plan_digest'] ) ) : '';
-		$plan_signature = isset( $input['plan_signature'] ) && is_scalar( $input['plan_signature'] ) ? strtolower( trim( (string) $input['plan_signature'] ) ) : '';
+		// Signature-bound values are canonical bytes, never silently converted.
+		$plan_digest = isset( $input['plan_digest'] ) && is_string( $input['plan_digest'] ) ? $input['plan_digest'] : '';
+		$plan_signature = isset( $input['plan_signature'] ) && is_string( $input['plan_signature'] ) ? $input['plan_signature'] : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $plan_digest ) ) $reasons[] = 'plan_digest_invalid';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $plan_signature ) ) $reasons[] = 'plan_signature_invalid';
 		$evidence = array_key_exists( 'evidence', $input ) ? $input['evidence'] : null;
@@ -285,8 +286,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
 			),
 			'required' => array( 'profile_id' ),
-			'maxProperties' => 8,
-			'additionalProperties' => array( 'type' => 'string', 'maxLength' => 256 ),
+			'maxProperties' => 3,
+			'additionalProperties' => false,
 		);
 	}
 
@@ -443,7 +444,108 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
 				'profile_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
 				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
-				'plan_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'plan_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}
+				'plan_signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}
+				'evidence' => array(
+					'type' => 'object',
+					'maxProperties' => 9,
+					'properties' => array(
+						'contract' => $string160,
+						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'origin' => $string2048,
+						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 4, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80, 'execution_mode' => array( 'type' => 'string', 'enum' => array( 'external_browser_agent', 'local_interactive_browser', 'self_hosted_browser_agent', 'managed_browser_agent' ) ) ), 'additionalProperties' => false ),
+						'challenge' => $challenge_schema,
+						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
+					),
+					'additionalProperties' => false,
+				),
+			),
+			'required' => array( 'profile_id', 'plan_digest', 'plan_signature' ),
+			'maxProperties' => 6,
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function registry() {
+		if ( ! self::$registry ) self::$registry = new MAD4B_SCP_Browser_Acceptance_Provider_Registry();
+		return self::$registry;
+	}
+
+	private static function clean_id( $value ) {
+		if ( ! is_string( $value ) ) return '';
+		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/D', $value ) ? $value : '';
+	}
+}
+ ),
+				'plan_signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'evidence' => array(
+					'type' => 'object',
+					'maxProperties' => 9,
+					'properties' => array(
+						'contract' => $string160,
+						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'origin' => $string2048,
+						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 4, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80, 'execution_mode' => array( 'type' => 'string', 'enum' => array( 'external_browser_agent', 'local_interactive_browser', 'self_hosted_browser_agent', 'managed_browser_agent' ) ) ), 'additionalProperties' => false ),
+						'challenge' => $challenge_schema,
+						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
+					),
+					'additionalProperties' => false,
+				),
+			),
+			'required' => array( 'profile_id', 'plan_digest', 'plan_signature' ),
+			'maxProperties' => 6,
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function registry() {
+		if ( ! self::$registry ) self::$registry = new MAD4B_SCP_Browser_Acceptance_Provider_Registry();
+		return self::$registry;
+	}
+
+	private static function clean_id( $value ) {
+		if ( ! is_string( $value ) ) return '';
+		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/D', $value ) ? $value : '';
+	}
+}
+ ),
+				'evidence' => array(
+					'type' => 'object',
+					'maxProperties' => 9,
+					'properties' => array(
+						'contract' => $string160,
+						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'origin' => $string2048,
+						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 4, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80, 'execution_mode' => array( 'type' => 'string', 'enum' => array( 'external_browser_agent', 'local_interactive_browser', 'self_hosted_browser_agent', 'managed_browser_agent' ) ) ), 'additionalProperties' => false ),
+						'challenge' => $challenge_schema,
+						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
+					),
+					'additionalProperties' => false,
+				),
+			),
+			'required' => array( 'profile_id', 'plan_digest', 'plan_signature' ),
+			'maxProperties' => 6,
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function registry() {
+		if ( ! self::$registry ) self::$registry = new MAD4B_SCP_Browser_Acceptance_Provider_Registry();
+		return self::$registry;
+	}
+
+	private static function clean_id( $value ) {
+		if ( ! is_string( $value ) ) return '';
+		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/D', $value ) ? $value : '';
+	}
+}
+ ),
 				'plan_signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 				'evidence' => array(
 					'type' => 'object',
