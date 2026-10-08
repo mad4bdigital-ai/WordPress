@@ -11,7 +11,32 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
     const ABILITY = 'mad4b/assistant-bootstrap-diagnostic';
 
     public static function boot() {
-        if ( function_exists( 'add_action' ) ) add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 41 );
+        if ( ! function_exists( 'add_action' ) ) return;
+        add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 41 );
+        add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 41 );
+    }
+
+    /**
+     * Register through the existing governed adapter inventory. A standalone
+     * WordPress Ability is not automatically an exposed ChatGPT MCP tool.
+     */
+    public static function register_adapter( $registry ) {
+        if ( ! is_object( $registry ) || ! method_exists( $registry, 'register' )
+            || ! class_exists( 'MAD4B_SCP_Adapter_Base', false ) ) return;
+        $registry->register( new class extends MAD4B_SCP_Adapter_Base {
+            public function id() { return 'assistant-bootstrap'; }
+            public function label() { return 'Assistant Bootstrap Diagnostics'; }
+            public function is_available() { return true; }
+            public function ability_names() { return array(
+                'read' => array( MAD4B_SCP_Assistant_Bootstrap_Diagnostic::ABILITY ),
+                'content' => array(), 'admin' => array(),
+            ); }
+            public function register_abilities() {
+                MAD4B_SCP_Assistant_Bootstrap_Diagnostic::register_ability();
+            }
+            protected function mutation_requires_certification() { return false; }
+            protected function provider_certification( $available ) { return null; }
+        } );
     }
 
     public static function register_ability() {
