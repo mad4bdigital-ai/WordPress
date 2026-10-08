@@ -198,6 +198,7 @@ final class MAD4B_SCP_G8_Schema_Migration {
 
 	/** Mixed-version readers may inspect data, but this path cannot enable an old worker. */
 	public static function view( $domain, $reader_version ) {
+		if ( ! self::name_ok( $domain ) ) return new WP_Error( 'mad4b_g8_migration_document_invalid', 'Invalid observation domain.' );
 		$state = self::read_state();
 		if ( is_wp_error( $state ) ) return $state;
 		$doc = $state['documents'][ $domain ] ?? null;
