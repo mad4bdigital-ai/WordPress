@@ -238,3 +238,43 @@ single-use approval, native executor readback, safe rollback, and an
 externally proven no-effect reconciliation path. Until certified, the
 planner never delegates `Install → Activate → Configure`, changes grants,
 or marks native G4/G6/G9 capability coverage complete.
+
+## GA–GF bounded convergence kernel (2026-10-08)
+
+The existing `mad4b/assistant-plan` and read-only bootstrap diagnostic are now
+extended by an additive **`mad4b/assistant-convergence-preview`** read Ability
+and adapter. The entrypoint calls the current runtime-fenced planner itself;
+it does **not** accept an unverified caller-provided task-plan SHA as permission.
+
+The new contract `mad4b.assistant-convergence-preview.v1`:
+
+- Accepts at most 32 unverified provider candidates; each has canonical ID,
+  bounded capability list, up to 12 provider dependencies, source class,
+  and optional 64-digit SHA256 package fingerprint
+- Calculates a deterministic topological dependency ordering and flags
+  missing requirements, cycles, missing package digest and provider ambiguity
+- Requires owner choice for competing providers; never chooses a single vendor
+  for an ambiguous capability
+- Rejects unknown fields, objects/resources, oversized structures, duplicate
+  provider/dependency names, invalid IDs and forged authorization bits
+- Preserves the exact planner task ID, keeps all candidate trust
+  `CALLER_ASSERTED_UNVERIFIED` and always returns `apply_allowed=false`,
+  `automatic_install_allowed=false`, `authorizing=false`
+- Provides the read-only task-state reducer
+  `mad4b.assistant-task-transition.v1` with exact expected revision +
+  preceding-event hash. This reducer produces a **NOT_PERSISTED candidate
+  state**, never an actual durable CAS write or permission to execute
+
+This deliberately **reuses** existing MAD4B Durable Execution, Remote Work
+Queue, provider certification and Plugin Package governance rather than
+adding an unaudited competing executor. Durable staging CAS persistence,
+independent third-party provider certifications, signed Desired State authority,
+governed package selection/apply and G7/G8/G9 recovery/host canaries still
+require separate acceptance; none are implicitly created by this preview.
+
+The focused fixture `tests/assistant-convergence-runtime.php` checks
+dependency cycles, missing providers, ambiguity, digest/path denials, read-only
+ability registration, tainted authorization/approval denials, and stale/terminal
+CAS transitions. CI runs this on PHP 7.4 and 8.3. **Repository tests are not
+Staging/provider/runtime acceptance**, and CI cannot be marked PASS until an
+actual exact-head runner executes.
