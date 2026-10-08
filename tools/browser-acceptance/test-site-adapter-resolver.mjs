@@ -17,7 +17,9 @@ const example=(where="etg")=>{
  plugins:[slug,"unmapped-plugin"],
  plugin_versions:[{slug,basename:slug+"/main.php",version:"1.0.0"},
  {slug:"unmapped-plugin",basename:"unmapped-plugin/main.php",version:"1.0.0"}],
- plugin_versions_complete:true,post_types:["post","page","tour"],taxonomies:["category","tour_type"],unmapped_plugins:["unmapped-plugin"],provider_matches:[match(id,slug)]},
+ plugin_versions_complete:true,theme_version_complete:true,
+ theme:{stylesheet:"test-theme",version:"1.0.0",parent_stylesheet:"",parent_version:""},
+ post_types:["post","page","tour"],taxonomies:["category","tour_type"],unmapped_plugins:["unmapped-plugin"],provider_matches:[match(id,slug)]},
  operator_preference:{contract:"mad4b.browser-operator-preference.v1",read_only:true,authorizing:false,
  preference_valid:true,configuration_revision:"a".repeat(32),executor:"auto",profile_id:"",site_provider_id:"",
  credential_verified:false,external_runner_connected:false,site_provider_registered_by_preference:false}};
@@ -34,6 +36,10 @@ assert.equal(royalResult.profileId,"site.v1");
 assert.throws(()=>resolve(example("royal"),{approvedDrivers:[etg]}),/site_browser_external_driver_not_approved/);
 const unknown=example();unknown.providers=[];unknown.provider_count=0;unknown.site_discovery.provider_matches=[];
 assert.throws(()=>resolve(unknown,options),/site_browser_site_adapter_missing/);
+const badTheme=example();badTheme.site_discovery.theme_version_complete=false;
+assert.throws(()=>resolve(badTheme,options),/site_browser_discovery_invalid_or_incomplete/);
+const unknownParent=example();unknownParent.site_discovery.theme.parent_stylesheet="parent-theme";
+assert.throws(()=>resolve(unknownParent,options),/site_browser_discovery_invalid_or_incomplete/);
 const missingVersion=example();missingVersion.site_discovery.plugin_versions_complete=false;
 assert.throws(()=>resolve(missingVersion,options),/site_browser_discovery_invalid_or_incomplete/);
 const badVersion=example();badVersion.site_discovery.plugin_versions[0].version="";
