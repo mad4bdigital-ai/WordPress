@@ -6,7 +6,7 @@
  * inspector. Registry metadata is an untrusted observation, never a grant.
  */
 export const FEDERATION_CONTRACT = "mad4b.solution-federation.v1";
-const ID = /^[a-z][a-z0-9._-]{1,79}$/;
+const ID = /^[a-z0-9][a-z0-9._-]{1,79}$/;
 const SHA = /^[a-f0-9]{64}$/;
 const ENV = /^(production|staging|development|local)$/;
 const KINDS = new Set(["connector","skill","external_service","operator"]);
@@ -18,9 +18,16 @@ const isObject = x => x !== null && typeof x === "object" && !Array.isArray(x);
 const plainText = (s, max) => typeof s === "string" &&
   s.length >= 2 && s.length <= max && !/[<>{}\r\n\t\\]/.test(s) &&
   /^[\p{L}\p{M}\p{N} ._-]+$/u.test(s);
-const labelText = (s, max) => typeof s === "string" &&
-  s.length >= 2 && s.length <= max &&
-  /^[\p{L}\p{N}][\p{L}\p{M}\p{N} ._-]+$/u.test(s);
+// Normalize harmless separator punctuation to match the WordPress read
+// schema. Reject markup/control characters rather than laundering commands.
+const safeLabel = (s,max) => {
+  if (typeof s!=="string" || s.length<2 || s.length>max*3 ||
+      /[<>{}\\\x00-\x1f]/.test(s)) return null;
+  const text=s.replace(/[^\p{L}\p{M}\p{N} ._-]+/gu," ")
+    .replace(/ +/g," ").trim();
+  return text.length>=2 && text.length<=max &&
+    /^[\p{L}\p{N}][\p{L}\p{M}\p{N} ._-]+$/u.test(text) ? text : null;
+};
 const boundTo = (s, target) => isObject(s) &&
   s.site_id === target.site_id && s.environment === target.environment &&
   s.origin_sha256 === target.origin_sha256 && s.runtime_generation === target.runtime_generation;
@@ -126,9 +133,11 @@ export async function discoverFederated({target,query,enumerate,inspect,
     }
     let accepted=0, invalid=false;
     for(const item of observed.capabilities) {
-      if (!isObject(item) || !ID.test(item.id??"") ||
-          !labelText(item.label,120) ||
-          (item.description!==undefined && !labelText(item.description,180)) ||
+      const title=isObject(item)?safeLabel(item.label,120):null;
+      const detail=isObject(item) && item.description!==undefined ?
+        safeLabel(item.description,180):null;
+      if (!isObject(item) || !ID.test(item.id??"") || !title ||
+          (item.description!==undefined && !detail) ||
           item.execution_allowed===true || item.authorizing===true) {
         invalid=true; continue;
       }
@@ -138,10 +147,10 @@ export async function discoverFederated({target,query,enumerate,inspect,
         source.id.slice(0,29)+"--"+item.id.slice(0,29)+"-"+continuity(raw);
       if(key.length>79 || seenCandidates.has(key)) {invalid=true;continue;}
       seenCandidates.add(key);
-      const text=[item.label,item.description??"",item.id].join(" ");
+      const text=[title,detail??"",item.id].join(" ");
       candidates.push({
-        id:key, source_id:source.id, kind:source.kind, label:item.label,
-        description:item.description??"", lexical_score:overlap(query,text),
+        id:key, source_id:source.id, kind:source.kind, label:title,
+        description:detail??"", lexical_score:overlap(query,text),
         observed_state:"source_claimed", evidence_state:"UNVERIFIED_METADATA",
         observation_sha256:observed.observation_sha256,
         site_id:site.site_id, environment:site.environment,

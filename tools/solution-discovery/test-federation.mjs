@@ -36,6 +36,15 @@ const other=await discoverFederated({target:differentSite,query:"file",enumerate
  inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
  observation_sha256:H("e"),capabilities:[{id:"files",label:"File workspace"}]})});
 yes(other.candidate_total===1&&other.binding.site_id==="independent-cms","site independent");
+const numeric={...site,site_id:"49c562d1-8f2f-456f-b454-26816c6ba4cb"};
+const numericResult=await discoverFederated({target:numeric,query:"file",
+ enumerate:async()=>[{...item("tools"),site_id:numeric.site_id}],
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,
+ authorizing:false,observation_sha256:H("f"),capabilities:[{
+ id:"file-access",label:"SSH/SFTP File Manager",description:"Secure files, folders (read only)"
+ }]})});
+yes(numericResult.candidate_total===1,"numeric-first UUID works for arbitrary site");
+yes(numericResult.candidates[0].label==="SSH SFTP File Manager","ordinary punctuation normalized");
 const x=await run(sources.slice(0,2)),y=await run(sources.slice(0,2).reverse());
 yes(JSON.stringify(x.candidates)===JSON.stringify(y.candidates),"stable ordering");
 const over=await discoverFederated({target:site,query:"site",enumerate:async()=>Array.from({length:33},(_,i)=>item("r"+i)),inspect});
