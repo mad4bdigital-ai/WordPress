@@ -1155,7 +1155,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				return;
 			}
 		}
-		$result = self::run_safe_phases( 'post_update_cron', array() );
+		$result = self::run_safe_phases( 'post_update_cron', array(), $ticket );
 		if ( is_array( $ticket ) ) {
 			$finished = MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $result );
 			if ( is_wp_error( $finished ) ) {
@@ -1197,7 +1197,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 	}
 
-	private static function run_safe_phases( $source, array $plan ) {
+	private static function guard_automatic_ticket( $ticket ) {
+		if ( null === $ticket ) return true; // governed explicit/manual path remains unchanged.
+		return class_exists( 'MAD4B_SCP_Automation_SLO', false )
+			? MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket )
+			: new WP_Error( 'mad4b_automation_guard_missing', 'Automatic safety admission cannot be verified.' );
+	}
+
+	private static function run_safe_phases( $source, array $plan, $automatic_ticket = null ) {
 		$lock = self::acquire_lock();
 		if ( is_wp_error( $lock ) ) return $lock;
 		$existing_checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
@@ -1208,10 +1215,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		try {
 			$lease_refresh = self::refresh_lock( $lock );
 			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
+			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 			$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status( true ) : array();
 			if ( empty( $schema['ready'] ) ) {
 				$lease_refresh = self::refresh_lock( $lock );
 				if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$result = MAD4B_SCP_Schema::install_or_upgrade();
 				if ( is_wp_error( $result ) ) return $result;
 				$schema = MAD4B_SCP_Schema::status( true );
@@ -1224,6 +1235,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' );
 			}
 			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server', false ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'converge_store_for_lifecycle' ) ) {
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$oauth_store = MAD4B_SCP_Local_OAuth_Server::converge_store_for_lifecycle();
 				if ( is_wp_error( $oauth_store ) ) return $oauth_store;
 				if ( is_array( $oauth_store ) && ! empty( $oauth_store['changed'] ) ) {
@@ -1232,6 +1245,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				}
 			}
 			if ( class_exists( 'MAD4B_SCP_MCP_Runtime_Recovery', false ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' ) ) {
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$mcp_recovery = MAD4B_SCP_MCP_Runtime_Recovery::run( $lock );
 				if ( is_wp_error( $mcp_recovery ) ) return $mcp_recovery;
 				$changed[] = 'mcp_runtime_bootstrap';
@@ -1247,8 +1262,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 				}
 				if ( $skills_pending ) {
 					if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
+					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+					if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 					$seed = MAD4B_SCP_Skill_Seeder::reconcile();
 					if ( is_wp_error( $seed ) ) return $seed;
+					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+					if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 					$provider = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
 					if ( is_wp_error( $provider ) ) return $provider;
 					$skills = MAD4B_SCP_Skill_Runtime_Certification::current_status();
@@ -1316,6 +1335,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				}
 				$auto_reconciliation = self::reconciliation_decision( $reconciliation_context, is_array( $preflight ) ? $preflight : array() );
 				if ( 'AUTO_REBIND' === ( $auto_reconciliation['disposition'] ?? '' ) && ! is_wp_error( $trusted_target ) ) {
+					$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+					if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 					$observed_continuation = MAD4B_SCP_Post_Update_Continuation::prepare_observed_update( $trusted_target, $lock );
 					$continuation_status = MAD4B_SCP_Post_Update_Continuation::status();
 				}
@@ -1331,6 +1352,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				);
 			}
 			if ( ! empty( $continuation_status['active'] ) && in_array( isset( $continuation_status['state'] ) ? (string) $continuation_status['state'] : '', array( 'exact_readback_verified', 'pending_convergence' ), true ) ) {
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$continuation_result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( $lock );
 				if ( is_wp_error( $continuation_result ) ) return $continuation_result;
 				$changed[] = 'post_update_continuation';
