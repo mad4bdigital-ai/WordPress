@@ -211,8 +211,8 @@
   "workflow_paths": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "65fcb9b219e24b7703eeff13ee26a65ca5e11a50c2d44d1305badde5f36e5e4a",
-      "bytes": 36311
+      "sha256": "0025da63d18cb2622976870bfbda99e70b568adf29152236f2a6cf9f6398bbd1",
+      "bytes": 36544
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
@@ -277,7 +277,7 @@
       "pending": "Actual disposable WordPress/provider execution isolation, process/network fault injection and native review/canary evidence linkage"
     }
   ],
-  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091\u2013T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
+  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091–T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
   "remaining_acceptance": [
     "Final exact-head PHP 7.4/8.3 Actions and disposable MySQL 8.4/MariaDB 11.4 CAS matrix must complete; source fixtures are not a passing runtime receipt",
     "Existing governed Staging host, identity, context, consent, signing-key and native journal boundaries require independent current readbacks",
