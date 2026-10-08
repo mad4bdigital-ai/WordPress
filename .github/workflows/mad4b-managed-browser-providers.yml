@@ -80,6 +80,8 @@ jobs:
           node tools/browser-acceptance/test-pagination.mjs
           node tools/browser-acceptance/test-provider-preflight.mjs
           node tools/browser-acceptance/test-mcp-bridge.mjs
+          node tools/browser-acceptance/test-evidence-assembler.mjs
+          node tools/browser-acceptance/test-worker-environment.mjs
           node tools/browser-acceptance/test-receipt.mjs
           node tools/browser-acceptance/test-evidence-envelope.mjs
           node tools/browser-acceptance/test-filter-selection.mjs
@@ -101,6 +103,10 @@ jobs:
           node --check tools/browser-acceptance/receipt.mjs
           node --check tools/browser-acceptance/site-provider-configuration.mjs
           node --check tools/browser-acceptance/test-site-provider-configuration.mjs
+          node --check tools/browser-acceptance/evidence-assembler.mjs
+          node --check tools/browser-acceptance/worker-environment.mjs
+          node --check tools/browser-acceptance/test-evidence-assembler.mjs
+          node --check tools/browser-acceptance/test-worker-environment.mjs
           node --check tools/browser-acceptance/site-adapter-resolver.mjs
           node --check tools/browser-acceptance/test-site-adapter-resolver.mjs
           node --check tools/browser-acceptance/site-driver-registry.mjs
