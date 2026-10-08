@@ -61,4 +61,35 @@ final class MAD4B_SCP_Assistant_Read_Work_Operations {
         }
         return count( $payload['capabilities'] ) > 0;
     }
+    /** Prevent cross-operation payload substitution and browser-agent mutation. */
+    public static function validate_for_operation( $operation, $payload ) {
+        $purposes = array(
+            'assistant_provider_catalog_snapshot' => 'catalog_read',
+            'assistant_dependency_readback' => 'dependency_read',
+            'assistant_configuration_diff' => 'configuration_diff_read',
+        );
+        return isset( $purposes[ $operation ] )
+            && self::validate_payload( $payload )
+            && $payload['purpose'] === $purposes[ $operation ];
+    }
+
+    /** Exact site, origin, restore and generation fence for durable enqueue. */
+    public static function runtime_binding_matches( $payload ) {
+        if ( ! self::validate_payload( $payload )
+            || ! class_exists( 'MAD4B_SCP_Adaptive_Operations_Context', false ) ) return false;
+        $current = MAD4B_SCP_Adaptive_Operations_Context::current();
+        if ( is_wp_error( $current ) || ! is_array( $current )
+            || ( $current['environment'] ?? null ) !== 'staging' ) return false;
+        $fields = array( 'site_uuid', 'environment', 'profile_digest',
+            'origin_sha256', 'runtime_generation', 'artifact_sha256',
+            'restore_epoch', 'external_record_sha256' );
+        $exact = array();
+        foreach ( $fields as $key ) {
+            if ( ! array_key_exists( $key, $current ) ) return false;
+            $exact[] = $current[ $key ];
+        }
+        return hash_equals( hash( 'sha256', serialize( $exact ) ),
+            $payload['binding_sha256'] );
+    }
+
 }
