@@ -38,7 +38,7 @@ export function validateDeclarativePlan(plan) {
       plan.read_only !== true || plan.authorizing !== false ||
       !SHA.test(plan.plan_digest || "") || !SHA.test(plan.plan_signature || "") ||
       !HEX40.test(plan.build_identity?.git_sha || "") ||
-      !HEX40.test(plan.build_identity?.tree_sha || "")) deny("plan_invalid");
+      !SHA.test(plan.build_identity?.build_fingerprint || "")) deny("plan_invalid");
   const canonicalOrigin = origin(plan.origin);
   const challenge = plan.challenge;
   const now = Math.floor(Date.now() / 1000);
@@ -130,7 +130,8 @@ export async function runDeclarativeBrowserPlan({ browser, providerId, plan }) {
       observer: {
         contract: "mad4b.capability-browser-observer.v1",
         javascript_runtime: true, browser_engine: providerId + ":" + String(engine),
-        execution_mode: "managed_browser_agent"
+        execution_mode: "managed_browser_agent",
+        plan_issued_at: validated.challenge.issued_at
       },
       cases
     };
