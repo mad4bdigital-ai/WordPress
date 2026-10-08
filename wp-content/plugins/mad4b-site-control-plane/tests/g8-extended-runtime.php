@@ -305,6 +305,34 @@ g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $revoked_ticket, $
 g8_check( 1 === MAD4B_SCP_Automation_SLO::status()['outcomes']['verified_repair'],
 	'raced ticket never adds a verified repair' );
 
+// A restored/rolled-back host clock cannot silently extend an old signed
+// window or a worker's TTL beyond its original timing assumptions.
+$clock_option = MAD4B_SCP_Automation_SLO::OPTION;
+$clock_saved = $GLOBALS['g8_options'][ $clock_option ];
+$future_bucket = $clock_saved;
+$future_bucket['buckets']['site']['started_at'] = time() + 3600;
+$future_bucket['seal'] = MAD4B_SCP_G8_Record::seal( $future_bucket );
+$GLOBALS['g8_options'][ $clock_option ] = $future_bucket;
+$skew = MAD4B_SCP_Automation_SLO::admission( 'clock-provider', 'probe' );
+g8_check( 'clock_skew_requires_reconciliation' === $skew['reason'],
+	'validly sealed future budget fails closed on backward wall clock' );
+$GLOBALS['g8_options'][ $clock_option ] = $clock_saved;
+$clock_ticket = MAD4B_SCP_Automation_SLO::reserve( 'clock-provider', 'probe', str_repeat( 'e', 64 ) );
+g8_check( is_array( $clock_ticket ), 'clock test obtains an ordinary ticket first' );
+$clock_saved = $GLOBALS['g8_options'][ $clock_option ];
+$future_ticket = $clock_saved;
+$future_ticket['tickets'][ $clock_ticket['token'] ]['started_at'] = time() + 600;
+$future_ticket['tickets'][ $clock_ticket['token'] ]['expires_at'] = time() + 1800;
+$future_ticket['seal'] = MAD4B_SCP_G8_Record::seal( $future_ticket );
+$GLOBALS['g8_options'][ $clock_option ] = $future_ticket;
+g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::ticket_allowed( $future_ticket['tickets'][ $clock_ticket['token'] ] ),
+	'mad4b_automation_clock_skew_requires_reconciliation' ), 'future ticket cannot pass execution fence' );
+g8_check( 'clock_skew_requires_reconciliation' === MAD4B_SCP_Automation_SLO::admission( 'other-provider', 'probe' )['reason'],
+	'future ticket blocks automatic site admissions' );
+$GLOBALS['g8_options'][ $clock_option ] = $clock_saved;
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $clock_ticket, array( 'state' => 'handoff' ) ),
+	'normal ticket can finish only after valid clock fixture restored' );
+
 // A crashed/expired worker outcome remains uncertain. Do not purge its
 // sealed ticket or allow another capability to work around the site breaker.
 $orphan = MAD4B_SCP_Automation_SLO::reserve( 'abandoned-provider', 'repair', str_repeat( 'e', 64 ) );
