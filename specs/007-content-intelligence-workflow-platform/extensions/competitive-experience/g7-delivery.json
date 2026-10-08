@@ -49,8 +49,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php"
       ],
       "remaining_acceptance": [
-        "typed consumer CAS integration",
-        "Staging real owned-field readback"
+        "Typed consumer must build signed Execution Receipt from the exact persisted Last Managed snapshot readback envelope",
+        "Independent Staging owned-field CAS/readback and human-edit preservation acceptance"
       ]
     },
     {
@@ -248,8 +248,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
-      "sha256": "15702d735b829b440fc64db45d0e5df783a98e1e21db97923db9f23b5d22ec6c",
-      "bytes": 16347
+      "sha256": "4ed6302889022daf48b3a2b0d893f4e40cfc6cc4581d51c27c23b49a3432d6dd",
+      "bytes": 19036
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -268,8 +268,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
-      "sha256": "cd0b3fbd6727409e92b320cf0d0c2e46677c5c2e5dc792fe88a5449467753b58",
-      "bytes": 12334
+      "sha256": "cad1b58355d00cc9f4f3045e9dae62e63d246d63a392e0358845f9ceb37b598c",
+      "bytes": 13670
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",

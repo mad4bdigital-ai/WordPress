@@ -8,14 +8,56 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	const MAX_FIELDS = 64;
 	const TTL = 300;
 	const BASELINE_CONTRACT = 'mad4b.ownership-managed-baseline.v1';
+	const READBACK_CONTRACT = 'mad4b.ownership-baseline-readback.v1';
+
+	/**
+	 * The native typed executor MUST read the actual persisted snapshot, then
+	 * pass this exact payload in $result['readback'] to Execution_Receipt::build.
+	 * This is a non-authorizing recipe; no caller-declared success is trusted.
+	 */
+	public static function baseline_readback_material( array $snapshot ) {
+		$v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v;
+		if ( ! isset( $snapshot['target_fingerprint'] ) || ! is_string( $snapshot['target_fingerprint'] ) ||
+			'' === $snapshot['target_fingerprint'] || strlen( $snapshot['target_fingerprint'] ) > 191 ) return self::error( 'baseline_target_missing' );
+		$digest = self::snapshot_digest( $snapshot ); if ( is_wp_error( $digest ) ) return $digest;
+		return array(
+			'contract' => self::READBACK_CONTRACT,
+			'resource_id' => $snapshot['resource_id'],
+			'snapshot_sha256' => $digest,
+			'target_fingerprint' => $snapshot['target_fingerprint'],
+		);
+	}
+
 
 	/** Native typed consumer only; ownership cannot be assigned through an ability. */
 	public static function managed_baseline( array $snapshot, array $binding, array $execution_receipt ) {
 		$v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v;
 		$v = MAD4B_SCP_Adaptive_Operations_Context::validate( $binding ); if ( is_wp_error( $v ) ) return $v;
+		$current_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+		if ( is_wp_error( $current_binding ) ) return $current_binding;
+		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $current_binding ); if ( is_wp_error( $v ) ) return $v;
 		if ( ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) ) return self::error( 'execution_receipt_unavailable' );
 		$verified = MAD4B_SCP_Execution_Receipt::verify( $execution_receipt ); if ( is_wp_error( $verified ) ) return $verified;
-		if ( 'PASS' !== ( $execution_receipt['stages']['readback_reconciliation']['status'] ?? '' ) || empty( $snapshot['target_fingerprint'] ) || ! hash_equals( (string) $snapshot['target_fingerprint'], (string) ( $execution_receipt['target_fingerprint'] ?? '' ) ) ) return self::error( 'baseline_target_readback_missing' );
+		if ( ! is_array( $verified ) || true !== ( $verified['valid'] ?? null ) ||
+			true !== ( $verified['cryptographic_signature_verified'] ?? null ) ||
+			! MAD4B_SCP_Adaptive_Operations_Context::sha( $verified['receipt_sha256'] ?? null ) ||
+			! MAD4B_SCP_Adaptive_Operations_Context::sha( $execution_receipt['receipt_sha256'] ?? null ) ||
+			! hash_equals( $verified['receipt_sha256'], $execution_receipt['receipt_sha256'] ) ) {
+			return self::error( 'baseline_execution_receipt_not_verified' );
+		}
+		$readback = self::baseline_readback_material( $snapshot ); if ( is_wp_error( $readback ) ) return $readback;
+		$encoded = wp_json_encode( array( 'readback' => $readback ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $encoded ) ) return self::error( 'baseline_readback_encoding_failed' );
+		$expected_readback = hash( 'sha256', $encoded );
+		$stage = $execution_receipt['stages']['readback_reconciliation'] ?? array();
+		if ( ! is_array( $stage ) || 'PASS' !== ( $stage['status'] ?? null ) ||
+			'readback_or_reconciliation' !== ( $stage['evidence_type'] ?? null ) ||
+			! MAD4B_SCP_Adaptive_Operations_Context::sha( $stage['evidence_sha256'] ?? null ) ||
+			! hash_equals( $expected_readback, $stage['evidence_sha256'] ) ||
+			! is_string( $execution_receipt['target_fingerprint'] ?? null ) ||
+			! hash_equals( $readback['target_fingerprint'], $execution_receipt['target_fingerprint'] ) ) {
+			return self::error( 'baseline_snapshot_readback_unbound' );
+		}
 		$snapshot['lineage_sha256'] = $verified['receipt_sha256'];
 		$sealed = MAD4B_SCP_Adaptive_Operations_Context::seal( self::BASELINE_CONTRACT, array( 'snapshot' => $snapshot, 'binding' => $binding ) );
 		if ( is_wp_error( $sealed ) ) return $sealed;
@@ -30,6 +72,9 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	 */
 	public static function plan( array $last_managed, array $current, array $desired, array $policies, array $binding ) {
 		$v = MAD4B_SCP_Adaptive_Operations_Context::validate( $binding ); if ( is_wp_error( $v ) ) return $v;
+		$live_binding = MAD4B_SCP_Adaptive_Operations_Context::current();
+		if ( is_wp_error( $live_binding ) ) return $live_binding;
+		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $live_binding ); if ( is_wp_error( $v ) ) return $v;
 		foreach ( array( $last_managed, $current, $desired ) as $snapshot ) { $v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v; }
 		if ( $current['resource_id'] !== $desired['resource_id'] ) return self::error( 'resource_mismatch' );
 		$lineage = $last_managed['lineage_proof'] ?? array();
