@@ -76,6 +76,10 @@ $malformed_record = array( 'contract' => 'mad4b.test.v1', 'authorizing' => false
 g8_check( false === MAD4B_SCP_G8_Record::valid( $malformed_record, 'mad4b.test.v1' )
 	&& empty( $GLOBALS['g8_untrusted_record_serialize_invoked'] ),
 	'stored record HMAC validation must reject an object without invoking __serialize' );
+g8_check( '' === MAD4B_SCP_G8_Record::digest( $malformed_record )
+	&& '' === MAD4B_SCP_G8_Record::seal( $malformed_record )
+	&& empty( $GLOBALS['g8_untrusted_record_serialize_invoked'] ),
+	'shared digest and signing helpers must reject the same malicious object without executing it' );
 
 $provider = 'runtime-convergence'; $capability = 'safe-phases'; $generation = str_repeat( 'e', 64 );
 $switch = MAD4B_SCP_Automation_SLO::switch_status();
