@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 345,
+  "changed_file_count": 347,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -607,8 +607,18 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ui.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/validate.py"
       ]
+    },
+    {
+      "id": "browser-site-aware-staging-certification-20261008",
+      "semantic_unit": "Remove ETG-only fixed Staging browser target; bind registered site provider and exact profile to verified signed-result parity with guarded compatibility fixture",
+      "revert_boundary": "Revert dynamic Staging browser selector and fail-closed signed-plan test together; external browser execution remains independent",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "4bf83ee130f0157df7af0a433545037072338593d6a7244eefb3190500b2d159",
+  "changed_paths_sha256": "775abe0587fe753fe46ae205704940ded808bcb3aa6f156b114fcfdaf90e7e81",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
