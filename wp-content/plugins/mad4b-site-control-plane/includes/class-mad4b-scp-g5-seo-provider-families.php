@@ -120,7 +120,7 @@ final class MAD4B_SCP_G5_SEO_Provider_Families {
 		foreach ( array( 'provider_id', 'surface_kind' ) as $key ) {
 			if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] ) || '' === $input[ $key ] || strlen( $input[ $key ] ) > 64 || sanitize_key( $input[ $key ] ) !== $input[ $key ] ) return self::error( 'input_invalid' );
 		}
-		if ( isset( $input['language'] ) && ( ! is_string( $input['language'] ) || strlen( $input['language'] ) > 32 || sanitize_key( $input['language'] ) !== $input['language'] ) ) return self::error( 'input_invalid' );
+		if ( isset( $input['language'] ) && ( ! is_string( $input['language'] ) || strlen( $input['language'] ) > 32 ) ) return self::error( 'input_invalid' );
 		if ( isset( $input['rendered_surface_ref'] ) && ( ! is_string( $input['rendered_surface_ref'] ) || strlen( $input['rendered_surface_ref'] ) > 512 ) ) return self::error( 'input_invalid' );
 		$provider = $input['provider_id'];
 		$surface = $input['surface_kind'];
@@ -133,7 +133,7 @@ final class MAD4B_SCP_G5_SEO_Provider_Families {
 			if ( ! is_string( $field ) || ! in_array( $field, $catalog['field_ids'], true ) ) return self::error( 'field_scope_invalid' );
 		}
 		if ( count( $fields ) !== count( array_unique( $fields, SORT_STRING ) ) ) return self::error( 'field_scope_invalid' );
-		$language = $input['language'] ?? '';
+		$language = isset( $input['language'] ) ? sanitize_key( $input['language'] ) : '';
 		$rendered = trim( $input['rendered_surface_ref'] ?? '' );
 		$identity = self::runtime_identity( $provider );
 		$gates = array(

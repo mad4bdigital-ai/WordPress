@@ -49,6 +49,14 @@ mad4b_g5_seo_assert( in_array( 'exact_rendered_readback', $plan['required_gates'
 mad4b_g5_seo_assert( in_array( 'coexistence_conflict_preservation', $plan['required_gates'], true ), 'provider coexistence gate is required' );
 mad4b_g5_seo_assert( in_array( 'no_signal_direct_mutation', $plan['required_gates'], true ), 'SEO signals cannot become authority' );
 
+$localized = MAD4B_SCP_G5_SEO_Provider_Families::plan( array(
+	'provider_id' => 'rank-math',
+	'surface_kind' => 'post',
+	'field_ids' => array( 'title' ),
+	'language' => 'en-US',
+) );
+mad4b_g5_seo_assert( ! is_wp_error( $localized ) && 'en-us' === $localized['language'], 'valid BCP-47-style language strings retain existing safe normalization' );
+
 $unknown = MAD4B_SCP_G5_SEO_Provider_Families::readiness( array( 'provider_id' => 'made-up-seo' ) );
 mad4b_g5_seo_assert( is_wp_error( $unknown ) && 'mad4b_g5_seo_provider_unknown' === $unknown->get_error_code(), 'unknown SEO provider must fail closed' );
 

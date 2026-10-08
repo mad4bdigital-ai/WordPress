@@ -36,6 +36,15 @@ final class MAD4B_SCP_G5_Growth_Evidence {
 			$row = self::resolve( $ref ); if ( is_wp_error( $row ) ) return $row;
 			$observations[] = $row;
 		}
+		// Each retained observation is checked while it is read, but a later
+		// provider can take long enough for an earlier row to expire. A
+		// multi-row preview must not release already-expired evidence.
+		$completed_at = time();
+		foreach ( $observations as $observed ) {
+			if ( ! is_int( $observed['valid_until'] ?? null ) || $observed['valid_until'] <= $completed_at ) {
+				return self::error( 'observation_stale_or_rights_denied' );
+			}
+		}
 		$comparison = self::compare( $observations );
 		return array( 'contract' => 'mad4b.feature007-g5-growth-preview.v1', 'observations' => $observations, 'comparison' => $comparison, 'proposal' => array( 'state' => $comparison['comparable'] ? 'editorial_review_candidate' : 'additional_comparable_evidence_required', 'requires_separate_current_content_plan' => true, 'causality_claimed' => false, 'direct_content_mutation' => false, 'authorizing' => false ), 'outbound_requests' => 0, 'paid_execution_performed' => false, 'authority_created' => false, 'authorizing' => false );
 	}
