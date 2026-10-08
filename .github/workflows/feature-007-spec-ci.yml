@@ -618,3 +618,6 @@ jobs:
           php -l "$PLUGIN/includes/class-mad4b-scp-assistant-planning.php"
           php -l "$PLUGIN/tests/assistant-planning-runtime.php"
           php "$PLUGIN/tests/assistant-planning-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php"
+          php -l "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
+          php "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
