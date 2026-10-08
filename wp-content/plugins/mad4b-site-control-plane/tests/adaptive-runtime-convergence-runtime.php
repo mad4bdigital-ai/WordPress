@@ -39,7 +39,13 @@ class MAD4B_SCP_Automation_SLO {
 }
 class MAD4B_SCP_Runtime_Convergence {
  const CHECKPOINT_OPTION = 'fixture_core_checkpoint'; static $calls = 0;
- static function mark_activation_pending() { ++self::$calls; return array( 'state' => 'pending' ); }
+ static function mark_activation_pending() {
+  ++self::$calls;
+  return array( 'scheduled' => true, 'state' => 'pending_safe_phases', 'target_identity' => array(
+   'source_commit_sha' => str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ),
+   'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture',
+  ) );
+ }
 }
 class MAD4B_SCP_Staging_Write_Authority {
  static $stored_bound = false; static $match = false;
@@ -95,6 +101,25 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-adaptive-runtime-convergence.php';
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
+$probe_method = new ReflectionMethod( 'MAD4B_SCP_Adaptive_Runtime_Convergence', 'core_probe_scheduled' );
+$probe_method->setAccessible( true );
+$installed = array( 'source_commit_sha' => str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ),
+ 'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture' );
+foreach ( array(
+ array( 'scheduled' => false, 'state' => 'pending_manual_resume', 'target_identity' => $installed ),
+ array( 'scheduled' => false, 'state' => 'self_update_checkpoint_preserved', 'target_identity' => $installed ),
+ array( 'scheduled' => true, 'state' => 'observe_only_non_staging', 'target_identity' => $installed ),
+ array( 'state' => 'pending_safe_phases', 'target_identity' => $installed ),
+ array( 'scheduled' => 'true', 'state' => 'pending_safe_phases', 'target_identity' => $installed ),
+ array( 'scheduled' => true, 'state' => 'pending_safe_phases' ),
+ array( 'scheduled' => true, 'state' => 'pending_safe_phases', 'target_identity' => array_merge( $installed, array( 'build_fingerprint' => str_repeat( 'f', 64 ) ) ) ),
+ array( 'scheduled' => true, 'state' => 'self_update_checkpoint_preserved', 'target_identity' => array_merge( $installed, array( 'artifact_identity' => 'other-install' ) ) ),
+ false,
+) as $unconfirmed ) {
+ check( false === $probe_method->invoke( null, $unconfirmed, $installed ), 'Unscheduled or foreign core target was falsely accepted' );
+}
+check( true === $probe_method->invoke( null, array( 'scheduled' => true, 'state' => 'pending_safe_phases', 'target_identity' => $installed ), $installed ), 'Exact core scheduler receipt rejected' );
+check( true === $probe_method->invoke( null, array( 'scheduled' => true, 'state' => 'self_update_checkpoint_preserved', 'target_identity' => $installed ), $installed ), 'Exact preserved self-update receipt rejected' );
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 $first = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) );
@@ -156,6 +181,19 @@ foreach ( array(
  check( is_wp_error( $denied ) && 'mad4b_adaptive_runtime_input_invalid' === $denied->get_error_code(), 'Malformed selector was normalized rather than rejected' );
 }
 check( $writes_before_page === $GLOBALS['writes'], 'Malformed selectors unexpectedly performed writes' );
+$old_receipt = $saved_registry;
+$old_receipt['observed_at'] = gmdate( 'c', time() - MAD4B_SCP_Adaptive_Runtime_Convergence::MAX_OBSERVATION_AGE - 5 );
+$old_receipt['seal'] = $seal_registry->invoke( null, $old_receipt );
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION] = $old_receipt;
+$old_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'provider_id' => 'alpha', 'include_capabilities' => true ) );
+check( $old_status['receipt_integrity_valid'] && ! $old_status['observation_current'] && ! $old_status['observation_fresh']
+    && 'STALE_OBSERVATION' === $old_status['providers']['alpha']['capabilities']['read']['state'], 'Expired signed observation appeared current' );
+$future_receipt = $saved_registry;
+$future_receipt['observed_at'] = gmdate( 'c', time() + MAD4B_SCP_Adaptive_Runtime_Convergence::MAX_CLOCK_SKEW + 120 );
+$future_receipt['seal'] = $seal_registry->invoke( null, $future_receipt );
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION] = $future_receipt;
+$future_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'provider_id' => 'alpha', 'include_capabilities' => true ) );
+check( ! $future_status['observation_fresh'] && ! $future_status['observation_current'], 'Future-dated signed observation appeared current' );
 $GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION] = $saved_registry;
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 $partial = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) );
@@ -214,9 +252,26 @@ MAD4B_SCP_Live_Acceptance_Observer::$valid = false; $GLOBALS['scheduled'] = 0;
 for ( $i = 0; $i < 6; ++$i ) { $GLOBALS['scheduled'] = 0; MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); }
 $failed = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) )['last_worker_failure'];
 check( 6 === $failed['attempts'] && 'EXTERNAL_ACTION_REQUIRED' === $failed['state'] && 0 === $GLOBALS['scheduled'], 'Manifest failure retried without a bound' );
+$terminal_event = get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION );
+$before_probe_writes = $GLOBALS['writes'];
+MAD4B_SCP_Staging_Write_Authority::$stored_bound = true;
+MAD4B_SCP_Staging_Write_Authority::$match = false;
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::FALLBACK_PROBE_OPTION] = 0;
+MAD4B_SCP_Adaptive_Runtime_Convergence::maybe_schedule();
+check( $terminal_event === get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION )
+    && $before_probe_writes === $GLOBALS['writes'], 'Recurring identical binding drift bypassed terminal worker policy' );
+MAD4B_SCP_Staging_Write_Authority::$stored_bound = false;
+MAD4B_SCP_Staging_Write_Authority::$match = false;
 MAD4B_SCP_Live_Acceptance_Observer::$valid = true;
+$terminal_writes = $GLOBALS['writes'];
+$terminal_probes = MAD4B_SCP_Live_Acceptance_Observer::$calls;
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
-check( array() === MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) )['last_worker_failure'], 'Recovery retained a stale worker failure' );
+check( $terminal_writes === $GLOBALS['writes'] && $terminal_probes === MAD4B_SCP_Live_Acceptance_Observer::$calls,
+    'Old Cron bypassed terminal failure gate' );
+check( 'EXTERNAL_ACTION_REQUIRED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status()['last_worker_failure']['state'], 'Terminal decision vanished without a new event' );
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue( array( 'source' => 'wordpress_upgrader' ) );
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+check( array() === MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) )['last_worker_failure'], 'New lifecycle event could not restart observation' );
 MAD4B_SCP_Runtime_Maintenance_Lease::$busy = true; $GLOBALS['scheduled'] = 0; $before_writes = $GLOBALS['writes'];
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( $before_writes === $GLOBALS['writes'] && $GLOBALS['scheduled'] > time(), 'Busy maintenance lease mutated or abandoned observation' );
@@ -306,4 +361,19 @@ check( false === $disabled_status['auto_observation_available'] && 'EXTERNAL_ACT
 check( 'REVIEW_REQUIRED' === $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['lane']
     && ! $disabled_status['providers']['alpha']['capabilities']['read']['remediation']['worker_may_observe'], 'Disabled scheduler offered false automatic repair' );
 check( $writes_before_disabled_status + 1 === $GLOBALS['writes'], 'Passive disabled-Cron status read persisted changes' );
+$corrupt = get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION );
+$corrupt['failure_code'] = array( 'invalid' );
+$corrupt['failure_state'] = array( 'RETRY_PENDING' );
+$corrupt['attempts'] = array( 999 );
+$GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::EVENT_OPTION] = $corrupt;
+$before_corrupt_writes = $GLOBALS['writes'];
+$before_corrupt_probes = MAD4B_SCP_Live_Acceptance_Observer::$calls;
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$corrupt_status = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( $before_corrupt_writes === $GLOBALS['writes'] && $before_corrupt_probes === MAD4B_SCP_Live_Acceptance_Observer::$calls,
+    'Malformed failure state triggered an automatic repair' );
+check( 'REVIEW_REQUIRED' === $corrupt_status['last_worker_failure']['state']
+    && 'invalid_failure_record' === $corrupt_status['last_worker_failure']['code']
+    && 0 === $corrupt_status['last_worker_failure']['attempts']
+    && ! $corrupt_status['auto_observation_available'], 'Malformed persisted event was not safely represented' );
 echo "Adaptive runtime convergence runtime: PASS\n";

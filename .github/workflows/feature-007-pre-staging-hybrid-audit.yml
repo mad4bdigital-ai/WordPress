@@ -628,6 +628,14 @@ jobs:
           tools: wp-cli
           coverage: none
 
+      - name: Adaptive Runtime convergence safety / PHP ${{ matrix.php }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php
+
       - name: Lint and execute Adaptive Search runtime/provider contracts
         env:
           ASI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}

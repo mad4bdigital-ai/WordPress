@@ -78,8 +78,9 @@ final class MAD4B_SCP_G5_SEO_Provider_Families {
 	public static function readiness( $input = array() ) {
 		if ( ! self::can_manage() ) return self::error( 'access_denied' );
 		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'provider_id' ) ) ) return self::error( 'input_invalid' );
+		if ( array_key_exists( 'provider_id', $input ) && ( ! is_string( $input['provider_id'] ) || '' === $input['provider_id'] || strlen( $input['provider_id'] ) > 64 || sanitize_key( $input['provider_id'] ) !== $input['provider_id'] ) ) return self::error( 'input_invalid' );
 		$catalog = self::catalog();
-		$requested = isset( $input['provider_id'] ) ? sanitize_key( $input['provider_id'] ) : '';
+		$requested = isset( $input['provider_id'] ) ? $input['provider_id'] : '';
 		if ( '' !== $requested && ! isset( $catalog['providers'][ $requested ] ) ) return self::error( 'provider_unknown' );
 		$rows = array();
 		foreach ( $catalog['providers'] as $id => $definition ) {
@@ -114,16 +115,26 @@ final class MAD4B_SCP_G5_SEO_Provider_Families {
 	public static function plan( $input ) {
 		if ( ! self::can_manage() ) return self::error( 'access_denied' );
 		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'provider_id', 'surface_kind', 'field_ids', 'language', 'rendered_surface_ref' ) ) ) return self::error( 'input_invalid' );
-		$provider = sanitize_key( isset( $input['provider_id'] ) ? $input['provider_id'] : '' );
-		$surface = sanitize_key( isset( $input['surface_kind'] ) ? $input['surface_kind'] : '' );
+		// Validate raw caller types before invoking WordPress sanitizers: arrays
+		// must never become TypeErrors or silently normalized provider identities.
+		foreach ( array( 'provider_id', 'surface_kind' ) as $key ) {
+			if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] ) || '' === $input[ $key ] || strlen( $input[ $key ] ) > 64 || sanitize_key( $input[ $key ] ) !== $input[ $key ] ) return self::error( 'input_invalid' );
+		}
+		if ( isset( $input['language'] ) && ( ! is_string( $input['language'] ) || strlen( $input['language'] ) > 32 ) ) return self::error( 'input_invalid' );
+		if ( isset( $input['rendered_surface_ref'] ) && ( ! is_string( $input['rendered_surface_ref'] ) || strlen( $input['rendered_surface_ref'] ) > 512 ) ) return self::error( 'input_invalid' );
+		$provider = $input['provider_id'];
+		$surface = $input['surface_kind'];
 		$catalog = self::catalog();
 		if ( ! isset( $catalog['providers'][ $provider ] ) ) return self::error( 'provider_unknown' );
 		if ( ! in_array( $surface, $catalog['surface_kinds'], true ) ) return self::error( 'surface_invalid' );
-		$fields = isset( $input['field_ids'] ) && is_array( $input['field_ids'] ) ? array_values( array_unique( array_map( 'sanitize_key', $input['field_ids'] ) ) ) : array();
-		if ( ! $fields || count( $fields ) > 8 || array_diff( $fields, $catalog['field_ids'] ) ) return self::error( 'field_scope_invalid' );
+		$fields = $input['field_ids'] ?? null;
+		if ( ! is_array( $fields ) || ! $fields || count( $fields ) > 8 || array_keys( $fields ) !== range( 0, count( $fields ) - 1 ) ) return self::error( 'field_scope_invalid' );
+		foreach ( $fields as $field ) {
+			if ( ! is_string( $field ) || ! in_array( $field, $catalog['field_ids'], true ) ) return self::error( 'field_scope_invalid' );
+		}
+		if ( count( $fields ) !== count( array_unique( $fields, SORT_STRING ) ) ) return self::error( 'field_scope_invalid' );
 		$language = isset( $input['language'] ) ? sanitize_key( $input['language'] ) : '';
-		$rendered = isset( $input['rendered_surface_ref'] ) ? trim( (string) $input['rendered_surface_ref'] ) : '';
-		if ( strlen( $language ) > 32 || strlen( $rendered ) > 512 ) return self::error( 'input_invalid' );
+		$rendered = trim( $input['rendered_surface_ref'] ?? '' );
 		$identity = self::runtime_identity( $provider );
 		$gates = array(
 			'provider_runtime_presence',
