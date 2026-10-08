@@ -35,6 +35,7 @@ function g8_guard_assert( $okay, $reason ) {
 	if ( ! $okay ) { fwrite( STDERR, 'FAIL: ' . $reason . PHP_EOL ); exit( 1 ); }
 }
 
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-record.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-convergence.php';
 $target = array(
 	'version' => MAD4B_SCP_VERSION, 'source_commit_sha' => str_repeat( 'a', 40 ),
@@ -50,12 +51,35 @@ $document = array(
 	'artifact_identity' => $target['artifact_identity'],
 );
 file_put_contents( $path, json_encode( $document ) );
-$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target );
-$ticket = array( 'generation' => hash( 'sha256', serialize( array( $target, $target ) ) ) );
+$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target,
+	'state' => 'pending_safe_phases', 'automatic_retry_allowed' => true );
+$ticket = array( 'token' => str_repeat( 'f', 32 ),
+	'generation' => hash( 'sha256', serialize( array( $target, $target ) ) ) );
 $guard = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'guard_automatic_ticket' );
 $guard->setAccessible( true );
 $run = static function ( $row ) use ( $guard ) { return $guard->invoke( null, $row ); };
 g8_guard_assert( true === $run( $ticket ), 'exact Cron target is accepted' );
+$blocked = $GLOBALS['g8_checkpoint'];
+$blocked['state'] = 'blocked';
+$GLOBALS['g8_checkpoint'] = $blocked;
+$denied = $run( $ticket );
+g8_guard_assert( is_wp_error( $denied )
+	&& 'mad4b_automation_checkpoint_not_schedulable' === $denied->get_error_code(),
+	'midflight owner pause revokes an otherwise valid generation-bound ticket' );
+$completed = $blocked;
+$completed['state'] = 'completed';
+$completed['g8_completion_ticket_sha256'] = hash( 'sha256', $ticket['token'] );
+$completed['g8_completion_generation'] = $ticket['generation'];
+$GLOBALS['g8_checkpoint'] = $completed;
+g8_guard_assert( true === $run( $ticket ), 'exact completed checkpoint author permits late owned metadata only' );
+$completed['g8_completion_ticket_sha256'] = str_repeat( '0', 64 );
+$GLOBALS['g8_checkpoint'] = $completed;
+$denied = $run( $ticket );
+g8_guard_assert( is_wp_error( $denied )
+	&& 'mad4b_automation_checkpoint_not_schedulable' === $denied->get_error_code(),
+	'another worker completion cannot be borrowed for late mutations' );
+$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target,
+	'state' => 'pending_safe_phases', 'automatic_retry_allowed' => true );
 class G8_Unexpected_Checkpoint_Object {
 	public function __serialize() {
 		$GLOBALS['g8_unexpected_checkpoint_serialized'] = true;
@@ -70,14 +94,16 @@ g8_guard_assert( is_wp_error( $unsafe )
 	&& 'mad4b_automation_target_identity_invalid' === $unsafe->get_error_code()
 	&& empty( $GLOBALS['g8_unexpected_checkpoint_serialized'] ),
 	'extra executable checkpoint identity rejected without serialization' );
-$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target );
+$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target,
+	'state' => 'pending_safe_phases', 'automatic_retry_allowed' => true );
 $changed = $GLOBALS['g8_checkpoint'];
 $changed['target_identity']['build_fingerprint'] = str_repeat( 'e', 64 );
 $GLOBALS['g8_checkpoint'] = $changed;
 $denied = $run( $ticket );
 g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_target_identity_drift' === $denied->get_error_code(),
 	'checkpoint target drift stops already admitted worker' );
-$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target );
+$GLOBALS['g8_checkpoint'] = array( 'target_identity' => $target,
+	'state' => 'pending_safe_phases', 'automatic_retry_allowed' => true );
 $stale = $ticket; $stale['generation'] = str_repeat( '0', 64 );
 $denied = $run( $stale );
 g8_guard_assert( is_wp_error( $denied ) && 'mad4b_automation_checkpoint_generation_drift' === $denied->get_error_code(),
