@@ -24,8 +24,8 @@ on:
       profile:
         description: 'MAD4B Browser Acceptance profile ID'
         type: string
-        required: true
-        default: tours
+        required: false
+        default: ''
       allow_credit_fallback:
         description: 'Allow auto mode to consume one-time/credit-based providers such as Steel'
         type: boolean
@@ -57,12 +57,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
       - name: Install runtime dependencies
         run: npm install --no-save playwright-core @browserbasehq/sdk steel-sdk
       - name: Provider selection and plan-boundary tests
         run: |
           node tools/browser-acceptance/test-provider-selection.mjs
           node tools/browser-acceptance/test-site-provider-configuration.mjs
+          node tools/browser-acceptance/test-site-adapter-resolver.mjs
+          php wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php
           node tools/browser-acceptance/test-scheduler.mjs
           node tools/browser-acceptance/test-network-policy.mjs
           node tools/browser-acceptance/test-plan-boundary.mjs
@@ -72,6 +79,11 @@ jobs:
           node tools/browser-acceptance/test-receipt.mjs
           node tools/browser-acceptance/test-evidence-envelope.mjs
           node tools/browser-acceptance/test-filter-selection.mjs
+      - name: PHP 8.3 syntax check for bounded site discovery
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-capability-discovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php
       - name: Syntax-check executable browser surfaces
         run: |
           node --check tools/browser-acceptance/providers.mjs
@@ -85,6 +97,11 @@ jobs:
           node --check tools/browser-acceptance/receipt.mjs
           node --check tools/browser-acceptance/site-provider-configuration.mjs
           node --check tools/browser-acceptance/test-site-provider-configuration.mjs
+          node --check tools/browser-acceptance/site-adapter-resolver.mjs
+          node --check tools/browser-acceptance/test-site-adapter-resolver.mjs
+          node --check tools/browser-acceptance/site-driver-registry.mjs
+          node --check tools/browser-acceptance/run-site-browser-acceptance.mjs
+          node --check tools/browser-acceptance/run-live-site-browser-acceptance.mjs
       - name: Generate non-secret provider preflight
         run: node tools/browser-acceptance/provider-preflight.mjs > browser-provider-preflight.json
       - uses: actions/upload-artifact@v4
@@ -97,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           runner=tools/browser-acceptance/run-etg-browser-acceptance.mjs
-          live=tools/browser-acceptance/run-live-etg-browser-acceptance.mjs
+          live=tools/browser-acceptance/run-live-site-browser-acceptance.mjs
           driver=tools/browser-acceptance/etg-driver.mjs
           ! grep -Eq -- '--url|--selector|--javascript|--taxonomy|--term' "$runner" "$live"
           ! grep -Eqi -- 'refresh[_ -]?token|client[_ -]?secret' "$live"
@@ -107,7 +124,7 @@ jobs:
           grep -Fq 'plan.challenge' "$driver"
 
   live:
-    name: Live ETG managed browser acceptance
+    name: Live site-aware managed browser acceptance
     needs: contract
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.live == true }}
     runs-on: ubuntu-latest
@@ -145,7 +162,7 @@ jobs:
           fi
       - name: Generate fresh plan, execute browser, and reduce evidence through MAD4B MCP
         run: |
-          node tools/browser-acceptance/run-live-etg-browser-acceptance.mjs \
+          node tools/browser-acceptance/run-live-site-browser-acceptance.mjs \
             --profile "$MAD4B_BROWSER_PROFILE_ID" \
             --browser-provider "$MAD4B_BROWSER_PROVIDER" \
             --out browser-evidence.json \
