@@ -35,6 +35,7 @@
     "dynamic-policy.json",
     "effect-contracts.json",
     "evidence-trust.json",
+    "implementation-slice-01.md",
     "ledger-contracts.json",
     "operations.md",
     "optimization-policy.json",
@@ -233,5 +234,15 @@
   ],
   "design_closure_document": "design-closure.md",
   "design_closure_status": "IMPLEMENTED_PENDING_EXACT_EXECUTION_AND_REVIEW",
-  "reuse_authority_crosswalk": "reuse-authority-crosswalk.json"
+  "reuse_authority_crosswalk": "reuse-authority-crosswalk.json",
+  "runtime_slice_01": {
+    "contract": "mad4b.aci01.intake-preview.v1",
+    "delivery_state": "SOURCE_IMPLEMENTED_DISPOSABLE_TESTED",
+    "production_authorized": false,
+    "staging_certified": false,
+    "effects": "NONE",
+    "ability": "mad4b/aci01-intake-preview",
+    "artifact_journal_modified": false,
+    "provider_spend_allowed": false
+  }
 }
