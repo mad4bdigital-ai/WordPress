@@ -64,7 +64,13 @@ final class MAD4B_SCP_G5_Growth_Evidence {
 			if ( is_wp_error( $normalized ) ) return $normalized;
 			// Recheck current descriptor and subject after retained evidence access.
 			$after = $adapter->descriptor();
-			if ( ! is_array( $after ) || ! hash_equals( MAD4B_SCP_G5_External_Providers::digest( $d ), MAD4B_SCP_G5_External_Providers::digest( $after ) ) || true !== $adapter->authorize_read( $scope ) ) return self::error( 'observation_binding_changed' );
+			// Immutable descriptor identity is not enough: certification may expire while
+			// a retained read is running. Re-evaluate code provenance, site, rights,
+			// economics and current expiry before releasing the observation.
+			if ( ! is_array( $after ) ) return self::error( 'observation_binding_changed' );
+			$after_guard = MAD4B_SCP_G5_External_Providers::descriptor_guard( $adapter, $after );
+			if ( is_wp_error( $after_guard ) ) return $after_guard;
+			if ( ! hash_equals( MAD4B_SCP_G5_External_Providers::digest( $d ), MAD4B_SCP_G5_External_Providers::digest( $after ) ) || true !== $adapter->authorize_read( $scope ) ) return self::error( 'observation_binding_changed' );
 			$final_consent = $adapter->consent_status( $scope );
 			if ( ! is_array( $final_consent ) || ! hash_equals( MAD4B_SCP_G5_External_Providers::digest( $consent ), MAD4B_SCP_G5_External_Providers::digest( $final_consent ) ) || $final_consent['expires_at'] <= time() ) return self::error( 'external_consent_changed' );
 			return $normalized;
