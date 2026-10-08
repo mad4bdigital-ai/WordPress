@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * approval service, executor, provider certificate or durable journal.
  */
 final class MAD4B_SCP_Assistant_Convergence {
+    private static $booted = false;
     const CONTRACT = 'mad4b.assistant-convergence-preview.v1';
     const ABILITY = 'mad4b/assistant-convergence-preview';
     const MAX_CANDIDATES = 32;
@@ -14,7 +15,8 @@ final class MAD4B_SCP_Assistant_Convergence {
     const MAX_STRING_BYTES = 512;
 
     public static function boot() {
-        if ( ! function_exists( 'add_action' ) ) return;
+        if ( self::$booted || ! function_exists( 'add_action' ) ) return;
+        self::$booted = true;
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 42 );
         add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 42 );
     }

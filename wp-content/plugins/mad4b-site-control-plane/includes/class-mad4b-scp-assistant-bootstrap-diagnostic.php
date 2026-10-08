@@ -7,11 +7,13 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * WordPress administrator read permission remains mandatory.
  */
 final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
+    private static $booted = false;
     const CONTRACT = 'mad4b.assistant-bootstrap-diagnostic.v1';
     const ABILITY = 'mad4b/assistant-bootstrap-diagnostic';
 
     public static function boot() {
-        if ( ! function_exists( 'add_action' ) ) return;
+        if ( self::$booted || ! function_exists( 'add_action' ) ) return;
+        self::$booted = true;
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 41 );
         add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 41 );
     }
@@ -53,6 +55,22 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
                 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
                 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
         ) );
+    }
+
+    /**
+     * Read-only witnesses must prove the adapter's exact identity and surface;
+     * an arbitrary object under the expected registry key is not proof.
+     */
+    private static function read_adapter_valid( $adapter, $id, $ability ) {
+        if ( ! class_exists( 'MAD4B_SCP_Adapter_Base', false )
+            || ! is_object( $adapter ) || ! ( $adapter instanceof MAD4B_SCP_Adapter_Base )
+            || ! method_exists( $adapter, 'id' ) || ! method_exists( $adapter, 'ability_names' )
+            || $adapter->id() !== $id ) return false;
+        $names = $adapter->ability_names();
+        return is_array( $names ) && count( $names ) === 3
+            && isset( $names['read'], $names['content'], $names['admin'] )
+            && $names['read'] === array( $ability )
+            && $names['content'] === array() && $names['admin'] === array();
     }
 
     public static function status( $input = array() ) {
@@ -101,27 +119,44 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
         // invoke provider discovery, register abilities or create an adapter.
         $plan_ability = class_exists( 'MAD4B_SCP_Assistant_Planning', false )
             ? MAD4B_SCP_Assistant_Planning::ABILITY : 'mad4b/assistant-plan';
+        $convergence_loaded = class_exists( 'MAD4B_SCP_Assistant_Convergence', false );
+        $convergence_ability = $convergence_loaded
+            ? MAD4B_SCP_Assistant_Convergence::ABILITY : 'mad4b/assistant-convergence-preview';
         $hooks_bound = function_exists( 'has_action' )
             && false !== has_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Assistant_Planning', 'register_ability' ) )
             && false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ) )
             && false !== has_action( 'mad4b_scp_register_adapters', array( 'MAD4B_SCP_Assistant_Planning', 'register_adapter' ) )
-            && false !== has_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ) );
+            && false !== has_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ) )
+            && $convergence_loaded
+            && false !== has_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Assistant_Convergence', 'register_ability' ) )
+            && false !== has_action( 'mad4b_scp_register_adapters', array( 'MAD4B_SCP_Assistant_Convergence', 'register_adapter' ) );
         $abilities_observed = function_exists( 'did_action' ) && did_action( 'wp_abilities_api_init' ) > 0;
         $plan_visible = $abilities_observed && function_exists( 'wp_has_ability' ) && wp_has_ability( $plan_ability );
         $diagnostic_visible = $abilities_observed && function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY );
+        $convergence_visible = $abilities_observed && $convergence_loaded
+            && function_exists( 'wp_has_ability' ) && wp_has_ability( $convergence_ability );
         $registry_observed = class_exists( 'MAD4B_SCP_Adapter_Registry', false );
-        $plan_adapter = $registry_observed ? MAD4B_SCP_Adapter_Registry::instance()->get( 'assistant-planning' ) : null;
-        $bootstrap_adapter = $registry_observed ? MAD4B_SCP_Adapter_Registry::instance()->get( 'assistant-bootstrap' ) : null;
-        $adapters_visible = null !== $plan_adapter && null !== $bootstrap_adapter;
+        $registry = $registry_observed ? MAD4B_SCP_Adapter_Registry::instance() : null;
+        $registry_valid = is_object( $registry ) && method_exists( $registry, 'get' );
+        $plan_adapter = $registry_valid ? $registry->get( 'assistant-planning' ) : null;
+        $bootstrap_adapter = $registry_valid ? $registry->get( 'assistant-bootstrap' ) : null;
+        $convergence_adapter = $registry_valid ? $registry->get( 'assistant-convergence' ) : null;
+        $plan_adapter_valid = self::read_adapter_valid( $plan_adapter, 'assistant-planning', $plan_ability );
+        $bootstrap_adapter_valid = self::read_adapter_valid( $bootstrap_adapter, 'assistant-bootstrap', self::ABILITY );
+        $convergence_adapter_valid = self::read_adapter_valid( $convergence_adapter, 'assistant-convergence', $convergence_ability );
+        $adapters_visible = $plan_adapter_valid && $bootstrap_adapter_valid && $convergence_adapter_valid;
         $read_registration = array(
             'contract' => 'mad4b.assistant-read-registration-witness.v1',
             'hooks_bound' => $hooks_bound,
             'abilities_lifecycle_observed' => $abilities_observed,
             'planning_ability_visible' => (bool) $plan_visible,
             'bootstrap_ability_visible' => (bool) $diagnostic_visible,
-            'planning_adapter_visible' => null !== $plan_adapter,
-            'bootstrap_adapter_visible' => null !== $bootstrap_adapter,
-            'read_catalog_local_ready' => $hooks_bound && $plan_visible && $diagnostic_visible && $adapters_visible,
+            'convergence_ability_visible' => (bool) $convergence_visible,
+            'planning_adapter_visible' => $plan_adapter_valid,
+            'bootstrap_adapter_visible' => $bootstrap_adapter_valid,
+            'convergence_adapter_visible' => $convergence_adapter_valid,
+            'read_catalog_local_ready' => $hooks_bound && $plan_visible && $diagnostic_visible
+                && $convergence_visible && $adapters_visible,
             'external_mcp_catalog_verified' => false,
             'mutation_performed' => false,
         );
@@ -136,7 +171,9 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
             'profile_configured' => $enrolled,
             'origin_verified' => $origin,
             'exact_runtime_evidence_ready' => $binding_ready,
-            'preview_eligible' => $binding_ready,
+            // Exact runtime identity never substitutes for full read-side
+            // WordPress Ability + governed Adapter registration.
+            'preview_eligible' => $binding_ready && $read_registration['read_catalog_local_ready'],
             'blockers' => $blockers,
             'next_safe_actions' => $actions,
             'ready_for_mutation' => false,

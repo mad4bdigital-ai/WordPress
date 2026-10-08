@@ -77,6 +77,9 @@ assistant_check( array() === $GLOBALS['assistant_hooks'], 'loading assistant def
 MAD4B_SCP_Assistant_Planning::boot();
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
 MAD4B_SCP_Assistant_Convergence::boot();
+MAD4B_SCP_Assistant_Planning::boot();
+MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
+MAD4B_SCP_Assistant_Convergence::boot();
 assistant_check( 3 === count( $GLOBALS['assistant_hooks']['wp_abilities_api_init'] ), 'three native WordPress Abilities callbacks bound' );
 assistant_check( 3 === count( $GLOBALS['assistant_hooks']['mad4b_scp_register_adapters'] ), 'three governed adapters callbacks bound' );
 $registry = new AssistantEntryRegistry();
@@ -104,13 +107,55 @@ foreach ( $registry->registered as $adapter ) {
     $adapter->register_abilities();
 }
 assistant_check( 3 === $GLOBALS['assistant_register_calls'], 'adapter lifecycle does not duplicate WordPress Ability definitions' );
+// Runtime identity is verified by a read-only fixture, not an external grant.
+// All three assistants must remain locally registered for preview eligibility.
+class MAD4B_SCP_Site_Profile {
+    public static function configured() { return true; }
+    public static function origin_enrolled() { return true; }
+    public static function site_urls_match_enrollment() { return true; }
+    public static function current_environment() { return 'staging'; }
+}
+class MAD4B_SCP_Adaptive_Operations_Context {
+    public static function current() { return array( 'contract' => 'mad4b.adaptive-operations-context.v1' ); }
+}
 $witness = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
+assistant_check( $witness['exact_runtime_evidence_ready'] && $witness['preview_eligible'],
+    'native read catalog and verified runtime identity permit preview only' );
 assistant_check( ! empty( $witness['assistant_read_registration']['read_catalog_local_ready'] )
     && ! $witness['assistant_read_registration']['external_mcp_catalog_verified']
     && ! $witness['ready_for_mutation'], 'local dual-registration evidence never certifies external MCP or execution' );
 unset( $registry->registered['assistant-bootstrap'] );
 $missing = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
 assistant_check( ! $missing['assistant_read_registration']['read_catalog_local_ready']
+    && ! $missing['preview_eligible']
     && in_array( 'assistant_runtime_registration_unverified', $missing['blockers'], true ),
-    'lost adapter appears as a fail-closed diagnostics blocker' );
+    'lost adapter blocks preview despite a valid runtime binding' );
+$registry->registered['assistant-bootstrap'] = new class extends MAD4B_SCP_Adapter_Base {
+    public function id() { return 'assistant-bootstrap'; }
+    public function ability_names() { return array( 'read' => array( 'mad4b/assistant-bootstrap-diagnostic' ),
+        'content' => array(), 'admin' => array( 'mad4b/unexpected-writer' ) ); }
+};
+$widened = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
+assistant_check( ! $widened['preview_eligible']
+    && ! $widened['assistant_read_registration']['bootstrap_adapter_visible'],
+    'writable injected bootstrap adapter cannot qualify as a READ-only witness' );
+// An adapter with the wrong ID cannot impersonate the expected registry slot.
+$registry->registered['assistant-bootstrap'] = new class extends MAD4B_SCP_Adapter_Base {
+    public function id() { return 'foreign-bootstrap'; }
+    public function ability_names() { return array( 'read' => array( 'mad4b/assistant-bootstrap-diagnostic' ),
+        'content' => array(), 'admin' => array() ); }
+};
+$foreign = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
+assistant_check( ! $foreign['preview_eligible'],
+    'foreign adapter ID cannot impersonate assistant-bootstrap' );
+$registry->registered['assistant-bootstrap'] = new class extends MAD4B_SCP_Adapter_Base {
+    public function id() { return 'assistant-bootstrap'; }
+    public function ability_names() { return array( 'read' => array( 'mad4b/assistant-bootstrap-diagnostic' ),
+        'content' => array(), 'admin' => array() ); }
+};
+unset( $registry->registered['assistant-convergence'] );
+$missingConvergence = MAD4B_SCP_Assistant_Bootstrap_Diagnostic::status();
+assistant_check( ! $missingConvergence['preview_eligible']
+    && ! $missingConvergence['assistant_read_registration']['convergence_adapter_visible'],
+    'convergence must be present before all-assistant preview is eligible' );
 echo 'ASSISTANT_ENTRYPOINT_REGISTRATION: PASS' . PHP_EOL;

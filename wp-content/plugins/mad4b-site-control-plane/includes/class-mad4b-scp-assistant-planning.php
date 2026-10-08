@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * enabled, configured or contacted by this class.
  */
 final class MAD4B_SCP_Assistant_Planning {
+    private static $booted = false;
     const CONTRACT = 'mad4b.assistant-plan.v1';
     const ABILITY = 'mad4b/assistant-plan';
     const MAX_CAPABILITIES = 24;
@@ -17,7 +18,8 @@ final class MAD4B_SCP_Assistant_Planning {
     const MAX_INERT_STRING_BYTES = 512;
 
     public static function boot() {
-        if ( ! function_exists( 'add_action' ) ) return;
+        if ( self::$booted || ! function_exists( 'add_action' ) ) return;
+        self::$booted = true;
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 40 );
         add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 40 );
     }
