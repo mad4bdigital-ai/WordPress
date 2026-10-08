@@ -113,6 +113,11 @@ g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::rollback_last( 3, $plan['p
 	'mad4b_g8_migration_rollback_stale' ), 'rollback replay denied' );
 $secret = MAD4B_SCP_G8_Schema_Migration::register_observation( 'manifest', array( 'api_token' => 'forbidden' ), 3 );
 g8_check( g8_is_error( $secret, 'mad4b_g8_migration_document_invalid' ), 'secret fields never enter owned migration store' );
+$value_secret = MAD4B_SCP_G8_Schema_Migration::register_observation( 'manifest', array(
+	'innocuous_note' => 'Bearer ' . str_repeat( 'x', 44 ),
+), 3 );
+g8_check( g8_is_error( $value_secret, 'mad4b_g8_migration_document_invalid' ),
+	'secret-looking observation value denied despite harmless field name' );
 $GLOBALS['g8_epoch'] = 2;
 g8_check( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G8_Schema_Migration::status()['state'], 'restore epoch drift quarantines migration record' );
 $GLOBALS['g8_epoch'] = 1;
@@ -159,6 +164,7 @@ g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $cer
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-capability-convergence.php';
 class MAD4B_SCP_Provider_Compatibility_Certification {
 	public static function assess_provider( $provider ) {
+		if ( ! empty( $GLOBALS['g8_epoch_flip_on_inspection'] ) ) $GLOBALS['g8_epoch'] = 2;
 		$GLOBALS['g8_provider_inspections'] = (int) ( $GLOBALS['g8_provider_inspections'] ?? 0 ) + 1;
 		if ( 'analytics' !== $provider ) return new WP_Error( 'unknown_provider' );
 		return array( 'artifact' => array( 'runtime_artifact_fingerprint' => str_repeat( '1', 64 ) ),
@@ -172,6 +178,12 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
 			) );
 	}
 }
+$GLOBALS['g8_epoch_flip_on_inspection'] = true;
+$raced_provider = MAD4B_SCP_G8_Capability_Convergence::observe( 'analytics' );
+g8_check( g8_is_error( $raced_provider, 'mad4b_g8_convergence_identity_raced' ),
+	'provider inspection must reject a restore-epoch race' );
+$GLOBALS['g8_epoch'] = 1;
+$GLOBALS['g8_epoch_flip_on_inspection'] = false;
 $prior = MAD4B_SCP_G8_Capability_Convergence::observe( 'analytics' );
 g8_check( is_array( $prior ) && 2 === count( $prior['capabilities'] ), 'current provider observation normalized' );
 $foreign_site = $prior; $foreign_site['site_profile_sha256'] = str_repeat( 'f', 64 );
