@@ -111,6 +111,15 @@ expect(restore, (
 ), "restore")
 expect(read, (
     "private static $reader_pinned = false",
+    "private static $boot_result = null",
+    "private static $abilities_registered = false",
+    "'mad4b_g9_ability_namespace_collision'",
+    "'mad4b_g9_reader_not_pinned'",
+    "'mad4b_g9_ability_runtime_unavailable'",
+    "$abilities = array(",
+    "$provider_verified",
+    "$effects_verified",
+    "$health_verified",
     "if ( ! self::$reader_pinned",
     "self::$reader_pinned = true",
     "mad4b/g9-site-observation",
@@ -119,10 +128,20 @@ expect(read, (
     "MAD4B_SCP_Policy', 'can_read",
 ), "read-only-abilities")
 assert "mad4b/g9-release-reserve" not in read, "RESERVE_EXPOSED_AS_READ_ABILITY"
+assert (BASE / "tests/g9-ability-collision-runtime.php").is_file(), "G9_NAMESPACE_COLLISION_TEST_MISSING"
 expect(closure, ("native_executor_g9_reservation_binding_unimplemented",
                  "g9_reservation_host_feature_disabled",
                  "g9_host_release_threshold_policy_missing"), "native-admission-blocker")
 expect(closure, ("'operationally_closed' => false", "'ready_for_production' => false"), "closure")
+expect(closure, (
+    "'external_fence_unavailable'",
+    "'anchor_observation_valid'",
+    "'anchor_error_code'",
+    "'certified_provider_unready'",
+    "'external_effect_unreconciled'",
+    "'current_health_window_unverified'",
+    "'blind_retry_allowed' => false",
+), "diagnostic-denial")
 expect(fleet, (
     "'cohort_promotion_allowed'=>false",
     "'automatic_rollback_allowed'=>false",

@@ -132,3 +132,11 @@ See `g9-adversarial-closure.md` for 28 objection scenarios ranked by P0/P1 sever
 ## Operator closure readback now names invalid provider/effect/health facts (2026-10-08)
 
 In addition to the read-only site observation, `G9_Operational_Readiness::status()` now inspects each provider and effect rather than just inventory cardinality and top-level completeness. It reports `certified_provider_unready` for revoked/foreign generation providers, `external_effect_unreconciled` for unsigned/foreign/unknown effect states and `current_health_window_unverified` for stale or malformed health readings. Tests assert these blockers even when the observer asserts complete inventories. These are diagnostic predicates only: operational closure and Production readiness remain unconditionally false.
+
+## Current native runtime release-set gap (2026-10-08)
+
+`MAD4B_SCP_Runtime_Release_Set::apply_internal()` is the existing Staging runtime deploy owner, but its `begin_transaction()`, `commit_transaction()` and `mad4b.runtime-release-receipt.v1` are not an exact native G9 fence reservation or a cryptographically signed `MAD4B_SCP_Execution_Receipt` with an independently read append-only Operation Journal G9 terminal linkage. G9 must not treat this legacy receipt as completion. A correct owning executor integration must consume reservation **before** `MAD4B_SCP_Self_Update::native_apply()` or `MAD4B_SCP_Plugin_Package::apply()`, preserve the real one-time admission and provider-specific permissions, and emit completed signed evidence followed by independent host, effects and release acceptance. No code path in this child PR installs that executor binding or new grant. This blocker cannot be cleared via a passive source review or by setting a feature constant.
+
+## Additional closed diagnostic objections
+
+O29–O32 in `g9-adversarial-closure.md` cover operator-facing anchor corruption, per-record/provider evidence truth, idempotent boot error preservation and foreign Ability namespace collision. Each has a hermetic source negative path and is still unverified at exact-head CI until queued runners complete.
