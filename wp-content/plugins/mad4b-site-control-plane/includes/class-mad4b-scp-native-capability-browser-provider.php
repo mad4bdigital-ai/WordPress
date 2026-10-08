@@ -141,7 +141,10 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
         if ( ! is_array( $posts ) ) return array();
         $cases = array();
         foreach ( $posts as $post ) {
-            if ( ! is_object( $post ) || ! isset( $post->ID ) || (int) $post->ID <= 0 ) continue;
+            if ( ! is_object( $post ) || ! isset( $post->ID ) || (int) $post->ID <= 0 ||
+                ( $post->post_type ?? '' ) !== 'page' ||
+                ( $post->post_status ?? '' ) !== 'publish' ||
+                ! empty( $post->post_password ) ) continue;
             $permalink = get_permalink( (int) $post->ID );
             $canonical = wp_get_canonical_url( (int) $post->ID );
             if ( ! is_string( $permalink ) || ! is_string( $canonical ) ||
