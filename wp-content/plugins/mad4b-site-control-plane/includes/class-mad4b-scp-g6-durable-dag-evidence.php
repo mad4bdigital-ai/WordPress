@@ -10,6 +10,13 @@ require_once __DIR__ . '/class-mad4b-scp-g6-contracts.php';
 final class MAD4B_SCP_G6_Durable_DAG_Evidence {
     const CONTRACT = 'mad4b.g6-durable-dag-evidence.v1';
 
+    /** Completed rows are stored as bounded JSON by the native durable writer. */
+    private static function valid_result_json( $json ) {
+        if ( ! is_string( $json ) || '' === $json || strlen( $json ) > 262144 ) return false;
+        json_decode( $json, true );
+        return JSON_ERROR_NONE === json_last_error();
+    }
+
     public static function inspect( array $plan, $node_id ) {
         $owner = MAD4B_SCP_G6_Contracts::owner();
         if ( is_wp_error( $owner ) ) return $owner;
@@ -75,8 +82,11 @@ final class MAD4B_SCP_G6_Durable_DAG_Evidence {
                 || ! MAD4B_SCP_G6_Contracts::sha( $row['result_sha256'] )
                 || ! is_string( $row['result_json'] ) || strlen( $row['result_json'] ) > 262144
                 || ! hash_equals( hash( 'sha256', $row['result_json'] ), $row['result_sha256'] )
-                || ! is_string( $row['expires_at'] ) || ! strtotime( $row['expires_at'] )
-                || strtotime( $row['expires_at'] ) <= time() )
+                || ! is_string( $row['expires_at'] )
+                || ! preg_match( '/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/D', $row['expires_at'] )
+                || false === strtotime( $row['expires_at'] . ' UTC' )
+                || strtotime( $row['expires_at'] . ' UTC' ) <= time()
+                || ! self::valid_result_json( $row['result_json'] ) )
                 return MAD4B_SCP_G6_Contracts::error( 'dag_durable_completion_missing', 'Dependency lacks exact current completed durable evidence.' );
             $observed[] = array(
                 'node_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $dep_id ),
