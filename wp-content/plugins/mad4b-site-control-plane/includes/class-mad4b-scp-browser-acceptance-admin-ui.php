@@ -57,6 +57,14 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		$value = self::selection();
 		$stored = get_option( self::OPTION, array() );
 		$preference_valid = ! is_wp_error( self::normalize( $stored ) );
+		// A pristine site may auto-resolve a *read-only preference* without a
+		// manual first save. The sentinel is scoped by independent origin, profile,
+		// provider and discovery-source checks in the external acceptance runner.
+		// Any actual saved choice continues to require a random persisted revision.
+		$auto_default = is_array( $stored ) && array() === $stored;
+		if ( $auto_default && $preference_valid ) {
+			$value['configuration_revision'] = substr( hash( 'sha256', 'mad4b.browser.auto-preference.v1' ), 0, 32 );
+		}
 		return array(
 			'contract' => 'mad4b.browser-operator-preference.v1',
 			'preference_valid' => $preference_valid,
@@ -64,6 +72,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			'profile_id' => $value['profile_id'],
 			'site_provider_id' => $value['site_provider_id'],
 			'configuration_revision' => $value['configuration_revision'],
+			'preference_source' => $auto_default && $preference_valid ? 'default_observed' : 'operator_saved_or_legacy',
 			'credential_verified' => false,
 			'external_runner_connected' => false,
 			'site_provider_registered_by_preference' => false,
@@ -117,7 +126,8 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'There are TWO independent provider types: a site-specific WordPress acceptance provider that signs plans/reduces evidence; and an external browser execution service. Saving a preference neither registers a WordPress provider nor configures credentials.', 'mad4b-site-control-plane' ) . '</p>';
-		if ( empty( $operator_status['configuration_revision'] ) ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'External browser execution requires a configuration revision. Save the operator preference once to activate exact-revision checks.', 'mad4b-site-control-plane' ) . '</p></div>';
+		if ( empty( $operator_status['configuration_revision'] ) ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'A legacy operator preference has no revision. Re-save it before browser execution.', 'mad4b-site-control-plane' ) . '</p></div>';
+		if ( 'default_observed' === ( $operator_status['preference_source'] ?? '' ) ) echo '<p>Default provider/profile preference is discovered automatically. Execution still requires a registered semantic provider and external browser credentials.</p>';
 		if ( empty( $operator_status['preference_valid'] ) ) echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Stored browser selection is invalid. Browser acceptance and queued browser execution are blocked until this administrator re-saves an approved site provider, profile and executor preference.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Preference saved; execution and browser acceptance remain separately unverified.', 'mad4b-site-control-plane' ) . '</p></div>';
