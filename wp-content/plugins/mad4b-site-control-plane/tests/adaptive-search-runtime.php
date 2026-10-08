@@ -286,6 +286,8 @@ scenario( 'domain_profile_market_identity_and_safe_retarget_invariants', static 
 	$created = ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $initial['plan_sha256'] ) ) ), 'direct profile commit' );
 	$id = $created['profile']['profile_id'];
 	$current = $created['profile'];
+	$collision = asi_profile( 'same-market-different-profile' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $collision, 'expected_revision' => 0 ) ), 'market_identity_conflict', 'existing market ID cannot be shared across profiles' );
 	$fields = array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] );
 	$raw = array_intersect_key( $current, $fields );
 	$country = $raw; $country['markets'][0]['country'] = 'AU';
@@ -306,6 +308,21 @@ scenario( 'domain_profile_market_identity_and_safe_retarget_invariants', static 
 	check( 'US' === $result['profile']['markets'][0]['country'] && 'JP' === $result['profile']['markets'][2]['country'], 'existing geo history unchanged and new market added' );
 	check( ! $result['profile']['enabled'] && $result['profile']['provider_policy']['freeze_spend'], 'safe update never activates observations or spend' );
 	denied( MAD4B_SCP_Search_Context::apply( array_merge( $safe, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'revision_drift', 'stale direct API apply denied' );
+} );
+scenario( 'domain_market_claim_reservation_survives_partial_profile_commit', static function () {
+	$raw = asi_profile( 'pending-domain-profile' ); $raw['markets'][0]['id'] = 'pending-metro'; $raw['markets'][1]['id'] = 'pending-second';
+	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'pending profile plan' );
+	$profile_key = MAD4B_SCP_Search_Store::key( 'profile', 'pending-domain-profile' );
+	$GLOBALS['fixture_cas_failure'] = static function ( $key, $old, $next ) use ( $profile_key ) { return $key === $profile_key; };
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'compare_exchange_conflict', 'profile CAS failure surfaced without silent rollback' );
+	$GLOBALS['fixture_cas_failure'] = null;
+	$other = asi_profile( 'other-domain-profile' ); $other['markets'][0]['id'] = 'pending-metro'; $other['markets'][1]['id'] = 'fresh-second';
+	$args = array( 'profile' => $other, 'expected_revision' => 0 ); $other_plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'pending registry rows are not falsely treated as completed profiles' );
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $other_plan['plan_sha256'] ) ) ), 'market_identity_conflict', 'durable identity claim fences another profile after interrupted commit' );
+	check( null === MAD4B_SCP_Search_Store::read( 'profile', 'other-domain-profile' ), 'conflicting profile was not admitted' );
+	$retry = ok( MAD4B_SCP_Search_Context::plan( $input ), 'same original owner can resume pending admission' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $retry['plan_sha256'] ) ) ), 'same owner idempotently recovers its market reservation' );
 } );
 scenario( 'composed_profile_language_surface_drift_preserves_history', static function () {
 	$input = asi_seed(); list( $result ) = capture( $input ); $original = MAD4B_SCP_Search_Store::evidence( 'snapshot', $result['snapshot_id'] );
