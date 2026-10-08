@@ -38,7 +38,9 @@ final class MAD4B_SCP_Automation_SLO {
 		}
 		// Every admission has exactly one durable outcome or one live/uncertain
 		// ticket. An unexplained gap is evidence loss, not a free retry budget.
-		if ( $completed + count( $state['tickets'] ) !== $state['eligible_workload_count'] ) return false;
+		if ( $completed + count( $state['tickets'] ) !== $state['eligible_workload_count']
+			|| $state['cost_measured_count'] > $completed
+			|| $state['revision'] < $state['eligible_workload_count'] ) return false;
 		foreach ( $state['buckets'] as $scope => $row ) {
 			if ( ! is_string( $scope ) || strlen( $scope ) > 175 || ! is_array( $row ) ) return false;
 			if ( 'site' !== $scope && 1 !== preg_match( '/^(provider:[a-z0-9_.-]{1,80}|capability:[a-z0-9_.-]{1,80}:[a-z0-9_.-]{1,80})$/D', $scope ) ) return false;
@@ -58,6 +60,12 @@ final class MAD4B_SCP_Automation_SLO {
 				|| $ticket['restore_binding'] !== ( $state['restore_binding'] ?? null )
 				|| ! is_string( $ticket['profile_digest'] ?? null )
 				|| $ticket['profile_digest'] !== ( $state['profile_digest'] ?? null ) ) return false;
+			// Finishing a failed ticket increments each affected budget. Never
+			// accept a ledger where active scopes have lost their budget rows.
+			foreach ( array( 'site', 'provider:' . $ticket['provider'],
+				'capability:' . $ticket['provider'] . ':' . $ticket['capability'] ) as $scope ) {
+				if ( ! isset( $state['buckets'][ $scope ] ) ) return false;
+			}
 		}
 		return true;
 	}
