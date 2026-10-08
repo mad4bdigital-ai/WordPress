@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 318,
+  "changed_file_count": 322,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -564,8 +564,20 @@
         "specs/007-content-intelligence-workflow-platform/task-ledger.generated.json",
         "specs/007-content-intelligence-workflow-platform/tasks.md"
       ]
+    },
+    {
+      "id": "browser-acceptance-operator-setup-20261008",
+      "semantic_unit": "Nonsecret wp-admin browser provider setup, read-only operator preference projection and fail-closed PHP 7.4/8.3 contract",
+      "revert_boundary": "Revert admin setup, preference projection, PHP negative fixture and dedicated Browser Acceptance CI coverage together; external browser runner and credentials stay outside WordPress",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-browser-acceptance-core.yml",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "777ebc362484ad108f1e126b6cb9df1a47e6c24f6525d1d029f2dbdc39195d68",
+  "changed_paths_sha256": "02e74201d4cbe2e2716e7579ceab874f1a11abe6ab231311617360d6d2ae440a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
