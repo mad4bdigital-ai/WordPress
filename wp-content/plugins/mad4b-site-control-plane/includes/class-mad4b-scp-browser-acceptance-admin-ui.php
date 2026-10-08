@@ -101,12 +101,14 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.', '', array( 'response' => 403 ) );
 		$choice = self::selection();
+		$operator_status = self::public_selection();
 		$observed = class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ? MAD4B_SCP_Browser_Acceptance_Core::capabilities() : array();
 		$valid_count = isset( $observed['provider_count'] ) ? (int) $observed['provider_count'] : 0;
 		$registered = isset( $observed['registry']['providers'] ) && is_array( $observed['registry']['providers'] ) ? $observed['registry']['providers'] : array();
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'There are TWO independent provider types: a site-specific WordPress acceptance provider that signs plans/reduces evidence; and an external browser execution service. Saving a preference neither registers a WordPress provider nor configures credentials.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( empty( $operator_status['preference_valid'] ) ) echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Stored browser selection is invalid. Browser acceptance and queued browser execution are blocked until this administrator re-saves an approved site provider, profile and executor preference.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Preference saved; execution and browser acceptance remain separately unverified.', 'mad4b-site-control-plane' ) . '</p></div>';
 		echo '<h2>' . esc_html__( '1. WordPress test provider registry', 'mad4b-site-control-plane' ) . '</h2>';

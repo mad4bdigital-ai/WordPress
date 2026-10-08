@@ -38,4 +38,10 @@ $core=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-browser-acce
 check_browser( substr_count($main,"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-browser-acceptance-admin-ui.php';")===1,'one include');
 check_browser( substr_count($main,'MAD4B_SCP_Browser_Acceptance_Admin_UI::boot();')===1,'one boot');
 check_browser( strpos($core,'MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection()')!==false,'read projection');
+$remote=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-remote-operation-parity.php');
+$staging=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-staging-certification.php');
+check_browser( strpos($remote, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id )') !== false, 'remote queue must check operator selection' );
+check_browser( strpos($staging, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id )') !== false, 'staging certification must check operator selection' );
+check_browser( strpos($main, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::boot();') !== false, 'setup available on admin' );
+
 echo "MAD4B_BROWSER_ACCEPTANCE_ADMIN_SETUP: PASS\n";
