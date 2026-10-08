@@ -19,6 +19,30 @@ Return codes: 0 = selected **local source checks passed, external acceptance sti
 
 This offline runner checks exact checkout, baseline ancestry, clean worktree, exhaustive path ownership/digest, exact G6/G8 workflow hash and preserved GA/GB/OAuth jobs; then lints runtime files, runs representative hermetic PHP fixtures on both exact minor versions and Python source contracts. It requires no network/WordPress access, but DOES NOT independently enforce an OS network namespace. Reports must be stored outside Git checkout. Never feed it live credentials.
 
+## Optional real disposable SQL matrix without GitHub Actions
+
+Only on a disposable operator workstation with native PHP 7.4 and PHP 8.3
+plus mysqli, a locally running Docker daemon, and trusted **preloaded**
+mariadb:11.4 and mysql:8.4 images. This matrix refuses ambient G8_CAS_,
+MYSQL_, or MARIADB_ variables, requires an explicit opt-in flag, refuses
+a dirty/non-exact git checkout, generates unique temporary root passwords,
+binds the published DB port to 127.0.0.1 only, asserts invalid-name
+safe-refusal exit code 2 and actual CAS success, and removes containers
+on exit. It does not pull missing images automatically.
+
+From PowerShell, adjust the PHP paths:
+
+    $Head = (git rev-parse HEAD).Trim()
+    py -3 wp-content/plugins/mad4b-site-control-plane/tests/feature007-disposable-db-matrix.py --expected-head $Head --php74 "C:\php74\php.exe" --php83 "C:\php83\php.exe" --allow-disposable-docker --report "$env:TEMP\feature007-$Head-disposable-db.json"
+
+The result is **LOCAL_DISPOSABLE_DB_MATRIX_PASS_ONLY** if all four
+database/PHP combinations pass. Missing Docker/PHP/image is BLOCKED,
+not PASS. Any failed CAS/refusal/cleanup is FAIL and the receipt lists
+any containers that could not be removed. The report never embeds a
+password. The local images still need their own independent provenance
+review, and a local DB result is not a real Staging migration, restored
+state, site-bound workflow, production, or GitHub CI certificate.
+
 ## Independent gates that remain mandatory
 
 | Scope | Required acceptance evidence | Can repository fixtures replace it? |
