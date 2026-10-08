@@ -10,6 +10,8 @@ const ID = /^[a-z0-9][a-z0-9._-]{1,79}$/;
 const SHA = /^[a-f0-9]{64}$/;
 const ENV = /^(production|staging|development|local)$/;
 const KINDS = new Set(["connector","skill","external_service","operator"]);
+const RISKS = new Set(["low","medium","high","exceptional","unknown"]);
+const EFFECTS = new Set(["read","write","execute","unknown"]);
 const MAX_SOURCES = 32;
 const MAX_CAPS = 24;
 const MAX_HINTS = 24;
@@ -142,6 +144,8 @@ export async function discoverFederated({target,query,enumerate,inspect,
         safeLabel(item.description,180):null;
       if (!isObject(item) || !ID.test(item.id??"") || !title ||
           (item.description!==undefined && !detail) ||
+          (item.risk!==undefined && !RISKS.has(item.risk)) ||
+          (item.effect!==undefined && !EFFECTS.has(item.effect)) ||
           item.execution_allowed===true || item.authorizing===true) {
         invalid=true; continue;
       }
@@ -151,11 +155,15 @@ export async function discoverFederated({target,query,enumerate,inspect,
         source.id.slice(0,29)+"--"+item.id.slice(0,29)+"-"+continuity(raw);
       if(key.length>79 || seenCandidates.has(key)) {invalid=true;continue;}
       seenCandidates.add(key);
+      const risk=item.risk??"unknown",effect=item.effect??"unknown";
+      const exceptional=risk==="high"||risk==="exceptional" ||
+        effect==="execute"||effect==="write";
       const text=[title,detail??"",item.id].join(" ");
       candidates.push({
         id:key, source_id:source.id, kind:source.kind, label:title,
         description:detail??"", lexical_score:overlap(query,text),
         observed_state:"source_claimed", evidence_state:"UNVERIFIED_METADATA",
+        declared_risk:risk,declared_effect:effect,requires_separate_risk_review:exceptional,
         observation_sha256:observed.observation_sha256,
         site_id:site.site_id, environment:site.environment,
         execution_allowed:false, authorization_verified:false,
@@ -174,7 +182,9 @@ export async function discoverFederated({target,query,enumerate,inspect,
   if(expectedSnapshot!==null && expectedSnapshot!==snapshot)
     throw new TypeError("STALE_DISCOVERY_SNAPSHOT");
   const selected=candidates.slice(offset,offset+limit);
-  const hints=selected.map(c=>({
+  // High/exceptional risks and declared mutating primitives are *visible*
+  // in the review graph, but never auto-handoff as unqualified WP hints.
+  const hints=selected.filter(c=>!c.requires_separate_risk_review).map(c=>({
     id:c.id, source:c.kind, label:c.label,
     description:c.description || c.label
   }));
@@ -184,7 +194,9 @@ export async function discoverFederated({target,query,enumerate,inspect,
     coverage_complete:complete, registry_scope_verified:Boolean(scoped),
     candidate_total:candidates.length, snapshot_continuity_id:snapshot, offset, limit,
     source_count:records.length, sources:records, candidates:selected,
-    external_hints:hints, next_offset:candidates.length>offset+limit?offset+limit:null,
+    external_hints:hints,
+    restricted_candidate_count:selected.filter(c=>c.requires_separate_risk_review).length,
+    next_offset:candidates.length>offset+limit?offset+limit:null,
     ranking:"LEXICAL_ONLY_NOT_FUNCTIONAL", no_runtime_authority:true,
     execution_allowed:false, authorizing:false, provider_executed:false,
     external_hints_are_untrusted:true

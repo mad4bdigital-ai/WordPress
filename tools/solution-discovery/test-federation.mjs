@@ -75,6 +75,18 @@ const long=await discoverFederated({target:site,query:"file",
  inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
  observation_sha256:H("e"),capabilities:[{id:"operation".repeat(8),label:"File manager"}]})});
 yes(long.candidate_total===1&&long.external_hints[0].id.length<=79,"long names do not disappear");
+const risky=await discoverFederated({target:site,query:"file",
+ enumerate:async()=>({...envelope,sources:[item("risky-plugin")]}),
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
+ observation_sha256:H("c"),capabilities:[
+ {id:"workspace",label:"File Manager",risk:"exceptional",effect:"execute"},
+ {id:"safe-read",label:"File metadata viewer",risk:"low",effect:"read"}]})});
+yes(risky.candidate_total===2&&risky.restricted_candidate_count===1,
+ "high-risk source stays visible as reviewed option");
+yes(risky.candidates.some(c=>c.requires_separate_risk_review)&&risky.external_hints.length===1,
+ "high-risk mutating option never unqualified WordPress handoff");
+yes(risky.candidates.every(c=>c.execution_allowed===false),"no implied execution from risk metadata");
+
 const legacy=await discoverFederated({target:site,query:"file",enumerate:async()=>[item("legacy")],inspect});
 yes(!legacy.coverage_complete&&!legacy.registry_scope_verified,"unscoped bare catalog cannot claim complete coverage");
 
