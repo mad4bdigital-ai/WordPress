@@ -680,6 +680,126 @@
         "g4-delivery.json",
         "g4-delivery.md"
       ]
+    },
+    "T3926": {
+      "status": "PARTIAL",
+      "reason": "Repository foundation provides the generic retained-observation adapter contract plus GA4 and Search Console reference profiles with exact subject/property/capability provenance; live provider capture remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3927": {
+      "status": "PARTIAL",
+      "reason": "Required Semrush, SE Ranking and Ahrefs research reference profiles are defined while the existing SERP provider mesh is reused; native research adapters and representative provider acceptance remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3928": {
+      "status": "PARTIAL",
+      "reason": "Growth evidence binds site/property/query/surface, market, language, window, attribution, currency, freshness, sampling, cost and source generation before comparison; live cross-provider evidence remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3929": {
+      "status": "PARTIAL",
+      "reason": "Growth Providers admin routing, bounded setup schemas, explicit consent boundaries and existing Search-account handoff are implemented without credential values or secret handles; persisted browser enrollment acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3930": {
+      "status": "PARTIAL",
+      "reason": "Runtime contracts deny missing consent, mixed dimensions/currencies/windows, partial or thresholded samples, uncertain charges/budgets and contradictory observations; live adversarial provider acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3946": {
+      "status": "PARTIAL",
+      "reason": "A six-provider SEO family preflight covers Rank Math, Yoast, AIOSEO, SEOPress, Slim SEO and The SEO Framework without inferring execution from presence; provider-native adapters beyond existing foundations remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3947": {
+      "status": "PARTIAL",
+      "reason": "SEO plans bind reviewed title/description/focus/schema/social/canonical/robots fields to post/term/archive, language, provider and rendered-surface context with coexistence preservation gates; native field provenance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3948": {
+      "status": "PARTIAL",
+      "reason": "SEO plans remain non-executing and require provider-native schema/serialization, exact stored readback, exact rendered readback, current authority and impact approval; admitted native apply/readback remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3949": {
+      "status": "PARTIAL",
+      "reason": "SEO readiness exposes applicability, installed identity, denied execution and required rendered/coexistence acceptance without claiming provider parity; browser/rendered evidence remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3950": {
+      "status": "PARTIAL",
+      "reason": "Repository gates require coexistence preservation, archive/language scope, cache-generation freshness, stored/rendered parity and no signal-direct mutation; live serialization/cache/language fault acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4056": {
+      "status": "PARTIAL",
+      "reason": "Generic pinned server-code adapter descriptors cover account/scopes/quota/economics/rights/health-relevant generation/capabilities/effects while required provider families are reference profiles rather than a closed allowlist; live adapters remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4057": {
+      "status": "PARTIAL",
+      "reason": "Adapter-owned reviewed setup schemas drive account/property/profile previews and Search continues to reuse its encrypted connection authority; persisted provider setup and account-test acceptance remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4058": {
+      "status": "PARTIAL",
+      "reason": "Existing Search execution retains budget/circuit-breaker ownership while retained G5 reads require zero-cost descriptors and evidence cost receipts block uncertain reconciliation; live provider error/cost normalization remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4059": {
+      "status": "PARTIAL",
+      "reason": "Configuration packs are limited to the pinned stored-evidence protocol and existing reviewed Search path; unknown protocols cannot become generic endpoints, while additional providers require reviewed server code; live pack acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4060": {
+      "status": "PARTIAL",
+      "reason": "Contracts keep new scopes behind external consent, credentials opaque, generic HTTP disabled and client-defined provider identity denied; live missing-rights/cost/consent/protocol adversarial acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
     }
   },
   "documentation_only_completion_forbidden": true
