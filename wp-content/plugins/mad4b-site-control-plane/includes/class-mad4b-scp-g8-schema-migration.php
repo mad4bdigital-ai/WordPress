@@ -16,11 +16,11 @@ final class MAD4B_SCP_G8_Schema_Migration {
 		return array(
 			'registry' => array(
 				1 => array( 'to' => 2, 'defaults' => array( 'observation_source' => 'unknown' ) ),
-				2 => array( 'to' => 3, 'defaults' => array( 'compatibility_state' => 'unverified' ) ),
+				2 => array( 'to' => 3, 'min_reader_version' => 2, 'defaults' => array( 'compatibility_state' => 'unverified' ) ),
 			),
 			'manifest' => array(
 				1 => array( 'to' => 2, 'defaults' => array( 'supply_status' => 'unverified' ) ),
-				2 => array( 'to' => 3, 'defaults' => array( 'evidence_status' => 'pending' ) ),
+				2 => array( 'to' => 3, 'min_reader_version' => 2, 'defaults' => array( 'evidence_status' => 'pending' ) ),
 			),
 			'policy' => array(
 				1 => array( 'to' => 2, 'defaults' => array( 'governance_review' => 'required' ) ),
@@ -113,6 +113,7 @@ final class MAD4B_SCP_G8_Schema_Migration {
 			&& is_int( $doc['version'] ?? null ) && $doc['version'] > 0 && $doc['version'] <= 3
 			&& is_int( $doc['min_reader_version'] ?? null ) && $doc['min_reader_version'] >= 1
 			&& $doc['min_reader_version'] <= $doc['version']
+			&& $doc['min_reader_version'] >= max( 1, $doc['version'] - 1 )
 			&& is_array( $doc['data'] ?? null ) && self::clean( $doc['data'] )
 			&& strlen( serialize( $doc ) ) < 32768 && false === ( $doc['authorizing'] ?? true );
 	}
@@ -156,6 +157,8 @@ final class MAD4B_SCP_G8_Schema_Migration {
 					$next['data'][ $field ] = $value; $added[] = $field;
 				}
 			}
+			if ( isset( $step['min_reader_version'] ) )
+				$next['min_reader_version'] = max( $next['min_reader_version'], (int) $step['min_reader_version'] );
 			$path[] = array( 'from' => $next['version'], 'to' => $step['to'] );
 			$next['version'] = $step['to'];
 		}
@@ -232,7 +235,7 @@ final class MAD4B_SCP_G8_Schema_Migration {
 		if ( is_wp_error( $state ) ) return $state;
 		$doc = $state['documents'][ $domain ] ?? null;
 		if ( ! self::doc_ok( $domain, $doc ) ) return new WP_Error( 'mad4b_g8_migration_document_invalid', 'Observation document invalid or missing.' );
-		if ( ! is_int( $reader_version ) || $reader_version < $doc['min_reader_version'] )
+		if ( ! is_int( $reader_version ) || $reader_version < $doc['min_reader_version'] || $reader_version > $doc['version'] )
 			return new WP_Error( 'mad4b_g8_migration_reader_incompatible', 'Stale worker cannot reinterpret unknown generations.' );
 		return array( 'contract' => self::CONTRACT, 'document' => $doc,
 			'reader_current' => $reader_version === $doc['version'],
