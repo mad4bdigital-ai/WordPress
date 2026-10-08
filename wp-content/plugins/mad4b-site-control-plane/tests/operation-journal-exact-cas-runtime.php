@@ -30,6 +30,7 @@ class MAD4B_SCP_Database_Failure_Semantics {
 }
 class MAD4B_SCP_Database_Transaction_Guard {
     public static $begin = 0, $commit = 0, $rollback = 0;
+    public static function preflight( $tables, $write ) { return true; }
     public static function begin( $name, $tables, $readonly ) { ++self::$begin; return array( 'name' => $name ); }
     public static function commit( $t ) { ++self::$commit; return true; }
     public static function rollback( $t ) { ++self::$rollback; return true; }
@@ -42,6 +43,13 @@ class FixtureJournalDB {
     public function get_row( $prepared, $output ) { return $this->head; }
     public function query( $prepared ) {
         $sql = $prepared[0]; $args = $prepared[1];
+        if ( 0 === strpos( $sql, 'INSERT IGNORE INTO ' ) ) {
+            if ( is_array( $this->head ) ) return 0;
+            $this->head = array( 'operation_key' => $args[1],
+                'operation_binding_sha256' => $args[2], 'latest_sequence' => 0,
+                'latest_event_sha256' => str_repeat( '0', 64 ) );
+            return 1;
+        }
         if ( 0 === strpos( $sql, 'INSERT INTO ' ) ) { ++$this->inserted; return 1; }
         if ( 0 === strpos( $sql, 'UPDATE ' ) ) {
             ++$this->updated;
@@ -103,4 +111,14 @@ $legacy = MAD4B_SCP_Operation_Journal::append( $context, 'existing_legacy_journa
     array( 'metadata' => array( 'operation_phase' => 'readback' ) ) );
 assert_journal( 'unrelated producers without opt-in CAS retain contract', is_array( $legacy )
     && 3 === $legacy['sequence'] && 2 === $wpdb->inserted );
+$wpdb = new FixtureJournalDB();
+$new_ctx = $context; $new_ctx['operation_id'] = '02f421a9-ad22-49ce-b1bc-d347122168c2';
+$first = MAD4B_SCP_Operation_Journal::begin( $new_ctx, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'first journal begin creates exactly one genesis', is_array( $first )
+    && 1 === $first['sequence'] && 1 === $wpdb->inserted
+    && 1 === $wpdb->updated );
+$again = MAD4B_SCP_Operation_Journal::begin( $new_ctx, 'planned', array( 'ticket' => 'proposal' ) );
+assert_journal( 'same journal begin cannot generate duplicate genesis', is_wp_error( $again )
+    && 'mad4b_operation_journal_head_already_exists' === $again->get_error_code()
+    && 1 === $wpdb->inserted && 1 === $wpdb->updated );
 echo 'OPERATION_JOURNAL_EXACT_CAS: PASS ' . $GLOBALS['tests'] . ' checks (hermetic DB stub)' . PHP_EOL;
