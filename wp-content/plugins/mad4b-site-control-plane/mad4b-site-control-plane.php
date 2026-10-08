@@ -167,6 +167,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g5-seo-provider-families.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g5-acceptance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-operations-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ownership-reconciliation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-operator-journal.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-runtime-convergence.php';
