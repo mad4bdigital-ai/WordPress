@@ -108,7 +108,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
             'restore_epoch', 'environment' ) as $key )
             if ( ( $binding[ $key ] ?? null ) !== ( $plan['binding'][ $key ] ?? null ) )
                 return self::fail( 'binding_changed' );
-        $inventory = MAD4B_SCP_Solution_Discovery::site_inventory();
+        $inventory = MAD4B_SCP_Solution_Discovery::enriched_site_inventory();
         // Validate external catalog hints even on zero-gap plans.
         $guard = MAD4B_SCP_Solution_Discovery::discover( array(
             'expected_profile_digest' => $binding['profile_digest'],
@@ -166,6 +166,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                 'plugin_inventory_complete' => ! empty( $inventory['plugin_inventory_complete'] ),
                 'ability_inventory_complete' => ! empty( $inventory['ability_inventory_complete'] ),
                 'extension_inventory_complete' => ! empty( $inventory['extension_inventory_complete'] ),
+                'risk_coverage_complete' => ! empty( $inventory['risk_coverage_complete'] ),
                 'external_inventory_complete' => false ),
             'authorizing' => false, 'execution_allowed' => false, 'mutation_performed' => false,
             'provider_executed' => false, 'automatic_install_allowed' => false );

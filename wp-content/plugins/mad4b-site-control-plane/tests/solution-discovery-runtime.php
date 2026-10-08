@@ -59,6 +59,22 @@ function wp_get_abilities() {
     'demo/file-inspect' => new FixtureAbility(),
     'private/rotate-keys' => new PrivateFixtureAbility(),
 ); }
+class MAD4B_SCP_Plugin_Discovery {
+    public static $wrong_version = false;
+    public static function coverage() {
+        if ( $GLOBALS['fail_plugin_registry'] ) throw new RuntimeException('risk registry not readable');
+        return array( 'contract'=>'mad4b.plugin-adapter-discovery.v1','truncated'=>false,
+            'plugins'=>array(
+                array( 'plugin_file'=>'unknown-file-ops/tool.php','version'=>'',
+                    'risk'=>'exceptional','coverage_state'=>'excluded_high_risk' ),
+                array( 'plugin_file'=>'plain-cache/cache.php','version'=>'',
+                    'risk'=>'low','coverage_state'=>'read_only_supported' ),
+                array( 'plugin_file'=>'unknown-file-ops/alternate.php',
+                    'version'=>self::$wrong_version ? 'obsolete' : $GLOBALS['plugin_version'],
+                    'risk'=>'medium','coverage_state'=>'read_only_supported' )
+            ) );
+    }
+}
 class MAD4B_SCP_Adapter_Base {}
 class Registry { public $adapters=array(); public function register( $v ) { $this->adapters[$v->id()]=$v; } }
 class MAD4B_SCP_Adaptive_Operations_Context {
@@ -94,6 +110,18 @@ ok(count($network)===1 && $network[0]['observed_state']==='active','network plug
 $r = MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( is_array($r) && count($r['candidates']) === 3, 'unmapped plugin and ability discovered dynamically' );
 ok( $r['candidates'][0]['lexical_score'] >= $r['candidates'][1]['lexical_score'], 'ranked' );
+$high=array_values(array_filter($r['candidates'],function($v){return $v['id']==='plugin:unknown-file-ops/tool.php';}));
+ok(count($high)===1 && $high[0]['declared_risk']==='exceptional'
+    && $high[0]['requires_exceptional_review']===true
+    && $high[0]['coverage_state']==='excluded_high_risk',
+    'unknown plugin risk derived from existing plugin discovery not folder name');
+ok($r['coverage']['risk_coverage_complete']===true,'joined live risk registry complete');
+MAD4B_SCP_Plugin_Discovery::$wrong_version=true;
+$stale=MAD4B_SCP_Solution_Discovery::read_discover($in);
+ok(is_array($stale) && $stale['coverage']['risk_coverage_complete']===false,
+    'provider version mismatch is not treated as current risk evidence');
+MAD4B_SCP_Plugin_Discovery::$wrong_version=false;
+
 ok( $r['candidates'][0]['execution_allowed'] === false && !$r['mutation_performed'], 'never auto executes' );
 ok( $r['mapping_required_to_discover'] === false && !$r['auto_install_allowed'], 'no adapter requirement' );
 ok( $r['coverage']['external_inventory_complete'] === false, 'external coverage not falsely complete' );

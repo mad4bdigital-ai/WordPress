@@ -196,6 +196,7 @@ final class MAD4B_SCP_Solution_Discovery {
                 && is_plugin_active_for_network( $file );
             $enabled = in_array( $file, $active, true ) || $network_active;
             $rows[] = array( 'id' => 'plugin:' . $file, 'label' => $label,
+                'observed_version' => is_string( $data['Version'] ?? null ) ? substr( $data['Version'], 0, 64 ) : '',
                 'source' => 'installed_plugin', 'observed_state' => $enabled ? 'active' : 'inactive',
                 'match_text' => $label . ' ' . str_replace( array( '/', '-', '_' ), ' ', $file ),
                 'metadata_digest' => hash( 'sha256', serialize( array( $file, 
@@ -270,6 +271,70 @@ final class MAD4B_SCP_Solution_Discovery {
             'ability_inventory_complete' => $ability_complete && ( ! isset( $abilities ) || count( $abilities ) <= 240 ) );
     }
 
+    /**
+     * Advisory join against the EXISTING governed Plugin Discovery projection.
+     * No vendor slug map, executor lookup, plugin file include, or permission
+     * escalation. Missing or stale rows remain unassessed rather than safe.
+     */
+    public static function attach_risk_evidence( $inventory, $coverage ) {
+        if ( ! is_array( $inventory ) || ! is_array( $inventory['rows'] ?? null ) )
+            return $inventory;
+        $inventory['risk_coverage_complete'] = false;
+        $inventory['risk_coverage_source'] = 'unavailable';
+        if ( ! is_array( $coverage ) ||
+            'mad4b.plugin-adapter-discovery.v1' !== ( $coverage['contract'] ?? null ) ||
+            ! is_array( $coverage['plugins'] ?? null ) ||
+            ! empty( $coverage['truncated'] ) ||
+            count( $coverage['plugins'] ) > 500 ) return $inventory;
+        $by_file = array(); $duplicate = false;
+        foreach ( $coverage['plugins'] as $row ) {
+            if ( ! is_array( $row ) || ! is_string( $row['plugin_file'] ?? null ) ) {
+                $duplicate = true; continue;
+            }
+            $file = $row['plugin_file'];
+            if ( isset( $by_file[ $file ] ) ) { $duplicate = true; continue; }
+            $by_file[ $file ] = $row;
+        }
+        $complete = ! $duplicate;
+        foreach ( $inventory['rows'] as &$candidate ) {
+            if ( ! is_array( $candidate ) || ( $candidate['source'] ?? '' ) !== 'installed_plugin' ) continue;
+            $file = substr( $candidate['id'], 7 );
+            if ( ! isset( $by_file[ $file ] ) ) { $complete = false; continue; }
+            $row = $by_file[ $file ];
+            $risk = is_string( $row['risk'] ?? null ) ? $row['risk'] : 'unknown';
+            $state = is_string( $row['coverage_state'] ?? null ) ? $row['coverage_state'] : 'unknown';
+            $version = is_string( $row['version'] ?? null ) ? substr( $row['version'], 0, 64 ) : '';
+            // Never attach a risk classification across an upgrade race.
+            if ( $version !== ( $candidate['observed_version'] ?? '' ) ) {
+                $complete = false; continue;
+            }
+            if ( ! in_array( $risk, array( 'low', 'medium', 'high', 'exceptional', 'unknown' ), true ) ||
+                ! preg_match( '/^[a-z0-9_]{2,80}$/D', $state ) ) {
+                $complete = false; continue;
+            }
+            $candidate['declared_risk'] = $risk;
+            $candidate['coverage_state'] = $state;
+            $candidate['requires_exceptional_review'] = in_array( $risk, array( 'high', 'exceptional' ), true )
+                || 'excluded_high_risk' === $state;
+            $candidate['risk_metadata_source'] = 'governed_plugin_discovery';
+            $candidate['risk_version_observed'] = $version;
+        }
+        unset( $candidate );
+        $inventory['risk_coverage_complete'] = $complete;
+        $inventory['risk_coverage_source'] = 'governed_plugin_discovery';
+        return $inventory;
+    }
+
+    public static function enriched_site_inventory() {
+        $inventory = self::site_inventory();
+        if ( ! class_exists( 'MAD4B_SCP_Plugin_Discovery', false ) ||
+            ! method_exists( 'MAD4B_SCP_Plugin_Discovery', 'coverage' ) )
+            return self::attach_risk_evidence( $inventory, null );
+        try { $coverage = MAD4B_SCP_Plugin_Discovery::coverage(); }
+        catch ( Throwable $error ) { $coverage = null; }
+        return self::attach_risk_evidence( $inventory, $coverage );
+    }
+
     public static function read_discover( $input = array() ) {
         if ( ! self::validate( $input ) ) return self::fail( 'input_invalid' );
         if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) )
@@ -280,7 +345,7 @@ final class MAD4B_SCP_Solution_Discovery {
             || ( $binding['runtime_generation'] ?? '' ) !== $input['expected_runtime_generation']
             || empty( $binding['site_uuid'] ) || empty( $binding['artifact_sha256'] )
             || ! is_int( $binding['restore_epoch'] ?? null ) || $binding['restore_epoch'] < 1 ) return self::fail( 'stale_binding' );
-        $inventory = self::site_inventory();
+        $inventory = self::enriched_site_inventory();
         $current = MAD4B_SCP_Adaptive_Operations_Context::current();
         if ( ! is_array( $current ) || serialize( $current ) !== serialize( $binding ) )
             return self::fail( 'concurrent_binding_change' );
@@ -321,9 +386,16 @@ final class MAD4B_SCP_Solution_Discovery {
             sort( $matches, SORT_STRING );
             $score = count( $matches );
             if ( 'match' === ( $input['mode'] ?? 'match' ) && 0 === $score ) continue;
+            $risk = in_array( $row['declared_risk'] ?? '', array( 'low', 'medium', 'high', 'exceptional', 'unknown' ), true )
+                ? $row['declared_risk'] : 'unassessed';
+            $risk_review = ! empty( $row['requires_exceptional_review'] );
             $candidates[] = array( 'id' => $row['id'], 'label' => $row['label'],
                 'source' => $row['source'], 'observed_state' => $row['observed_state'],
                 'metadata_digest' => $row['metadata_digest'] ?? null,
+                'declared_risk' => $risk,
+                'coverage_state' => $row['coverage_state'] ?? 'unknown',
+                'requires_exceptional_review' => $risk_review,
+                'risk_metadata_source' => $row['risk_metadata_source'] ?? 'unassessed',
                 'matched_terms' => $matches, 'lexical_score' => $score,
                 'classification' => 'UNMAPPED_OR_UNVERIFIED',
                 'metadata_is_untrusted' => true, 'instructions_in_metadata_ignored' => true,
@@ -347,6 +419,7 @@ final class MAD4B_SCP_Solution_Discovery {
             'coverage' => array( 'plugin_inventory_complete' => ! empty( $inventory['plugin_inventory_complete'] ),
                 'ability_inventory_complete' => ! empty( $inventory['ability_inventory_complete'] ),
                 'extension_inventory_complete' => ! empty( $inventory['extension_inventory_complete'] ),
+                'risk_coverage_complete' => ! empty( $inventory['risk_coverage_complete'] ),
                 'ability_visibility_scope' => 'show_in_rest_only',
                 'plugin_inventory_scope' => $inventory['plugin_inventory_scope'] ?? 'unknown',
                 'external_inventory_complete' => false ),
