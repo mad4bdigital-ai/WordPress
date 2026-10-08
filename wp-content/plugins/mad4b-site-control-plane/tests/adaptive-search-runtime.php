@@ -14,6 +14,36 @@ function sample_snapshot( $request = null, $data = null, $at = null, $descriptor
 	return ok( MAD4B_SCP_Search_Evidence::snapshot( $request, $descriptor ?: asi_descriptor( 'alpha' ), array( 'location_id' => 'fixture-city', 'country' => 'US', 'language_code' => 'en', 'precision' => 'city' ), $data ?: asi_normalized(), hash( 'sha256', 'raw' ), hash( 'sha256', 'build' ), $at ?: time() ), 'snapshot' );
 }
 
+scenario( 'direct_profile_creation_must_be_paused_and_frozen_before_typed_activation', static function () {
+	foreach ( array( 'active' => array( true, true ), 'unfrozen' => array( false, false ), 'active_unfrozen' => array( true, false ) ) as $label => $state ) {
+		$raw = asi_profile( 'creation-denial-' . $label );
+		$raw['markets'][0]['id'] = 'creation-' . $label . '-us';
+		$raw['markets'][1]['id'] = 'creation-' . $label . '-fr';
+		$raw['enabled'] = $state[0]; $raw['provider_policy']['freeze_spend'] = $state[1];
+		$args = array( 'profile' => $raw, 'expected_revision' => 0 );
+		denied( MAD4B_SCP_Search_Context::plan( $args ), 'creation_requires_pause_and_spend_freeze', 'domain plan refuses active/unfrozen creation: ' . $label );
+		denied( MAD4B_SCP_Search_Runtime::profile_apply( array_merge( $args, array( 'plan_sha256' => str_repeat( '0', 64 ) ) ) ), 'creation_requires_pause_and_spend_freeze', 'public runtime apply refuses unsafe create: ' . $label );
+		check( null === MAD4B_SCP_Search_Store::read( 'profile', $raw['profile_id'] ), 'no unsafe profile persisted: ' . $label );
+		foreach ( $raw['markets'] as $market ) check( null === MAD4B_SCP_Search_Store::read( 'market-identity', $market['id'] ), 'no market reservation: ' . $label );
+	}
+	$safe = asi_profile( 'creation-safe-typed-controls' );
+	$safe['markets'][0]['id'] = 'creation-safe-us'; $safe['markets'][1]['id'] = 'creation-safe-fr';
+	$input = array( 'profile' => $safe, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'safe creation plan' );
+	$created = ok( MAD4B_SCP_Search_Runtime::profile_apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'safe creation apply' );
+	check( ! $created['profile']['enabled'] && $created['profile']['provider_policy']['freeze_spend'], 'new profile cannot run observations or incur provider spend' );
+	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $safe['profile_id'], 'control' => 'resume' ) ), 'revision_required', 'resume requires exact revision' );
+	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $safe['profile_id'], 'control' => 'unfreeze_spend' ) ), 'revision_required', 'unfreeze requires exact revision' );
+	$GLOBALS['fixture_write'] = false;
+	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $safe['profile_id'], 'control' => 'unfreeze_spend', 'expected_revision' => 1 ) ), 'unauthorized', 'profile existence cannot grant configuration authority' );
+	$GLOBALS['fixture_write'] = true;
+	$active = asi_activate_profile( $safe['profile_id'], $created['profile']['revision'] );
+	check( $active['profile']['enabled'] && ! $active['profile']['provider_policy']['freeze_spend'], 'typed unfreeze + resume explicitly activate with fresh revisions' );
+	$persisted = ok( MAD4B_SCP_Search_Context::profile( $safe['profile_id'] ), 'persist activated profile' );
+	check( $persisted['profile_sha256'] === $active['profile']['profile_sha256'], 'readback binds activation to persisted revision' );
+	$noop = array( 'profile' => array_intersect_key( $persisted, array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) ), 'expected_revision' => $persisted['revision'] );
+	ok( MAD4B_SCP_Search_Context::plan( $noop ), 'existing active historical profile is not forcibly paused by new creation policy' );
+} );
 scenario( 'profile_exact_plan_revision_and_boundary', static function () {
 	$input = array( 'profile' => asi_profile(), 'expected_revision' => 0 ); $plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'profile plan' );
 	denied( MAD4B_SCP_Search_Runtime::profile_apply( $input ), 'plan_drift', 'SHA required' );
