@@ -58,6 +58,7 @@ final class MAD4B_SCP_G6_Provider_Routing {
             if ( empty( $d['account_bound'] ) || empty( $d['consent_valid'] ) || empty( $d['runtime_certified'] ) ) $reasons[] = 'account_consent_or_certification_missing';
             if ( ! isset( $d['artifact_sha256'] ) || ! MAD4B_SCP_G6_Contracts::sha( $d['artifact_sha256'] ) ) $reasons[] = 'artifact_missing';
             if ( ! isset( $d['generation_sha256'] ) || ! MAD4B_SCP_G6_Contracts::sha( $d['generation_sha256'] ) ) $reasons[] = 'generation_missing';
+            elseif ( ! hash_equals( $binding['generation_sha256'], $d['generation_sha256'] ) ) $reasons[] = 'provider_generation_stale';
             $options[] = array(
                 'provider_ref_sha256' => MAD4B_SCP_G6_Contracts::digest( $id ),
                 'descriptor_sha256' => MAD4B_SCP_G6_Contracts::digest( $d ),

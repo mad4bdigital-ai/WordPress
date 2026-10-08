@@ -49,11 +49,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-provider-routing.php",
-      "sha256": "7d2cf6557c694de47f58a8bf63f484678e3a04a63f9b4981e7a414ba88969b66"
+      "sha256": "58ef343e4e010f06f5b39d16737e8cfcc73078b1d4d3241f4a41fa55c34c3093"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-retrieval-evaluation.php",
-      "sha256": "a66e54f17bac6232658d298e2584d3ea2c2675f8730ad4b22a800286cf345715"
+      "sha256": "c51b2e575c9066ab0142668aa81bede35e1b9efdce3af37dc10c0ed66201dc30"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
@@ -87,7 +87,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-provider-retrieval-denials.php",
-      "sha256": "f99c411acc27be7cebed787d6ae3cd528c085f1b9859851d36ede9c878afbd69"
+      "sha256": "6f1a98337e9523a5c1c4f4537263274a22cde05f40b6f495e5cd0d492e6e0e61"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",

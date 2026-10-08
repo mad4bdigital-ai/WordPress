@@ -30,6 +30,11 @@ final class MAD4B_SCP_G6_Retrieval_Evaluation {
         $minimum = isset( $request['minimum_citations'] ) ? $request['minimum_citations'] : null;
         if ( ! is_int( $minimum ) || $minimum < 1 || $minimum > 20 )
             return MAD4B_SCP_G6_Contracts::error( 'retrieval_minimum', 'Minimum citation threshold must be bounded.' );
+        // The request's generation must be verified against the current server context.
+        $binding = MAD4B_SCP_G6_Contracts::binding( $request['query_sha256'] );
+        if ( is_wp_error( $binding ) ) return $binding;
+        if ( ! hash_equals( $binding['generation_sha256'], $request['generation_sha256'] ) )
+            return MAD4B_SCP_G6_Contracts::error( 'retrieval_generation_changed', 'Retrieval evidence is bound to an obsolete runtime generation.' );
         $seen = array(); $rejections = array(); $citations = array();
         foreach ( $observations as $o ) {
             // Only exact metadata is allowed; passing snippets/instructions is a schema failure.
