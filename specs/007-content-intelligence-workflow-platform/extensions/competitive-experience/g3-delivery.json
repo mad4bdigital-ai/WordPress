@@ -69,7 +69,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "bf7bf7a08f475b612cf97d6dcff208767afb2ec593dbde692364eb7a3724bc55"
+      "sha256": "667c4f28680e50e03b895a31272e3ab6edf8468d9f873adf5e71a295a500f2af"
     }
   ],
   "test_paths": [
@@ -148,6 +148,6 @@
     "Staging disposable fixture provisioning and exact one-time canary authority; hooks/external-effect cleanup, cancellation, drift and uncertainty readback.",
     "Live pack database locking, concurrent activation/revocation, corruption, expired active state, key revocation and replay after restore; per-type interpreter/consumer integration.",
     "Relevant operator/browser/RTL journeys and independent persisted readback; no direct WordPress connection from this development window.",
-    "G4\u2013G9 and final frozen release closure remain pending before #258 is release-ready; Production remains unauthorized."
+    "G4–G9 and final frozen release closure remain pending before #258 is release-ready; Production remains unauthorized."
   ]
 }
