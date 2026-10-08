@@ -279,8 +279,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
-      "sha256": "cb3563f9fb7b9e6505cb43e52a6d8568f4beb5c28c2326f0f69fdd506cf3cf73",
-      "bytes": 17722
+      "sha256": "897590e6d58718520089d8552f3ea394504c8f5755fc6611e8502ebc89b33ba6",
+      "bytes": 17715
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",

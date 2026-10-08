@@ -178,8 +178,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php",
-      "sha256": "296963eb669e524e0b33d25fefaf81fd2e4c61a0ba4ddcc668e11efbaecf629d",
-      "bytes": 44333
+      "sha256": "3952a903f1a6cefa1a58fd09f1c9533a68d3d63efae9777a54f45969ea802471",
+      "bytes": 45514
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py",

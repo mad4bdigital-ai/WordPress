@@ -6,6 +6,64 @@ require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-supply-provenanc
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-schema-migration.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-compatibility-fuzz.php';
 
+// A successful SQL CAS does not make its fresh readback trusted. Inject an
+// executable member only after the fake SQL write, leaving admission inert.
+class G8_Post_CAS_Readback_Object {
+	public function __serialize() {
+		++$GLOBALS['g8_post_cas_serialize_calls'];
+		return array( 'unexpected' => true );
+	}
+}
+class G8_Post_CAS_Readback_DB extends G8_Test_DB {
+	public $commits = 0;
+	public $committed = null;
+	public $inject_readback = true;
+	public function query( $args ) {
+		$result = parent::query( $args );
+		if ( 1 === $result && 'mad4b_scp_g8_final_readback_ci' === $args[1] ) {
+			++$this->commits;
+			$this->committed = $GLOBALS['g8_options'][ $args[1] ];
+			if ( $this->inject_readback ) {
+				$this->inject_readback = false;
+				$GLOBALS['g8_options'][ $args[1] ]['payload']['untrusted'] = new G8_Post_CAS_Readback_Object();
+			}
+		}
+		return $result;
+	}
+}
+$readback_option = 'mad4b_scp_g8_final_readback_ci';
+$readback_before = array( 'contract' => 'mad4b.g8-readback-fixture.v1', 'revision' => 0,
+	'authorizing' => false, 'payload' => array( 'observed' => false ) );
+$readback_before['seal'] = MAD4B_SCP_G8_Record::seal( $readback_before );
+g8_check( true === MAD4B_SCP_G8_Record::replace( $readback_option, null, $readback_before ), 'readback fixture has an inert initial record' );
+$readback_next = $readback_before;
+$readback_next['revision'] = 1; $readback_next['payload']['observed'] = true;
+$readback_next['seal'] = MAD4B_SCP_G8_Record::seal( $readback_next );
+$readback_original_db = $GLOBALS['wpdb'];
+$readback_db = new G8_Post_CAS_Readback_DB();
+$GLOBALS['g8_post_cas_serialize_calls'] = 0;
+$GLOBALS['wpdb'] = $readback_db;
+try {
+	$readback_result = MAD4B_SCP_G8_Record::replace( $readback_option, $readback_before, $readback_next );
+	g8_check( g8_is_error( $readback_result, 'mad4b_g8_record_readback_uncertain' )
+		&& 0 === $GLOBALS['g8_post_cas_serialize_calls'] && 1 === $readback_db->commits
+		&& $readback_next === $readback_db->committed,
+		'unsafe fresh readback cannot serialize objects or disguise the already committed CAS as unperformed' );
+	// Remove only the injected fixture member, exposing the actual committed
+	// document. Its original prestate is stale and cannot replay the write.
+	$GLOBALS['g8_options'][ $readback_option ] = $readback_db->committed;
+	g8_check( g8_is_error( MAD4B_SCP_G8_Record::replace( $readback_option, $readback_before, $readback_next ),
+		'mad4b_g8_record_conflict' ) && 1 === $readback_db->commits, 'uncertain readback does not make the old CAS prestate replayable' );
+	$readback_later = $readback_next; $readback_later['revision'] = 2;
+	$readback_later['seal'] = MAD4B_SCP_G8_Record::seal( $readback_later );
+	g8_check( true === MAD4B_SCP_G8_Record::replace( $readback_option, $readback_next, $readback_later )
+		&& 2 === $readback_db->commits && 0 === $GLOBALS['g8_post_cas_serialize_calls'],
+		'a reconciled inert exact-prestate CAS still succeeds without serialization callbacks' );
+} finally {
+	$GLOBALS['wpdb'] = $readback_original_db;
+	unset( $GLOBALS['g8_options'][ $readback_option ] );
+}
+
 // Stub the existing verified-certification-pack contract. This proves G8
 // consumption/denial semantics; actual signature verification belongs to the
 // existing cryptographic Certification Pack CI.

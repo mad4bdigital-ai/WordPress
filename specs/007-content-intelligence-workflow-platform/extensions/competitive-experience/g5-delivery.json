@@ -65,7 +65,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-growth-evidence-runtime.php",
-      "sha256": "dc7c94a7d6253667ae26dbbf2cf828703ec55f8fa037b47658415f152eaef9a1"
+      "sha256": "3f9d727cebed9ebd66f05ff09322ede69ae942e6245cdc56dda2604bfcfd0045"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-provider-profile-contract.php",
@@ -73,7 +73,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-seo-provider-family-contract.php",
-      "sha256": "400fbd795a3a094294f3102778f4e69f254ad1b5328c897348f7e8bf64d6be0f"
+      "sha256": "264b45d730f8800b278dc696f17cea64732ca8328ef059a5433f0ca38945c836"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g5-acceptance-contract.php",

@@ -41,7 +41,14 @@ final class MAD4B_SCP_G8_Record {
 			maybe_serialize( $next ), $option, maybe_serialize( $expected )
 		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- one owned row, exact prestate CAS.
 		if ( ! $ok ) return new WP_Error( 'mad4b_g8_record_conflict', 'Atomic observation cutover lost its prestate.' );
-		return serialize( self::read( $option ) ) === serialize( $next ) ? true : new WP_Error( 'mad4b_g8_record_readback_uncertain', 'Observation cutover requires reconciliation.' );
+		$readback = self::read( $option );
+		$nodes = 0;
+		// The write already succeeded. Fresh option filters or another writer
+		// can change its readback; refuse executable data before serialization
+		// and require reconciliation rather than reporting a retryable conflict.
+		if ( ! self::plain_data( $readback, 0, $nodes ) )
+			return new WP_Error( 'mad4b_g8_record_readback_uncertain', 'Observation cutover was written, but its untrusted readback requires reconciliation.' );
+		return serialize( $readback ) === serialize( $next ) ? true : new WP_Error( 'mad4b_g8_record_readback_uncertain', 'Observation cutover requires reconciliation.' );
 	}
 
 	public static function seal( array $record ) {

@@ -12,7 +12,7 @@ function current_user_can( $capability ) { return 'manage_options' === $capabili
 function add_action( $hook, $callback, $priority = 10 ) {}
 function wp_has_ability( $name ) { return false; }
 function wp_register_ability( $name, $args ) {}
-function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $value ) ); }
+function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $value ) ); }
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-g5-seo-provider-families.php';
 

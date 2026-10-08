@@ -31,6 +31,8 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 	public $expire_during_read = false;
 	public $expire_first_in_batch = false;
 	public $delay_second_in_batch = false;
+	private $issued_expires_at;
+	public function __construct() { $this->issued_expires_at = time() + 3600; }
 	public function descriptor() {
 		return array(
 			'contract' => MAD4B_SCP_G5_External_Providers::CONTRACT,
@@ -43,7 +45,7 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 			'account_ref' => str_repeat( 'd', 64 ),
 			'tenant_ref' => str_repeat( 'e', 64 ),
 			'certified' => true,
-			'expires_at' => null === $this->certificate_expires_at ? time() + 3600 : $this->certificate_expires_at,
+			'expires_at' => null === $this->certificate_expires_at ? $this->issued_expires_at : $this->certificate_expires_at,
 			'site_uuid' => 'site-g5',
 			'required_scopes' => array( 'analytics.readonly' ),
 			'property_refs' => array( 'property-1' ),
@@ -58,7 +60,7 @@ final class MAD4B_G5_Growth_Test_Adapter implements MAD4B_SCP_G5_Stored_Observat
 	public function authorize_read( array $scope ) { return $this->consent; }
 	public function consent_status( array $scope ) {
 		return array(
-			'expires_at' => time() + 3600,
+			'expires_at' => $this->issued_expires_at,
 			'granted_scopes' => array( 'analytics.readonly' ),
 			'account_ref' => str_repeat( 'd', 64 ),
 			'property_ref' => 'property-1',

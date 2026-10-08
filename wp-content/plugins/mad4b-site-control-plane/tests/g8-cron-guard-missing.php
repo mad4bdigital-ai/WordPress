@@ -39,6 +39,7 @@ class G8_Checkpoint_Disposable_WPDB {
 $GLOBALS['wpdb'] = new G8_Checkpoint_Disposable_WPDB();
 function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\\-]/', '', (string) $v ) ); }
 function sanitize_text_field( $v ) { return trim( (string) $v ); }
+function absint( $value ) { return abs( (int) $value ); }
 function wp_get_environment_type() { return 'staging'; }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 class WP_Error {

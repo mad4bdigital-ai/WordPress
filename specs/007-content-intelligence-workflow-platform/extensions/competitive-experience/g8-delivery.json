@@ -80,8 +80,8 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-record.php",
-      "sha256": "97f2a1483ea7fec1538bb429e252624a01dc8f371a2dd97d66873bee787bc746",
-      "bytes": 6965
+      "sha256": "a5ac0c1ba78e5544344db370390ce841ef86598890392e9be3e76b5549c988e1",
+      "bytes": 7431
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-capability-convergence.php",
@@ -137,8 +137,8 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-cron-guard-missing.php",
-      "sha256": "bf06a842897e7158a2131a980edcfc824b140ee3e83b406e2c1ae90d3ed22740",
-      "bytes": 8387
+      "sha256": "38a98c465c0069871fb8a77d15aa956ab2b30424a2316b329c30832ec96101e8",
+      "bytes": 8445
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php",
@@ -162,8 +162,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-extended-runtime.php",
-      "sha256": "bae3b5e292429dba41ac0056f8fa8bd0b61614e1b96a8f7363027690a06d2ea6",
-      "bytes": 33146
+      "sha256": "ddd9a4385ec4674ae6d2ec0c1d2d683855e5e32b410a870e095a798efa92c87f",
+      "bytes": 36215
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",

@@ -139,7 +139,7 @@ $provider = $current; $provider['owners']['title'] = 'provider';
 $pplan = MAD4B_SCP_Ownership_Reconciliation::plan( $baseline, $provider, $desired, $policy, g7_binding() );
 g7_assert( 'APPROVAL_REQUIRED' === $pplan['state'], 'provider ownership change requires review' );
 $invalid_lineage = $baseline; $invalid_lineage['lineage_proof'] = 'invalid-object';
-g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $invalid_lineage, $current, $desired, $policy, g7_binding() ), 'baseline_lineage_format_invalid' );
+g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $invalid_lineage, $current, $desired, $policy, g7_binding() ), 'snapshot_lineage_invalid' );
 $missing = $baseline; unset( $missing['lineage_proof'] );
 $missing_plan = MAD4B_SCP_Ownership_Reconciliation::plan( $missing, $current, $desired, $policy, g7_binding() );
 g7_assert( 'APPROVAL_REQUIRED' === $missing_plan['state'], 'missing managed lineage blocks auto-repair' );

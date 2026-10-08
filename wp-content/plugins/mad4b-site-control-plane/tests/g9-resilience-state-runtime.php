@@ -403,6 +403,7 @@ MAD4B_SCP_Site_Profile::$revision = 1; // Return to original exact binding for r
 // UUID, transport request and authorization target deliberately remain distinct.
 function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $value ) ); }
 class MAD4B_SCP_Crypto_Profile {
+    public static $verification_fault = '';
     public static function default_profile( $purpose ) { return 'g9-hermetic-crypto'; }
     public static function sign_digest( $profile, $digest ) {
         return array( 'profile_id'=>$profile, 'kid'=>'g9-fixture',
@@ -415,17 +416,23 @@ class MAD4B_SCP_Crypto_Profile {
             || ! hash_equals( hash_hmac( 'sha256', $digest, 'hermetic-not-runtime-authority' ),
                 (string) ( $signature['signature'] ?? '' ) ) )
             return new WP_Error( 'crypto_invalid', 'Hermetic signature denied' );
-        // Mirror the real detached-signature verification contract, not
-        // merely a truthy result. The native execution verifier must continue
-        // rejecting unsigned, malformed and cross-purpose receipts.
-        return array(
+        // Return the production verifier's proof shape only after this
+        // hermetic HMAC, purpose, profile and key binding were verified.
+        $proof = array(
             'contract'=>'mad4b.detached-signature-verification.v1',
-            'valid'=>true,
-            'signed_sha256'=>$digest,
-            'profile_id'=>$signature['profile_id'],
-            'kid'=>$signature['kid'],
-            'purpose'=>'execution_receipt',
+            'valid'=>true, 'profile_id'=>$signature['profile_id'],
+            'algorithm'=>'hmac-sha256-fixture', 'kid'=>$signature['kid'],
+            'signed_sha256'=>$digest, 'purpose'=>$purpose, 'authorizing'=>false,
         );
+        // Inject malformed output after genuine mock verification so the
+        // real receipt verifier must reject contradictory/incomplete proof.
+        switch ( self::$verification_fault ) {
+            case 'false': $proof['valid'] = false; break;
+            case 'truthy-false': $proof['valid'] = 'false'; break;
+            case 'missing-digest': unset( $proof['signed_sha256'] ); break;
+            case 'foreign-purpose': $proof['purpose'] = 'unrelated_receipt'; break;
+        }
+        return $proof;
     }
 }
 class MAD4B_SCP_Operation_Journal {
@@ -562,6 +569,19 @@ g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_ve
     && $verified['native_request_id'] !== $verified['native_operation_id']
     && $verified['native_target_fingerprint'] !== $verified['operation_sha256'],
     'explicit native journal linkage verifies independent identities only' );
+
+$invalid_hmac = $native;
+$invalid_hmac['signature']['signature'] = str_repeat( '0', 64 );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $invalid_hmac ),
+    'native_signature_invalid' );
+foreach ( array( 'false', 'truthy-false', 'missing-digest', 'foreign-purpose' ) as $proof_fault ) {
+    MAD4B_SCP_Crypto_Profile::$verification_fault = $proof_fault;
+    g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+        $binding, $reserved['operation_sha256'], $operation_id, $native ),
+        'native_signature_invalid' );
+}
+MAD4B_SCP_Crypto_Profile::$verification_fault = '';
 
 foreach ( array( 'g9_operation_sha256', 'g9_plan_sha256', 'site_binding_sha256',
     'native_request_id', 'native_target_fingerprint', 'resource_set_sha256',
