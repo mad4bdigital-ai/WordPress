@@ -154,8 +154,14 @@ export function resolveSiteBrowserAdapter(caps, {
   if (providerId && !recognized.has(providerId)) fail("selected_provider_not_discovered");
   if (!providerId) {
     if (!eligible.length) fail("site_adapter_missing");
-    if (eligible.length > 1) fail("site_adapter_ambiguous");
-    providerId = eligible[0];
+    // Provider profile selection is a *declared contract*, not site-name
+    // inference. Only an explicit requested profile can disambiguate it.
+    let possible = eligible;
+    if (requestedProfile) possible = eligible.filter(id =>
+      providers.get(id).capabilities.default_profile_id === requestedProfile);
+    if (!possible.length) fail("site_adapter_profile_unmatched");
+    if (possible.length > 1) fail("site_adapter_ambiguous");
+    providerId = possible[0];
   }
   const selected = providers.get(providerId);
   const driver = candidates.get(selected.contract);
