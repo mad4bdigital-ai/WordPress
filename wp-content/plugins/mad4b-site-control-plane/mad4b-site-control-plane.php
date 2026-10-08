@@ -240,6 +240,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-planner.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-verdict-reducer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-runner.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-core.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g9-read-surface.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-request-context-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-jwt-header-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-egress-policy.php';
@@ -489,6 +490,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_Remote_Plugin_Update::boot();
 	MAD4B_SCP_Self_Update::boot();
 	MAD4B_SCP_Runtime_Release_Set::boot();
+	MAD4B_SCP_G9_Read_Surface::boot();
 	MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::boot();
 	MAD4B_SCP_Code_Snippets_Runtime_Diagnostic::boot();
 	MAD4B_SCP_Workflow_Providers::boot();

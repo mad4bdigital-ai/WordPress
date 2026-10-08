@@ -1,0 +1,66 @@
+{
+  "contract": "mad4b.feature007-g9-delivery.v1",
+  "status": "REPOSITORY_G9_GUARDED_FOUNDATION_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 288,
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "task_ids": [
+    "T4066",
+    "T4067",
+    "T4068",
+    "T4069",
+    "T4070",
+    "T4091",
+    "T4092",
+    "T4093",
+    "T4094",
+    "T4095"
+  ],
+  "task_status": "PARTIAL",
+  "code_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-context.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-anchor.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-resilience-gates.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-local-reader.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-release-fence.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-fleet-rollout.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-restore-convergence.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-read-surface.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-operational-readiness.php"
+  ],
+  "test_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php"
+  ],
+  "spec_paths": [
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-review.md",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md"
+  ],
+  "source_files_include_real_execution_adapter": false,
+  "runtime_parity_claimed": false,
+  "live_staging_acceptance": false,
+  "live_host_isolation_verified": false,
+  "native_fleet_rollback_dispatched": false,
+  "external_effect_reconciliation_verified": false,
+  "post_restore_acceptance_receipt_issued": false,
+  "all_task_done_claimed": false,
+  "production_authorized": false,
+  "new_grants_created": false,
+  "authorizing": false,
+  "remaining_acceptance": [
+    "Existing governed native executor binding and approved capability descriptor for site-local reservation; no automatic permission creation",
+    "Native executor must produce signed claim operation_id and independently verifiable terminal journal linkage to the G9 reservation; transport request ID and native target fingerprint are independent identities",
+    "Site-local provider native certification and host isolation proof; real health sample windows and effect inventory completeness",
+    "External-effect reconciliation and signed, same-cycle release/rollback and post-restore acceptance receipts",
+    "Staging fault drills on independent websites/multisite plus split-brain, clone, clock rollback, partial rollback and provider outages",
+    "CI results at final exact HEAD, predecessor G7/G8 integration, cumulative Hub proof and explicit owner/merge authorization"
+  ],
+  "native_journal_linkage_provider_implemented": false
+}
