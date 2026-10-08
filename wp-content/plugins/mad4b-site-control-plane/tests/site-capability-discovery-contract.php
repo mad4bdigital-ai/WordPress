@@ -12,6 +12,13 @@ function get_site_option( $name, $fallback = array() ) { return 'active_sitewide
 function get_post_types( $args = array(), $output = 'names' ) { return $GLOBALS['site_post_types']; }
 function get_taxonomies( $args = array(), $output = 'names' ) { return $GLOBALS['site_taxonomies']; }
 function wp_json_encode( $input ) { return json_encode( $input ); }
+$GLOBALS['site_theme_version'] = '1.0.0';
+class SiteBrowserTestTheme {
+  public function get_stylesheet() { return 'test-theme'; }
+  public function get( $field ) { return 'Version' === $field ? $GLOBALS['site_theme_version'] : ''; }
+  public function parent() { return false; }
+}
+function wp_get_theme() { return new SiteBrowserTestTheme(); }
 define( 'WP_PLUGIN_DIR', __DIR__ . '/fixture-plugin-dir' );
 $GLOBALS['site_plugin_versions'] = array();
 function get_file_data( $file, $headers, $context = '' ) {
@@ -42,6 +49,14 @@ expect_site( $observed['unmapped_plugins'] === array( 'unknown-widget' ), 'unkno
 expect_site( in_array( 'tour', $observed['post_types'], true ) && in_array( 'tour_type', $observed['taxonomies'], true ), 'runtime post types and taxonomies observed' );
 expect_site( strlen( $observed['snapshot_sha256'] ) === 64, 'fingerprint' );
 expect_site( $observed['plugin_versions_complete'] === true && count( $observed['plugin_versions'] ) === 2, 'active plugin versions observed without activation' );
+expect_site( $observed['theme_version_complete'] === true && $observed['theme']['stylesheet'] === 'test-theme', 'theme metadata captured' );
+$GLOBALS['site_theme_version'] = '1.1.0';
+$theme_changed = $c::observe( 'https://staging.egypttourgates.com', $providers );
+expect_site( $theme_changed['snapshot_sha256'] !== $observed['snapshot_sha256'], 'theme-only update invalidates snapshot' );
+$GLOBALS['site_theme_version'] = '';
+$theme_unknown = $c::observe( 'https://staging.egypttourgates.com', $providers );
+expect_site( ! $theme_unknown['discovery_complete'] && in_array( 'theme_version_evidence_unavailable', $theme_unknown['blocking_reasons'], true ), 'theme without version cannot authorize browser plan' );
+$GLOBALS['site_theme_version'] = '1.0.0';
 $GLOBALS['site_plugin_versions']['etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php'] = '2.0.0';
 $upgrade = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( $upgrade['snapshot_sha256'] !== $observed['snapshot_sha256'], 'same slug with upgraded plugin invalidates snapshot' );
