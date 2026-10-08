@@ -89,9 +89,13 @@ final class MAD4B_SCP_G9_Read_Surface {
                     ),
                 ),
             ) );
-            if ( is_wp_error( $registered ) || false === $registered )
+            // Third-party registries and WordPress API adapters may return a
+            // truthy/non-error result without having retained the Ability.
+            // Never authorize an incomplete registration on such a readback.
+            if ( is_wp_error( $registered ) || false === $registered
+                || null === $registered || ! wp_has_ability( $ability ) )
                 return new WP_Error( 'mad4b_g9_ability_registration_failed',
-                    'The code-owned read Ability could not be registered.' );
+                    'The code-owned read Ability could not be confirmed after registration.' );
         }
         self::$abilities_registered = true;
         return true;

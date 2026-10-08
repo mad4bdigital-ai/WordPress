@@ -140,3 +140,7 @@ In addition to the read-only site observation, `G9_Operational_Readiness::status
 ## Additional closed diagnostic objections
 
 O29–O32 in `g9-adversarial-closure.md` cover operator-facing anchor corruption, per-record/provider evidence truth, idempotent boot error preservation and foreign Ability namespace collision. Each has a hermetic source negative path and is still unverified at exact-head CI until queued runners complete.
+
+## Registration readback hardening (2026-10-08)
+
+G9 WordPress Ability registration now refuses null/false/WP_Error results **and** independently requires `wp_has_ability(name)` immediately after each apparent registration success. The three-Ability group remains permission-denied until all registrations have been verified, preventing a partial registry from becoming callable. A separate hermetic mid-registration failure test was added to the PHP 7.4/8.3 workflow; exact-head Actions execution is still unconfirmed.
