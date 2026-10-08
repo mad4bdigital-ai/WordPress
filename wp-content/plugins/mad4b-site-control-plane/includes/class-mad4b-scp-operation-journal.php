@@ -16,6 +16,14 @@ final class MAD4B_SCP_Operation_Journal {
 		global $wpdb;
 		$valid = self::validate_context( $context );
 		if ( is_wp_error( $valid ) ) return $valid;
+		// Fail before the non-transactional head insert when the genesis event
+		// cannot safely be serialized. An orphan sequence-zero head would refuse
+		// later begins and require explicit reconciliation.
+		$safe_genesis = self::safe_metadata( $metadata );
+		if ( is_wp_error( $safe_genesis ) ) return $safe_genesis;
+		if ( ! is_string( wp_json_encode( $safe_genesis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ) ) {
+			return new WP_Error( 'mad4b_operation_metadata_encode_failed', 'Operation metadata could not be encoded.' );
+		}
 		$transaction_preflight = MAD4B_SCP_Database_Transaction_Guard::preflight( array( 'operation_heads', 'operation_events' ), true );
 		if ( is_wp_error( $transaction_preflight ) ) return $transaction_preflight;
 		$t = MAD4B_SCP_Schema::tables();

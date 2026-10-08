@@ -113,6 +113,13 @@ assert_journal( 'unrelated producers without opt-in CAS retain contract', is_arr
     && 3 === $legacy['sequence'] && 2 === $wpdb->inserted );
 $wpdb = new FixtureJournalDB();
 $new_ctx = $context; $new_ctx['operation_id'] = '02f421a9-ad22-49ce-b1bc-d347122168c2';
+$oversized_genesis = array();
+for ( $i = 0; $i < 80; $i++ ) $oversized_genesis['case_' . $i] = str_repeat( 'x', 400 );
+$blocked_genesis = MAD4B_SCP_Operation_Journal::begin( $new_ctx, 'planned', $oversized_genesis );
+assert_journal( 'oversized genesis metadata refuses before orphan head insertion',
+    is_wp_error( $blocked_genesis )
+    && 'mad4b_operation_metadata_too_large' === $blocked_genesis->get_error_code()
+    && null === $wpdb->head && 0 === $wpdb->inserted && 0 === $wpdb->updated );
 $first = MAD4B_SCP_Operation_Journal::begin( $new_ctx, 'planned', array( 'ticket' => 'proposal' ) );
 assert_journal( 'first journal begin creates exactly one genesis', is_array( $first )
     && 1 === $first['sequence'] && 1 === $wpdb->inserted
