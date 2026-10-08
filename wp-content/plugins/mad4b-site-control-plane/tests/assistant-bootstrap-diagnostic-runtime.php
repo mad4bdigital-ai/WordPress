@@ -21,8 +21,25 @@ class MAD4B_SCP_Adaptive_Operations_Context {
 }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php';
 function check_case( $name, $test ) { if ( ! $test ) { fwrite( STDERR, 'FAIL ' . $name . PHP_EOL ); exit( 1 ); } echo 'PASS ' . $name . PHP_EOL; }
+class MAD4B_SCP_Adapter_Base {
+    public function id() { return ''; }
+    public function label() { return ''; }
+}
+class BootstrapAdapterRegistryFixture {
+    public $adapters = array();
+    public function register( $adapter ) { $this->adapters[ $adapter->id() ] = $adapter; return true; }
+}
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
 check_case( 'hook bound', isset( $GLOBALS['hooks']['wp_abilities_api_init'] ) );
+check_case( 'bootstrap adapter lifecycle attached', isset( $GLOBALS['hooks']['mad4b_scp_register_adapters'] ) );
+$registry = new BootstrapAdapterRegistryFixture();
+call_user_func( $GLOBALS['hooks']['mad4b_scp_register_adapters'], $registry );
+check_case( 'bootstrap adapter discoverable', isset( $registry->adapters['assistant-bootstrap'] ) );
+check_case( 'bootstrap exposes only governed read ability',
+    $registry->adapters['assistant-bootstrap']->ability_names() === array(
+        'read' => array( 'mad4b/assistant-bootstrap-diagnostic' ),
+        'content' => array(), 'admin' => array() ) );
+
 call_user_func( $GLOBALS['hooks']['wp_abilities_api_init'] );
 $schema = $GLOBALS['abilities']['mad4b/assistant-bootstrap-diagnostic'] ?? array();
 check_case( 'read only tool registered', ( $schema['meta']['annotations']['readonly'] ?? null ) === true );
