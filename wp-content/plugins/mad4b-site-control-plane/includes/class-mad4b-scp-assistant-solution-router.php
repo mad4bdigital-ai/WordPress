@@ -47,6 +47,14 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                     'related_terms' => array( 'type' => 'array', 'maxItems' => 12,
                         'items' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 80 ) ),
                     'limit_per_gap' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
+                    'external_hints' => array( 'type' => 'array', 'maxItems' => 24,
+                        'items' => array( 'type' => 'object', 'required' => array( 'id', 'label', 'source' ),
+                            'properties' => array(
+                                'id' => array( 'type' => 'string' ),
+                                'label' => array( 'type' => 'string' ),
+                                'source' => array( 'type' => 'string' ),
+                                'description' => array( 'type' => 'string' ),
+                            ), 'additionalProperties' => false ) ),
                 ), 'additionalProperties' => false ),
             'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
             'meta' => array( 'public' => false, 'show_in_rest' => false,
@@ -65,7 +73,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
         if ( ! is_array( $input ) || ! is_array( $input['planning_input'] ?? null ) )
             return self::fail( 'input_invalid' );
         foreach ( $input as $key => $value )
-            if ( ! in_array( $key, array( 'planning_input', 'related_terms', 'limit_per_gap' ), true ) )
+            if ( ! in_array( $key, array( 'planning_input', 'related_terms', 'limit_per_gap', 'external_hints' ), true ) )
                 return self::fail( 'input_invalid' );
         $limit = $input['limit_per_gap'] ?? 8;
         if ( ! is_int( $limit ) || $limit < 1 || $limit > 12 ) return self::fail( 'budget_invalid' );
@@ -76,6 +84,12 @@ final class MAD4B_SCP_Assistant_Solution_Router {
         foreach ( $related as $term ) if ( ! is_string( $term ) || strlen( $term ) > 320
             || ! preg_match( '/^[\\p{L}\\p{N}][\\p{L}\\p{N} ._-]{2,79}$/uD', $term ) )
             return self::fail( 'terms_invalid' );
+        $external = $input['external_hints'] ?? array();
+        if ( ! is_array( $external ) || count( $external ) > 24 ||
+            ( $external && array_keys( $external ) !== range( 0, count( $external ) - 1 ) ) )
+            return self::fail( 'external_hints_invalid' );
+        // Unknown external data is checked by Solution_Discovery::discover
+        // against the same bounded schema as local source-only discovery.
         if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) )
             return self::fail( 'permission_denied' );
         if ( ! class_exists( 'MAD4B_SCP_Assistant_Planning', false )
@@ -107,7 +121,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                 'expected_profile_digest' => $binding['profile_digest'],
                 'expected_runtime_generation' => $binding['runtime_generation'],
                 'intent' => str_replace( array( '.', '_', '-' ), ' ', $capability ),
-                'related_terms' => $related, 'limit' => $limit ), $inventory, $binding );
+                'related_terms' => $related, 'external_hints' => $external, 'limit' => $limit ), $inventory, $binding );
             if ( is_wp_error( $result ) ) return $result;
             $tasks[] = array( 'task_id' => $task['task_id'], 'capability' => $capability,
                 'planner_decision' => $decision, 'total_matches' => $result['total_matches'],
