@@ -52,4 +52,20 @@ mad4b_g5_seo_assert( in_array( 'no_signal_direct_mutation', $plan['required_gate
 $unknown = MAD4B_SCP_G5_SEO_Provider_Families::readiness( array( 'provider_id' => 'made-up-seo' ) );
 mad4b_g5_seo_assert( is_wp_error( $unknown ) && 'mad4b_g5_seo_provider_unknown' === $unknown->get_error_code(), 'unknown SEO provider must fail closed' );
 
+// Unsupported caller shapes must return a typed denial rather than invoke
+// WordPress sanitizers on arrays or silently canonicalize foreign field IDs.
+foreach ( array(
+	array( 'method' => 'readiness', 'input' => array( 'provider_id' => array( 'rank-math' ) ), 'code' => 'mad4b_g5_seo_input_invalid' ),
+	array( 'method' => 'plan', 'input' => array( 'provider_id' => array( 'rank-math' ), 'surface_kind' => 'post', 'field_ids' => array( 'title' ) ), 'code' => 'mad4b_g5_seo_input_invalid' ),
+	array( 'method' => 'plan', 'input' => array( 'provider_id' => 'rank-math', 'surface_kind' => array( 'post' ), 'field_ids' => array( 'title' ) ), 'code' => 'mad4b_g5_seo_input_invalid' ),
+	array( 'method' => 'plan', 'input' => array( 'provider_id' => 'rank-math', 'surface_kind' => 'post', 'field_ids' => array( array( 'title' ) ) ), 'code' => 'mad4b_g5_seo_field_scope_invalid' ),
+	array( 'method' => 'plan', 'input' => array( 'provider_id' => 'rank-math', 'surface_kind' => 'post', 'field_ids' => array( 'title', 'title' ) ), 'code' => 'mad4b_g5_seo_field_scope_invalid' ),
+	array( 'method' => 'plan', 'input' => array( 'provider_id' => 'rank-math', 'surface_kind' => 'post', 'field_ids' => array( 'TITLE' ) ), 'code' => 'mad4b_g5_seo_field_scope_invalid' ),
+	array( 'method' => 'plan', 'input' => array( 'provider_id' => 'rank-math', 'surface_kind' => 'post', 'field_ids' => array( 'title' ), 'language' => array( 'en' ) ), 'code' => 'mad4b_g5_seo_input_invalid' ),
+	array( 'method' => 'plan', 'input' => array( 'provider_id' => 'rank-math', 'surface_kind' => 'post', 'field_ids' => array( 'title' ), 'rendered_surface_ref' => array( '/post/' ) ), 'code' => 'mad4b_g5_seo_input_invalid' ),
+) as $case ) {
+	$denied = MAD4B_SCP_G5_SEO_Provider_Families::{$case['method']}( $case['input'] );
+	mad4b_g5_seo_assert( is_wp_error( $denied ) && $case['code'] === $denied->get_error_code(), 'invalid SEO caller shape must be denied: ' . $case['code'] );
+}
+
 echo "mad4b.feature007-g5-seo-provider-family.v1: PASS\n";
