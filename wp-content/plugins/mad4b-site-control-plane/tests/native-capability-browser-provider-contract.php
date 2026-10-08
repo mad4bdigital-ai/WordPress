@@ -18,6 +18,7 @@ $GLOBALS['native_build'] = array(
     'build_fingerprint' => str_repeat( 'b', 64 )
 );
 $GLOBALS['native_path'] = '/public/';
+$GLOBALS['native_prefix'] = '';
 $GLOBALS['native_revision'] = str_repeat( 'c', 32 );
 class MAD4B_SCP_Live_Acceptance_Observer {
     public static function build_provenance_status() { return $GLOBALS['native_build']; }
@@ -32,7 +33,7 @@ class MAD4B_SCP_Browser_Acceptance_Admin_UI {
         return array( 'preference_valid' => true, 'configuration_revision' => $GLOBALS['native_revision'] );
     }
 }
-function home_url( $path = '/' ) { return 'https://demo.example' . $path; }
+function home_url( $path = '/' ) { return 'https://demo.example' . $GLOBALS['native_prefix'] . $path; }
 function wp_salt( $scheme = '' ) { return str_repeat( 'native-secret-', 5 ); }
 function get_posts( $args ) {
     native_expect( $args['post_type'] === 'page' && $args['post_status'] === 'publish',
@@ -46,8 +47,8 @@ function get_posts( $args ) {
             'post_password' => '' )
     );
 }
-function get_permalink( $id ) { return 'https://demo.example' . $GLOBALS['native_path']; }
-function wp_get_canonical_url( $id ) { return 'https://demo.example' . $GLOBALS['native_path']; }
+function get_permalink( $id ) { return 'https://demo.example' . $GLOBALS['native_prefix'] . $GLOBALS['native_path']; }
+function wp_get_canonical_url( $id ) { return 'https://demo.example' . $GLOBALS['native_prefix'] . $GLOBALS['native_path']; }
 
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-native-capability-browser-provider.php';
 $c = 'MAD4B_SCP_Native_Capability_Browser_Provider';
@@ -129,4 +130,11 @@ $GLOBALS['native_build']['runtime_manifest_match'] = true;
 native_expect( $c::plan( array( 'profile_id' => 'wrong-profile', 'suite' => 'browser_runtime' ) )['state'] === 'blocked',
     'unknown profile denied' );
 
+$GLOBALS['native_prefix'] = '/travel';
+$nested = $c::plan( array( 'profile_id' => $c::PROFILE, 'suite' => 'browser_runtime' ) );
+native_expect( $nested['state'] === 'ready' &&
+  $nested['origin'] === 'https://demo.example/travel/' &&
+  $nested['cases'][0]['page_path'] === '/travel/public/',
+  'nested WordPress installation keeps canonical observation inside site scope' );
+$GLOBALS['native_prefix'] = '';
 echo "MAD4B_NATIVE_CAPABILITY_BROWSER_PROVIDER: PASS\n";
