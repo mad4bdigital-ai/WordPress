@@ -135,9 +135,9 @@ final class MAD4B_SCP_G9_Resilience_Gates {
             || ( $target['binding_sha256'] ?? '' ) !== $observation['binding_sha256']
             || ( $target['baseline_snapshot_sha256'] ?? '' ) !== $observation['snapshot_sha256'] )
             return self::deny( 'stale_cohort', 'Cohort does not bind the exact current local site and generation.' );
-        if ( empty( $observation['worker_current'] ) || empty( $observation['restore_bound'] )
+        if ( true !== ( $observation['worker_current'] ?? null ) || true !== ( $observation['restore_bound'] ?? null )
             || ! empty( $observation['identity_blockers'] )
-            || empty( $observation['authority']['eligible'] )
+            || true !== ( $observation['authority']['eligible'] ?? null )
             || ! MAD4B_SCP_Resilience_Context::is_hash( $observation['authority']['grant_snapshot_sha256'] ?? '' ) )
             return self::deny( 'local_authority_unready', 'Current site identity, authority or restore binding is unready.' );
         // All completeness flags belong to the pinned code-owned observer.
@@ -159,13 +159,13 @@ final class MAD4B_SCP_G9_Resilience_Gates {
         $site_key = MAD4B_SCP_Resilience_Context::site_key( $binding );
         foreach ( $observation['providers'] as $provider ) {
             if ( ! is_array( $provider )
-                || empty( $provider['ready'] ) || ! empty( $provider['revoked'] )
+                || true !== ( $provider['ready'] ?? null ) || false !== ( $provider['revoked'] ?? null )
                 || ( $provider['site_key'] ?? '' ) !== $site_key
                 || ( $provider['generation_sha256'] ?? '' ) !== $binding['runtime_generation_sha256']
                 || ! MAD4B_SCP_Resilience_Context::is_hash( $provider['certification_sha256'] ?? '' ) )
                 return self::deny( 'provider_revoked_or_foreign', 'A provider is unready, revoked, stale or belongs to another site.' );
         }
-        if ( empty( $observation['host']['isolation_verified'] ) || empty( $observation['host']['local_readback_verified'] ) )
+        if ( true !== ( $observation['host']['isolation_verified'] ?? null ) || true !== ( $observation['host']['local_readback_verified'] ?? null ) )
             return self::deny( 'host_isolation_unknown', 'Pilot requires independently verified local host isolation and readback.' );
         // flock on a file is NOT a distributed lease when different PHP hosts
         // use separate disks. No shared/quorum fence is implemented here.
@@ -183,7 +183,7 @@ final class MAD4B_SCP_G9_Resilience_Gates {
         }
         if ( 'pilot' !== $target['ring']
             && ( ! MAD4B_SCP_Resilience_Context::is_hash( $target['prior_ring_receipt_sha256'] ?? '' )
-                || empty( $observation['gates']['prior_ring_health_accepted'] ) ) )
+                || true !== ( $observation['gates']['prior_ring_health_accepted'] ?? null ) ) )
             return self::deny( 'prior_ring_missing', 'Wider rings require evidence from an already accepted prior ring.' );
         $health = $observation['health'] ?? array();
         if ( ! is_int( $health['observed_at'] ?? null )
