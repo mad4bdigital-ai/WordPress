@@ -185,6 +185,7 @@ g8_check( 'error_budget_cooldown' === $cooldown['reason'] && 'site' === $cooldow
 $option = MAD4B_SCP_Automation_SLO::OPTION;
 $old_metrics = $GLOBALS['g8_options'][ $option ];
 $broken = $old_metrics; $broken['eligible_workload_count'] = 'invalid';
+$broken['seal'] = MAD4B_SCP_G8_Record::seal( $broken ); // Even a valid MAC cannot excuse invalid schema.
 $GLOBALS['g8_options'][ $option ] = $broken;
 $lost = MAD4B_SCP_Automation_SLO::admission( 'fresh-provider', 'probe' );
 g8_check( 'mad4b_automation_metrics_lost' === $lost['reason'], 'telemetry tampering must fail closed' );
