@@ -169,10 +169,14 @@ final class MAD4B_SCP_Solution_Discovery {
             } catch ( Throwable $failure ) { /* Coverage stays incomplete. */ }
         }
         if ( ! is_array( $plugins ) ) $plugins = array();
-        $plugins = array_filter( $plugins, 'is_array' );
+        // Do not discard malformed rows before validating completeness.
         ksort( $plugins, SORT_STRING );
-        $active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
-        if ( ! is_array( $active ) ) $active = array();
+        $active = array();
+        if ( function_exists( 'get_option' ) ) {
+            try { $active = get_option( 'active_plugins', array() ); }
+            catch ( Throwable $failure ) { $plugin_complete = false; }
+        }
+        if ( ! is_array( $active ) ) { $active = array(); $plugin_complete = false; }
         $count = 0;
         foreach ( $plugins as $file => $data ) {
             if ( ++$count > 240 ) { $plugin_complete = false; break; }
@@ -250,10 +254,14 @@ final class MAD4B_SCP_Solution_Discovery {
                 }
             }
         }
+        // Cap-check the snapshot based on actual discovered sources, never on
+        // the number of candidates surviving keyword matching.
+        if ( count( $rows ) > 744 ) $alternate_complete = false;
         return array( 'rows' => $rows,
-            'plugin_inventory_scope' => $plugin_complete ? 'installed_plugins' : 'active_only_fallback',
+            'plugin_inventory_scope' => $plugin_complete ? 'installed_plugins' : 'partial_or_active_fallback',
             'ability_visibility_scope' => 'show_in_rest_only',
             'plugin_inventory_complete' => $plugin_complete && count( $plugins ) <= 240,
+            'inventory_rows_observed' => count( $rows ),
             'extension_inventory_complete' => $alternate_complete,
             'ability_inventory_complete' => $ability_complete && ( ! isset( $abilities ) || count( $abilities ) <= 240 ) );
     }
