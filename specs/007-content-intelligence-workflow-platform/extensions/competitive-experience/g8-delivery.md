@@ -285,3 +285,35 @@ an effect already executing inside a long-running call; later handoffs stop
 and uncertain outcomes require governed reconciliation. Live Staging/browser,
 provider signatures, host/DB fault certification and release approval remain
 separate acceptance gates. No authority expansion, live call or merge occurs.
+
+## Adversarial acceptance review — 2026-10-08 (post-Hub reconciliation)
+
+This ledger starts with the objection that source-level guards and signed
+records are **not operational proof**. Every claim needs a separately checkable
+positive or negative witness. The current PR remains Draft, and all following
+code/fixture remedies remain **CI-unverified** until the latest exact SHA is
+successfully executed on actual GitHub runners.
+
+| Adversarial objection | Source remedy + negative witness | Closure |
+|---|---|---|
+| A queued Cron task ignores a terminal/manual/paused checkpoint. | Cron admission and read-only operator gate require explicitly schedulable states; PHP fixtures exercise blocked, completed, paused, manual and restart-wait deliveries. | Source fixed; exact-head CI and Staging pending |
+| An already-admitted worker ignores a subsequent owner pause. | Before each automatic mutation boundary, live ticket, Kill Switch, generation and checkpoint are re-read. Completed checkpoint metadata can only be finished by its ticket hash/generation. | Source fixed; concurrency acceptance pending |
+| Owner changes are overwritten by stale Cron failure/ retry metadata. | New exact SQL `BINARY option_value` CAS validates the **original** checkpoint prestate. Post-worker disposition rereads schedulability; rejected CAS never schedules a retry. Safe-phase completion and yielded continuation now use the same conditional write. Simulated concurrent owner block is asserted. | Source fixed; real two-process Staging checkpoint race pending |
+| A malicious PHP `__serialize` is called during data validation. | G8 record digest, HMAC, CAS, SLO ticket admission/settlement and causal receipt require inert bounded trees before serialization. Negative regression injects an executable object. | Source fixed; PHP 7.4/8.3 matrix pending |
+| A re-sealed outcome ledger hides missing or altered results. | The last retained sequence must match the completed total; retained sequence is contiguous and exactly length-bound. Every receipt is checked for canonical shape, bounded operation identity, outcome enum, epoch, duration, time and causal reference. Counts must agree with global totals. | Source fixed; CI pending |
+| A ready Managed Skills provider is falsely credited to a specific worker. | Readiness transition alone now records `handoff`, **not** `verified_repair`. The latter remains unavailable until exact ticket-bound, independently persisted postcondition evidence exists. | False attribution blocked; genuine causal measurement still pending |
+| Local HMAC proves an external side effect was compensated. | Never claimed. Native cryptographic receipts are verified separately, and G8 external inventory remains untrusted until independent provider readback and G9 governed release acceptance. | External-effects and G9 acceptance pending |
+| SLO latency is displayed with fictitious subsecond precision. | Wall-clock timing is explicitly labelled as a one-second-resolution estimate; false-repair, quarantine, rollback and cost rates remain null without actual evidence. | Label corrected; high-fidelity metrics pending |
+| Database CAS fixture accidentally targets a real customer database. | Two-worker MySQL/MariaDB harness requires disposable opt-in and fixed loopback/database/credential identity; negative job asserts an incorrect database exits before connection. | Source configured; CI not completed |
+| Hub updates silently overwrite G8 safety fences. | Two-parent non-force merge preserves both histories; shared Adaptive Runtime code retains G8 exact SLO handoffs, Hub terminal/freshness/core-probe logic and both test groups. | GitHub reports mergeable; cumulative CI pending |
+| Source tests are equivalent to release acceptance. | False. Release requires exact-head PHP/MySQL/MariaDB tests, real enrolled Staging DB/host fault injection, independent provider-effect reconciliation, current browser acceptance and explicit governed owner approval. | **OPEN — must not promote** |
+
+### Operator go/no-go rule
+
+`GO` is permitted only when a non-Draft child is backed by final-head green
+required CI, exact Hub-base readback, independently verified Staging runtime
+and external effects, successful host/rollback/browser acceptance, G9 fence
+and explicit governed approval at the bound SHA. None of these can be
+synthesized from a local HMAC, a passing unit test or `mergeable=true`.
+`NO-GO` is mandatory whenever any evidence class is unknown, queued,
+stale, expired, mismatched or deliberately not collected.
