@@ -78,6 +78,32 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			// and exact post-apply readback.
 			$raw['enabled'] = $current_enabled;
 			$raw['provider_policy']['freeze_spend'] = $current_freeze_spend;
+		} elseif ( 'edit_guided' === $input['operation'] ) {
+			if ( 0 === $revision || '' === $input['profile_id'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			foreach ( array( 'audience_country', 'audience_languages', 'audience_devices', 'objective' ) as $field ) {
+				if ( ! isset( $input[ $field ] ) || ! is_string( $input[ $field ] ) || strlen( $input[ $field ] ) > 2048 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			}
+			$current = MAD4B_SCP_Search_Context::profile( $input['profile_id'] );
+			if ( is_wp_error( $current ) ) return $current;
+			$policy = MAD4B_SCP_Search_Context::policy();
+			if ( is_wp_error( $policy ) ) return $policy;
+			$raw = array_intersect_key( $current, array_flip( $policy['profile_fields'] ) );
+			if ( ! isset( $raw['markets'][0] ) || ! is_array( $raw['markets'][0] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$country = strtoupper( trim( $input['audience_country'] ) );
+			if ( ! preg_match( '/^[A-Z]{2}$/D', $country ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			// A country change must not carry stale provider-specific geo mappings.
+			if ( $country !== $raw['markets'][0]['country'] && ! empty( $raw['markets'][0]['provider_locations'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_location_review_required' );
+			$languages = self::list_input( $input['audience_languages'] );
+			$devices = self::list_input( $input['audience_devices'] );
+			if ( is_wp_error( $languages ) || is_wp_error( $devices ) || ! $languages || ! $devices || count( $languages ) > 64 || array_diff( $devices, array( 'desktop', 'mobile', 'tablet' ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$objective = trim( $input['objective'] );
+			if ( '' === $objective || strlen( $objective ) > 256 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$raw['markets'][0]['country'] = $country;
+			$raw['language_policy']['desired'] = $languages;
+			$raw['provider_policy']['devices'] = $devices;
+			$raw['objective'] = $objective;
+			$raw['enabled'] = ! empty( $current['enabled'] );
+			$raw['provider_policy']['freeze_spend'] = ! empty( $current['provider_policy']['freeze_spend'] );
 		} else return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 		$args = array( 'profile' => $raw, 'expected_revision' => $revision );
 		$plan = MAD4B_SCP_Search_Runtime::profile_plan( $args );
@@ -137,12 +163,26 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			self::runtime_control_form( $id, $p['revision'], ! empty( $p['provider_policy']['freeze_spend'] ) ? 'unfreeze_spend' : 'freeze_spend', ! empty( $p['provider_policy']['freeze_spend'] ) ? 'Unfreeze provider spend' : 'Freeze provider spend' );
 			echo '</div>';
 			$policy = MAD4B_SCP_Search_Context::policy(); $raw = array_intersect_key( $p, array_flip( $policy['profile_fields'] ) );
+			self::render_guided_edit_form( $p );
 			echo '<details><summary>Edit selected profile policy</summary><p>Markets, provider location mappings, language and budget policies are independent of Site Profile. Observation enablement and spend freeze state cannot be changed through this JSON editor.</p>';
 			self::form_start( 'edit', $id, $p['revision'] );
 			echo '<label for="mad4b-search-profile-json">Profile policy JSON</label><textarea id="mad4b-search-profile-json" name="profile_json" rows="20" class="large-text code">' . esc_textarea( wp_json_encode( $raw, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ) . '</textarea><button class="button button-primary">Save and verify profile</button></form></details>';
 		}
 		self::render_guided_create_form( $profiles );
 		echo '</section>';
+	}
+
+	/** Business-safe edit; advanced profile policies remain unchanged. */
+	private static function render_guided_edit_form( array $p ) {
+		if ( empty( $p['markets'][0]['country'] ) || empty( $p['profile_id'] ) ) return;
+		echo '<details><summary>Edit audience settings (guided)</summary>';
+		echo '<p class="description">Update the first audience market, languages, devices and objective. Other markets, budget and runtime states remain unchanged. Existing geographic provider mappings require separate review before country changes.</p>';
+		self::form_start( 'edit_guided', $p['profile_id'], $p['revision'] );
+		echo '<p><label for="mad4b-search-edit-country">Audience country</label><br><input id="mad4b-search-edit-country" name="audience_country" value="' . esc_attr( $p['markets'][0]['country'] ) . '" maxlength="2" pattern="[A-Za-z]{2}" required></p>';
+		echo '<p><label for="mad4b-search-edit-languages">Audience languages (comma-separated)</label><br><input id="mad4b-search-edit-languages" name="audience_languages" value="' . esc_attr( implode( ', ', $p['language_policy']['desired'] ) ) . '" maxlength="2048" required></p>';
+		echo '<p><label for="mad4b-search-edit-devices">Devices (desktop, mobile, tablet)</label><br><input id="mad4b-search-edit-devices" name="audience_devices" value="' . esc_attr( implode( ', ', $p['provider_policy']['devices'] ) ) . '" maxlength="128" required></p>';
+		echo '<p><label for="mad4b-search-edit-objective">Business objective</label><br><input id="mad4b-search-edit-objective" name="objective" value="' . esc_attr( $p['objective'] ) . '" maxlength="256" required></p>';
+		echo '<p><button class="button button-primary">Save audience settings and verify</button></p></form></details>';
 	}
 
 	private static function render_guided_create_form( array $profiles ) {
@@ -256,7 +296,7 @@ final class MAD4B_SCP_Search_Profile_Admin {
 
 	private static function form_start( $operation, $id, $revision ) {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '"><input type="hidden" name="operation" value="' . esc_attr( $operation ) . '"><input type="hidden" name="expected_revision" value="' . esc_attr( (string) $revision ) . '">';
-		if ( 'edit' === $operation ) echo '<input type="hidden" name="profile_id" value="' . esc_attr( $id ) . '">';
+		if ( 'edit' === $operation || 'edit_guided' === $operation ) echo '<input type="hidden" name="profile_id" value="' . esc_attr( $id ) . '">';
 		wp_nonce_field( self::ACTION );
 	}
 }
