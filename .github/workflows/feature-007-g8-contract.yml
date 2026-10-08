@@ -45,6 +45,7 @@ jobs:
           php "$PLUGIN/tests/g8-cron-generation-guard.php"
           php -l "$PLUGIN/tests/g8-cron-guard-missing.php"
           php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_THROWING_SLO=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-g8-supply-provenance.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-g8-schema-migration.php"
           php -l "$PLUGIN/includes/class-mad4b-scp-g8-restore-convergence.php"
