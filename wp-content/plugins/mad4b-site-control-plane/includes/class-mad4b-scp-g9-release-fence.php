@@ -172,6 +172,21 @@ final class MAD4B_SCP_G9_Release_Fence {
                 // Recheck the authoritative grant and candidate binding after
                 // acquiring the external lock. If an administrator revoked a
                 // permission in the admission-to-CAS window, do not reserve.
+                // A plugin deployment or restore can occur AFTER the preview
+                // and first grant admission. Re-assert the code-owned worker
+                // generation and exact restore epoch under the external CAS
+                // lock, before any durable reservation is published.
+                $generation = MAD4B_SCP_Runtime_Generation_Fence::assert_current( array(
+                    'contract' => MAD4B_SCP_Runtime_Generation_Fence::CONTRACT,
+                    'generation_sha256' => $observed['binding']['runtime_generation_sha256'],
+                ) );
+                if ( is_wp_error( $generation ) || ! is_array( $generation ) || empty( $generation['ready'] ) )
+                    return self::blocked( 'generation_changed_before_cas', 'Runtime generation changed during rollout admission.' );
+                $epoch = MAD4B_SCP_Restore_Epoch::status( false, true );
+                if ( ! is_array( $epoch ) || empty( $epoch['ready'] )
+                    || ( $epoch['epoch'] ?? null ) !== $observed['binding']['restore_epoch']
+                    || ( $epoch['external_record_sha256'] ?? '' ) !== $observed['binding']['external_record_sha256'] )
+                    return self::blocked( 'restore_changed_before_cas', 'Current restore epoch or external record changed before reservation.' );
                 $fresh = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
                 if ( ! is_array( $fresh ) || empty( $fresh['ready'] )
                     || empty( $fresh['current_grant_snapshot_ready'] )

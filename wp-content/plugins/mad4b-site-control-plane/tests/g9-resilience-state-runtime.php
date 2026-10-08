@@ -44,6 +44,15 @@ class MAD4B_SCP_Site_Profile {
     public static function nonproduction_governed() { return true; }
 }
 class MAD4B_SCP_Runtime_Generation_Fence {
+    const CONTRACT = 'mad4b.runtime-generation-fence.v1';
+    public static $revoked = false;
+    public static function assert_current( array $expected ) {
+        $status = self::status();
+        if ( self::$revoked || ( $expected['contract'] ?? '' ) !== self::CONTRACT
+            || ( $expected['generation_sha256'] ?? '' ) !== $status['generation_sha256'] )
+            return new WP_Error( 'generation_changed', 'generation drift' );
+        return $status;
+    }
     public static function status() {
         return array(
             'ready' => true, 'generation_sha256' => hash( 'sha256', 'generation' ),
@@ -81,8 +90,11 @@ class MAD4B_SCP_Certification_Pack_Registry {
 class MAD4B_SCP_Staging_Write_Authority {
     public static $call_count = 0;
     public static $deny_on_call = 0;
+    public static $revoke_generation_on_call = 0;
     public static function current_execution_readiness() {
         self::$call_count++;
+        if ( self::$revoke_generation_on_call === self::$call_count )
+            MAD4B_SCP_Runtime_Generation_Fence::$revoked = true;
         $ready = self::$deny_on_call !== self::$call_count;
         return array( 'ready'=>$ready, 'current_grant_snapshot_ready'=>$ready,
             'candidate_binding_match'=>$ready,
@@ -208,6 +220,12 @@ g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'not_admitted' );
 MAD4B_SCP_Authorization::$invalid_claim = false;
 // Revoke exact current authority between first grant check and locked
 // external CAS. Neither reservation nor provider dispatch is permitted.
+// Cause generation drift after plan read but before external CAS.
+MAD4B_SCP_Staging_Write_Authority::$revoke_generation_on_call =
+    MAD4B_SCP_Staging_Write_Authority::$call_count + 2;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'generation_changed_before_cas' );
+MAD4B_SCP_Runtime_Generation_Fence::$revoked = false;
+MAD4B_SCP_Staging_Write_Authority::$revoke_generation_on_call = 0;
 MAD4B_SCP_Staging_Write_Authority::$deny_on_call =
     MAD4B_SCP_Staging_Write_Authority::$call_count + 3;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'grants_changed_before_cas' );
