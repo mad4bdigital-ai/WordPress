@@ -18,7 +18,8 @@ Status: source implemented on child branch; not Staging runtime certified. Scope
 - The replay window is bounded by 600 seconds. Results are read-only, but release certification must bind execution receipts to a unique deployment and an independent runtime attestation.
 - Current provider offers **one** semantic primitive, `public.canonical_path`, backed by published WordPress pages and current canonical URLs. Its existence does not certify site-wide SEO or business behavior.
 - A site can have both this provider and a specialized ETG provider. Without explicit functional intent, ambiguous selection is blocked; requested declared profile `public-canonical` selects the generic provider, `tours` can select ETG. The selection logic contains no site/brand mapping.
-- HTTPS webroot is currently required by the existing generic browser-origin contract; subdirectory installations need separate path-scoped origin acceptance tests and must not be silently widened.
+- HTTPS WordPress installations at the webroot or bounded *subdirectory paths* (e.g. `/travel/`) are accepted. Both PHP and JS validate the declared scope, refuse path traversal and require every planned public document to remain inside the WordPress installation prefix. A redirected document outside its declared path fails observation.
+- Path-scoped acceptance is source-tested only; provider-level IP/DNS egress and exact Staging runtime acceptance are still required.
 - Plugin/theme header versions and build fingerprints are not a substitute for full asset provenance; control-plane runtime_manifest_match gates the native plan.
 
 ## Key provisioning (no keys committed)
