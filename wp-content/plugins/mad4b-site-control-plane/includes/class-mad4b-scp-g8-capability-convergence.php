@@ -14,6 +14,22 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 		return is_string( $value ) && 1 === preg_match( '/^[a-z0-9_.-]{1,80}$/D', $value );
 	}
 
+	/** Behavioral receipt data must not invoke __serialize() from a provider object. */
+	private static function passive_data( $value, $depth = 0 ) {
+		if ( $depth > 8 || is_object( $value ) || is_resource( $value ) ) return false;
+		if ( is_array( $value ) ) {
+			if ( count( $value ) > 64 ) return false;
+			foreach ( $value as $key => $member ) {
+				if ( ! is_int( $key ) && ( ! is_string( $key ) || strlen( $key ) > 100 ) ) return false;
+				if ( ! self::passive_data( $member, $depth + 1 ) ) return false;
+			}
+			return true;
+		}
+		return null === $value || is_bool( $value ) || is_int( $value )
+			|| ( is_float( $value ) && is_finite( $value ) )
+			|| ( is_string( $value ) && strlen( $value ) <= 4096 );
+	}
+
 	/** Read a current source-of-truth snapshot; no provider callback is executed. */
 	public static function observe( $provider ) {
 		if ( ! self::identifier( $provider ) || ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification', false ) )
@@ -43,7 +59,7 @@ final class MAD4B_SCP_G8_Capability_Convergence {
 			// revoked source of behavioral evidence must trigger review even
 			// when verified/rollback flags happen to remain true.
 			$receipt = $behavior['accepted_receipt'] ?? array();
-			if ( ! is_array( $receipt ) || strlen( serialize( $receipt ) ) > 8192 )
+			if ( ! is_array( $receipt ) || ! self::passive_data( $receipt ) || strlen( serialize( $receipt ) ) > 8192 )
 				return new WP_Error( 'mad4b_g8_convergence_receipt_invalid', 'Behavioral evidence receipt exceeds the passive observation bounds.' );
 			$receipt_digest = MAD4B_SCP_G8_Record::digest( array(
 				'state' => is_string( $behavior['state'] ?? null ) ? $behavior['state'] : 'unknown',
