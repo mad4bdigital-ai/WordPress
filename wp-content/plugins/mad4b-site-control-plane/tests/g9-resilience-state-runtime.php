@@ -99,6 +99,8 @@ class MAD4B_SCP_Authorization {
 }
 require_once __DIR__ . '/../includes/class-mad4b-scp-g9-read-surface.php';
 class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
+    private $observed_at;
+    public function __construct() { $this->observed_at = MAD4B_SCP_Resilience_Context::now(); }
     public function read_local( array $binding ) {
         $key = MAD4B_SCP_Resilience_Context::site_key( $binding );
         return array(
@@ -109,7 +111,7 @@ class G9_Exact_Reader implements MAD4B_SCP_Resilience_Reader {
             ) ),
             'host' => array( 'isolation_verified'=>true, 'local_readback_verified'=>true ),
             'health' => array( 'sample_count'=>90, 'error_rate_bps'=>1, 'p95_ms'=>40,
-                'observed_at'=>MAD4B_SCP_Resilience_Context::now() ),
+                'observed_at'=>$this->observed_at ),
             'external_effects' => array(), 'gates'=>array(
                 'prior_ring_health_accepted'=>false,
                 'provider_inventory_complete'=>true, 'host_inventory_complete'=>true,
@@ -122,6 +124,10 @@ $observation = MAD4B_SCP_Resilience_Context::capture();
 g9_assert( ! is_wp_error( $observation ) && $observation['authority']['eligible'], 'current capture' );
 g9_denied( MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader_already_registered' );
 $binding = $observation['binding'];
+$wrong_blog = $binding; $wrong_blog['blog_id'] = 2;
+g9_denied( MAD4B_SCP_Resilience_Anchor::read( $wrong_blog ), 'local_blog_mismatch' );
+$wrong_origin = $binding; $wrong_origin['canonical_origin'] = 'https://clone.example.invalid';
+g9_denied( MAD4B_SCP_Resilience_Anchor::read( $wrong_origin ), 'local_site_mismatch' );
 $init = MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $record ) {
     $record['scopes']['g9:init'] = array( 'initialized'=>true ); return $record;
 } );
@@ -232,6 +238,11 @@ foreach ( $GLOBALS['g9_registered_abilities'] as $ability => $args ) {
         && $args['input_schema']['additionalProperties'] === false, 'read-only ability ' . $ability );
 }
 $read = MAD4B_SCP_G9_Read_Surface::site_observation();
+$marker_backup = $GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ];
+$marker_foreign = $marker_backup; $marker_foreign['site']['canonical_origin'] = 'https://foreign.example.invalid';
+$GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $marker_foreign;
+g9_denied( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'mirror_identity_mismatch' );
+$GLOBALS['g9_test_options'][ MAD4B_SCP_Resilience_Anchor::MIRROR_OPTION ] = $marker_backup;
 g9_assert( ! is_wp_error( $read ) && !$read['release_execution_supported'], 'site observation not executing' );
 g9_denied( MAD4B_SCP_G9_Read_Surface::site_observation( array('site'=>'foreign') ), 'read_input_invalid' );
 $unsigned = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, array(

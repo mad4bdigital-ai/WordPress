@@ -74,10 +74,19 @@ final class MAD4B_SCP_Resilience_Anchor {
 	}
 
 	private static function read_path( $path, array $binding ) {
+		clearstatcache( true, $path );
+		$mirror = function_exists( 'get_option' ) ? get_option( self::MIRROR_OPTION, false ) : false;
+		if ( false !== $mirror ) {
+			if ( ! is_array( $mirror ) || ! isset( $mirror['site'] ) || ! is_array( $mirror['site'] )
+				|| ! hash_equals(
+					MAD4B_SCP_Resilience_Context::digest( self::site_identity( $binding ) ),
+					MAD4B_SCP_Resilience_Context::digest( $mirror['site'] )
+				) )
+				return self::error( 'mirror_identity_mismatch', 'Persisted resilience marker belongs to another site or origin.' );
+		}
 		if ( is_link( $path ) ) return self::error( 'symlink_denied', 'External resilience record may not be a symlink.' );
 		if ( ! is_file( $path ) ) {
-			$seen = function_exists( 'get_option' ) ? get_option( self::MIRROR_OPTION, false ) : false;
-			if ( false !== $seen ) return self::error( 'lost', 'Previously initialized external resilience state is missing; automatic recreation is denied.' );
+			if ( false !== $mirror ) return self::error( 'lost', 'Previously initialized external resilience state is missing; automatic recreation is denied.' );
 			return array( 'contract'=>self::CONTRACT, 'site'=>self::site_identity( $binding ), 'revision'=>0, 'clock_floor'=>0, 'scopes'=>array(), 'anchor_sha256'=>'' );
 		}
 		if ( ! is_readable( $path ) || false === @filesize( $path ) || filesize( $path ) > self::MAX_BYTES ) return self::error( 'unreadable', 'External resilience record is unavailable or oversized.' );
@@ -95,6 +104,20 @@ final class MAD4B_SCP_Resilience_Anchor {
 	private static function site_identity( array $binding ) { return array_intersect_key( $binding, array_flip( array( 'site_uuid', 'blog_id', 'environment', 'canonical_origin' ) ) ); }
 	private static function path( array $binding ) {
 		$valid = MAD4B_SCP_Resilience_Context::validate_binding( $binding ); if ( is_wp_error( $valid ) ) return $valid;
+		// A caller may not reuse a legitimate site-binding shape to operate on
+		// another multisite blog, cloned origin or enrolled site. These are
+		// live, code-owned identity comparisons, not request selectors.
+		if ( function_exists( 'get_current_blog_id' ) && (int) get_current_blog_id() !== $binding['blog_id'] )
+			return self::error( 'local_blog_mismatch', 'Resilience state is scoped to the active multisite blog.' );
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+			$current_uuid = (string) MAD4B_SCP_Site_Profile::site_uuid();
+			$current_origin = rtrim( (string) MAD4B_SCP_Site_Profile::current_origin(), '/' );
+			$current_env = (string) MAD4B_SCP_Site_Profile::current_environment();
+			if ( ! hash_equals( $current_uuid, $binding['site_uuid'] )
+				|| ! hash_equals( $current_origin, $binding['canonical_origin'] )
+				|| ! hash_equals( $current_env, $binding['environment'] ) )
+				return self::error( 'local_site_mismatch', 'External resilience state must belong to this enrolled local site.' );
+		}
 		if ( defined( 'MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY' ) ) $dir = rtrim( (string) MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY, '/\\' );
 		elseif ( defined( 'MAD4B_SCP_RESTORE_EPOCH_PATH' ) ) $dir = dirname( (string) MAD4B_SCP_RESTORE_EPOCH_PATH );
 		elseif ( class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) ) {
