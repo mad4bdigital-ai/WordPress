@@ -101,11 +101,14 @@ class MAD4B_SCP_Staging_Write_Authority {
     public static $ready_override = null;
     public static $deny_on_call = 0;
     public static $spoof_ready_on_call = 0;
+    public static $revoke_policy_on_call = 0;
     public static $revoke_generation_on_call = 0;
     public static function current_execution_readiness() {
         self::$call_count++;
         if ( self::$revoke_generation_on_call === self::$call_count )
             MAD4B_SCP_Runtime_Generation_Fence::$revoked = true;
+        if ( self::$revoke_policy_on_call === self::$call_count )
+            MAD4B_SCP_Policy::$mutable = false;
         $ready = self::$deny_on_call !== self::$call_count;
         return array( 'ready'=>self::$spoof_ready_on_call === self::$call_count ? 'false' : ( self::$ready_override === null ? $ready : self::$ready_override ), 'current_grant_snapshot_ready'=>$ready && self::$snapshot_current,
             'candidate_binding_match'=>$ready,
@@ -283,6 +286,13 @@ MAD4B_SCP_Staging_Write_Authority::$spoof_ready_on_call =
     MAD4B_SCP_Staging_Write_Authority::$call_count + 3;
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'grants_changed_before_cas' );
 MAD4B_SCP_Staging_Write_Authority::$spoof_ready_on_call = 0;
+// Revoke independent core policy only when the under-lock grant check runs.
+// A healthy grant fingerprint must never override a current mutation pause.
+MAD4B_SCP_Staging_Write_Authority::$revoke_policy_on_call =
+    MAD4B_SCP_Staging_Write_Authority::$call_count + 3;
+g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'policy_changed_before_cas' );
+MAD4B_SCP_Staging_Write_Authority::$revoke_policy_on_call = 0;
+MAD4B_SCP_Policy::$mutable = true;
 // Revoke exact current authority between first grant check and locked
 // external CAS. Neither reservation nor provider dispatch is permitted.
 // Cause generation drift after plan read but before external CAS.
