@@ -364,14 +364,12 @@ g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_ve
 // when the server-owned reader cannot be pinned.
 g9_denied( MAD4B_SCP_G9_Read_Surface::boot(), 'reader_already_registered' );
 g9_assert( !$GLOBALS['g9_registered_abilities'], 'failed boot never publishes read abilities' );
-// Exercise public read-only schemas separately with the injected test source.
+// A direct manual registration call after failed reader pinning must still
+// NOT expose any Abilities. A separate positive bootstrap fixture certifies
+// the three private read schemas on a clean request.
 MAD4B_SCP_G9_Read_Surface::register_abilities();
-g9_assert( count( $GLOBALS['g9_registered_abilities'] ) === 3, 'three read-only abilities' );
-foreach ( $GLOBALS['g9_registered_abilities'] as $ability => $args ) {
-    g9_assert( $args['meta']['annotations']['readonly'] === true
-        && $args['meta']['mcp']['surface'] === 'read'
-        && $args['input_schema']['additionalProperties'] === false, 'read-only ability ' . $ability );
-}
+g9_assert( !$GLOBALS['g9_registered_abilities'],
+    'untrusted observer cannot expose Abilities through direct registration' );
 $read = MAD4B_SCP_G9_Read_Surface::site_observation();
 g9_assert( ! is_wp_error( $read ) && $read['provider_evidence_verified']
     && $read['host_isolation_verified'] && $read['health_window_verified'],

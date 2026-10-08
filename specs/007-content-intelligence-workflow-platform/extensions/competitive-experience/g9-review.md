@@ -88,3 +88,7 @@ The earlier G9 reservation rechecked only current Staging write-grant fingerprin
 ## P0 — Byte-for-byte runtime provenance at G9 CAS (2026-10-08)
 
 The fast `build_provenance_identity_status()` validates packaged manifest metadata but documents `full_runtime_hash_validation_deferred=true`. It cannot prove the exact plugin files on disk are unchanged. G9 reservation now calls the existing `build_provenance_status()` full byte-for-byte package check before native admission **and again inside the external CAS lock**, requiring `runtime_manifest_match=true`, `manifest_valid=true`, `stale=false` and the same package manifest digest as the site binding. Passive read-only status continues using the cheap identity observer. Hermetic tests reject a fast-valid but full-invalid package. Native executor must still independently validate the package immediately before any provider side effect.
+
+## P1 — Direct WordPress Ability registration bypass (2026-10-08)
+
+After earlier hardening, `G9_Read_Surface::boot()` denied duplicate/foreign reader pinning and refused to attach the `wp_abilities_api_init` hook. However its public static `register_abilities()` still registered read endpoints when directly called by another PHP component. G9 now requires an internal `reader_pinned` latch set only after successful code-owned reader registration. The negative hermetic test exercises direct registration after failed boot and requires zero Abilities; a separate positive boot PHP test covers the three private read-only schemas. This does not grant new execution capabilities.

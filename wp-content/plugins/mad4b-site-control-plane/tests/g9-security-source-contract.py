@@ -85,6 +85,9 @@ expect(restore, (
     "'post_restore_acceptance_issued' => false",
 ), "restore")
 expect(read, (
+    "private static $reader_pinned = false",
+    "if ( ! self::$reader_pinned",
+    "self::$reader_pinned = true",
     "mad4b/g9-site-observation",
     "mad4b/g9-restore-status",
     "mad4b/g9-closure-status",

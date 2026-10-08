@@ -8,6 +8,7 @@ require_once __DIR__ . '/class-mad4b-scp-g9-operational-readiness.php';
 /** G9 exposes only passive exact-site reads; release/restore mutations remain private. */
 final class MAD4B_SCP_G9_Read_Surface {
     private static $booted = false;
+    private static $reader_pinned = false;
 
     public static function boot() {
         if ( self::$booted ) return;
@@ -23,13 +24,18 @@ final class MAD4B_SCP_G9_Read_Surface {
                 'mad4b_g9_reader_pin_failed', 'Code-owned G9 passive reader could not be pinned.'
             );
         }
+        self::$reader_pinned = true;
         if ( function_exists( 'add_action' ) )
             add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 38 );
         return true;
     }
 
     public static function register_abilities() {
-        if ( ! function_exists( 'wp_register_ability' )
+        // WordPress Abilities can also be invoked directly by another PHP
+        // component. Do not expose read endpoints without a verified
+        // code-owned reader even when boot hook registration was bypassed.
+        if ( ! self::$reader_pinned
+            || ! function_exists( 'wp_register_ability' )
             || ! class_exists( 'MAD4B_SCP_Policy' ) ) return;
         foreach ( array(
             'mad4b/g9-site-observation' => array(
