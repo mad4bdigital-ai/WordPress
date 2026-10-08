@@ -126,7 +126,9 @@ final class MAD4B_SCP_Operation_Journal {
 			return new WP_Error( 'mad4b_operation_journal_cas_invalid', 'The exact journal CAS precondition is malformed or incomplete.' );
 		}
 		$event_type = sanitize_key( (string) $event_type );
-		if ( '' === $event_type ) return new WP_Error( 'mad4b_operation_event_type_invalid', 'Operation event_type is required.' );
+		if ( '' === $event_type || strlen( $event_type ) > 64 ) return new WP_Error( 'mad4b_operation_event_type_invalid', 'Operation event_type must fit its storage column.' );
+		if ( 'operation_started' === $event_type ) return new WP_Error(
+			'mad4b_operation_genesis_event_reserved', 'A genesis event can only be created atomically by begin().' );
 		// Assistant task events are never permitted through the legacy unbound
 		// append lane. This is a mandatory journal CAS, not a caller preference.
 		if ( 0 === strpos( $event_type, 'assistant_task_' ) && ! $has_expected_seq ) {
@@ -136,6 +138,9 @@ final class MAD4B_SCP_Operation_Journal {
 		$lifecycle = isset( $args['lifecycle_state'] ) ? sanitize_key( (string) $args['lifecycle_state'] ) : 'running';
 		$checkpoint = isset( $args['checkpoint'] ) ? sanitize_key( (string) $args['checkpoint'] ) : '';
 		$outcome = isset( $args['terminal_outcome'] ) ? sanitize_key( (string) $args['terminal_outcome'] ) : '';
+		if ( '' === $lifecycle || strlen( $lifecycle ) > 32 || strlen( $checkpoint ) > 64 || strlen( $outcome ) > 32 ) {
+			return new WP_Error( 'mad4b_operation_event_schema_bounds', 'Journal event fields exceed the durable schema bounds.' );
+		}
 		$metadata = self::safe_metadata( isset( $args['metadata'] ) && is_array( $args['metadata'] ) ? $args['metadata'] : array() );
 		if ( is_wp_error( $metadata ) ) return $metadata;
 		$metadata_json = wp_json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -262,6 +267,7 @@ final class MAD4B_SCP_Operation_Journal {
 			// All events must belong to the same immutable operation/binding.
 			// Digest validation by itself does not prove contiguous ordering.
 			if ( 1 !== $expected_sequence ) {
+				if ( 'operation_started' === (string) $row['event_type'] ) $valid = false;
 				if ( ! hash_equals( $first_key, (string) $row['operation_key'] )
 					|| ! hash_equals( $first_binding, (string) $row['operation_binding_sha256'] ) ) $valid = false;
 			} else {

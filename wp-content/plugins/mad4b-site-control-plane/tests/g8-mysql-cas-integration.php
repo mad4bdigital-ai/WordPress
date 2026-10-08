@@ -351,6 +351,11 @@ try {
     $empty->free();
     $first = MAD4B_SCP_Operation_Journal::begin( $context, 'planned', array( 'ticket' => 'disposable' ) );
     g8_journal_assert( is_array( $first ) && 1 === $first['sequence'], 'atomic_genesis_commit' );
+    $forged_genesis_append = MAD4B_SCP_Operation_Journal::append( $context, 'operation_started', array(
+        'expected_sequence' => 1, 'expected_event_sha256' => $first['event_sha256'] ) );
+    g8_journal_assert( is_wp_error( $forged_genesis_append )
+        && 'mad4b_operation_genesis_event_reserved' === $forged_genesis_append->get_error_code(),
+        'second_genesis_refused' );
     $duplicate = MAD4B_SCP_Operation_Journal::begin( $context, 'planned', array( 'ticket' => 'disposable' ) );
     g8_journal_assert( is_wp_error( $duplicate ) && 'mad4b_operation_journal_head_already_exists' === $duplicate->get_error_code(), 'duplicate_genesis_denied' );
     $stale = MAD4B_SCP_Operation_Journal::append( $context, 'assistant_task_transition', array(

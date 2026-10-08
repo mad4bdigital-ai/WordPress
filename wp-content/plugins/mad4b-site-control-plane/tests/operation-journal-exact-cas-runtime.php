@@ -263,6 +263,17 @@ $forged_genesis = MAD4B_SCP_Operation_Journal::trace( $orphan_ctx['operation_id'
 assert_journal( 'trace rejects a history without operation_started genesis',
     is_array( $forged_genesis ) && false === $forged_genesis['chain_valid'] );
 $wpdb = new FixtureJournalDB();
+$reserved = MAD4B_SCP_Operation_Journal::append( $orphan_ctx, 'operation_started' );
+assert_journal( 'legacy append cannot fabricate a second genesis', is_wp_error( $reserved )
+    && 'mad4b_operation_genesis_event_reserved' === $reserved->get_error_code()
+    && 0 === $wpdb->inserted && 0 === $wpdb->updated );
+$bounded = MAD4B_SCP_Operation_Journal::append( $orphan_ctx, 'assistant_task_transition', array(
+    'expected_sequence' => 1, 'expected_event_sha256' => str_repeat( 'a', 64 ),
+    'checkpoint' => str_repeat( 'c', 65 ) ) );
+assert_journal( 'overlong event schema fields are rejected before storage', is_wp_error( $bounded )
+    && 'mad4b_operation_event_schema_bounds' === $bounded->get_error_code()
+    && 0 === $wpdb->inserted && 0 === $wpdb->updated );
+$wpdb = new FixtureJournalDB();
 $wpdb->head = array( 'operation_key' => $orphan_ctx['operation_key'],
     'operation_binding_sha256' => $orphan_ctx['operation_binding_sha256'],
     'latest_sequence' => 0, 'latest_event_sha256' => str_repeat( '0', 64 ) );
