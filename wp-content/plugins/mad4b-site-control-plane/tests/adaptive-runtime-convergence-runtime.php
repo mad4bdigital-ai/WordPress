@@ -47,7 +47,14 @@ class MAD4B_SCP_Staging_Write_Authority {
  }
 }
 class MAD4B_SCP_Schema { static function is_ready() { return true; } }
-class MAD4B_SCP_Skill_Provider_Discovery { static $calls = 0; static function reconcile() { ++self::$calls; return true; } }
+class MAD4B_SCP_Skill_Provider_Discovery {
+ static $calls = 0; static $state = 'ready'; static $inspect_ready = true; static $conflicts = array();
+ static function reconcile() {
+  ++self::$calls;
+  return array( 'state' => self::$state, 'current_request_observed' => true, 'skipped_conflict' => self::$conflicts );
+ }
+ static function inspect() { return array( 'state' => self::$inspect_ready ? 'ready' : 'drifted', 'ready' => self::$inspect_ready ); }
+}
 class MAD4B_SCP_Live_Acceptance_Observer {
  static $calls = 0; static $race = false; static $event_race = false; static $valid = true; static $throw = false; static $drift_at_call = 0; static $identity_incomplete = false;
  static function build_provenance_status() {
@@ -216,6 +223,27 @@ $before_writes = $GLOBALS['writes']; MAD4B_SCP_Adaptive_Runtime_Convergence::sta
 check( $before_writes === $GLOBALS['writes'], 'Corrupted event was repaired by a passive status read' );
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 check( 'OBSERVED' === MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) )['state'], 'Worker did not recover a malformed event without poisoning neighbors' );
+// A non-throwing provider skills failure must never become RECONCILED.
+// The next attempt must remain eligible even if the fabric hash is unchanged.
+MAD4B_SCP_Skill_Provider_Discovery::$state = 'seed_pack_not_ready';
+MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.130';
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$failed_skills = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'RECONCILIATION_REQUIRED' === $failed_skills['managed_skills']['state']
+    && 'seed_pack_not_ready' === $failed_skills['managed_skills']['reason'], 'Non-throwing seed-pack failure was misreported as reconciled' );
+MAD4B_SCP_Skill_Provider_Discovery::$state = 'ready';
+MAD4B_SCP_Skill_Provider_Discovery::$inspect_ready = false;
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$bad_readback = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'RECONCILIATION_REQUIRED' === $bad_readback['managed_skills']['state']
+    && 'skill_mapping_readback_incomplete' === $bad_readback['managed_skills']['reason'], 'Unverified skill files were treated as current' );
+MAD4B_SCP_Skill_Provider_Discovery::$inspect_ready = true;
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+$ready_skills = MAD4B_SCP_Adaptive_Runtime_Convergence::status();
+check( 'RECONCILED' === $ready_skills['managed_skills']['state'] && ! empty( $ready_skills['managed_skills']['readback_verified'] ), 'Recovered skills were not marked reconciled after exact readback' );
+MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.123';
+
 // Missing exact provenance must enter the bounded worker failure policy and
 // never invoke core reconciliation or managed-skill mutations.
 $before_skills = MAD4B_SCP_Skill_Provider_Discovery::$calls;

@@ -407,7 +407,28 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 						return;
 					}
 					$skills = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
-					$registry['managed_skills'] = is_wp_error( $skills ) ? array( 'state' => 'RECONCILIATION_REQUIRED', 'error_code' => $skills->get_error_code() ) : array( 'state' => 'RECONCILED' );
+					// A bounded installer often reports a normal status array even when
+					// the seed pack, audit storage or registry is unavailable. Mere
+					// absence of WP_Error is not evidence of successful convergence.
+					$skills_ready = is_array( $skills ) && 'ready' === ( $skills['state'] ?? '' )
+						&& ! empty( $skills['current_request_observed'] )
+						&& empty( $skills['skipped_conflict'] );
+					$inspection = $skills_ready && method_exists( 'MAD4B_SCP_Skill_Provider_Discovery', 'inspect' )
+						? MAD4B_SCP_Skill_Provider_Discovery::inspect() : array( 'ready' => false );
+					$inspection_ready = is_array( $inspection ) && ! empty( $inspection['ready'] )
+						&& 'ready' === ( $inspection['state'] ?? '' );
+					if ( $skills_ready && $inspection_ready ) {
+						$registry['managed_skills'] = array( 'state' => 'RECONCILED', 'readback_verified' => true );
+					} else {
+						$registry['managed_skills'] = array(
+							'state' => 'RECONCILIATION_REQUIRED',
+							'readback_verified' => false,
+							'reason' => is_wp_error( $skills ) ? sanitize_key( (string) $skills->get_error_code() )
+								: ( $skills_ready ? 'skill_mapping_readback_incomplete' : sanitize_key( (string) ( $skills['state'] ?? 'skill_result_unverified' ) ) ),
+						);
+						self::schedule( 300 );
+					}
+
 				}
 				$registry['fabric_generation'] = $fabric_generation;
 			}
