@@ -150,6 +150,19 @@ $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $sequence_forged;
 g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'],
 	're-sealed outcome with sequence gap cannot pass conservation' );
 $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $recorded;
+$missing_causal = $recorded;
+$missing_causal['outcome_receipts'][0]['local_causal_receipt_sha256'] = '';
+$material = $missing_causal['outcome_receipts'][0];
+unset( $material['entry_sha256'], $material['root_sha256'] );
+$missing_causal['outcome_receipts'][0]['entry_sha256'] = MAD4B_SCP_G8_Record::digest( $material );
+$missing_causal['outcome_receipts'][0]['root_sha256'] = hash( 'sha256',
+	$material['previous_root_sha256'] . $missing_causal['outcome_receipts'][0]['entry_sha256'] );
+$missing_causal['outcome_root_sha256'] = $missing_causal['outcome_receipts'][0]['root_sha256'];
+$missing_causal['seal'] = MAD4B_SCP_G8_Record::seal( $missing_causal );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $missing_causal;
+g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'],
+	're-sealed verified repair without local causal evidence is never valid telemetry' );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $recorded;
 $forged_completed = $completed;
 $forged_completed['checkpoint']['g8_current_slice_changed_safe_phases'] = array( 'provider' );
 $unknown = MAD4B_SCP_Automation_SLO::reserve( $provider, 'unrelated-test', $generation );
