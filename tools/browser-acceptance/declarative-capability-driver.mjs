@@ -18,8 +18,9 @@ const IDENT = /^[a-z][a-z0-9._-]{2,79}$/;
 function deny(reason) { throw new Error("capability_browser_" + reason); }
 function pathValid(s) {
   return typeof s === "string" && s.length > 0 && s.length <= 240 &&
-    /^\/(?!\/)[a-zA-Z0-9~._/%-]*(?:\?[a-zA-Z0-9._~%=&-]{0,120})?$/.test(s) &&
-    !/(?:\.\.|%2e|%2f|%5c|%00|\\|#)/i.test(s);
+    /^\/(?!\/)[a-zA-Z0-9~._/%-]*$/.test(s) &&
+    !/(?:\.\.|%2e|%2f|%5c|%00|\\|#)/i.test(s) &&
+    !/(?:^|\/)(?:wp-admin|wp-json|wp-login\.php|xmlrpc\.php|wp-cron\.php)(?:\/|$)/i.test(s);
 }
 function origin(raw) {
   if (typeof raw !== "string" || !/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?\/$/.test(raw)) deny("origin_invalid");
@@ -81,6 +82,10 @@ async function observePage(page, plan, item) {
   const url = new URL(item.page_path, plan.origin).toString();
   const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
   if (new URL(page.url()).origin !== new URL(plan.origin).origin) deny("navigation_cross_origin");
+  const landed = new URL(page.url());
+  const requested = new URL(item.page_path, plan.origin);
+  if (landed.pathname !== requested.pathname || landed.search !== requested.search ||
+      landed.hash !== "") deny("navigation_path_changed");
   const httpStatus = response?.status() ?? 0;
   if (httpStatus < 200 || httpStatus > 299) deny("public_page_unavailable");
   let observed;
