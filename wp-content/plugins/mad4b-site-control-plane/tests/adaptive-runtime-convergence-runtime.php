@@ -28,6 +28,15 @@ class MAD4B_SCP_Runtime_Maintenance_Lease {
  static function acquire( $owner ) { return self::$busy ? new WP_Error() : 'token'; }
  static function refresh( ...$args ) { return self::$lost ? new WP_Error() : true; } static function release( ...$args ) { ++self::$releases; }
 }
+// This legacy worker fixture isolates its existing lease/provenance contract.
+// The separate g8-adaptive-automatic-handoffs.php exercises the real SLO.
+class MAD4B_SCP_Automation_SLO {
+ static function reserve( $provider, $capability, $generation ) {
+  return array( 'provider' => $provider, 'capability' => $capability, 'generation' => $generation );
+ }
+ static function ticket_allowed( $ticket ) { return true; }
+ static function finish_existing( $ticket, $result ) { return true; }
+}
 class MAD4B_SCP_Runtime_Convergence {
  const CHECKPOINT_OPTION = 'fixture_core_checkpoint'; static $calls = 0;
  static function mark_activation_pending() {
