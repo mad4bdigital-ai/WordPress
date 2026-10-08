@@ -86,3 +86,30 @@ The platform operator must establish an actual verified non-root worker UID, eff
 ## Final decision
 
 Keep PR #258 Draft and fail closed. Do not merge to master or deploy to Production until native repository, external providers, staging browser/host/database, reproducible packaging, owner/branch rules, and one-time release authorization all match the same exact source. Record any unavailable check as BLOCKED, not PASS.
+
+
+## All Royal Egypt — WordPress host environment correction
+
+**Observed 2026-10-09, read-only live connector:** WordPress `wp_get_environment_type()` reports `production` because its environment is **not explicitly configured**; the exact MAD4B Site Profile is `staging`, with correct Staging origin and bound identity. This is a host-bootstrap configuration mismatch, not permission to retarget the Site Profile.
+
+**Authorized Staging host operator action only** (never in a WordPress admin option or browser-provider credential):
+
+1. Confirm this is the **Staging** installation and back up the current `wp-config.php` securely outside the repository. Inspect any host-level `WP_ENVIRONMENT_TYPE` env var, MU bootstrap and constant for explicit contradictory settings; do not override an intentionally configured Production environment.
+2. In Staging's `wp-config.php`, **before** `require_once ABSPATH . 'wp-settings.php';` and before any WordPress bootstrap that reads environment type, set:
+
+   ```php
+   // ONLY on the separately verified All Royal Egypt Staging host.
+   define( 'WP_ENVIRONMENT_TYPE', 'staging' );
+   ```
+
+   Use exactly one authoritative definition (no duplicate `define`, no secrets in Git). Deploy through the host's controlled config channel; do **not** modify Production's config or depend on a plugin loading after WordPress boot. If a different explicit environment definition exists, reconcile it at the host instead of silently overriding it.
+3. Independently read back `wp_get_environment_type()` / `mad4b/site-profile-status` from the actual Staging origin and inspect `wordpress_environment=staging`, `wordpress_environment_explicit=true`, `wordpress_profile_mismatch=false`, `environment=staging`, `origin_match=true`, and unchanged exact Site Profile UUID/revision/digest. Re-read build provenance and Staging gates to ensure no collateral drift.
+4. If any check is absent, stale, cross-origin or fails, mark **HOST_ENVIRONMENT_NOT_CERTIFIED**, roll back only the host config adjustment via the site's approved change procedure, and do not claim final Staging or Production readiness.
+
+**Boundaries:** This document cannot update the actual site's host configuration. The plugin's implicit default override is an existing compatibility behavior, not proof that WordPress has been configured as Staging. Never change `Site Profile.environment` to `production` merely to eliminate this diagnostic.
+
+## Exact-head browser source test and evidence levels
+
+The isolated test fixture `tools/browser-acceptance/test-site-provider-configuration.mjs` targets the pure ETG operator/driver contract. Run it on a clean **exact-HEAD** repository checkout using `node tools/browser-acceptance/test-site-provider-configuration.mjs`; run the WordPress source fixtures with PHP 7.4 and PHP 8.3 independently, including `tests/browser-acceptance-admin-setup-contract.php` and `tests/staging-browser-site-selection-contract.php` relative to the plugin root. Execute the native PHP/SQL matrix described above when matching engines and Docker are available.
+
+A hermetic JavaScript/V8 replay tests source contract behavior but does **not** certify Node module resolution, native PHP, real WordPress provider registration, external browser sessions, GitHub Actions, or Staging runtime. Require recorded SHA and actual process exit statuses. Any missing native environment or queued CI is **BLOCKED**, not PASS. Always re-evaluate if PR #258 HEAD advances.
