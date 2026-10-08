@@ -15,12 +15,19 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	 * pass this exact payload in $result['readback'] to Execution_Receipt::build.
 	 * This is a non-authorizing recipe; no caller-declared success is trusted.
 	 */
-	public static function baseline_readback_material( array $snapshot ) {
+	public static function baseline_readback_material( array $snapshot, array $binding ) {
 		$v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v;
+		$v = MAD4B_SCP_Adaptive_Operations_Context::validate( $binding ); if ( is_wp_error( $v ) ) return $v;
+		if ( array_key_exists( 'lineage_proof', $snapshot ) || array_key_exists( 'lineage_sha256', $snapshot ) ) return self::error( 'baseline_snapshot_already_managed' );
 		if ( ! isset( $snapshot['target_fingerprint'] ) || ! is_string( $snapshot['target_fingerprint'] ) ||
 			'' === $snapshot['target_fingerprint'] || strlen( $snapshot['target_fingerprint'] ) > 191 ) return self::error( 'baseline_target_missing' );
 		$digest = self::snapshot_digest( $snapshot ); if ( is_wp_error( $digest ) ) return $digest;
+		$binding_sha256 = MAD4B_SCP_Adaptive_Operations_Context::digest( 'mad4b.ownership-baseline-binding.v1', $binding );
+		if ( is_wp_error( $binding_sha256 ) ) return $binding_sha256;
+		// Match native Execution_Receipt::canon() key order so its signed
+		// readback_reconciliation digest and our local verification are identical.
 		return array(
+			'binding_sha256' => $binding_sha256,
 			'contract' => self::READBACK_CONTRACT,
 			'resource_id' => $snapshot['resource_id'],
 			'snapshot_sha256' => $digest,
@@ -45,7 +52,7 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 			! hash_equals( $verified['receipt_sha256'], $execution_receipt['receipt_sha256'] ) ) {
 			return self::error( 'baseline_execution_receipt_not_verified' );
 		}
-		$readback = self::baseline_readback_material( $snapshot ); if ( is_wp_error( $readback ) ) return $readback;
+		$readback = self::baseline_readback_material( $snapshot, $binding ); if ( is_wp_error( $readback ) ) return $readback;
 		$encoded = wp_json_encode( array( 'readback' => $readback ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $encoded ) ) return self::error( 'baseline_readback_encoding_failed' );
 		$expected_readback = hash( 'sha256', $encoded );
@@ -152,6 +159,7 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		if ( is_wp_error( $live_binding ) ) return $live_binding;
 		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $binding, $live_binding ); if ( is_wp_error( $v ) ) return $v;
 		$v = self::snapshot_valid( $after ); if ( is_wp_error( $v ) ) return $v;
+		if ( time() >= $basis['expires_at'] ) return self::error( 'plan_expired' );
 		if ( true !== $basis['baseline_valid'] ) return self::error( 'missing_managed_baseline' );
 		if ( ! empty( $basis['conflicts'] ) || $after['resource_id'] !== $basis['resource_id'] || $after['revision'] !== $basis['expected_revision'] + ( empty( $basis['changes'] ) ? 0 : 1 ) || $after['owner_revision'] !== $basis['owner_revision'] ) return self::error( 'readback_revision_conflict' );
 		foreach ( $basis['changes'] as $field => $change ) if ( self::field( $after, $field ) !== $change['after'] ) return self::error( 'partial_apply_readback' );

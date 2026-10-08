@@ -49,7 +49,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php"
       ],
       "remaining_acceptance": [
-        "Typed consumer must build signed Execution Receipt from the exact persisted Last Managed snapshot readback envelope",
+        "Native typed consumer must bind signed persisted Last Managed snapshot to current site/runtime/restore epoch before Last Managed can be trusted",
         "Independent Staging owned-field CAS/readback and human-edit preservation acceptance"
       ]
     },
@@ -248,8 +248,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
-      "sha256": "4ed6302889022daf48b3a2b0d893f4e40cfc6cc4581d51c27c23b49a3432d6dd",
-      "bytes": 19036
+      "sha256": "c5061a42ca42ced452bc554d1c0fda73c23b08022b407e4c86c9c44a2c12b546",
+      "bytes": 19779
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -268,8 +268,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
-      "sha256": "cad1b58355d00cc9f4f3045e9dae62e63d246d63a392e0358845f9ceb37b598c",
-      "bytes": 13670
+      "sha256": "b16b4260f0da857ed73f975e06da1f01186fa3e4a35a8da32bbe325dad1773c6",
+      "bytes": 15145
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",

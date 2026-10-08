@@ -55,8 +55,11 @@ function g7_binding() {
 }
 function g7_baseline( $fields, $owners ) {
     $snapshot = array( 'resource_id' => 'post:7', 'revision' => 1, 'owner_revision' => 1, 'fields' => $fields, 'owners' => $owners, 'target_fingerprint' => str_repeat( 'f', 64 ) );
-    $readback = MAD4B_SCP_Ownership_Reconciliation::baseline_readback_material( $snapshot );
+    $readback = MAD4B_SCP_Ownership_Reconciliation::baseline_readback_material( $snapshot, g7_binding() );
     g7_assert( ! is_wp_error( $readback ), 'normalized snapshot readback payload' );
+    $native_order = $readback; ksort( $native_order, SORT_STRING );
+    g7_assert( array_keys( $readback ) === array_keys( $native_order ),
+        'G7 readback must match native signed Execution Receipt canonical key ordering' );
     $sha = hash( 'sha256', wp_json_encode( array( 'readback' => $readback ),
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
     $receipt = array( 'signed_test_receipt' => true, 'receipt_sha256' => str_repeat( '9', 64 ),
@@ -71,6 +74,17 @@ function g7_baseline( $fields, $owners ) {
     $foreign = $snapshot; $foreign['fields']['foreign_field'] = 'not-in-signed-readback';
     g7_error( MAD4B_SCP_Ownership_Reconciliation::managed_baseline( $foreign, g7_binding(), $receipt ),
         'baseline_snapshot_readback_unbound' );
+    $old_identity = g7_binding(); $old_identity['restore_epoch'] = 99;
+    $old_readback = MAD4B_SCP_Ownership_Reconciliation::baseline_readback_material( $snapshot, $old_identity );
+    $old_receipt = $receipt;
+    $old_receipt['stages']['readback_reconciliation']['evidence_sha256'] = hash(
+        'sha256', wp_json_encode( array( 'readback' => $old_readback ),
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+    g7_error( MAD4B_SCP_Ownership_Reconciliation::managed_baseline( $snapshot, g7_binding(), $old_receipt ),
+        'baseline_snapshot_readback_unbound' );
+    $already = $snapshot; $already['lineage_sha256'] = str_repeat( '9', 64 );
+    g7_error( MAD4B_SCP_Ownership_Reconciliation::managed_baseline( $already, g7_binding(), $receipt ),
+        'baseline_snapshot_already_managed' );
     $missing = $receipt; unset( $missing['signed_test_receipt'] );
     g7_assert( is_wp_error( MAD4B_SCP_Ownership_Reconciliation::managed_baseline( $snapshot, g7_binding(), $missing ) ),
         'unsigned readback cannot initialize Last Managed' );
@@ -93,6 +107,12 @@ g7_assert( is_array( $guard ) && ! empty( $guard['native_cas_required'] ), 'guar
 $after = $current; $after['fields']['title'] = 'safe'; $after['revision']++;
 $readback = MAD4B_SCP_Ownership_Reconciliation::verify_readback( $plan, $after, g7_binding() );
 g7_assert( is_array( $readback ) && true === $readback['verified'] && ! $readback['authorizing'], 'full readback' );
+$expired = $plan;
+$expired['sealed_plan']['material']['expires_at'] = time() - 1;
+$expired['sealed_plan'] = MAD4B_SCP_Adaptive_Operations_Context::seal(
+    MAD4B_SCP_Ownership_Reconciliation::CONTRACT, $expired['sealed_plan']['material'] );
+$expired['plan_sha256'] = $expired['sealed_plan']['sha256'];
+g7_error( MAD4B_SCP_Ownership_Reconciliation::verify_readback( $expired, $after, g7_binding() ), 'plan_expired' );
 MAD4B_SCP_Runtime_Generation_Fence::$generation = str_repeat( '9', 64 );
 g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $plan, $current, $policy, g7_binding() ), 'binding_runtime_generation_changed' );
 g7_error( MAD4B_SCP_Ownership_Reconciliation::verify_readback( $plan, $after, g7_binding() ), 'binding_runtime_generation_changed' );
