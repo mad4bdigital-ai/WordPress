@@ -1,0 +1,311 @@
+{
+  "contract": "mad4b.competitive-g7-delivery.v1",
+  "status": "REPOSITORY_G7_SAFETY_FOUNDATION_IMPLEMENTED_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 286,
+  "integration_branch": "spec/007-competitive-experience-20261006",
+  "implementation_branch": "feat/007-g7-ownership-journal-update-actioncenter-20261007",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "task_scope": [
+    "T4036",
+    "T4037",
+    "T4038",
+    "T4039",
+    "T4040",
+    "T4041",
+    "T4042",
+    "T4043",
+    "T4044",
+    "T4045",
+    "T4046",
+    "T4047",
+    "T4048",
+    "T4049",
+    "T4050",
+    "T4051",
+    "T4052",
+    "T4053",
+    "T4054",
+    "T4055",
+    "T4061",
+    "T4062",
+    "T4063",
+    "T4064",
+    "T4065"
+  ],
+  "group_progress": [
+    {
+      "group": "ownership",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4036",
+        "T4037",
+        "T4038",
+        "T4039",
+        "T4040"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "Real native signed Last Managed readback with strict crypto-profile verification and exact current site/runtime/restore binding",
+        "Typed Staging CAS, bounded field-value compatibility and independent physical post-write readback"
+      ]
+    },
+    {
+      "group": "journal_undo",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4041",
+        "T4042",
+        "T4043",
+        "T4044",
+        "T4045"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "Native signed original and compensation receipt plus independent site-bound readback and external side-effect closure",
+        "Caller-asserted inverse hashes must not be presented as independently verified compensation evidence"
+      ]
+    },
+    {
+      "group": "update_acceptance",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4046",
+        "T4047",
+        "T4048",
+        "T4049",
+        "T4050"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-missing-dependency-contract.php"
+      ],
+      "remaining_acceptance": [
+        "Native Post Update Continuation state must be quiescent; active, blocked or expired states require reconciliation",
+        "Site-local Release Acceptance Receipt, exact provider and Skills/catalog parity and preauthorized rollback rehearsal"
+      ]
+    },
+    {
+      "group": "host_readiness",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4051",
+        "T4052",
+        "T4053",
+        "T4054",
+        "T4055"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-update-host-action-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "separately approved real prlimit and network sandbox isolation probe",
+        "host profile expiring attestation with trusted executable capability"
+      ]
+    },
+    {
+      "group": "action_center_metrics",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4061",
+        "T4062",
+        "T4063",
+        "T4064",
+        "T4065"
+      ],
+      "evidence_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php"
+      ],
+      "remaining_acceptance": [
+        "receipt-deduplicated eligible workload denominator",
+        "verified intervention, MTTR, failure and cost coverage",
+        "real operator manual governance and Staging/browser acceptance"
+      ]
+    }
+  ],
+  "global_evidence": [
+    "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+    ".github/workflows/feature-007-spec-ci.yml",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g7-spec-delivery-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php"
+  ],
+  "claim_limits": {
+    "all_tasks_done": false,
+    "repo_ci_certified": false,
+    "staging_runtime_accepted": false,
+    "live_provider_accepted": false,
+    "host_sandbox_functionally_verified": false,
+    "undo_certified": false,
+    "release_acceptance_receipt_issued": false,
+    "verified_automation_rate_measured": false,
+    "production_authorized": false,
+    "authorizing": false
+  },
+  "pending_validation": [
+    "exact HEAD PHP7.4/PHP8.3 G7 CI green",
+    "native typed executor compensation and full readback plus external effects",
+    "native governed Staging update/capability recertification and rollback rehearsal",
+    "independent host sandbox operational certification",
+    "receipt-backed deduplicated eligible workload metrics",
+    "browser and full Hub acceptance"
+  ],
+  "policy": "Safety diagnostics and evidence are partial until independently verified; no grants, tools, host command, deployment or Production mutation.",
+  "partial_task_ids": [
+    "T4036",
+    "T4037",
+    "T4038",
+    "T4039",
+    "T4040",
+    "T4041",
+    "T4042",
+    "T4043",
+    "T4044",
+    "T4045",
+    "T4046",
+    "T4047",
+    "T4048",
+    "T4049",
+    "T4050",
+    "T4051",
+    "T4052",
+    "T4053",
+    "T4054",
+    "T4055",
+    "T4061",
+    "T4063",
+    "T4064",
+    "T4065"
+  ],
+  "open_task_ids": [
+    "T4062"
+  ],
+  "evidence_integrity": [
+    {
+      "path": ".github/workflows/feature-007-spec-ci.yml",
+      "sha256": "5b253078ff7240679756e3412cc4f26dd973303a46b3725918689fc20f1e3d01",
+      "bytes": 24788
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
+      "sha256": "e1844a6168ace8235902c5367bf607a2b8fcf16a87745887f1177a11d5947bc2",
+      "bytes": 6327
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-receipt.php",
+      "sha256": "895917a888755b0019ab65c7a8a97a248f9c2f4f94ae49df3fa9106bff85d879",
+      "bytes": 11254
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php",
+      "sha256": "3c8491629ab275653a4ba9a5222dea6d1b4f9b91ebefcb03010213d09224679e",
+      "bytes": 6095
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php",
+      "sha256": "c9d580759c9ba05a4a1febd0e9cc5663b3d3122f6a866b7d927883fad400329d",
+      "bytes": 5782
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php",
+      "sha256": "1c291e8a1337b32a52e8b90c09218e6e86be37ca7a405f1ade24a1ead611f17a",
+      "bytes": 7018
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php",
+      "sha256": "e8f913ace3d854fae8917c1fd16db14f1eecf3bda88b80a2cfa8530e97d02b1c",
+      "bytes": 7360
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php",
+      "sha256": "44a87917d67d8596ed5c17ba032c638014e7562f6b34f4b7b3d0de5658541369",
+      "bytes": 8318
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php",
+      "sha256": "ec41b791b53a6572ee18a993399588355d4723b2e118ba0760d3afa3b61dc217",
+      "bytes": 4313
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php",
+      "sha256": "64ce6e9647b06018e9f6d624483d75fb51af6a4d5accaac396fcafc0d8ff9125",
+      "bytes": 9412
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php",
+      "sha256": "38e96698996358db704dd744f3c544c6309c86bb4b7c5f28d1996682e7701b4e",
+      "bytes": 3672
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php",
+      "sha256": "27f415da2e7883e310450ed57a13f4685fdca23349de45d88ce9cc67ecdeae08",
+      "bytes": 23401
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "a6ecb32699e84cfba7f48ebcc3bcfc94626dc90db4acc41dbec84bde64c56a37",
+      "bytes": 38594
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php",
+      "sha256": "d1f66c4a9bef42fed190e04c0f29c7ebc32e1a1c24fa4c4b886a5ffa15432067",
+      "bytes": 5935
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-native-receipt-baseline-runtime.php",
+      "sha256": "c85d4b2749485e88ebabe2993122d9cc922b05e46dd872eb75c2839559f46eef",
+      "bytes": 9603
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-operator-journal-runtime.php",
+      "sha256": "a0c22a9815691f916f46e7bb4919dd64de7036214b82824fc0a73e1aa6d9c9d8",
+      "bytes": 5493
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-ownership-reconciliation-runtime.php",
+      "sha256": "cb3563f9fb7b9e6505cb43e52a6d8568f4beb5c28c2326f0f69fdd506cf3cf73",
+      "bytes": 17722
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-read-surfaces-contract.php",
+      "sha256": "158e5cdba9599fe308be93d9cd060e211743df66052943981796a29a1f241abf",
+      "bytes": 5336
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-metrics-runtime.php",
+      "sha256": "027b430348155dc90597f7cd37c0bf92829ad60e2ddbc4f451c981971e0f49e2",
+      "bytes": 4732
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-release-missing-dependency-contract.php",
+      "sha256": "dea5572898fdf651e2ab19e352ebdfe4066d0b0f2f5144323300f4ca38309066",
+      "bytes": 2213
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-spec-delivery-contract.php",
+      "sha256": "8dca5e01a24dd77243adc4e51ce700415ec9b845f43c81619451ed9febdd52df",
+      "bytes": 2562
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-update-host-action-runtime.php",
+      "sha256": "1581ab197fe0df4c7d7603e603bdd714b8791730e7fb938eb0fac87766ba894b",
+      "bytes": 14081
+    }
+  ]
+}

@@ -61,6 +61,19 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g5-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g6-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g7-*.php'
 
 permissions:
   contents: read
@@ -349,6 +362,21 @@ jobs:
           php "$PLUGIN/tests/g6-durable-dag-evidence.php"
           python3 "$PLUGIN/tests/g6-delivery-integrity.py"
 
+  g7-runtime:
+    name: Feature 007 G7 ownership safety (PHP ${{ matrix.php }})
+      - name: Verify non-authorizing G7 ownership and current-binding safeguards
+          for source in adaptive-operations-context ownership-reconciliation g7-operator-journal g7-host-readiness g7-update-acceptance g7-action-center g7-read-surfaces g7-compensation-audit g7-release-acceptance-audit g7-workload-measurement; do
+          php "$PLUGIN/tests/g7-ownership-reconciliation-runtime.php"
+          php "$PLUGIN/tests/g7-native-receipt-baseline-runtime.php"
+          php "$PLUGIN/tests/g7-operator-journal-runtime.php"
+          php "$PLUGIN/tests/g7-update-host-action-runtime.php"
+          php "$PLUGIN/tests/g7-read-surfaces-contract.php"
+          php "$PLUGIN/tests/g7-compensation-safety-runtime.php"
+          php "$PLUGIN/tests/g7-release-metrics-runtime.php"
+          php "$PLUGIN/tests/g7-release-missing-dependency-contract.php"
+          php "$PLUGIN/tests/g7-spec-delivery-contract.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-control-center.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
   g5-runtime:
     name: Feature 007 G5 runtime (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest

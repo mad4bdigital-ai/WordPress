@@ -91,15 +91,15 @@
   "spec_paths": [
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "63679b85906fdd36c5289b6587e5b707fa14d56a72a2bef04c1a61033fdde52c"
+      "sha256": "ea2f166afa2c8bd245b723b459ec3f04b0910598017fc2103009ad39cb0b4474"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "b78470dd0d8d54b3d7c5b3bb515d878309ab6d7c9d3a026e3da3d98b2098c6f7"
+      "sha256": "4a974a9f1d894b4c4bf9b40445efcca58d5fb36ddc8828b7dcc6bb3af9899285"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "2f3ca3b8254e2455b6ab175f0a6ffb5e2d10030db37216d79437f86e6cbd3350"
+      "sha256": "272b1a3d626122c56ed2fd6b9a5b29651a391eb6fb6cf1d6a53616eab6e311d2"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g5-delivery.md",

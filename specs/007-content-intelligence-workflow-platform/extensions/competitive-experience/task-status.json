@@ -35,10 +35,12 @@
     },
     "T4061": {
       "status": "PARTIAL",
-      "reason": "Operator action cards and L0-L5 reference implemented without dispatch or claimed repair; per-plan receipts and autonomy evaluation remain pending.",
+      "reason": "Operator action cards and L0-L5 reference implemented without dispatch or claimed repair; per-plan receipts and autonomy evaluation remain pending. Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
       "evidence_refs": [
         "ui-delivery.json",
-        "ui-delivery.md"
+        "ui-delivery.md",
+        "g7-delivery.json",
+        "g7-delivery.md"
       ]
     },
     "T3901": {
@@ -799,6 +801,190 @@
       "evidence_refs": [
         "g5-delivery.json",
         "g5-delivery.md"
+      ]
+    },
+    "T4036": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4037": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4038": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4039": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4040": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4041": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4042": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4043": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4044": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4045": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4046": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4047": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4048": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4049": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4050": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4051": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4052": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4053": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4054": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4055": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4063": {
+      "status": "PARTIAL",
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4064": {
+      "status": "PARTIAL",
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4065": {
+      "status": "PARTIAL",
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
       ]
     }
   },

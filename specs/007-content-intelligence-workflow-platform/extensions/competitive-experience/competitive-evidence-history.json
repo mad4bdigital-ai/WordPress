@@ -5,8 +5,8 @@
     "policy": "append_only_fail_closed",
     "silent_pruning": false
   },
-  "current_generation_sha256": "060a6024131d82cf59ffb4466b2e5ac84abfa2db3dd6ae9599f77271e1d1fad5",
-  "current_entry_sha256": "0ce16b5eafb9f6dba3e43b3765c4017990f37184ec929b98f89433e3a3699970",
+  "current_generation_sha256": "6250c8c31a974fb6d2f2c277fd8334d32c551343aadeef9458852abe940f9911",
+  "current_entry_sha256": "8b99d133b00f483b1b012e0e93d92cdd3d6d2282961a94bbd5b91be45a1a6093",
   "previous_known_good_generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
   "alerts": [
     {
@@ -74,6 +74,17 @@
       "state": "open",
       "authorizing": false,
       "alert_sha256": "c25f78c18149da25879ca484e1c395ace4419f6e4e8d3797dc4f2e9b2b281649"
+    },
+    {
+      "alert_id": "drift-6250c8c31a974fb6",
+      "revision": 8,
+      "generation_sha256": "6250c8c31a974fb6d2f2c277fd8334d32c551343aadeef9458852abe940f9911",
+      "reasons": [
+        "task"
+      ],
+      "state": "open",
+      "authorizing": false,
+      "alert_sha256": "03b065674c86d1d8404e7d42de60969443eb45d82e8ac432fc1a8a16d7a80928"
     }
   ],
   "acknowledgements": [
@@ -261,6 +272,31 @@
       },
       "authorizing": false,
       "entry_sha256": "0ce16b5eafb9f6dba3e43b3765c4017990f37184ec929b98f89433e3a3699970"
+    },
+    {
+      "revision": 8,
+      "generation_sha256": "6250c8c31a974fb6d2f2c277fd8334d32c551343aadeef9458852abe940f9911",
+      "previous_generation_sha256": "060a6024131d82cf59ffb4466b2e5ac84abfa2db3dd6ae9599f77271e1d1fad5",
+      "previous_entry_sha256": "0ce16b5eafb9f6dba3e43b3765c4017990f37184ec929b98f89433e3a3699970",
+      "source_generation": "fa615ba998fade31d180d10cb4d30472b38b7d8237349d8c3c21002e6e0128ba",
+      "task_generation": "d2ce8e2442435332d53427bd88bff790bfec459a3f5903e0868bc250ddbd89d2",
+      "matrix_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+      "summary_sha256": "f7d1a2521c62bebc4ca8a7ed5e8913232b2a0a6b926a800beac015adf9966f5e",
+      "package_fingerprints": {
+        "ai-engine": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+        "easy-mcp-ai": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+        "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+        "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
+      },
+      "state": "drifted",
+      "drift_flags": {
+        "source": false,
+        "task": true,
+        "matrix": false,
+        "packages": false
+      },
+      "authorizing": false,
+      "entry_sha256": "8b99d133b00f483b1b012e0e93d92cdd3d6d2282961a94bbd5b91be45a1a6093"
     }
   ],
   "authorizing": false

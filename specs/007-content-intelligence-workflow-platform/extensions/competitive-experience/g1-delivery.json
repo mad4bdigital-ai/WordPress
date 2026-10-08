@@ -37,11 +37,11 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-history.php",
-      "sha256": "226bc999982645e63b0cb313a79472c3fea4f112d4cec33c3ea074cb1de77c36"
+      "sha256": "491262394939b04cc999039e0c898f3e68fa03321f532b78582935e02a22e755"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php",
-      "sha256": "73eb4242dc497b3af32bca92a6bc4ad645fa1923b9540dc8b494fe85314f6d4a"
+      "sha256": "c0e343eb49f02e0ee6b33a1ec7a640d367effa4f090b27727653dc5b7714a248"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php",
@@ -49,7 +49,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "1e2b0807602e2f9c1fca62f49cc50d4f203cf810e6b0bd70ea4f09a117e8a2f8"
+      "sha256": "5ce5d6db3e1f814b3d062599c9768bab748e6a82301426a68613a631b78ec338"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-collectors.php",
@@ -85,7 +85,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence-history.json",
-      "sha256": "dbf3ad154287ce1f875cf3e2ef51d9206956cc415645e561d5e7faae62c55f8a"
+      "sha256": "1664583c4f3cee17076019545e40b8fbd2ed9b2a98d8587c782968894a2f9839"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/competitive-evidence.py",
@@ -101,11 +101,11 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
-      "sha256": "b78470dd0d8d54b3d7c5b3bb515d878309ab6d7c9d3a026e3da3d98b2098c6f7"
+      "sha256": "4a974a9f1d894b4c4bf9b40445efcca58d5fb36ddc8828b7dcc6bb3af9899285"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
-      "sha256": "63679b85906fdd36c5289b6587e5b707fa14d56a72a2bef04c1a61033fdde52c"
+      "sha256": "ea2f166afa2c8bd245b723b459ec3f04b0910598017fc2103009ad39cb0b4474"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
@@ -117,7 +117,7 @@
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
-      "sha256": "2f3ca3b8254e2455b6ab175f0a6ffb5e2d10030db37216d79437f86e6cbd3350"
+      "sha256": "272b1a3d626122c56ed2fd6b9a5b29651a391eb6fb6cf1d6a53616eab6e311d2"
     }
   ],
   "acceptance_contracts": [

@@ -202,6 +202,8 @@ final class MAD4B_SCP_Operator_Control_Center {
 		$snapshot['production_authorized'] = false;
 		$snapshot['authorizing'] = false;
 		$snapshot['mutation_performed'] = false;
+		$snapshot['g7_action_center'] = class_exists( 'MAD4B_SCP_G7_Action_Center', false )
+			? MAD4B_SCP_G7_Action_Center::from_operator_snapshot( $snapshot ) : array();
 		return $snapshot;
 	}
 
