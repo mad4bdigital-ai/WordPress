@@ -33,7 +33,7 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-contracts.php",
-      "sha256": "4a44cfb5c0618c5fb7aae52f8ef7f786cedf01c025802a808f92ac5025a0f0db"
+      "sha256": "ad15c482b6ee80290fda8e78c3e202f6a63fc4cda8e17f9f99a638cdd8615b63"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-operation-compiler.php",
@@ -99,7 +99,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-conversation-vault-runtime.php",
-      "sha256": "f967d83791669200f3b90cc70f3fc7db9d5febbcbee201d6b573fa6f3627af82"
+      "sha256": "89be7bc93bd00945c0f1cc1f5326c67f2db5b990a68229320c993845e178430b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",
