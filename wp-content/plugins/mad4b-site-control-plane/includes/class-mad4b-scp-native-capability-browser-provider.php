@@ -105,7 +105,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
         $parsed = parse_url( $origin );
         if ( ! is_array( $parsed ) || ( $parsed['scheme'] ?? '' ) !== 'https' ||
             empty( $parsed['host'] ) || isset( $parsed['user'] ) || isset( $parsed['query'] ) ||
-            ( $parsed['path'] ?? '/' ) !== '/' ) return null;
+            ! preg_match( '#^/(?:[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}/)*$#D',
+                (string) ( $parsed['path'] ?? '/' ) ) ) return null;
         $secret = (string) wp_salt( 'auth' );
         if ( strlen( $secret ) < 16 ) return null;
         $provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
@@ -155,6 +156,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
                 isset( $parsed['query'] ) || isset( $parsed['fragment'] ) ||
                 (int) ( $parsed['port'] ?? 443 ) !== (int) ( parse_url( $origin, PHP_URL_PORT ) ?: 443 ) ) continue;
             $path = (string) ( $parsed['path'] ?? '/' );
+            $scope = (string) ( parse_url( $origin, PHP_URL_PATH ) ?: '/' );
+            if ( '/' !== $scope && 0 !== strpos( $path, $scope ) ) continue;
             if ( ! preg_match( '#^/(?!/)[a-zA-Z0-9~._/%-]*$#D', $path ) ||
                 preg_match( '~(?:\\.\\.|%2e|%2f|%5c|%00|\\\\|#)~i', $path ) ||
                 preg_match( '~(?:^|/)(?:wp-admin|wp-json|wp-login\\.php|xmlrpc\\.php|wp-cron\\.php)(?:/|$)~i', $path ) ) continue;
