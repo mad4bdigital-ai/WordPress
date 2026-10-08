@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'tools/browser-acceptance/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-capability-discovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-browser-acceptance/**'
       - 'plugins/mad4b-wordpress/skills/wordpress-browser-acceptance/**'
       - '.github/workflows/mad4b-managed-browser-providers.yml'
@@ -68,6 +71,7 @@ jobs:
           node tools/browser-acceptance/test-provider-selection.mjs
           node tools/browser-acceptance/test-site-provider-configuration.mjs
           node tools/browser-acceptance/test-site-adapter-resolver.mjs
+          node tools/browser-acceptance/test-site-neutral-boundaries.mjs
           php wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php
           node tools/browser-acceptance/test-scheduler.mjs
