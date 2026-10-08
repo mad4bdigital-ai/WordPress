@@ -23,7 +23,7 @@ function g6_policy_error( $v, $code ) { g6_policy_assert( is_wp_error( $v ) && $
 final class G6_Reviewed_Model_Fixture implements MAD4B_SCP_G6_Model_Routing_Adapter {
     public function descriptor() {
         return array( 'provider_id' => 'fixture-reviewed', 'capabilities' => array( 'content', 'translation' ), 'regions' => array( 'eu' ),
-            'privacy_classes' => array( 'public', 'internal' ), 'worst_case_cost_micro' => 100,
+            'privacy_classes' => array( 'public', 'internal' ), 'worst_case_cost_micro' => isset( $GLOBALS['g6_price_override'] ) ? $GLOBALS['g6_price_override'] : 100,
             'account_bound' => true, 'consent_valid' => true, 'runtime_certified' => true,
             'artifact_sha256' => str_repeat( 'b', 64 ), 'generation_sha256' => str_repeat( isset( $GLOBALS['g6_provider_gen'] ) ? $GLOBALS['g6_provider_gen'] : 'a', 64 ) );
     }
@@ -38,6 +38,10 @@ g6_policy_error( MAD4B_SCP_G6_Provider_Routing::register( new G6_Reviewed_Model_
 $view = MAD4B_SCP_G6_Provider_Routing::review( $input );
 g6_policy_assert( ! is_wp_error( $view ) && 1 === count( $view['options'] ) && true === $view['options'][0]['review_eligible'], 'exact provider descriptor can be reviewed' );
 g6_policy_assert( ! $view['options'][0]['execution_admitted'] && ! $view['model_invoked'] && ! $view['external_charge_performed'] && null === $view['selected_provider'], 'review cannot activate external model' );
+$GLOBALS['g6_price_override'] = 150;
+$changed_descriptor = MAD4B_SCP_G6_Provider_Routing::review( $input );
+g6_policy_assert( ! $changed_descriptor['options'][0]['review_eligible'] && in_array( 'provider_descriptor_drift', $changed_descriptor['options'][0]['blockers'], true ), 'descriptor drift must be denied' );
+unset( $GLOBALS['g6_price_override'] );
 $GLOBALS['g6_provider_gen'] = 'f';
 $stale_route = MAD4B_SCP_G6_Provider_Routing::review( $input );
 g6_policy_assert( ! $stale_route['options'][0]['review_eligible'] && in_array( 'provider_generation_stale', $stale_route['options'][0]['blockers'], true ), 'stale provider generation must be explicitly blocked' );
