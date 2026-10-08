@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 394,
+  "changed_file_count": 396,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -693,17 +693,19 @@
         "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/plan.md",
         "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/spec.md",
         "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/tasks.md",
+        "tools/browser-acceptance/mcp-bridge.mjs",
         "tools/browser-acceptance/run-live-site-browser-acceptance.mjs",
         "tools/browser-acceptance/run-site-browser-acceptance.mjs",
         "tools/browser-acceptance/site-adapter-resolver.mjs",
         "tools/browser-acceptance/site-driver-registry.mjs",
         "tools/browser-acceptance/test-site-adapter-resolver.mjs",
         "tools/browser-acceptance/test-site-neutral-boundaries.mjs",
+        "wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-capability-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php"
       ]
     }
   ],
-  "changed_paths_sha256": "912cee0afbb574be1cd72ae242a155d734da36d3e212c5b0f364bc948c12941e",
+  "changed_paths_sha256": "be0e9d1390cbafac1d1657161187b7047b845a2d89ac6f18eedb34794bfa7789",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
