@@ -55,7 +55,7 @@ base = fixture()
 r = m.audit(base)
 check(r["summary"] == {"STRUCTURAL":4, "UNRESOLVED":4, "ISSUE":0}, "baseline")
 check(r["coverage_complete"] and not r["complete"] and not r["eligible_for_mutation"], "no semantic promotion")
-check(not r["snapshot_authenticity_verified"] and not r["authorizing"], "no evidence self-certification")
+check(not r["snapshot_authenticity_verified"] and not r["authorizing"] and len(r["input_evidence_sha256"]) == 64, "no evidence self-certification")
 check(m.identifier("9"*5000) is None and m.identifier(True) is None, "unbounded ID denied")
 check(m.identifier(str(2**63)) is None, "DB identifier overflow")
 case = fixture(); case["records"] = []
@@ -103,6 +103,8 @@ r = m.audit(case)
 check(any(x["reason"] == "shared_policy_snapshot_only" for x in r["findings"]) and not r["complete"], "shared never semantic")
 case = fixture(); case["records"][0]["id"] = case["records"][1]["id"]
 invalid(case, "source_identity_duplicate_or_invalid"); checks += 1
+case = fixture(); case["records"][0]["meta"]["related_properties_id"] = ["9"*1048577]*3
+invalid(case, "evidence_byte_budget_exceeded"); checks += 1
 case = fixture(); case["scope"]["origin"] = "http://staging.allroyalegypt.com"
 invalid(case, "origin_invalid"); checks += 1
 
