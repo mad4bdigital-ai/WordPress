@@ -221,10 +221,22 @@ class MAD4B_SCP_Execution_State_View {
     const CONTRACT = 'mad4b.execution-state-view.v1';
     const COMMITTED = 'COMMITTED';
     public static $state = 'RECONCILING';
+    public static $foreign = false;
+    public static $journal_unbound = false;
     public static function operation( $id ) { return array(
         'contract'=>self::CONTRACT, 'canonical_state'=>self::$state,
+        'scope'=>'operation', 'source_contract'=>'mad4b.dynamic-operation-status.v1',
         'terminal'=>self::$state==='COMMITTED',
         'reconciliation_required'=>self::$state!=='COMMITTED',
+        'evidence'=>array(
+            'operation_id'=>self::$foreign ? 'foreign:operation' : $id,
+            'operation_binding_sha256'=>hash( 'sha256', 'journal-binding' ),
+            'journal_head_sha256'=>self::$journal_unbound ? '' : hash( 'sha256', 'append-only-head' ),
+            'latest_sequence'=>5,
+            'orphan_candidate'=>false,
+            'stale_heartbeat'=>false, 'lock_expired'=>false,
+            'hard_deadline_exceeded'=>false,
+        ),
     ); }
 }
 class MAD4B_SCP_Execution_Receipt {
@@ -258,6 +270,16 @@ g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native ),
     'native_signature_invalid' );
 MAD4B_SCP_Execution_Receipt::$valid = true;
+MAD4B_SCP_Execution_State_View::$foreign = true;
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_execution_uncertain' );
+MAD4B_SCP_Execution_State_View::$foreign = false;
+MAD4B_SCP_Execution_State_View::$journal_unbound = true;
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_execution_uncertain' );
+MAD4B_SCP_Execution_State_View::$journal_unbound = false;
 $verified = MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native );
 g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_verified']

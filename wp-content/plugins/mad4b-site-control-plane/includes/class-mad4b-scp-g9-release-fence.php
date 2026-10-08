@@ -244,8 +244,19 @@ final class MAD4B_SCP_G9_Release_Fence {
         if ( is_wp_error( $state ) || ! is_array( $state )
             || ( $state['contract'] ?? '' ) !== MAD4B_SCP_Execution_State_View::CONTRACT
             || ( $state['canonical_state'] ?? '' ) !== MAD4B_SCP_Execution_State_View::COMMITTED
-            || empty( $state['terminal'] ) || ! empty( $state['reconciliation_required'] ) )
-            return self::blocked( 'native_execution_uncertain', 'Canonical execution state is missing, contradictory or uncommitted.' );
+            || empty( $state['terminal'] ) || ! empty( $state['reconciliation_required'] )
+            || ( $state['scope'] ?? '' ) !== 'operation'
+            || ( $state['source_contract'] ?? '' ) !== 'mad4b.dynamic-operation-status.v1'
+            || ( $state['evidence']['operation_id'] ?? '' ) !== $operation_id
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $state['evidence']['operation_binding_sha256'] ?? '' )
+            || ! MAD4B_SCP_Resilience_Context::is_hash( $state['evidence']['journal_head_sha256'] ?? '' )
+            || ! is_int( $state['evidence']['latest_sequence'] ?? null )
+            || $state['evidence']['latest_sequence'] < 1
+            || ! empty( $state['evidence']['orphan_candidate'] )
+            || ! empty( $state['evidence']['stale_heartbeat'] )
+            || ! empty( $state['evidence']['lock_expired'] )
+            || ! empty( $state['evidence']['hard_deadline_exceeded'] ) )
+            return self::blocked( 'native_execution_uncertain', 'Canonical journal operation identity, append-only head or terminal evidence is missing or contradictory.' );
         return array(
             'contract' => 'mad4b.g9.native-execution-evidence.v1',
             'operation_sha256' => $operation_sha256,
