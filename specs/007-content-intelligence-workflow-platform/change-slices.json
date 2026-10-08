@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 347,
+  "changed_file_count": 351,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -617,8 +617,20 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php"
       ]
+    },
+    {
+      "id": "browser-managed-runner-operator-preference-parity-20261008",
+      "semantic_unit": "Bind browser external runner to actual non-authorizing WordPress acceptance-provider selection, signed site profile and allowlisted managed browser preference",
+      "revert_boundary": "ETG-only external-runner capability read, strict selection verifier and contract/CI updates revert together; do not gain generic site acceptance engine or mutate provider credentials",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-managed-browser-providers.yml",
+        "tools/browser-acceptance/run-live-etg-browser-acceptance.mjs",
+        "tools/browser-acceptance/site-provider-configuration.mjs",
+        "tools/browser-acceptance/test-site-provider-configuration.mjs"
+      ]
     }
   ],
-  "changed_paths_sha256": "775abe0587fe753fe46ae205704940ded808bcb3aa6f156b114fcfdaf90e7e81",
+  "changed_paths_sha256": "3d29c0e47637960a33df8a5acd5251d10541974591f3a3a3564cd59acbfcdf64",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
