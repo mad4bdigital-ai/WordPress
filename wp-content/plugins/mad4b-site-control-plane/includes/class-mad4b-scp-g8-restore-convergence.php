@@ -21,7 +21,8 @@ final class MAD4B_SCP_G8_Restore_Convergence {
 		$clean = static function ( array $items ) {
 			foreach ( $items as $id => $record ) {
 				if ( ! is_string( $id ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $id )
-					|| ! is_array( $record ) || count( $record ) > 8
+					|| ! is_array( $record ) || count( $record ) !== 2
+					|| ! array_key_exists( 'state', $record ) || ! array_key_exists( 'effect_sha256', $record )
 					|| ! in_array( $record['state'] ?? '', array( 'applied', 'compensated', 'unknown' ), true )
 					|| ! is_string( $record['effect_sha256'] ?? null )
 					|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $record['effect_sha256'] ) ) return false;
@@ -74,13 +75,19 @@ final class MAD4B_SCP_G8_Restore_Convergence {
 		$verified = array(); $rejected = array();
 		foreach ( $witnesses as $id => $receipt ) {
 			if ( ! is_string( $id ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $id )
-				|| ! isset( $external[ $id ] ) || ! is_array( $receipt ) || count( $receipt ) > 48 ) {
+				|| ! isset( $external[ $id ] ) || ! is_array( $receipt ) || count( $receipt ) > 48
+				|| ! MAD4B_SCP_G8_Record::inert( $receipt )
+				|| strlen( serialize( $receipt ) ) > 65536 ) {
 				return new WP_Error( 'mad4b_g8_restore_witness_invalid', 'Witness must describe an inventoried effect.' );
 			}
 			if ( ! self::ready( 'MAD4B_SCP_Execution_Receipt', 'verify' ) ) {
 				$rejected[ $id ] = 'native_signature_verifier_unavailable'; continue;
 			}
-			$check = MAD4B_SCP_Execution_Receipt::verify( $receipt );
+			try {
+				$check = MAD4B_SCP_Execution_Receipt::verify( $receipt );
+			} catch ( Throwable $error ) {
+				$check = new WP_Error( 'mad4b_g8_native_receipt_verifier_exception', 'Native receipt verification failed.' );
+			}
 			if ( is_wp_error( $check ) || ! is_array( $check )
 				|| true !== ( $check['valid'] ?? false )
 				|| true !== ( $check['cryptographic_signature_verified'] ?? false )
@@ -94,6 +101,12 @@ final class MAD4B_SCP_G8_Restore_Convergence {
 			}
 			$verified[ $id ] = $check['receipt_sha256'];
 		}
+		$final_binding = MAD4B_SCP_G8_Record::binding();
+		$final_runtime = MAD4B_SCP_G8_Record::runtime_binding();
+		if ( ! MAD4B_SCP_G8_Record::staging() || is_wp_error( $final_binding )
+			|| is_wp_error( $final_runtime ) || $final_binding !== $binding
+			|| ! hash_equals( $runtime, $final_runtime ) )
+			return new WP_Error( 'mad4b_g8_restore_evidence_identity_raced', 'Restore/runtime identity changed during evidence review.' );
 		ksort( $verified, SORT_STRING ); ksort( $rejected, SORT_STRING );
 		$unwitnessed = array_values( array_diff( array_keys( $external ), array_keys( $verified ) ) );
 		sort( $unwitnessed, SORT_STRING );
