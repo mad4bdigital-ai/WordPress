@@ -28,23 +28,17 @@ export function configuredAllowedHosts(env = process.env) {
     if (!host) throw new Error("browser_allowed_asset_domain_invalid");
     if (!out.includes(host)) out.push(host);
   }
-  return out.slice(0, 50);
+  if (out.length > 50) throw new Error("browser_allowed_asset_domains_overflow");
+  return out;
 }
 
 export function allowedHostSet(origin, env = process.env) {
   return new Set([originHostname(origin), ...configuredAllowedHosts(env)]);
 }
 
-const ACTIVE_CROSS_ORIGIN_TYPES = new Set([
-  "document",
-  "script",
-  "xhr",
-  "fetch",
-  "eventsource",
-  "websocket",
-  "manifest",
-  "other"
-]);
+// No passive-content exception: remote images/fonts can leak cookies or
+// other browser state through their query strings. Only explicitly reviewed
+// asset hosts are allowed, regardless of resource type.
 
 export function requestBoundaryDecision({ url, resourceType, origin, env = process.env }) {
   const raw = String(url || "");
@@ -61,11 +55,7 @@ export function requestBoundaryDecision({ url, resourceType, origin, env = proce
   if (!host) return { allow: false, reason: "invalid_hostname" };
   if (allowedHosts.has(host)) return { allow: true, reason: "allowlisted_host" };
 
-  const type = String(resourceType || "other").toLowerCase();
-  if (ACTIVE_CROSS_ORIGIN_TYPES.has(type)) {
-    return { allow: false, reason: "cross_origin_active_request_denied" };
-  }
-  return { allow: true, reason: "passive_asset" };
+  return { allow: false, reason: "cross_origin_not_allowlisted" };
 }
 
 export async function installContextNetworkBoundary(context, origin, env = process.env) {
@@ -86,6 +76,6 @@ export async function installContextNetworkBoundary(context, origin, env = proce
     origin_host: originHostname(origin),
     configured_asset_hosts: configuredAllowedHosts(env),
     active_cross_origin_denied: true,
-    passive_cross_origin_assets_allowed: true
+    passive_cross_origin_assets_allowed: false
   };
 }
