@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 402,
+  "changed_file_count": 405,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -676,12 +676,15 @@
     },
     {
       "id": "feature007-universal-solution-discovery-runtime",
-      "semantic_unit": "Existing independent Feature 007 universal solution discovery source and read-only contract, observed already present on Hub",
-      "revert_boundary": "Read-only solution discovery service, runtime fixture and explanation; unrelated to ACI01 feature authorization",
+      "semantic_unit": "Universal read-only solution discovery and assistant GA gap router with independently governed execution boundary; source evidence only",
+      "revert_boundary": "Revert universal discovery, GA gap router, tests and docs together; do not alter independent approval/grant or Production authority",
       "certification": "existing_source_only_separate_owner_runtime_acceptance",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/ASSISTANT-SOLUTION-ROUTER.md",
         "wp-content/plugins/mad4b-site-control-plane/docs/UNIVERSAL-SOLUTION-DISCOVERY.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-solution-router.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-solution-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php"
       ]
     },
@@ -728,6 +731,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "28dfb32a9c088dae0cf2fc241c85bd8193b8812982d22734ad001133d2663010",
+  "changed_paths_sha256": "947f66b46b18a6bceb065ac2cbad305badeef16a82ff34885c7c56df5f04606d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
