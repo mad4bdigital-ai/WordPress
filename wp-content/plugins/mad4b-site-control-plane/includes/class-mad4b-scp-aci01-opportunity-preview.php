@@ -72,6 +72,15 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
              '' === trim( $goal ) || strlen( $goal ) > self::MAX_GOAL_BYTES ) return self::denied( 'candidate_inputs_invalid' );
         if ( ! isset( $intake['status'], $evidence['status'] ) ||
              'DENIED' === $intake['status'] || 'DENIED' === $evidence['status'] ) return self::denied( 'upstream_preflight_denied' );
+        if ( ! isset( $intake['contract'], $evidence['contract'] ) ||
+             'mad4b.aci01.intake-preview.v1' !== $intake['contract'] ||
+             'mad4b.aci01.evidence-preview.v1' !== $evidence['contract'] ||
+             ! in_array( $intake['status'], array( 'NEEDS_EVIDENCE', 'NEEDS_REVIEW' ), true ) ||
+             'NEEDS_EVIDENCE' !== $evidence['status'] ||
+             ! empty( $intake['authorizing'] ) || ! empty( $evidence['authorizing'] ) ||
+             ! empty( $intake['mutation_performed'] ) || ! empty( $evidence['mutation_performed'] ) ) {
+            return self::denied( 'upstream_preflight_contract_invalid' );
+        }
         if ( ! isset( $intake['scope'], $evidence['scope'], $intake['candidate'],
                     $intake['plan_fingerprint_sha256'], $evidence['preview_sha256'] ) ||
              ! is_array( $intake['scope'] ) || ! is_array( $evidence['scope'] ) ||
@@ -114,7 +123,8 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'goal_sha256' => hash( 'sha256', trim( $goal ) ),
             'source_previews' => array( $intake['plan_fingerprint_sha256'], $evidence['preview_sha256'] ),
             'required_sections' => $required, 'reason_codes' => $reasons );
-        return array( 'contract' => self::CONTRACT, 'status' => 'NEEDS_REVIEW',
+        return array( 'contract' => self::CONTRACT, 'status' => 'NEEDS_EVIDENCE',
+            'review_status' => 'NEEDS_REVIEW',
             'candidate_kind' => 'OpportunityHypothesis_BlueprintCandidate',
             'site_scope' => $intake['scope'], 'target_post_type' => $post_type,
             'goal_sha256' => $material['goal_sha256'],
