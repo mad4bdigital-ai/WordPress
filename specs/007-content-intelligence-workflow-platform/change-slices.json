@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 382,
+  "changed_file_count": 394,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -169,7 +169,6 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-auto-reconcile-scenarios.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-continuation.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php",
@@ -177,8 +176,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-dynamic-tool-projection-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/post-update-bottleneck-hardening-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php"
       ]
     },
     {
@@ -684,8 +682,28 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-solution-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php"
       ]
+    },
+    {
+      "id": "site-aware-browser-auto-discovery-20261009",
+      "semantic_unit": "Dynamic WordPress plugin/CPT/taxonomy recognition, approved browser driver selection, site-neutral execution, acceptance specs and defensive fixtures",
+      "revert_boundary": "Revert the discovery and reviewed-driver dispatch bundle in one non-authorizing source slice",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/acceptance.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/plan.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/spec.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/tasks.md",
+        "tools/browser-acceptance/run-live-site-browser-acceptance.mjs",
+        "tools/browser-acceptance/run-site-browser-acceptance.mjs",
+        "tools/browser-acceptance/site-adapter-resolver.mjs",
+        "tools/browser-acceptance/site-driver-registry.mjs",
+        "tools/browser-acceptance/test-site-adapter-resolver.mjs",
+        "tools/browser-acceptance/test-site-neutral-boundaries.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-capability-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "e67506fff26168a4e8952046ab86e8944d2a4c664139bb4c2567a7131c64cb47",
+  "changed_paths_sha256": "912cee0afbb574be1cd72ae242a155d734da36d3e212c5b0f364bc948c12941e",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
