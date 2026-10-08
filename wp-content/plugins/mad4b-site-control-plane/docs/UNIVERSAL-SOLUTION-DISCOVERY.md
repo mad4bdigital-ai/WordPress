@@ -48,18 +48,18 @@ Supply `expected_snapshot_sha256` from the first response when reading subsequen
 
 ## Reuse existing MAD4B discovery and certification systems
 
-Feature 007 also includes \`MAD4B_SCP_Capability_Atlas\`, which composes WordPress plugin-family inventory with site/browser provider *capability claims*. **This is a different evidence layer**, not a competing authorized executor or a replacement for the metadata fallback:
+Feature 007 also includes `MAD4B_SCP_Capability_Atlas`, which composes WordPress plugin-family inventory with site/browser provider *capability claims*. **This is a different evidence layer**, not a competing authorized executor or a replacement for the metadata fallback:
 
 | Layer | Existing facility | Proven meaning |
 | --- | --- | --- |
-| Installed-source observation | \`mad4b/solution-discover\` | Plugin, MU-plugin, drop-in, REST-visible Ability or bounded external hint exists; no capability certification |
-| Assistant gap search | \`mad4b/assistant-solution-discover\` | Matched candidates and bounded unranked fallback for \`Assistant_Planning\` gaps; no selection or execution |
-| Claimed capability graph | \`mad4b/capability-atlas\` | Plugin family/browser provider declares capability; every node remains unverified |
+| Installed-source observation | `mad4b/solution-discover` | Plugin, MU-plugin, drop-in, REST-visible Ability or bounded external hint exists; no capability certification |
+| Assistant gap search | `mad4b/assistant-solution-discover` | Matched candidates and bounded unranked fallback for `Assistant_Planning` gaps; no selection or execution |
+| Claimed capability graph | `mad4b/capability-atlas` | Plugin family/browser provider declares capability; every node remains unverified |
 | Qualification | Existing G3 descriptors, signed declarative adapter manifests and shadow-read recipes | Exact independent effect/scope/compatibility checks; no implicit write authority |
 | Runtime acceptance | Real provider-specific WordPress/host and external browser reducers | Separate trust-bound functional evidence required before any certification |
 
-For cases such as WP File Manager, the generic source search may find an installed but unmapped plugin. A capability graph can add *review-only* context if a compatible provider declares its features. Neither metadata nor declaration can verify access to \`wp-config.php\`: approval, backup and independently checked host/file scope remain necessary.
+For cases such as WP File Manager, the generic source search may find an installed but unmapped plugin. A capability graph can add *review-only* context if a compatible provider declares its features. Neither metadata nor declaration can verify access to `wp-config.php`: approval, backup and independently checked host/file scope remain necessary.
 
-The generic solution discovery must not reimplement browser CPT/taxonomy recognition, browser site-driver selection, provider behavior certification, or the G3 adapter registry. Those belong to their existing owners. When a client is connected to Skill/MCP/Hostinger catalogs, an authorized external collector may pass *safe non-secret descriptors* using \`external_hints\`; WordPress cannot list the user's ChatGPT connections itself. Such hints are never credentials, and are not proof that a connector is active.
+The generic solution discovery must not reimplement browser CPT/taxonomy recognition, browser site-driver selection, provider behavior certification, or the G3 adapter registry. Those belong to their existing owners. When a client is connected to Skill/MCP/Hostinger catalogs, an authorized external collector may pass *safe non-secret descriptors* using `external_hints`; WordPress cannot list the user's ChatGPT connections itself. Such hints are never credentials, and are not proof that a connector is active.
 
 Known limitations: metadata enumeration is source-bounded and may return partial coverage above registry limits; lexical matching is not semantic matching; the unranked fallback pool needs independent review and may require pagination; no auto-install or file manager admin-UI automation is authorized. Source-only tests do not certify Staging, PHP 7.4/8.3 or Production.
