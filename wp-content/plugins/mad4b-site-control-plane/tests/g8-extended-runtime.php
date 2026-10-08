@@ -252,4 +252,20 @@ $bad_effects = array( 'invalid-key' => array( 'state' => 'applied', 'effect_sha2
 g8_check( g8_is_error( MAD4B_SCP_G8_Restore_Convergence::compare_external_effects( $bad_effects, $remote_effects ),
 	'mad4b_g8_restore_effects_invalid' ), 'untrusted external effect IDs are rejected' );
 
+// Historic, signed and expired windows may not permanently block new
+// providers; preserve the site bucket and never evict a live ticket scope.
+$stale = $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ];
+$stale['buckets'] = array( 'site' => array( 'started_at' => time() - 7200,
+	'attempts' => 0, 'errors' => 0, 'cooldown_until' => 0 ) );
+for ( $i = 0; $i < 60; ++$i ) {
+	$stale['buckets']['provider:expired-' . $i] = array( 'started_at' => time() - 7200,
+		'attempts' => 1, 'errors' => 0, 'cooldown_until' => 0 );
+}
+$stale['seal'] = MAD4B_SCP_G8_Record::seal( $stale );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $stale;
+$recovered = MAD4B_SCP_Automation_SLO::reserve( 'fresh', 'probe', str_repeat( 'e', 64 ) );
+g8_check( is_array( $recovered ), 'expired supplier windows reclaimed before site capacity check' );
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $recovered, new WP_Error( 'simulated_error' ) ),
+	'after reclamation automatic outcome remains durable' );
+
 echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
