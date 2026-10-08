@@ -11,6 +11,7 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 function get_current_user_id() { return $GLOBALS['g6_owner']; }
 function current_user_can( $name ) { return $GLOBALS['g6_owner'] > 0 && 'manage_options' === $name; }
 function get_user_meta( $id, $key, $single = false ) {
+    if ( ! empty( $GLOBALS['g6_malformed_user_meta'] ) ) return false;
     $record = isset( $GLOBALS['g6_store'][$id][$key] ) ? $GLOBALS['g6_store'][$id][$key] : null;
     if ( ! $single && ! empty( $GLOBALS['g6_duplicate_user_meta'] ) && null !== $record )
         return array( $record, $record );
@@ -218,6 +219,15 @@ $GLOBALS['g6_duplicate_user_meta'] = true;
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_store_duplicate' );
 $GLOBALS['g6_duplicate_user_meta'] = false;
 $previous_capacity_record = $GLOBALS['g6_store'][17][$boundary_key];
+$GLOBALS['g6_malformed_user_meta'] = true;
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_store_corrupt' );
+g6_vault_error( MAD4B_SCP_G6_Contracts::save(
+    MAD4B_SCP_G6_Conversation_Vault::KIND, 17, $previous_capacity_record, $previous_capacity_record
+), 'mad4b_g6_store_corrupt' );
+$GLOBALS['g6_malformed_user_meta'] = false;
+$GLOBALS['g6_store'][17][$boundary_key]['unexpected_large_payload'] = str_repeat( 'x', 262145 );
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_store_corrupt' );
+$GLOBALS['g6_store'][17][$boundary_key] = $previous_capacity_record;
 $GLOBALS['g6_store'][17][$boundary_key]['revision'] = '35';
 g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::status(), 'mad4b_g6_store_corrupt' );
 $GLOBALS['g6_store'][17][$boundary_key]['revision'] = PHP_INT_MAX;
