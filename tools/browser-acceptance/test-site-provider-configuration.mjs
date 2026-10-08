@@ -11,7 +11,7 @@ const base = () => ({
   provider_count: 1, providers: [{ provider_id: "etg-dfsb", contract: "etg.dfsb.browser-acceptance-provider.v2" }],
   operator_preference: {
     contract: "mad4b.browser-operator-preference.v1", authorizing: false, read_only: true,
-    executor: "auto", profile_id: "", site_provider_id: "", preference_valid: true,
+    executor: "auto", profile_id: "", site_provider_id: "", preference_valid: true, configuration_revision: "a".repeat(32),
     credential_verified: false, external_runner_connected: false, site_provider_registered_by_preference: false
   }
 });
@@ -62,4 +62,8 @@ const result = { provider_id: plan.provider_id, provider_contract: plan.provider
 assertEtgBrowserResultBinding(plan, result);
 assert.throws(() => assertEtgBrowserResultBinding(plan, { ...result, profile_id: "other" }), /mcp_site_browser_result_binding_mismatch/);
 assert.throws(() => assertEtgBrowserResultBinding(plan, { ...result, plan_digest: "b".repeat(64) }), /mcp_site_browser_result_binding_mismatch/);
+denied(x => { delete x.operator_preference.configuration_revision; }, "mcp_site_browser_operator_revision_missing_or_invalid");
+denied(x => { x.operator_preference.configuration_revision = "bad"; }, "mcp_site_browser_operator_revision_missing_or_invalid");
+const changedRevision = base(); changedRevision.operator_preference.configuration_revision = "b".repeat(32);
+assert.throws(() => assertEtgBrowserBindingUnchanged(snapshot, resolve(changedRevision, args)), /mcp_site_browser_operator_selection_changed:configurationRevision/);
 console.log("MAD4B_BROWSER_SITE_CONFIGURATION: PASS");
