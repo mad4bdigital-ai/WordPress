@@ -100,6 +100,10 @@
       "sha256": "7b2da3a851fac1f87833f4bff15f263e214b4cdd51bd6e1d0202cdd1ed87ba48"
     },
     {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/native-relation-evidence.py",
+      "sha256": "d2d15e311100e53e4daa920f8435715c597d55938f2d6f83ba88543f8e594430"
+    },
+    {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
       "sha256": "0f5ffa7c82ef8712fb9d54c75e3730e93a7c38f38d7d8fc726e0630eaf2d8142"
     },
@@ -110,6 +114,10 @@
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py",
       "sha256": "db7946de683233bcd9f56701274a0e3acaf85477dd2225e47cffb147f50b947d"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_native_relation_evidence.py",
+      "sha256": "798b88f6a8dc8c995e1bcabec44aa2521cc3490481e88aa6123de5f1bb51c572"
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
@@ -142,6 +150,7 @@
     "Representative Staging runtime must prove bounded discovery against installed providers without executing unknown code or leaking secret values.",
     "Any zero-effect read relied upon for automatic classification must carry a trusted conformance receipt for the exact graph/provider/schema generation.",
     "Browser/operator acceptance must prove workstream/status/evidence-class/runtime-parity filtering, evidence history context, remaining-task drill-down, stale review handling and revision conflict behavior.",
-    "Integration Hub cumulative CI and post-merge Staging acceptance remain required; Production remains unauthorized."
+    "Integration Hub cumulative CI and post-merge Staging acceptance remain required; Production remains unauthorized.",
+    "Native relation evidence inspection remains untrusted, non-authorizing and not eligible for semantic or mutation acceptance until independent WPML mapper/locale/provider certification."
   ]
 }
