@@ -123,6 +123,15 @@ $expiring = array(
 );
 $created_expiring = MAD4B_SCP_G6_Conversation_Vault::append( $expiring );
 g6_vault_assert( ! is_wp_error( $created_expiring ) && 3 === $created_expiring['revision'], 'expiry fixture stored encrypted' );
+// An append to another live thread must never carry a corrupted HMAC forward.
+$unrelated_registry = $GLOBALS['g6_store'][17][$crypto_meta_key];
+$GLOBALS['g6_store'][17][$crypto_meta_key]['items']['private-thread']['sealed_mac'] = str_repeat( 'f', 64 );
+$other_append = $expiring;
+$other_append['expected_revision'] = 3;
+$other_append['text'] = 'must not append across tampered thread';
+g6_vault_error( MAD4B_SCP_G6_Conversation_Vault::append( $other_append ), 'mad4b_g6_vault_seal_invalid' );
+$GLOBALS['g6_store'][17][$crypto_meta_key] = $unrelated_registry;
+g6_vault_assert( 3 === $GLOBALS['g6_store'][17][$crypto_meta_key]['revision'], 'unrelated corrupt transcript caused no registry write' );
 // Simulate the passage of time in the in-memory fixture without a public clock override.
 foreach ( $GLOBALS['g6_store'][17] as &$stored_record ) {
     if ( isset( $stored_record['items']['expired-thread'] ) )

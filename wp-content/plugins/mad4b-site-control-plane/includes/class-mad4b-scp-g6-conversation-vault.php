@@ -186,7 +186,13 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         foreach ( $items as $known_id => $known_thread ) {
             $valid = self::valid_thread( $known_id, $known_thread );
             if ( is_wp_error( $valid ) ) return $valid;
-            if ( ! $known_thread['deleted'] ) ++$active;
+            if ( ! $known_thread['deleted'] ) {
+                // Validate all live transcript heads before carrying this
+                // owner/site registry forward in a new revision.
+                $verified = self::verify_transcript( $scope, $known_thread, $key );
+                if ( is_wp_error( $verified ) ) return $verified;
+                ++$active;
+            }
         }
         if ( $active > self::MAX_THREADS )
             return MAD4B_SCP_G6_Contracts::error( 'vault_corrupt', 'Active quota violated.' );
@@ -202,10 +208,6 @@ final class MAD4B_SCP_G6_Conversation_Vault {
         );
         $valid = self::valid_thread( $id, $thread );
         if ( is_wp_error( $valid ) ) return $valid;
-        if ( isset( $items[ $id ] ) && ! $thread['deleted'] ) {
-            $verified = self::verify_transcript( $scope, $thread, $key );
-            if ( is_wp_error( $verified ) ) return $verified;
-        }
         if ( ! empty( $thread['deleted'] ) || $thread['expires_at'] <= $now || $thread['classification'] !== $classification )
             return MAD4B_SCP_G6_Contracts::error( 'vault_thread_ineligible', 'Deleted, expired or reclassified threads cannot be reopened by append.' );
         if ( ! isset( $thread['messages'] ) || ! is_array( $thread['messages'] ) || count( $thread['messages'] ) >= self::MAX_MESSAGES )
