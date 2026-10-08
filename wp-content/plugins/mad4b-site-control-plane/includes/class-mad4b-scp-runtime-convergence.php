@@ -1255,6 +1255,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$changed = is_array( $existing_checkpoint ) && isset( $existing_checkpoint['changed_safe_phases'] ) && is_array( $existing_checkpoint['changed_safe_phases'] )
 			? array_values( array_unique( array_map( 'sanitize_key', $existing_checkpoint['changed_safe_phases'] ) ) )
 			: array();
+		$initial_changed = $changed;
 		$schema_changed_this_slice = false;
 		try {
 			$lease_refresh = self::refresh_lock( $lock );
@@ -1476,6 +1477,18 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'retry_policy' => isset( $auto_reconciliation['retry_policy'] ) ? (string) $auto_reconciliation['retry_policy'] : 'none',
 				'retry_after_seconds' => $retry_after_seconds,
 			);
+			// Only changes attributable to THIS Cron slice can count toward the
+			// repaired-workload numerator. Prior slices remain in the total diff
+			// but may not be falsely attributed to the current ticket.
+			$checkpoint['g8_current_slice_changed_safe_phases'] = array_values( array_diff( $changed, $initial_changed ) );
+			if ( null !== $automatic_ticket && 'completed' === $checkpoint_state
+				&& ! empty( $checkpoint['g8_current_slice_changed_safe_phases'] ) ) {
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
+				$local_receipt = MAD4B_SCP_Automation_SLO::local_causal_receipt( $automatic_ticket, $checkpoint );
+				if ( is_wp_error( $local_receipt ) ) return $local_receipt;
+				$checkpoint['g8_local_causal_receipt'] = $local_receipt;
+			}
 			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
 			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
