@@ -36,6 +36,7 @@
     "effect-contracts.json",
     "evidence-trust.json",
     "implementation-slice-01.md",
+    "implementation-slice-02.md",
     "ledger-contracts.json",
     "operations.md",
     "optimization-policy.json",
@@ -242,6 +243,16 @@
     "staging_certified": false,
     "effects": "NONE",
     "ability": "mad4b/aci01-intake-preview",
+    "artifact_journal_modified": false,
+    "provider_spend_allowed": false
+  },
+  "runtime_slice_02": {
+    "contract": "mad4b.aci01.evidence-preview.v1",
+    "delivery_state": "SOURCE_IMPLEMENTED_AWAITING_EXACT_PHP_AND_STAGING",
+    "production_authorized": false,
+    "staging_certified": false,
+    "effects": "PURE_READ",
+    "ability": "mad4b/aci01-evidence-preview",
     "artifact_journal_modified": false,
     "provider_spend_allowed": false
   }
