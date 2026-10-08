@@ -154,6 +154,7 @@ $changed = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, array() );
 g9_assert( ! is_wp_error( $changed ) && $changed['requires_quarantine']
     && in_array( 'site_profile', $changed['changed_facets'], true ), 'profile restore drift' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'live_drift' );
+MAD4B_SCP_Site_Profile::$revision = 1; // Return to original exact binding for receipt correlation.
 // Native journal/receipt correlation cannot turn a foreign or unknown result
 // into a release certificate. Real cryptographic verification is owned by
 // existing WordPress runtime; this hermetic stub checks fail-closed wiring.
