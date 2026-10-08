@@ -108,7 +108,7 @@
       "phase": 5,
       "title": "Analytics and competitive search intelligence",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3926",
         "T3927",
@@ -189,7 +189,7 @@
       "phase": 9,
       "title": "SEO provider family and rendered provenance",
       "priority": "P1",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3946",
         "T3947",
@@ -565,7 +565,7 @@
       "phase": 27,
       "title": "External Provider Framework",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T4056",
         "T4057",
@@ -1092,7 +1092,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add governed analytics reporting with dimension/metric/property discovery and explicit account selection.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "SCOPED_EXTERNAL_READ",
       "task_ids": [
@@ -1122,7 +1122,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add clicks/impressions/query/page/site/sitemap/index-observation contracts to Search evidence.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "SCOPED_EXTERNAL_READ",
       "task_ids": [
@@ -1155,7 +1155,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Add Semrush/SE Ranking/Ahrefs breadth without coupling Search core to vendor-specific fields or count targets.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "SCOPED_EXTERNAL_READ",
       "task_ids": [
@@ -1433,7 +1433,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Generalize Rank Math/SEO foundation across Yoast/AIOSEO/SEOPress/Slim SEO/The SEO Framework.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -1464,7 +1464,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
       "delta": "Unify stored-versus-emitted provenance for posts/terms/archives and language/canonical conflicts.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [
@@ -2335,7 +2335,7 @@
       ],
       "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
       "delta": "Implement generic descriptors for credentials/account/scopes/quota/economics/rate/rights/health/capability/effects/reconciliation behind registered pinned adapters.",
-      "implementation_status": "OPEN",
+      "implementation_status": "PARTIAL",
       "runtime_parity_claimed": false,
       "risk_class": "CAPABILITY_LOCAL_MIXED",
       "task_ids": [

@@ -57,6 +57,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/domains/**'
       - 'wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/g4-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g5-*.php'
 
 permissions:
   contents: read
@@ -303,6 +305,44 @@ jobs:
             php "$PLUGIN/tests/$contract-contract.php"
           done
           python3 "$PLUGIN/tests/receipt-crypto-profile-contract.py"
+
+  g5-runtime:
+    name: Feature 007 G5 runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify G5 growth, SEO and external-provider contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          for source in g5-external-providers g5-growth-evidence g5-provider-profiles g5-seo-provider-families g5-acceptance; do
+            php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
+          done
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          for contract in g5-external-provider-contract g5-growth-evidence-runtime g5-provider-profile-contract g5-seo-provider-family-contract g5-acceptance-contract g5-registration-contract; do
+            php "$PLUGIN/tests/$contract.php"
+          done
+          python3 "$PLUGIN/tests/admin-route-registry-contract.py"
 
   g4-runtime:
     name: Feature 007 G4 runtime (PHP ${{ matrix.php }})

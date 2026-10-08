@@ -25,6 +25,7 @@ $pages = array(
 	'mad4b-operator-control-center' => array( 'MAD4B_SCP_Operator_Control_Center', 'render_page', array( '' ) ),
 	'mad4b-approval-decisions' => array( 'MAD4B_SCP_Approval_Decision_Admin', 'render_page', array( 'actionable', 'history' ) ),
 	'mad4b-search-intelligence' => array( 'MAD4B_SCP_Search_Experience', 'render', MAD4B_SCP_Search_Context::policy()['section_order'] ),
+	'mad4b-growth-providers' => array( 'MAD4B_SCP_G5_External_Providers', 'render', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case.' );

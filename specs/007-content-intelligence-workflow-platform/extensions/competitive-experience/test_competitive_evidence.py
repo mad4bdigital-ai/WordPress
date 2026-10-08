@@ -97,6 +97,16 @@ next_history = m.next_history(history, future, future_summary)
 assert next_history["entries"][-1]["state"] == "drifted"
 assert next_history["alerts"][-1]["state"] == "open"
 assert next_history["previous_known_good_generation_sha256"] == history["previous_known_good_generation_sha256"]
+
+metadata_reconciliation = deepcopy(future)
+metadata_reconciliation["generation_sha256"] = "3" * 64
+metadata_summary = m.operator_summary(metadata_reconciliation)
+carried = m.next_history(next_history, metadata_reconciliation, metadata_summary)
+assert carried["entries"][-1]["state"] == "drifted"
+assert carried["entries"][-1]["drift_flags"]["source"] is True
+assert carried["alerts"][-1]["generation_sha256"] == metadata_reconciliation["generation_sha256"]
+assert carried["alerts"][-1]["state"] == "open"
+
 try:
     m.next_history(next_history, s, summary)
     raise AssertionError("old generation replay was appended")

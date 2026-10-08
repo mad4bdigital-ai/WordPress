@@ -5,8 +5,8 @@
     "policy": "append_only_fail_closed",
     "silent_pruning": false
   },
-  "current_generation_sha256": "a9c7884fe66775b71d323525a856054515afbc9555c16bbb59ee2abc8607214e",
-  "current_entry_sha256": "6c40fb88c69f054ad6a6d364331a23599eb45b33959598c161c489766583f9fe",
+  "current_generation_sha256": "060a6024131d82cf59ffb4466b2e5ac84abfa2db3dd6ae9599f77271e1d1fad5",
+  "current_entry_sha256": "0ce16b5eafb9f6dba3e43b3765c4017990f37184ec929b98f89433e3a3699970",
   "previous_known_good_generation_sha256": "385762c5d046ce9b47a72ebc53c5b626d546756486fd0ce193f94266a9e968d3",
   "alerts": [
     {
@@ -52,6 +52,28 @@
       "state": "open",
       "authorizing": false,
       "alert_sha256": "c90a509a6516dfe01aa7cb9ad27565a959210cc438f38bea4ba016033f787cba"
+    },
+    {
+      "alert_id": "drift-c4f7640621797400",
+      "revision": 6,
+      "generation_sha256": "c4f7640621797400208fa9844331773c2ddda30e73c093e68e5095faf126f965",
+      "reasons": [
+        "task"
+      ],
+      "state": "open",
+      "authorizing": false,
+      "alert_sha256": "5b15ceab74fde978ae8704d1eadad56abf0240719332ff474f486636967df86d"
+    },
+    {
+      "alert_id": "drift-060a6024131d82cf",
+      "revision": 7,
+      "generation_sha256": "060a6024131d82cf59ffb4466b2e5ac84abfa2db3dd6ae9599f77271e1d1fad5",
+      "reasons": [
+        "task"
+      ],
+      "state": "open",
+      "authorizing": false,
+      "alert_sha256": "c25f78c18149da25879ca484e1c395ace4419f6e4e8d3797dc4f2e9b2b281649"
     }
   ],
   "acknowledgements": [
@@ -189,6 +211,56 @@
       },
       "authorizing": false,
       "entry_sha256": "6c40fb88c69f054ad6a6d364331a23599eb45b33959598c161c489766583f9fe"
+    },
+    {
+      "revision": 6,
+      "generation_sha256": "c4f7640621797400208fa9844331773c2ddda30e73c093e68e5095faf126f965",
+      "previous_generation_sha256": "a9c7884fe66775b71d323525a856054515afbc9555c16bbb59ee2abc8607214e",
+      "previous_entry_sha256": "6c40fb88c69f054ad6a6d364331a23599eb45b33959598c161c489766583f9fe",
+      "source_generation": "fa615ba998fade31d180d10cb4d30472b38b7d8237349d8c3c21002e6e0128ba",
+      "task_generation": "5c411f768c396f35cf85e9ebca744b45dd4387cd7418dadb28d2245e04e18546",
+      "matrix_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+      "summary_sha256": "c13d77c7ba6010899791f666f5c4fce8846356b09e14665d365759123e841cce",
+      "package_fingerprints": {
+        "ai-engine": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+        "easy-mcp-ai": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+        "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+        "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
+      },
+      "state": "drifted",
+      "drift_flags": {
+        "source": false,
+        "task": true,
+        "matrix": false,
+        "packages": false
+      },
+      "authorizing": false,
+      "entry_sha256": "849686a767e90fd10103d7e7bc66eb9052385352dff4e1ba2f1f809885fcd04d"
+    },
+    {
+      "revision": 7,
+      "generation_sha256": "060a6024131d82cf59ffb4466b2e5ac84abfa2db3dd6ae9599f77271e1d1fad5",
+      "previous_generation_sha256": "c4f7640621797400208fa9844331773c2ddda30e73c093e68e5095faf126f965",
+      "previous_entry_sha256": "849686a767e90fd10103d7e7bc66eb9052385352dff4e1ba2f1f809885fcd04d",
+      "source_generation": "fa615ba998fade31d180d10cb4d30472b38b7d8237349d8c3c21002e6e0128ba",
+      "task_generation": "5c411f768c396f35cf85e9ebca744b45dd4387cd7418dadb28d2245e04e18546",
+      "matrix_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+      "summary_sha256": "5b6b4af82af78df6101912eee0d607b702b8a322918c8a6c21e567162927b97b",
+      "package_fingerprints": {
+        "ai-engine": "ff14536aca8688ddf4631a87e1d33b9fdae983feab0b7c05f2d0cb524aa44ac0",
+        "easy-mcp-ai": "0cf4ab2d7d3e6de0d297ad59df68bdd60722de50e36bc8d792b9a585399be0bb",
+        "miniorange-secure-mcp-server": "baf0349514e92b59a57ee88bd5b3fd7095a6a5eec4de91a217f01cd6fee0e838",
+        "royal-mcp": "ccb8528552f804849726307fe6de1e28bada0404322f79ea5bfcb41edd3b8b70"
+      },
+      "state": "drifted",
+      "drift_flags": {
+        "source": false,
+        "task": true,
+        "matrix": false,
+        "packages": false
+      },
+      "authorizing": false,
+      "entry_sha256": "0ce16b5eafb9f6dba3e43b3765c4017990f37184ec929b98f89433e3a3699970"
     }
   ],
   "authorizing": false

@@ -146,10 +146,10 @@ class EvidenceDenials(unittest.TestCase):
         (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
         self.rejects("g1_partial_task_missing_delivery_binding")
 
-    def test_unowned_partial_task_is_rejected(self):
+    def test_g5_partial_task_requires_g5_delivery_binding(self):
         self.change("task-status.json", lambda d: d["overrides"].update(T3926={"status":"PARTIAL", "reason":"wrong owner", "evidence_refs":["g1-delivery.json"]}))
         (self.root / "task-ledger.generated.json").write_text(json.dumps(subject.build_ledger(self.root)))
-        self.rejects("implementation_partial_task_owner_invalid")
+        self.rejects("g5_partial_task_missing_delivery_binding:T3926")
 
     def test_g1_cannot_claim_runtime_parity(self):
         self.change("g1-delivery.json", lambda d: d.update(runtime_parity_claimed=True))

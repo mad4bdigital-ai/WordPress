@@ -226,7 +226,8 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     g2_partial_ids = {f"T39{i:02}" for i in range(11, 26)} | {f"T39{i:02}" for i in range(51, 56)}
     g3_partial_ids = {f"T40{i:02}" for i in range(11, 16)} | {f"T40{i:02}" for i in range(21, 36)}
     g4_partial_ids = {f"T39{i:02}" for i in range(31, 46)} | {f"T39{i:02}" for i in range(66, 76)}
-    supported_partial_ids = ui_partial_ids | g1_partial_ids | g2_partial_ids | g3_partial_ids | g4_partial_ids
+    g5_partial_ids = {f"T39{i:02}" for i in range(26, 31)} | {f"T39{i:02}" for i in range(46, 51)} | {f"T40{i:02}" for i in range(56, 61)}
+    supported_partial_ids = ui_partial_ids | g1_partial_ids | g2_partial_ids | g3_partial_ids | g4_partial_ids | g5_partial_ids
     if partial - supported_partial_ids:
         raise ValueError("implementation_partial_task_owner_invalid:" + ",".join(sorted(partial - supported_partial_ids)))
 
@@ -235,6 +236,7 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
     g2_partial = partial & g2_partial_ids
     g3_partial = partial & g3_partial_ids
     g4_partial = partial & g4_partial_ids
+    g5_partial = partial & g5_partial_ids
     if partial:
         if feature.get("status") not in {"UI_IMPLEMENTATION_IN_PROGRESS", "IMPLEMENTATION_IN_PROGRESS"}:
             raise ValueError("implementation_progress_requires_implementation_state")
@@ -392,6 +394,39 @@ def validate(root: Path = ROOT, repo: Path = REPO) -> dict:
             for row in ledger["tasks"]:
                 if row["task_id"] in g4_partial and "g4-delivery.json" not in row["evidence_refs"]:
                     raise ValueError("g4_partial_task_missing_delivery_binding:" + row["task_id"])
+
+        if g5_partial:
+            delivery = load(root, "g5-delivery.json")
+            if (delivery.get("contract") != "mad4b.competitive-g5-delivery.v1"
+                    or delivery.get("status") != "REPOSITORY_G5_FOUNDATION_IMPLEMENTED_EXTERNAL_ACCEPTANCE_PENDING"
+                    or delivery.get("authorizing") is not False or delivery.get("production_authorized") is not False
+                    or delivery.get("runtime_parity_claimed") is not False or delivery.get("live_provider_acceptance") is not False
+                    or delivery.get("live_browser_acceptance") is not False or delivery.get("paid_provider_capture_performed") is not False
+                    or delivery.get("exact_head_binding") != "supplied_by_ci_not_embedded_in_commit"
+                    or delivery.get("provider_reference_contract") != "mad4b.feature007-g5-provider-reference-profiles.v1"
+                    or delivery.get("seo_family_contract") != "mad4b.feature007-g5-seo-provider-family.v1"
+                    or set(delivery.get("partial_task_ids", [])) != g5_partial
+                    or not delivery.get("remaining_acceptance")):
+                raise ValueError("g5_delivery_boundary_or_progress_invalid")
+            groups = (
+                ("code_paths", "wp-content/plugins/mad4b-site-control-plane/"),
+                ("test_paths", "wp-content/plugins/mad4b-site-control-plane/"),
+                ("spec_paths", "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/"),
+            )
+            for group, prefix in groups:
+                paths = delivery.get(group, [])
+                if not paths:
+                    raise ValueError("g5_delivery_requires_code_tests_and_spec")
+                for entry in paths:
+                    path = entry.get("path", "")
+                    if not path.startswith(prefix) or ".." in PurePosixPath(path).parts:
+                        raise ValueError("g5_delivery_path_outside_scope:" + group)
+                    source = repo / path
+                    if source.is_symlink() or not source.is_file() or not source.resolve().is_relative_to(repo.resolve()) or digest(source.read_bytes()) != entry.get("sha256"):
+                        raise ValueError("g5_delivery_source_evidence_drift:" + path)
+            for row in ledger["tasks"]:
+                if row["task_id"] in g5_partial and "g5-delivery.json" not in row["evidence_refs"]:
+                    raise ValueError("g5_partial_task_missing_delivery_binding:" + row["task_id"])
     elif feature.get("status") != "SPEC_BACKLOG_ONLY":
         raise ValueError("implementation_state_without_progress")
     phases = set(range(35))
