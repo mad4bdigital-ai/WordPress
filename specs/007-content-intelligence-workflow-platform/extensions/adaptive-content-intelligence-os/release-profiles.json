@@ -1,0 +1,137 @@
+{
+  "contract": "mad4b.aci-os.release-profiles.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "profiles": [
+    {
+      "id": "spec_review",
+      "required_gates": [
+        "ACI-G0"
+      ],
+      "conditional": [],
+      "effects_allowed": [],
+      "live_runtime_required": false,
+      "owner": "scoped_review_owner",
+      "release_authority": "EXISTING_MAD4B_ONLY",
+      "spec_preview_only": true
+    },
+    {
+      "id": "evidence_read",
+      "required_gates": [
+        "ACI-G0",
+        "ACI-G1",
+        "ACI-G2",
+        "ACI-G7"
+      ],
+      "conditional": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ],
+      "effects_allowed": [
+        "PURE_READ"
+      ],
+      "live_runtime_required": true,
+      "owner": "scoped_review_owner",
+      "release_authority": "EXISTING_MAD4B_ONLY",
+      "spec_preview_only": true
+    },
+    {
+      "id": "draft_assisted",
+      "required_gates": [
+        "ACI-G0",
+        "ACI-G1",
+        "ACI-G6",
+        "ACI-G7"
+      ],
+      "conditional": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        },
+        {
+          "gate": "ACI-G3",
+          "when": "opportunity_research_in_scope"
+        }
+      ],
+      "effects_allowed": [
+        "PURE_READ"
+      ],
+      "live_runtime_required": true,
+      "owner": "scoped_review_owner",
+      "release_authority": "EXISTING_MAD4B_ONLY",
+      "spec_preview_only": true
+    },
+    {
+      "id": "staging_publish",
+      "required_gates": [
+        "ACI-G0",
+        "ACI-G6",
+        "ACI-G7",
+        "ACI-G8"
+      ],
+      "conditional": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ],
+      "effects_allowed": [
+        "WORDPRESS_MUTATION"
+      ],
+      "live_runtime_required": true,
+      "owner": "scoped_review_owner",
+      "release_authority": "EXISTING_MAD4B_ONLY",
+      "spec_preview_only": true
+    },
+    {
+      "id": "growth_observe",
+      "required_gates": [
+        "ACI-G0",
+        "ACI-G9"
+      ],
+      "conditional": [
+        {
+          "gate": "ACI-G8",
+          "when": "new_content_publication_in_scope"
+        }
+      ],
+      "effects_allowed": [
+        "PURE_READ"
+      ],
+      "live_runtime_required": true,
+      "owner": "scoped_review_owner",
+      "release_authority": "EXISTING_MAD4B_ONLY",
+      "spec_preview_only": true
+    },
+    {
+      "id": "production_promote",
+      "required_gates": [
+        "ACI-G0",
+        "ACI-G7",
+        "ACI-G8",
+        "ACI-G10"
+      ],
+      "conditional": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        },
+        {
+          "gate": "ACI-G9",
+          "when": "growth_learning_in_scope"
+        }
+      ],
+      "effects_allowed": [],
+      "live_runtime_required": true,
+      "owner": "independent_production_owner",
+      "release_authority": "EXISTING_MAD4B_ONLY",
+      "spec_preview_only": true
+    }
+  ],
+  "unknown_profile": "DENIED",
+  "growth_not_needed_to_certify_first_publish": true,
+  "site_binding_required": true,
+  "automatic_production_authority": false
+}

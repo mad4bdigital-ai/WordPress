@@ -2,6 +2,24 @@
 
 Contract: `mad4b.aci-os.implementation-plan.v1`. All future work starts OPEN; phase names are local to ACI01 and do NOT change Feature 007's frozen release denominator. Implement as child branches integrating into #258 after reviewed exact-head checks; no direct merge to master from an unaccepted slice.
 
+## Normative dynamic planning (supersedes numerical execution order)
+
+The numbered G0–G10 sections **classify acceptance evidence**, not a mandatory sequential Workflow. `task-registry.json` is authoritative for task artifact dependencies, and `acceptance-gates.json` separately defines conditional certification dependencies. The non-authorizing `dynamic_core.py` resolves a candidate subset against current scope, provider capabilities, certified proofs and policy; it never executes or grants. Historical prose that suggests G7 orchestration starts only after content QA is non-normative: journal, budget and CAS must be developed and certified **before** any paid or write effects.
+
+The project remains **DESIGN_REVIEW_REQUIRED** until the criteria in `project-charter.md` are independently reviewed and the exact Python validators are executed. G0's existence as documents does not mean G0 is Done.
+
+Recommended safe parallel tracks after G0's design review:
+- Core job/journal/lease/budget/read-only operator and scope resolution (G7 foundations).
+- Native WPML/typed relations/field ownership inspection (G4).
+- Brand/context/WriterProfile discovery and local semantic profiles (G1).
+- Research source, provider account and evidence contracts on no-charge fixtures (G2).
+- Opportunity graph and blueprint stages after relevant artifacts (G3/G5).
+- Independent writing QA (G6) from approved evidence and contexts, with native relation gate only where applicable.
+- Native/governed publishing (G8) requires exact G7, G6 and conditional G4 certificates, a separate current effective authority and native+browser proofs.
+- Growth experiments (G9) require comparable observations, with release (G10) aggregating exact relevant certificates and owner approval.
+
+The first vertical slice is one site, one locale, one non-paid research fixture, one bounded native relation read, one blueprint and draft and QA review, **zero mutation**. Its STOP conditions include missing brand context, unclear relation policy, unlicensed source, stale generation and forged/missing certified capability.
+
 ## ACI-G0 — Spec integrity and ownership
 Source: this package. Review platform reuse, contract conflicts, immutable boundaries, parent/CE01 crosswalk, task traceability, exact-head ownership, doc/validator acceptance. Exit: fail-closed spec validator + repo code review, no release claim.
 
@@ -43,3 +61,16 @@ Threat model, model/adapter version skew, Staging QA, provider accounts, restore
 - Reconcile concurrent #258 and #303 changes with exact-head proof before applying their implementation claims.
 - First vertical slice: one locale/topic, no-paid-calls fixture, one typed native relations family, a reviewed blueprint and draft. No publish or Production.
 - Add provider and browser acceptance only after staging site identity, candidate binding and Skills are current. Developer host isolation is a separate external prerequisite; never downgrade to unsandboxed execution.
+
+## Design closure overrides (v3)
+
+Read [design-closure.md](design-closure.md) as the normative source for exact trust, evidence, effect and release semantics. ACI-G0 design deliverables close only when the full Spec tests have actually executed on one exact reviewed SHA; the implementation tasks in `task-registry.json` remain OPEN until later evidence-backed execution.
+
+The release profile `staging_publish` explicitly excludes `ACI-G9` post-publication growth as a prerequisite. The task graph similarly has no hard `ACI-T0064 -> ACI-T0071` release dependency, and isolated native CAS implementation does not hard-depend on reconciling a specific live Staging site. Read-only evidence, context, native relations and workflow mechanics can progress in parallel when their own prerequisites are satisfied. `effect-contracts.json` controls independent external effects and can never be bypassed by a successful draft.
+
+Implementation acceptance order:
+1. Exact-source Spec tests and design authority crosswalk on a stable Hub HEAD.
+2. Disposable, no-effect WordPress content inventory/recipe/facts/incident reasoning.
+3. Certified disposable provider adapters, budgets, journal/CAS and multilingual readback.
+4. Explicit owner-reviewed Staging side-effect gates with real browser/native certificates.
+5. Separately authorized Production. No release path inherits authority from the documentation.

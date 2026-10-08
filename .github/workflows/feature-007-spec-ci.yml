@@ -251,6 +251,8 @@ jobs:
         run: |
           python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/validate.py
           python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_validate.py
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_design_closure.py
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_dynamic_core.py
 
       - name: Reject unsafe competitor evidence and false extension completion
         run: |

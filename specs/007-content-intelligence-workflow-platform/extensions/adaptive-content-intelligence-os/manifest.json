@@ -22,25 +22,45 @@
     "acceptance.md",
     "architecture.md",
     "constitution.md",
+    "content-recipes.json",
     "contracts/decision-evidence.md",
     "contracts/native-relations-wpml.md",
     "contracts/orchestration-budget.md",
     "contracts/publication-growth.md",
     "data-model.md",
+    "design-closure.md",
+    "disposition-rules.json",
+    "domain-fact-authority.json",
+    "dynamic-foundation.md",
+    "dynamic-policy.json",
+    "effect-contracts.json",
+    "evidence-trust.json",
+    "ledger-contracts.json",
     "operations.md",
+    "optimization-policy.json",
     "plan.md",
+    "preexecution-clarity-review.md",
+    "project-charter.md",
     "quickstart.md",
+    "release-profiles.json",
     "requirements.json",
     "research.md",
+    "reuse-authority-crosswalk.json",
     "spec.md",
     "system-map.json",
+    "task-registry.json",
     "tasks.md",
     "traceability.md",
-    "ui.md"
+    "ui.md",
+    "use-cases.json"
   ],
   "required_code": [
-    "validate.py",
-    "test_validate.py"
+    "design_closure.py",
+    "dynamic_core.py",
+    "test_design_closure.py",
+    "test_dynamic_core.py",
+    "test_validate.py",
+    "validate.py"
   ],
   "requirement_ids": [
     "ACI-001",
@@ -186,5 +206,32 @@
     "release"
   ],
   "autonomy_ceiling_for_spec": "NONE",
-  "no_parent_task_denominator_changes": true
+  "no_parent_task_denominator_changes": true,
+  "spec_architecture_generation": "DYNAMIC_BY_DEFAULT_V2",
+  "design_review_status": "DESIGN_REVIEW_REQUIRED",
+  "execution_enabled": false,
+  "spec_only": true,
+  "source_of_truth": {
+    "task_registry": "task-registry.json",
+    "requirements": "requirements.json",
+    "gates": "acceptance-gates.json",
+    "system_map": "system-map.json",
+    "dynamic_policy": "dynamic-policy.json",
+    "product_scope": "project-charter.md"
+  },
+  "design_closure_scope": "STATIC_CONTRACTS_ONLY",
+  "design_reviewer_acceptance": "PENDING_EXACT_EXECUTED_PYTHON_AND_PARENT_REVIEW",
+  "design_objections_addressed": [
+    "P0_TRUST_BOUNDARY",
+    "P0_SIX_STATE_DISPOSITION",
+    "P0_RECIPE_FACT_REQUIREMENTS",
+    "P0_EFFECT_AUTHORITY",
+    "P1_RELEASE_PROFILES",
+    "P1_EXECUTION_LEDGER",
+    "P1_BOUNDED_OPTIMIZATION",
+    "P1_SCOPED_DAG"
+  ],
+  "design_closure_document": "design-closure.md",
+  "design_closure_status": "IMPLEMENTED_PENDING_EXACT_EXECUTION_AND_REVIEW",
+  "reuse_authority_crosswalk": "reuse-authority-crosswalk.json"
 }
