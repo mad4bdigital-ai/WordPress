@@ -109,6 +109,12 @@ $GLOBALS['g8_options'][ $option ] = $corrupt;
 g8_check( ! MAD4B_SCP_Automation_SLO::switch_status()['integrity_valid'], 'signed invalid switch scope rejected' );
 g8_check( 'kill_switch_integrity_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'], 'invalid switch fail closed' );
 $GLOBALS['g8_options'][ $option ] = $valid;
+$future_switch = $valid; $future_switch['updated_at'] = time() + 3600;
+$future_switch['seal'] = MAD4B_SCP_G8_Record::seal( $future_switch );
+$GLOBALS['g8_options'][ $option ] = $future_switch;
+g8_check( ! MAD4B_SCP_Automation_SLO::switch_status()['integrity_valid'],
+	'future-dated signed switch cannot resume automatic work after a clock rollback' );
+$GLOBALS['g8_options'][ $option ] = $valid;
 $GLOBALS['g8_epoch'] = 2;
 g8_check( 'kill_switch_integrity_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'], 'restore epoch drift fail closed' );
 $GLOBALS['g8_epoch'] = 1; $GLOBALS['g8_environment'] = 'production';
