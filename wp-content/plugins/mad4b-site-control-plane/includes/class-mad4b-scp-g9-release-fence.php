@@ -112,8 +112,9 @@ final class MAD4B_SCP_G9_Release_Fence {
             $observed, $plan['target'], $plan['limits']
         );
         if ( is_wp_error( $preview ) ) return $preview;
-        if ( ! hash_equals( $plan['preview_sha256'], $preview['decision_sha256'] )
-            || ! is_int( $plan['anchor_revision'] )
+        if ( ! MAD4B_SCP_Resilience_Context::is_hash( $plan['preview_sha256'] ?? null )
+            || ! hash_equals( $plan['preview_sha256'], $preview['decision_sha256'] )
+            || ! is_int( $plan['anchor_revision'] ?? null )
             || $plan['anchor_revision'] !== $preview['external_anchor_revision'] )
             return self::blocked( 'plan_superseded', 'External fence or release policy changed.' );
 
@@ -143,9 +144,9 @@ final class MAD4B_SCP_G9_Release_Fence {
         if ( is_wp_error( $mutable ) || true !== $mutable )
             return self::blocked( 'execution_authority_unavailable', 'Core mutation guard is disabled.' );
         $ready = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
-        if ( ! is_array( $ready ) || empty( $ready['ready'] )
-            || empty( $ready['current_grant_snapshot_ready'] )
-            || empty( $ready['candidate_binding_match'] )
+        if ( ! is_array( $ready ) || true !== ( $ready['ready'] ?? null )
+            || true !== ( $ready['current_grant_snapshot_ready'] ?? null )
+            || true !== ( $ready['candidate_binding_match'] ?? null )
             || ! MAD4B_SCP_Resilience_Context::is_hash( $ready['grant_rows_fingerprint'] ?? '' )
             || ! hash_equals( $observed['authority']['grant_snapshot_sha256'], $ready['grant_rows_fingerprint'] ) )
             return self::blocked( 'grants_stale', 'Current exact site-local grants and candidate generation differ from the captured plan.' );
@@ -193,7 +194,8 @@ final class MAD4B_SCP_G9_Release_Fence {
                     'contract' => MAD4B_SCP_Runtime_Generation_Fence::CONTRACT,
                     'generation_sha256' => $observed['binding']['runtime_generation_sha256'],
                 ) );
-                if ( is_wp_error( $generation ) || ! is_array( $generation ) || empty( $generation['ready'] ) )
+                if ( is_wp_error( $generation ) || ! is_array( $generation )
+                    || true !== ( $generation['ready'] ?? null ) )
                     return self::blocked( 'generation_changed_before_cas', 'Runtime generation changed during rollout admission.' );
                 $full_locked = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
                 if ( ! is_array( $full_locked )
@@ -203,14 +205,14 @@ final class MAD4B_SCP_G9_Release_Fence {
                     || ( $full_locked['package_manifest_digest'] ?? '' ) !== $observed['binding']['artifact_sha256'] )
                     return self::blocked( 'package_changed_before_cas', 'Packaged runtime file content changed before the reservation checkpoint.' );
                 $epoch = MAD4B_SCP_Restore_Epoch::status( false, true );
-                if ( ! is_array( $epoch ) || empty( $epoch['ready'] )
+                if ( ! is_array( $epoch ) || true !== ( $epoch['ready'] ?? null )
                     || ( $epoch['epoch'] ?? null ) !== $observed['binding']['restore_epoch']
                     || ( $epoch['external_record_sha256'] ?? '' ) !== $observed['binding']['external_record_sha256'] )
                     return self::blocked( 'restore_changed_before_cas', 'Current restore epoch or external record changed before reservation.' );
                 $fresh = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness();
-                if ( ! is_array( $fresh ) || empty( $fresh['ready'] )
-                    || empty( $fresh['current_grant_snapshot_ready'] )
-                    || empty( $fresh['candidate_binding_match'] )
+                if ( ! is_array( $fresh ) || true !== ( $fresh['ready'] ?? null )
+                    || true !== ( $fresh['current_grant_snapshot_ready'] ?? null )
+                    || true !== ( $fresh['candidate_binding_match'] ?? null )
                     || ! MAD4B_SCP_Resilience_Context::is_hash( $fresh['grant_rows_fingerprint'] ?? '' )
                     || ! hash_equals( $observed['authority']['grant_snapshot_sha256'], $fresh['grant_rows_fingerprint'] ) )
                     return self::blocked( 'grants_changed_before_cas', 'Authority was revoked or changed before the external fence was reserved.' );
