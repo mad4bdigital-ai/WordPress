@@ -37,7 +37,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-operation-compiler.php",
-      "sha256": "60dda3dfd8d14895e28c5fd2e7e220bacce62a83a6694011809335832b895b86"
+      "sha256": "6bf78473443dc196552ba5ddc0de887d634fd260be76997b3a5247f855785fe6"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-ai-workspace.php",
@@ -79,7 +79,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-compiler-denial-runtime.php",
-      "sha256": "55bd1ae73eb26e5181b2fcbe09f7d4156cf338706ee4fac96d452272505509c0"
+      "sha256": "03ef4cf6f07c27176b08acebdf223f4f1cdac3b76a17765ae9029e79413d3d13"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-admission-denial-runtime.php",
@@ -87,7 +87,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-provider-retrieval-denials.php",
-      "sha256": "6f1a98337e9523a5c1c4f4537263274a22cde05f40b6f495e5cd0d492e6e0e61"
+      "sha256": "7fd2c7fa62310bd4e877183dced323a2334f28bc051b2d73d5cda93df4029201"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",

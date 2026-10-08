@@ -12,10 +12,13 @@ function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 function get_current_user_id() { return $GLOBALS['g6_test_owner'] ? 17 : 0; }
 function current_user_can( $cap, $id = 0 ) { return $GLOBALS['g6_test_owner'] && in_array( $cap, array( 'manage_options', 'edit_post' ), true ); }
 function wp_get_environment_type() { return 'staging'; }
-function wp_get_ability( $name ) { return 'mad4b/test-native-content-apply' === $name ? new stdClass() : null; }
+class G6_Test_Ability {
+	public function execute( $input ) { ++$GLOBALS['g6_test_dispatches']; return array( 'fixture_completed' => true ); }
+}
+function wp_get_ability( $name ) { return 'mad4b/test-native-content-apply' === $name ? new G6_Test_Ability() : null; }
 class MAD4B_SCP_Site_Profile { public static function site_uuid() { return '12345678-1234-1234-1234-123456789abc'; } }
 class MAD4B_SCP_Runtime_Generation_Fence {
-	public static function capture() { return array( 'generation_sha256' => str_repeat( '1', 64 ), 'material' => array( 'runtime_sha256' => str_repeat( '2', 64 ) ) ); }
+	public static function capture() { return array( 'generation_sha256' => str_repeat( isset( $GLOBALS['g6_test_generation_char'] ) ? $GLOBALS['g6_test_generation_char'] : '1', 64 ), 'material' => array( 'runtime_sha256' => str_repeat( '2', 64 ) ) ); }
 }
 class MAD4B_SCP_Restore_Epoch { public static function material() { return array( 'epoch' => 1 ); } }
 class MAD4B_SCP_Content_Jobs {
@@ -38,6 +41,7 @@ final class G6_Test_Strategy implements MAD4B_SCP_G6_Operation_Strategy {
 	public function strategy_id() { return 'test-reviewed-native'; }
 	public function primitives() { return array( 'content', 'publication' ); }
 	public function prepare( $primitive, array $arguments, array $context ) {
+		if ( ! empty( $GLOBALS['g6_test_prepare_mutation'] ) ) g6_test_interleave( $GLOBALS['g6_test_prepare_mutation'] );
 		return array(
 			'provider_id' => 'test-reviewed-provider',
 			'capability_id' => 'content_experience.update',
@@ -54,6 +58,32 @@ final class G6_Test_Strategy implements MAD4B_SCP_G6_Operation_Strategy {
 			'after' => array( 'private_text' => $arguments['content'] ),
 		);
 	}
+}
+
+// Review-only disposable core fakes. Mutations deliberately interleave after
+// an earlier server read; no fixture supplies authority to production code.
+function g6_test_interleave( $kind ) {
+	if ( 'cancel' === $kind ) { $GLOBALS['g6_test_job']['state'] = 'CANCELLED'; ++$GLOBALS['g6_test_job']['job_revision']; }
+	elseif ( 'revision' === $kind ) ++$GLOBALS['g6_test_job']['job_revision'];
+	elseif ( 'generation' === $kind ) $GLOBALS['g6_test_generation_char'] = '9';
+	elseif ( 'profile' === $kind ) $GLOBALS['g6_test_profile_enabled'] = false;
+}
+class MAD4B_SCP_Execution_Commit_Guard {}
+class MAD4B_SCP_Execution_Fence {
+	public static function has_active_frame() { return ! empty( $GLOBALS['g6_test_frame'] ); }
+	public static function final_execution_wrapper_verified( $name ) { return 'mad4b/test-native-content-apply' === $name; }
+	public static function with_governed_child( $name, $input, $callback, $reason ) {
+		if ( ! empty( $GLOBALS['g6_test_child_mutation'] ) ) g6_test_interleave( $GLOBALS['g6_test_child_mutation'] );
+		return $callback();
+	}
+}
+class MAD4B_SCP_Durable_Execution {
+	public static function scope_key( $site, $capability, $operation, $target ) { return hash( 'sha256', $site . $capability . $operation . $target ); }
+	public static function begin_idempotency( $scope, $key, $sha ) {
+		if ( ! empty( $GLOBALS['g6_test_claim_mutation'] ) ) g6_test_interleave( $GLOBALS['g6_test_claim_mutation'] );
+		return array( 'claimed' => empty( $GLOBALS['g6_test_completed_claim'] ), 'result' => array( 'prior_fixture_result' => true ) );
+	}
+	public static function complete_idempotency( $claim, $result ) { ++$GLOBALS['g6_test_completions']; return true; }
 }
 
 $GLOBALS['g6_test_owner'] = true;
@@ -108,5 +138,44 @@ $GLOBALS['g6_test_owner'] = false;
 g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_owner_required', 'nonadmin compilation denied' );
 $GLOBALS['g6_test_owner'] = true;
 g6_test_error( MAD4B_SCP_G6_Operation_Compiler::dispatch_step( $plan, 'a' ), 'mad4b_g6_execution_frame_required', 'no governed frame means no execution' );
+
+$wrong_job = $GLOBALS['g6_test_job']; $GLOBALS['g6_test_job']['job_id'] = 'another-job';
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_job_missing', 'server reader cannot substitute another job identity' );
+$GLOBALS['g6_test_job'] = $wrong_job; $GLOBALS['g6_test_job']['job_revision'] = '3';
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_job_missing', 'persisted job revision cannot be a numeric string' );
+$GLOBALS['g6_test_job'] = $wrong_job;
+foreach ( array( 'cancel', 'revision', 'generation', 'profile' ) as $interleave ) {
+	$GLOBALS['g6_test_prepare_mutation'] = $interleave;
+	g6_test_error( MAD4B_SCP_G6_Operation_Compiler::compile( $input ), 'mad4b_g6_compile_context_changed', 'planning must reject ' . $interleave . ' during a strategy read' );
+	$GLOBALS['g6_test_job'] = $wrong_job; $GLOBALS['g6_test_generation_char'] = '1'; $GLOBALS['g6_test_profile_enabled'] = true;
+}
+unset( $GLOBALS['g6_test_prepare_mutation'] );
+$GLOBALS['g6_test_job']['state'] = 'RUNNING';
+$running_job = $GLOBALS['g6_test_job'];
+$running_plan = MAD4B_SCP_G6_Operation_Compiler::compile( $input );
+g6_test_assert( ! is_wp_error( $running_plan ), 'running fixture plan compiles' );
+$GLOBALS['g6_test_frame'] = true; $GLOBALS['g6_test_dispatches'] = 0; $GLOBALS['g6_test_completions'] = 0;
+$executed = MAD4B_SCP_G6_Operation_Compiler::dispatch_step( $running_plan, 'a' );
+g6_test_assert( ! is_wp_error( $executed ) && 1 === $GLOBALS['g6_test_dispatches'] && 1 === $GLOBALS['g6_test_completions'], 'unchanged root fixture enters only its typed child and records completion' );
+foreach ( array( 'cancel', 'revision', 'generation', 'profile' ) as $interleave ) {
+	$GLOBALS['g6_test_dispatches'] = 0; $GLOBALS['g6_test_completions'] = 0;
+	$GLOBALS['g6_test_claim_mutation'] = $interleave;
+	g6_test_error( MAD4B_SCP_G6_Operation_Compiler::dispatch_step( $running_plan, 'a' ), 'mad4b_g6_replan_required', 'dispatch must reject ' . $interleave . ' during claim acquisition' );
+	g6_test_assert( 0 === $GLOBALS['g6_test_dispatches'] && 0 === $GLOBALS['g6_test_completions'], 'claim drift must perform no child call or completion' );
+	$GLOBALS['g6_test_job'] = $running_job; $GLOBALS['g6_test_generation_char'] = '1'; $GLOBALS['g6_test_profile_enabled'] = true;
+}
+unset( $GLOBALS['g6_test_claim_mutation'] );
+foreach ( array( 'cancel', 'revision', 'generation', 'profile' ) as $interleave ) {
+	$GLOBALS['g6_test_child_mutation'] = $interleave;
+	$failed = MAD4B_SCP_G6_Operation_Compiler::dispatch_step( $running_plan, 'a' );
+	g6_test_error( $failed, 'mad4b_g6_execution_uncertain', 'dispatch must retain its claim when ' . $interleave . ' races child entry' );
+	g6_test_assert( 'mad4b_g6_replan_required' === $failed->get_error_data()['cause'] && 0 === $GLOBALS['g6_test_dispatches'] && 0 === $GLOBALS['g6_test_completions'], 'child-entry drift must retain claim without executing or completing' );
+	$GLOBALS['g6_test_job'] = $running_job; $GLOBALS['g6_test_generation_char'] = '1'; $GLOBALS['g6_test_profile_enabled'] = true;
+}
+unset( $GLOBALS['g6_test_child_mutation'] );
+$GLOBALS['g6_test_completed_claim'] = true; $GLOBALS['g6_test_claim_mutation'] = 'cancel';
+g6_test_error( MAD4B_SCP_G6_Operation_Compiler::dispatch_step( $running_plan, 'a' ), 'mad4b_g6_replan_required', 'completed claim replay cannot bypass the current cancelled job' );
+unset( $GLOBALS['g6_test_completed_claim'], $GLOBALS['g6_test_claim_mutation'] );
+$GLOBALS['g6_test_job'] = $running_job; $GLOBALS['g6_test_frame'] = false;
 
 echo "mad4b.feature007-g6-compiler-denials.v1: PASS\n";

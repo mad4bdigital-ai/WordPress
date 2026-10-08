@@ -62,14 +62,16 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		$owner = MAD4B_SCP_G6_Contracts::owner(); if ( is_wp_error( $owner ) ) return $owner;
 		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'job_id', 'expected_job_revision', 'profile_slug', 'nodes', 'reason', 'workflow' ) ) ) return MAD4B_SCP_G6_Contracts::error( 'compile_schema', 'Compiler accepts only typed job, profile and DAG fields.' );
 		if ( ! class_exists( 'MAD4B_SCP_Content_Jobs' ) || ! class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) return MAD4B_SCP_G6_Contracts::error( 'compiler_services_missing', 'ContentJob and Content Experience services are required.' );
-		$job = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => isset( $input['job_id'] ) ? $input['job_id'] : '' ) );
+		if ( ! isset( $input['job_id'], $input['profile_slug'] ) || ! MAD4B_SCP_G6_Contracts::id( $input['job_id'] ) || ! MAD4B_SCP_G6_Contracts::id( $input['profile_slug'] ) ) return MAD4B_SCP_G6_Contracts::error( 'compile_identity', 'Exact typed job and profile identities are required.' );
+		$job = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $input['job_id'] ) );
 		if ( is_wp_error( $job ) ) return $job;
 		$job = isset( $job['job'] ) && is_array( $job['job'] ) ? $job['job'] : $job;
 		if ( ! is_array( $job ) || ! isset( $job['job_id'], $job['job_revision'], $job['state'], $job['site_uuid'] )
-			|| ! MAD4B_SCP_G6_Contracts::id( $job['job_id'] ) )
+			|| ! MAD4B_SCP_G6_Contracts::id( $job['job_id'] ) || $job['job_id'] !== $input['job_id']
+			|| ! is_int( $job['job_revision'] ) || $job['job_revision'] < 1 )
 			return MAD4B_SCP_G6_Contracts::error( 'job_missing', 'ContentJob identity, state, revision and site binding are required.' );
 		$revision = isset( $input['expected_job_revision'] ) ? $input['expected_job_revision'] : null;
-		if ( ! is_int( $revision ) || $revision < 1 || $revision !== (int) $job['job_revision'] ) return MAD4B_SCP_G6_Contracts::error( 'job_revision', 'Exact ContentJob revision changed or is missing.' );
+		if ( ! is_int( $revision ) || $revision < 1 || $revision !== $job['job_revision'] ) return MAD4B_SCP_G6_Contracts::error( 'job_revision', 'Exact ContentJob revision changed or is missing.' );
 		if ( in_array( $job['state'], array( 'CANCELLED', 'COMPLETED' ), true ) ) return MAD4B_SCP_G6_Contracts::error( 'job_terminal', 'Terminal jobs cannot receive a mutable operation plan.' );
 		if ( ! self::compilable_job_state( $job['state'] ) ) return MAD4B_SCP_G6_Contracts::error( 'job_recovery_required', 'Blocked or failed ContentJobs require an explicit lifecycle recovery before recompilation.' );
 		$profile = MAD4B_SCP_Content_Experience_Profiles::profile( isset( $input['profile_slug'] ) ? $input['profile_slug'] : '' );
@@ -132,6 +134,11 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 			$workflow = MAD4B_SCP_Workflow_Providers::plan( array_merge( $input['workflow'], array( 'operation' => 'execute', 'reason' => 'Pinned compiled ContentJob handoff' ) ) );
 			if ( is_wp_error( $workflow ) ) return $workflow;
 		}
+		// Provider planning may perform slow reads or invoke reviewed core hooks.
+		// Re-read the complete job/profile/generation and aggregate permissions
+		// after every node and workflow has been prepared, before sealing a plan.
+		$current = self::current_context( $input, $job, $profile, $binding, $owner, $permissions );
+		if ( is_wp_error( $current ) ) return $current;
 		$plan = array( 'contract' => self::CONTRACT, 'binding' => $binding, 'owner_user_id' => $owner, 'job_id' => $job['job_id'], 'job_revision' => $revision, 'job_state' => $job['state'], 'compile_input' => $input, 'input_sha256' => MAD4B_SCP_G6_Contracts::digest( $input ), 'schema_sha256' => MAD4B_SCP_G6_Contracts::digest( array( 'primitives' => self::PRIMITIVES, 'steps' => array_column( $prepared, 'schema_sha256' ) ) ), 'nodes' => $prepared, 'topological_order' => $order, 'permissions' => array_values( $permissions ), 'effects' => array_values( $effects ), 'object_pins' => array_values( $objects ), 'workflow_handoff' => $workflow, 'workflow_import_performed' => false, 'contentjob_handoff' => array( 'ability' => 'mad4b/content-artifact-append', 'artifact_type' => 'blueprint', 'producer_stage' => 'BLUEPRINT', 'job_id' => $job['job_id'], 'expected_job_revision' => $revision ), 'compensation_boundary' => 'separate_exact_reversal_plan_with_retained_native_prestate_and_current_authority', 'publication_authority_inherited' => false, 'approval_required' => true, 'autonomy_level' => 1, 'authorizing' => false, 'mutation_performed' => false );
 		$plan['plan_sha256'] = MAD4B_SCP_G6_Contracts::digest( $plan );
 		return $plan;
@@ -229,6 +236,28 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		return true;
 	}
 
+	/** Planning readback only: it never creates a lease or authorizes execution. */
+	private static function current_context( array $input, array $job, array $profile, array $binding, $owner, array $permissions ) {
+		$actor = MAD4B_SCP_G6_Contracts::owner();
+		if ( is_wp_error( $actor ) || $actor !== $owner ) return MAD4B_SCP_G6_Contracts::error( 'compile_context_changed', 'Workspace owner changed during planning; reload and replan.' );
+		$now_profile = MAD4B_SCP_Content_Experience_Profiles::profile( $input['profile_slug'] );
+		$now_job = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $input['job_id'] ) );
+		if ( is_wp_error( $now_profile ) || is_wp_error( $now_job ) ) return MAD4B_SCP_G6_Contracts::error( 'compile_context_changed', 'Job or profile is no longer readable; reload and replan.' );
+		$now_job = isset( $now_job['job'] ) && is_array( $now_job['job'] ) ? $now_job['job'] : $now_job;
+		if ( ! is_array( $now_profile ) || ! is_array( $now_job )
+			|| ! hash_equals( MAD4B_SCP_G6_Contracts::digest( $profile ), MAD4B_SCP_G6_Contracts::digest( $now_profile ) )
+			|| ! hash_equals( MAD4B_SCP_G6_Contracts::digest( $job ), MAD4B_SCP_G6_Contracts::digest( $now_job ) ) )
+			return MAD4B_SCP_G6_Contracts::error( 'compile_context_changed', 'Job or profile changed during planning; reload and replan.' );
+		$now_binding = MAD4B_SCP_G6_Contracts::binding( MAD4B_SCP_G6_Contracts::digest( $now_profile ) );
+		if ( is_wp_error( $now_binding ) || ! hash_equals( MAD4B_SCP_G6_Contracts::digest( $binding ), MAD4B_SCP_G6_Contracts::digest( $now_binding ) ) )
+			return MAD4B_SCP_G6_Contracts::error( 'compile_context_changed', 'Site, generation or restore epoch changed during planning; reload and replan.' );
+		$actor = MAD4B_SCP_G6_Contracts::owner();
+		if ( is_wp_error( $actor ) || $actor !== $owner ) return MAD4B_SCP_G6_Contracts::error( 'compile_context_changed', 'Workspace owner was revoked during planning.' );
+		foreach ( $permissions as $permission ) if ( ! current_user_can( $permission['capability'], isset( $permission['object_id'] ) ? $permission['object_id'] : 0 ) )
+			return MAD4B_SCP_G6_Contracts::error( 'compile_context_changed', 'An aggregated object permission was revoked during planning.' );
+		return true;
+	}
+
 	public static function revalidate( $input = array() ) {
 		$plan = isset( $input['plan'] ) && is_array( $input['plan'] ) ? $input['plan'] : array();
 		if ( ! MAD4B_SCP_G6_Contracts::assert_digest( $plan, 'plan_sha256', self::CONTRACT ) ) return MAD4B_SCP_G6_Contracts::error( 'plan_digest', 'Compiled plan was changed or belongs to another contract.' );
@@ -248,7 +277,7 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! class_exists( 'MAD4B_SCP_Durable_Execution' ) || ! class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) || ! MAD4B_SCP_Execution_Fence::has_active_frame() ) return MAD4B_SCP_G6_Contracts::error( 'execution_frame_required', 'Compiled execution needs an existing governed coordinator frame and durable fences.' );
 		if ( 'staging' !== wp_get_environment_type() ) return MAD4B_SCP_G6_Contracts::error( 'staging_only', 'Optional compiled dispatch is limited to existing Staging authority.' );
 		$valid = self::revalidate( array( 'plan' => $plan ) ); if ( is_wp_error( $valid ) ) return $valid;
-		if ( ! isset( $plan['nodes'][ $node_id ] ) ) return MAD4B_SCP_G6_Contracts::error( 'step_missing', 'Exact compiled node is missing.' );
+		if ( ! MAD4B_SCP_G6_Contracts::id( $node_id ) || ! isset( $plan['nodes'][ $node_id ] ) ) return MAD4B_SCP_G6_Contracts::error( 'step_missing', 'Exact compiled node is missing.' );
 		$step = $plan['nodes'][ $node_id ];
 		if ( 'RUNNING' !== $plan['job_state'] ) return MAD4B_SCP_G6_Contracts::error( 'job_not_running', 'A currently RUNNING ContentJob is required before compiled dispatch.' );
 		// Dependency completion must be bound through the existing workflow journal.
@@ -265,9 +294,21 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		$input_sha = MAD4B_SCP_G6_Contracts::digest( $step['typed_input'] );
 		$scope = MAD4B_SCP_Durable_Execution::scope_key( $plan['binding']['site_uuid'], $step['capability_id'], 'compiled_step', $plan['job_id'] . ':' . $node_id );
 		$claim = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope, $plan['plan_sha256'] . ':' . $node_id, $input_sha ); if ( is_wp_error( $claim ) ) return $claim;
+		// Claim acquisition can block or race a job cancellation/revision change.
+		// A pending claim is retained on denial for durable reconciliation.
+		$valid = self::revalidate( array( 'plan' => $plan ) ); if ( is_wp_error( $valid ) ) return $valid;
 		if ( empty( $claim['claimed'] ) ) return isset( $claim['result'] ) ? $claim['result'] : MAD4B_SCP_G6_Contracts::error( 'idempotency_result_missing', 'Completed step result cannot be resolved.' );
 		try {
-			$result = MAD4B_SCP_Execution_Fence::with_governed_child( $name, $input, static function () use ( $name, $input ) { return wp_get_ability( $name )->execute( $input ); }, 'compiled_content_step' );
+			$result = MAD4B_SCP_Execution_Fence::with_governed_child( $name, $input, static function () use ( $name, $input, $plan ) {
+				$ability = wp_get_ability( $name );
+				if ( ! is_object( $ability ) || ! is_callable( array( $ability, 'execute' ) ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) )
+					return MAD4B_SCP_G6_Contracts::error( 'execution_boundary_missing', 'Exact child ability was removed or its governed wrapper changed.' );
+				// Revalidate inside the one-time permit, immediately before typed
+				// child entry. This closes drift during wrapper/claim preparation;
+				// the child still owns its native commit and authority fences.
+				$valid = self::revalidate( array( 'plan' => $plan ) ); if ( is_wp_error( $valid ) ) return $valid;
+				return $ability->execute( $input );
+			}, 'compiled_content_step' );
 		} catch ( Throwable $error ) { return MAD4B_SCP_G6_Contracts::error( 'execution_uncertain', 'Child execution failed; durable reconciliation is required.' ); }
 		if ( is_wp_error( $result ) ) return MAD4B_SCP_G6_Contracts::error( 'execution_uncertain', 'Child failed or rejected execution; reconcile before another dispatch.', array( 'cause' => $result->get_error_code(), 'reconciliation_required' => true ) );
 		$completed = MAD4B_SCP_Durable_Execution::complete_idempotency( $claim, $result );
