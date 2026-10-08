@@ -97,9 +97,17 @@ final class MAD4B_SCP_G8_Schema_Migration {
 			}
 			return true;
 		}
+		if ( is_string( $value ) ) {
+			if ( strlen( $value ) > 4096 ) return false;
+			// Unknown observation fields are retained, but their VALUES must
+			// not bypass the secret guard merely by using an innocuous key.
+			if ( class_exists( 'MAD4B_SCP_Structural_Redaction', false )
+				&& MAD4B_SCP_Structural_Redaction::sensitive_scalar( $value ) ) return false;
+			if ( preg_match( '/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\\bBearer\\s+[A-Za-z0-9._~+\\/-]{12,}|\\b(?:sk-|rk-|ghp_|github_pat_|xox[baprs]-)[A-Za-z0-9_-]{16,}|\\bAKIA[0-9A-Z]{16}\\b/i', $value ) ) return false;
+			return true;
+		}
 		return null === $value || is_bool( $value ) || is_int( $value )
-			|| is_float( $value ) && is_finite( $value )
-			|| is_string( $value ) && strlen( $value ) <= 4096;
+			|| ( is_float( $value ) && is_finite( $value ) );
 	}
 
 	private static function name_ok( $name ) {
