@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 414,
+  "changed_file_count": 422,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -738,8 +738,24 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-opportunity-preview.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-opportunity-candidate-contract.php"
       ]
+    },
+    {
+      "id": "capability-native-generalization-20261009",
+      "semantic_unit": "Site-agnostic capability atlas, declarative passive browser observations, zero-manual pristine preferences and governed ability projection",
+      "revert_boundary": "Revert the capability atlas / generic browser adapter / tests / reference specification as one non-authorizing unit",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/capability-native-generalization/acceptance.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/capability-native-generalization/plan.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/capability-native-generalization/spec.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/capability-native-generalization/tasks.md",
+        "tools/browser-acceptance/declarative-capability-driver.mjs",
+        "tools/browser-acceptance/test-declarative-capability-driver.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-atlas.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-atlas-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "04e8092ee7362f7a913c309698b127b7345b9126591e84964c85be1fd5481605",
+  "changed_paths_sha256": "f5381d57d3507b248978720b7cbdd88a547947c33a0493cb5f0fb95a9fce1960",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
