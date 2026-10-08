@@ -15,9 +15,11 @@ final class MAD4B_SCP_OAuth_Consent_Projection_View {
         $limit = max( 0, min( 150, (int) $limit ) );
         foreach ( $rows as $row ) {
             if ( ! is_array( $row ) ) { ++$invalid; continue; }
-            $name = isset( $row['ability'] ) && is_string( $row['ability'] ) ? trim( $row['ability'] ) : '';
-            $provider = isset( $row['provider'] ) && is_string( $row['provider'] ) ? trim( $row['provider'] ) : '';
-            if ( '' === $name || '' === $provider || strlen( $name ) > 191 || strlen( $provider ) > 80
+            $raw_name = isset( $row['ability'] ) && is_string( $row['ability'] ) ? $row['ability'] : '';
+            $raw_provider = isset( $row['provider'] ) && is_string( $row['provider'] ) ? $row['provider'] : '';
+            $name = trim( $raw_name ); $provider = trim( $raw_provider );
+            if ( $raw_name !== $name || $raw_provider !== $provider
+                || '' === $name || '' === $provider || strlen( $name ) > 191 || strlen( $provider ) > 80
                 || ! preg_match( '/^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/D', $name )
                 || ! preg_match( '/^[a-z0-9][a-z0-9._-]*$/D', $provider ) ) {
                 ++$invalid;
