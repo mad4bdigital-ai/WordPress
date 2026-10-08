@@ -82,6 +82,54 @@ The fixture does not load WordPress or contact external providers. Native
 PHP 7.4/8.3 matrix, adapter registration in real WordPress, GitHub CI, browser
 journeys and Staging governed readback remain **unverified**.
 
+
+## Comprehensive adversarial review (2026-10-08)
+
+The proposal engine is a **bounded preview**, not an enrolled autonomous
+operator. Code review of the actual bootstrap, Adapter Registry, Policy and
+Adaptive Operations Context confirms the existing read permission and runtime
+evidence service remain authoritative.
+
+Hardening added in this follow-up:
+
+- Advertise concrete JSON Schema for nested capabilities, facts and observed
+  providers. Enforce list bounds at protocol and PHP layers.
+- Reject unknown, executable or oversized inputs *before* expensive current
+  runtime-binding lookups. Hash only inert data.
+- Derive proposal-only task identifiers from exact site, profile, runtime,
+  artifact, restore epoch and entire input digest. This does not create a
+  persistent task identity or signed ticket.
+- Keep an explicit `readiness=NOT_EXECUTABLE` in every returned proposal.
+  Distinguish context review and conflict review from ordinary preview, and
+  report why independent verification is still necessary.
+- Validate every country/language fact, not only the first conflicting value,
+  and reject unsafe site UUIDs.
+
+Important limitations requiring independent work:
+
+1. **Bootstrap paradox:** the currently registered read Ability requires
+   configured enrolled Site Profile, current runtime generation, matching
+   artifact manifest and valid external restore anchor. A separate minimal
+   read-only enrollment/bootstrap diagnostic must be designed for sites lacking
+   these prerequisites; weakening the existing read authority is not a fix.
+2. **Unverified observations:** caller claims cannot be promoted into provider
+   certification, package recommendation or an installation decision. Durable
+   evidence envelopes need source IDs, timestamps, provider signatures,
+   schema/version provenance, TTL, budget and an independent verifier.
+3. **Stateful orchestration:** no durable task CAS journal, retry budget,
+   deduplication across process restarts, single-writer mutation lane,
+   task cancellation, lease or exact idempotent external effects yet exist
+   in this new assistant layer.
+4. **Read-side operational safety:** verify that the WordPress Ability is
+   actually mounted, registered once and discoverable through the deployed
+   MCP read catalog. Static registration is not a live-site certification.
+5. **Release acceptance:** no exact-head native PHP 7.4/8.3, actual
+   WordPress/MCP browser execution, production benchmark, Plugin Check,
+   signed release artifact or Staging approval is implied by source tests.
+
+No UI, external AI call, secret lookup, package download/install,
+configuration persistence, grant change or production mutation is made.
+
 ## Next reviewed child groups
 
 1. GA: durable typed task envelopes, CAS journal, provenance, task ownership
