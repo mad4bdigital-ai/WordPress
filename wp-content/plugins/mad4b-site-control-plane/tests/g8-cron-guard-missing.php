@@ -69,6 +69,11 @@ file_put_contents( MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json', json_encode( a
 $GLOBALS['g8_checkpoint'] = array( 'contract' => MAD4B_SCP_Runtime_Convergence::CONTRACT,
 	'source' => 'self_update_regression', 'state' => 'pending_safe_phases', 'target_identity' => $identity,
 	'resume_not_before' => 0, 'automatic_retry_allowed' => true );
+$pending_restart = '1' === getenv( 'G8_PENDING_RESTART' );
+if ( $pending_restart ) {
+	$GLOBALS['g8_checkpoint']['state'] = 'pending_restart';
+	unset( $GLOBALS['g8_checkpoint']['automatic_retry_allowed'] );
+}
 $stale_state = getenv( 'G8_STALE_CRON_STATE' ) ?: '';
 $paused_cron = '1' === getenv( 'G8_STALE_CRON_PAUSED' );
 if ( '' !== $stale_state ) {
