@@ -27,6 +27,24 @@ class WP_Error {
 	public function get_error_code() { return $this->code; }
 }
 $throwing_slo = '1' === getenv( 'G8_THROWING_SLO' );
+$throwing_worker = '1' === getenv( 'G8_THROWING_WORKER' );
+if ( $throwing_worker ) {
+	class MAD4B_SCP_Automation_SLO {
+		public static function reserve( $provider, $capability, $generation ) {
+			return array( 'token' => str_repeat( 'e', 32 ), 'generation' => $generation );
+		}
+		public static function ticket_allowed( $ticket ) { return true; }
+		public static function finish_existing( $ticket, $result ) {
+			$GLOBALS['g8_worker_finished_error'] = is_wp_error( $result ) ? $result->get_error_code() : 'not_error';
+			return true;
+		}
+	}
+	class MAD4B_SCP_Runtime_Maintenance_Lease {
+		public static function acquire( $scope ) {
+			throw new RuntimeException( 'simulated executor failure' );
+		}
+	}
+}
 if ( $throwing_slo ) {
 	class MAD4B_SCP_Automation_SLO {
 		public static function reserve( $provider, $capability, $generation ) {
@@ -50,13 +68,20 @@ file_put_contents( MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json', json_encode( a
 $GLOBALS['g8_checkpoint'] = array( 'contract' => MAD4B_SCP_Runtime_Convergence::CONTRACT,
 	'source' => 'self_update_regression', 'state' => 'pending_safe_phases', 'target_identity' => $identity,
 	'resume_not_before' => 0, 'automatic_retry_allowed' => true );
-if ( ! $throwing_slo && class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for missing-class fixture' . PHP_EOL ); exit( 1 ); }
+if ( ! $throwing_slo && ! $throwing_worker && class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) { fwrite( STDERR, 'SLO class must not be bootstrapped for missing-class fixture' . PHP_EOL ); exit( 1 ); }
 MAD4B_SCP_Runtime_Convergence::resume_safe_phases();
 $checkpoint = $GLOBALS['g8_checkpoint'];
-if ( 'pending_manual_resume' !== ( $checkpoint['state'] ?? null )
+if ( $throwing_worker ) {
+	if ( 'mad4b_automation_worker_exception' !== ( $GLOBALS['g8_worker_finished_error'] ?? null )
+		|| 'blocked' !== ( $checkpoint['state'] ?? null )
+		|| false !== ( $checkpoint['automatic_retry_allowed'] ?? null ) ) {
+		fwrite( STDERR, 'FAIL: throwing worker did not settle ticket and block retries' . PHP_EOL ); exit( 1 );
+	}
+} elseif ( 'pending_manual_resume' !== ( $checkpoint['state'] ?? null )
 	|| ( $throwing_slo ? 'mad4b_automation_admission_exception' : 'mad4b_automation_guard_missing' ) !== ( $checkpoint['resume_blocker'] ?? null )
 	|| false !== ( $checkpoint['automatic_retry_allowed'] ?? null ) ) {
 	fwrite( STDERR, 'FAIL: missing automatic security class was not parked' . PHP_EOL ); exit( 1 );
 }
 @unlink( MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ); @rmdir( $root );
-echo $throwing_slo ? 'G8_CRON_THROWING_GUARD: PASS' . PHP_EOL : 'G8_CRON_MISSING_GUARD: PASS' . PHP_EOL;
+echo $throwing_worker ? 'G8_CRON_THROWING_WORKER: PASS' . PHP_EOL
+	: ( $throwing_slo ? 'G8_CRON_THROWING_GUARD: PASS' . PHP_EOL : 'G8_CRON_MISSING_GUARD: PASS' . PHP_EOL );
