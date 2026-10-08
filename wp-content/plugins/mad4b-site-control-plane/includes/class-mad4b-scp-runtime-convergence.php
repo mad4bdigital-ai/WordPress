@@ -359,7 +359,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'phases' => $phases,
 			'required_blockers' => $required_blockers,
 			'checkpoint' => is_array( $checkpoint ) ? $checkpoint : array(),
-			'automatic_checkpoint_gate' => self::automatic_checkpoint_gate(),
+			'automatic_checkpoint_gate' => self::automatic_checkpoint_gate( $checkpoint ),
 			'dynamic_extension_filter' => 'mad4b_scp_runtime_convergence_phases',
 			'read_only' => true,
 			'mutation_performed' => false,
@@ -1127,8 +1127,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 	 * Read-only checkpoint gate for observability and Cron dispatch. It does
 	 * not imply independent SLO ticket, environment or owner authorization.
 	 */
-	public static function automatic_checkpoint_gate() {
-		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+	public static function automatic_checkpoint_gate( $checkpoint = null ) {
+		if ( null === $checkpoint ) $checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$reason = 'checkpoint_not_scheduled';
 		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) )
 			$reason = 'checkpoint_absent';
@@ -1153,7 +1153,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		// A previously scheduled event is not execution authority. Use
 		// the same read-only state gate shown to the operator, then obtain
 		// a separate exact, live SLO ticket before any automatic mutation.
-		$checkpoint_gate = self::automatic_checkpoint_gate();
+		$checkpoint_gate = self::automatic_checkpoint_gate( $checkpoint );
 		if ( true !== $checkpoint_gate['checkpoint_schedulable'] ) return;
 		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) ) return;
 		$not_before = self::maintenance_not_before();
