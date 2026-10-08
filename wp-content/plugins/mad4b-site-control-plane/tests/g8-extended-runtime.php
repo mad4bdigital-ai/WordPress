@@ -348,6 +348,23 @@ $foreign_pack = MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_e
 	array( $correlation => $foreign_native ) );
 g8_check( 0 === $foreign_pack['signed_native_operation_count']
 	&& false === $foreign_pack['automatic_retry_allowed'], 'cross-effect receipt substitution is rejected' );
+class G8_Effect_Object_Reject {
+	public function __serialize() {
+		$GLOBALS['g8_effect_object_serialized'] = true;
+		return array( 'unexpected' => true );
+	}
+}
+$unsafe_effect = $one_effect;
+$unsafe_effect[ $correlation ]['payload'] = new G8_Effect_Object_Reject();
+g8_check( g8_is_error( MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $unsafe_effect, array() ),
+	'mad4b_g8_restore_effects_invalid' ) && empty( $GLOBALS['g8_effect_object_serialized'] ),
+	'external effect inventories reject executable extra fields before hashing' );
+$unsafe_witness = $native;
+$unsafe_witness['callback'] = new G8_Effect_Object_Reject();
+g8_check( g8_is_error( MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_effect,
+	array( $correlation => $unsafe_witness ) ), 'mad4b_g8_restore_witness_invalid' )
+	&& empty( $GLOBALS['g8_effect_object_serialized'] ),
+	'native witnesses reject executable payloads before invoking a verifier' );
 $unwitnessed = MAD4B_SCP_G8_Restore_Convergence::evidence_pack( array(), $one_effect, array() );
 g8_check( 1 === count( $unwitnessed['unwitnessed_effect_keys'] )
 	&& false === $unwitnessed['external_inventory_independently_certified'],
