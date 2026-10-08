@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-oauth-consent-projection-view.php';
 
 /**
  * Standalone WordPress OAuth 2.1 authorization server for the MAD4B MCP read resource.
@@ -682,6 +683,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			&& ! empty( $developer_status['breakglass_enabled'] )
 			&& ! empty( $developer_status['breakglass_authority']['ready'] );
 		$full_staging_authority_ready = $write_ready && $developer_ready && $developer_breakglass_ready;
+		// Authority is distinct from executable sandbox readiness. Host facts are
+		// passive only; never launch or configure host binaries in a consent request.
+		$host_capabilities = class_exists( 'MAD4B_SCP_Developer_Host_Capabilities', false )
+			? MAD4B_SCP_Developer_Host_Capabilities::snapshot() : array();
+		$developer_execution = MAD4B_SCP_OAuth_Consent_Projection_View::developer_execution( $developer_ready, $host_capabilities );
+		$developer_breakglass_operational = $developer_breakglass_ready && ! empty( $developer_execution['host_execution_ready'] );
+		$full_staging_operational = $full_staging_authority_ready && ! empty( $developer_execution['host_execution_ready'] );
 		$developer_fingerprint = hash( 'sha256', wp_json_encode( array(
 			'agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
 			'developer_enabled' => ! empty( $developer_status['developer_enabled'] ),
@@ -700,6 +708,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'current_ready' => ! empty( $plan['current_ready'] ),
 			'developer_fingerprint' => $developer_fingerprint,
 			'full_staging_authority_ready' => $full_staging_authority_ready,
+			'developer_host_fingerprint' => isset( $host_capabilities['capability_fingerprint'] ) ? (string) $host_capabilities['capability_fingerprint'] : '',
+			'developer_execution_ready' => ! empty( $developer_execution['host_execution_ready'] ),
 		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
 		$ready = $write_ready;
@@ -750,6 +760,12 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'developer_breakglass_enabled' => ! empty( $developer_status['breakglass_enabled'] ),
 			'developer_agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
 			'full_staging_authority_ready' => $full_staging_authority_ready,
+			'full_staging_operational_ready' => $full_staging_operational,
+			'developer_execution_ready' => ! empty( $developer_execution['host_execution_ready'] ),
+			'developer_operational_ready' => ! empty( $developer_execution['operational_ready'] ),
+			'developer_breakglass_operational_ready' => $developer_breakglass_operational,
+			'developer_execution_blockers' => $developer_execution['blockers'],
+			'developer_host_recovery_owner' => 'host_platform_operator',
 			'generic_raw_sql_breakglass_included' => false,
 			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
@@ -859,9 +875,15 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			echo '</ul>';
 		}
 		echo '</div>';
-		echo '<details><summary>' . esc_html__( 'Exact granted abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-grant-list">';
-		foreach ( (array) $grant_projection['grants'] as $grant ) echo '<li><code>' . esc_html( (string) $grant['ability'] ) . '</code> <span>· ' . esc_html( (string) $grant['provider'] ) . '</span></li>';
-		echo '</ul></details>';
+		// Render only validated nonblank rows. If a provider returns malformed
+		// data, surface the omission instead of displaying anonymous bullets.
+		$safe_grants = MAD4B_SCP_OAuth_Consent_Projection_View::safe_list( $grant_projection['grants'] ?? array() );
+		echo '<details><summary>' . esc_html__( 'Exact granted abilities', 'mad4b-site-control-plane' ) . ' (' . esc_html( (string) count( $safe_grants['rows'] ) ) . ')</summary><ul id="mad4b-grant-list">';
+		foreach ( $safe_grants['rows'] as $grant ) echo '<li><code>' . esc_html( $grant['ability'] ) . '</code> <span>· ' . esc_html( $grant['provider'] ) . '</span></li>';
+		if ( ! $safe_grants['rows'] ) echo '<li>' . esc_html__( 'No displayable ability names. Verify the authority projection before acting.', 'mad4b-site-control-plane' ) . '</li>';
+		echo '</ul>';
+		if ( $safe_grants['invalid'] || $safe_grants['omitted'] ) echo '<p class="mad4b-grant-note">' . esc_html( sprintf( '%d malformed and %d over display limit; this view is not an authority audit.', $safe_grants['invalid'], $safe_grants['omitted'] ) ) . '</p>';
+		echo '</details>';
 		echo '<details><summary>' . esc_html__( 'Provider-gated catalog abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-blocked-list">';
 		foreach ( (array) $grant_projection['blocked_catalog_abilities'] as $entry ) {
 			$ability = isset( $entry['ability'] ) ? (string) $entry['ability'] : '';
