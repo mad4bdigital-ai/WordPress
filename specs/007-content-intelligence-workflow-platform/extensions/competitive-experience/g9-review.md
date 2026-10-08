@@ -22,7 +22,7 @@
 
 ## Deeper review addendum — operational correctness and CI
 
-- **P0 / CI root discovery:** both G9 Python validators originally used `Path(__file__).resolve().parents[4]`, pointing one directory above the repository. They now use `parents[3]` with explicit root/workflow assertions; CI path filters now watch `g9-*.py`, not just PHP.
+- **P0 / CI root discovery:** both G9 Python validators originally used `Path(__file__).resolve().parents[4]`, pointing one directory above the repository. They now use `parents[4]` with explicit root/workflow assertions; CI path filters now watch `g9-*.py`, not just PHP.
 - **P0 / mismatched execution journal:** the existing `Execution_State_View::operation()` includes `scope`, `source_contract`, `evidence.operation_id`, `operation_binding_sha256`, `journal_head_sha256`, `latest_sequence`, and orphan/lease hazard indicators. A bare `COMMITTED` flag does not prove execution for the fenced operation. G9 requires all these independent identity and durability facts, while still refusing to mint release acceptance.
 - **P0 / missing native G9 capability:** `MAD4B_SCP_G9_Release_Fence::reserve()` references `mad4b/g9-release-reserve` in native authorization. It is deliberately not registered in the existing Capability Descriptor/grant/executor system. This path remains non-operational and requires an explicit reviewed integration, not merely enabling the Staging host flag. The read-only closure status names this blocker.
 - **P0 / database rollback:** if the external anchor file survives but the WordPress DB marker disappears or has `anchor_seen=false`, G9 now quarantines instead of accepting a restored stale database as if first-time enrollment.
@@ -62,3 +62,9 @@ These are **unimplemented or unverified runtime gates**, not tasks completed by 
 - `g9-delivery.json` lists exact scoped tasks and files without misleading DONE claims.
 - `g9-delivery.md` describes the code paths and remaining operational proof.
 - `g9-security-source-contract.py` verifies branch source invariants in CI, alongside hermetic PHP 7.4/8.3 checks.
+
+## Correction — first-read and Python root regression (2026-10-08)
+
+A deeper execution-path review found two P0 correctness regressions. `Resilience_Anchor::read_path()` required `fileperms()` on a directory which does not yet exist on first installation; first `read()` thus falsely failed with unsafe directory permissions. It now emits an uninitialized zero-revision read-only preview **only if** both directory and DB marker are absent; a missing directory after initialization returns `lost` and requires reconciliation. The hermetic fixture checks no directory creation on first read.
+
+The earlier Python CI root correction was wrong: `Path.parents[3]` resolves `wp-content`, while `parents[4]` resolves the repository root. Both verifier scripts are corrected. Only completed workflow runs can establish runtime success.

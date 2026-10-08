@@ -33,7 +33,8 @@ g9_error( MAD4B_SCP_Resilience_Context::validate_binding( $bad ), 'origin_invali
 $bad = $binding; $bad['restore_epoch'] = '1';
 g9_error( MAD4B_SCP_Resilience_Context::validate_binding( $bad ), 'binding_type_invalid' );
 $initial = MAD4B_SCP_Resilience_Anchor::read( $binding );
-g9_check( ! is_wp_error( $initial ) && 0 === $initial['revision'], 'initial anchor' );
+g9_check( ! is_wp_error( $initial ) && 0 === $initial['revision'] && ! is_dir( $dir ),
+    'first read does not require or create external directory' );
 g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, '0', function ( $current ) { return $current; } ), 'revision_conflict' );
 $anchor = MAD4B_SCP_Resilience_Anchor::transact( $binding, 0, function ( $current ) {
     $current['scopes']['ring:pilot'] = array( 'fenced' => true ); return $current;

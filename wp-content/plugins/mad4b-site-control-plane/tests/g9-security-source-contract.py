@@ -6,8 +6,8 @@ a provider acceptance certificate, or proof of a distributed lock.
 """
 from pathlib import Path
 
-# tests/ -> plugin/ -> plugins/ -> wp-content/ -> repository root
-ROOT = Path(__file__).resolve().parents[3]
+# parents[0]=tests; [1]=plugin; [2]=plugins; [3]=wp-content; [4]=repository root
+ROOT = Path(__file__).resolve().parents[4]
 assert (ROOT / "wp-content/plugins/mad4b-site-control-plane").is_dir(), "G9_REPOSITORY_ROOT_UNRESOLVED"
 assert (ROOT / ".github/workflows/feature-007-g9-resilience.yml").is_file(), "G9_REPOSITORY_WORKFLOW_UNAVAILABLE"
 BASE = ROOT / "wp-content/plugins/mad4b-site-control-plane"

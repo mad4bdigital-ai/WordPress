@@ -91,10 +91,22 @@ final class MAD4B_SCP_Resilience_Anchor {
 
 	private static function read_path( $path, array $binding ) {
 		$dir = dirname( $path );
+		clearstatcache( true, $dir );
+		clearstatcache( true, $path );
+		if ( ! is_dir( $dir ) ) {
+			// A passive first read must not require the external directory to exist.
+			// A missing directory with a persisted DB marker means state was lost.
+			if ( is_link( $dir ) || file_exists( $dir ) )
+				return self::error( 'directory_unavailable', 'External resilience directory is obstructed.' );
+			$previous = function_exists( 'get_option' ) ? get_option( self::MIRROR_OPTION, false ) : false;
+			if ( false !== $previous )
+				return self::error( 'lost', 'Existing external resilience directory disappeared after initialization.' );
+			return array( 'contract'=>self::CONTRACT, 'site'=>self::site_identity( $binding ),
+				'revision'=>0, 'clock_floor'=>0, 'scopes'=>array(), 'anchor_sha256'=>'' );
+		}
 		$dir_mode = @fileperms( $dir );
 		if ( is_link( $dir ) || false === $dir_mode || 0 !== ( $dir_mode & 0022 ) )
 			return self::error( 'directory_permissions_unsafe', 'External resilience directory changed permissions before readback.' );
-		clearstatcache( true, $path );
 		$mirror = function_exists( 'get_option' ) ? get_option( self::MIRROR_OPTION, false ) : false;
 		// A restored DB can lose its loss marker while retaining the external
 		// file. Never silently accept it as an enrolled current reservation.
