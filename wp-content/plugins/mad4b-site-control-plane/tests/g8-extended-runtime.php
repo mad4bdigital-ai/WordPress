@@ -132,6 +132,10 @@ g8_check( 'FINDINGS_REQUIRE_REVIEW' === $evidence['state']
 	&& false === $evidence['external_effect_performed'], 'fuzz semantic regression isolated per capability' );
 $repeat = MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $divergent, $c1, 1337 );
 g8_check( $repeat['evidence_sha256'] === $evidence['evidence_sha256'], 'fuzz evidence digest deterministic' );
+$unsafe_fixture = $valid_fixture;
+$unsafe_fixture[0]['handler'] = static function () {};
+g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $certified, $unsafe_fixture, 42 ),
+	'mad4b_g8_fuzz_contract_invalid' ), 'unserializable executable fixture fails closed instead of crashing' );
 $shared = $context; $shared['shared_objects'] = true;
 g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $shared, $certified, $certified, $valid_fixture, 42 ),
 	'mad4b_g8_fuzz_isolation_required' ), 'fuzz shared objects forbidden' );
