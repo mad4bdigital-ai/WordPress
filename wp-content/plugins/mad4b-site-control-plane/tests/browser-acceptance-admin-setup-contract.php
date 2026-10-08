@@ -41,6 +41,10 @@ check_browser( strpos($core,'MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selec
 $remote=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-remote-operation-parity.php');
 $staging=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-staging-certification.php');
 check_browser( strpos($remote, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id )') !== false, 'remote queue must check operator selection' );
+check_browser( strpos($remote, "preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', \$provider_id )") !== false, 'remote queue must preserve dot-containing valid provider IDs' );
+check_browser( strpos($remote, "preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', \$profile_id )") !== false, 'remote queue must preserve dot-containing valid profile IDs' );
+check_browser( strpos($remote, "sanitize_key( isset( \$input['provider_id'] )") === false, 'queue must never silently strip valid provider characters' );
+
 check_browser( strpos($staging, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id )') !== false, 'staging certification must check operator selection' );
 check_browser( strpos($main, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::boot();') !== false, 'setup available on admin' );
 

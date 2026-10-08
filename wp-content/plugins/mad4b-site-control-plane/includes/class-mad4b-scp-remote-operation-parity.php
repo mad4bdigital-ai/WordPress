@@ -2020,9 +2020,12 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_wp_error( $provenance ) ) return $provenance;
 		if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ) return new WP_Error( 'mad4b_browser_acceptance_core_unavailable', 'Browser Acceptance Core is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
-		$provider_id = sanitize_key( isset( $input['provider_id'] ) ? (string) $input['provider_id'] : '' );
-		$profile_id = sanitize_key( isset( $input['profile_id'] ) ? (string) $input['profile_id'] : '' );
-		if ( '' === $provider_id || '' === $profile_id ) return new WP_Error( 'mad4b_browser_acceptance_selector_invalid', 'Browser Acceptance requires bounded provider_id and profile_id selectors.' );
+		$provider_id = isset( $input['provider_id'] ) && is_string( $input['provider_id'] ) ? strtolower( trim( $input['provider_id'] ) ) : '';
+		$profile_id = isset( $input['profile_id'] ) && is_string( $input['profile_id'] ) ? strtolower( trim( $input['profile_id'] ) ) : '';
+		if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $provider_id )
+			|| ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $profile_id ) ) {
+			return new WP_Error( 'mad4b_browser_acceptance_selector_invalid', 'Browser Acceptance requires exact bounded provider_id and profile_id selectors.' );
+		}
 		if ( class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ) {
 			$operator_guard = MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id );
 			if ( is_wp_error( $operator_guard ) ) return $operator_guard;
