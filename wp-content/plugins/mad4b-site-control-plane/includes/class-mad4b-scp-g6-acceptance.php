@@ -131,7 +131,7 @@ final class MAD4B_SCP_G6_Acceptance {
 			'conversation_vault_production_certified' => false,
 			'model_router_has_no_execution' => true,
 			'retrieval_evaluation_requires_external_readback' => true,
-			'dispatch_dependency_receipts' => 'not_implemented_fail_closed',
+			'dispatch_dependency_receipts' => 'durable_records_inspected_postconditions_pending_fail_closed',
 			'ai_provider_execution' => false,
 			'vector_index_ingestion_certified' => false,
 			'live_provider_parity' => false,

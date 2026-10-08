@@ -1,6 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-g6-contracts.php';
+require_once __DIR__ . '/class-mad4b-scp-g6-durable-dag-evidence.php';
 
 /** Only reviewed PHP implementations may plan one typed primitive. No callback strings. */
 interface MAD4B_SCP_G6_Operation_Strategy {
@@ -242,7 +243,11 @@ final class MAD4B_SCP_G6_Operation_Compiler {
 		if ( 'RUNNING' !== $plan['job_state'] ) return MAD4B_SCP_G6_Contracts::error( 'job_not_running', 'A currently RUNNING ContentJob is required before compiled dispatch.' );
 		// Dependency completion must be bound through the existing workflow journal.
 		// No caller-supplied success flags or fabricated receipts advance a DAG.
-		if ( $step['depends_on'] ) return MAD4B_SCP_G6_Contracts::error( 'dependency_receipt_required', 'Dependency-bearing steps require a journal-bound fresh plan and fresh approval.' );
+		if ( $step['depends_on'] ) {
+			$observed = MAD4B_SCP_G6_Durable_DAG_Evidence::inspect( $plan, $node_id );
+			if ( is_wp_error( $observed ) ) return $observed;
+			return MAD4B_SCP_G6_Contracts::error( 'dependency_postcondition_required', 'Durable records are not provider postcondition evidence; fresh approval and provider readback remain required.', array( 'durable_evidence_sha256' => $observed['evidence_sha256'] ) );
+		}
 		if ( array_diff( array_keys( $execution_evidence ), array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ) ) ) return MAD4B_SCP_G6_Contracts::error( 'evidence_schema', 'Only existing opaque approval/context evidence can be forwarded.' );
 		$name = $step['ability_name'];
 		if ( ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) return MAD4B_SCP_G6_Contracts::error( 'execution_boundary_missing', 'Exact existing child ability lacks its verified execution boundary.' );

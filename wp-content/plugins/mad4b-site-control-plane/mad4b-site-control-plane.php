@@ -170,6 +170,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g6-knowledge-admission.ph
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g6-provider-routing.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g6-retrieval-evaluation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g6-conversation-vault.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g6-durable-dag-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g6-acceptance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
