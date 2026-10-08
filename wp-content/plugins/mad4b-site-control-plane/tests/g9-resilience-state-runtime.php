@@ -212,6 +212,16 @@ foreach ( $GLOBALS['g9_registered_abilities'] as $ability => $args ) {
 $read = MAD4B_SCP_G9_Read_Surface::site_observation();
 g9_assert( ! is_wp_error( $read ) && !$read['release_execution_supported'], 'site observation not executing' );
 g9_denied( MAD4B_SCP_G9_Read_Surface::site_observation( array('site'=>'foreign') ), 'read_input_invalid' );
+$unsigned = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, array(
+    'declared_success' => array( 'state'=>'verified_reconciled',
+        'site_key'=>$key, 'receipt_sha256'=>hash( 'sha256', 'untrusted-claim' ) ),
+) );
+g9_assert( ! is_wp_error( $unsigned ) && !$unsigned['external_effects_verified']
+    && $unsigned['requires_quarantine'] && !$unsigned['post_restore_acceptance_issued'],
+    'unsigned success claim cannot clear restore quarantine' );
+$empty = MAD4B_SCP_G9_Restore_Convergence::inspect( $baseline, array() );
+g9_assert( ! is_wp_error( $empty ) && !$empty['external_effects_verified']
+    && $empty['requires_quarantine'], 'empty inventory cannot imply native effect verification' );
 $state = MAD4B_SCP_G9_Restore_Convergence::status();
 g9_assert( ! is_wp_error( $state ) && !$state['write_reenabled'], 'restore status never grants' );
 $path = MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY . '/resilience-' . $binding['site_uuid'] . '-1-staging.json';

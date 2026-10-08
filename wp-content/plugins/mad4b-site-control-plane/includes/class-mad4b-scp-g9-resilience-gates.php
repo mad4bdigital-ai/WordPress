@@ -254,6 +254,8 @@ final class MAD4B_SCP_G9_Resilience_Gates {
             'site_key' => MAD4B_SCP_Resilience_Context::site_key( $current['binding'] ),
             'epoch_changed' => $epoch_changed, 'drift_facets' => $drift,
             'unresolved_external_effect_keys' => $unresolved,
+            'external_effect_receipts_independently_verified' => false,
+            'external_effect_inventory_completeness_verified' => false,
             'current_identity_blockers' => $current['identity_blockers'] ?? array(),
             'must_reconcile_grants_and_candidate_bindings' => true,
             'prior_mutable_receipts_accepted' => false,

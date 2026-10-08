@@ -53,6 +53,7 @@ final class MAD4B_SCP_G9_Restore_Convergence {
             $required[] = 'independently_reconcile_unrewound_external_effects';
         if ( ! empty( $report['current_identity_blockers'] ) )
             $required[] = 'repair_current_site_identity_in_quarantine';
+        $required[] = 'independently_certify_complete_external_effect_inventory';
         $required[] = 'governed_staging_readback_and_post_restore_acceptance';
 
         // The status is advisory; none of the steps is automatically delegated.
@@ -63,12 +64,16 @@ final class MAD4B_SCP_G9_Restore_Convergence {
             'current_snapshot_sha256' => $current['snapshot_sha256'],
             'restore_epoch_changed' => (bool) $report['epoch_changed'],
             'changed_facets' => $report['drift_facets'],
-            'requires_quarantine' => $drift
-                || ! empty( $report['unresolved_external_effect_keys'] )
-                || ! empty( $report['current_identity_blockers'] ),
+            // A purportedly empty effect list is not proof that all effects were
+            // inventoried, and unsigned/foreign status claims are not proof
+            // of reconciliation. Never clear quarantine without the
+            // independent signed acceptance lane.
+            'requires_quarantine' => true,
             'required_stages' => array_values( array_unique( $required ) ),
             'unresolved_effect_keys' => $report['unresolved_external_effect_keys'],
-            'external_effects_verified' => empty( $report['unresolved_external_effect_keys'] ),
+            'effect_claims_report_no_unresolved' => empty( $report['unresolved_external_effect_keys'] ),
+            'external_effect_inventory_certified' => false,
+            'external_effects_verified' => false,
             'immutable_audit_is_evidence_only' => true,
             'stale_authority_replayed' => false,
             'write_reenabled' => false,
