@@ -1125,6 +1125,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 	public static function resume_safe_phases() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) ) return;
+		if ( ! class_exists( 'MAD4B_SCP_G8_Record', false )
+			|| ! MAD4B_SCP_G8_Record::inert( $checkpoint ) ) return;
 		// A previously scheduled Cron event is not execution authority.
 		// Terminal, manual, restore-wait and explicitly paused checkpoints
 		// must never re-enter the automatic worker merely because the event
