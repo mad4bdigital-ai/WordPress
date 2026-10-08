@@ -280,9 +280,190 @@ scenario( 'local_checkpoint_resume_does_not_repurchase', static function () {
 	$r = ok( MAD4B_SCP_Search_Worker::reconcile( array( 'job_id' => $plan['job_id'] ) ), 'local resume' ); check( 'COMPLETE' === $r['state'] && 1 === $GLOBALS['fixture_providers'][0]->calls, 'resume reuses immutable pending evidence and settled charge' );
 	check( 99 === MAD4B_SCP_Search_Budgets::status( asi_account( 'alpha' ) )['remaining'], 'settlement idempotent' );
 } );
+scenario( 'domain_profile_market_identity_and_safe_retarget_invariants', static function () {
+	$input = array( 'profile' => asi_profile( 'domain-safety' ), 'expected_revision' => 0 );
+	$initial = ok( MAD4B_SCP_Search_Context::plan( $input ), 'direct profile plan' );
+	$created = ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $initial['plan_sha256'] ) ) ), 'direct profile commit' );
+	$id = $created['profile']['profile_id'];
+	$current = $created['profile'];
+	$collision = asi_profile( 'same-market-different-profile' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $collision, 'expected_revision' => 0 ) ), 'market_identity_conflict', 'existing market ID cannot be shared across profiles' );
+	$fields = array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] );
+	$raw = array_intersect_key( $current, $fields );
+	// A direct generic profile API cannot resume, freeze, unfreeze, disable or
+	// enable providers; these are typed operational controls only.
+	$pausing = $raw; $pausing['enabled'] = false;
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $pausing, 'expected_revision' => 1 ) ), 'state_requires_explicit_control', 'generic API cannot pause observations' );
+	$freezing = $raw; $freezing['provider_policy']['freeze_spend'] = true;
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $freezing, 'expected_revision' => 1 ) ), 'state_requires_explicit_control', 'generic API cannot freeze or unfreeze spend' );
+	$disabled = $raw; $disabled['provider_policy']['disabled'] = array( 'alpha' );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $disabled, 'expected_revision' => 1 ) ), 'state_requires_explicit_control', 'generic API cannot change provider enabled state' );
+	$control = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => $id, 'control' => 'pause', 'expected_revision' => 1, 'profile' => array( 'enabled' => true, 'budget_policy' => array( 'nodes' => array( 'forged' ) ) ) ) ), 'typed pause ignores supplied profile JSON' );
+	check( ! $control['profile']['enabled'] && 2 === $control['profile']['revision'], 'typed pause applies only requested state and current policy' );
+	$control = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => $id, 'control' => 'resume', 'expected_revision' => 2 ) ), 'typed resume still works' );
+	check( $control['profile']['enabled'] && 3 === $control['profile']['revision'], 'typed resume readback' );
+	$raw = array_intersect_key( $control['profile'], $fields );
+	$country = $raw; $country['markets'][0]['country'] = 'AU';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $country, 'expected_revision' => 3 ) ), 'market_identity_locked', 'direct API cannot reassign market country' );
+	$removed = $raw; array_shift( $removed['markets'] );
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $removed, 'expected_revision' => 3 ) ), 'market_identity_locked', 'direct API cannot erase historical market IDs' );
+	$lang = $raw; $lang['language_policy']['desired'][] = 'es';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $lang, 'expected_revision' => 3 ) ), 'targeting_requires_pause_and_spend_freeze', 'active and spend-unfrozen retarget denied' );
+	// An attempt to pause/freeze and retarget in the *same* transaction is rejected.
+	$mixed = $lang; $mixed['enabled'] = false; $mixed['provider_policy']['freeze_spend'] = true;
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $mixed, 'expected_revision' => 3 ) ), 'targeting_requires_pause_and_spend_freeze', 'combined pause freeze retarget denied' );
+	$paused = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'pause', 'expected_revision' => 3 ) ), 'explicit pause works' );
+	$frozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'freeze_spend', 'expected_revision' => $paused['profile']['revision'] ) ), 'explicit freeze works' );
+	$mixed['markets'][] = array( 'id' => 'new-market', 'country' => 'JP' );
+	$safe = array( 'profile' => $mixed, 'expected_revision' => $frozen['profile']['revision'] );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $safe ), 'safe new market and language plan' );
+	$result = ok( MAD4B_SCP_Search_Context::apply( array_merge( $safe, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'safe new market and language apply' );
+	check( 'US' === $result['profile']['markets'][0]['country'] && 'JP' === $result['profile']['markets'][2]['country'], 'existing geo history unchanged and new market added' );
+	check( ! $result['profile']['enabled'] && $result['profile']['provider_policy']['freeze_spend'], 'safe update never activates observations or spend' );
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $safe, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'revision_drift', 'stale direct API apply denied' );
+} );
+scenario( 'typed_control_scope_blocks_nested_profile_api_escalation', static function () {
+	$owner = asi_profile( 'control-scope-owner' );
+	$owner['markets'][0]['id'] = 'scope-owner-us'; $owner['markets'][1]['id'] = 'scope-owner-fr';
+	$peer = asi_profile( 'control-scope-peer' );
+	$peer['markets'][0]['id'] = 'scope-peer-us'; $peer['markets'][1]['id'] = 'scope-peer-fr';
+	foreach ( array( $owner, $peer ) as $raw ) {
+		$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+		$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'scope fixture create plan' );
+		ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'scope fixture create' );
+	}
+	$owner_key = MAD4B_SCP_Search_Store::key( 'profile', 'control-scope-owner' );
+	$GLOBALS['scope_nested_checked'] = false; $GLOBALS['scope_nested_denial'] = null;
+	$GLOBALS['fixture_cas_failure'] = static function ( $key, $old, $next ) use ( $owner_key, $peer ) {
+		if ( $key !== $owner_key || $GLOBALS['scope_nested_checked'] ) return false;
+		$GLOBALS['scope_nested_checked'] = true;
+		$raw = $peer; $raw['enabled'] = false;
+		$GLOBALS['scope_nested_denial'] = MAD4B_SCP_Search_Context::plan( array( 'profile' => $raw, 'expected_revision' => 1 ) );
+		return false;
+	};
+	$paused = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => 'control-scope-owner', 'control' => 'pause', 'expected_revision' => 1 ) ), 'exact control during simulated reentrancy' );
+	$GLOBALS['fixture_cas_failure'] = null;
+	check( $GLOBALS['scope_nested_checked'] && is_wp_error( $GLOBALS['scope_nested_denial'] ) && false !== strpos( $GLOBALS['scope_nested_denial']->get_error_code(), 'state_requires_explicit_control' ), 'peer cannot borrow scoped control state during nested store callback' );
+	check( 2 === $paused['profile']['revision'] && ! $paused['profile']['enabled'], 'outer typed transition remains correct' );
+	denied( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => 'control-scope-owner', 'control' => 'resume' ) ), 'revision_required', 'high-impact resume cannot omit exact revision' );
+	$restarted = ok( MAD4B_SCP_Search_Context::control_transition( array( 'profile_id' => 'control-scope-owner', 'control' => 'resume', 'expected_revision' => 2 ) ), 'typed resume after reentrant callback' );
+	check( 3 === $restarted['profile']['revision'] && $restarted['profile']['enabled'], 'typed control scope is released after completion' );
+	$next = asi_profile( 'unauthorized-domain-apply' ); $next['markets'][0]['id'] = 'unauthorized-us'; $next['markets'][1]['id'] = 'unauthorized-fr';
+	$input = array( 'profile' => $next, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'read-only plan available to unauthorized executor' );
+	$GLOBALS['fixture_write'] = false;
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'configuration_unauthorized', 'domain apply itself enforces config authority' );
+	$GLOBALS['fixture_write'] = true;
+} );
+scenario( 'domain_market_claim_readback_proves_ownership_and_flags_legacy', static function () {
+	$raw = asi_profile( 'claim-readback' ); $raw['markets'][0]['id'] = 'claim-metro'; $raw['markets'][1]['id'] = 'claim-second';
+	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'owned claim plan' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'owned claim commit' );
+	$verified = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'claim-readback' ) ), 'owned claim readback' );
+	check( $verified['valid'] && $verified['market_identity_integrity'] && $verified['market_claims_certified'] && 0 === $verified['legacy_unclaimed_market_count'], 'new market claims are fully certified' );
+	// Readback refuses tampered ownership even if the stored profile's own hash is intact.
+	$key = MAD4B_SCP_Search_Store::key( 'market-identity', 'claim-metro' );
+	$old = MAD4B_SCP_Search_Store::read( 'market-identity', 'claim-metro' );
+	$bad = $old; $bad['payload']['profile_id'] = 'foreign-owner';
+	check( $GLOBALS['fixture_store']->compare_exchange( $key, $old, $bad ), 'controlled claim tamper fixture' );
+	$after = MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'claim-readback' ) );
+	check( ! is_wp_error( $after ) && ! $after['valid'] && ! $after['market_identity_integrity'], 'tampered claim must not be certified' );
+
+	// Old repository snapshots may have valid profile records without new claims.
+	// They remain readable, but they are explicitly NOT fully market-claim certified.
+	$old_raw = asi_profile( 'legacy-no-claim' );
+	$old_raw['markets'][0]['id'] = 'legacy-metro'; $old_raw['markets'][1]['id'] = 'legacy-second';
+	$legacy_input = array( 'profile' => $old_raw, 'expected_revision' => 0 );
+	$old_plan = ok( MAD4B_SCP_Search_Context::plan( $legacy_input ), 'legacy profile normalization' );
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'legacy-no-claim', null, array( 'profile' => $old_plan['profile'], 'plan_sha256' => $old_plan['plan_sha256'] ), 'SEARCH_PROFILE_CHANGED' ), 'persist historical profile without new claim' );
+	$legacy = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'legacy-no-claim' ) ), 'legacy profile verification' );
+	check( $legacy['valid'] && 2 === $legacy['legacy_unclaimed_market_count'] && ! $legacy['market_claims_certified'], 'legacy market identities are flagged, never falsely certified' );
+	$legacy_edit = array( 'profile' => array_intersect_key( MAD4B_SCP_Search_Context::profile( 'legacy-no-claim' ), array_flip( MAD4B_SCP_Search_Context::policy()['profile_fields'] ) ), 'expected_revision' => 1 );
+	$adopt_plan = ok( MAD4B_SCP_Search_Context::plan( $legacy_edit ), 'legacy profile adoption preflight checks peer identity' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $legacy_edit, array( 'plan_sha256' => $adopt_plan['plan_sha256'] ) ) ), 'same owner adopts historical markets without retargeting or spend changes' );
+	$claimed = ok( MAD4B_SCP_Search_Context::verify( array( 'profile_id' => 'legacy-no-claim' ) ), 'post-migration exact readback' );
+	check( $claimed['valid'] && $claimed['market_claims_certified'] && 0 === $claimed['legacy_unclaimed_market_count'], 'historical identity adoption uses owned immutable claims' );
+} );
+scenario( 'orphaned_committed_profiles_still_reserve_historical_market_ids', static function () {
+	$orphan = asi_profile( 'orphan-committed-profile' );
+	$orphan['markets'][0]['id'] = 'orphan-market-id'; $orphan['markets'][1]['id'] = 'orphan-other-id';
+	$original = ok( MAD4B_SCP_Search_Context::plan( array( 'profile' => $orphan, 'expected_revision' => 0 ) ), 'prepare old committed profile' );
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'orphan-committed-profile', null, array( 'profile' => $original['profile'], 'plan_sha256' => $original['plan_sha256'] ), 'OLD_PROFILE_ADMISSION' ), 'commit legacy profile outside registry' );
+	check( null === MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ), 'legacy fixture has no registry record' );
+	$alias = asi_profile( 'attempted-identity-alias' );
+	$alias['markets'][0]['id'] = 'orphan-market-id'; $alias['markets'][1]['id'] = 'separate-market-id';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $alias, 'expected_revision' => 0 ) ), 'market_identity_conflict', 'bounded store scan detects alias even without registry admission' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'separate-market-id' ), 'failed preflight remains free of new reservations' );
+} );
+scenario( 'legacy_duplicate_market_ids_are_quarantined_before_adoption', static function () {
+	$first = asi_profile( 'legacy-peer-one' ); $first['markets'][0]['id'] = 'shared-old-id'; $first['markets'][1]['id'] = 'old-one-only';
+	$second = asi_profile( 'legacy-peer-two' ); $second['markets'][0]['id'] = 'shared-old-id'; $second['markets'][1]['id'] = 'old-two-only';
+	$p1 = ok( MAD4B_SCP_Search_Context::plan( array( 'profile' => $first, 'expected_revision' => 0 ) ), 'historical first normalization' );
+	$p2 = ok( MAD4B_SCP_Search_Context::plan( array( 'profile' => $second, 'expected_revision' => 0 ) ), 'historical second normalization' );
+	// Seed pre-upgrade history directly; the new runtime must *detect*, not
+	// silently select one owner or rewrite data when identities collide.
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'legacy-peer-one', null, array( 'profile' => $p1['profile'], 'plan_sha256' => $p1['plan_sha256'] ), 'PROFILE_SEEDED' ), 'historical profile one' );
+	ok( MAD4B_SCP_Search_Store::cas( 'profile', 'legacy-peer-two', null, array( 'profile' => $p2['profile'], 'plan_sha256' => $p2['plan_sha256'] ), 'PROFILE_SEEDED' ), 'historical profile two' );
+	ok( MAD4B_SCP_Search_Store::cas( 'registry', 'profiles', null, array( 'ids' => array( 'legacy-peer-one', 'legacy-peer-two' ) ), 'PROFILE_ADMITTED' ), 'historical registry' );
+	$first_input = array( 'profile' => $first, 'expected_revision' => 1 );
+	$second_input = array( 'profile' => $second, 'expected_revision' => 1 );
+	denied( MAD4B_SCP_Search_Context::plan( $first_input ), 'market_identity_conflict', 'duplicate old ID denies first-side adoption' );
+	denied( MAD4B_SCP_Search_Context::plan( $second_input ), 'market_identity_conflict', 'duplicate old ID denies second-side adoption' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'shared-old-id' ), 'no arbitrary owner selected for historical collision' );
+	// An identity collision must not prevent an emergency stop.
+	$pause = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'pause', 'expected_revision' => 1 ) ), 'emergency pause survives market collision' );
+	check( ! $pause['profile']['enabled'] && ! empty( $pause['safe_control_identity_quarantined'] ), 'pause changes only execution state and reports unresolved identity' );
+	$freeze = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'freeze_spend', 'expected_revision' => 2 ) ), 'emergency spend freeze survives identity collision' );
+	check( ! empty( $freeze['profile']['provider_policy']['freeze_spend'] ) && ! empty( $freeze['safe_control_identity_quarantined'] ), 'freeze is effective, market identity remains quarantined' );
+	$disabled = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'disable_provider', 'provider_id' => 'alpha', 'expected_revision' => 3 ) ), 'emergency provider disable' );
+	check( in_array( 'alpha', $disabled['profile']['provider_policy']['disabled'], true ) && ! empty( $disabled['safe_control_identity_quarantined'] ), 'provider disable remains fail-safe without ownership laundering' );
+	denied( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'legacy-peer-one', 'control' => 'resume', 'expected_revision' => 4 ) ), 'market_identity_conflict', 're-activation stays blocked while market identity conflicts' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'shared-old-id' ), 'safety controls cannot mint conflicting ownership claims' );
+} );
+scenario( 'market_identity_reservation_survives_registry_cas_failure', static function () {
+	$raw = asi_profile( 'registry-cas-owner' ); $raw['markets'][0]['id'] = 'registry-cas-us'; $raw['markets'][1]['id'] = 'registry-cas-fr';
+	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'registry fault initial plan' );
+	$registry_key = MAD4B_SCP_Search_Store::key( 'registry', 'profiles' );
+	$GLOBALS['fixture_cas_failure'] = static function ( $key, $old, $next ) use ( $registry_key ) { return $key === $registry_key; };
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'compare_exchange_conflict', 'registry CAS failure is not hidden' );
+	$GLOBALS['fixture_cas_failure'] = null;
+	check( null === MAD4B_SCP_Search_Store::read( 'profile', 'registry-cas-owner' ) && null === MAD4B_SCP_Search_Store::read( 'registry', 'profiles' ), 'failed admission has no false profile or registry success' );
+	$claim = MAD4B_SCP_Search_Store::read( 'market-identity', 'registry-cas-us' );
+	check( is_array( $claim ) && $claim['payload']['profile_id'] === 'registry-cas-owner', 'persisted reservation survives interrupted Registry commit' );
+	$other = asi_profile( 'registry-cas-foreign' ); $other['markets'][0]['id'] = 'registry-cas-us'; $other['markets'][1]['id'] = 'registry-cas-foreign-fr';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $other, 'expected_revision' => 0 ) ), 'market_identity_conflict', 'other profile cannot seize orphaned claim' );
+	$retry = ok( MAD4B_SCP_Search_Context::plan( $input ), 'same owner retry plan after Registry fault' );
+	$completed = ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $retry['plan_sha256'] ) ) ), 'same owner completes previous admission' );
+	check( $completed['profile']['profile_id'] === 'registry-cas-owner' && 1 === $completed['profile']['revision'], 'owner recovery preserves original market identities' );
+} );
+scenario( 'domain_market_claim_reservation_survives_partial_profile_commit', static function () {
+	$raw = asi_profile( 'pending-domain-profile' ); $raw['markets'][0]['id'] = 'pending-metro'; $raw['markets'][1]['id'] = 'pending-second';
+	$input = array( 'profile' => $raw, 'expected_revision' => 0 );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $input ), 'pending profile plan' );
+	$profile_key = MAD4B_SCP_Search_Store::key( 'profile', 'pending-domain-profile' );
+	$GLOBALS['fixture_cas_failure'] = static function ( $key, $old, $next ) use ( $profile_key ) { return $key === $profile_key; };
+	denied( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'compare_exchange_conflict', 'profile CAS failure surfaced without silent rollback' );
+	$GLOBALS['fixture_cas_failure'] = null;
+	$other = asi_profile( 'other-domain-profile' ); $other['markets'][0]['id'] = 'pending-metro'; $other['markets'][1]['id'] = 'fresh-second';
+	$args = array( 'profile' => $other, 'expected_revision' => 0 );
+	denied( MAD4B_SCP_Search_Context::plan( $args ), 'market_identity_conflict', 'read-only planning detects interrupted market-claim owner before any additional reservation' );
+	check( null === MAD4B_SCP_Search_Store::read( 'market-identity', 'fresh-second' ), 'rejected plan created no orphan claim for another candidate market' );
+	check( null === MAD4B_SCP_Search_Store::read( 'profile', 'other-domain-profile' ), 'conflicting profile was not admitted' );
+	$retry = ok( MAD4B_SCP_Search_Context::plan( $input ), 'same original owner can resume matching pending claim' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $input, array( 'plan_sha256' => $retry['plan_sha256'] ) ) ), 'same owner idempotently recovers its market reservation' );
+} );
 scenario( 'composed_profile_language_surface_drift_preserves_history', static function () {
 	$input = asi_seed(); list( $result ) = capture( $input ); $original = MAD4B_SCP_Search_Store::evidence( 'snapshot', $result['snapshot_id'] );
-	$raw = asi_profile(); $raw['language_policy']['desired'][] = 'de'; $args = array( 'profile' => $raw, 'expected_revision' => 1 ); $plan = MAD4B_SCP_Search_Context::plan( $args ); ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'changed profile' );
+	$raw = asi_profile(); $raw['language_policy']['desired'][] = 'de';
+	denied( MAD4B_SCP_Search_Context::plan( array( 'profile' => $raw, 'expected_revision' => 1 ) ), 'targeting_requires_pause_and_spend_freeze', 'live profile cannot be retargeted directly' );
+	$paused = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'fixture.search', 'control' => 'pause', 'expected_revision' => 1 ) ), 'pause before drift experiment' );
+	$frozen = ok( MAD4B_SCP_Search_Experience::control( array( 'profile_id' => 'fixture.search', 'control' => 'freeze_spend', 'expected_revision' => $paused['profile']['revision'] ) ), 'freeze spend before drift experiment' );
+	$raw['enabled'] = false; $raw['provider_policy']['freeze_spend'] = true;
+	$args = array( 'profile' => $raw, 'expected_revision' => $frozen['profile']['revision'] );
+	$plan = ok( MAD4B_SCP_Search_Context::plan( $args ), 'paused and frozen retarget plan' );
+	ok( MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) ), 'changed profile only after pause and freeze' );
 	$input['observation_epoch']--; denied( MAD4B_SCP_Search_Worker::plan( $input ), 'profile_drift', 'old target suspends until recomposed' );
 	check( $original === MAD4B_SCP_Search_Store::evidence( 'snapshot', $result['snapshot_id'] ), 'historical observation immutable across profile drift' );
 	$target = MAD4B_SCP_Search_Store::read( 'target', $input['target_id'] ); $changed = $target['target']; $changed['cluster_id'] = 'replacement'; ok( MAD4B_SCP_Search_Targets::persist( $changed ), 'new target version' );
