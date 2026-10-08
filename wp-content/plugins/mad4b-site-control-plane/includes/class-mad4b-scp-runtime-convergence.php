@@ -1609,13 +1609,20 @@ final class MAD4B_SCP_Runtime_Convergence {
 			}
 			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
 			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
-			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			if ( null !== $automatic_ticket ) {
+				$commit = self::automatic_checkpoint_cas( $existing_checkpoint, $checkpoint );
+				if ( is_wp_error( $commit ) ) return $commit;
+			} else update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			if ( 'pending_safe_phases' === $checkpoint_state && $retry_after_seconds > 0 ) {
 				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
 				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$auto_retry_scheduled = self::schedule_resume( time() + $retry_after_seconds );
+				$previous_checkpoint = $checkpoint;
 				$checkpoint['auto_retry_scheduled'] = (bool) $auto_retry_scheduled;
-				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+				if ( null !== $automatic_ticket ) {
+					$commit = self::automatic_checkpoint_cas( $previous_checkpoint, $checkpoint );
+					if ( is_wp_error( $commit ) ) return $commit;
+				} else update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			}
 			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
 			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
@@ -1652,6 +1659,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$current = self::current_identity();
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) ) $checkpoint = array();
+		$previous_checkpoint = $checkpoint;
 		$checkpoint['contract'] = self::CONTRACT;
 		$checkpoint['state'] = 'pending_safe_phases';
 		$prior_source = isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
@@ -1670,7 +1678,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$checkpoint['production_mutation'] = false;
 		$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
 		if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
-		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		if ( null !== $automatic_ticket ) {
+			$commit = self::automatic_checkpoint_cas( $previous_checkpoint, $checkpoint );
+			if ( is_wp_error( $commit ) ) return $commit;
+		} else update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 		// A subsequent slice must acquire a fresh exact-bound ticket.
 		// It is not permissible to carry this ticket into the next Cron run.
 		$scheduled = self::schedule_resume( time() + 5 );
