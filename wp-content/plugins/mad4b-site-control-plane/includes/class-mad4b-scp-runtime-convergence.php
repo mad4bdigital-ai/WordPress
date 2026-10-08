@@ -359,6 +359,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'phases' => $phases,
 			'required_blockers' => $required_blockers,
 			'checkpoint' => is_array( $checkpoint ) ? $checkpoint : array(),
+			'automatic_checkpoint_gate' => self::automatic_checkpoint_gate(),
 			'dynamic_extension_filter' => 'mad4b_scp_runtime_convergence_phases',
 			'read_only' => true,
 			'mutation_performed' => false,
@@ -1122,19 +1123,38 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 	}
 
+	/**
+	 * Read-only checkpoint gate for observability and Cron dispatch. It does
+	 * not imply independent SLO ticket, environment or owner authorization.
+	 */
+	public static function automatic_checkpoint_gate() {
+		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		$reason = 'checkpoint_not_scheduled';
+		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) )
+			$reason = 'checkpoint_absent';
+		elseif ( ! class_exists( 'MAD4B_SCP_G8_Record', false )
+			|| ! MAD4B_SCP_G8_Record::inert( $checkpoint ) )
+			$reason = 'checkpoint_untrusted_data';
+		elseif ( ! in_array( $checkpoint['state'] ?? '', array( 'pending_restart', 'pending_safe_phases' ), true ) )
+			$reason = 'checkpoint_state_not_scheduled';
+		elseif ( array_key_exists( 'automatic_retry_allowed', $checkpoint )
+			&& false === $checkpoint['automatic_retry_allowed'] )
+			$reason = 'checkpoint_automatic_retry_paused';
+		else
+			$reason = 'awaiting_independent_slo_ticket';
+		return array( 'contract' => 'mad4b.g8-cron-checkpoint-gate.v1',
+			'checkpoint_schedulable' => 'awaiting_independent_slo_ticket' === $reason,
+			'reason' => $reason, 'slo_ticket_verified' => false,
+			'mutation_performed' => false, 'authorizing' => false );
+	}
+
 	public static function resume_safe_phases() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
-		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) ) return;
-		if ( ! class_exists( 'MAD4B_SCP_G8_Record', false )
-			|| ! MAD4B_SCP_G8_Record::inert( $checkpoint ) ) return;
-		// A previously scheduled Cron event is not execution authority.
-		// Terminal, manual, restore-wait and explicitly paused checkpoints
-		// must never re-enter the automatic worker merely because the event
-		// was already present in the WordPress Cron queue.
-		$scheduled_state = $checkpoint['state'] ?? '';
-		if ( ! in_array( $scheduled_state, array( 'pending_restart', 'pending_safe_phases' ), true )
-			|| ( array_key_exists( 'automatic_retry_allowed', $checkpoint )
-				&& false === $checkpoint['automatic_retry_allowed'] ) ) return;
+		// A previously scheduled event is not execution authority. Use
+		// the same read-only state gate shown to the operator, then obtain
+		// a separate exact, live SLO ticket before any automatic mutation.
+		$checkpoint_gate = self::automatic_checkpoint_gate();
+		if ( true !== $checkpoint_gate['checkpoint_schedulable'] ) return;
 		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) ) return;
 		$not_before = self::maintenance_not_before();
 		if ( $not_before > time() ) {
