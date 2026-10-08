@@ -25,7 +25,8 @@ $pack = array( 'pack_type' => 'provider_evidence', 'provider_id' => 'analytics',
 	'capability_id' => 'read', 'pack_sha256' => str_repeat( 'c', 64 ),
 	'runtime_generation' => array( 'generation_sha256' => $generation ),
 	'payload' => array( 'supply_provenance' => array( 'source_channel' => 'vendor_official',
-		'source_sha256' => $source_sha, 'sequence' => 7, 'dependencies' => array( 'core' => $dep ) ) ) );
+		'source_sha256' => $source_sha, 'sequence' => 7, 'dependencies' => array( 'core' => $dep ),
+		'mirror_sha256' => array( $source_sha ) ) ) );
 $candidate = array( 'provider_id' => 'analytics', 'capability_id' => 'read',
 	'runtime_generation_sha256' => $generation, 'source_channel' => 'vendor_official',
 	'source_sha256' => $source_sha, 'sequence' => 7,
@@ -59,6 +60,15 @@ foreach ( $mutations as $case ) {
 	g8_check( $case[2] === $r['reason'] && 'QUARANTINED' === $r['state']
 		&& 'analytics:read' === $r['quarantine_scope'], 'supply substitution: ' . $case[0] );
 }
+$omitted_mirror = $candidate; $omitted_mirror['mirror_sha256'] = array();
+$omitted = MAD4B_SCP_G8_Supply_Provenance::inspect( $omitted_mirror, $pack );
+g8_check( 'QUARANTINED' === $omitted['state'] && 'mirror_pinset_mismatch' === $omitted['reason'],
+	'omitting signed mirrors cannot evade provenance' );
+$extra_mirror = $candidate;
+$extra_mirror['mirror_sha256'][] = $source_sha;
+$extra = MAD4B_SCP_G8_Supply_Provenance::inspect( $extra_mirror, $pack );
+g8_check( 'QUARANTINED' === $extra['state'] && 'mirror_pinset_mismatch' === $extra['reason'],
+	'candidate cannot silently add sources absent from trusted mirror inventory' );
 $runtime_truth = MAD4B_SCP_G8_Supply_Provenance::runtime_status();
 g8_check( 'LOCAL_IDENTITY_ONLY' === $runtime_truth['state']
 	&& false === $runtime_truth['signer_verified'], 'local runtime hash cannot impersonate signer' );
