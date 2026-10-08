@@ -32,6 +32,16 @@ export function resolveSiteBrowserAdapter(caps, {
       !Array.isArray(observed.taxonomies) || observed.taxonomies.length > 96 ||
       new Set(observed.plugins).size !== observed.plugins.length ||
       observed.plugins.some(x => !valid(x, ID)) ||
+      observed.plugin_versions_complete !== true ||
+      !Array.isArray(observed.plugin_versions) ||
+      observed.plugin_versions.length !== observed.plugins.length ||
+      new Set(observed.plugin_versions.map(x => x?.slug)).size !== observed.plugin_versions.length ||
+      observed.plugin_versions.some(x => !x || !valid(x.slug, ID) ||
+        !observed.plugins.includes(x.slug) ||
+        typeof x.basename !== "string" ||
+        !/^[a-zA-Z0-9._-]+(?:\/[a-zA-Z0-9._-]+)?\.php$/.test(x.basename) ||
+        x.basename.split("/").some(y => y === "." || y === ".." || y.startsWith(".")) ||
+        !/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,99}$/.test(x.version || "")) ||
       !Array.isArray(observed.provider_matches) || observed.provider_matches.length > 32) {
     fail("discovery_invalid_or_incomplete");
   }
