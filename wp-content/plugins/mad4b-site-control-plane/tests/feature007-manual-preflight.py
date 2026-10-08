@@ -17,6 +17,7 @@ WF = Path(".github/workflows/feature-007-spec-ci.yml")
 LEDGER = Path("specs/007-content-intelligence-workflow-platform/change-slices.json")
 EXT = Path("specs/007-content-intelligence-workflow-platform/extensions/competitive-experience")
 LINT = (
+    "class-mad4b-scp-agent-registry.php",
     "class-mad4b-scp-assistant-planning.php",
     "class-mad4b-scp-assistant-bootstrap-diagnostic.php",
     "class-mad4b-scp-oauth-consent-projection-view.php",
@@ -28,6 +29,7 @@ LINT = (
 FIXTURES = (
     "assistant-planning-runtime.php",
     "assistant-bootstrap-diagnostic-runtime.php",
+    "assistant-entrypoint-registration-runtime.php",
     "oauth-consent-projection-view-runtime.php",
     "g7-compensation-safety-runtime.php",
     "g8-automation-slo-runtime.php",
