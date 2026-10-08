@@ -9,9 +9,12 @@ require_once __DIR__ . '/class-mad4b-scp-g9-operational-readiness.php';
 final class MAD4B_SCP_G9_Read_Surface {
     private static $booted = false;
     private static $reader_pinned = false;
+    private static $boot_result = null;
 
     public static function boot() {
-        if ( self::$booted ) return;
+        // Process-scoped, deterministic one-time pinning. Repeated calls must
+        // return the original failure or true; null must not hide a denial.
+        if ( self::$booted ) return self::$boot_result;
         self::$booted = true;
         // Pin one server-owned passive observer; never instantiate a class or
         // callback from a request or discovered manifest. A competing earlier
@@ -20,14 +23,16 @@ final class MAD4B_SCP_G9_Read_Surface {
         if ( true !== $pinned ) {
             // Do not expose a WordPress Ability backed by an untrusted or
             // unexpected reader. Existing registration is never overwritten.
-            return is_wp_error( $pinned ) ? $pinned : new WP_Error(
+            self::$boot_result = is_wp_error( $pinned ) ? $pinned : new WP_Error(
                 'mad4b_g9_reader_pin_failed', 'Code-owned G9 passive reader could not be pinned.'
             );
+            return self::$boot_result;
         }
         self::$reader_pinned = true;
         if ( function_exists( 'add_action' ) )
             add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 38 );
-        return true;
+        self::$boot_result = true;
+        return self::$boot_result;
     }
 
     public static function register_abilities() {

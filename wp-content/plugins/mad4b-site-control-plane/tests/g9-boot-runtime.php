@@ -25,6 +25,7 @@ function check_g9( $condition, $description ) {
 }
 require_once __DIR__ . '/../includes/class-mad4b-scp-g9-read-surface.php';
 check_g9( MAD4B_SCP_G9_Read_Surface::boot() === true, 'code-owned reader pinned' );
+check_g9( MAD4B_SCP_G9_Read_Surface::boot() === true, 'repeated healthy boot returns true' );
 check_g9( count( $GLOBALS['g9_ability_hooks'] ) === 1, 'one bootstrap hook' );
 $hook = $GLOBALS['g9_ability_hooks'][0];
 check_g9( $hook[0] === 'wp_abilities_api_init' && $hook[2] === 38,

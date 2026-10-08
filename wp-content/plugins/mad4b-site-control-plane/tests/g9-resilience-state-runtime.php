@@ -480,6 +480,7 @@ MAD4B_SCP_Operation_Journal::$drift_on_read = 0;
 // WordPress boot. The production read-surface declines to publish abilities
 // when the server-owned reader cannot be pinned.
 g9_denied( MAD4B_SCP_G9_Read_Surface::boot(), 'reader_already_registered' );
+g9_denied( MAD4B_SCP_G9_Read_Surface::boot(), 'reader_already_registered' );
 g9_assert( !$GLOBALS['g9_registered_abilities'], 'failed boot never publishes read abilities' );
 // A direct manual registration call after failed reader pinning must still
 // NOT expose any Abilities. A separate positive bootstrap fixture certifies
