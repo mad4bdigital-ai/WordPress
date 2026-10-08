@@ -26,10 +26,11 @@ t( 'nonarray projection fails safe', 0 === count( $r['rows'] ) && 1 === $r['inva
 $ready = array( 'process_backend_ready' => true, 'normal_no_network_execution_ready' => true,
     'process_backend_blockers' => array(), 'normal_no_network_execution_blockers' => array() );
 $good_host = MAD4B_SCP_OAuth_Consent_Projection_View::developer_execution( true, $ready );
-t( 'host and authority both needed', true === $good_host['operational_ready'] );
+t( 'host prerequisite presence is not execution certification', true === $good_host['host_prerequisites_ready'] && false === $good_host['host_execution_ready'] && false === $good_host['operational_ready'] );
+t( 'uncertified host forces independent canary', 'NOT_CERTIFIED' === $good_host['host_execution_certification'] && in_array( 'host_behavior_uncertified', $good_host['blockers'], true ) );
 t( 'view cannot confer authority', false === $good_host['authorizing'] && false === $good_host['mutation_performed'] && false === $good_host['host_installation_performed'] );
 $unauthorized = MAD4B_SCP_OAuth_Consent_Projection_View::developer_execution( false, $ready );
-t( 'ready host is not OAuth authority', false === $unauthorized['operational_ready'] && true === $unauthorized['host_execution_ready'] );
+t( 'ready host is not OAuth authority', false === $unauthorized['operational_ready'] && true === $unauthorized['host_prerequisites_ready'] && false === $unauthorized['authority_ready'] );
 $bad_host = array( 'process_backend_ready' => false, 'normal_no_network_execution_ready' => false,
     'process_backend_blockers' => array( 'resource_limiter_unavailable' ),
     'normal_no_network_execution_blockers' => array( 'resource_limiter_unavailable', 'network_isolation_unavailable', "<script>" ) );
