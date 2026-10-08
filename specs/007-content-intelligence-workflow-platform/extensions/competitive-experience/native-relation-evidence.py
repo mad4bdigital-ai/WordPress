@@ -6,6 +6,8 @@ snapshot, resolves WPML identity, certifies semantics or permits mutation.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from urllib.parse import urlsplit
 
@@ -51,6 +53,12 @@ def scope_check(scope):
 
 def audit(bundle):
     require(isinstance(bundle, dict) and bundle.get('contract') == INPUT, 'contract_invalid')
+    try:
+        raw_evidence = json.dumps(bundle, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')
+    except (TypeError, ValueError) as error:
+        raise ValueError('input_not_json_evidence') from error
+    require(len(raw_evidence) <= 2_097_152, 'evidence_byte_budget_exceeded')
+    evidence_digest = hashlib.sha256(raw_evidence).hexdigest()
     site, origin = scope_check(bundle.get('scope'))
     scope = bundle['scope']
     fields, records, identities = (bundle.get(key) for key in ('fields', 'records', 'identities'))
@@ -181,6 +189,8 @@ def audit(bundle):
     summary = {state: sum(f['state'] == state for f in findings)
                for state in ('STRUCTURAL', 'UNRESOLVED', 'ISSUE')}
     return {'contract': OUTPUT, 'site_uuid': site, 'scope_origin': origin,
+            'input_evidence_sha256': evidence_digest, 'evidence_bytes': len(raw_evidence),
+            'evidence_digest_authorizing': False,
             'coverage_complete': coverage_complete, 'snapshot_authenticity_verified': False,
             'semantic_verification_complete': False, 'complete': False,
             'eligible_for_mutation': False, 'authorizing': False, 'read_only': True,
