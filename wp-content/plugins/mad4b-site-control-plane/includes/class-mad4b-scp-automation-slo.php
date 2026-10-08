@@ -107,6 +107,26 @@ final class MAD4B_SCP_Automation_SLO {
 		return $ticket;
 	}
 
+	/** Revalidate a live automatic ticket at each owned safe-phase mutation boundary. */
+	public static function ticket_allowed( array $ticket ) {
+		if ( ! MAD4B_SCP_G8_Record::staging() ) return new WP_Error( 'mad4b_automation_staging_lost', 'Automatic Staging eligibility changed.' );
+		$state = self::state();
+		if ( is_wp_error( $state ) ) return $state;
+		$token = $ticket['token'] ?? '';
+		if ( ! is_string( $token ) || ! isset( $state['tickets'][ $token ] ) || serialize( $state['tickets'][ $token ] ) !== serialize( $ticket )
+			|| ! is_int( $ticket['expires_at'] ?? null ) || $ticket['expires_at'] <= time() ) return new WP_Error( 'mad4b_automation_ticket_not_live', 'Automatic ticket expired, changed, or was consumed.' );
+		$runtime = MAD4B_SCP_G8_Record::runtime_binding();
+		if ( is_wp_error( $runtime ) || ! is_string( $ticket['runtime_binding'] ?? null ) || ! hash_equals( $ticket['runtime_binding'], $runtime ) )
+			return new WP_Error( 'mad4b_automation_runtime_changed', 'Automatic work belongs to a different runtime.' );
+		$switch = self::switch_status();
+		if ( ! $switch['integrity_valid'] ) return new WP_Error( 'mad4b_automation_kill_switch_integrity_lost', 'Automatic switch lost integrity.' );
+		$provider = $ticket['provider'] ?? ''; $capability = $ticket['capability'] ?? '';
+		if ( ! is_string( $provider ) || ! is_string( $capability ) || ! empty( $switch['scopes']['*'] )
+			|| ! empty( $switch['scopes'][ $provider . ':*' ] ) || ! empty( $switch['scopes'][ $provider . ':' . $capability ] ) )
+			return new WP_Error( 'mad4b_automation_kill_switch', 'Automatic maintenance was paused.' );
+		return true;
+	}
+
 	/** No success boolean is accepted; verified repair is recorded only by exact known readback. */
 	public static function finish_existing( array $ticket, $result ) {
 		$outcome = is_wp_error( $result ) ? 'failed' : 'handoff';
