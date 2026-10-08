@@ -7,11 +7,13 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * WordPress administrator read permission remains mandatory.
  */
 final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
+    private static $booted = false;
     const CONTRACT = 'mad4b.assistant-bootstrap-diagnostic.v1';
     const ABILITY = 'mad4b/assistant-bootstrap-diagnostic';
 
     public static function boot() {
-        if ( ! function_exists( 'add_action' ) ) return;
+        if ( self::$booted || ! function_exists( 'add_action' ) ) return;
+        self::$booted = true;
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 41 );
         add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 41 );
     }
@@ -53,6 +55,18 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
                 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
                 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
         ) );
+    }
+
+    /** Require exact read-only adapter mapping, not merely an object under a familiar ID. */
+    private static function read_adapter_valid( $adapter, $ability ) {
+        if ( ! class_exists( 'MAD4B_SCP_Adapter_Base', false )
+            || ! is_object( $adapter ) || ! ( $adapter instanceof MAD4B_SCP_Adapter_Base )
+            || ! method_exists( $adapter, 'ability_names' ) ) return false;
+        $names = $adapter->ability_names();
+        return is_array( $names ) && count( $names ) === 3
+            && isset( $names['read'], $names['content'], $names['admin'] )
+            && $names['read'] === array( $ability )
+            && $names['content'] === array() && $names['admin'] === array();
     }
 
     public static function status( $input = array() ) {
@@ -112,15 +126,17 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
         $registry_observed = class_exists( 'MAD4B_SCP_Adapter_Registry', false );
         $plan_adapter = $registry_observed ? MAD4B_SCP_Adapter_Registry::instance()->get( 'assistant-planning' ) : null;
         $bootstrap_adapter = $registry_observed ? MAD4B_SCP_Adapter_Registry::instance()->get( 'assistant-bootstrap' ) : null;
-        $adapters_visible = null !== $plan_adapter && null !== $bootstrap_adapter;
+        $plan_adapter_valid = self::read_adapter_valid( $plan_adapter, $plan_ability );
+        $bootstrap_adapter_valid = self::read_adapter_valid( $bootstrap_adapter, self::ABILITY );
+        $adapters_visible = $plan_adapter_valid && $bootstrap_adapter_valid;
         $read_registration = array(
             'contract' => 'mad4b.assistant-read-registration-witness.v1',
             'hooks_bound' => $hooks_bound,
             'abilities_lifecycle_observed' => $abilities_observed,
             'planning_ability_visible' => (bool) $plan_visible,
             'bootstrap_ability_visible' => (bool) $diagnostic_visible,
-            'planning_adapter_visible' => null !== $plan_adapter,
-            'bootstrap_adapter_visible' => null !== $bootstrap_adapter,
+            'planning_adapter_visible' => $plan_adapter_valid,
+            'bootstrap_adapter_visible' => $bootstrap_adapter_valid,
             'read_catalog_local_ready' => $hooks_bound && $plan_visible && $diagnostic_visible && $adapters_visible,
             'external_mcp_catalog_verified' => false,
             'mutation_performed' => false,
@@ -136,7 +152,9 @@ final class MAD4B_SCP_Assistant_Bootstrap_Diagnostic {
             'profile_configured' => $enrolled,
             'origin_verified' => $origin,
             'exact_runtime_evidence_ready' => $binding_ready,
-            'preview_eligible' => $binding_ready,
+            // Exact restore/runtime identity alone cannot make an unregistered
+            // tool usable. A missing/widened Adapter or Ability fails closed.
+            'preview_eligible' => $binding_ready && $read_registration['read_catalog_local_ready'],
             'blockers' => $blockers,
             'next_safe_actions' => $actions,
             'ready_for_mutation' => false,
