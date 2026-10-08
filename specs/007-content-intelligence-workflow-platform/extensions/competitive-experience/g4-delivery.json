@@ -68,7 +68,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "bf7bf7a08f475b612cf97d6dcff208767afb2ec593dbde692364eb7a3724bc55"
+      "sha256": "667c4f28680e50e03b895a31272e3ab6edf8468d9f873adf5e71a295a500f2af"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
@@ -248,6 +248,6 @@
     "Native guarded apply, disposable Staging canaries, stock/order/hook concurrency, independent financial/external effects, rendered/frontend readback and exact rollback/uncertainty acceptance.",
     "Real PII read/mask/consent/retention/export/delete and optional-provider readiness; actual Divi/Kadence/FSE/operational/WPML/ACF/BuddyPress/Events Calendar acceptance.",
     "Independent operator/browser/RTL/persisted readback through the established process; no direct live WordPress connection from this window.",
-    "G5\u2013G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
+    "G5–G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
   ]
 }
