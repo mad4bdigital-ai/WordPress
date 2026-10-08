@@ -45,6 +45,12 @@ final class MAD4B_SCP_Operation_Journal {
 		}
 		$event_type = sanitize_key( (string) $event_type );
 		if ( '' === $event_type ) return new WP_Error( 'mad4b_operation_event_type_invalid', 'Operation event_type is required.' );
+		// Assistant task events are never permitted through the legacy unbound
+		// append lane. This is a mandatory journal CAS, not a caller preference.
+		if ( 0 === strpos( $event_type, 'assistant_task_' ) && ! $has_expected_seq ) {
+			return new WP_Error( 'mad4b_operation_journal_cas_required',
+				'Assistant task journal writes require both exact-head CAS preconditions.' );
+		}
 		$lifecycle = isset( $args['lifecycle_state'] ) ? sanitize_key( (string) $args['lifecycle_state'] ) : 'running';
 		$checkpoint = isset( $args['checkpoint'] ) ? sanitize_key( (string) $args['checkpoint'] ) : '';
 		$outcome = isset( $args['terminal_outcome'] ) ? sanitize_key( (string) $args['terminal_outcome'] ) : '';
