@@ -1218,8 +1218,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( null === $ticket ) return true; // governed explicit/manual path remains unchanged.
 		if ( ! is_array( $ticket ) || ! class_exists( 'MAD4B_SCP_Automation_SLO', false ) )
 			return new WP_Error( 'mad4b_automation_guard_missing', 'Automatic safety admission cannot be verified.' );
-		$allowed = MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket );
+		try {
+			$allowed = MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_automation_ticket_verification_exception', 'Automatic ticket verification failed unexpectedly.' );
+		}
 		if ( is_wp_error( $allowed ) ) return $allowed;
+		if ( true !== $allowed )
+			return new WP_Error( 'mad4b_automation_ticket_denied', 'Automatic ticket verifier did not explicitly permit the mutation.' );
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$target = is_array( $checkpoint ) && is_array( $checkpoint['target_identity'] ?? null )
 			? $checkpoint['target_identity'] : array();
