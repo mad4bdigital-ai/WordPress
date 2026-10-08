@@ -40,12 +40,15 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			// The operator's audience country, not the WordPress timezone, owns these identifiers.
 			$profile_id = $input['profile_id']; $market_id = $input['market_id'];
 			if ( '' === $profile_id ) {
-				$existing = self::profiles();
-				if ( is_wp_error( $existing ) ) return $existing;
+				// One registry read, including reserved IDs without a materialized profile.
+				// The store's CAS still arbitrates concurrent requests to the same ID.
+				$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
+				if ( is_wp_error( $registry ) ) return $registry;
+				$ids = is_array( $registry ) && isset( $registry['ids'] ) && is_array( $registry['ids'] ) ? $registry['ids'] : array();
 				$base = 'search-' . strtolower( $market_country );
 				for ( $i = 1; $i <= 100; $i++ ) {
 					$option = 1 === $i ? $base : $base . '-' . $i;
-					if ( ! isset( $existing[ $option ] ) ) { $profile_id = $option; break; }
+					if ( ! in_array( $option, $ids, true ) ) { $profile_id = $option; break; }
 				}
 				if ( '' === $profile_id ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			}
@@ -91,8 +94,9 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			if ( ! isset( $raw['markets'][0] ) || ! is_array( $raw['markets'][0] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$country = strtoupper( trim( $input['audience_country'] ) );
 			if ( ! preg_match( '/^[A-Z]{2}$/D', $country ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
-			// A country change must not carry stale provider-specific geo mappings.
-			if ( $country !== $raw['markets'][0]['country'] && ! empty( $raw['markets'][0]['provider_locations'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_location_review_required' );
+			// Country changes reuse existing market identity and therefore require a new
+			// market/profile, regardless of whether geographic provider IDs exist.
+			if ( $country !== $raw['markets'][0]['country'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_locked', 'A market country is fixed to its market ID. Create a new market or Search Profile instead.' );
 			$languages = self::language_input( $input['audience_languages'] );
 			$devices = self::list_input( $input['audience_devices'] );
 			if ( is_wp_error( $languages ) || is_wp_error( $devices ) || ! $languages || ! $devices || count( $languages ) > 64 || array_diff( $devices, array( 'desktop', 'mobile', 'tablet' ) ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
@@ -105,6 +109,12 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			$raw['enabled'] = ! empty( $current['enabled'] );
 			$raw['provider_policy']['freeze_spend'] = ! empty( $current['provider_policy']['freeze_spend'] );
 		} else return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+		if ( 'create' !== $input['operation'] ) {
+			if ( ! self::market_identity_preserved( $current, $raw ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_market_identity_locked', 'Existing market IDs cannot change country. Add a new market or Search Profile.' );
+			if ( ( ! empty( $current['enabled'] ) || empty( $current['provider_policy']['freeze_spend'] ) ) && ! self::unchanged_edit( $current, $raw ) ) {
+				return MAD4B_SCP_Search_Contracts::error( 'profile_targeting_requires_pause_and_spend_freeze', 'Pause observations and freeze provider spend before editing Search Profile settings.' );
+			}
+		}
 		$args = array( 'profile' => $raw, 'expected_revision' => $revision );
 		$plan = MAD4B_SCP_Search_Runtime::profile_plan( $args );
 		if ( is_wp_error( $plan ) ) return $plan;
@@ -113,6 +123,29 @@ final class MAD4B_SCP_Search_Profile_Admin {
 		$verify = MAD4B_SCP_Search_Runtime::profile_verify( array( 'profile_id' => $raw['profile_id'] ) );
 		if ( is_wp_error( $verify ) || empty( $verify['valid'] ) || $verify['profile_sha256'] !== $plan['profile']['profile_sha256'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_readback_failed' );
 		return $result;
+	}
+
+	/** Prevent the same market ID from referring to different countries over time. */
+	private static function market_identity_preserved( array $current, array $candidate ) {
+		if ( ! isset( $candidate['markets'] ) ) return true;
+		if ( ! is_array( $candidate['markets'] ) ) return false;
+		$existing = array();
+		foreach ( isset( $current['markets'] ) && is_array( $current['markets'] ) ? $current['markets'] : array() as $market ) {
+			if ( is_array( $market ) && isset( $market['id'], $market['country'] ) && is_string( $market['id'] ) && is_string( $market['country'] ) ) $existing[ $market['id'] ] = $market['country'];
+		}
+		foreach ( $candidate['markets'] as $market ) {
+			if ( ! is_array( $market ) || ! isset( $market['id'], $market['country'] ) || ! is_string( $market['id'] ) || ! is_string( $market['country'] ) ) return false;
+			if ( isset( $existing[ $market['id'] ] ) && $existing[ $market['id'] ] !== $market['country'] ) return false;
+		}
+		return true;
+	}
+
+	/** An active or unfrozen profile is read-only through both generic and guided editors. */
+	private static function unchanged_edit( array $current, array $candidate ) {
+		foreach ( $candidate as $field => $value ) {
+			if ( ! array_key_exists( $field, $current ) || $current[ $field ] !== $value ) return false;
+		}
+		return true;
 	}
 
 	private static function list_input( $value ) {
@@ -189,9 +222,9 @@ final class MAD4B_SCP_Search_Profile_Admin {
 	private static function render_guided_edit_form( array $p ) {
 		if ( empty( $p['markets'][0]['country'] ) || empty( $p['profile_id'] ) ) return;
 		echo '<details><summary>Edit audience settings (guided)</summary>';
-		echo '<p class="description">Update the first audience market, languages, devices and objective. Other markets, budget and runtime states remain unchanged. Existing geographic provider mappings require separate review before country changes.</p>';
+		echo '<p class="description">Update audience languages, devices and objective. The country is fixed to its market ID; use a new profile to target a different country. Pause observations and freeze provider spend before changing targeting.</p>';
 		self::form_start( 'edit_guided', $p['profile_id'], $p['revision'] );
-		echo '<p><label for="mad4b-search-edit-country">Audience country</label><br><input id="mad4b-search-edit-country" name="audience_country" value="' . esc_attr( $p['markets'][0]['country'] ) . '" maxlength="2" pattern="[A-Za-z]{2}" required></p>';
+		echo '<p><label for="mad4b-search-edit-country">Audience country (locked to market ID)</label><br><input id="mad4b-search-edit-country" name="audience_country" value="' . esc_attr( $p['markets'][0]['country'] ) . '" maxlength="2" readonly required><span class="description">Create a new profile for a different country. This preserves historical SERP measurement identity.</span></p>';
 		echo '<p><label for="mad4b-search-edit-languages">Audience languages (comma-separated)</label><br><input id="mad4b-search-edit-languages" name="audience_languages" value="' . esc_attr( implode( ', ', $p['language_policy']['desired'] ) ) . '" maxlength="2048" required></p>';
 		echo '<p><label for="mad4b-search-edit-devices">Devices (desktop, mobile, tablet)</label><br><input id="mad4b-search-edit-devices" name="audience_devices" value="' . esc_attr( implode( ', ', $p['provider_policy']['devices'] ) ) . '" maxlength="128" required></p>';
 		echo '<p><label for="mad4b-search-edit-objective">Business objective</label><br><input id="mad4b-search-edit-objective" name="objective" value="' . esc_attr( $p['objective'] ) . '" maxlength="256" required></p>';
