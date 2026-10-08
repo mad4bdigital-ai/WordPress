@@ -104,6 +104,20 @@ g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $complete
 g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $completed ), 'mad4b_automation_ticket_stale' ), 'replay rejected' );
 $status = MAD4B_SCP_Automation_SLO::status();
 g8_check( 1 === $status['outcomes']['verified_repair'], 'measured repair count' );
+g8_check( 1 === $status['recent_outcome_receipt_count']
+	&& 1 === count( $status['recent_outcome_receipts'] )
+	&& 'verified_repair' === $status['recent_outcome_receipts'][0]['outcome']
+	&& $status['recent_outcome_receipts'][0]['local_causal_receipt_sha256']
+		=== $completed['checkpoint']['g8_local_causal_receipt']['seal'],
+	'first verified repair has a durable ticket-correlated local receipt' );
+$recorded = $GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ];
+$forged_chain = $recorded;
+$forged_chain['outcome_receipts'][0]['outcome'] = 'failed';
+$forged_chain['seal'] = MAD4B_SCP_G8_Record::seal( $forged_chain );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $forged_chain;
+g8_check( 'mad4b_automation_metrics_lost' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'],
+	'a re-sealed but altered event chain cannot pass integrity validation' );
+$GLOBALS['g8_options'][ MAD4B_SCP_Automation_SLO::OPTION ] = $recorded;
 $forged_completed = $completed;
 $forged_completed['checkpoint']['g8_current_slice_changed_safe_phases'] = array( 'provider' );
 $unknown = MAD4B_SCP_Automation_SLO::reserve( $provider, 'unrelated-test', $generation );
