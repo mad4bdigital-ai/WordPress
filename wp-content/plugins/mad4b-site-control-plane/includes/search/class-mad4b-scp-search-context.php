@@ -75,8 +75,8 @@ final class MAD4B_SCP_Search_Context {
 		// Default ONLY that omission to frozen; explicit false still fails closed.
 		// No existing profile is silently paused or reconfigured.
 		$raw = $input['profile'];
-		if ( 0 === $input['expected_revision'] && ( ! isset( $raw['provider_policy'] ) || is_array( $raw['provider_policy'] ) ) ) {
-			if ( ! isset( $raw['provider_policy'] ) ) $raw['provider_policy'] = array();
+		if ( 0 === $input['expected_revision'] && ( ! array_key_exists( 'provider_policy', $raw ) || is_array( $raw['provider_policy'] ) ) ) {
+			if ( ! array_key_exists( 'provider_policy', $raw ) ) $raw['provider_policy'] = array();
 			if ( ! array_key_exists( 'freeze_spend', $raw['provider_policy'] ) ) $raw['provider_policy']['freeze_spend'] = true;
 		}
 		$profile = self::validate( $raw ); if ( is_wp_error( $profile ) ) return $profile;
