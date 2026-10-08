@@ -592,7 +592,31 @@ final class MAD4B_SCP_Staging_Certification {
 
 	private static function browser_status() {
 		if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ) return array( 'ready' => false, 'blockers' => array( 'browser_acceptance_core_unavailable' ) );
-		$plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => 'etg-dfsb', 'profile_id' => 'tours', 'suite' => 'browser_runtime' ) );
+		$capabilities = MAD4B_SCP_Browser_Acceptance_Core::capabilities();
+		$providers = isset( $capabilities['providers'] ) && is_array( $capabilities['providers'] ) ? $capabilities['providers'] : array();
+		$ids = array();
+		foreach ( $providers as $provider ) {
+			if ( is_array( $provider ) && isset( $provider['provider_id'] ) && is_string( $provider['provider_id'] ) ) $ids[] = $provider['provider_id'];
+		}
+		$operator = class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ? MAD4B_SCP_Browser_Acceptance_Admin_UI::selection() : array();
+		$chosen = isset( $operator['site_provider_id'] ) && is_string( $operator['site_provider_id'] ) ? $operator['site_provider_id'] : '';
+		$blockers = array();
+		if ( '' !== $chosen ) {
+			if ( ! in_array( $chosen, $ids, true ) ) $blockers[] = 'selected_site_browser_provider_unregistered';
+		} elseif ( 1 === count( $ids ) ) $chosen = $ids[0];
+		elseif ( count( $ids ) > 1 ) $blockers[] = 'site_browser_provider_selection_required';
+		else $blockers[] = 'site_browser_provider_missing';
+		$profile_id = isset( $operator['profile_id'] ) && is_string( $operator['profile_id'] ) ? $operator['profile_id'] : '';
+		if ( '' === $profile_id && 'etg-dfsb' === $chosen && ! $blockers ) $profile_id = 'tours';
+		if ( '' === $profile_id && ! $blockers ) $blockers[] = 'site_browser_acceptance_profile_required';
+		if ( $blockers ) return array(
+			'contract' => 'mad4b.staging-browser-certification-view.v3', 'ready' => false,
+			'provider_count' => count( $ids ), 'selected_provider_id' => $chosen,
+			'selected_profile_id' => $profile_id, 'blockers' => $blockers,
+			'browser_runtime_parity_verified' => false, 'durable_receipt_used' => false,
+		);
+		$provider_id = $chosen;
+		$plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => $provider_id, 'profile_id' => $profile_id, 'suite' => 'browser_runtime' ) );
 		$result = array();
 		$durable_job_id = '';
 		$durable_receipt_used = false;
@@ -626,8 +650,8 @@ final class MAD4B_SCP_Staging_Certification {
 						&& hash_equals( strtolower( (string) $provenance['source_commit_sha'] ), strtolower( (string) $expected['source_commit_sha'] ) )
 						&& hash_equals( strtolower( (string) $provenance['build_fingerprint'] ), strtolower( (string) $expected['build_fingerprint'] ) )
 						&& hash_equals( strtolower( (string) $provenance['package_manifest_digest'] ), strtolower( (string) $expected['package_manifest_digest'] ) );
-					$plan_match = 'etg-dfsb' === ( isset( $payload['provider_id'] ) ? (string) $payload['provider_id'] : '' )
-						&& 'tours' === ( isset( $payload['profile_id'] ) ? (string) $payload['profile_id'] : '' )
+					$plan_match = $provider_id === ( isset( $payload['provider_id'] ) ? (string) $payload['provider_id'] : '' )
+						&& $profile_id === ( isset( $payload['profile_id'] ) ? (string) $payload['profile_id'] : '' )
 						&& hash_equals( strtolower( (string) $plan['plan_digest'] ), strtolower( (string) ( isset( $payload['plan_digest'] ) ? $payload['plan_digest'] : '' ) ) )
 						&& hash_equals( strtolower( (string) $plan['plan_signature'] ), strtolower( (string) ( isset( $payload['plan_signature'] ) ? $payload['plan_signature'] : '' ) ) );
 					$receipt_valid = 'PASS' === ( isset( $verified_result['verdict'] ) ? (string) $verified_result['verdict'] : '' )
@@ -646,22 +670,29 @@ final class MAD4B_SCP_Staging_Certification {
 
 			if ( ! $durable_receipt_used ) {
 				$result = MAD4B_SCP_Browser_Acceptance_Core::result( array(
-					'provider_id' => 'etg-dfsb',
-					'profile_id' => 'tours',
+					'provider_id' => $provider_id,
+					'profile_id' => $profile_id,
 					'suite' => 'browser_runtime',
 					'plan_digest' => (string) $plan['plan_digest'],
 					'plan_signature' => (string) $plan['plan_signature'],
 				) );
 			}
 		}
-		$verified = is_array( $result ) && ! empty( $result['verification']['browser_runtime_parity_verified'] );
+		$verified = is_array( $result ) && 'PASS' === ( isset( $result['verdict'] ) ? (string) $result['verdict'] : '' )
+			&& ! empty( $result['verification']['browser_runtime_parity_verified'] )
+			&& isset( $result['plan_digest'], $plan['plan_digest'] )
+			&& hash_equals( strtolower( (string) $plan['plan_digest'] ), strtolower( (string) $result['plan_digest'] ) );
 		return array(
 			'contract' => 'mad4b.staging-browser-certification-view.v3',
+			'selected_provider_id' => $provider_id,
+			'selected_profile_id' => $profile_id,
+			'provider_count' => count( $ids ),
 			'plan' => $plan,
 			'result' => $result,
 			'durable_receipt_used' => $durable_receipt_used,
 			'durable_receipt_source' => $durable_receipt_source,
 			'durable_job_id' => $durable_job_id,
+			'ready' => $verified,
 			'browser_runtime_parity_verified' => $verified,
 			'blockers' => $verified ? array() : array( 'browser_runtime_not_observed' ),
 		);
