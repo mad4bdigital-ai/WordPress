@@ -16,10 +16,19 @@ final class MAD4B_SCP_G8_Record {
 	}
 
 	public static function replace( $option, $expected, array $next ) {
-		if ( ! self::owned( $option ) || strlen( serialize( $next ) ) > 262144 ) return new WP_Error( 'mad4b_g8_record_invalid', 'Observation record is invalid or exceeds its bound.' );
+		$nodes = 0;
+		if ( ! self::owned( $option ) || ! self::plain_data( $next, 0, $nodes )
+			|| strlen( serialize( $next ) ) > 262144 )
+			return new WP_Error( 'mad4b_g8_record_invalid', 'Observation record is invalid or exceeds its bound.' );
+		$nodes = 0;
+		if ( null !== $expected && ! self::plain_data( $expected, 0, $nodes ) )
+			return new WP_Error( 'mad4b_g8_record_invalid', 'Expected observation prestate is not inert data.' );
 		global $wpdb;
 		if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) || ! method_exists( $wpdb, 'prepare' ) || ! method_exists( $wpdb, 'query' ) || ! function_exists( 'maybe_serialize' ) ) return new WP_Error( 'mad4b_g8_atomic_storage_required', 'Atomic observation storage is unavailable.' );
 		$current = self::read( $option );
+		$nodes = 0;
+		if ( null !== $current && ! self::plain_data( $current, 0, $nodes ) )
+			return new WP_Error( 'mad4b_g8_record_invalid', 'Stored observation is not inert data.' );
 		if ( serialize( $current ) !== serialize( $expected ) ) return new WP_Error( 'mad4b_g8_record_conflict', 'Observation record changed before cutover.' );
 		if ( serialize( $expected ) === serialize( $next ) ) return true;
 		if ( null === $expected ) $ok = add_option( $option, $next, '', false );
