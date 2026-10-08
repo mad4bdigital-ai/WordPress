@@ -91,6 +91,7 @@ expect(anchor, (
     "local_site_mismatch",
     "local_blog_mismatch",
     "history_truncation",
+    "revision_exhausted",
     "clearstatcache( true, $dir )",
     "clock_rollback",
     "readback_failed",
@@ -102,6 +103,9 @@ expect(gates, (
     "inventory_incomplete", "observation_stale", "health_stale",
     "cloned_site_uuid", "cloned_origin", "external_effect_uncertain",
     "production_ring_denied",
+    "true !== ( $provider['ready'] ?? null )",
+    "false !== ( $provider['revoked'] ?? null )",
+    "true !== ( $observation['host']['local_readback_verified'] ?? null )",
 ), "gates")
 expect(local, ("single_host_exclusive_verified' => false", "provider_inventory_complete' => false"), "passive-reader")
 expect(restore, (
