@@ -109,13 +109,24 @@ final class MAD4B_SCP_G8_Supply_Provenance {
 		ksort( $deps, SORT_STRING ); ksort( $actual, SORT_STRING );
 		if ( $deps !== $actual )
 			return self::denied( 'dependency_substitution', $provider, $capability );
+		// A candidate may not omit a mirror pin from the *signed* manifest.
+		// Hashing only the candidate's self-reported mirrors would otherwise
+		// make an empty mirror list a trivial bypass of mirror provenance.
+		$trusted_mirrors = $source['mirror_sha256'] ?? array();
 		$mirrors = $candidate['mirror_sha256'] ?? array();
-		if ( ! is_array( $mirrors ) || count( $mirrors ) > self::MAX_MIRRORS )
+		if ( ! is_array( $trusted_mirrors ) || ! is_array( $mirrors )
+			|| count( $trusted_mirrors ) > self::MAX_MIRRORS || count( $mirrors ) > self::MAX_MIRRORS )
 			return self::denied( 'mirror_manifest_invalid', $provider, $capability );
+		foreach ( $trusted_mirrors as $mirror ) {
+			if ( ! self::sha( $mirror ) || ! hash_equals( $digest, $mirror ) )
+				return self::denied( 'signed_mirror_digest_invalid', $provider, $capability );
+		}
 		foreach ( $mirrors as $mirror ) {
 			if ( ! self::sha( $mirror ) || ! hash_equals( $digest, $mirror ) )
 				return self::denied( 'mirror_digest_mismatch', $provider, $capability );
 		}
+		if ( $mirrors !== $trusted_mirrors )
+			return self::denied( 'mirror_pinset_mismatch', $provider, $capability );
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => 'PROVENANCE_MATCH',
