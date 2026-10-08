@@ -73,7 +73,8 @@ $context = array( 'operation_id' => '4fcd585e-ac71-46f2-91ce-8bd69ad9a621',
     'hard_deadline_at' => gmdate( 'c', time() + 3600 ) );
 MAD4B_SCP_Operation_Journal::$head = array( 'operation_key' => $context['operation_key'],
     'operation_binding_sha256' => $bound, 'latest_sequence' => 1,
-    'latest_event_sha256' => str_repeat( 'f', 64 ) );
+    'latest_event_sha256' => str_repeat( 'f', 64 ),
+    'hard_deadline_at' => gmdate( 'Y-m-d H:i:s', strtotime( $context['hard_deadline_at'] ) ) );
 $genesis_json = wp_json_encode( MAD4B_SCP_Assistant_Task_Journal_Bridge::genesis_claim( $record ),
     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 MAD4B_SCP_Operation_Journal::$events = array( array( 'sequence' => 1,
@@ -116,6 +117,10 @@ assert_task( 'Production cannot mutate ticket', is_wp_error( MAD4B_SCP_Assistant
     array( 'expected_revision' => 2, 'expected_last_event_sha256' => $next['record']['last_event_sha256'],
         'next_state' => 'review_pending', 'reason_code' => 'review_required' ) ) ) );
 $GLOBALS['assistant_staging'] = true;
+$extended_deadline = $context;
+$extended_deadline['hard_deadline_at'] = gmdate( 'c', time() + 7200 );
+assert_task( 'caller cannot extend immutable journal deadline', is_wp_error(
+    MAD4B_SCP_Assistant_Task_Journal_Bridge::read( $extended_deadline ) ) );
 $stale_context = $context; $stale_context['operation_binding_sha256'] = str_repeat( '3', 64 );
 assert_task( 'changed runtime binding rejected', is_wp_error( MAD4B_SCP_Assistant_Task_Journal_Bridge::read( $stale_context ) ) );
 $next_req = array( 'expected_revision' => 2, 'expected_last_event_sha256' => $next['record']['last_event_sha256'],
