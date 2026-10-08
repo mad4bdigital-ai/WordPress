@@ -61,6 +61,7 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 				$merged = self::language_union( $last, $now, $want, $p );
 				if ( ! is_wp_error( $merged ) ) {
 					$changes[ $field ] = array( 'before' => $now, 'after' => array( 'present' => true, 'value' => $merged ), 'classification' => 'VALID_HUMAN_REBASE' );
+					$classification[ $field ] = 'VALID_HUMAN_REBASE';
 					continue;
 				}
 				$reason = 'human_owned_or_ambiguous_delta';
@@ -108,12 +109,18 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	private static function basis( array $plan ) {
 		$basis = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $plan['sealed_plan'] ?? array() );
 		if ( is_wp_error( $basis ) ) return $basis;
-		if ( ! hash_equals( (string) ( $plan['plan_sha256'] ?? '' ), $plan['sealed_plan']['sha256'] ) ) return self::error( 'plan_digest_changed' );
+		if ( ! is_array( $basis ) || ! isset( $plan['plan_sha256'] ) || ! MAD4B_SCP_Adaptive_Operations_Context::sha( $plan['plan_sha256'] ) || ! hash_equals( $plan['plan_sha256'], $plan['sealed_plan']['sha256'] ) ) return self::error( 'plan_digest_changed' );
+		if ( ( $basis['contract'] ?? '' ) !== self::CONTRACT || ! isset( $basis['binding'], $basis['resource_id'], $basis['expected_revision'], $basis['owner_revision'], $basis['current_sha256'], $basis['expected_after_sha256'], $basis['policy_sha256'], $basis['changes'], $basis['preserved'], $basis['conflicts'], $basis['expires_at'] ) || ! is_array( $basis['binding'] ) || ! is_array( $basis['changes'] ) || ! is_array( $basis['preserved'] ) || ! is_array( $basis['conflicts'] ) || ! is_int( $basis['expected_revision'] ) || ! is_int( $basis['owner_revision'] ) || ! is_int( $basis['expires_at'] ) ) return self::error( 'plan_material_invalid' );
+		foreach ( array( 'current_sha256', 'expected_after_sha256', 'policy_sha256' ) as $key ) if ( ! MAD4B_SCP_Adaptive_Operations_Context::sha( $basis[ $key ] ) ) return self::error( 'plan_material_invalid' );
 		return $basis;
 	}
 	private static function snapshot_valid( array $s ) {
 		if ( empty( $s['resource_id'] ) || ! is_string( $s['resource_id'] ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,191}$/D', $s['resource_id'] ) || ! isset( $s['revision'], $s['owner_revision'], $s['fields'], $s['owners'] ) || ! is_int( $s['revision'] ) || $s['revision'] < 1 || ! is_int( $s['owner_revision'] ) || $s['owner_revision'] < 1 || ! is_array( $s['fields'] ) || ! is_array( $s['owners'] ) ) return self::error( 'snapshot_incomplete' );
+		if ( count( $s['fields'] ) > self::MAX_FIELDS || count( $s['owners'] ) > self::MAX_FIELDS ) return self::error( 'field_limit' );
 		foreach ( array_keys( $s['fields'] ) as $field ) if ( ! is_string( $field ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,100}$/D', $field ) ) return self::error( 'field_identifier_invalid' );
+		foreach ( $s['owners'] as $field => $owner ) {
+			if ( ! is_string( $field ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,100}$/D', $field ) || ! in_array( $owner, array( 'managed', 'human', 'provider', 'unknown' ), true ) ) return self::error( 'owner_record_invalid' );
+		}
 		return true;
 	}
 	private static function field( array $s, $field ) { return array( 'present' => array_key_exists( $field, $s['fields'] ?? array() ), 'value' => $s['fields'][ $field ] ?? null ); }
