@@ -1,13 +1,13 @@
 {
   "contract": "mad4b.competitive-experience-task-ledger.v1",
   "source_tasks_sha256": "47bcf6929d8103351f9b22547d719d2769d137e67ff5593eb38366437c27cdc1",
-  "status_source_sha256": "e22de50d2d0d28491b4a9adf070c4dfaa875460cfc61b724f014be52e755405c",
+  "status_source_sha256": "63679b85906fdd36c5289b6587e5b707fa14d56a72a2bef04c1a61033fdde52c",
   "authorizing": false,
   "release_closure_included": false,
   "task_count": 175,
   "counts": {
-    "OPEN": 90,
-    "PARTIAL": 85,
+    "OPEN": 75,
+    "PARTIAL": 100,
     "DONE": 0,
     "DEFERRED": 0
   },
@@ -314,45 +314,60 @@
       "phase": 5,
       "priority": "P1",
       "summary": "Implement analytics and search-measurement contracts for GA4 and Search Console behind scoped, pinned provider adapters.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Repository foundation provides the generic retained-observation adapter contract plus GA4 and Search Console reference profiles with exact subject/property/capability provenance; live provider capture remains pending."
     },
     {
       "task_id": "T3927",
       "phase": 5,
       "priority": "P1",
       "summary": "Implement keyword/domain/backlink/competitor/AI-visibility adapter conformance for Semrush, SE Ranking, Ahrefs and the existing SERP mesh.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Required Semrush, SE Ranking and Ahrefs research reference profiles are defined while the existing SERP provider mesh is reused; native research adapters and representative provider acceptance remain pending."
     },
     {
       "task_id": "T3928",
       "phase": 5,
       "priority": "P1",
       "summary": "Implement dimensional provenance for site/property, query, market/language, attribution window, currency, freshness, sampling and quota/monetary cost.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Growth evidence binds site/property/query/surface, market, language, window, attribution, currency, freshness, sampling, cost and source generation before comparison; live cross-provider evidence remains pending."
     },
     {
       "task_id": "T3929",
       "phase": 5,
       "priority": "P1",
       "summary": "Expose credentials, consent, account/property selection, budgets, report previews and source-specific comparison limits on discoverable admin pages.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Growth Providers admin routing, bounded setup schemas, explicit consent boundaries and existing Search-account handoff are implemented without credential values or secret handles; persisted browser enrollment acceptance remains pending."
     },
     {
       "task_id": "T3930",
       "phase": 5,
       "priority": "P1",
       "summary": "GATE Prove missing consent, mixed currencies/windows, partial data, API cost, budget exhaustion and contradictory observations cannot authorize content mutation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Runtime contracts deny missing consent, mixed dimensions/currencies/windows, partial or thresholded samples, uncertain charges/budgets and contradictory observations; live adversarial provider acceptance remains pending."
     },
     {
       "task_id": "T3931",
@@ -539,45 +554,60 @@
       "phase": 9,
       "priority": "P1",
       "summary": "Implement independent capability adapters for Yoast, Rank Math, AIOSEO, SEOPress, Slim SEO and The SEO Framework.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "A six-provider SEO family preflight covers Rank Math, Yoast, AIOSEO, SEOPress, Slim SEO and The SEO Framework without inferring execution from presence; provider-native adapters beyond existing foundations remain pending."
     },
     {
       "task_id": "T3947",
       "phase": 9,
       "priority": "P1",
       "summary": "Implement field-level title/description/focus/schema/social/canonical/robots provenance for objects, terms and archives with conflict preservation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "SEO plans bind reviewed title/description/focus/schema/social/canonical/robots fields to post/term/archive, language, provider and rendered-surface context with coexistence preservation gates; native field provenance remains pending."
     },
     {
       "task_id": "T3948",
       "phase": 9,
       "priority": "P1",
       "summary": "Implement bounded SEO plan/apply through provider-owned native APIs/hooks and exact stored plus emitted/readback validation.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "SEO plans remain non-executing and require provider-native schema/serialization, exact stored readback, exact rendered readback, current authority and impact approval; admitted native apply/readback remains pending."
     },
     {
       "task_id": "T3949",
       "phase": 9,
       "priority": "P1",
       "summary": "Expose effective source, shadowed/conflicting values, denied writes, provider applicability and public rendered acceptance evidence.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "SEO readiness exposes applicability, installed identity, denied execution and required rendered/coexistence acceptance without claiming provider parity; browser/rendered evidence remains pending."
     },
     {
       "task_id": "T3950",
       "phase": 9,
       "priority": "P1",
       "summary": "GATE Certify provider coexistence, virtual archives, language fallback, stale cache/head output, serialization drift and signal-driven mutation denial.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Repository gates require coexistence preservation, archive/language scope, cache-generation freshness, stored/rendered parity and no signal-direct mutation; live serialization/cache/language fault acceptance remains pending."
     },
     {
       "task_id": "T3951",
@@ -1484,51 +1514,66 @@
       "phase": 27,
       "priority": "P0",
       "summary": "Implement generic descriptors for credentials/account/scopes/quota/economics/rate/rights/health/capability/effects/reconciliation behind registered pinned adapters.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Generic pinned server-code adapter descriptors cover account/scopes/quota/economics/rights/health-relevant generation/capabilities/effects while required provider families are reference profiles rather than a closed allowlist; live adapters remain pending."
     },
     {
       "task_id": "T4057",
       "phase": 27,
       "priority": "P0",
       "summary": "Generate provider setup/account/property/profile screens from reviewed field schemas and reuse encrypted secret handles and explicit account tests.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Adapter-owned reviewed setup schemas drive account/property/profile previews and Search continues to reuse its encrypted connection authority; persisted provider setup and account-test acceptance remain pending."
     },
     {
       "task_id": "T4058",
       "phase": 27,
       "priority": "P0",
       "summary": "Implement contract-specific response/error/cost normalization, account-bound budgets, circuit breaking and uncertain-charge reconciliation without arbitrary HTTP.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Existing Search execution retains budget/circuit-breaker ownership while retained G5 reads require zero-cost descriptors and evidence cost receipts block uncertain reconciliation; live provider error/cost normalization remains pending."
     },
     {
       "task_id": "T4059",
       "phase": 27,
       "priority": "P0",
       "summary": "Support configuration packs for Drive/SERP/analytics/research providers only through available reviewed protocol strategies; novel API behavior requires code review.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Configuration packs are limited to the pinned stored-evidence protocol and existing reviewed Search path; unknown protocols cannot become generic endpoints, while additional providers require reviewed server code; live pack acceptance remains pending."
     },
     {
       "task_id": "T4060",
       "phase": 27,
       "priority": "P0",
       "summary": "GATE Prove new scope requires external consent, missing cost/rights stay blocked, opaque credentials never echo and unknown protocols cannot be generic outbound calls.",
-      "status": "OPEN",
-      "evidence_refs": [],
-      "reason": ""
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ],
+      "reason": "Contracts keep new scopes behind external consent, credentials opaque, generic HTTP disabled and client-defined provider identity denied; live missing-rights/cost/consent/protocol adversarial acceptance remains pending."
     },
     {
       "task_id": "T4061",
       "phase": 28,
       "priority": "P0",
-      "summary": "Implement L0\u2013L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "summary": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
       "status": "PARTIAL",
       "evidence_refs": [
         "ui-delivery.json",
@@ -1558,7 +1603,7 @@
       "task_id": "T4064",
       "phase": 28,
       "priority": "P0",
-      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90\u201395 percent remains an aspiration, not claimed readiness.",
+      "summary": "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness.",
       "status": "OPEN",
       "evidence_refs": [],
       "reason": ""
