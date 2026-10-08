@@ -4,7 +4,7 @@ const ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const CONTRACT = /^[a-z0-9][a-z0-9._-]{0,159}$/;
 const SHA = /^[a-f0-9]{64}$/;
 const REV = /^[a-f0-9]{32}$/;
-const HOST = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?::[0-9]{2,5})?\/?$/;
+const HOST = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?::[0-9]{2,5})?(?:\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,63})*\/?$/;
 const EXECUTORS = new Set(["auto", "cloudflare", "browserbase", "browserless", "steel"]);
 
 function origin(raw) {
