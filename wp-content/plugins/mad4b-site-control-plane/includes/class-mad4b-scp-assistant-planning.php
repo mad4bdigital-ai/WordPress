@@ -107,6 +107,8 @@ final class MAD4B_SCP_Assistant_Planning {
         if ( ! self::inert( $binding, 0, $nodes ) || ! is_array( $binding )
             || ! self::sha( $binding['profile_digest'] ?? null ) || ! self::sha( $binding['runtime_generation'] ?? null )
             || ! self::sha( $binding['artifact_sha256'] ?? null )
+            || ! self::sha( $binding['origin_sha256'] ?? null )
+            || ! self::sha( $binding['external_record_sha256'] ?? null )
             || ! is_string( $binding['site_uuid'] ?? null ) || strlen( $binding['site_uuid'] ) < 8
             || ! is_int( $binding['restore_epoch'] ?? null ) || $binding['restore_epoch'] < 1
             || ! in_array( $binding['environment'] ?? null, array( 'staging', 'development', 'local', 'production' ), true ) ) return self::fail( 'binding_invalid' );
@@ -157,18 +159,30 @@ final class MAD4B_SCP_Assistant_Planning {
             $review = ! empty( $conflicts ) || ( 'search.intelligence' === $id
                 && ( ! isset( $fact_values['audience.market.country'] ) || ! isset( $fact_values['audience.language'] ) ) );
             $action = $review ? 'REVIEW_CONTEXT' : ( 'active' === $state ? 'VERIFY_BEHAVIOR' : ( $item['required'] ? 'DISCOVER_ALTERNATIVES' : 'OPTIONAL_NO_INSTALL' ) );
-            $tasks[] = array( 'task_id' => 'propose-' . ( $index + 1 ), 'capability' => $id,
+            $role = $review ? 'configuration' : ( 'active' === $state ? 'certification' : ( $item['required'] ? 'discovery' : 'supervisor' ) );
+            $tasks[] = array( 'task_contract' => 'mad4b.assistant-task-proposal.v1',
+                'task_id' => 'propose-' . ( $index + 1 ), 'assistant_role' => $role, 'capability' => $id,
                 'required' => $item['required'], 'reported_state' => $state,
                 'decision' => $action, 'observation_trust' => 'UNVERIFIED_CALLER_ASSERTION',
                 'approval_required' => true, 'execution_allowed' => false,
                 'authority_expansion_allowed' => false );
         }
+        $audience = array();
+        foreach ( array( 'audience.market.country' => 'country', 'audience.language' => 'language' ) as $key => $field ) {
+            if ( isset( $fact_values[ $key ] ) && ! isset( $conflicts[ $key ] ) ) {
+                $audience[ $field ] = array( 'proposed_value' => $fact_values[ $key ],
+                    'provenance' => 'UNVERIFIED_CALLER_ASSERTION', 'apply_allowed' => false );
+            }
+        }
         $plan = array( 'contract' => self::CONTRACT, 'binding' => array(
             'environment' => $binding['environment'], 'profile_digest' => $binding['profile_digest'],
             'site_uuid' => $binding['site_uuid'], 'restore_epoch' => $binding['restore_epoch'],
+            'origin_sha256' => $binding['origin_sha256'],
+            'external_record_sha256' => $binding['external_record_sha256'],
             'runtime_generation' => $binding['runtime_generation'], 'artifact_sha256' => $binding['artifact_sha256'] ),
             'state' => empty( $conflicts ) ? 'PROPOSAL_ONLY' : 'CONFLICT_REVIEW_REQUIRED',
             'fact_conflicts' => array_keys( $conflicts ), 'tasks' => $tasks,
+            'configuration_proposals' => array( 'audience' => $audience ),
             'input_sha256' => hash( 'sha256', serialize( array( $desired, $observed ) ) ),
             'authorizing' => false, 'write_performed' => false, 'provider_calls_performed' => false,
             'plugin_lifecycle_performed' => false, 'production_authorized' => false );
