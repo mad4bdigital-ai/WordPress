@@ -130,6 +130,39 @@ $foreign['binding_sha256'] = MAD4B_SCP_Resilience_Context::digest( $foreign['bin
 $foreign['snapshot_sha256'] = MAD4B_SCP_Resilience_Context::snapshot_digest( $foreign );
 g9_error( MAD4B_SCP_G9_Resilience_Gates::restore_preview( $snapshot, $foreign, array() ), 'foreign_restore' );
 $path = $dir . '/resilience-' . $binding['site_uuid'] . '-1-staging.json';
+// A lock held by another handle rejects split-brain attempts.
+$lock = fopen( $path . '.lock', 'c+' );
+g9_check( is_resource( $lock ) && flock( $lock, LOCK_EX | LOCK_NB ), 'test lock acquired' );
+g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 1, function ( $current ) {
+    $current['scopes']['g9:split-brain'] = array( 'claimed'=>true ); return $current;
+} ), 'locked' );
+flock( $lock, LOCK_UN ); fclose( $lock );
+// Unsafely created keys and caller-owned metadata are never persisted.
+g9_error( MAD4B_SCP_Resilience_Anchor::transact( $binding, 1, function ( $current ) {
+    $current['scopes']['../../escape'] = array( 'claimed'=>true ); return $current;
+} ), 'scope_invalid' );
+$metadata = MAD4B_SCP_Resilience_Anchor::transact( $binding, 1, function ( $current ) {
+    $current['site']['environment'] = 'production';
+    $current['unauthorized_status'] = 'ready';
+    $current['scopes']['g9:safe-scope'] = array( 'claimed'=>false );
+    return $current;
+} );
+g9_check( ! is_wp_error( $metadata ) && $metadata['revision'] === 2
+    && ! isset( $metadata['unauthorized_status'] )
+    && $metadata['site']['environment'] === 'staging',
+    'anchor metadata not controlled by closure' );
+$original = file_get_contents( $path );
+$forged = json_decode( $original, true );
+$forged['clock_floor'] = time() + 3600;
+unset( $forged['anchor_sha256'] );
+$forged['anchor_sha256'] = MAD4B_SCP_Resilience_Context::digest( $forged );
+file_put_contents( $path, json_encode( $forged ) );
+g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'clock_rollback' );
+file_put_contents( $path, $original );
+$broken = json_decode( $original, true ); $broken['revision'] = '2';
+file_put_contents( $path, json_encode( $broken ) );
+g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'corrupt' );
+file_put_contents( $path, $original );
 @unlink( $path ); @unlink( $path . '.lock' ); @rmdir( $dir );
 g9_error( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'lost' );
-echo "G9 resilience gates: PASS (21 isolation/restore/ring checks)\n";
+echo "G9 resilience gates: PASS (27 isolation/restore/ring checks)\n";
