@@ -6,6 +6,8 @@ function is_wp_error( $x ) { return $x instanceof WP_Error; }
 $GLOBALS['plugin_version'] = '2.1.0';
 $GLOBALS['fail_ability_registry'] = false;
 $GLOBALS['fail_plugin_registry'] = false;
+$GLOBALS['large_inventory'] = false;
+$GLOBALS['include_malformed'] = true;
 function is_multisite() { return true; }
 function is_plugin_active_for_network( $file ) { return $file === 'unknown-file-ops/alternate.php'; }
 $GLOBALS['is_admin'] = true;
@@ -18,11 +20,24 @@ function wp_register_ability( $name, $conf ) { $GLOBALS['abilities'][$name] = $c
 function get_option( $key, $default=array() ) { return $key === 'active_plugins' ? array( 'unknown-file-ops/tool.php', 'plain-cache/cache.php' ) : $default; }
 function get_plugins() {
     if ( $GLOBALS['fail_plugin_registry'] ) throw new RuntimeException('plugin registry');
-    return array(
+    if ( $GLOBALS['large_inventory'] ) {
+        $out=array();
+        for($i=0;$i<240;++$i) $out['module'.$i.'/main.php']=array('Name'=>'Module '.$i);
+        return $out;
+    }
+    $out=array(
     'unknown-file-ops/tool.php' => array( 'Name' => 'Generic File Workspace' ),
     'plain-cache/cache.php' => array( 'Name' => 'Caching Layers' ),
     'unknown-file-ops/alternate.php' => array( 'Name' => 'Alternate File Panel', 'Version' => $GLOBALS['plugin_version'] ),
     'malformed-path' => array( 'Name' => 'Untrusted' ),
+);
+if(!$GLOBALS['include_malformed']) unset($out['malformed-path']);
+return $out; }
+function get_mu_plugins() { return array(
+    'mandatory-loader.php'=>array('Name'=>'Mandatory Network Overrides','Version'=>'1.1')
+); }
+function get_dropins() { return array(
+    'object-cache.php'=>array('Name'=>'Object Caching Handler','Version'=>'4.2')
 ); }
 class FixtureAbility {
     public function get_label() { return 'Inspect File Metadata'; }
@@ -35,6 +50,11 @@ class PrivateFixtureAbility extends FixtureAbility {
 }
 function wp_get_abilities() {
     if ( $GLOBALS['fail_ability_registry'] ) throw new RuntimeException('ability registry');
+    if ( $GLOBALS['large_inventory'] ) {
+        $out=array();
+        for($i=0;$i<240;++$i) $out['fixture/module'.$i] = new FixtureAbility();
+        return $out;
+    }
     return array(
     'demo/file-inspect' => new FixtureAbility(),
     'private/rotate-keys' => new PrivateFixtureAbility(),
@@ -60,10 +80,15 @@ $in = array( 'expected_profile_digest'=>$b['profile_digest'],
     'expected_runtime_generation'=>$b['runtime_generation'],
     'intent'=>'Edit site files', 'related_terms'=>array('file manager'), 'mode'=>'match' );
 $inventory = MAD4B_SCP_Solution_Discovery::site_inventory();
-ok( count($inventory['rows']) === 4, 'dynamic inventory includes same-directory plugins' );
-ok( count(array_unique(array_column($inventory['rows'],'id'))) === 4, 'stable unique main-file IDs' );
+ok( count($inventory['rows']) === 6, 'regular MU drop-ins and visible abilities enumerated' );
+ok( count(array_unique(array_column($inventory['rows'],'id'))) === 6, 'unique identities across plugin families' );
 ok( !in_array('ability:private/rotate-keys',array_column($inventory['rows'],'id'),true), 'private ability hidden from read discovery' );
-ok( $inventory['plugin_inventory_complete'] && $inventory['ability_inventory_complete'], 'coverage' );
+ok( !$inventory['plugin_inventory_complete'] && $inventory['ability_inventory_complete']
+    && $inventory['extension_inventory_complete'], 'malformed plugin marks partial coverage' );
+$mu=array_values(array_filter($inventory['rows'],function($r){return $r['id']==='must_use_plugin:mandatory-loader.php';}));
+$drop=array_values(array_filter($inventory['rows'],function($r){return $r['id']==='dropin:object-cache.php';}));
+ok(count($mu)===1 && $mu[0]['observed_state']==='active','MU extension active');
+ok(count($drop)===1 && $drop[0]['observed_state']==='registered','drop-in presence cannot assert activation');
 $network=array_values(array_filter($inventory['rows'],function($x){return $x['id']==='plugin:unknown-file-ops/alternate.php';}));
 ok(count($network)===1 && $network[0]['observed_state']==='active','network plugin active');
 $r = MAD4B_SCP_Solution_Discovery::read_discover($in);
@@ -81,12 +106,22 @@ $changed=MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok(is_array($changed) && $changed['snapshot_sha256']!==$r['snapshot_sha256'],'version change invalidates candidate snapshot');
 $GLOBALS['plugin_version']='2.1.0';
 $in['mode']='inventory'; $in['limit']=1; $all=MAD4B_SCP_Solution_Discovery::read_discover($in);
-ok( $all['total_matches']===4 && $all['next_offset']===1, 'inventory pagination' );
+ok( $all['total_matches']===6 && $all['next_offset']===1, 'inventory pagination' );
 $in['offset']=1; $next=MAD4B_SCP_Solution_Discovery::read_discover($in);
 ok( $next['candidates'][0]['id']!==$all['candidates'][0]['id'], 'pagination unique' );
 $in['mode']='match'; $in['offset']=0; $in['related_terms']=array();
 $in['intent']='Unrelated analysis'; $empty=MAD4B_SCP_Solution_Discovery::read_discover($in);
-ok( $empty['total_matches']===0 && $empty['decision']==='EXPAND_INVENTORY_OR_EXTERNAL_DISCOVERY', 'no false semantic match' );
+ok( $empty['total_matches']===0 && $empty['decision']==='INVENTORY_INCOMPLETE_RETRY',
+    'unknown cannot be treated as absence when inventory is incomplete' );
+$GLOBALS['include_malformed']=false;
+$complete=MAD4B_SCP_Solution_Discovery::read_discover($in);
+ok(is_array($complete) && $complete['decision']==='EXPAND_INVENTORY_OR_EXTERNAL_DISCOVERY',
+    'complete inventory can truthfully declare no lexical matches');
+$GLOBALS['include_malformed']=true;
+$in['intent']='Object cache'; $dropMatch=MAD4B_SCP_Solution_Discovery::read_discover($in);
+ok(is_array($dropMatch) && in_array('dropin:object-cache.php',array_column($dropMatch['candidates'],'id'),true),
+    'generic drop-in route match without vendor mapping');
+$in['intent']='Unrelated analysis';
 $in['intent']='Review file access';
 $in['external_hints']=array(array('id'=>'hosting','label'=>'File Hosting Interface','source'=>'connector'));
 $hint=MAD4B_SCP_Solution_Discovery::read_discover($in);
@@ -107,6 +142,13 @@ $GLOBALS['fail_plugin_registry']=false;
 MAD4B_SCP_Adaptive_Operations_Context::$calls=0; MAD4B_SCP_Adaptive_Operations_Context::$flip=true;
 ok(is_wp_error(MAD4B_SCP_Solution_Discovery::read_discover($in)),'mid-inventory generation drift denied');
 MAD4B_SCP_Adaptive_Operations_Context::$flip=false;
+$GLOBALS['large_inventory']=true;
+$paginated=$in; $paginated['intent']='Module'; $paginated['mode']='inventory';
+$paginated['offset']=400; $paginated['limit']=40; unset($paginated['external_hints']);
+$far=MAD4B_SCP_Solution_Discovery::read_discover($paginated);
+ok(is_array($far) && count($far['candidates'])===40 && $far['next_offset']===440,
+    'deep pagination reachable past legacy 400 ceiling');
+$GLOBALS['large_inventory']=false;
 $bad=$in; $bad['unknown']=true;
 ok( is_wp_error(MAD4B_SCP_Solution_Discovery::read_discover($bad)), 'reject arbitrary input' );
 $bad=$in; $bad['external_hints'][0]['source']='admin';
