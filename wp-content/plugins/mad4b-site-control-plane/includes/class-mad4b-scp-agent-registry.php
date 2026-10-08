@@ -217,8 +217,5 @@ final class MAD4B_SCP_Agent_Registry {
 	}
 }
 
-// Feature 007 assistant planning exposes a READ-only proposal, never an agent grant.
-require_once __DIR__ . '/class-mad4b-scp-assistant-planning.php';
-MAD4B_SCP_Assistant_Planning::boot();
-require_once __DIR__ . '/class-mad4b-scp-assistant-bootstrap-diagnostic.php';
-MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
+// Assistant bootstrap now lives explicitly in the main plugin entrypoint.
+// Agent Registry must never implicitly register operational abilities.
