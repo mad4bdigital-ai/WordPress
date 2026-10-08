@@ -23,6 +23,14 @@ const plan=base();plan.case_count=plan.cases.length;
 const validate=(x)=>validateDeclarativePlan(x);
 assert.equal(validate(plan).provider_id,"wordpress-native");
 assert.equal(validate(plan).cases.length,3);
+const subsite=structuredClone(plan);
+subsite.origin="https://sample.example/travel/";
+subsite.cases=subsite.cases.map(c=>({...c,page_path:"/travel"+c.page_path,
+ expected:c.probe_type==="public.canonical_path"?{path:"/travel/tours/"}:c.expected}));
+assert.equal(validate(subsite).origin,"https://sample.example/travel/");
+const escapeSubsite=structuredClone(subsite);
+escapeSubsite.cases[0].page_path="/another-site/page/";
+assert.throws(()=>validate(escapeSubsite),/capability_browser_case_outside_site_scope/);
 function denies(modifier, pattern=/capability_browser_/){
  const invalid=structuredClone(plan);modifier(invalid);
  assert.throws(()=>validate(invalid),pattern);
