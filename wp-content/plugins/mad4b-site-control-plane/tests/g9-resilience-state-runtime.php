@@ -130,6 +130,13 @@ $observation = MAD4B_SCP_Resilience_Context::capture();
 g9_assert( ! is_wp_error( $observation ) && $observation['authority']['eligible'], 'current capture' );
 g9_denied( MAD4B_SCP_Resilience_Context::register_reader( new G9_Exact_Reader() ), 'reader_already_registered' );
 $binding = $observation['binding'];
+// A world-writable leaf directory allows another OS account to replace
+// the lock/state filenames and must never pass the local path policy.
+$dir = MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY;
+if ( ! is_dir( $dir ) ) mkdir( $dir, 0700, true );
+chmod( $dir, 0777 );
+g9_denied( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'directory_permissions_unsafe' );
+chmod( $dir, 0700 );
 $wrong_blog = $binding; $wrong_blog['blog_id'] = 2;
 g9_denied( MAD4B_SCP_Resilience_Anchor::read( $wrong_blog ), 'local_blog_mismatch' );
 $wrong_origin = $binding; $wrong_origin['canonical_origin'] = 'https://clone.example.invalid';

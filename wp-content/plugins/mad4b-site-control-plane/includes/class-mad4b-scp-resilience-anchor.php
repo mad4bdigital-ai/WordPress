@@ -137,6 +137,14 @@ final class MAD4B_SCP_Resilience_Anchor {
 			$dir = dirname( $key );
 		} else return self::error( 'path_unavailable', 'An external resilience directory must be configured.' );
 		if ( 1 !== preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', $dir ) || preg_match( '#(?:^|[/\\\\])\\.\\.?(?:[/\\\\]|$)#', $dir ) || false !== strpos( $dir, "\0" ) ) return self::error( 'path_invalid', 'Resilience state requires a canonical absolute directory.' );
+		// The leaf directory must not be writable by unrelated OS users.
+		// A symlink-free path is still unsafe when a different account can
+		// replace lock/state filenames inside a world-writable directory.
+		if ( is_dir( $dir ) ) {
+			$mode = @fileperms( $dir );
+			if ( false === $mode || 0 !== ( $mode & 0002 ) )
+				return self::error( 'directory_permissions_unsafe', 'External resilience directory must not be world-writable.' );
+		}
 		$normal = rtrim( str_replace( '\\', '/', $dir ), '/' );
 		foreach ( array( ABSPATH, $_SERVER['DOCUMENT_ROOT'] ?? '' ) as $root ) {
 			$root = rtrim( str_replace( '\\', '/', (string) $root ), '/' );
