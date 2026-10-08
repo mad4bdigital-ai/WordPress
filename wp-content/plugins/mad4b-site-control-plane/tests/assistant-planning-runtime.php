@@ -86,6 +86,33 @@ $changed = $observed; $changed['capabilities'][] = $changed['capabilities'][0];
 check_case( 'ambiguous observations denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $changed ), 'observations_invalid' ) );
 $changed = $observed; $changed['capabilities'][0]['state'] = 'active';
 check_case( 'claimed active still requires independent verification', 'VERIFY_BEHAVIOR' === MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $changed )['tasks'][0]['decision'] );
+// False equivalence objections: degraded is not missing; unknown does not
+// authorize alternative discovery or provider mutation.
+$degraded = $observed; $degraded['capabilities'][0]['state'] = 'degraded';
+$diagnosis = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $degraded );
+check_case( 'degraded provider recommends configuration repair, not installation', 'REPAIR_CONFIGURATION' === $diagnosis['tasks'][0]['decision']
+    && 'configuration' === $diagnosis['tasks'][0]['assistant_role'] );
+$unknown = $observed; $unknown['capabilities'][0]['state'] = 'unknown';
+$diagnosis = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $unknown );
+check_case( 'unknown existence requires verification, not replacement', 'VERIFY_EXISTENCE' === $diagnosis['tasks'][0]['decision'] );
+$uncertified = $observed; $uncertified['capabilities'][0] = array( 'capability' => 'search.intelligence', 'state' => 'active',
+    'provider' => 'sample.provider', 'certification_state' => 'uncertified' );
+$diagnosis = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $uncertified );
+check_case( 'active provider without certificate requires certification', 'CERTIFY_PROVIDER' === $diagnosis['tasks'][0]['decision'] );
+$dependency = $observed; $dependency['capabilities'][0]['dependency_state'] = 'unmet';
+$diagnosis = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $dependency );
+check_case( 'claimed missing dependency requires independent dependency review', 'RESOLVE_DEPENDENCY' === $diagnosis['tasks'][0]['decision'] );
+foreach ( array( 'dependency_state' => 'installed', 'certification_state' => 'approved' ) as $key => $value ) {
+    $bad = $observed; $bad['capabilities'][0][ $key ] = $value;
+    check_case( 'untrusted observed enum rejected: ' . $key,
+        rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $bad ), 'observations_invalid' ) );
+}
+foreach ( array( $degraded, $unknown, $uncertified, $dependency ) as $hint ) {
+    $proposal = MAD4B_SCP_Assistant_Planning::plan( $binding, $desired, $hint );
+    check_case( 'classification does not expand authority', ! $proposal['authorizing'] &&
+        ! $proposal['tasks'][0]['execution_allowed'] && 'NOT_EXECUTABLE' === $proposal['readiness']
+        && ! $proposal['plugin_lifecycle_performed'] );
+}
 $changed = $desired; $changed['capabilities'] = array_fill( 0, 65, $desired['capabilities'][0] );
 check_case( 'oversized input denied', rejected( MAD4B_SCP_Assistant_Planning::plan( $binding, $changed ), 'desired_invalid' ) );
 class MaliciousObservation { public function __serialize() { $GLOBALS['serialization_side_effect'] = true; return array(); } }
