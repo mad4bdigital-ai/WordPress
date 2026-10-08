@@ -1,0 +1,131 @@
+<?php
+// Hermetic, disposable G8 Phase 31-33 regression fixtures.
+require __DIR__ . '/g8-automation-slo-runtime.php';
+$GLOBALS['g8_environment'] = 'staging';
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-supply-provenance.php';
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-schema-migration.php';
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-compatibility-fuzz.php';
+
+// Stub the existing verified-certification-pack contract. This proves G8
+// consumption/denial semantics; actual signature verification belongs to the
+// existing cryptographic Certification Pack CI.
+class MAD4B_SCP_Certification_Pack_Registry {
+	public static function verify_pack( array $pack ) {
+		if ( ! empty( $pack['revoked'] ) ) return new WP_Error( 'mad4b_certification_pack_revoked' );
+		if ( ! empty( $pack['unsigned'] ) ) return new WP_Error( 'mad4b_certification_pack_signature_invalid' );
+		if ( ! empty( $pack['foreign'] ) ) return new WP_Error( 'mad4b_certification_pack_foreign_binding' );
+		if ( ! empty( $pack['stale'] ) ) return new WP_Error( 'mad4b_certification_pack_stale_artifact' );
+		return $pack;
+	}
+}
+$dep = str_repeat( 'd', 64 );
+$source_sha = str_repeat( 'e', 64 );
+$generation = str_repeat( 'f', 64 );
+$pack = array( 'pack_type' => 'provider_evidence', 'provider_id' => 'analytics',
+	'capability_id' => 'read', 'pack_sha256' => str_repeat( 'c', 64 ),
+	'runtime_generation' => array( 'generation_sha256' => $generation ),
+	'payload' => array( 'supply_provenance' => array( 'source_channel' => 'vendor_official',
+		'source_sha256' => $source_sha, 'sequence' => 7, 'dependencies' => array( 'core' => $dep ) ) ) );
+$candidate = array( 'provider_id' => 'analytics', 'capability_id' => 'read',
+	'runtime_generation_sha256' => $generation, 'source_channel' => 'vendor_official',
+	'source_sha256' => $source_sha, 'sequence' => 7,
+	'dependencies' => array( 'core' => $dep ), 'mirror_sha256' => array( $source_sha ) );
+$ok = MAD4B_SCP_G8_Supply_Provenance::inspect( $candidate, $pack );
+g8_check( 'PROVENANCE_MATCH' === $ok['state'] && false === $ok['authorizing']
+	&& false === $ok['candidate_promotion_allowed'], 'signed match is non-authorizing' );
+foreach ( array( 'revoked' => 'mad4b_certification_pack_revoked',
+	'unsigned' => 'mad4b_certification_pack_signature_invalid',
+	'foreign' => 'mad4b_certification_pack_foreign_binding',
+	'stale' => 'mad4b_certification_pack_stale_artifact' ) as $flag => $error ) {
+	$bad = $pack; $bad[ $flag ] = true;
+	$r = MAD4B_SCP_G8_Supply_Provenance::inspect( $candidate, $bad );
+	g8_check( 'QUARANTINED' === $r['state'] && $error === $r['reason']
+		&& 'analytics:read' === $r['quarantine_scope']
+		&& false === $r['provider_wide_quarantine'], 'signed pack denial: ' . $flag );
+}
+$mutations = array(
+	array( 'source_channel', 'unknown_mirror', 'unexpected_source_channel' ),
+	array( 'source_sha256', str_repeat( '0', 64 ), 'source_digest_mismatch' ),
+	array( 'sequence', 6, 'candidate_downgrade' ),
+	array( 'sequence', 8, 'unattested_candidate_sequence' ),
+	array( 'dependencies', array( 'core' => str_repeat( '0', 64 ) ), 'dependency_substitution' ),
+	array( 'mirror_sha256', array( str_repeat( '0', 64 ) ), 'mirror_digest_mismatch' ),
+	array( 'runtime_generation_sha256', str_repeat( '0', 64 ), 'candidate_generation_mismatch' ),
+	array( 'provider_id', 'foreign', 'foreign_candidate_scope' ),
+);
+foreach ( $mutations as $case ) {
+	$bad = $candidate; $bad[ $case[0] ] = $case[1];
+	$r = MAD4B_SCP_G8_Supply_Provenance::inspect( $bad, $pack );
+	g8_check( $case[2] === $r['reason'] && 'QUARANTINED' === $r['state']
+		&& 'analytics:read' === $r['quarantine_scope'], 'supply substitution: ' . $case[0] );
+}
+$runtime_truth = MAD4B_SCP_G8_Supply_Provenance::runtime_status();
+g8_check( 'LOCAL_IDENTITY_ONLY' === $runtime_truth['state']
+	&& false === $runtime_truth['signer_verified'], 'local runtime hash cannot impersonate signer' );
+
+// Additive, exact-revision migration with reversible prestate and stale-worker denial.
+$r = MAD4B_SCP_G8_Schema_Migration::register_observation( 'registry', array( 'legacy_unknown_field' => 'keep_me' ) );
+g8_check( true === $r, 'create bounded owned observation snapshot' );
+$plan = MAD4B_SCP_G8_Schema_Migration::preview( 'registry', 3 );
+g8_check( is_array( $plan ) && 'DRY_RUN' === $plan['state']
+	&& 2 === count( $plan['path'] ) && 2 === count( $plan['added_fields'])
+	&& 'keep_me' === $plan['next_document']['data']['legacy_unknown_field'], 'migration dry-run DAG and unknown-field retention' );
+g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::apply( 'registry', 3, 1, str_repeat( '0', 64 ) ),
+	'mad4b_g8_migration_plan_stale' ), 'stale migration plan denied' );
+$receipt = MAD4B_SCP_G8_Schema_Migration::apply( 'registry', 3, 1, $plan['plan_sha256'] );
+g8_check( 'COMMITTED' === ( $receipt['state'] ?? '' ) && 2 === $receipt['revision'], 'exact migration CAS applied' );
+g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::apply( 'registry', 3, 1, $plan['plan_sha256'] ),
+	'mad4b_g8_migration_target_invalid' ), 'already migrated generation refused' );
+$reader = MAD4B_SCP_G8_Schema_Migration::view( 'registry', 1 );
+g8_check( true !== $reader['reader_current'] && false === $reader['mutations_allowed']
+	&& 'keep_me' === $reader['document']['data']['legacy_unknown_field'], 'mixed-generation reader is non-authorizing' );
+g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::register_observation( 'policy', array( 'safe' => true ), 2 ),
+	'mad4b_g8_migration_domain_denied' ), 'policy mutation requires independent review' );
+$rollback = MAD4B_SCP_G8_Schema_Migration::rollback_last( 2, $plan['plan_sha256'] );
+g8_check( 'ROLLED_BACK' === ( $rollback['state'] ?? '' ) && 3 === $rollback['revision'], 'atomic rollback restored version 1' );
+$reader = MAD4B_SCP_G8_Schema_Migration::view( 'registry', 1 );
+g8_check( 1 === $reader['document']['version'] && ! isset( $reader['document']['data']['compatibility_state'] ),
+	'rollback restored exact prior document' );
+g8_check( g8_is_error( MAD4B_SCP_G8_Schema_Migration::rollback_last( 3, $plan['plan_sha256'] ),
+	'mad4b_g8_migration_rollback_stale' ), 'rollback replay denied' );
+$secret = MAD4B_SCP_G8_Schema_Migration::register_observation( 'manifest', array( 'api_token' => 'forbidden' ), 3 );
+g8_check( g8_is_error( $secret, 'mad4b_g8_migration_document_invalid' ), 'secret fields never enter owned migration store' );
+$GLOBALS['g8_epoch'] = 2;
+g8_check( 'RECONCILIATION_REQUIRED' === MAD4B_SCP_G8_Schema_Migration::status()['state'], 'restore epoch drift quarantines migration record' );
+$GLOBALS['g8_epoch'] = 1;
+
+// Property/fault invariants run entirely on data-only isolated disposable fixtures.
+$context = array( 'mode' => 'disposable', 'isolated' => true, 'shared_objects' => false,
+	'paid_effects' => false, 'irreversible_effects' => false );
+$certified = array( 'provider' => 'analytics', 'capability' => 'read', 'method' => 'GET',
+	'readonly' => true, 'reversible' => false, 'effect' => 'none',
+	'schema' => array( 'type' => 'object' ), 'risk' => 1 );
+$valid_fixture = array( array( 'fault' => 'none', 'latency_ms' => 1, 'delivery_count' => 1, 'response_valid' => true ) );
+$clean = MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $certified, $valid_fixture, 42 );
+g8_check( 'NO_FINDINGS_IN_BOUNDED_FIXTURES' === $clean['state']
+	&& false === $clean['candidate_active_response_eligible']
+	&& false === $clean['provider_executed'], 'clean bounded corpus never promotes candidate' );
+$c1 = MAD4B_SCP_G8_Compatibility_Fuzz::corpus( 1337, 32 );
+$c2 = MAD4B_SCP_G8_Compatibility_Fuzz::corpus( 1337, 32 );
+g8_check( is_array( $c1 ) && $c1 === $c2 && 32 === count( $c1 ), 'seeded corpus must reproduce' );
+$divergent = $certified; $divergent['method'] = 'POST'; $divergent['risk'] = 0;
+$divergent['effect'] = 'external'; $divergent['schema'] = array( 'type' => 'string' );
+$evidence = MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $divergent, $c1, 1337 );
+g8_check( 'FINDINGS_REQUIRE_REVIEW' === $evidence['state']
+	&& 'analytics:read' === $evidence['quarantine_scope']
+	&& in_array( 'candidate_risk_downgrade', $evidence['findings'], true )
+	&& in_array( 'contradictory_readonly_effect', $evidence['findings'], true )
+	&& in_array( 'schema_semantic_diff', $evidence['findings'], true )
+	&& false === $evidence['external_effect_performed'], 'fuzz semantic regression isolated per capability' );
+$repeat = MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $divergent, $c1, 1337 );
+g8_check( $repeat['evidence_sha256'] === $evidence['evidence_sha256'], 'fuzz evidence digest deterministic' );
+$shared = $context; $shared['shared_objects'] = true;
+g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $shared, $certified, $certified, $valid_fixture, 42 ),
+	'mad4b_g8_fuzz_isolation_required' ), 'fuzz shared objects forbidden' );
+$paid = $context; $paid['paid_effects'] = true;
+g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $paid, $certified, $certified, $valid_fixture, 42 ),
+	'mad4b_g8_fuzz_isolation_required' ), 'paid provider fuzz forbidden' );
+$GLOBALS['g8_environment'] = 'production';
+g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $certified, $certified, $valid_fixture, 42 ),
+	'mad4b_g8_fuzz_isolation_required' ), 'Production fuzz forbidden' );
+echo 'G8_EXTENDED_CONTRACT: PASS' . PHP_EOL;
