@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 405,
+  "changed_file_count": 414,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -698,13 +698,22 @@
         "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/plan.md",
         "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/spec.md",
         "specs/007-content-intelligence-workflow-platform/extensions/site-aware-browser-discovery/tasks.md",
+        "tools/browser-acceptance/etg-driver.mjs",
+        "tools/browser-acceptance/evidence-assembler.mjs",
         "tools/browser-acceptance/mcp-bridge.mjs",
+        "tools/browser-acceptance/network-policy.mjs",
+        "tools/browser-acceptance/run-etg-browser-acceptance.mjs",
         "tools/browser-acceptance/run-live-site-browser-acceptance.mjs",
         "tools/browser-acceptance/run-site-browser-acceptance.mjs",
         "tools/browser-acceptance/site-adapter-resolver.mjs",
         "tools/browser-acceptance/site-driver-registry.mjs",
+        "tools/browser-acceptance/test-evidence-assembler.mjs",
+        "tools/browser-acceptance/test-mcp-bridge.mjs",
+        "tools/browser-acceptance/test-network-policy.mjs",
         "tools/browser-acceptance/test-site-adapter-resolver.mjs",
         "tools/browser-acceptance/test-site-neutral-boundaries.mjs",
+        "tools/browser-acceptance/test-worker-environment.mjs",
+        "tools/browser-acceptance/worker-environment.mjs",
         "wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-capability-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-capability-discovery-contract.php"
@@ -731,6 +740,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "947f66b46b18a6bceb065ac2cbad305badeef16a82ff34885c7c56df5f04606d",
+  "changed_paths_sha256": "04e8092ee7362f7a913c309698b127b7345b9126591e84964c85be1fd5481605",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
