@@ -15,7 +15,7 @@ function wp_next_scheduled( $hook ) { return $GLOBALS['scheduled']; }
 function wp_unschedule_event( ...$args ) { $GLOBALS['scheduled'] = 0; }
 function wp_schedule_single_event( $when, $hook ) { $GLOBALS['scheduled'] = $when; return true; }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
-class WP_Error { public function get_error_code() { return 'fixture_error'; } }
+class WP_Error { private $code; public function __construct( $code = 'fixture_error', $message = '' ) { $this->code = $code; } public function get_error_code() { return $this->code; } }
 class MAD4B_SCP_Site_Profile {
  static $environment = 'staging'; static $digest = 'profile1';
  static function configured() { return true; } static function current_environment() { return self::$environment; }
@@ -49,9 +49,10 @@ class MAD4B_SCP_Staging_Write_Authority {
 class MAD4B_SCP_Schema { static function is_ready() { return true; } }
 class MAD4B_SCP_Skill_Provider_Discovery { static $calls = 0; static function reconcile() { ++self::$calls; return true; } }
 class MAD4B_SCP_Live_Acceptance_Observer {
- static $calls = 0; static $race = false; static $event_race = false; static $valid = true; static $throw = false;
+ static $calls = 0; static $race = false; static $event_race = false; static $valid = true; static $throw = false; static $drift_at_call = 0;
  static function build_provenance_status() {
   ++self::$calls;
+  if ( self::$drift_at_call === self::$calls ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$throw ) { MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue(); throw new RuntimeException( 'PRIVATE worker path' ); }
   if ( self::$race && 0 === self::$calls % 2 ) MAD4B_SCP_Site_Profile::$digest = 'raced-profile';
   if ( self::$event_race && 0 === self::$calls % 2 ) MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
@@ -87,6 +88,9 @@ $ready = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabil
 check( 'OBSERVED' === $ready['state'] && 5 === count( $ready['providers'] ) && $ready['receipt_integrity_valid'], 'Resumed worker lost or fabricated registry evidence' );
 check( 'READ_COMPATIBLE' === $ready['providers']['alpha']['capabilities']['read']['state'], 'Version drift disabled compatible reads' );
 check( 'CANARY_REQUIRED' === $ready['providers']['alpha']['capabilities']['write']['state'], 'Unknown artifact gained write eligibility without behavior' );
+check( 'GOVERNED_CANARY_REQUIRED' === $ready['providers']['alpha']['capabilities']['write']['remediation']['lane'], 'Canary was misclassified as zero-manual auto repair' );
+check( 'NO_OP' === $ready['providers']['alpha']['capabilities']['read']['remediation']['lane'], 'Verified compatible read was not classified as no-op' );
+check( 1 === $ready['providers']['alpha']['remediation_lane_counts']['GOVERNED_CANARY_REQUIRED'], 'Per-provider operator lane counts lost high-risk separation' );
 check( 'ISOLATED' === $ready['providers']['alpha']['capabilities']['broken']['state'], 'Broken capability was not isolated' );
 check( ! $ready['authorizing'] && ! $ready['production_mutation'], 'Observation claimed authority' );
 check( 1 === MAD4B_SCP_Runtime_Convergence::$calls && 1 === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Core or Managed Skills convergence repeated across slices' );
@@ -124,6 +128,18 @@ check( 20 === count( $seen ) && 20 === count( array_unique( $seen ) ), 'Provider
 $stale_page = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'after_provider' => 'alpha', 'expected_receipt_sha256' => str_repeat( '0', 64 ) ) );
 check( is_wp_error( $stale_page ), 'A page accepted a foreign observation fingerprint' );
 check( $writes_before_page === $GLOBALS['writes'], 'Bounded read pages mutated runtime evidence' );
+foreach ( array(
+ array( 'provider_id' => array( 'alpha' ) ),
+ array( 'limit' => '100' ),
+ array( 'after_provider' => array( 'alpha' ) ),
+ array( 'include_capabilities' => 'true' ),
+ array( 'provider_id' => 'alpha', 'unexpected' => 1 ),
+ array( 'expected_receipt_sha256' => array( '0' ) ),
+) as $invalid_selector ) {
+ $denied = MAD4B_SCP_Adaptive_Runtime_Convergence::status( $invalid_selector );
+ check( is_wp_error( $denied ) && 'mad4b_adaptive_runtime_input_invalid' === $denied->get_error_code(), 'Malformed selector was normalized rather than rejected' );
+}
+check( $writes_before_page === $GLOBALS['writes'], 'Malformed selectors unexpectedly performed writes' );
 $GLOBALS['options'][MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION] = $saved_registry;
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 $partial = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) );
@@ -140,6 +156,21 @@ check( 'ACTIVE' === $fresh['providers']['alpha']['capabilities']['write']['state
 check( 'contract_unchanged' === $fresh['providers']['alpha']['capability_diff']['write'], 'Artifact identity confused with contract compatibility' );
 check( $ready['providers']['alpha']['artifact_fingerprint'] !== $fresh['providers']['alpha']['artifact_fingerprint'], 'New artifact did not invalidate identity' );
 check( 2 === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Changed provider graph did not reconcile Managed Skills' );
+// Simulate artifact/profile drift after provider scans but immediately before
+// managed-file reconciliation: the automatic worker must not touch managed
+// skill files or publish an observation under a stale site generation.
+$prior_registry = get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION );
+$prior_skills = MAD4B_SCP_Skill_Provider_Discovery::$calls;
+MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.124';
+MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
+MAD4B_SCP_Live_Acceptance_Observer::$drift_at_call = MAD4B_SCP_Live_Acceptance_Observer::$calls + 2;
+MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
+check( $prior_skills === MAD4B_SCP_Skill_Provider_Discovery::$calls, 'Stale generation reconciled managed skill files' );
+check( $prior_registry === get_option( MAD4B_SCP_Adaptive_Runtime_Convergence::OPTION ), 'Stale generation published a new observation' );
+MAD4B_SCP_Live_Acceptance_Observer::$drift_at_call = 0;
+MAD4B_SCP_Site_Profile::$digest = 'profile1';
+MAD4B_SCP_Provider_Compatibility_Certification::$version = '8.99.123';
+
 MAD4B_SCP_Provider_Compatibility_Certification::$throw = 'alpha'; MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe(); MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 $isolated = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) );
