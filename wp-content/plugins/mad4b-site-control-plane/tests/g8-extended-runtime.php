@@ -149,6 +149,7 @@ g8_check( g8_is_error( MAD4B_SCP_G8_Compatibility_Fuzz::evaluate( $context, $cer
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-g8-capability-convergence.php';
 class MAD4B_SCP_Provider_Compatibility_Certification {
 	public static function assess_provider( $provider ) {
+		$GLOBALS['g8_provider_inspections'] = (int) ( $GLOBALS['g8_provider_inspections'] ?? 0 ) + 1;
 		if ( 'analytics' !== $provider ) return new WP_Error( 'unknown_provider' );
 		return array( 'artifact' => array( 'runtime_artifact_fingerprint' => str_repeat( '1', 64 ) ),
 			'capabilities' => array(
@@ -198,6 +199,11 @@ g8_check( 'EXTERNAL_ACCEPTANCE_PENDING' === $external['state']
 $GLOBALS['g8_environment'] = 'production';
 $live = MAD4B_SCP_G8_Capability_Convergence::live_acceptance();
 g8_check( false === $live['release_acceptance'], 'Production cannot gain auto acceptance' );
+$inspections_before = $GLOBALS['g8_provider_inspections'];
+g8_check( g8_is_error( MAD4B_SCP_G8_Capability_Convergence::observe( 'analytics' ),
+	'mad4b_g8_convergence_staging_required' )
+	&& $inspections_before === $GLOBALS['g8_provider_inspections'],
+	'Production guard must execute before any provider inspection' );
 
 // Distinct providers fill the bounded queue; failures trigger site cooldown.
 $GLOBALS['g8_environment'] = 'staging';
