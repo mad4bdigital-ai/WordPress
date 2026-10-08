@@ -154,8 +154,10 @@ final class MAD4B_SCP_Capability_Atlas {
             );
         }
 
-        if ( count( $capabilities ) > self::MAX_CAPABILITIES ) $blockers[] = 'capability_atlas_overflow';
-        if ( $blockers ) return self::blocked( array_values( array_unique( $blockers ) ) );
+        if ( count( $capabilities ) > self::MAX_CAPABILITIES ) return self::blocked( array( 'capability_atlas_overflow' ) );
+        // A malformed source cannot authorize anything, but must not hide
+        // already observed safe candidates. Degrade to a partial read-only graph.
+        $complete = empty( $blockers );
         ksort( $capabilities, SORT_STRING );
         $items = array();
         foreach ( $capabilities as $id => $providers ) {
@@ -178,13 +180,13 @@ final class MAD4B_SCP_Capability_Atlas {
         return array(
             'contract' => self::CONTRACT, 'read_only' => true,
             'authorizing' => false, 'execution_allowed' => false,
-            'complete' => true, 'capabilities' => $items,
+            'complete' => $complete, 'partial' => ! $complete, 'capabilities' => $items,
             'count' => count( $items ),
             'candidate_count' => array_sum( array_map( static function ( $x ) {
                 return $x['candidate_count'];
             }, $items ) ),
             'unmapped_plugin_count' => count( (array) ( $discovery['unmapped_plugins'] ?? array() ) ),
-            'blocking_reasons' => array(),
+            'blocking_reasons' => array_values( array_unique( $blockers ) ),
         );
     }
 }
