@@ -618,3 +618,4 @@ jobs:
           php -l "$PLUGIN/includes/class-mad4b-scp-local-oauth-consent-ui.php"
           php -l "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
           php "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
+          python3 "$PLUGIN/tests/oauth-consent-script-syntax.py"
