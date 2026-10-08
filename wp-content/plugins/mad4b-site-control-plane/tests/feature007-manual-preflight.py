@@ -30,6 +30,7 @@ LINT = (
     "class-mad4b-scp-developer-runtime.php",
     "class-mad4b-scp-developer-host-capabilities.php",
     "class-mad4b-scp-full-staging-authority.php",
+    "class-mad4b-scp-staging-write-authority-convergence.php",
     "class-mad4b-scp-local-oauth-server.php",
     "class-mad4b-scp-assistant-operator-workspace.php",
 )
@@ -39,6 +40,7 @@ FIXTURES = (
     "assistant-convergence-runtime.php",
     "assistant-task-journal-bridge-runtime.php",
     "operation-journal-exact-cas-runtime.php",
+    "staging-write-authority-postcondition-runtime.php",
     "assistant-read-work-runtime.php",
     "assistant-entrypoint-registration-runtime.php",
     "oauth-consent-projection-view-runtime.php",
@@ -52,6 +54,7 @@ PY_CHECKS = (
     "oauth-consent-script-syntax.py",
     "developer-runtime-contract.py",
     "full-staging-authority-contract.py",
+    "staging-write-authority-convergence-contract.py",
     "g6-delivery-integrity.py",
     "g9-delivery-contract.py",
     "g9-security-source-contract.py",

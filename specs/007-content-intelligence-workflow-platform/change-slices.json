@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 313,
+  "changed_file_count": 315,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -543,8 +543,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/operation-journal-exact-cas-runtime.php"
       ]
+    },
+    {
+      "id": "staging-write-self-confirmation-20261008",
+      "semantic_unit": "Exact post-bind Staging Write readback and hermetic negative tests; no new authority",
+      "revert_boundary": "Revert Write convergence postcondition verifier and fixture together, preserving separate approval and no Developer/Breakglass/Production widening",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-postcondition-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "9b1fa9f35bef04dd45d9fe160a1bdd50057fb1127ab9efccfd610d4ce360155a",
+  "changed_paths_sha256": "2dbefaf5429675ca11e1bb798b7c1c82afe085711bf71f631b836cc433d8403e",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
