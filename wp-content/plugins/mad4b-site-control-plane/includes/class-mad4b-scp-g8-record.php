@@ -5,7 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_G8_Record {
 	const PREFIX = 'mad4b_scp_g8_';
 
-	public static function digest( $value ) { return hash( 'sha256', serialize( $value ) ); }
+	public static function digest( $value ) {
+		$nodes = 0;
+		if ( ! self::plain_data( $value, 0, $nodes ) ) return '';
+		return hash( 'sha256', serialize( $value ) );
+	}
 
 	public static function read( $option ) {
 		if ( ! self::owned( $option ) ) return new WP_Error( 'mad4b_g8_record_namespace', 'Record is outside the observation namespace.' );
@@ -42,6 +46,8 @@ final class MAD4B_SCP_G8_Record {
 
 	public static function seal( array $record ) {
 		unset( $record['seal'] );
+		$nodes = 0;
+		if ( ! self::plain_data( $record, 0, $nodes ) ) return '';
 		return hash_hmac( 'sha256', serialize( $record ), wp_salt( 'auth' ) );
 	}
 
