@@ -263,3 +263,11 @@ final class MAD4B_SCP_Assistant_Planning {
         return $plan;
     }
 }
+
+/**
+ * Assistant discovery/convergence is additive and read-only. Reuse the
+ * existing governed Ability and Adapter lifecycles, never a new writer.
+ */
+require_once __DIR__ . '/class-mad4b-scp-assistant-convergence.php';
+require_once __DIR__ . '/class-mad4b-scp-assistant-task-contract.php';
+MAD4B_SCP_Assistant_Convergence::boot();
