@@ -29,6 +29,7 @@ class MAD4B_SCP_Policy {
 	public static function can_read() { return true; }
 }
 
+function home_url( $path = '/' ) { return 'https://staging.egypttourgates.com' . $path; }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-browser-acceptance-provider-registry.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-browser-acceptance-core.php';
 
@@ -250,6 +251,7 @@ foreach ( array( 'runtime', 'events', 'network', 'performance', 'rendered', 'url
 
 $capabilities = MAD4B_SCP_Browser_Acceptance_Core::capabilities();
 browser_expect( 'mad4b.browser-acceptance-capabilities.v1' === (string) $capabilities['contract'], 'unexpected browser capabilities contract' );
+browser_expect( 'https://staging.egypttourgates.com' === $capabilities['site_origin'], 'canonical authenticated site origin projection missing' );
 browser_expect( 'external_browser_agent' === (string) $capabilities['execution_mode'], 'browser execution ownership drifted' );
 browser_expect( empty( $capabilities['authorizing'] ) && empty( $capabilities['browser_engine_authority'] ), 'browser core opened authority' );
 
