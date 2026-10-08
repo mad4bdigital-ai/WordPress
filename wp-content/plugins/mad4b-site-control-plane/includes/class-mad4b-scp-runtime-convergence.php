@@ -1232,6 +1232,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				$changed = array_values( array_unique( $changed ) );
 			}
 			if ( class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) && method_exists( 'MAD4B_SCP_Schema_Lifecycle', 'mark_current_package_applied' ) ) {
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' );
 			}
 			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server', false ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'converge_store_for_lifecycle' ) ) {
@@ -1279,6 +1281,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				// A healthy live Skill graph still needs build-bound persisted evidence
 				// after every package replacement. This is explicit lifecycle work and is
 				// never performed by passive/protocol status reads.
+				$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+				if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 				$observed = MAD4B_SCP_Skill_Runtime_Certification::observe( true );
 				if ( ! is_array( $observed ) || empty( $observed['ready'] ) ) {
 					return new WP_Error( 'mad4b_runtime_convergence_skills_persist_failed', 'Managed Skills are live-ready but current-build certification could not be persisted.' );
@@ -1359,6 +1363,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				$changed[] = 'post_update_continuation';
 				$changed = array_values( array_unique( $changed ) );
 			}
+			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 			$baseline = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) && method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'capture_ready_baseline' ) ? MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( $lock ) : array();
 
 			$lease_refresh = self::refresh_lock( $lock );
