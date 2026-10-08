@@ -75,6 +75,12 @@ final class MAD4B_SCP_Search_Context {
 		$current = MAD4B_SCP_Search_Store::read( 'profile', $profile['profile_id'] ); if ( is_wp_error( $current ) ) return $current;
 		$revision = is_array( $current ) ? (int) $current['_revision'] : 0;
 		if ( $revision !== $input['expected_revision'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_revision_drift' );
+		// Every new generic Profile starts with observations paused and provider
+		// spend frozen. Runtime activation always requires independent, exact-
+		// revision-fenced typed controls. Existing profiles are not rewritten.
+		if ( null === $current && ( true !== $profile['provider_policy']['freeze_spend'] || false !== $profile['enabled'] ) ) {
+			return MAD4B_SCP_Search_Contracts::error( 'profile_creation_requires_pause_and_spend_freeze', 'Create the Profile paused and spend-frozen, then use separately governed typed controls to activate.' );
+		}
 		// Domain invariant: every caller (admin, remote API or workflow) must
 		// respect historical geo identity and a separately paused/frozen edit lane.
 		if ( is_array( $current ) ) {
