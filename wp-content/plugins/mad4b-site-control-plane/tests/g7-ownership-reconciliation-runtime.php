@@ -66,6 +66,13 @@ g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $invalid_lineage, $current, 
 $missing = $baseline; unset( $missing['lineage_proof'] );
 $missing_plan = MAD4B_SCP_Ownership_Reconciliation::plan( $missing, $current, $desired, $policy, g7_binding() );
 g7_assert( 'APPROVAL_REQUIRED' === $missing_plan['state'], 'missing managed lineage blocks auto-repair' );
+g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $missing_plan, $current, $policy, g7_binding() ), 'missing_managed_baseline' );
+$missing_noop = MAD4B_SCP_Ownership_Reconciliation::plan( $missing, $current, $current, $policy, g7_binding() );
+g7_assert( 'APPROVAL_REQUIRED' === $missing_noop['state'], 'invalid baseline cannot masquerade as harmless no-op' );
+g7_error( MAD4B_SCP_Ownership_Reconciliation::commit_guard( $missing_noop, $current, $policy, g7_binding() ), 'missing_managed_baseline' );
+g7_error( MAD4B_SCP_Ownership_Reconciliation::verify_readback( $missing_noop, $current, g7_binding() ), 'missing_managed_baseline' );
+$invalid_snapshot = $baseline; $invalid_snapshot['fields'] = 'not-an-array';
+g7_error( MAD4B_SCP_Ownership_Reconciliation::plan( $invalid_snapshot, $current, $desired, $policy, g7_binding() ), 'snapshot_incomplete' );
 $secret = g7_baseline( array( 'api_token' => 'old' ), array( 'api_token' => 'managed' ) );
 $secret_current = $secret; unset( $secret_current['lineage_proof'], $secret_current['lineage_sha256'] );
 $secret_want = $secret_current; $secret_want['fields']['api_token'] = 'new';

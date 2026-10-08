@@ -30,7 +30,7 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 	 */
 	public static function plan( array $last_managed, array $current, array $desired, array $policies, array $binding ) {
 		$v = MAD4B_SCP_Adaptive_Operations_Context::validate( $binding ); if ( is_wp_error( $v ) ) return $v;
-		foreach ( array( $current, $desired ) as $snapshot ) { $v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v; }
+		foreach ( array( $last_managed, $current, $desired ) as $snapshot ) { $v = self::snapshot_valid( $snapshot ); if ( is_wp_error( $v ) ) return $v; }
 		if ( $current['resource_id'] !== $desired['resource_id'] ) return self::error( 'resource_mismatch' );
 		$lineage = $last_managed['lineage_proof'] ?? array();
         if ( ! is_array( $lineage ) ) return self::error( 'baseline_lineage_format_invalid' );
@@ -75,11 +75,11 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		$expected_after = $current;
 		foreach ( $changes as $field => $change ) { if ( $change['after']['present'] ) $expected_after['fields'][ $field ] = $change['after']['value']; else unset( $expected_after['fields'][ $field ] ); }
 		$expected_after['revision'] += empty( $changes ) ? 0 : 1;
-		$basis = array( 'contract' => self::CONTRACT, 'binding' => $binding, 'resource_id' => $current['resource_id'], 'expected_revision' => $current['revision'], 'owner_revision' => $current['owner_revision'], 'current_sha256' => self::snapshot_digest( $current ), 'expected_after_sha256' => self::snapshot_digest( $expected_after ), 'lineage_sha256' => $last_managed['lineage_sha256'] ?? '', 'policy_sha256' => MAD4B_SCP_Adaptive_Operations_Context::digest( 'ownership-field-policy:v1', $policies ), 'changes' => $changes, 'preserved' => $preserved, 'conflicts' => $conflicts, 'classification' => $classification, 'expires_at' => time() + self::TTL );
+		$basis = array( 'contract' => self::CONTRACT, 'binding' => $binding, 'resource_id' => $current['resource_id'], 'expected_revision' => $current['revision'], 'owner_revision' => $current['owner_revision'], 'current_sha256' => self::snapshot_digest( $current ), 'expected_after_sha256' => self::snapshot_digest( $expected_after ), 'lineage_sha256' => $last_managed['lineage_sha256'] ?? '', 'policy_sha256' => MAD4B_SCP_Adaptive_Operations_Context::digest( 'ownership-field-policy:v1', $policies ), 'baseline_valid' => $baseline_valid, 'changes' => $changes, 'preserved' => $preserved, 'conflicts' => $conflicts, 'classification' => $classification, 'expires_at' => time() + self::TTL );
 		foreach ( array( 'current_sha256', 'expected_after_sha256', 'policy_sha256' ) as $key ) if ( is_wp_error( $basis[ $key ] ) ) return $basis[ $key ];
 		$sealed = MAD4B_SCP_Adaptive_Operations_Context::seal( self::CONTRACT, $basis );
 		if ( is_wp_error( $sealed ) ) return $sealed;
-		return array( 'contract' => self::CONTRACT, 'plan_sha256' => $sealed['sha256'], 'sealed_plan' => $sealed, 'state' => empty( $conflicts ) ? ( empty( $changes ) ? 'NO_OP' : 'BOUNDED_REPAIR_PLANNED' ) : 'APPROVAL_REQUIRED', 'diff' => self::public_diff( $changes ), 'preserved_fields' => array_keys( $preserved ), 'user_owned_conflicts' => $conflicts, 'mutation_performed' => false, 'authorizing' => false, 'grants_created' => false, 'commit_requires_existing_typed_executor' => true );
+		return array( 'contract' => self::CONTRACT, 'plan_sha256' => $sealed['sha256'], 'sealed_plan' => $sealed, 'state' => $baseline_valid && empty( $conflicts ) ? ( empty( $changes ) ? 'NO_OP' : 'BOUNDED_REPAIR_PLANNED' ) : 'APPROVAL_REQUIRED', 'diff' => self::public_diff( $changes ), 'preserved_fields' => array_keys( $preserved ), 'user_owned_conflicts' => $conflicts, 'mutation_performed' => false, 'authorizing' => false, 'grants_created' => false, 'commit_requires_existing_typed_executor' => true );
 	}
 
 	/** Invoke under the consumer's native CAS lock immediately before its write. */
@@ -87,6 +87,7 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		$basis = self::basis( $plan ); if ( is_wp_error( $basis ) ) return $basis;
 		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $basis['binding'], $binding ); if ( is_wp_error( $v ) ) return $v;
 		$v = self::snapshot_valid( $current ); if ( is_wp_error( $v ) ) return $v;
+		if ( true !== $basis['baseline_valid'] ) return self::error( 'missing_managed_baseline' );
 		if ( time() >= $basis['expires_at'] ) return self::error( 'plan_expired' );
 		if ( ! empty( $basis['conflicts'] ) ) return self::error( 'review_required' );
 		if ( 'staging' !== $binding['environment'] ) return self::error( 'automatic_repair_environment_denied' );
@@ -100,6 +101,7 @@ final class MAD4B_SCP_Ownership_Reconciliation {
 		$basis = self::basis( $plan ); if ( is_wp_error( $basis ) ) return $basis;
 		$v = MAD4B_SCP_Adaptive_Operations_Context::assert_same( $basis['binding'], $binding ); if ( is_wp_error( $v ) ) return $v;
 		$v = self::snapshot_valid( $after ); if ( is_wp_error( $v ) ) return $v;
+		if ( true !== $basis['baseline_valid'] ) return self::error( 'missing_managed_baseline' );
 		if ( ! empty( $basis['conflicts'] ) || $after['resource_id'] !== $basis['resource_id'] || $after['revision'] !== $basis['expected_revision'] + ( empty( $basis['changes'] ) ? 0 : 1 ) || $after['owner_revision'] !== $basis['owner_revision'] ) return self::error( 'readback_revision_conflict' );
 		foreach ( $basis['changes'] as $field => $change ) if ( self::field( $after, $field ) !== $change['after'] ) return self::error( 'partial_apply_readback' );
 		foreach ( $basis['preserved'] as $field => $evidence ) if ( ! hash_equals( $evidence['current_sha256'], self::value_digest( self::field( $after, $field ) ) ) ) return self::error( 'human_delta_overwritten' );
@@ -114,7 +116,7 @@ final class MAD4B_SCP_Ownership_Reconciliation {
         $basis = MAD4B_SCP_Adaptive_Operations_Context::unseal( self::CONTRACT, $sealed );
 		if ( is_wp_error( $basis ) ) return $basis;
 		if ( ! is_array( $basis ) || ! isset( $plan['plan_sha256'] ) || ! MAD4B_SCP_Adaptive_Operations_Context::sha( $plan['plan_sha256'] ) || ! hash_equals( $plan['plan_sha256'], $plan['sealed_plan']['sha256'] ) ) return self::error( 'plan_digest_changed' );
-		if ( ( $basis['contract'] ?? '' ) !== self::CONTRACT || ! isset( $basis['binding'], $basis['resource_id'], $basis['expected_revision'], $basis['owner_revision'], $basis['current_sha256'], $basis['expected_after_sha256'], $basis['policy_sha256'], $basis['changes'], $basis['preserved'], $basis['conflicts'], $basis['expires_at'] ) || ! is_array( $basis['binding'] ) || ! is_array( $basis['changes'] ) || ! is_array( $basis['preserved'] ) || ! is_array( $basis['conflicts'] ) || ! is_int( $basis['expected_revision'] ) || ! is_int( $basis['owner_revision'] ) || ! is_int( $basis['expires_at'] ) ) return self::error( 'plan_material_invalid' );
+		if ( ( $basis['contract'] ?? '' ) !== self::CONTRACT || ! isset( $basis['binding'], $basis['resource_id'], $basis['expected_revision'], $basis['owner_revision'], $basis['current_sha256'], $basis['expected_after_sha256'], $basis['policy_sha256'], $basis['baseline_valid'], $basis['changes'], $basis['preserved'], $basis['conflicts'], $basis['expires_at'] ) || ! is_array( $basis['binding'] ) || ! is_array( $basis['changes'] ) || ! is_array( $basis['preserved'] ) || ! is_array( $basis['conflicts'] ) || ! is_bool( $basis['baseline_valid'] ) || ! is_int( $basis['expected_revision'] ) || ! is_int( $basis['owner_revision'] ) || ! is_int( $basis['expires_at'] ) ) return self::error( 'plan_material_invalid' );
 		foreach ( array( 'current_sha256', 'expected_after_sha256', 'policy_sha256' ) as $key ) if ( ! MAD4B_SCP_Adaptive_Operations_Context::sha( $basis[ $key ] ) ) return self::error( 'plan_material_invalid' );
 		return $basis;
 	}
