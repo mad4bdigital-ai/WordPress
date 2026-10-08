@@ -1172,14 +1172,24 @@ final class MAD4B_SCP_Runtime_Convergence {
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			return;
 		}
-		$result = self::run_safe_phases( 'post_update_cron', array(), $ticket );
-		if ( is_array( $ticket ) ) {
+		try {
+			$result = self::run_safe_phases( 'post_update_cron', array(), $ticket );
+		} catch ( Throwable $error ) {
+			$result = new WP_Error( 'mad4b_automation_worker_exception', 'Automatic maintenance failed unexpectedly; governed reconciliation may be required.' );
+		}
+		if ( ! is_wp_error( $result ) && ! is_array( $result ) )
+			$result = new WP_Error( 'mad4b_automation_worker_result_invalid', 'Automatic maintenance returned an invalid outcome.' );
+		try {
 			$finished = MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $result );
-			if ( is_wp_error( $finished ) ) {
+		} catch ( Throwable $error ) {
+			$finished = new WP_Error( 'mad4b_automation_outcome_persist_exception', 'Automatic maintenance outcome persistence requires reconciliation.' );
+		}
+		if ( is_array( $ticket ) ) {
+			if ( is_wp_error( $finished ) || true !== $finished ) {
 				$checkpoint = get_option( self::CHECKPOINT_OPTION, $checkpoint );
 				if ( ! is_array( $checkpoint ) ) $checkpoint = array();
 				$checkpoint['state'] = 'pending_manual_resume';
-				$checkpoint['resume_blocker'] = $finished->get_error_code();
+				$checkpoint['resume_blocker'] = is_wp_error( $finished ) ? $finished->get_error_code() : 'mad4b_automation_outcome_persist_invalid';
 				$checkpoint['automatic_retry_allowed'] = false;
 				$checkpoint['updated_at'] = gmdate( 'c' );
 				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
