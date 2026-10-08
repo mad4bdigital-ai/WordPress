@@ -45,7 +45,7 @@ ok( count($inventory['rows']) === 5, 'dynamic inventory includes same-directory 
 ok( count(array_unique(array_column($inventory['rows'],'id'))) === 5, 'stable unique main-file IDs' );
 ok( in_array('ability:private/rotate-keys',array_column($inventory['rows'],'id'),true), 'opaque private ability identity observed by admin' );
 $opaque = array_values(array_filter($inventory['rows'],function($row){return $row['id']==='ability:private/rotate-keys';}));
-ok(count($opaque)===1 && $opaque[0]['label']==='private/rotate-keys'
+ok(count($opaque)===1 && $opaque[0]['label']==='Private registered ability'
     && strpos($opaque[0]['match_text'],'Rotate Private Keys')===false, 'private metadata redacted');
 ok( $inventory['plugin_inventory_complete'] && $inventory['ability_inventory_complete'], 'coverage' );
 $r = MAD4B_SCP_Solution_Discovery::read_discover($in);
