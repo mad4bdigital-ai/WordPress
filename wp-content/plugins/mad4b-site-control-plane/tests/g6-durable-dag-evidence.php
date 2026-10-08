@@ -48,6 +48,7 @@ $GLOBALS['test_row'] = array(
     'claim_epoch' => 1, 'status' => 'completed', 'result_json' => '{"done":true}',
     'result_sha256' => hash( 'sha256', '{"done":true}' ),
     'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ) );
+denial( MAD4B_SCP_G6_Durable_DAG_Evidence::inspect( $plan, 'root' ), 'mad4b_g6_dag_dependencies_missing' );
 $ok = MAD4B_SCP_G6_Durable_DAG_Evidence::inspect( $plan, 'child' );
 check( ! is_wp_error( $ok ) && $ok['durable_records_integrity_verified'], 'durable record readback verified' );
 check( ! $ok['provider_postconditions_verified'] && ! $ok['dependency_dispatch_admitted'], 'durable record alone never authorizes dependent dispatch' );

@@ -43,6 +43,8 @@ final class MAD4B_SCP_G6_Durable_DAG_Evidence {
         $dependencies = isset( $step['depends_on'] ) ? $step['depends_on'] : array();
         if ( ! is_array( $dependencies ) || count( $dependencies ) > 32 )
             return MAD4B_SCP_G6_Contracts::error( 'dag_dependencies', 'Dependency list exceeds approved bounds.' );
+        if ( ! $dependencies )
+            return MAD4B_SCP_G6_Contracts::error( 'dag_dependencies_missing', 'No completed dependency can be certified for a root node.' );
         $observed = array();
         foreach ( $dependencies as $dep_id ) {
             if ( ! is_string( $dep_id ) || ! isset( $plan['nodes'][ $dep_id ] ) )
