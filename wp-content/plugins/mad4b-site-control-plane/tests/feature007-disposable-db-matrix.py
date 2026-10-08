@@ -96,6 +96,10 @@ def main():
                     else:
                         phps.append((version, binary))
                 for engine in ENGINES:
+                    if len(phps) != len(PHP):
+                        # Refuse to start databases for a partial PHP matrix.
+                        blocked = True
+                        break
                     image = execv(["docker", "image", "inspect", "--format", "{{.Id}}", engine],
                                   env=clean_env, cwd=root)
                     if image.returncode:
