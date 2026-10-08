@@ -160,6 +160,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-planning.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-task-contract.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-read-work-operations.php';
 MAD4B_SCP_Assistant_Planning::boot();
 MAD4B_SCP_Assistant_Bootstrap_Diagnostic::boot();
 MAD4B_SCP_Assistant_Convergence::boot();
