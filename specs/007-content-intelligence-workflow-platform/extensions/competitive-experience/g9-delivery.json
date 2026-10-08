@@ -33,7 +33,8 @@
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py",
-    "wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php"
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py"
   ],
   "spec_paths": [
     "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
@@ -52,9 +53,11 @@
   "authorizing": false,
   "remaining_acceptance": [
     "Existing governed native executor binding and approved capability descriptor for site-local reservation; no automatic permission creation",
+    "Native executor must produce signed claim operation_id and independently verifiable terminal journal linkage to the G9 reservation; transport request ID and native target fingerprint are independent identities",
     "Site-local provider native certification and host isolation proof; real health sample windows and effect inventory completeness",
     "External-effect reconciliation and signed, same-cycle release/rollback and post-restore acceptance receipts",
     "Staging fault drills on independent websites/multisite plus split-brain, clone, clock rollback, partial rollback and provider outages",
     "CI results at final exact HEAD, predecessor G7/G8 integration, cumulative Hub proof and explicit owner/merge authorization"
-  ]
+  ],
+  "native_journal_linkage_provider_implemented": false
 }

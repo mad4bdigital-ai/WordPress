@@ -9,16 +9,16 @@ Integration target: PR #258. Child implementation: PR #288. This document never 
 - `class-mad4b-scp-resilience-context.php`: site-origin, blog, runtime-generation, artifact, profile, registry and restore-epoch binding; immutable observation digests; code-pinned local reader.
 - `class-mad4b-scp-resilience-anchor.php`: external bounded CAS/lock revision journal; monotonic clock floor, symlink/path checks, append-only scopes, complete write/readback and DB loss marker. No historical event can be evicted or rewritten by the transition closure.
 - `class-mad4b-scp-g9-resilience-gates.php`: independent fleet inventory and cohort diff, clone detection, exact ring identity, health/coverage thresholds, revoked-provider and unrewound-effect denial, baseline/restore comparison.
-- `class-mad4b-scp-g9-release-fence.php`: exact locally refreshed release plans, default-off fixed internal admission, external duplicate-safe reservation, uncertain-outcome inspection, and native signed Execution Receipt + canonical Execution State View correlation. Neither a reservation nor an execution receipt confers release acceptance.
+- `class-mad4b-scp-g9-release-fence.php`: exact locally refreshed release plans, default-off fixed internal admission, external duplicate-safe reservation, uncertain-outcome inspection, and passive native signed Execution Receipt + canonical Execution State View correlation requiring an explicit independently read terminal journal link. The native producer of that G9 link is not yet implemented. Neither a reservation nor an execution receipt confers release acceptance.
 - `class-mad4b-scp-g9-restore-convergence.php`: read-only drift and post-restore workstage projection across DB, files, runtime package, Site Profile, registry, epoch and external effects; no reactivation of stale grants.
 - `class-mad4b-scp-g9-local-reader.php`: code-owned passive reader that deliberately reports provider, host, health and external effect verification as incomplete until real certified observers exist.
-- `class-mad4b-scp-g9-read-surface.php`: two locally bound read-only WordPress abilities (`mad4b/g9-site-observation` and `mad4b/g9-restore-status`) without arbitrary selectors; registered from plugin bootstrap.
+- `class-mad4b-scp-g9-read-surface.php`: three locally bound read-only WordPress abilities (`mad4b/g9-site-observation`, `mad4b/g9-restore-status` and `mad4b/g9-closure-status`) without arbitrary selectors; registered from plugin bootstrap.
 
 ## Hermetic evidence
 
 `tests/g9-resilience-gates-runtime.php`: typed identity, path/lock, immutable histories, cloned sites, stale health, incomplete inventories, production ring denial, partial rollback/external uncertainty, clock rollback and corruption.
 
-`tests/g9-resilience-state-runtime.php`: exact current capture, single-reader pinning, CAS reservations, existing authority denial, stale plans, idempotency, foreign site reads, restore drift, native Execution State View and signed-receipt correlation, registered read-only abilities.
+`tests/g9-resilience-state-runtime.php`: exact current capture, single-reader pinning, CAS reservations, existing authority denial, stale plans, idempotency, foreign site reads, restore drift, real core Execution State View and Execution Receipt builder/verifier against distinct native UUID/request/target identities, rejection of unlinked current claims, a synthetic future journal-link fixture, read drift and registered read-only abilities.
 
 Workflow: `.github/workflows/feature-007-g9-resilience.yml`; matrix PHP 7.4 and PHP 8.3. CI results must be checked on the final exact HEAD; queued tests are not pass evidence.
 

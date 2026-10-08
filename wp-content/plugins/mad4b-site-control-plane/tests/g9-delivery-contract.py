@@ -22,7 +22,8 @@ for key in ("runtime_parity_claimed", "live_staging_acceptance",
             "live_host_isolation_verified", "native_fleet_rollback_dispatched",
             "external_effect_reconciliation_verified", "post_restore_acceptance_receipt_issued",
             "all_task_done_claimed", "production_authorized",
-            "new_grants_created", "authorizing", "source_files_include_real_execution_adapter"):
+            "new_grants_created", "authorizing", "source_files_include_real_execution_adapter",
+            "native_journal_linkage_provider_implemented"):
     assert payload.get(key) is False, "UNSUPPORTED_G9_ACCEPTANCE_CLAIM:" + key
 seen = set()
 for group in ("code_paths", "test_paths", "spec_paths"):

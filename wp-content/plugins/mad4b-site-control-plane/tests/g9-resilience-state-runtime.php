@@ -177,11 +177,15 @@ $binding = $observation['binding'];
 $dir = MAD4B_SCP_RESILIENCE_ANCHOR_DIRECTORY;
 if ( ! is_dir( $dir ) ) mkdir( $dir, 0700, true );
 chmod( $dir, 0777 );
+clearstatcache( true, $dir );
 g9_denied( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'directory_permissions_unsafe' );
 chmod( $dir, 0700 );
+clearstatcache( true, $dir );
 chmod( $dir, 0770 );
+clearstatcache( true, $dir );
 g9_denied( MAD4B_SCP_Resilience_Anchor::read( $binding ), 'directory_permissions_unsafe' );
 chmod( $dir, 0700 );
+clearstatcache( true, $dir );
 $wrong_blog = $binding; $wrong_blog['blog_id'] = 2;
 g9_denied( MAD4B_SCP_Resilience_Anchor::read( $wrong_blog ), 'local_blog_mismatch' );
 $wrong_origin = $binding; $wrong_origin['canonical_origin'] = 'https://clone.example.invalid';
@@ -276,58 +280,72 @@ g9_assert( ! is_wp_error( $changed ) && $changed['requires_quarantine']
     && in_array( 'site_profile', $changed['changed_facets'], true ), 'profile restore drift' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::reserve( $plan ), 'live_drift' );
 MAD4B_SCP_Site_Profile::$revision = 1; // Return to original exact binding for receipt correlation.
-// Native journal/receipt correlation cannot turn a foreign or unknown result
-// into a release certificate. Real cryptographic verification is owned by
-// existing WordPress runtime; this hermetic stub checks fail-closed wiring.
-class MAD4B_SCP_Execution_State_View {
-    const CONTRACT = 'mad4b.execution-state-view.v1';
-    const COMMITTED = 'COMMITTED';
+// Exercise the REAL receipt builder/verifier and state normalization. Only the
+// hermetic crypto transport and journal persistence are test doubles. The native
+// UUID, transport request and authorization target deliberately remain distinct.
+function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $value ) ); }
+class MAD4B_SCP_Crypto_Profile {
+    public static function default_profile( $purpose ) { return 'g9-hermetic-crypto'; }
+    public static function sign_digest( $profile, $digest ) {
+        return array( 'profile_id'=>$profile, 'kid'=>'g9-fixture',
+            'signature'=>hash_hmac( 'sha256', $digest, 'hermetic-not-runtime-authority' ) );
+    }
+    public static function verify_digest_for_purpose( array $signature, $digest, $purpose ) {
+        if ( $purpose !== 'execution_receipt'
+            || ( $signature['profile_id'] ?? '' ) !== 'g9-hermetic-crypto'
+            || ( $signature['kid'] ?? '' ) !== 'g9-fixture'
+            || ! hash_equals( hash_hmac( 'sha256', $digest, 'hermetic-not-runtime-authority' ),
+                (string) ( $signature['signature'] ?? '' ) ) )
+            return new WP_Error( 'crypto_invalid', 'Hermetic signature denied' );
+        return array( 'valid'=>true );
+    }
+}
+class MAD4B_SCP_Operation_Journal {
     public static $state = 'RECONCILING';
     public static $foreign = false;
     public static $journal_unbound = false;
-    public static function operation( $id ) { return array(
-        'contract'=>self::CONTRACT, 'canonical_state'=>self::$state,
-        'scope'=>'operation', 'source_contract'=>'mad4b.dynamic-operation-status.v1',
-        'terminal'=>self::$state==='COMMITTED',
-        'reconciliation_required'=>self::$state!=='COMMITTED',
-        'evidence'=>array(
-            'operation_id'=>self::$foreign ? 'foreign:operation' : $id,
-            'operation_binding_sha256'=>hash( 'sha256', 'journal-binding' ),
-            'journal_head_sha256'=>self::$journal_unbound ? '' : hash( 'sha256', 'append-only-head' ),
+    public static $read_count = 0;
+    public static $drift_on_read = 0;
+    public static $trace = array();
+    public static function status( $id ) {
+        self::$read_count++;
+        $drift = self::$drift_on_read === self::$read_count;
+        return array(
+            'contract'=>'mad4b.dynamic-operation-status.v1',
+            'operation_id'=>self::$foreign ? '33333333-3333-4333-8333-333333333333' : $id,
+            'operation_key'=>'native-release:fixture-site-0001',
+            'operation_binding_sha256'=>hash( 'sha256', 'native-context-binding' ),
+            'journal_head_sha256'=>self::$journal_unbound ? '' : hash( 'sha256', $drift ? 'changed-native-head' : 'append-only-head' ),
             'latest_sequence'=>5,
-            'orphan_candidate'=>false,
+            'lifecycle_state'=>self::$state==='COMMITTED' ? 'completed' : 'running',
+            'terminal_outcome'=>self::$state==='COMMITTED' ? 'committed' : '',
+            'orphan_candidate'=>self::$state!=='COMMITTED',
             'stale_heartbeat'=>false, 'lock_expired'=>false,
             'hard_deadline_exceeded'=>false,
-        ),
-    ); }
-}
-class MAD4B_SCP_Execution_Receipt {
-    public static $valid = true;
-    public static function verify( array $receipt ) {
-        if ( ! self::$valid ) return new WP_Error( 'crypto_invalid', 'signature denied' );
-        return array( 'valid'=>true, 'cryptographic_signature_verified'=>true,
-            'receipt_sha256'=>hash( 'sha256', 'verified-native' ) );
+        );
     }
+    public static function trace( $id, $limit = 200 ) { return self::$trace; }
 }
-$operation_id = 'g9-native:operation-0001';
-$native = array( 'request_id'=>$operation_id,
-    'target_fingerprint'=>$reserved['operation_sha256'],
-    'ability'=>'mad4b/runtime-release-set-apply',
-    'provider_id'=>'core',
-    'terminal_receipt_sha256'=>hash( 'sha256', 'native-terminal' ),
-    'stages'=>array( 'operation_journal'=>array(
-        'status'=>'PASS', 'evidence_type'=>'operation_id',
-        'evidence_sha256'=>hash( 'sha256', $operation_id ),
-    ) ) );
-$missing_journal = $native; unset( $missing_journal['stages']['operation_journal'] );
-g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
-    $binding, $reserved['operation_sha256'], $operation_id, $missing_journal ),
-    'native_receipt_unbound' );
-$other_journal = $native; $other_journal['stages']['operation_journal']['evidence_sha256'] =
-    hash( 'sha256', 'different-operation' );
-g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
-    $binding, $reserved['operation_sha256'], $operation_id, $other_journal ),
-    'native_receipt_unbound' );
+require_once __DIR__ . '/../includes/class-mad4b-scp-execution-state-view.php';
+require_once __DIR__ . '/../includes/class-mad4b-scp-execution-receipt.php';
+$operation_id = '22222222-2222-4222-8222-222222222222';
+$claim = array(
+    'ability'=>'mad4b/runtime-release-set-apply', 'provider'=>'core',
+    'request_id'=>'transport-request-release-0001',
+    'target_fingerprint'=>hash( 'sha256', 'native-authorization-target-with-resource-set' ),
+    'resource_set_sha256'=>hash( 'sha256', 'native-resource-set' ),
+    'context_receipt_sha256'=>hash( 'sha256', 'native-preparation' ),
+    'capability_descriptor_sha256'=>hash( 'sha256', 'native-descriptor' ),
+    'policy_decision_sha256'=>hash( 'sha256', 'native-policy-decision' ),
+    'approval_impact_binding_sha256'=>hash( 'sha256', 'native-impact' ),
+);
+$terminal = array( 'receipt_id'=>'native-terminal:fixture-0001',
+    'receipt_sha256'=>hash( 'sha256', 'native-terminal' ),
+    'terminal_material_sha256'=>hash( 'sha256', 'native-terminal-material' ) );
+$native = MAD4B_SCP_Execution_Receipt::build( $claim, array( 'readback'=>array( 'ready'=>true ) ), $terminal );
+g9_assert( ! is_wp_error( $native ) && $native['request_id'] !== $operation_id
+    && $native['target_fingerprint'] !== $reserved['operation_sha256'],
+    'native namespaces are independent, not manufactured G9 equality' );
 $wrong_ability = $native; $wrong_ability['ability'] = 'mad4b/content-update-post';
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $wrong_ability ),
@@ -335,30 +353,111 @@ g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native ),
     'native_execution_uncertain' );
-MAD4B_SCP_Execution_State_View::$state = 'COMMITTED';
+MAD4B_SCP_Operation_Journal::$state = 'COMMITTED';
+// Current native release claims do not yet carry operation_id. A valid signed
+// receipt and an unrelated completed journal are insufficient for verification.
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_link_unavailable' );
+$linked_claim = $claim; $linked_claim['operation_id'] = $operation_id;
+$native = MAD4B_SCP_Execution_Receipt::build( $linked_claim, array( 'readback'=>array( 'ready'=>true ) ), $terminal );
+g9_assert( ! is_wp_error( $native ), 'real signed operation stage built' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_link_unavailable' ); // Signed UUID alone does not link the G9 fence.
 $incorrect = $native; $incorrect['target_fingerprint'] = hash( 'sha256', 'foreign' );
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $incorrect ),
-    'native_receipt_unbound' );
-MAD4B_SCP_Execution_Receipt::$valid = false;
-g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
-    $binding, $reserved['operation_sha256'], $operation_id, $native ),
     'native_signature_invalid' );
-MAD4B_SCP_Execution_Receipt::$valid = true;
-MAD4B_SCP_Execution_State_View::$foreign = true;
+$unsigned = $native; unset( $unsigned['signature'] );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $unsigned ),
+    'native_signature_invalid' );
+MAD4B_SCP_Operation_Journal::$foreign = true;
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native ),
     'native_execution_uncertain' );
-MAD4B_SCP_Execution_State_View::$foreign = false;
-MAD4B_SCP_Execution_State_View::$journal_unbound = true;
+MAD4B_SCP_Operation_Journal::$foreign = false;
+MAD4B_SCP_Operation_Journal::$journal_unbound = true;
 g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native ),
     'native_execution_uncertain' );
-MAD4B_SCP_Execution_State_View::$journal_unbound = false;
+MAD4B_SCP_Operation_Journal::$journal_unbound = false;
+
+// Synthetic FUTURE producer record: this tests the passive verifier only.
+// No production executor currently writes this G9 link, creates its grant or
+// registers its Capability Descriptor.
+$inspection = MAD4B_SCP_G9_Release_Fence::inspect( $binding, $reserved['operation_sha256'] );
+$link = array(
+    'link_contract'=>'mad4b.g9.native-release-link.v1',
+    'g9_operation_sha256'=>$reserved['operation_sha256'],
+    'g9_plan_sha256'=>$inspection['plan_sha256'],
+    'site_binding_sha256'=>$inspection['binding_sha256'],
+    'native_request_id'=>$native['request_id'],
+    'native_target_fingerprint'=>$native['target_fingerprint'],
+    'resource_set_sha256'=>$native['resource_set_sha256'],
+    'execution_receipt_sha256'=>$native['receipt_sha256'],
+    'terminal_receipt_sha256'=>$native['terminal_receipt_sha256'],
+);
+$events = array();
+for ( $i = 1; $i <= 5; $i++ ) $events[] = array(
+    'sequence'=>$i,
+    'event_sha256'=>$i===5 ? hash( 'sha256', 'append-only-head' ) : hash( 'sha256', 'fixture-event-' . $i ),
+    'lifecycle_state'=>$i===5 ? 'completed' : 'running',
+    'terminal_outcome'=>$i===5 ? 'committed' : '',
+    'safe_metadata'=>$i===5 ? $link : array(),
+);
+$trace = array( 'contract'=>'mad4b.dynamic-operation-trace.v1',
+    'operation_id'=>$operation_id, 'chain_valid'=>true, 'complete'=>true,
+    'count'=>5, 'events'=>$events );
+MAD4B_SCP_Operation_Journal::$trace = $trace;
 $verified = MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
     $binding, $reserved['operation_sha256'], $operation_id, $native );
 g9_assert( ! is_wp_error( $verified ) && $verified['native_execution_evidence_verified']
-    && !$verified['site_local_release_accepted'], 'native receipt is not release acceptance' );
+    && !$verified['site_local_release_accepted']
+    && $verified['native_request_id'] !== $verified['native_operation_id']
+    && $verified['native_target_fingerprint'] !== $verified['operation_sha256'],
+    'explicit native journal linkage verifies independent identities only' );
+
+foreach ( array( 'g9_operation_sha256', 'g9_plan_sha256', 'site_binding_sha256',
+    'native_request_id', 'native_target_fingerprint', 'resource_set_sha256',
+    'execution_receipt_sha256', 'terminal_receipt_sha256' ) as $field ) {
+    MAD4B_SCP_Operation_Journal::$trace = $trace;
+    MAD4B_SCP_Operation_Journal::$trace['events'][4]['safe_metadata'][ $field ] = hash( 'sha256', 'foreign-' . $field );
+    g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+        $binding, $reserved['operation_sha256'], $operation_id, $native ),
+        'native_link_unavailable' );
+}
+foreach ( array( 'chain_valid', 'complete' ) as $field ) {
+    MAD4B_SCP_Operation_Journal::$trace = $trace;
+    MAD4B_SCP_Operation_Journal::$trace[ $field ] = false;
+    g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+        $binding, $reserved['operation_sha256'], $operation_id, $native ),
+        'native_link_unavailable' );
+}
+MAD4B_SCP_Operation_Journal::$trace = $trace;
+MAD4B_SCP_Operation_Journal::$trace['events'][4]['event_sha256'] = hash( 'sha256', 'stale-head' );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_link_unavailable' );
+MAD4B_SCP_Operation_Journal::$trace = $trace;
+$substituted_claim = $linked_claim; $substituted_claim['request_id'] = $operation_id;
+$substituted_claim['target_fingerprint'] = $reserved['operation_sha256'];
+$substituted = MAD4B_SCP_Execution_Receipt::build( $substituted_claim, array(), $terminal );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $substituted ),
+    'native_link_unavailable' ); // Legacy equality cannot bypass native metadata.
+$foreign_operation_claim = $linked_claim;
+$foreign_operation_claim['operation_id'] = '33333333-3333-4333-8333-333333333333';
+$substituted = MAD4B_SCP_Execution_Receipt::build( $foreign_operation_claim, array(), $terminal );
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $substituted ),
+    'native_link_unavailable' );
+MAD4B_SCP_Operation_Journal::$drift_on_read = MAD4B_SCP_Operation_Journal::$read_count + 2;
+g9_denied( MAD4B_SCP_G9_Release_Fence::native_execution_evidence(
+    $binding, $reserved['operation_sha256'], $operation_id, $native ),
+    'native_evidence_changed' );
+MAD4B_SCP_Operation_Journal::$drift_on_read = 0;
 // A separately registered test reader must not be silently displaced by
 // WordPress boot. The production read-surface declines to publish abilities
 // when the server-owned reader cannot be pinned.

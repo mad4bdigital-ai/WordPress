@@ -22,6 +22,7 @@ final class MAD4B_SCP_Resilience_Anchor {
 		if ( ! is_dir( $dir ) && ! @mkdir( $dir, 0700, true ) && ! is_dir( $dir ) ) return self::error( 'directory_unavailable', 'External resilience directory is unavailable.' );
 		// Recheck after create: another process may replace the directory
 		// between path validation and the first lock-file open.
+		clearstatcache( true, $dir );
 		$dir_mode = @fileperms( $dir );
 		if ( is_link( $dir ) || false === $dir_mode || 0 !== ( $dir_mode & 0022 ) )
 			return self::error( 'directory_permissions_unsafe', 'External resilience directory must be private at CAS admission.');
@@ -178,6 +179,9 @@ final class MAD4B_SCP_Resilience_Anchor {
 			$dir = dirname( $key );
 		} else return self::error( 'path_unavailable', 'An external resilience directory must be configured.' );
 		if ( 1 !== preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', $dir ) || preg_match( '#(?:^|[/\\\\])\\.\\.?(?:[/\\\\]|$)#', $dir ) || false !== strpos( $dir, "\0" ) ) return self::error( 'path_invalid', 'Resilience state requires a canonical absolute directory.' );
+		// Path admission must observe permission changes from another worker,
+		// rather than reuse PHP's cached stat result from an earlier read.
+		clearstatcache( true, $dir );
 		// The leaf directory must not be writable by unrelated OS users.
 		// A symlink-free path is still unsafe when a different account can
 		// replace lock/state filenames inside a world-writable directory.

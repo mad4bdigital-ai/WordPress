@@ -92,3 +92,15 @@ The fast `build_provenance_identity_status()` validates packaged manifest metada
 ## P1 — Direct WordPress Ability registration bypass (2026-10-08)
 
 After earlier hardening, `G9_Read_Surface::boot()` denied duplicate/foreign reader pinning and refused to attach the `wp_abilities_api_init` hook. However its public static `register_abilities()` still registered read endpoints when directly called by another PHP component. G9 now requires an internal `reader_pinned` latch set only after successful code-owned reader registration. The negative hermetic test exercises direct registration after failed boot and requires zero Abilities; a separate positive boot PHP test covers the three private read-only schemas. This does not grant new execution capabilities.
+
+## Correction — independent native identity namespaces (2026-10-08)
+
+The previous receipt fixture manufactured equality between the transport request ID and the Operation Context UUID, and between the native authorization target fingerprint and the G9 logical operation digest. These are separate identities in the existing core. G9 now verifies the real signed receipt contract without equating those namespaces. Verification additionally requires the signed `operation_journal` stage to identify the exact native UUID, a complete independently read Operation Journal trace matching the canonical committed head, and an explicit native terminal link joining the G9 operation/plan/site binding to the native request/target/resource-set and both receipt digests. A second state and reservation read rejects mid-verification drift.
+
+The native runtime-release-set executor does **not** currently write this G9 link or register the G9 reservation descriptor/grant. Current valid but unlinked receipts remain `native_link_unavailable`; source-only fixtures never establish an accepted native rollout. The regression now exercises the real core Execution Receipt builder/verifier and Execution State View normalization with hermetic crypto/persistence doubles. Its default fixture mirrors today's unlinked claim and is denied. The separately labeled synthetic future-producer fixture only tests the passive verification contract.
+
+## Correction — fresh directory permission admission (2026-10-08)
+
+PHP may cache a previous `fileperms()` result. The G9 directory permission fixture changed mode from writable to private and then reached CAS with the stale mode, preventing the intended database-marker failure path. Directory path admission and the post-create CAS check now explicitly clear stat cache before validating current permissions. Fixtures also clear it after each deliberate chmod. The private-directory requirement is preserved, and a later unrelated worker making the directory writable is not hidden by an earlier cached safe mode.
+
+No local PHP/Python runtime was available for this direct-GitHub correction. Only completed GitHub Actions on its resulting exact HEAD can establish execution success; source review is not a runtime certification.
