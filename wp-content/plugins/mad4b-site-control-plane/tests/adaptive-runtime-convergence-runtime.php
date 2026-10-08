@@ -30,7 +30,13 @@ class MAD4B_SCP_Runtime_Maintenance_Lease {
 }
 class MAD4B_SCP_Runtime_Convergence {
  const CHECKPOINT_OPTION = 'fixture_core_checkpoint'; static $calls = 0;
- static function mark_activation_pending() { ++self::$calls; return array( 'scheduled' => true, 'state' => 'pending_safe_phases' ); }
+ static function mark_activation_pending() {
+  ++self::$calls;
+  return array( 'scheduled' => true, 'state' => 'pending_safe_phases', 'target_identity' => array(
+   'source_commit_sha' => str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ),
+   'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture',
+  ) );
+ }
 }
 class MAD4B_SCP_Staging_Write_Authority {
  static $stored_bound = false; static $match = false;
@@ -88,17 +94,23 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-adaptive-runtime-converg
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
 $probe_method = new ReflectionMethod( 'MAD4B_SCP_Adaptive_Runtime_Convergence', 'core_probe_scheduled' );
 $probe_method->setAccessible( true );
+$installed = array( 'source_commit_sha' => str_repeat( 'd', 40 ), 'build_fingerprint' => str_repeat( 'a', 64 ),
+ 'package_manifest_digest' => str_repeat( 'e', 64 ), 'artifact_identity' => 'mad4b-site-control-plane-fixture' );
 foreach ( array(
- array( 'scheduled' => false, 'state' => 'pending_manual_resume' ),
- array( 'scheduled' => false, 'state' => 'self_update_checkpoint_preserved' ),
- array( 'scheduled' => true, 'state' => 'observe_only_non_staging' ),
- array( 'state' => 'pending_safe_phases' ),
- array( 'scheduled' => 'true', 'state' => 'pending_safe_phases' ),
+ array( 'scheduled' => false, 'state' => 'pending_manual_resume', 'target_identity' => $installed ),
+ array( 'scheduled' => false, 'state' => 'self_update_checkpoint_preserved', 'target_identity' => $installed ),
+ array( 'scheduled' => true, 'state' => 'observe_only_non_staging', 'target_identity' => $installed ),
+ array( 'state' => 'pending_safe_phases', 'target_identity' => $installed ),
+ array( 'scheduled' => 'true', 'state' => 'pending_safe_phases', 'target_identity' => $installed ),
+ array( 'scheduled' => true, 'state' => 'pending_safe_phases' ),
+ array( 'scheduled' => true, 'state' => 'pending_safe_phases', 'target_identity' => array_merge( $installed, array( 'build_fingerprint' => str_repeat( 'f', 64 ) ) ) ),
+ array( 'scheduled' => true, 'state' => 'self_update_checkpoint_preserved', 'target_identity' => array_merge( $installed, array( 'artifact_identity' => 'other-install' ) ) ),
  false,
 ) as $unconfirmed ) {
- check( false === $probe_method->invoke( null, $unconfirmed ), 'Unscheduled core result falsely accepted as queued' );
+ check( false === $probe_method->invoke( null, $unconfirmed, $installed ), 'Unscheduled or foreign core target was falsely accepted' );
 }
-check( true === $probe_method->invoke( null, array( 'scheduled' => true, 'state' => 'pending_safe_phases' ) ), 'Real core scheduler proof rejected' );
+check( true === $probe_method->invoke( null, array( 'scheduled' => true, 'state' => 'pending_safe_phases', 'target_identity' => $installed ), $installed ), 'Exact core scheduler receipt rejected' );
+check( true === $probe_method->invoke( null, array( 'scheduled' => true, 'state' => 'self_update_checkpoint_preserved', 'target_identity' => $installed ), $installed ), 'Exact preserved self-update receipt rejected' );
 MAD4B_SCP_Adaptive_Runtime_Convergence::enqueue();
 MAD4B_SCP_Adaptive_Runtime_Convergence::observe();
 $first = MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) );

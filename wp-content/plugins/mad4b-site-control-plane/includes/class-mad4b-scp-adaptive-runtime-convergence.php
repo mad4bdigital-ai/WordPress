@@ -262,9 +262,17 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	}
 
 	/** Only explicit positive scheduler acceptance counts as a queued probe. */
-	private static function core_probe_scheduled( $result ) {
-		return is_array( $result ) && true === ( $result['scheduled'] ?? null )
-			&& in_array( $result['state'] ?? '', array( 'pending_safe_phases', 'self_update_checkpoint_preserved' ), true );
+	private static function core_probe_scheduled( $result, array $identity ) {
+		if ( ! is_array( $result ) || true !== ( $result['scheduled'] ?? null )
+			|| ! in_array( $result['state'] ?? '', array( 'pending_safe_phases', 'self_update_checkpoint_preserved' ), true )
+			|| ! is_array( $result['target_identity'] ?? null ) ) return false;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			$expected = $identity[ $field ] ?? null;
+			$actual = $result['target_identity'][ $field ] ?? null;
+			if ( ! is_string( $expected ) || '' === $expected || ! is_string( $actual )
+				|| ! hash_equals( $expected, $actual ) ) return false;
+		}
+		return true;
 	}
 
 	/** Each state follows measured capability evidence, never a version comparison. */
@@ -346,7 +354,7 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				if ( 'SCHEDULE_PROBE' === $decision && ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
 					if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) ) { self::schedule( 5 ); return; }
 					$core_result = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
-					if ( self::core_probe_scheduled( $core_result ) ) {
+					if ( self::core_probe_scheduled( $core_result, $identity ) ) {
 						$registry['core_convergence'] = array( 'state' => 'SCHEDULED', 'scheduled' => true, 'source_state' => $core_result['state'], 'production_mutation' => false );
 						$registry['core_enqueued_build'] = $identity['build_fingerprint'];
 						$registry['core_enqueued_generation'] = $generation;
