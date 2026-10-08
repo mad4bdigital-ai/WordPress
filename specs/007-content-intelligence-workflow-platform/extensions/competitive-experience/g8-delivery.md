@@ -107,3 +107,93 @@ Additional scrutiny of the previously patched G8 logic found the following, now 
 - **P1 — false repair denominator/attribution.** Count a verified Runtime Convergence repair only when an exact successful Cron result identifies changed safe phases, the matching completed checkpoint, a still-live ticket and independent current readback. A changed receipt does not itself authorize subsequent work.
 
 Open and explicitly not certified: real MySQL/MariaDB DB concurrency/provenance tests, live signed-pack/revocation and source-mirror provenance, production-like failure injection, measured automation SLOs, host and browser acceptance, post-restore external effects reconciliation, CI jobs on final HEAD, and delegated release attestation. **Repository fixes and self-contained fixtures do not close G8 acceptance.**
+
+## G8 three-gap remediation — 2026-10-08
+
+The three remaining G8 evidence gaps now have executable source-level hooks and
+separately defined real-world acceptance requirements. **None of the following
+implicitly certifies Staging or authorizes a merge / Production.**
+
+### A. Real SQL CAS on disposable MySQL/MariaDB
+
+- Added `tests/g8-mysql-cas-integration.php`, requiring the exact
+  `G8_CAS_DISPOSABLE=1` opt-in and a disposable database.
+- `.github/workflows/feature-007-g8-database-cas.yml` runs two independent
+  processes against a real InnoDB options-like table, for PHP 7.4/8.3 and
+  MySQL 8.4/MariaDB 11.4. Both workers read the same prestate behind a
+  barrier, then compete for one SQL BINARY prestate CAS.
+- Contract: exactly **one winner**, **one conflict**, signed readback,
+  refusal of duplicate insert and replay of stale prestate. No live site
+  passwords, Production tables, or Staging database access are used.
+- G8_Record additionally rejects executable PHP objects before *any* CAS
+  serialization; HMAC validation and checkpoint equality use inert data.
+- Until those exact-head Actions jobs complete successfully, the matrix is
+  **configured, not certified**. A disposable DB test does not reproduce
+  all Site Profile/Host/update-lock behaviors from real Staging.
+
+### B. Repair attribution, outcome chain and SLO truth
+
+- Completed automatic safe-phase checkpoints include a **current-slice**
+  changed-phase list. A historical phase carried from a previous Cron slice
+  does not establish that a new ticket performed repair.
+- The already-admitted worker issues a **local HMAC-only causal receipt**
+  bound to ticket fingerprint, generation, current runtime/restore, exact
+  checkpoint target and changed-slice digest. The SLO reads the separately
+  persisted checkpoint and accepts `verified_repair` only with exact receipt
+  and independent fresh convergence readback.
+- Every settlement commits the counters **and** a locally HMAC-protected,
+  hash-linked bounded operation outcome receipt in the same record CAS.
+  The rolling root preserves retained-chain continuity after the 64 most
+  recent entries. Token plaintext is never exposed in the public view.
+- No caller-supplied success boolean can create release authorization.
+  The SLO continues reporting `false_repair_rate`,
+  `rollback_failure_rate`, `quarantine_rate`, `intervention_rate`,
+  and `cost_rate` as **unmeasured/null** until independently correlated
+  postcondition, rollback and cost evidence actually exists. A local HMAC
+  is not a native cryptographic execution receipt and does not prove
+  external effect causality.
+- Re-sealed falsified chains, forged checkpoint evidence, receipt replay,
+  missing ticket budgets and future wall-clock timestamps fail closed.
+- Existing older G8 signed ledgers without this outcome history require
+  governed reconciliation/migration rather than silently filling missing
+  historical evidence.
+
+### C. Post-restore external effects, G9 and governed acceptance
+
+- `G8_Restore_Convergence::evidence_pack()` verifies bounded, inert,
+  exact-matched native `MAD4B_SCP_Execution_Receipt::verify()` witnesses
+  against an external-effect inventory; missing, foreign, unsigned or
+  incompatible witnesses remain visible as evidence gaps.
+- The G8 restore status also checks G9's separately governed passive restore
+  fence when integrated from sibling Draft PR #288. G8 cannot synthesize a
+  G9 acceptance receipt, grant new capabilities, replay effects, acknowledge
+  restore, or enable candidate rebinding.
+- Even **valid native execution signatures** prove only a native operation
+  occurred; they do **not** prove that an external payment/email/provider
+  system was independently rewound or that its complete inventory was
+  observed. These independent provider/host proofs and explicit governed
+  owner approval are still required.
+- Added `tests/g8-staging-acceptance-readonly.php` for an enrolled staging
+  WordPress runtime. From an authorized WP-CLI host, run:
+
+```bash
+G8_READONLY_ACCEPTANCE=1 wp --path=/path/to/staging \
+  eval-file wp-content/plugins/mad4b-site-control-plane/tests/g8-staging-acceptance-readonly.php
+```
+
+  The script only emits timestamped sanitized evidence for exact site/runtime
+  binding, SLO integrity/outcome chain, zero unresolved workers, fresh frontend
+  samples, real MCP inventory, provider pack epoch and G9 origin fence.
+  `release_acceptance`, `write_resume_allowed` and governed post-restore
+  approval intentionally remain **false** in this read-only report.
+
+### Closure checklist
+
+Real DB matrix green at exact PR head; hermetic PHP 7.4/8.3 matrix green;
+signed provider/canary/rollback tests on enrolled Staging; no dangling/unknown
+SLO operations; ≥3 genuine current-build frontend samples; signed native
+execution receipts and independently verified complete external-effect
+inventory; G9 host/runtime rollback/readback; and explicitly governed
+post-restore/release owner acceptance. PR #289 remains Draft until those
+receipts exist and child-branch bootstrap overlaps with G9 are reconciled
+in Integration Hub #258.
