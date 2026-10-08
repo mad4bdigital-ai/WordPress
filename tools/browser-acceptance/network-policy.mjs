@@ -4,6 +4,17 @@ function validHostname(value) {
   if (!/^[a-z0-9.-]+$/.test(host)) return "";
   const labels = host.split(".");
   if (labels.some((label) => !label || label.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))) return "";
+  // Hostname checks complement, not replace, provider-level network egress
+  // firewall rules (DNS rebinding must also be denied at connect time).
+  if (host === "localhost" || /\.(?:localhost|local|internal)$/.test(host)) return "";
+  if (/^\d+(?:\.\d+){3}$/.test(host)) {
+    const octets = host.split(".").map(Number);
+    if (octets.some(x => !Number.isInteger(x) || x < 0 || x > 255)) return "";
+    if (octets[0] === 10 || octets[0] === 127 || octets[0] === 0 ||
+        octets[0] === 169 && octets[1] === 254 ||
+        octets[0] === 192 && octets[1] === 168 ||
+        octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return "";
+  }
   return host;
 }
 
@@ -53,7 +64,17 @@ export function requestBoundaryDecision({ url, resourceType, origin, env = proce
   const allowedHosts = allowedHostSet(origin, env);
   const host = validHostname(parsed.hostname);
   if (!host) return { allow: false, reason: "invalid_hostname" };
-  if (allowedHosts.has(host)) return { allow: true, reason: "allowlisted_host" };
+  if (allowedHosts.has(host)) {
+    const declared = new URL(origin);
+    const pageHost = originHostname(origin);
+    if (host === pageHost && parsed.origin !== declared.origin) {
+      return { allow: false, reason: "site_origin_port_mismatch" };
+    }
+    if (host !== pageHost && parsed.port) {
+      return { allow: false, reason: "asset_host_nonstandard_port" };
+    }
+    return { allow: true, reason: "allowlisted_host" };
+  }
 
   return { allow: false, reason: "cross_origin_not_allowlisted" };
 }
