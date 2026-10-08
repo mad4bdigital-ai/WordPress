@@ -91,6 +91,13 @@ $race = MAD4B_SCP_Automation_SLO::reserve( $provider, $capability, $generation )
 g8_check( g8_is_error( $race, 'mad4b_automation_switch_raced' ), 'switch ABA must cancel' );
 $status = MAD4B_SCP_Automation_SLO::status();
 g8_check( 0 === $status['pending_count'] && 1 === $status['outcomes']['cancelled'], 'raced ticket consumed' );
+// A pause or resume invalidates an already-reserved ticket before its next mutation boundary.
+$midflight = MAD4B_SCP_Automation_SLO::reserve( $provider, 'other-phase', $generation );
+g8_check( is_array( $midflight ) && true === MAD4B_SCP_Automation_SLO::ticket_allowed( $midflight ), 'live ticket boundary' );
+$revision = MAD4B_SCP_Automation_SLO::switch_status()['revision'];
+g8_check( true === MAD4B_SCP_Automation_SLO::change_switch( '*', false, $revision ), 'inflight revision advance' );
+g8_check( g8_is_error( MAD4B_SCP_Automation_SLO::ticket_allowed( $midflight ), 'mad4b_automation_switch_raced' ), 'midflight ticket must stop after any switch change' );
+g8_check( true === MAD4B_SCP_Automation_SLO::finish_existing( $midflight, new WP_Error( 'paused' ) ), 'interrupted outcome cleanup' );
 $revision = MAD4B_SCP_Automation_SLO::switch_status()['revision'];
 g8_check( true === MAD4B_SCP_Automation_SLO::change_switch( '*', true, $revision ), 'operator pause' );
 g8_check( 'automation_kill_switch' === MAD4B_SCP_Automation_SLO::admission( $provider, $capability )['reason'], 'operator pause enforced' );
