@@ -63,11 +63,11 @@ final class MAD4B_SCP_Operator_Workspace {
 				'guidance' => __( 'Requires current grants, exact source binding, safe database and an active governed write lane.', 'mad4b-site-control-plane' ) ),
 			array( 'id' => 'host_execution', 'label' => __( 'Isolated Host execution', 'mad4b-site-control-plane' ),
 				'state' => $host_state, 'evidence' => 'mad4b/developer-host-capabilities',
-				'owner' => 'host_operator', 'page' => 'mad4b-control-plane-connection',
+				'owner' => 'host_operator', 'page' => 'mad4b-control-plane-connection', 'query' => array( 'tab' => 'isolation' ),
 				'guidance' => __( 'An authority grant is not proof of isolated Host execution, a signed Host receipt or rollback.', 'mad4b-site-control-plane' ) ),
 			array( 'id' => 'staging_release', 'label' => __( 'Staging release acceptance', 'mad4b-site-control-plane' ),
 				'state' => 'INDEPENDENT_ACCEPTANCE_REQUIRED', 'evidence' => 'mad4b/staging-convergence-verify',
-				'owner' => 'release_operator', 'page' => 'mad4b-operator-control-center',
+				'owner' => 'release_operator', 'page' => 'mad4b-operator-control-center', 'query' => array( 'recovery' => 'show' ),
 				'guidance' => __( 'Run exact-head Staging convergence and external Browser, Host, Skills and performance acceptance. Local HEALTHY never means release-ready.', 'mad4b-site-control-plane' ) ),
 			array( 'id' => 'production_promotion', 'label' => __( 'Production promotion', 'mad4b-site-control-plane' ),
 				'state' => 'NOT_AUTHORIZED_HERE', 'evidence' => 'mad4b/production-readiness',
@@ -174,7 +174,7 @@ final class MAD4B_SCP_Operator_Workspace {
 		foreach ( array( 'Scope', 'Observed state', 'Verification', 'Owner and next step' ) as $heading ) echo '<th scope="col">' . esc_html( __( $heading, 'mad4b-site-control-plane' ) ) . '</th>';
 		echo '</tr></thead><tbody>';
 		foreach ( $model['readiness_scopes'] as $scope ) {
-			$url = MAD4B_SCP_Admin_Workspace::link( $scope['page'] );
+			$url = MAD4B_SCP_Admin_Workspace::link( $scope['page'], isset( $scope['query'] ) && is_array( $scope['query'] ) ? $scope['query'] : array() );
 			echo '<tr><th scope="row">' . esc_html( $scope['label'] ) . '</th><td><code>' . esc_html( $scope['state'] ) . '</code></td>';
 			echo '<td><code>' . esc_html( $scope['evidence'] ) . '</code></td>';
 			echo '<td>' . esc_html( $scope['owner'] ) . ' · ' . esc_html( $scope['guidance'] );
