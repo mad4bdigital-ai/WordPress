@@ -21,9 +21,6 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	const MARKET_ROLLBACK='mad4b.rollback.market-growth-settings.v1';
 	const MARKET_EVALUATE='mad4b/market-growth-evaluate';
 	const COMPETITOR_PLAN='mad4b/competitor-research-plan';
-	const DMC_PLAN='mad4b/dmc-exchange-plan';
-	const DMC_EXPORT='mad4b/dmc-export-preview';
-	const DMC_IMPORT_PREPARE='mad4b/dmc-import-prepare';
 	const MARKET_ASSISTANT_ROUTE='mad4b/market-assistant-route';
 	const ROLLBACK='mad4b.rollback.dynamic-content-bundle.v1';
 	const PIPELINE_ROLLBACK='mad4b.rollback.dynamic-content-pipeline-settings.v1';
@@ -49,7 +46,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	protected function certified_provider_key(){ return 'core'; }
 	protected function mutation_requires_certification(){ return false; }
 	protected function detect_plugin_version(){ return defined('MAD4B_SCP_VERSION') ? (string) MAD4B_SCP_VERSION : ''; }
-	public function ability_names(){ return array('read'=>array(self::MODEL,self::READBACK,self::PLAN,self::PIPELINE_STATUS,self::MARKET_STATUS,self::MARKET_EVALUATE,self::COMPETITOR_PLAN,self::DMC_PLAN,self::DMC_EXPORT,self::DMC_IMPORT_PREPARE,self::MARKET_ASSISTANT_ROUTE),'content'=>array(self::APPLY),'admin'=>array(self::PIPELINE_UPDATE,self::MARKET_UPDATE,self::MARKET_ADMIN_STATUS),'write'=>array()); }
+	public function ability_names(){ return array('read'=>array(self::MODEL,self::READBACK,self::PLAN,self::PIPELINE_STATUS,self::MARKET_STATUS,self::MARKET_EVALUATE,self::COMPETITOR_PLAN,self::MARKET_ASSISTANT_ROUTE),'content'=>array(self::APPLY),'admin'=>array(self::PIPELINE_UPDATE,self::MARKET_UPDATE,self::MARKET_ADMIN_STATUS),'write'=>array()); }
 	public function reversible_contracts(){ return array(self::APPLY=>self::ROLLBACK,self::PIPELINE_UPDATE=>self::PIPELINE_ROLLBACK,self::MARKET_UPDATE=>self::MARKET_ROLLBACK); }
 
 	public function market_status(){ return MAD4B_SCP_Market_Growth_Policies::status(); }
@@ -64,9 +61,6 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function market_evaluate($input=array()){ return MAD4B_SCP_Market_Growth_Policies::inspect($input); }
 	public function market_update($input=array()){ return MAD4B_SCP_Market_Growth_Policies::replace($input); }
 	public function competitor_plan($input=array()){ return MAD4B_SCP_Market_Content_Exchange::competitor_plan($input); }
-	public function dmc_plan($input=array()){ return MAD4B_SCP_Market_Content_Exchange::dmc_plan($input); }
-	public function dmc_export_preview($input=array()){ return MAD4B_SCP_Market_Content_Exchange::export_preview($input); }
-	public function dmc_import_prepare($input=array()){ return MAD4B_SCP_Market_Content_Exchange::import_prepare($input); }
 	public function market_assistant_route($input=array()){ return MAD4B_SCP_Market_Content_Exchange::assistant_route($input); }
 	public function can_market_update($input=array()){ return current_user_can('manage_options') ? true : new WP_Error('mad4b_growth_admin_required','Administrator capability is required.'); }
 
@@ -129,31 +123,6 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'media_candidates'=>array('type'=>'array','maxItems'=>30,'items'=>array('type'=>'object','additionalProperties'=>true)),
 				'pricing'=>array('type'=>'object','additionalProperties'=>true)
 			),array('competitor_id')), 'read', true, false, true
-		);
-		if(!wp_has_ability(self::DMC_PLAN)) $this->add_ability(
-			self::DMC_PLAN, 'Plan Contracted DMC Native WordPress Content Exchange', 'dmc_plan', $read_permission,
-			$this->schema(array(
-				'connection_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
-				'mapping_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
-				'direction'=>array('type'=>'string','enum'=>array('import','export'))
-			),array('connection_id','mapping_id','direction')), 'read', true, false, true
-		);
-		if(!wp_has_ability(self::DMC_EXPORT)) $this->add_ability(
-			self::DMC_EXPORT, 'Preview Contracted DMC Export from Native WordPress Posts', 'dmc_export_preview', $read_permission,
-			$this->schema(array(
-				'connection_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
-				'mapping_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
-				'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>20,'default'=>10),
-				'offset'=>array('type'=>'integer','minimum'=>0,'maximum'=>100000,'default'=>0)
-			),array('connection_id','mapping_id')), 'read', true, false, true
-		);
-		if(!wp_has_ability(self::DMC_IMPORT_PREPARE)) $this->add_ability(
-			self::DMC_IMPORT_PREPARE, 'Prepare Contracted DMC Feed for WordPress Draft Import', 'dmc_import_prepare', $read_permission,
-			$this->schema(array(
-				'connection_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
-				'mapping_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
-				'items'=>array('type'=>'array','minItems'=>1,'maxItems'=>20,'items'=>array('type'=>'object','additionalProperties'=>true))
-			),array('connection_id','mapping_id','items')), 'read', true, false, true
 		);
 		if(!wp_has_ability(self::MARKET_ASSISTANT_ROUTE)) $this->add_ability(
 			self::MARKET_ASSISTANT_ROUTE, 'Resolve Market Workflow Assistant Role Without Granting Authority', 'market_assistant_route', $read_permission,
