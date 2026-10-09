@@ -292,6 +292,16 @@ final class MAD4B_SCP_Staging_Certification {
 		$current_source = (string) ( $binding['source_commit_sha'] ?? '' );
 		$identity_ready = (bool) preg_match( '/^[a-f0-9]{64}$/D', $current_sha )
 			&& (bool) preg_match( '/^[a-f0-9]{40}$/D', $current_source );
+		// A shared build SHA is never a cross-site authority token.
+		$site_ready = ! empty( $binding['nonproduction_site_ready'] )
+			&& (bool) preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',
+				(string) ( $binding['site_uuid'] ?? '' ) )
+			&& (bool) preg_match( '/^[a-f0-9]{64}$/D', (string) ( $binding['site_profile_digest'] ?? '' ) )
+			&& is_string( $binding['site_origin'] ?? null )
+			&& '' !== $binding['site_origin']
+			&& is_string( $binding['environment'] ?? null )
+			&& '' !== $binding['environment']
+			&& 'production' !== $binding['environment'];
 		$sha_match = $identity_ready && is_string( $sha ) && strlen( $sha ) === 64
 			&& hash_equals( $sha, $current_sha );
 		$source_match = $identity_ready && is_string( $source ) && strlen( $source ) === 40
@@ -300,14 +310,16 @@ final class MAD4B_SCP_Staging_Certification {
 		$live_ready = ! $live_required || ( ! empty( $overlay['included'] ) && ! empty( $overlay['ready'] ) );
 		$clear = ! empty( $plan['current_ready'] ) && ! empty( $plan['gate_coverage_complete'] )
 			&& empty( $plan['blocking_gates'] ) && empty( $plan['plan_integrity_blockers'] ) && $live_ready;
-		$ready = $identity_ready && $sha_match && $source_match && $clear;
+		$ready = $identity_ready && $site_ready && $sha_match && $source_match && $clear;
 		$state = ! $identity_ready ? 'CURRENT_BUILD_IDENTITY_UNAVAILABLE'
-			: ( ! $sha_match || ! $source_match ? 'REPLAN_REQUIRED'
-				: ( $ready ? 'CURRENT_STAGING_GATES_READY' : 'NEEDS_EVIDENCE' ) );
+			: ( ! $site_ready ? 'GOVERNED_SITE_IDENTITY_UNAVAILABLE'
+				: ( ! $sha_match || ! $source_match ? 'REPLAN_REQUIRED'
+					: ( $ready ? 'CURRENT_STAGING_GATES_READY' : 'NEEDS_EVIDENCE' ) ) );
 		return array(
 			'contract' => 'mad4b.staging-convergence-verification.v1',
 			'state' => $state, 'ready' => $ready,
 			'plan_matches' => $sha_match, 'source_matches' => $source_match,
+			'governed_site_identity_ready' => $site_ready,
 			'current_plan_sha256' => $current_sha,
 			'current_source_commit_sha' => $current_source,
 			'live_acceptance_included' => ! empty( $overlay['included'] ),
