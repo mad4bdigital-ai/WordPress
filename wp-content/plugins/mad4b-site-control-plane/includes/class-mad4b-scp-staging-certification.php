@@ -250,6 +250,7 @@ final class MAD4B_SCP_Staging_Certification {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false )
 			? MAD4B_SCP_Site_Profile::status() : array();
 		$effective = isset( $environment['effective_environment'] ) ? sanitize_key( (string) $environment['effective_environment'] ) : 'unknown';
+		$not_staging_site = 'staging' !== $effective;
 		// The same read ability can be queried from any site. Never return a
 		// runnable Staging remediation graph for an unbound/Production target.
 		if ( 'staging' !== $effective || empty( $profile['authority_ready'] ) ) {
@@ -271,7 +272,10 @@ final class MAD4B_SCP_Staging_Certification {
 				'profile_environment' => isset( $environment['profile_environment'] ) ? (string) $environment['profile_environment'] : '',
 				'wordpress_environment_explicit' => ! empty( $environment['wordpress_environment_explicit'] ),
 				'profile_binding_state' => isset( $profile['binding_state'] ) ? (string) $profile['binding_state'] : 'unavailable',
-				'instruction' => 'Verify exact host/origin and set WP_ENVIRONMENT_TYPE through the authorized host configuration; never rewrite the Site Profile to bypass an environment mismatch.',
+				'reason' => $not_staging_site ? 'not_an_authorized_staging_target' : 'staging_profile_identity_not_ready',
+				'instruction' => $not_staging_site
+					? 'This is a Staging-only recovery planner. Do not change an actual Production site to Staging or enable Staging capabilities. Inspect the configured WordPress environment and exact host ownership separately.'
+					: 'Verify the exact enrolled origin and binding first. An authorized host operator must correct any proven WP_ENVIRONMENT_TYPE misconfiguration without changing the Site Profile to bypass identity checks.',
 				'readback_ability' => 'mad4b/staging-certification-status',
 		) ),
 			'principle' => 'fail_closed_when_staging_identity_or_host_environment_is_unverified',
@@ -325,9 +329,12 @@ final class MAD4B_SCP_Staging_Certification {
 			) );
 			$recovery_dependencies[] = 'managed_skills_runtime_refresh';
 		}
-		$host = class_exists( 'MAD4B_SCP_Developer_Host_Capabilities', false )
+		$developer = class_exists( 'MAD4B_SCP_Developer_Runtime', false )
+			? MAD4B_SCP_Developer_Runtime::runtime_status() : array();
+		$developer_requested = ! empty( $developer['developer_enabled'] ) || ! empty( $developer['direct_execution_enabled'] );
+		$host = $developer_requested && class_exists( 'MAD4B_SCP_Developer_Host_Capabilities', false )
 			? MAD4B_SCP_Developer_Host_Capabilities::snapshot() : array();
-		if ( empty( $host['normal_no_network_execution_ready'] ) ) {
+		if ( $developer_requested && empty( $host['normal_no_network_execution_ready'] ) ) {
 			$append( $actions, $seen, 'developer_host_isolation_preflight', array(
 				'kind' => 'host_isolation_review',
 				'executor' => 'authorized_host_operator',
@@ -535,7 +542,9 @@ final class MAD4B_SCP_Staging_Certification {
 			'recovery_scope' => 'exact_site_staging_only',
 			'recovery_dependencies' => $recovery_dependencies,
 			'provider_gated_count' => $provider_gated,
-			'developer_host_isolation_ready' => ! empty( $host['normal_no_network_execution_ready'] ),
+			'developer_host_requested' => $developer_requested,
+			'developer_host_prerequisites_observed' => $developer_requested && ! empty( $host['normal_no_network_execution_ready'] ),
+			'developer_isolation_certified_by_this_plan' => false,
 			'principle' => 'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority',
 		);
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
