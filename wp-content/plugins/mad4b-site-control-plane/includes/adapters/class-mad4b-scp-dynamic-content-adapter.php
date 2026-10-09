@@ -22,6 +22,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	const DMC_PLAN='mad4b/dmc-exchange-plan';
 	const DMC_EXPORT='mad4b/dmc-export-preview';
 	const DMC_IMPORT_PREPARE='mad4b/dmc-import-prepare';
+	const MARKET_ASSISTANT_ROUTE='mad4b/market-assistant-route';
 	const ROLLBACK='mad4b.rollback.dynamic-content-bundle.v1';
 	const PIPELINE_ROLLBACK='mad4b.rollback.dynamic-content-pipeline-settings.v1';
 	const BINDING='_mad4b_dynamic_content_binding';
@@ -46,7 +47,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	protected function certified_provider_key(){ return 'core'; }
 	protected function mutation_requires_certification(){ return false; }
 	protected function detect_plugin_version(){ return defined('MAD4B_SCP_VERSION') ? (string) MAD4B_SCP_VERSION : ''; }
-	public function ability_names(){ return array('read'=>array(self::MODEL,self::READBACK,self::PLAN,self::PIPELINE_STATUS,self::MARKET_STATUS,self::MARKET_EVALUATE,self::COMPETITOR_PLAN,self::DMC_PLAN,self::DMC_EXPORT,self::DMC_IMPORT_PREPARE),'content'=>array(self::APPLY),'admin'=>array(self::PIPELINE_UPDATE,self::MARKET_UPDATE),'write'=>array()); }
+	public function ability_names(){ return array('read'=>array(self::MODEL,self::READBACK,self::PLAN,self::PIPELINE_STATUS,self::MARKET_STATUS,self::MARKET_EVALUATE,self::COMPETITOR_PLAN,self::DMC_PLAN,self::DMC_EXPORT,self::DMC_IMPORT_PREPARE,self::MARKET_ASSISTANT_ROUTE),'content'=>array(self::APPLY),'admin'=>array(self::PIPELINE_UPDATE,self::MARKET_UPDATE),'write'=>array()); }
 	public function reversible_contracts(){ return array(self::APPLY=>self::ROLLBACK,self::PIPELINE_UPDATE=>self::PIPELINE_ROLLBACK); }
 
 	public function market_status(){ return MAD4B_SCP_Market_Growth_Policies::status(); }
@@ -56,6 +57,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function dmc_plan($input=array()){ return MAD4B_SCP_Market_Content_Exchange::dmc_plan($input); }
 	public function dmc_export_preview($input=array()){ return MAD4B_SCP_Market_Content_Exchange::export_preview($input); }
 	public function dmc_import_prepare($input=array()){ return MAD4B_SCP_Market_Content_Exchange::import_prepare($input); }
+	public function market_assistant_route($input=array()){ return MAD4B_SCP_Market_Content_Exchange::assistant_route($input); }
 	public function can_market_update($input=array()){ return current_user_can('manage_options') ? true : new WP_Error('mad4b_growth_admin_required','Administrator capability is required.'); }
 
 	private function pipeline_settings_schema(){
@@ -137,6 +139,11 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'mapping_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
 				'items'=>array('type'=>'array','minItems'=>1,'maxItems'=>20,'items'=>array('type'=>'object','additionalProperties'=>true))
 			),array('connection_id','mapping_id','items')), 'read', true, false, true
+		);
+		if(!wp_has_ability(self::MARKET_ASSISTANT_ROUTE)) $this->add_ability(
+			self::MARKET_ASSISTANT_ROUTE, 'Resolve Market Workflow Assistant Role Without Granting Authority', 'market_assistant_route', $read_permission,
+			$this->schema(array('role'=>array('type'=>'string','enum'=>array('researcher','writer','critic','reviewer','recovery'))),array('role')),
+			'read', true, false, true
 		);
 		if(!wp_has_ability(self::MARKET_UPDATE)) $this->add_ability(
 			self::MARKET_UPDATE, 'Update Site Market Growth Policies', 'market_update',
