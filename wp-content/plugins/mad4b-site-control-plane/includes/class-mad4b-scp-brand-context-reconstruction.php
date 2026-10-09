@@ -234,6 +234,34 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
         }
     }
 
+    /** Recovery information remains available even if the Context runtime
+     * itself is unhealthy. A degraded plan has no authorizing fingerprint. */
+    private static function degraded_provider_plan( $error_code, $scenario ) {
+        return array(
+            'contract' => self::CONTRACT,
+            'state' => 'degraded_read_only',
+            'scenario' => $scenario,
+            'error_code' => sanitize_key( (string) $error_code ),
+            'blockers' => array( 'exact_context_evidence_unavailable' ),
+            'recovery_procedure' => array(
+                array( 'ability' => 'context/provider-capabilities', 'lane' => 'read', 'approval_required' => false ),
+                array( 'ability' => 'context/runtime-readiness', 'lane' => 'read', 'approval_required' => false ),
+                array( 'ability' => 'context/brand-core-coverage', 'lane' => 'read', 'approval_required' => false ),
+            ),
+            'ready' => false,
+            'source_authority_verified' => false,
+            'assistant_certification_verified' => false,
+            'writes_require_separate_approval' => true,
+            'writes_allowed_from_plan' => false,
+            'retry_budget_enforced_by_planner' => false,
+            'plan_sha256' => '',
+            'production_mutation_authorized' => false,
+            'authorizing' => false,
+            'read_only' => true,
+            'mutation_performed' => false,
+        );
+    }
+
     public static function plan( $input = array() ) {
         $input = is_array( $input ) ? $input : array();
         $scenario = isset( $input['scenario'] ) ? sanitize_key( (string) $input['scenario'] ) : 'live';
@@ -256,9 +284,23 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'include_authoritative_content' => false,
             'include_rendered_frontend' => false,
         ) );
-        if ( is_wp_error( $convergence ) ) return $convergence;
+        if ( is_wp_error( $convergence ) ) {
+            // Missing Site/Context runtime is recoverable diagnostically,
+            // never an excuse to manufacture authority or a write plan.
+            $code = (string) $convergence->get_error_code();
+            if ( in_array( $code, array(
+                'mad4b_brand_convergence_context_unavailable',
+                'mad4b_brand_builder_context_unavailable',
+                'mad4b_brand_builder_site_identity_unavailable',
+            ), true ) ) {
+                return self::degraded_provider_plan( $code, $scenario );
+            }
+            return $convergence;
+        }
         $coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
-        if ( is_wp_error( $coverage ) ) return $coverage;
+        if ( is_wp_error( $coverage ) ) {
+            return self::degraded_provider_plan( (string) $coverage->get_error_code(), $scenario );
+        }
         // Two independent live reads must agree on the exact registry and
         // authority manifest before suggesting any operator action. Returning
         // a stale repair recipe could target the wrong file or version.
@@ -282,13 +324,18 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
         // can be treated as eligible for recreation. Status is observed, not
         // inferred from the existence of a writable Drive destination.
         $source_scan_complete = false;
+        $source_scan_max_age_seconds = 604800; // Seven days, never indefinite absence proof.
         if ( method_exists( 'MAD4B_SCP_Context_Authority', 'sources' ) ) {
             $governed_count = 0;
             $incomplete_count = 0;
             foreach ( MAD4B_SCP_Context_Authority::sources() as $source ) {
                 if ( ! is_array( $source ) || 'governed' !== ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) ) continue;
                 ++$governed_count;
-                if ( empty( $source['last_scan_complete'] ) || 'ready' !== ( isset( $source['status'] ) ? (string) $source['status'] : '' ) ) ++$incomplete_count;
+                $scan_time = isset( $source['last_complete_scan_at'] ) ? strtotime( (string) $source['last_complete_scan_at'] ) : false;
+                $fresh = false !== $scan_time && $scan_time <= time() + 60
+                    && time() - $scan_time <= $source_scan_max_age_seconds;
+                if ( empty( $source['last_scan_complete'] ) || 'ready' !== ( isset( $source['status'] ) ? (string) $source['status'] : '' )
+                    || ! $fresh ) ++$incomplete_count;
             }
             $source_scan_complete = $governed_count > 0 && 0 === $incomplete_count;
         }
@@ -362,6 +409,8 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'retry_budget_enforced_by_planner' => false,
             'execution_requires_authoritative_retry_journal' => true,
             'governed_source_scan_complete' => $source_scan_complete,
+            'source_scan_max_age_seconds' => $source_scan_max_age_seconds,
+            'missing_file_restoration_first' => true,
             'states' => $matrix,
             'transitions' => array(
                 array( 'from' => 'SOURCE_RECOVERY', 'on' => 'provider_recovered', 'to' => 'RESCAN_REQUIRED' ),
