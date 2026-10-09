@@ -22,7 +22,7 @@ The site must be Staging with:
 - an enrolled exact Site Profile with governed write and `update_plugins` authorization;
 - `MAD4B_SCP_DEPLOYMENT_BINDING` configured with a unique strong host-managed secret, confirmed by same-origin clone protection;
 - `MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED` explicitly `true` (host-controlled opt-in);
-- the same governed mutation authorization and exact-plan approval used for regular uploads;
+- the same governed mutation authorization and exact-plan approval used for regular uploads, **plus** an enrolled administrator's authenticated OAuth `mad4b:authority:step-up` scope for this Staging candidate lane;
 - a backup and available rollback/readback runtime.
 
 The existing fixed production release path, native pointer-based update, and normal `governed_file_upload` gate remain unchanged. This lane must **never** be used in Production, even if a Site Profile accidentally misclassifies the environment.
