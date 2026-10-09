@@ -102,6 +102,50 @@ genericOnly.provider_count=1;
 genericOnly.site_discovery.provider_matches=genericOnly.site_discovery.provider_matches.slice(1);
 genericOnly.site_discovery.unmapped_plugins=["etg-dynamic-filter-seo-bridge","unmapped-plugin"];
 assert.equal(resolve(genericOnly,mixedOptions).siteProviderId,"mad4b-native-public");
+// Oracle selection must bind BOTH signed site claim and review-owned driver
+// manifest. Presence of a booking form or ETG plugin cannot grant booking.
+const scopedEtg={...etg,approved_oracles:["browser.ajax_round_trip"]};
+const scopedGeneric={...generic,approved_oracles:["browser.canonical_path"]};
+const scopedOptions={approvedDrivers:[scopedEtg,scopedGeneric]};
+const scoped=structuredClone(mixed);
+scoped.providers[0].capabilities.capabilities=["browser.ajax_round_trip"];
+scoped.providers[1].capabilities.capabilities=["browser.canonical_path"];
+const selectedAjax=resolve(scoped,{...scopedOptions,requestedOracles:["browser.ajax_round_trip"]});
+assert.equal(selectedAjax.siteProviderId,"etg-dfsb");
+assert.deepEqual(selectedAjax.requestedOracles,["browser.ajax_round_trip"]);
+assert.equal(selectedAjax.oracleScopeCertified,false);
+const selectedCanonical=resolve(scoped,{...scopedOptions,requestedOracles:["browser.canonical_path"]});
+assert.equal(selectedCanonical.siteProviderId,"mad4b-native-public");
+assert.throws(()=>resolve(scoped,{...scopedOptions,requestedOracles:["booking.quote"]}),
+  /site_browser_requested_oracle_not_approved/);
+assert.throws(()=>resolve(scoped,{...scopedOptions,
+  requestedOracles:["browser.ajax_round_trip","booking.quote"]}),
+  /site_browser_requested_oracle_not_approved/);
+assert.throws(()=>resolve(scoped,{...scopedOptions,
+  requestedOracles:["browser.canonical_path","browser.canonical_path"]}),
+  /site_browser_requested_oracles_invalid/);
+const forgedOracle=structuredClone(scoped);
+forgedOracle.providers[1].capabilities.capabilities.push("booking.quote");
+assert.throws(()=>resolve(forgedOracle,{...scopedOptions,requestedOracles:["booking.quote"]}),
+  /site_browser_requested_oracle_not_approved/);
+const maliciousSavedPreference=structuredClone(scoped);
+maliciousSavedPreference.operator_preference.site_provider_id="mad4b-native-public";
+assert.throws(()=>resolve(maliciousSavedPreference,{...scopedOptions,
+  requestedOracles:["browser.ajax_round_trip"]}),
+  /site_browser_selected_provider_oracle_scope_unapproved/);
+const unsignedOraclePlan={contract:"mad4b.browser-acceptance-plan.v1",
+  state:"ready",origin:selectedAjax.siteOrigin+"/",
+  provider_id:selectedAjax.siteProviderId,provider_contract:selectedAjax.siteProviderContract,
+  profile_id:selectedAjax.profileId,suite:"browser_runtime",read_only:true,authorizing:false,
+  plan_digest:"f".repeat(64),plan_signature:"a".repeat(64),
+  cases:[{case_id:"a"}]};
+assert.throws(()=>assertSitePlanBound(selectedAjax,unsignedOraclePlan),
+  /site_browser_plan_binding_mismatch/);
+assertSitePlanBound(selectedAjax,{...unsignedOraclePlan,
+  required_oracles:["browser.ajax_round_trip"]});
+const differentRequest=resolve(scoped,{...scopedOptions,requestedOracles:[]});
+assert.throws(()=>assertSiteBindingUnchanged(selectedAjax,differentRequest),
+  /site_browser_binding_changed:requestedOracles/);
 const invalidRole=structuredClone(mixed);
 invalidRole.providers[1].descriptor.selection_role="force-primary";
 assert.throws(()=>resolve(invalidRole,mixedOptions),/site_browser_provider_registry_invalid/);
