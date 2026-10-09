@@ -877,6 +877,25 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$breakglass_enabled = ! empty( $persisted_authority['breakglass_included'] )
 			|| ! empty( $persisted_authority['breakglass_auto_enable'] )
 			|| ! empty( $persisted_authority['raw_sql_breakglass_enabled'] );
+		// Inspect live, exact-build Skills evidence instead of a fixed false signal.
+		// The worker may refresh Skills first, but never self-approves Write grants.
+		$skills_enabled = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& MAD4B_SCP_Site_Profile::skills_enabled();
+		$skills_status = $skills_enabled && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::current_status()
+			: array();
+		$skills_pending = $skills_enabled && empty( $skills_status['ready'] );
+		$site_profile = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			? MAD4B_SCP_Site_Profile::status()
+			: array();
+		// A foreign/misbound profile is a safety gate, not version drift.
+		// Recorded checkpoint hints cannot clear this observed authoritative fact.
+		$site_profile_drift = ! empty( $site_profile['configured'] )
+			&& empty( $site_profile['authority_ready'] );
+		$checkpoint_signals = isset( $checkpoint['auto_reconcile_signals'] ) && is_array( $checkpoint['auto_reconcile_signals'] )
+			? $checkpoint['auto_reconcile_signals'] : array();
+		$checkpoint_signals['site_profile_drift'] = $site_profile_drift
+			|| ! empty( $checkpoint_signals['site_profile_drift'] );
 		return array(
 			'environment' => sanitize_key( (string) $environment ),
 			'source' => $source,
@@ -890,11 +909,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'schema_drift' => ! empty( $reasons['schema_version_drift'] ),
 			'build_changed' => ! empty( $reasons['build_provenance_drift'] )
 				|| ( ! empty( $binding['required'] ) && ! empty( $binding['stored_bound'] ) && empty( $binding['match'] ) ),
-			'skills_pending' => false,
+			'skills_pending' => $skills_pending,
 			'breakglass_enabled' => (bool) $breakglass_enabled,
-			'signals' => isset( $checkpoint['auto_reconcile_signals'] ) && is_array( $checkpoint['auto_reconcile_signals'] )
-				? $checkpoint['auto_reconcile_signals']
-				: array(),
+			'signals' => $checkpoint_signals,
 		);
 	}
 
