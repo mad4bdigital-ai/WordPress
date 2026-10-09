@@ -42,6 +42,20 @@ The Bridge derives and hashes the exact source site UUID, Staging environment, d
 - `environment_sync_state=host_aligned` on the new build;
 - subsequent MCP grants, Browser evidence and operational acceptance remain independently gated.
 
+## Independent signed Host receipt and fresh WordPress bootstrap acceptance
+
+The WordPress Host Bridge spool is **not** an independent Host trust root, even when its JSON claims a successful file readback. A writable WordPress directory cannot self-attest a Host mutation. For this reason the exact new `mad4b/host-environment-sync-verification` read ability **fails closed** unless it can verify a separate Host Runner Ed25519 signature over a bounded receipt payload. It does not return any Host secret and it cannot mutate the site.
+
+During one-time Host enrollment, provision a private Ed25519 PEM signing key **outside the WordPress root** with mode 0600 and trusted Host Runner ownership. Supply its location through the protected Host Runner profile's `host_environment_receipt_signing_key_file`, and supply its raw 32-byte public key as Base64 in `host_environment_receipt_signing_public_key_b64`. The Host Runner compares private/public before enabling these operations and requires the `cryptography` Ed25519 package. Do not provide the private key or PEM bytes through MCP/WordPress.
+
+Pin the matching **public key only** on the target WordPress Host before its bootstrap using the Host-managed constant `MAD4B_SCP_HOST_ENVIRONMENT_RECEIPT_PUBLIC_KEY_B64`. PHP's Sodium extension must be available. No server-supplied key, key selected by the caller, unsigned receipt, or mismatched signer can satisfy the verification. Key rotation needs a new Host enrollment and review of the resulting exact trust binding; do not reuse old receipts as evidence for a new key.
+
+The Host Runner signs `mad4b.host-environment-receipt-payload.v1`, covering the exact job ID, Host site UUID, Staging target, operation, exact plan hash, authority reference, Runner source hash, Host completion timestamp, mutation/readback state, wp-config after-state hash, Site Profile digest/revision, unique Host binding digest, and file-readback boolean. The signature metadata uses `mad4b.host-environment-ed25519-attestation.v1` with Ed25519 and the pinned public-key fingerprint. It cannot be reconstructed merely by changing a WordPress spool JSON file.
+
+A new WordPress request calls `mad4b/host-environment-sync-verification` with exactly `{"job_id":"HOST_JOB_UUID"}`. The readback requires **all**: valid Host public-key signature, exact Staging job/site, authorized readback receipt, unchanged wp-config after-hash, the same bound Site Profile digest/revision and deployment binding, explicit WordPress `staging` with `host_aligned`, and a PHP request started *after* the Host receipt completion. A matching SHA alone is not enough. A pass yields `VERIFIED_STAGING_HOST_ALIGNED`, but **`release_certified=false`** remains required because Browser, Skills, and other staging gates are separate.
+
+Do not make the WordPress process sign a receipt, and never copy the Host signing key into `wp-config.php`, WordPress options, WordPress logs, GitHub, or a public web root. Without enrolled Host keys, external binding, verified receipt, or a fresh bootstrap, report `BLOCKED` explicitly.
+
 ## Reversible rollback over MCP
 
 If the original Host Runner execution has a persisted `PASS` receipt and the current wp-config SHA **exactly equals that receipt's after-state**, plan a `wordpress_environment_rollback` operation using **only** `source_job_id` and bounded `reason`. The Bridge binds the source receipt SHA, original before-state and current after-state. The Host Runner must prove the original successful receipt and its private immutable backup, snapshot the current file again, perform an exact atomic restore and produce a new durable rollback receipt. Re-run WordPress bootstrap/readback; do not claim immediate cached WordPress state changes. Changes since the original sync cause a **hard stop and manual reconciliation**, never a blind overwrite.
