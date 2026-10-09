@@ -18,6 +18,11 @@ final class MAD4B_SCP_Recovery_Lifecycle {
 			? MAD4B_SCP_Runtime_Convergence::current_identity() : array();
 		$env = class_exists( 'MAD4B_SCP_Site_Profile', false )
 			? MAD4B_SCP_Site_Profile::environment_resolution() : array();
+		// Cheap event-generation read detects a plugin/provider update racing
+		// the plan, even when MAD4B's own Source HEAD did not change.
+		$provider_event = get_option( 'mad4b_scp_adaptive_runtime_event_v1', array() );
+		$provider_event = is_array( $provider_event ) ? $provider_event : array();
+		$provider_generation_sha256 = hash( 'sha256', serialize( $provider_event ) );
 		return array(
 			'site_uuid' => isset( $profile['site_uuid'] ) ? (string) $profile['site_uuid'] : '',
 			'profile_digest' => isset( $profile['profile_digest'] ) ? (string) $profile['profile_digest'] : '',
@@ -29,6 +34,7 @@ final class MAD4B_SCP_Recovery_Lifecycle {
 			'build_fingerprint' => isset( $runtime['build_fingerprint'] ) ? (string) $runtime['build_fingerprint'] : '',
 			'package_manifest_digest' => isset( $runtime['package_manifest_digest'] ) ? (string) $runtime['package_manifest_digest'] : '',
 			'boot_provenance_sha256' => defined( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' ) ? (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 : '',
+			'provider_event_generation_sha256' => $provider_generation_sha256,
 		);
 	}
 
@@ -42,7 +48,8 @@ final class MAD4B_SCP_Recovery_Lifecycle {
 			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', $identity['source_commit_sha'] )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $identity['profile_digest'] )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $identity['build_fingerprint'] )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $identity['package_manifest_digest'] );
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $identity['package_manifest_digest'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', isset( $identity['provider_event_generation_sha256'] ) ? $identity['provider_event_generation_sha256'] : '' );
 	}
 
 	/**
