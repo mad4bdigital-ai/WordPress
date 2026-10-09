@@ -83,4 +83,29 @@ check($normalizer->invoke(null,array($empty)) instanceof WP_Error,
     'empty recipe never approved');
 check($normalizer->invoke(null,array())===array(),
     'legacy profiles with no recipes retain no-default behavior');
+
+// Recipes must participate in the existing authority digest. A legacy
+// profile without the optional key must retain its previous hash.
+function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
+require __DIR__.'/../includes/class-mad4b-scp-content-experience-governance.php';
+$legacy_profile=array('slug'=>'article','revision'=>1,'post_type'=>'post',
+    'enabled_helpers'=>array());
+$legacy_sha=MAD4B_SCP_Content_Experience_Governance::authority_sha256($legacy_profile);
+$legacy_copy=$legacy_profile;
+check(MAD4B_SCP_Content_Experience_Governance::authority_sha256($legacy_copy)===$legacy_sha,
+    'legacy absent recipe key remains hash-stable');
+$with_recipe=$legacy_profile;
+$with_recipe['aci01_recipe_variants']=array($normalized[0]);
+$profile_sha=MAD4B_SCP_Content_Experience_Governance::authority_sha256($with_recipe);
+check($profile_sha!==$legacy_sha,
+    'introducing scoped recipe changes governed authority digest');
+$with_recipe['authority_sha256']=$profile_sha;
+check(MAD4B_SCP_Content_Experience_Governance::current_guard($with_recipe)===true,
+    'matching recipe-bearing governed profile validates');
+$with_recipe['aci01_recipe_variants'][0]['requirements'][]='injected_fact';
+check(MAD4B_SCP_Content_Experience_Governance::current_guard($with_recipe) instanceof WP_Error,
+    'unreviewed recipe tamper denied by authority fingerprint');
+$legacy_profile['authority_sha256']=$legacy_sha;
+check(MAD4B_SCP_Content_Experience_Governance::current_guard($legacy_profile)===true,
+    'legacy profile remains current without forced migration');
 echo "ACI01_RECIPE_GAP: PASS\n";
