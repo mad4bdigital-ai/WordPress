@@ -25,7 +25,55 @@ final class MAD4B_SCP_Operator_Workspace {
 			$action = self::action( $reason );
 			if ( ! isset( $actions[ $action['id'] ] ) ) $actions[ $action['id'] ] = $action;
 		}
-		return array( 'contract' => self::CONTRACT, 'checks' => $checks, 'actions' => array_values( $actions ), 'automation_percentage' => null, 'auto_repaired_count' => null, 'authorizing' => false, 'mutation_performed' => false );
+		return array( 'contract' => self::CONTRACT, 'checks' => $checks, 'actions' => array_values( $actions ), 'readiness_scopes' => self::readiness_scopes( $snapshot ), 'automation_percentage' => null, 'auto_repaired_count' => null, 'authorizing' => false, 'mutation_performed' => false );
+	}
+
+	/**
+	 * Independent operator scopes. An effective local write grant must never
+	 * implicitly certify the Host, the Staging release or Production promotion.
+	 * This projection uses ONLY the already collected bounded operator facts;
+	 * it performs no extra wp-admin GET queries, side effects or credentials.
+	 */
+	public static function readiness_scopes( array $snapshot ) {
+		$signals = isset( $snapshot['signals'] ) && is_array( $snapshot['signals'] ) ? $snapshot['signals'] : array();
+		$operational = isset( $snapshot['operational'] ) && is_array( $snapshot['operational'] ) ? $snapshot['operational'] : array();
+		$lanes = isset( $operational['lanes'] ) && is_array( $operational['lanes'] ) ? $operational['lanes'] : array();
+		$developer = isset( $lanes['developer_execution'] ) && is_array( $lanes['developer_execution'] ) ? $lanes['developer_execution'] : array();
+		$write_keys = array( 'write_authority_ready', 'candidate_binding_match', 'database_topology_ready', 'governed_write_lane_ready' );
+		$write_unknown = false;
+		$write_blocked = false;
+		foreach ( $write_keys as $name ) {
+			if ( ! array_key_exists( $name, $signals ) || ! is_bool( $signals[ $name ] ) ) $write_unknown = true;
+			elseif ( false === $signals[ $name ] ) $write_blocked = true;
+		}
+		$write_state = $write_blocked ? 'BLOCKED' : ( $write_unknown ? 'NOT_VERIFIED' : 'OBSERVED_READY' );
+		$host_state = ! array_key_exists( 'execution_ready', $developer ) || ! is_bool( $developer['execution_ready'] )
+			? 'NOT_VERIFIED' : ( true === $developer['execution_ready'] ? 'OBSERVED_READY' : 'BLOCKED' );
+		$local_state = isset( $snapshot['state'] ) && is_string( $snapshot['state'] )
+			&& in_array( $snapshot['state'], array( 'HEALTHY', 'DEGRADED', 'BLOCKED', 'RECOVERY_REQUIRED' ), true )
+			? $snapshot['state'] : 'NOT_VERIFIED';
+		return array(
+			array( 'id' => 'operator_health', 'label' => __( 'Local operator health', 'mad4b-site-control-plane' ),
+				'state' => $local_state, 'evidence' => 'mad4b/operator-control-center',
+				'owner' => 'site_operator', 'page' => 'mad4b-operator-control-center',
+				'guidance' => __( 'Local diagnostic only; it never certifies deployment, Browser or release acceptance.', 'mad4b-site-control-plane' ) ),
+			array( 'id' => 'governed_write', 'label' => __( 'Governed write runtime', 'mad4b-site-control-plane' ),
+				'state' => $write_state, 'evidence' => 'mad4b/staging-write-readiness',
+				'owner' => 'governed_operator', 'page' => 'mad4b-control-plane-site-profile',
+				'guidance' => __( 'Requires current grants, exact source binding, safe database and an active governed write lane.', 'mad4b-site-control-plane' ) ),
+			array( 'id' => 'host_execution', 'label' => __( 'Isolated Host execution', 'mad4b-site-control-plane' ),
+				'state' => $host_state, 'evidence' => 'mad4b/developer-host-capabilities',
+				'owner' => 'host_operator', 'page' => 'mad4b-control-plane-connection',
+				'guidance' => __( 'An authority grant is not proof of isolated Host execution, a signed Host receipt or rollback.', 'mad4b-site-control-plane' ) ),
+			array( 'id' => 'staging_release', 'label' => __( 'Staging release acceptance', 'mad4b-site-control-plane' ),
+				'state' => 'INDEPENDENT_ACCEPTANCE_REQUIRED', 'evidence' => 'mad4b/staging-convergence-verify',
+				'owner' => 'release_operator', 'page' => 'mad4b-operator-control-center',
+				'guidance' => __( 'Run exact-head Staging convergence and external Browser, Host, Skills and performance acceptance. Local HEALTHY never means release-ready.', 'mad4b-site-control-plane' ) ),
+			array( 'id' => 'production_promotion', 'label' => __( 'Production promotion', 'mad4b-site-control-plane' ),
+				'state' => 'NOT_AUTHORIZED_HERE', 'evidence' => 'mad4b/production-readiness',
+				'owner' => 'release_owner', 'page' => 'mad4b-operator-control-center',
+				'guidance' => __( 'Requires a separately signed, exact-release owner decision. This Action Center grants no Production authority.', 'mad4b-site-control-plane' ) ),
+		);
 	}
 
 	private static function action( $reason ) {
@@ -118,6 +166,22 @@ final class MAD4B_SCP_Operator_Workspace {
 		$cards = array();
 		foreach ( $model['checks'] as $check ) $cards[] = array( 'label' => $check['label'], 'value' => MAD4B_SCP_Admin_Experience::observed_state( $check['value'] ), 'help' => null === $check['value'] ? __( 'No current observation is available.', 'mad4b-site-control-plane' ) : __( 'Current local runtime observation.', 'mad4b-site-control-plane' ), 'state' => null === $check['value'] ? 'pending' : ( $check['value'] ? 'complete' : 'attention' ) );
 		MAD4B_SCP_Admin_Experience::cards( $cards );
+		echo '<section class="mad4b-scp-panel" aria-labelledby="mad4b-readiness-scopes-title">';
+		echo '<h2 id="mad4b-readiness-scopes-title">' . esc_html__( 'Independent readiness and acceptance scopes', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'A local healthy status is not a Host execution, a successful release, or Production approval. Each scope has its own evidence and owner.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="mad4b-workspace-table" role="region" tabindex="0" aria-label="' . esc_attr__( 'Independent readiness scope evidence', 'mad4b-site-control-plane' ) . '">';
+		echo '<table class="widefat striped"><thead><tr>';
+		foreach ( array( 'Scope', 'Observed state', 'Verification', 'Owner and next step' ) as $heading ) echo '<th scope="col">' . esc_html( __( $heading, 'mad4b-site-control-plane' ) ) . '</th>';
+		echo '</tr></thead><tbody>';
+		foreach ( $model['readiness_scopes'] as $scope ) {
+			$url = MAD4B_SCP_Admin_Workspace::link( $scope['page'] );
+			echo '<tr><th scope="row">' . esc_html( $scope['label'] ) . '</th><td><code>' . esc_html( $scope['state'] ) . '</code></td>';
+			echo '<td><code>' . esc_html( $scope['evidence'] ) . '</code></td>';
+			echo '<td>' . esc_html( $scope['owner'] ) . ' · ' . esc_html( $scope['guidance'] );
+			if ( '' !== $url ) echo ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Inspect', 'mad4b-site-control-plane' ) . '</a>';
+			echo '</td></tr>';
+		}
+		echo '</tbody></table></div></section>';
 		if ( class_exists( 'MAD4B_SCP_Guided_Operator_Experience', false ) ) MAD4B_SCP_Guided_Operator_Experience::render( $snapshot );
 		echo '<h2>' . esc_html__( 'Next actions', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( ! $model['actions'] ) echo '<div class="mad4b-scp-panel"><p>' . esc_html__( 'No pending actions were reported by this snapshot. External acceptance and repair coverage still require their own evidence.', 'mad4b-site-control-plane' ) . '</p></div>';
