@@ -1,6 +1,24 @@
 <?php
 /** IMP01 isolated PHP contract. Does not write WordPress posts or call Google. */
 define( 'ABSPATH', __DIR__ );
+define( 'MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET', str_repeat( 'x', 48 ) );
+$GLOBALS['imp01_options'] = array();
+function get_option( $key, $default = false ) {
+    return array_key_exists( $key, $GLOBALS['imp01_options'] ) ? $GLOBALS['imp01_options'][ $key ] : $default;
+}
+function add_option( $key, $value, $ignored = '', $autoload = false ) {
+    if ( array_key_exists( $key, $GLOBALS['imp01_options'] ) ) return false;
+    $GLOBALS['imp01_options'][ $key ] = $value;
+    return true;
+}
+function delete_option( $key ) { unset( $GLOBALS['imp01_options'][ $key ] ); return true; }
+class IMP01_Test_Request {
+    private $body; private $signature;
+    function __construct( $body, $signature ) { $this->body = $body; $this->signature = $signature; }
+    function get_body() { return $this->body; }
+    function get_header( $key ) { return 'x-mad4b-signature' === $key ? $this->signature : ''; }
+}
+
 class WP_Error {
     private $code;
     function __construct( $code, $message = '' ) { $this->code = $code; }
@@ -95,4 +113,28 @@ $badJob=MAD4B_SCP_Activity_Import_Review::wp_all_import_plan( array(
 ) );
 ck( is_wp_error( $badJob ) && $badJob->get_error_code() === 'mad4b_wpai_update_not_allowed',
     'WP All Import target field escaped profile allowlist' );
+
+$packet = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+    'issued_at' => time(), 'nonce' => 'signednonce_202610101234567',
+    'input' => $input );
+$raw = json_encode( $packet );
+$sig = hash_hmac( 'sha256', $raw, MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET );
+$request = new IMP01_Test_Request( $raw, $sig );
+$permission = MAD4B_SCP_Activity_Import_Review::authorize_signed( $request );
+ck( true === $permission, 'Signed review intake signature unexpectedly refused' );
+$accepted = MAD4B_SCP_Activity_Import_Review::receive_signed( $request );
+ck( !is_wp_error( $accepted ) && $accepted['staged'] &&
+    $accepted['post_writes'] === 0, 'Verified Apps Script inbox must stage review only' );
+$review = MAD4B_SCP_Activity_Import_Review::review( array( 'profile_slug' => 'pricing' ) );
+ck( $review['state'] === 'requires_review' && $review['plan']['issue_count_observed'] === 2,
+    'Signed intake review was not persisted with exact redacted evidence' );
+$replayed = MAD4B_SCP_Activity_Import_Review::receive_signed( $request );
+ck( is_wp_error( $replayed ) && $replayed->get_error_code() === 'mad4b_import_webhook_replay',
+    'Replayed webhook was admitted' );
+$badSig = MAD4B_SCP_Activity_Import_Review::authorize_signed(
+    new IMP01_Test_Request( $raw . ' ', $sig ) );
+ck( is_wp_error( $badSig ) &&
+    $badSig->get_error_code() === 'mad4b_import_webhook_signature',
+    'Tampered body inherited trusted HMAC signature' );
+echo "PASS IMP01 signed REST review intake, redacted persistence, replay and HMAC tamper denials\n";
 echo "PASS IMP01 bounded dynamic meta mapping, currency/status exceptions, duplicate IDs, preview limits and governed Brand Core review\n";
