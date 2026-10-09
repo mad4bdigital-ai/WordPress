@@ -121,6 +121,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
         if ( ! function_exists( 'home_url' ) || ! function_exists( 'wp_salt' ) ||
             ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false ) ||
             ! class_exists( 'MAD4B_SCP_Site_Capability_Discovery', false ) ||
+            ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Provider_Registry', false ) ||
             ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', false ) ) return null;
         $origin = rtrim( (string) home_url( '/' ), '/' ) . '/';
         $parsed = parse_url( $origin );
@@ -135,7 +136,12 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ! empty( $provenance['stale'] ) ||
             ! preg_match( '/^[a-f0-9]{40}$/D', (string) ( $provenance['source_commit_sha'] ?? '' ) ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $provenance['build_fingerprint'] ?? '' ) ) ) return null;
-        $discovery = MAD4B_SCP_Site_Capability_Discovery::observe( rtrim( $origin, '/' ), array() );
+        // Use the exact live registry also projected by Browser Acceptance
+        // Core. Empty provider inventories produce a different SHA and allow
+        // signed plans to silently drift from selected provider recognition.
+        $registered = ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all();
+        if ( ! is_array( $registered ) || ! isset( $registered[ self::ID ] ) ) return null;
+        $discovery = MAD4B_SCP_Site_Capability_Discovery::observe( rtrim( $origin, '/' ), $registered );
         if ( empty( $discovery['discovery_complete'] ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $discovery['snapshot_sha256'] ?? '' ) ) ) return null;
         $operator = MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection();
