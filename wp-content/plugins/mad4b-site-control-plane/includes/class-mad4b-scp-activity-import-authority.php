@@ -18,7 +18,8 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'identity_field', 'required_columns', 'allowed_currencies',
             'field_mapping', 'price_tier_policy', 'review_past_intervals',
             'wpml_languages', 'require_complete_wpml_groups',
-            'required_relationships', 'max_rows'
+            'required_relationships', 'max_rows', 'currency_field',
+            'price_fields', 'decimal_scale'
         ) ) ) return self::err( 'mad4b_import_validation_unknown_keys', 'Validation policy contains unsupported fields.' );
         $identity = isset( $raw['identity_field'] ) ? (string) $raw['identity_field'] : '';
         if ( ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $identity ) )
@@ -28,6 +29,9 @@ final class MAD4B_SCP_Activity_Import_Authority {
         $mapping = isset( $raw['field_mapping'] ) ? $raw['field_mapping'] : array();
         $languages = isset( $raw['wpml_languages'] ) ? $raw['wpml_languages'] : array();
         $relationships = isset( $raw['required_relationships'] ) ? $raw['required_relationships'] : array();
+        $currency_field = isset( $raw['currency_field'] ) ? (string) $raw['currency_field'] : '';
+        $price_fields = isset( $raw['price_fields'] ) ? $raw['price_fields'] : array();
+        $decimal_scale = isset( $raw['decimal_scale'] ) ? $raw['decimal_scale'] : 4;
         $safe_cols = static function( $x, $maximum ) {
             if ( ! is_array( $x ) || count( $x ) > $maximum ) return false;
             foreach ( $x as $val ) if ( ! is_string( $val ) ||
@@ -35,12 +39,15 @@ final class MAD4B_SCP_Activity_Import_Authority {
             return count( $x ) === count( array_unique( $x ) );
         };
         if ( ! $safe_cols( $columns, 80 ) || ! $safe_cols( $relationships, 20 ) ||
+            ! $safe_cols( $price_fields, 20 ) || ! is_int( $decimal_scale ) ||
+            $decimal_scale < 0 || $decimal_scale > 6 ||
+            ( '' !== $currency_field && ! preg_match(
+                '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $currency_field ) ) ||
             ! is_array( $currencies ) || count( $currencies ) > 20 ||
             ! is_array( $mapping ) || count( $mapping ) < 1 || count( $mapping ) > 80 ||
             ! is_array( $languages ) || count( $languages ) > 20 )
             return self::err( 'mad4b_import_policy_bounds', 'Identity, mapping, currency and required-column policy must be bounded.' );
-        if ( ( in_array( 'base_currency', $columns, true ) ||
-            array_key_exists( 'base_currency', $mapping ) ) && !$currencies )
+        if ( '' !== $currency_field && !$currencies )
             return self::err( 'mad4b_import_policy_currency_required',
                 'Commercial currency fields require an administrator-owned currency allowlist.' );
         $currency_set = array();
@@ -73,8 +80,10 @@ final class MAD4B_SCP_Activity_Import_Authority {
             ( ! empty( $raw['require_complete_wpml_groups'] ) && !$languages ) )
             return self::err( 'mad4b_import_policy_wpml_incomplete', 'Complete WPML groups require explicitly configured languages.' );
         $price_policy = isset( $raw['price_tier_policy'] ) ? (string) $raw['price_tier_policy'] : 'none';
-        if ( ! in_array( $price_policy, array( 'none', 'review_monotonic' ), true ) )
-            return self::err( 'mad4b_import_policy_price_invalid', 'Unsupported commercial price review rule.' );
+        if ( ! in_array( $price_policy, array( 'none', 'review_monotonic' ), true ) ||
+            ( 'review_monotonic' === $price_policy && count( $price_fields ) < 2 ) )
+            return self::err( 'mad4b_import_policy_price_invalid',
+                'An ordered pair of explicitly configured price fields is required for tier comparison.' );
         $max_rows = isset( $raw['max_rows'] ) ? (int) $raw['max_rows'] : 500;
         if ( $max_rows < 1 || $max_rows > 500 )
             return self::err( 'mad4b_import_policy_max_rows_invalid', 'Allowed preview row limit is 1..500.' );
@@ -87,6 +96,9 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'wpml_languages' => array_values( $languages ),
             'require_complete_wpml_groups' => ! empty( $raw['require_complete_wpml_groups'] ),
             'required_relationships' => array_values( $relationships ),
+            'currency_field' => $currency_field,
+            'price_fields' => array_values( $price_fields ),
+            'decimal_scale' => $decimal_scale,
             'max_rows' => $max_rows
         );
     }
@@ -157,6 +169,9 @@ final class MAD4B_SCP_Activity_Import_Authority {
         if ( ! is_array( $headers ) || array_diff( $policy['required_columns'], $headers ) ||
             ! in_array( $policy['identity_field'], $headers, true ) ||
             array_diff( array_keys( $policy['field_mapping'] ), $headers ) ||
+            array_diff( $policy['price_fields'], $headers ) ||
+            ( '' !== $policy['currency_field'] &&
+              ! in_array( $policy['currency_field'], $headers, true ) ) ||
             ( ! empty( $policy['require_complete_wpml_groups'] ) &&
               ( ! in_array( '_wpml_import_translation_group', $headers, true ) ||
                 ! in_array( '_wpml_import_language_code', $headers, true ) ) ) )
