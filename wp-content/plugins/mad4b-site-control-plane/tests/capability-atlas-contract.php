@@ -38,11 +38,19 @@ $plugin = array(
 $result = MAD4B_SCP_Capability_Atlas::compose( $browser, $plugin );
 atlas_assert( $result['complete'] && $result['count'] === 5, 'independent capabilities preserved' );
 atlas_assert( ! $result['authorizing'] && ! $result['execution_allowed'], 'capability claims are not authority' );
+atlas_assert( ! $result['release_ready'] && $result['functional_certification_count'] === 0 &&
+    $result['inventory_complete'], 'inventory completeness never becomes release readiness' );
 atlas_assert( $result['unmapped_plugin_count'] === 1, 'unmapped plugin retained' );
 $by_id = array();
 foreach ( $result['capabilities'] as $item ) {
     $by_id[ $item['capability_id'] ] = $item;
     atlas_assert( ! $item['execution_allowed'] && ! $item['certification_issued'], 'no synthesized PASS' );
+    foreach ( array( 'semantic_oracle', 'browser_execution_attestation',
+        'independent_reduction', 'replay_and_freshness', 'cross_site_parity',
+        'release_approval' ) as $proof ) {
+        atlas_assert( $item['evidence_gates'][ $proof ] === 'NOT_PROVEN',
+            'unobserved evidence cannot become certified: ' . $proof );
+    }
 }
 atlas_assert( $by_id['browser.dom_result_count']['candidate_count'] === 2 &&
     $by_id['browser.dom_result_count']['candidate_ambiguous'], 'shared capability stays ambiguous' );
