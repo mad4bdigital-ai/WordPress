@@ -16,6 +16,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';
 	const DISCOVER_ABILITY = 'mad4b/operation-discover';
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
+	const SKILLS_STATUS_ABILITY = 'mad4b/managed-skills-reconciliation-status';
 	const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';
 	const BROWSER_ACCEPTANCE_ABILITY = 'mad4b/browser-acceptance-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
@@ -100,6 +101,25 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 					'description' => 'Inspect whether automation-eligible local maintenance operations have bounded governed remote counterparts.',
 					'category' => 'mad4b-read',
 					'execute_callback' => array( __CLASS__, 'status' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::meta( true, true ),
+				)
+			);
+		}
+
+		// A compact, non-authorizing status surface is mandatory for a
+		// checkpointed write operation: clients must be able to inspect an
+		// uncertain execution before even considering a replan or retry.
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::SKILLS_STATUS_ABILITY ) ) ) {
+			wp_register_ability(
+				self::SKILLS_STATUS_ABILITY,
+				array(
+					'label' => 'Read Managed Skills Reconciliation Checkpoint',
+					'description' => 'Read a bounded, sanitized Managed Skills checkpoint and lease status without reconciling, resuming, approving or mutating Skills.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'managed_skills_checkpoint_readback' ),
 					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
 					'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -940,6 +960,64 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'next_action' => $ready ? 'none' : ( $lock_active ? 'observe_current_attempt' : 'replan_exact_operation' ),
 			'production_mutation' => false,
 			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Independently readable incident checkpoint: no raw Skill payloads, lease
+	 * owners, tokens, seeds, file contents, arbitrary errors or provider secrets.
+	 * This read never replays a failed or uncertain write and is safe while the
+	 * Enrollment dispatcher is blocked or the target source is stale.
+	 */
+	public static function managed_skills_checkpoint_readback( $input = array() ) {
+		if ( null !== $input && ( ! is_array( $input ) || ! empty( $input ) ) ) {
+			return new WP_Error( 'mad4b_skills_checkpoint_read_input_invalid', 'Managed Skills checkpoint read does not accept arguments.' );
+		}
+		$state = self::managed_skills_reconciliation_status();
+		$checkpoint = isset( $state['checkpoint'] ) && is_array( $state['checkpoint'] ) ? $state['checkpoint'] : array();
+		$identity = static function ( $source ) {
+			$source = is_array( $source ) ? $source : array();
+			$output = array();
+			foreach ( array( 'source_commit_sha' => 40, 'build_fingerprint' => 64, 'package_manifest_digest' => 64 ) as $name => $length ) {
+				$value = isset( $source[ $name ] ) ? strtolower( trim( (string) $source[ $name ] ) ) : '';
+				$output[ $name ] = strlen( $value ) === $length && ctype_xdigit( $value ) ? $value : '';
+			}
+			return $output;
+		};
+		$last_error_code = isset( $checkpoint['last_error_code'] )
+			? substr( sanitize_key( (string) $checkpoint['last_error_code'] ), 0, 96 ) : '';
+		$checkpoint_read = array(
+			'status' => isset( $checkpoint['status'] ) ? substr( sanitize_key( (string) $checkpoint['status'] ), 0, 48 ) : 'idle',
+			'stage' => isset( $checkpoint['stage'] ) ? substr( sanitize_key( (string) $checkpoint['stage'] ), 0, 80 ) : '',
+			'attempt' => isset( $checkpoint['attempt'] ) ? max( 0, min( 999999, (int) $checkpoint['attempt'] ) ) : 0,
+			'seed_cursor' => isset( $checkpoint['seed_cursor'] ) ? max( 0, (int) $checkpoint['seed_cursor'] ) : 0,
+			'last_error_code' => $last_error_code,
+			'certification_ready' => ! empty( $checkpoint['certification_ready'] ),
+			'updated_at' => isset( $checkpoint['updated_at'] ) ? substr( (string) $checkpoint['updated_at'], 0, 40 ) : '',
+		);
+		$lock = isset( $state['lock'] ) && is_array( $state['lock'] ) ? $state['lock'] : array();
+		return array(
+			'contract' => 'mad4b.managed-skills-reconciliation-readback.v1',
+			'operation_id' => 'managed_skills_reconciliation',
+			'supported' => true,
+			'state' => (string) ( $state['state'] ?? 'unknown' ),
+			'ready' => ! empty( $state['ready'] ),
+			'checkpoint_identity_current' => ! empty( $state['checkpoint_identity_current'] ),
+			'checkpoint_identity' => $identity( $state['checkpoint_identity'] ?? array() ),
+			'current_identity' => $identity( $state['current_identity'] ?? array() ),
+			'checkpoint' => $checkpoint_read,
+			'lock' => array(
+				'active' => ! empty( $lock['active'] ),
+				'lease_remaining_seconds' => max( 0, (int) ( $lock['lease_remaining_seconds'] ?? 0 ) ),
+			),
+			'reconciliation_required' => ! ! empty( $state['reconciliation_required'] ),
+			'blind_retry_allowed' => false,
+			'next_safe_action' => ! empty( $state['ready'] ) ? 'none'
+				: ( ! empty( $lock['active'] ) ? 'observe_existing_operation_checkpoint' : 'review_checkpoint_before_exact_replan' ),
+			'read_only' => true,
+			'authorizing' => false,
+			'production_mutation' => false,
 			'mutation_performed' => false,
 		);
 	}
