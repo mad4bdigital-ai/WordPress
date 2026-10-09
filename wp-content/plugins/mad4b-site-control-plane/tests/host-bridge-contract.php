@@ -385,6 +385,18 @@ MAD4B_SCP_Site_Profile::$mode='profile_only';
 $host_denied=MAD4B_SCP_Host_Bridge::apply(array('plan'=>$host_plan));
 $check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_mode_required'===$host_denied->get_error_code(),'Host plan accepted after mode cancellation');
 MAD4B_SCP_Site_Profile::$mode='host_managed';
+$pre_host_sha=hash_file('sha256',$tmp.'/wp-config.php');
+$host_pending=MAD4B_SCP_Host_Bridge::apply(array(
+ 'plan'=>$host_plan,
+ 'job_id'=>'44444444-5555-4666-8aaa-777777777777',
+ 'idempotency_key'=>'exact-staging-host-env',
+ 'approval_ref'=>'approved:staging-host-env',
+ 'server_id'=>'mad4b-primary',
+ '_mad4b_approval_ticket_id'=>'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+));
+$check(is_array($host_pending) && true===$host_pending['queued'], 'MCP Host operation did not enqueue');
+$check(false===$host_pending['host_mutation_performed'] && true===$host_pending['host_verification_pending'], 'MCP queue fabricated Host completion');
+$check($pre_host_sha===hash_file('sha256',$tmp.'/wp-config.php'), 'WordPress MCP changed Host bootstrap directly');
 
 // Stale target plan must fail after root identity changes.
 file_put_contents($tmp . '/wp-config.php', "<?php // changed target\n");
