@@ -67,7 +67,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $sync = array(); $resource_bindings = array();
         foreach ( $targets as $target_id => $target ) {
             if ( ! is_string( $target_id ) || 'wordpress' === $target_id || ! preg_match( '/^[a-z][a-z0-9_-]{1,48}$/', $target_id ) ||
-                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind', 'purpose' ) ) )
+                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind', 'purpose', 'field_bindings' ) ) )
                 return self::err( 'mad4b_activity_sync_target_fields', 'Sync target must have bounded fields and ID.' );
             $provider = isset( $target['provider'] ) ? $target['provider'] : '';
             $direction = isset( $target['direction'] ) ? $target['direction'] : '';
@@ -78,6 +78,25 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             if ( ! is_array( $field_keys ) || count( $field_keys ) > self::MAX_FIELDS ||
                 array_diff( $field_keys, array_keys( $allow ) ) )
                 return self::err( 'mad4b_activity_sync_fields_invalid', 'Sync fields must be permitted by the parent Content Experience Profile.' );
+            $mapping = isset( $target['field_bindings'] ) ? $target['field_bindings'] : array();
+            if ( ! is_array( $mapping ) || count( $mapping ) > self::MAX_FIELDS ||
+                array_diff( array_keys( $mapping ), $field_keys ) )
+                return self::err( 'mad4b_activity_source_field_binding_invalid', 'Provider mapping must be a bounded subset of configured canonical fields.' );
+            $field_bindings = array();
+            foreach ( $mapping as $field => $binding ) {
+                if ( ! is_array( $binding ) || array_diff( array_keys( $binding ),
+                    array( 'provider_field', 'value_type', 'null_policy' ) ) )
+                    return self::err( 'mad4b_activity_source_binding_shape_invalid', 'Provider field mapping contains unsupported instructions.' );
+                $selector = isset( $binding['provider_field'] ) ? $binding['provider_field'] : '';
+                $value_type = isset( $binding['value_type'] ) ? $binding['value_type'] : 'string';
+                $null_policy = isset( $binding['null_policy'] ) ? $binding['null_policy'] : 'manual_review';
+                if ( ! is_string( $selector ) || ! preg_match( '/^[A-Za-z0-9._!:$-]{1,140}$/D', $selector ) ||
+                    ! in_array( $value_type, array( 'string', 'integer', 'decimal', 'boolean', 'date', 'json' ), true ) ||
+                    ! in_array( $null_policy, array( 'manual_review', 'skip', 'explicit_null' ), true ) )
+                    return self::err( 'mad4b_activity_source_binding_value_invalid', 'Unsupported source selector, field value type or null handling.' );
+                $field_bindings[ $field ] = array( 'provider_field' => $selector,
+                    'value_type' => $value_type, 'null_policy' => $null_policy );
+            }
             $source_ref = isset( $target['source_ref'] ) ? $target['source_ref'] : '';
             if ( ! is_string( $source_ref ) || strlen( $source_ref ) > 180 ||
                 ( '' !== $source_ref && ! preg_match( '/^[A-Za-z0-9._:-]+$/', $source_ref ) ) )
@@ -108,7 +127,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
                 return self::err( 'mad4b_activity_sync_conflict_policy', 'Sync conflict policy is not supported.' );
             $sync[ $target_id ] = array( 'provider' => $provider, 'direction' => $direction,
                 'field_keys' => array_values( array_unique( $field_keys ) ), 'source_ref' => $source_ref,
-                'conflict_policy' => $policy, 'resource_kind' => $kind, 'purpose' => $purpose );
+                'conflict_policy' => $policy, 'resource_kind' => $kind, 'purpose' => $purpose,
+                'field_bindings' => $field_bindings );
         }
         // Exactly one field owner per canonical field. An owner's ability
         // to author a field must be declared explicitly and independently
@@ -270,6 +290,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'conflict_policy' => $target['conflict_policy'],
             'resource_kind' => $target['resource_kind'],
             'purpose' => $target['purpose'],
+            'field_bindings' => isset( $target['field_bindings'] ) ? $target['field_bindings'] : array(),
             'field_owners' => isset( $binding['contract']['field_owners'] ) ? $binding['contract']['field_owners'] : array(),
             'provider_abilities_to_discover' => $ability,
             'provider_write_certified' => $provider_write_certified,
