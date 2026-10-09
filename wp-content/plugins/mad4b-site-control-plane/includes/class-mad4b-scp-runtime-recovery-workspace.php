@@ -28,6 +28,7 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 			&& empty( $plan['plan_integrity_blockers'] )
 			&& isset( $plan['plan_sha256'] ) && is_string( $plan['plan_sha256'] )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $plan['plan_sha256'] )
+			&& isset( $plan['blocking_gates'] ) && is_array( $plan['blocking_gates'] ) && count( $plan['blocking_gates'] ) <= 64
 			&& isset( $plan['plan_binding'] ) && is_array( $plan['plan_binding'] )
 			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', (string) ( $plan['plan_binding']['source_commit_sha'] ?? '' ) );
 		$rows = array();
@@ -82,8 +83,8 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 		foreach ( $blocked as $gate ) if ( ! isset( $covered[ $gate ] ) ) $unmapped[] = $gate;
 		return array(
 			'contract' => self::CONTRACT,
-			'state' => ! $valid ? 'UNAVAILABLE' : ( $trusted_ready && empty( $blocked ) && empty( $unmapped ) ? 'OBSERVED_READY' : 'REVIEW_REQUIRED' ),
-			'exact_plan_acceptance_evidence_present' => $trusted_ready && empty( $blocked ) && empty( $unmapped ),
+			'state' => ! $valid ? 'UNAVAILABLE' : ( $trusted_ready && empty( $blocked ) && empty( $unmapped ) && 0 === count( $plan['blocking_gates'] ) ? 'OBSERVED_READY' : 'REVIEW_REQUIRED' ),
+			'exact_plan_acceptance_evidence_present' => $trusted_ready && empty( $blocked ) && empty( $unmapped ) && 0 === count( $plan['blocking_gates'] ),
 			'blocking_gates' => $blocked,
 			'blocked_gate_count' => count( $blocked ),
 			'unmapped_blocking_gates' => $unmapped,
