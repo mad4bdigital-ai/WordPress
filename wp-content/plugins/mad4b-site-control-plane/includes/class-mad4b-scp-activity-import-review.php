@@ -328,9 +328,15 @@ final class MAD4B_SCP_Activity_Import_Review {
             return self::error( 'mad4b_import_review_profile_invalid', 'Exact site profile required.' );
         $stage = get_option( self::option_key( $slug ), false );
         if ( ! is_array( $stage ) ) return array( 'contract' => self::CONTRACT, 'state' => 'no_staged_feed', 'read_only' => true );
+        if ( ! isset( $stage['contract'] ) ||
+            MAD4B_SCP_Activity_Import_Snapshot::CONTRACT !== $stage['contract'] )
+            return self::error( 'mad4b_import_legacy_preview_untrusted',
+                'Unencrypted legacy import review is not eligible for approval or export.' );
         return array( 'contract' => self::CONTRACT, 'state' => 'requires_review',
             'source' => $stage['source'], 'payload_sha256' => $stage['payload_sha256'],
+            'snapshot_sha256' => $stage['snapshot_sha256'],
             'received_at' => $stage['received_at'], 'plan' => $stage['plan'],
+            'source_values_encrypted_at_rest' => true,
             'write_performed' => false, 'read_only' => true );
     }
     public static function register_rest() {
@@ -382,17 +388,10 @@ final class MAD4B_SCP_Activity_Import_Review {
         $source_mode = isset( $data['source_mode'] ) ? (string) $data['source_mode'] : 'google_apps_script';
         if ( ! in_array( $source_mode, array( 'google_apps_script', 'signed_generic_webhook' ), true ) )
             return self::error( 'mad4b_import_intake_source_invalid', 'Only registered signed-push source modes are accepted.' );
-        $record = array( 'source' => $source_mode, 'received_at' => gmdate( 'c' ),
-            'payload_sha256' => hash( 'sha256', $request->get_body() ), 'plan' => $preview );
-        $key = self::option_key( $preview['profile_slug'] );
-        // One inbox snapshot at a time: no implicit overwrites or auto-import.
-        if ( ! add_option( $key, $record, '', false ) )
-            return self::error( 'mad4b_import_review_pending', 'Resolve existing staged import review before accepting new data.' );
-        if ( self::digest( get_option( $key, false ) ) !== self::digest( $record ) )
-            return self::error( 'mad4b_import_stage_unverified', 'Staged review could not be independently read back.' );
-        return array( 'contract' => self::CONTRACT, 'staged' => true,
-            'plan_sha256' => $preview['plan_sha256'],
-            'issue_count' => $preview['issue_count_observed'], 'post_writes' => 0 );
+        $receipt = MAD4B_SCP_Activity_Import_Snapshot::stage(
+            $preview['profile_slug'], $input, $preview, $source_mode, $data['site_uuid'] );
+        if ( is_wp_error( $receipt ) ) return $receipt;
+        return $receipt;
     }
     public static function expire_nonce( $key ) {
         if ( ! is_string( $key ) || ! preg_match( '/^mad4b_import_nonce_[a-f0-9]{64}$/D', $key ) ) return;
@@ -461,21 +460,16 @@ final class MAD4B_SCP_Activity_Import_Review {
         foreach ( $headers as $header )
             if ( isset( $meta[ $header ] ) ) $mapping[ $header ] = $header;
         if ( !$mapping ) wp_die( 'No approved Meta mapping found. Configure the parent Profile first.' );
-        $input = array( 'profile_slug' => $slug, 'identity_field' => $identity,
-            'headers' => $headers, 'rows' => $rows,
-            'field_mapping' => $mapping, 'allowed_currencies' => $currencies,
-            'price_tier_policy' => 'review_monotonic', 'review_past_intervals' => true );
+        $input = array( 'profile_slug' => $slug,
+            'headers' => $headers, 'rows' => $rows );
+        // Identity, currencies, WPML and field mapping are always taken from
+        // the enrolled Profile policy. Uploaded source cannot redefine them.
         $preview = self::inspect( $input );
         if ( is_wp_error( $preview ) ) wp_die( esc_html( $preview->get_error_message() ) );
-        $key = self::option_key( $slug );
-        $record = array( 'source' => 'admin_csv_upload',
-            'received_at' => gmdate( 'c' ),
-            'payload_sha256' => hash( 'sha256', wp_json_encode( $input ) ),
-            'plan' => $preview );
-        if ( ! add_option( $key, $record, '', false ) )
-            wp_die( 'An existing import review must be completed or archived first.' );
-        if ( self::digest( get_option( $key, false ) ) !== self::digest( $record ) )
-            wp_die( 'Review staging persistence could not be verified.' );
+        $receipt = MAD4B_SCP_Activity_Import_Snapshot::stage(
+            $slug, $input, $preview, 'admin_csv_upload',
+            (string) get_current_user_id() );
+        if ( is_wp_error( $receipt ) ) wp_die( esc_html( $receipt->get_error_message() ) );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
             'profile_slug' => $slug, 'staged' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
@@ -484,6 +478,35 @@ final class MAD4B_SCP_Activity_Import_Review {
      * Archive a read-only review snapshot, never delete imported business data.
      * This makes subsequent signed/manual feed proposals possible.
      */
+    public static function approve_preview() {
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Site administrator authority required.' );
+        check_admin_referer( 'mad4b_activity_approve_review', 'mad4b_approve_nonce' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+        $sha = isset( $_POST['snapshot_sha256'] ) ?
+            sanitize_text_field( wp_unslash( $_POST['snapshot_sha256'] ) ) : '';
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) )
+            wp_die( 'Exact immutable source snapshot ID required.' );
+        $approved = MAD4B_SCP_Activity_Import_Snapshot::approve( $slug, $sha, true );
+        if ( is_wp_error( $approved ) ) wp_die( esc_html( $approved->get_error_message() ) );
+        wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
+            'profile_slug' => $slug, 'approved' => 1 ), admin_url( 'tools.php' ) ) );
+        exit;
+    }
+    public static function approved_csv_download() {
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Site administrator authority required.' );
+        check_admin_referer( 'mad4b_activity_export_approved', 'mad4b_export_nonce' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+        $sha = isset( $_POST['snapshot_sha256'] ) ?
+            sanitize_text_field( wp_unslash( $_POST['snapshot_sha256'] ) ) : '';
+        $result = MAD4B_SCP_Activity_Import_Snapshot::export_approved_csv( $slug, $sha );
+        if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ) );
+        wp_die( 'Export did not produce an approved CSV stream.' );
+    }
     public static function archive_preview() {
         if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() ||
             ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
@@ -614,5 +637,7 @@ if ( function_exists( 'add_action' ) ) {
     add_action( 'admin_menu', array( 'MAD4B_SCP_Activity_Import_Review', 'register_admin' ) );
     add_action( 'admin_post_mad4b_activity_import_csv', array( 'MAD4B_SCP_Activity_Import_Review', 'admin_upload_csv' ) );
     add_action( 'admin_post_mad4b_activity_import_archive', array( 'MAD4B_SCP_Activity_Import_Review', 'archive_preview' ) );
+    add_action( 'admin_post_mad4b_activity_import_approve', array( 'MAD4B_SCP_Activity_Import_Review', 'approve_preview' ) );
+    add_action( 'admin_post_mad4b_activity_import_export', array( 'MAD4B_SCP_Activity_Import_Review', 'approved_csv_download' ) );
     add_action( 'mad4b_activity_import_expire_nonce', array( 'MAD4B_SCP_Activity_Import_Review', 'expire_nonce' ), 10, 1 );
 }
