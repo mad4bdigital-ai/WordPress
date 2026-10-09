@@ -119,8 +119,8 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) )
             return self::err( 'mad4b_import_snapshot_profile_invalid', 'Profile disabled or missing.' );
-        $policy = isset( $profile['activity_contract']['import_modes']['validation'] ) ?
-            $profile['activity_contract']['import_modes']['validation'] : array();
+        $contract = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
+        $policy = isset( $contract['validation'] ) ? $contract['validation'] : array();
         if ( ! $policy || self::digest( $policy ) !== $record['policy_sha256'] ||
             (string) $profile['revision'] !== (string) $record['plan']['profile_revision'] ||
             (string) $profile['authority_sha256'] !== (string) $record['plan']['authority_sha256'] )
