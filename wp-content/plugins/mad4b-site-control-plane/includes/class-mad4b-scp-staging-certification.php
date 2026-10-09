@@ -630,11 +630,14 @@ final class MAD4B_SCP_Staging_Certification {
 		// Keep release acceptance strict, but expose independent domain truth.
 		// An unconfigured optional feature must not masquerade as broken Core.
 		$domain_keys = array(
-			'core_runtime' => array( 'exact_build', 'safe_boot' ),
+			// Domain names explicitly describe what is actually measured.
+			// Package/MCP readiness is not proof of every WordPress Core phase;
+			// local Skills readiness is not the external snapshot acceptance.
+			'package_and_mcp' => array( 'exact_build', 'safe_boot' ),
 			'governed_write' => array( 'write_authority', 'write_runtime' ),
-			'managed_skills' => array( 'skills_runtime', 'external_skill_snapshot' ),
-			'feature_integrations' => array( 'context_authority', 'brand_core_context_coverage', 'google_provider_connection', 'managed_google_broker', 'wp_import_export_exact_artifact' ),
-			'release_acceptance' => array( 'browser_runtime', 'performance_budget', 'admin_query_performance', 'query_monitor_db_attribution', 'oauth_live_authority_projection', 'rollback_candidate' ),
+			'managed_skills_runtime' => array( 'skills_runtime' ),
+			'optional_integrations' => array( 'context_authority', 'brand_core_context_coverage', 'google_provider_connection', 'managed_google_broker', 'wp_import_export_exact_artifact' ),
+			'release_acceptance' => array( 'external_skill_snapshot', 'browser_runtime', 'performance_budget', 'admin_query_performance', 'query_monitor_db_attribution', 'oauth_live_authority_projection', 'rollback_candidate' ),
 		);
 		$readiness_domains = array();
 		foreach ( $domain_keys as $domain => $requirements ) {
