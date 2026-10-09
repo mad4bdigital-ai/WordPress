@@ -154,7 +154,14 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             return new WP_Error( 'mad4b_brand_reconstruction_scenario_invalid', 'Unsupported recovery scenario.' );
         }
         $attempts = isset( $input['attempts'] ) ? max( 0, min( 100, (int) $input['attempts'] ) ) : 0;
-        $assistant_available = ! array_key_exists( 'assistant_available', $input ) || ! empty( $input['assistant_available'] );
+        // Caller-provided availability cannot turn an uncertified assistant
+        // into a trusted writer. Live runtime certification is independent.
+        $assistant_requested = ! array_key_exists( 'assistant_available', $input ) || ! empty( $input['assistant_available'] );
+        $assistant_status = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+            ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+        $assistant_certified = is_array( $assistant_status ) && ! empty( $assistant_status['ready'] )
+            && empty( $assistant_status['historical_evidence_only'] );
+        $assistant_available = $assistant_requested && $assistant_certified;
         $convergence = MAD4B_SCP_Brand_Context_Builder::convergence_plan( array(
             'include_authoritative_content' => false,
             'include_rendered_frontend' => false,
@@ -191,8 +198,9 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'registry_revision' => isset( $convergence['registry_revision'] ) ? (int) $convergence['registry_revision'] : 0,
             'authority_manifest_fingerprint' => isset( $convergence['authority_manifest_fingerprint'] ) ? (string) $convergence['authority_manifest_fingerprint'] : '',
             'convergence_plan_sha256' => isset( $convergence['plan_sha256'] ) ? (string) $convergence['plan_sha256'] : '',
-            'assistant_declared_available' => $assistant_available,
-            'assistant_certification_verified' => false,
+            'assistant_declared_available' => $assistant_requested,
+            'assistant_certification_verified' => $assistant_certified,
+            'assistant_effectively_available' => $assistant_available,
             'assistant_roles' => array( 'evidence_researcher', 'draft_writer', 'independent_critic', 'policy_reviewer' ),
             'assistant_fallback' => 'human_without_automatic_approval',
             'review_separation_of_duties' => true,
