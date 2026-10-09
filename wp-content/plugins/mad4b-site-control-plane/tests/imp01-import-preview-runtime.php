@@ -78,4 +78,21 @@ ck( is_wp_error( $bounds ) &&
 $brand = MAD4B_SCP_Activity_Import_Review::brand_core_plan();
 ck( !is_wp_error( $brand ) && !$brand['ready'] &&
     !$brand['automated_approval_performed'], 'Brand Core autoapproved without authority' );
+$job=MAD4B_SCP_Activity_Import_Review::wp_all_import_plan( array(
+    'profile_slug' => 'pricing', 'import_id' => 12,
+    'unique_identifier' => 'ID', 'mode' => 'match_existing',
+    'update_fields' => array( 'single_price' ),
+    'provider_options' => array( 'wpml' => array( 'require_linking' => true ) ),
+    'delete_missing' => true, 'publish_immediately' => true,
+) );
+ck( !is_wp_error( $job ) && !$job['ready_for_import_execution'] &&
+    count( $job['blocked_effects'] ) === 2,
+    'Dangerous import options were silently accepted for execution' );
+$badJob=MAD4B_SCP_Activity_Import_Review::wp_all_import_plan( array(
+    'profile_slug' => 'pricing', 'import_id' => 12,
+    'unique_identifier' => 'ID', 'mode' => 'update_existing',
+    'update_fields' => array( 'unknown_internal_field' )
+) );
+ck( is_wp_error( $badJob ) && $badJob->get_error_code() === 'mad4b_wpai_update_not_allowed',
+    'WP All Import target field escaped profile allowlist' );
 echo "PASS IMP01 bounded dynamic meta mapping, currency/status exceptions, duplicate IDs, preview limits and governed Brand Core review\n";
