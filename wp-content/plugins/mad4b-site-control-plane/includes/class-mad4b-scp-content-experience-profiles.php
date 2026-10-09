@@ -335,7 +335,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		if ( is_wp_error( $aci01_recipe_variants ) ) return $aci01_recipe_variants;
 
 		$activity_contract = MAD4B_SCP_Business_Activity_Contracts::normalize(
-			isset( $raw['activity_contract'] ) ? $raw['activity_contract'] : array(), $post_type, $meta_keys );
+			isset( $raw['activity_contract'] ) ? $raw['activity_contract'] : array(), $post_type, $meta_keys, $taxonomies );
 		if ( is_wp_error( $activity_contract ) ) return $activity_contract;
 
 		$profile = array(
