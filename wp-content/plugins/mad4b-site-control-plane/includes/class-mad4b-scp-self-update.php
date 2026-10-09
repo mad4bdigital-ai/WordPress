@@ -892,7 +892,6 @@ final class MAD4B_SCP_Self_Update {
 			'channel' => $channel,
 			'current' => $current,
 			'target' => $identity,
-			'candidate_source' => $candidate_source,
 			'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
 			'caller_url_allowed' => false,
 			'caller_path_allowed' => false,
@@ -902,8 +901,6 @@ final class MAD4B_SCP_Self_Update {
 			'embedded_provenance_required' => true,
 			'rollback_on_failed_readback' => true,
 			'release_channel_bound' => ! $staging_candidate,
-			'staging_only' => $staging_candidate,
-			'host_opt_in_required' => $staging_candidate,
 			'production_allowed' => false,
 			'release_channel' => is_array( $release_manifest ) ? ( empty( $release_manifest ) ? array() : self::public_manifest( $release_manifest ) ) : array(),
 			'eligible' => empty( $blockers ),
@@ -912,6 +909,11 @@ final class MAD4B_SCP_Self_Update {
 			'mutation_performed' => false,
 			'authorizing' => false,
 		);
+		if ( $staging_candidate ) {
+			$plan['candidate_source'] = $candidate_source;
+			$plan['staging_only'] = true;
+			$plan['host_opt_in_required'] = true;
+		}
 		sort( $plan['blockers'], SORT_STRING );
 		$plan['plan_sha256'] = self::digest( $plan );
 		$plan['write_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
