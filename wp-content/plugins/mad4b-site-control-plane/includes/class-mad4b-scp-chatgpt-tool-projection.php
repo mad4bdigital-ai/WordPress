@@ -823,6 +823,49 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			);
 		}
 
+		// Metadata-only Summary must never walk catalog table-backend SQL or
+		// unbounded optional diagnostics. Those reads can terminate an otherwise
+		// healthy MCP session. Defer storage inspection unless the caller opts
+		// into the existing explicit catalog preflight mode.
+		$storage = array(
+			'state' => 'deferred',
+			'measurements_deferred' => true,
+			'reason' => 'summary_metadata_only',
+			'authority_effect' => 'none',
+			'read_only' => true,
+		);
+		if ( $include_preflight ) {
+			try {
+				$storage = MAD4B_SCP_Catalog_Object_Store::status();
+				if ( ! is_array( $storage ) ) throw new UnexpectedValueException( 'invalid_catalog_storage_diagnostic' );
+			} catch ( Throwable $error ) {
+				$storage = array(
+					'state' => 'degraded',
+					'error_code' => 'mad4b_catalog_storage_diagnostic_unavailable',
+					'measurements_deferred' => true,
+					'authority_effect' => 'none',
+					'read_only' => true,
+				);
+			}
+		}
+
+		// Protocol certification is useful read metadata, but an optional
+		// provider exception cannot erase a healthy projection Summary.
+		$protocol_profile = array();
+		if ( class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ) {
+			try {
+				$protocol_profile = MAD4B_SCP_MCP_Protocol_Profile::status();
+				if ( ! is_array( $protocol_profile ) ) throw new UnexpectedValueException( 'invalid_protocol_status' );
+			} catch ( Throwable $error ) {
+				$protocol_profile = array(
+					'contract' => 'mad4b.mcp-protocol-profile.degraded.v1',
+					'ready' => false,
+					'blocker' => 'mad4b_protocol_diagnostic_unavailable',
+					'authorizing' => false,
+				);
+			}
+		}
+
 		$universe_count = $include_universe ? count( self::all_site_ability_names() ) : null;
 		$effective_count = null;
 		$effective_count_exact = false;
@@ -874,13 +917,13 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
 			'deep_inspection_action' => 'Use mad4b/chatgpt-tool-projection-discover or detail=page for bounded per-Ability inspection.',
 			'isolation' => self::isolation_contract(),
-			'protocol_profile' => class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ? MAD4B_SCP_MCP_Protocol_Profile::status() : array(),
+			'protocol_profile' => $protocol_profile,
 			'hotset_recommendation_available' => class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ),
 			'hotset_recommendations' => $recommendations,
 			'primary_execution_mode' => 'fixed_dispatch',
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
-			'storage' => MAD4B_SCP_Catalog_Object_Store::status(),
+			'storage' => $storage,
 			'abilities' => $stored,
 			'projection_changes_authority' => false,
 			'read_only' => true,
