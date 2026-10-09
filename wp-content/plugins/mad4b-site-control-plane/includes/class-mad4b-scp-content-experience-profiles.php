@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Business_Activity_Contracts' ) ) require_once __DIR__ . '/class-mad4b-scp-business-activity-contracts.php';
 
 /**
  * Configuration-driven content experience registry.
@@ -333,6 +334,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			isset( $raw['aci01_recipe_variants'] ) ? $raw['aci01_recipe_variants'] : array() );
 		if ( is_wp_error( $aci01_recipe_variants ) ) return $aci01_recipe_variants;
 
+		$activity_contract = MAD4B_SCP_Business_Activity_Contracts::normalize(
+			isset( $raw['activity_contract'] ) ? $raw['activity_contract'] : array(), $post_type, $meta_keys );
+		if ( is_wp_error( $activity_contract ) ) return $activity_contract;
+
 		$profile = array(
 			'contract' => self::CONTRACT,
 			'slug' => $slug,
@@ -354,6 +359,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_bindings' => $helper_bindings,
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'aci01_recipe_variants' => $aci01_recipe_variants,
+			'activity_contract' => $activity_contract,
 			'routes' => self::profile_routes( $slug, max( 1, (int) $next_revision ) ),
 		);
 		$profile['authority_sha256'] = class_exists( 'MAD4B_SCP_Content_Experience_Governance' )
@@ -531,6 +537,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'migration_required' => empty( $profile['authority_sha256'] ),
 				'authority_blocker' => is_wp_error( $authority_guard ) ? $authority_guard->get_error_code() : '',
 				'executor_generation' => isset( $profile['revision'] ) ? (int) $profile['revision'] : 0,
+				'business_activity_enabled' => ! empty( $profile['activity_contract']['enabled'] ),
 				'routes' => self::routes_for_profile( $profile ),
 			);
 		}
@@ -679,6 +686,27 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		), array( 'post_id', 'expected_modified_gmt' ) );
 	}
 
+	private static function business_activity_link_schema( $apply ) {
+		$properties = array(
+			'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+			'post_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+			'user_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+			'login' => array( 'type' => 'string', 'maxLength' => 60 ),
+			'email' => array( 'type' => 'string', 'maxLength' => 254 ),
+			'post_title' => array( 'type' => 'string', 'maxLength' => 200 ),
+			'attributes' => array( 'type' => 'object', 'maxProperties' => 40, 'additionalProperties' => true ),
+			'classifications' => array( 'type' => 'object', 'maxProperties' => 20, 'additionalProperties' => true ),
+		);
+		$required = array( 'profile_slug' );
+		if ( $apply ) {
+			$properties['confirmed'] = array( 'type' => 'boolean' );
+			$properties['plan_sha256'] = self::sha_schema();
+			$properties['operation_key'] = array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 );
+			$required = array( 'profile_slug', 'plan_sha256', 'confirmed', 'operation_key' );
+		}
+		return self::schema( $properties, $required );
+	}
+
 	public static function ability_definitions() {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$definitions = array(
@@ -713,6 +741,15 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				), array( 'profile_slug', 'items' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
 			),
+			array( 'name' => 'mad4b/business-activity-status', 'label' => 'Inspect Optional Business Activity Contract', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'status' ), 'permission' => $read,
+				'schema' => self::schema( array( 'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ) ), array( 'profile_slug' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-link-plan', 'label' => 'Plan User and Business Profile Link', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'plan' ), 'permission' => $read,
+				'schema' => self::business_activity_link_schema( false ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-link-apply', 'label' => 'Apply Exact User and Business Profile Link', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::business_activity_link_schema( true ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
 			array( 'name' => 'mad4b/content-experience-profile-status', 'label' => 'Content Experience Profile Status', 'callback' => array( __CLASS__, 'profile_status' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array(
 				'name' => 'mad4b/content-experience-profile-plan', 'label' => 'Plan Content Experience Profile', 'callback' => array( __CLASS__, 'profile_plan' ), 'permission' => $read,
