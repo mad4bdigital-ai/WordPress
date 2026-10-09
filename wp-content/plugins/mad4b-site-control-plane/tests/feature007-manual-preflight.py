@@ -48,6 +48,8 @@ LINT = (
     "class-mad4b-scp-content-experience-governance.php",
     "class-mad4b-scp-content-experience-profiles.php",
     "class-mad4b-scp-content-intelligence-pipeline.php",
+    "class-mad4b-scp-staging-certification.php",
+    "class-mad4b-scp-operational-remediation.php",
     "adapters/class-mad4b-scp-aci01-read-adapter.php",
 )
 FIXTURES = (
@@ -61,6 +63,7 @@ FIXTURES = (
     "operation-journal-exact-cas-runtime.php",
     "staging-write-authority-postcondition-runtime.php",
     "staging-convergence-coverage-runtime.php",
+    "operational-remediation-control-runtime.php",
     "browser-acceptance-admin-setup-contract.php",
     "staging-browser-site-selection-contract.php",
     "assistant-read-work-runtime.php",
@@ -89,6 +92,7 @@ PY_CHECKS = (
     "developer-runtime-contract.py",
     "full-staging-authority-contract.py",
     "staging-write-authority-convergence-contract.py",
+    "staging-certification-contract.py",
     "g6-delivery-integrity.py",
     "g9-delivery-contract.py",
     "g9-security-source-contract.py",
@@ -132,7 +136,8 @@ def integrity(root, base, head):
     paths = sorted(git("diff", "--name-only", base + "..." + head).splitlines())
     ledger = json.loads((root / LEDGER).read_text(encoding="utf-8"))
     owners = [p for item in ledger["slices"] for p in item["path_globs"]]
-    if len(paths) != ledger["changed_file_count"] or any(owners.count(p) != 1 for p in paths):
+    if len(paths) != ledger["changed_file_count"] or sorted(owners) != paths:
+        # The registry must own exactly these paths, not stale or surplus entries.
         raise ValueError("CUMULATIVE_OWNERSHIP_INVALID")
     actual = digest(("\n".join(paths) + "\n").encode())
     if actual != ledger["changed_paths_sha256"]:
