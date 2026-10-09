@@ -1992,6 +1992,33 @@ def _wp_environment_sign_receipt(profile: dict[str, Any], receipt: dict[str, Any
     }
 
 
+def _wp_environment_verify_signed_receipt(profile: dict[str, Any], receipt: dict[str, Any]) -> None:
+    """A WordPress spool file cannot authorize rollback without Host signature."""
+    evidence = receipt.get("host_environment_attestation")
+    if not isinstance(evidence, dict):
+        raise ValueError("Host source receipt is missing the independent signature")
+    if (evidence.get("contract") != "mad4b.host-environment-ed25519-attestation.v1"
+        or evidence.get("algorithm") != "Ed25519"
+        or evidence.get("payload_contract") != "mad4b.host-environment-receipt-payload.v1"):
+        raise ValueError("Host source receipt signature metadata is invalid")
+    pinned = base64.b64decode(profile["host_environment_receipt_signing_public_key_b64"], validate=True)
+    if (len(pinned) != 32 or not hmac.compare_digest(
+        sha256_bytes(pinned), str(evidence.get("pinned_public_key_sha256") or "")
+    )):
+        raise ValueError("Host source receipt signing key identity is invalid")
+    signature = base64.b64decode(str(evidence.get("signature_b64") or ""), validate=True)
+    if len(signature) != 64:
+        raise ValueError("Host source receipt signature length invalid")
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        from cryptography.exceptions import InvalidSignature
+        Ed25519PublicKey.from_public_bytes(pinned).verify(
+            signature, canonical_json(_wp_environment_receipt_payload(receipt))
+        )
+    except InvalidSignature as exc:
+        raise ValueError("Host source receipt signature does not authenticate the snapshot") from exc
+
+
 def _rollback_wp_environment(result: dict[str, Any]) -> bool:
     try:
         path = Path(str(result.get("_target_path") or ""))
@@ -2180,6 +2207,7 @@ def execute_wp_environment_rollback(profile: dict[str, Any], verified: dict[str,
     if not hmac.compare_digest(sha256_file(receipt_file), str(plan["source_receipt_sha256"])):
         raise ValueError("Host environment rollback source receipt drift")
     receipt = load_json_bounded(receipt_file, MAX_RECEIPT_BYTES)
+    _wp_environment_verify_signed_receipt(profile, receipt)
     if (receipt.get("contract") != RECEIPT_CONTRACT
         or receipt.get("operation_id") != "wordpress_environment_sync"
         or receipt.get("mutation_performed") is not True
@@ -2386,7 +2414,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "replayed": False,
     }
     try:
-        if verified["operation_id"] == "wordpress_environment_sync":
+        if verified["operation_id"] in {"wordpress_environment_sync", "wordpress_environment_rollback"}:
             receipt["host_environment_attestation"] = _wp_environment_sign_receipt(profile, receipt)
         atomic_json_write(receipt_path, receipt)
         persisted = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
