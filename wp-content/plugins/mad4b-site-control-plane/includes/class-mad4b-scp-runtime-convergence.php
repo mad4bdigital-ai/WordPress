@@ -221,6 +221,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$update = class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'cached_status' ) ? MAD4B_SCP_Self_Update::cached_status() : array();
 		$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status( true ) : array();
 		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+		$skills_persisted = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
 		$write_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::persisted_status() : array();
 		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
@@ -278,9 +279,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'expected_version' => class_exists( 'MAD4B_SCP_Local_OAuth_Store', false ) ? (int) MAD4B_SCP_Local_OAuth_Store::VERSION : 0,
 				'protocol_migration_allowed' => false,
 			) ),
-			'managed_skills' => self::phase( 'managed_skills', ! $skills_enabled || ! empty( $skills['ready'] ) ? 'ready' : 'pending', $skills_enabled, array( 'schema' ), true, array(
+			'managed_skills' => self::phase( 'managed_skills', ! $skills_enabled || ( ! empty( $skills['ready'] ) && ! empty( $skills_persisted['ready'] ) && ! empty( $skills_persisted['build_identity_current'] ) ) ? 'ready' : 'pending', $skills_enabled, array( 'schema' ), true, array(
 				'enabled' => $skills_enabled,
 				'blockers' => isset( $skills['blockers'] ) && is_array( $skills['blockers'] ) ? array_values( $skills['blockers'] ) : array(),
+				'persisted_build_identity_current' => ! empty( $skills_persisted['build_identity_current'] ),
+				'persisted_ready' => ! empty( $skills_persisted['ready'] ),
 				'provider_would_create' => isset( $skills['provider_inspection']['would_create'] ) && is_array( $skills['provider_inspection']['would_create'] ) ? array_values( $skills['provider_inspection']['would_create'] ) : array(),
 				'provider_would_refresh' => isset( $skills['provider_inspection']['would_refresh'] ) && is_array( $skills['provider_inspection']['would_refresh'] ) ? array_values( $skills['provider_inspection']['would_refresh'] ) : array(),
 			) ),
@@ -884,7 +887,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$skills_status = $skills_enabled && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
 			? MAD4B_SCP_Skill_Runtime_Certification::current_status()
 			: array();
-		$skills_pending = $skills_enabled && empty( $skills_status['ready'] );
+		$skills_persisted = $skills_enabled && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		$skills_pending = $skills_enabled && ( empty( $skills_status['ready'] )
+			|| empty( $skills_persisted['ready'] ) || empty( $skills_persisted['build_identity_current'] ) );
 		$site_profile = class_exists( 'MAD4B_SCP_Site_Profile', false )
 			? MAD4B_SCP_Site_Profile::status()
 			: array();
@@ -1064,6 +1070,18 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( 1 === preg_match( '/^[a-f0-9]{64}$/', $current_provenance )
 			&& ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $stored_provenance ) || ! hash_equals( $current_provenance, $stored_provenance ) ) ) {
 			$reasons[] = 'build_provenance_drift';
+		}
+		// No filesystem scan: compare the existing persisted Skills receipt with
+		// the provenance digest already hashed at early plugin bootstrap.
+		// Missing/older receipts get one guarded safe-phase convergence cycle.
+		$skills_enrolled = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& MAD4B_SCP_Site_Profile::skills_enabled();
+		if ( $skills_enrolled && 1 === preg_match( '/^[a-f0-9]{64}$/D', $current_provenance )
+			&& class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false ) ) {
+			$stored_skill = get_option( MAD4B_SCP_Skill_Runtime_Certification::OPTION, array() );
+			$skill_provenance = is_array( $stored_skill ) && isset( $stored_skill['boot_provenance_sha256'] )
+				? strtolower( trim( (string) $stored_skill['boot_provenance_sha256'] ) ) : '';
+			if ( ! hash_equals( $current_provenance, $skill_provenance ) ) $reasons[] = 'skills_certification_drift';
 		}
 
 		// The common no-drift path remains option/constant only.  The provenance
