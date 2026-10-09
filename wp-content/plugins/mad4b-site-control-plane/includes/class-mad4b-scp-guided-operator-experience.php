@@ -35,7 +35,9 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		$browser_invalid = isset( $browser['preference_valid'] ) && false === $browser['preference_valid'];
 		$provider_blocked = isset( $provider['action_required_count'] ) && (int) $provider['action_required_count'] > 0;
 		$uncertain = count( array_intersect( $reasons, array( 'mutation_state_uncertain', 'recovery_required' ) ) ) > 0;
-		$host_blocked = count( array_intersect( $reasons, array( 'developer_lane_not_ready', 'developer_breakglass_lane_not_ready' ) ) ) > 0;
+		$lanes = isset( $operational['lanes'] ) && is_array( $operational['lanes'] ) ? $operational['lanes'] : array();
+		$host_blocked = count( array_intersect( $reasons, array( 'developer_lane_not_ready', 'developer_breakglass_lane_not_ready' ) ) ) > 0
+			&& 'resolve_developer_host_execution_prerequisites' === ( $lanes['client_action'] ?? '' );
 		// Write readiness is not evidence of an actual pending approval ticket.
 		// The approval inbox remains an unverified independent human decision lane.
 		$steps = array(
