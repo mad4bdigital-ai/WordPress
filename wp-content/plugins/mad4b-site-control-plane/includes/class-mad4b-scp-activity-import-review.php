@@ -228,19 +228,23 @@ final class MAD4B_SCP_Activity_Import_Review {
                 is_numeric( $row['tour_rate_end_date'] ) &&
                 (float) $row['tour_rate_start_date'] > (float) $row['tour_rate_end_date'] )
                 $errors[] = 'date_interval_reversed';
-            if ( isset( $row['single_price'], $row['double_price'], $row['triple_price'] ) ) {
-                foreach ( array( 'single_price', 'double_price', 'triple_price' ) as $price_key ) {
-                    if ( ! is_numeric( $row[ $price_key ] ) || (float) $row[ $price_key ] < 0 )
-                        $errors[] = 'price_not_nonnegative_number';
-                }
-                if ( 'review_monotonic' === $price_policy &&
+            $price_fields = array( 'single_price', 'double_price', 'triple_price' );
+            foreach ( $price_fields as $price_key ) {
+                if ( array_key_exists( $price_key, $row ) &&
+                    ( ! is_numeric( $row[ $price_key ] ) ||
+                      (float) $row[ $price_key ] < 0 ) )
+                    $errors[] = 'price_not_nonnegative_number';
+            }
+            if ( 'review_monotonic' === $price_policy &&
+                ( ( isset( $row['single_price'], $row['double_price'] ) &&
                     is_numeric( $row['single_price'] ) &&
                     is_numeric( $row['double_price'] ) &&
+                    (float) $row['single_price'] < (float) $row['double_price'] ) ||
+                  ( isset( $row['double_price'], $row['triple_price'] ) &&
+                    is_numeric( $row['double_price'] ) &&
                     is_numeric( $row['triple_price'] ) &&
-                    ( (float) $row['single_price'] < (float) $row['double_price'] ||
-                      (float) $row['double_price'] < (float) $row['triple_price'] ) )
-                    $errors[] = 'price_tier_order_requires_commercial_review';
-            }
+                    (float) $row['double_price'] < (float) $row['triple_price'] ) ) )
+                $errors[] = 'price_tier_order_requires_commercial_review';
             if ( $flag_expired && isset( $row['tour_rate_end_date'] ) &&
                 is_numeric( $row['tour_rate_end_date'] ) &&
                 (float) $row['tour_rate_end_date'] < time() )
@@ -452,11 +456,6 @@ final class MAD4B_SCP_Activity_Import_Review {
             wp_die( 'A genuine CSV upload under 1 MiB is required.' );
         $slug = isset( $_POST['profile_slug'] ) ?
             sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
-        $identity = isset( $_POST['identity_field'] ) ?
-            sanitize_text_field( wp_unslash( $_POST['identity_field'] ) ) : '';
-        $allowed = isset( $_POST['allowed_currencies'] ) ?
-            strtoupper( (string) wp_unslash( $_POST['allowed_currencies'] ) ) : '';
-        $currencies = array_values( array_filter( array_map( 'trim', explode( ',', $allowed ) ) ) );
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
             ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
@@ -490,11 +489,6 @@ final class MAD4B_SCP_Activity_Import_Review {
             $rows[] = array_combine( $headers, $cells );
         }
         fclose( $fh );
-        $meta = array_fill_keys( (array) $profile['meta_keys'], true );
-        $mapping = array();
-        foreach ( $headers as $header )
-            if ( isset( $meta[ $header ] ) ) $mapping[ $header ] = $header;
-        if ( !$mapping ) wp_die( 'No approved Meta mapping found. Configure the parent Profile first.' );
         $input = array( 'profile_slug' => $slug,
             'headers' => $headers, 'rows' => $rows );
         // Identity, currencies, WPML and field mapping are always taken from
@@ -636,8 +630,7 @@ final class MAD4B_SCP_Activity_Import_Review {
             echo '<input type="hidden" name="action" value="mad4b_activity_import_csv" />';
             wp_nonce_field( 'mad4b_activity_csv_intake', 'mad4b_import_nonce' );
             echo '<p><label>Profile Slug <input required name="profile_slug" value="' . esc_attr( $slug ) . '" /></label></p>';
-            echo '<p><label>Unique identity column (case-sensitive) <input required name="identity_field" value="ID" /></label></p>';
-            echo '<p><label>Approved currencies <input required name="allowed_currencies" value="USD,EUR" /></label></p>';
+            echo '<p>Identifier, allowed currencies and field mapping are governed by this site\'s Import Contract, not by the uploaded file.</p>';
             echo '<p><label>CSV file (max 1 MiB / 500 rows) <input required type="file" name="import_csv" accept=".csv,text/csv" /></label></p>';
             submit_button( 'Stage CSV for conflict review', 'secondary' );
             echo '</form>';
