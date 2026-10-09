@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_External_Media_Ingest' ) ) require_once dirname( __DIR__ ) . '/class-mad4b-scp-external-media-ingest.php';
 final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function id() { return 'media'; }
 	public function label() { return 'Media'; }
@@ -7,8 +8,8 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function ability_names() {
 		return array(
-			'read' => array( 'media/search', 'media/get' ),
-			'content' => array( 'media/update-metadata', 'media/set-featured', 'media/set-parent' ),
+			'read' => array( 'media/search', 'media/get', 'media/import-plan' ),
+			'content' => array( 'media/update-metadata', 'media/set-featured', 'media/set-parent', 'media/import-external' ),
 			'admin' => array(),
 		);
 	}
@@ -51,6 +52,33 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			)
 		);
 
+		$this->add_ability(
+			'media/import-plan',
+			'Plan External Image Import into WordPress',
+			'import_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array(
+				'source_url' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 2048 ),
+				'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+				'parent_post_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+			), array( 'source_url', 'operation_key' ) )
+		);
+		$this->add_ability(
+			'media/import-external',
+			'Import External Image into WordPress Media Library',
+			'import_external',
+			array( $this, 'can_import_external' ),
+			$this->schema( array(
+				'source_url' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 2048 ),
+				'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+				'expected_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'confirmed' => array( 'type' => 'boolean' ),
+				'parent_post_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+				'title' => array( 'type' => 'string', 'maxLength' => 300 ),
+				'alt' => array( 'type' => 'string', 'maxLength' => 500 ),
+			), array( 'source_url', 'operation_key', 'expected_scope_sha256', 'confirmed' ) ),
+			'content', false, true, false
+		);
 		$this->add_ability(
 			'media/update-metadata',
 			'Update Media Metadata',
@@ -117,6 +145,13 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		);
 	}
 
+	public function import_plan( $input = array() ) { return MAD4B_SCP_External_Media_Ingest::plan( is_array( $input ) ? $input : array() ); }
+	public function import_external( $input = array() ) { return MAD4B_SCP_External_Media_Ingest::apply( is_array( $input ) ? $input : array() ); }
+	public function can_import_external( $input ) {
+		if ( ! current_user_can( 'upload_files' ) ) return false;
+		$id = isset( $input['parent_post_id'] ) ? absint( $input['parent_post_id'] ) : 0;
+		return !$id || current_user_can( 'edit_post', $id );
+	}
 	public function can_read_attachment( $input ) {
 		$id = isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0;
 		return $id > 0 && current_user_can( 'read_post', $id );
