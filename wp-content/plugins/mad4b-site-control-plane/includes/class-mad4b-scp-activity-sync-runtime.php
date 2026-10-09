@@ -533,7 +533,9 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $written = call_user_func( $adapter['write'], $binding['sources'][ $step['destination'] ],
             $field, $value, $dest, $binding );
         if ( is_wp_error( $written ) ) {
-            $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
+            $op['state'] = 'needs_reconcile';
+            $persisted = self::persist_operation( $key, $op, 'mad4b_sync_provider_error_journal_unverified' );
+            if ( is_wp_error( $persisted ) ) return $persisted;
             return $written;
         }
         $readback = call_user_func( $adapter['read'], $binding['sources'][ $step['destination'] ],
@@ -699,25 +701,40 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $binding = self::bind( $input );
         if ( is_wp_error( $binding ) ) return $binding;
         $key = self::key( $binding, 'operation' );
-        $op = get_option( $key, false );
         $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
-        if ( ! is_array( $op ) || ! in_array( $op['state'], array( 'queued', 'needs_reconcile' ), true ) ||
-            ! isset( $op['next_step'] ) || (int) $op['next_step'] !== 0 ||
-            isset( $op['inflight_step'] ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
-            ! hash_equals( self::digest( $op ), $expected ) )
-            return self::err( 'mad4b_sync_cancel_write_may_exist',
-                'Cannot cancel an uncertain, in-flight or partially applied provider write.' );
-        $op['state'] = 'cancelled_without_provider_write';
-        $op['cancelled_at'] = gmdate( 'c' );
-        $archive_key = self::key( $binding, 'archive' ) . '_' . substr( self::digest( $op ), 0, 32 );
-        if ( ! add_option( $archive_key, $op, '', false ) ||
-            ! hash_equals( self::digest( $op ), self::digest( get_option( $archive_key, false ) ) ) )
-            return self::err( 'mad4b_sync_cancel_archive_failed', 'Exact cancelled-operation archive could not be verified.' );
-        delete_option( $key );
-        delete_option( self::key( $binding, 'lease' ) );
-        return array( 'contract' => self::CONTRACT, 'state' => $op['state'],
-            'archived' => true, 'provider_writes_executed' => 0,
-            'mutation_performed' => true );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
+            return self::err( 'mad4b_sync_cancel_write_may_exist', 'Exact queued journal checksum is required.' );
+        $lease_key = self::key( $binding, 'lease' );
+        $cancel_token = self::digest( array( $binding['site_uuid'], $expected, 'cancel' ) );
+        // Same atomic reservation used by advance. No cancel/advance TOCTOU.
+        if ( ! add_option( $lease_key, array( 'operation_key' => $cancel_token, 'at' => time() ), '', false ) )
+            return self::err( 'mad4b_sync_cancel_worker_active', 'Cannot cancel while an advance worker holds the lease.' );
+        try {
+            $op = get_option( $key, false );
+            if ( ! is_array( $op ) || ! in_array( $op['state'], array( 'queued', 'needs_reconcile' ), true ) ||
+                ! isset( $op['next_step'] ) || (int) $op['next_step'] !== 0 ||
+                isset( $op['inflight_step'] ) || ! hash_equals( self::digest( $op ), $expected ) ||
+                ( $op['site_uuid'] ?? '' ) !== $binding['site_uuid'] ||
+                ( $op['authority_sha256'] ?? '' ) !== $binding['profile']['authority_sha256'] )
+                return self::err( 'mad4b_sync_cancel_write_may_exist', 'Cannot cancel an uncertain, in-flight or partially applied provider write.' );
+            $op['state'] = 'cancelled_without_provider_write';
+            $op['cancelled_at'] = gmdate( 'c' );
+            $archive_key = self::key( $binding, 'archive' ) . '_' . substr( self::digest( $op ), 0, 32 );
+            if ( ! add_option( $archive_key, $op, '', false ) ||
+                ! hash_equals( self::digest( $op ), self::digest( get_option( $archive_key, false ) ) ) )
+                return self::err( 'mad4b_sync_cancel_archive_failed', 'Exact cancelled-operation archive could not be verified.' );
+            delete_option( $key );
+            if ( false !== get_option( $key, false ) )
+                return self::err( 'mad4b_sync_cancel_journal_remains', 'Active journal could not be cleared; archive retained.' );
+            return array( 'contract' => self::CONTRACT, 'state' => $op['state'],
+                'archived' => true, 'provider_writes_executed' => 0,
+                'mutation_performed' => true );
+        } finally {
+            $lease = get_option( $lease_key, false );
+            if ( is_array( $lease ) && isset( $lease['operation_key'] ) &&
+                hash_equals( (string) $lease['operation_key'], $cancel_token ) )
+                delete_option( $lease_key );
+        }
     }
 
     /** Archive only completed operations. A failed journal is never erased. */
