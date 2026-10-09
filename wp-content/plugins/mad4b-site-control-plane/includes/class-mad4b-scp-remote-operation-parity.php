@@ -1011,7 +1011,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'active' => ! empty( $lock['active'] ),
 				'lease_remaining_seconds' => max( 0, (int) ( $lock['lease_remaining_seconds'] ?? 0 ) ),
 			),
-			'reconciliation_required' => ! ! empty( $state['reconciliation_required'] ),
+			'reconciliation_required' => ! empty( $state['reconciliation_required'] ),
 			'blind_retry_allowed' => false,
 			'next_safe_action' => ! empty( $state['ready'] ) ? 'none'
 				: ( ! empty( $lock['active'] ) ? 'observe_existing_operation_checkpoint' : 'review_checkpoint_before_exact_replan' ),
