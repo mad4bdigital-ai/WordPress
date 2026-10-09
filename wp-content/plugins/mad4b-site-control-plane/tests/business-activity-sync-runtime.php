@@ -6,13 +6,18 @@ class WP_Error { private $code; function __construct($code,$message=''){ $this->
 function is_wp_error($x){return $x instanceof WP_Error;}
 function wp_json_encode($value,$options=0){return json_encode($value,$options);}
 function current_user_can($cap,$id=0){return true;}
-function get_post_type($id){return in_array($id,array(101,102,103,104),true)?'vendor_profiles':'other';}
+function get_post_type($id){return in_array($id,array(101,102,103,104,105,106),true)?'vendor_profiles':'other';}
 function get_post_meta($id,$field,$single){return isset($GLOBALS['wp_values'][$id][$field])?$GLOBALS['wp_values'][$id][$field]:'';}
 function get_option($key,$default=false){return array_key_exists($key,$GLOBALS['options'])?$GLOBALS['options'][$key]:$default;}
 function add_option($key,$value,$unused='',$autoload=false){
  if(array_key_exists($key,$GLOBALS['options']))return false;
  $GLOBALS['options'][$key]=$value;return true;}
-function update_option($key,$value,$autoload=false){$old=get_option($key,false);$GLOBALS['options'][$key]=$value;return $old!==$value;}
+function update_option($key,$value,$autoload=false){
+ if(isset($GLOBALS['fail_option_state'])&&is_array($value)&&
+    strpos($key,'mad4b_asyn_operation_')===0&&
+    isset($value['state'])&&$value['state']===$GLOBALS['fail_option_state'])return false;
+ $old=get_option($key,false);$GLOBALS['options'][$key]=$value;return $old!==$value;
+}
 function delete_option($key){unset($GLOBALS['options'][$key]);return true;}
 function apply_filters($hook,$adapters,$profile){if($hook==='mad4b_activity_sync_adapters'){$adapters['google_drive']=array(
  'read'=>'fake_drive_read','write'=>'fake_drive_write',
@@ -146,4 +151,72 @@ ck(!is_wp_error($recovered)&&$recovered['provider_replayed']===false,
 $GLOBALS['drive_uncertain']=false;
 $completed=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(103)));
 ck(!is_wp_error($completed)&&$completed['checkpoint_advanced'],'Recovered write did not converge checkpoint');
+
+// Fault injection: journal storage fails before a provider write.
+// The lease may remain held conservatively, but there must be ZERO remote writes.
+$GLOBALS['wp_values'][105]=array('biography'=>'Original');
+$GLOBALS['drive_value']='Original'; $GLOBALS['drive_revision']++;
+$seed5=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(105));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(105),
+ array('plan_sha256'=>$seed5['plan_sha256']))))), 'Fault test bootstrap failed');
+$GLOBALS['wp_values'][105]['biography']='Edited without journal';
+$p5=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(105));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(105),
+ array('plan_sha256'=>$p5['plan_sha256']))))), 'Fault test begin failed');
+$GLOBALS['fail_option_state']='step_inflight';
+$before=$GLOBALS['drive_revision'];
+$failed=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(105)));
+unset($GLOBALS['fail_option_state']);
+ck(is_wp_error($failed) && $failed->get_error_code()==='mad4b_sync_inflight_journal_unverified',
+ 'Write proceeded despite failed durable inflight journal');
+ck($GLOBALS['drive_revision']===$before && $GLOBALS['drive_value']==='Original',
+ 'Provider write must not occur without journal readback');
+
+// Fault injection: provider write succeeds but checkpoint progress storage fails.
+// Never report success or unlock a step whose durable receipt is uncertain.
+$GLOBALS['wp_values'][106]=array('biography'=>'Original');
+$GLOBALS['drive_value']='Original'; $GLOBALS['drive_revision']++;
+$seed6=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(106));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(106),
+ array('plan_sha256'=>$seed6['plan_sha256']))))), 'Postwrite test bootstrap failed');
+$GLOBALS['wp_values'][106]['biography']='Written but progress failed';
+$p6=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(106));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(106),
+ array('plan_sha256'=>$p6['plan_sha256']))))), 'Postwrite test begin failed');
+$GLOBALS['fail_option_state']='running';
+$uncertain=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(106)));
+unset($GLOBALS['fail_option_state']);
+ck(is_wp_error($uncertain) && $uncertain->get_error_code()==='mad4b_sync_postwrite_journal_unverified',
+ 'Unrecorded postwrite step was incorrectly accepted');
+ck($GLOBALS['drive_value']==='Written but progress failed' &&
+ $GLOBALS['drive_revision']>=$before+2,'Provider write was not observed in fault test');
+$s6=MAD4B_SCP_Activity_Sync_Runtime::status(scope(106));
+ck($s6['operation_state']==='step_inflight','Uncertain write lost inflight state');
+$blocked=MAD4B_SCP_Activity_Sync_Runtime::recover(array_merge(confirmed(scope(106)),
+ array('expected_operation_sha256'=>$s6['operation_sha256'])));
+ck(is_wp_error($blocked) &&
+ $blocked->get_error_code()==='mad4b_sync_recover_inflight_worker_not_quiesced',
+ 'Recovery overtook a potentially active provider worker');
+$recovery_key='mad4b_asyn_recovery_lease_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|106');
+$GLOBALS['options'][$recovery_key]='other_recovery_worker';
+$advance_lease='mad4b_asyn_lease_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|106');
+// Simulate external process-exit confirmation. This is not a production lease
+// reclamation algorithm and MUST NOT be implemented as automatic age-only release.
+unset($GLOBALS['options'][$advance_lease]);
+$busy=MAD4B_SCP_Activity_Sync_Runtime::recover(array_merge(confirmed(scope(106)),
+ array('expected_operation_sha256'=>$s6['operation_sha256'])));
+ck(is_wp_error($busy)&&$busy->get_error_code()==='mad4b_sync_recovery_busy',
+ 'Two recovery workers entered the journal');
+unset($GLOBALS['options'][$recovery_key]);
+$recovered6=MAD4B_SCP_Activity_Sync_Runtime::recover(array_merge(confirmed(scope(106)),
+ array('expected_operation_sha256'=>$s6['operation_sha256'])));
+ck(!is_wp_error($recovered6)&&$recovered6['provider_replayed']===false,
+ 'Readback-based recovery failed after worker quiescence');
+$done6=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(106)));
+ck(!is_wp_error($done6)&&$done6['checkpoint_advanced'],
+ 'Recovered uncertain write was not checkpointed');
+echo "PASS MSR02 failure-injected prewrite/postwrite journal checks and serialized recovery\n";
+
 echo "PASS MSR02 durable checkpoint, WordPress/Drive CAS, stale plan, conflict, readback, uncertain-write recovery and archival\n";
