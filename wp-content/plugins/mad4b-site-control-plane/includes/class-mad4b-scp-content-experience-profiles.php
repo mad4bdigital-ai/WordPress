@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-content-experience-recipe-scope.php';
 if ( ! class_exists( 'MAD4B_SCP_Business_Activity_Contracts' ) ) require_once __DIR__ . '/class-mad4b-scp-business-activity-contracts.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Source_Reconciliation' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-source-reconciliation.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Sync_Runtime' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-sync-runtime.php';
 
 /**
  * Configuration-driven content experience registry.
@@ -710,6 +711,52 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 					'used_revisions' => array( 'type' => 'object', 'maxProperties' => 12, 'additionalProperties' => true ),
 				), array( 'profile_slug', 'current_revisions', 'used_revisions' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-sync-status', 'label' => 'Inspect Persisted Activity Sync Journal', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'status' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array(
+                'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+            ), array( 'profile_slug', 'entity_id' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-sync-plan', 'label' => 'Plan Authoritative Multi-Source Sync', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'plan' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array(
+                'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+            ), array( 'profile_slug', 'entity_id' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-sync-begin', 'label' => 'Begin Exact Governed Activity Sync', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'begin' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array(
+                'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+                'confirmed' => array( 'type' => 'boolean' ),
+                'plan_sha256' => self::sha_schema(),
+                'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+            ), array( 'profile_slug', 'entity_id', 'confirmed', 'plan_sha256', 'operation_key' ) ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
+			array( 'name' => 'mad4b/business-activity-sync-advance', 'label' => 'Advance One Guarded Provider Sync Step', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'advance' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array(
+                'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+                'confirmed' => array( 'type' => 'boolean' ),
+                'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+            ), array( 'profile_slug', 'entity_id', 'confirmed', 'operation_key' ) ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
+			array( 'name' => 'mad4b/business-activity-sync-recover', 'label' => 'Recover Exact Ambiguous Provider Write', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'recover' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array(
+                'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+                'confirmed' => array( 'type' => 'boolean' ),
+                'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+                'expected_operation_sha256' => self::sha_schema(),
+            ), array( 'profile_slug', 'entity_id', 'confirmed', 'operation_key', 'expected_operation_sha256' ) ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
+			array( 'name' => 'mad4b/business-activity-sync-archive', 'label' => 'Archive Verified Activity Sync Receipt', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'archive' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array(
+                'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+                'confirmed' => array( 'type' => 'boolean' ),
+                'expected_operation_sha256' => self::sha_schema(),
+            ), array( 'profile_slug', 'entity_id', 'confirmed', 'expected_operation_sha256' ) ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
 			array( 'name' => 'mad4b/business-activity-reconcile-plan', 'label' => 'Compare Multi-Source Profile Field Revisions and Conflicts', 'callback' => array( 'MAD4B_SCP_Activity_Source_Reconciliation', 'plan' ), 'permission' => $read,
 				'schema' => self::schema( array(
 					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
