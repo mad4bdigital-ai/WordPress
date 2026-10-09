@@ -1008,3 +1008,7 @@ Phase 38 cannot be closed by documentation alone.
 ## Optional CE01 implementation backlog
 
 [CE01 plan](extensions/competitive-experience/plan.md) extends operator journeys and governed provider breadth from four supplied competitor packages. Local phases 0–28 and tasks T3901–T3980 plus T4001–T4065 belong to the optional extension, not the frozen release phases 0–38. Future implementation requires reviewed, evidence-backed slices.
+
+## Optional Phase 39 — CSO01 Conversational Site Operations target
+
+See [CSO01 delivery plan](extensions/conversational-site-operations/plan.md) for nine stages: scoped read-only discovery; typed dynamic form/A11y; external secure credential handoff; single governed save; bulk/workflow durable sagas; content/media/template; multi-site/monitor/Doctor; independent signed Staging-to-Production proposal; and adversarial PHP/WordPress/Browser/Host validation. Phases are future implementation slices, not current parent Phase 0–38 gate dependencies. CSO01 cannot grant new privileges or claim completion from source documents or mock tests.
