@@ -23,6 +23,9 @@ final class MAD4B_SCP_Market_Growth_Policies {
             'contract' => self::CONTRACT,
             'revision' => 0,
             'suppliers' => array(),
+            'competitors' => array(),
+            'dmc_connections' => array(),
+            'feed_mappings' => array(),
             'pricing_rules' => array(),
             'media_rules' => array(),
             'assistant_roles' => array(),
@@ -36,7 +39,7 @@ final class MAD4B_SCP_Market_Growth_Policies {
             return self::error( 'mad4b_growth_registry_corrupt', 'Market rules are unavailable; repair the registry without resetting authority.' );
         }
         $current = array_merge( self::defaults(), $data );
-        foreach ( array( 'suppliers', 'pricing_rules', 'media_rules', 'assistant_roles' ) as $key ) {
+        foreach ( array( 'suppliers', 'competitors', 'dmc_connections', 'feed_mappings', 'pricing_rules', 'media_rules', 'assistant_roles' ) as $key ) {
             if ( ! is_array( $current[ $key ] ) ) return self::error( 'mad4b_growth_registry_corrupt', 'Invalid market rules structure.' );
         }
         return $current;
@@ -56,6 +59,9 @@ final class MAD4B_SCP_Market_Growth_Policies {
             'revision' => (int) $current['revision'],
             'registry_sha256' => self::checksum( $current ),
             'suppliers' => $current['suppliers'],
+            'competitors' => $current['competitors'],
+            'dmc_connections' => $current['dmc_connections'],
+            'feed_mappings' => $current['feed_mappings'],
             'pricing_rules' => $current['pricing_rules'],
             'media_rules' => $current['media_rules'],
             'assistant_roles' => $current['assistant_roles'],
@@ -93,6 +99,22 @@ final class MAD4B_SCP_Market_Growth_Policies {
                 if ( isset( $item['commercial_status'] ) && ! in_array( $item['commercial_status'], array( 'unknown', 'owner_confirmed', 'contract_reviewed', 'denied' ), true ) ) return self::error( 'mad4b_growth_supplier_status_invalid', 'Unsupported supplier status.' );
                 if ( ! empty( $item['agreement_ref'] ) && ( ! is_string( $item['agreement_ref'] ) || strlen( $item['agreement_ref'] ) > 255 ) ) return self::error( 'mad4b_growth_agreement_invalid', 'Agreement reference must be bounded.' );
                 if ( ! empty( $item['valid_until'] ) && ( ! is_string( $item['valid_until'] ) || ! preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/', $item['valid_until'] ) ) ) return self::error( 'mad4b_growth_agreement_date_invalid', 'Agreement expiry must be an ISO date.' );
+            } elseif ( 'competitors' === $group ) {
+                if ( empty( $item['display_name'] ) || ! is_string( $item['display_name'] ) || strlen( $item['display_name'] ) > 160
+                    || ! isset( $item['source_url'] ) || ! self::valid_url( $item['source_url'] ) )
+                    return self::error( 'mad4b_growth_competitor_invalid', 'A competitor research profile needs a name and source URL.' );
+            } elseif ( 'dmc_connections' === $group ) {
+                if ( empty( $item['supplier_id'] ) || ! self::bounded_id( $item['supplier_id'] )
+                    || ! isset( $item['direction'] ) || ! in_array( $item['direction'], array( 'import', 'export', 'bidirectional' ), true ) )
+                    return self::error( 'mad4b_growth_dmc_invalid', 'DMC connection requires supplier identity and exchange direction.' );
+                if ( ! empty( $item['feed_url'] ) && ! self::valid_url( $item['feed_url'] ) )
+                    return self::error( 'mad4b_growth_dmc_feed_invalid', 'DMC feed must use an absolute HTTP(S) URL.' );
+            } elseif ( 'feed_mappings' === $group ) {
+                if ( empty( $item['post_type'] ) || 1 !== preg_match( '/^[a-z0-9_-]{1,64}$/', (string) $item['post_type'] )
+                    || empty( $item['direction'] ) || ! in_array( $item['direction'], array( 'import', 'export', 'bidirectional' ), true ) )
+                    return self::error( 'mad4b_growth_mapping_invalid', 'DMC mapping needs a native post type and exchange direction.' );
+                if ( isset( $item['fields'] ) && ( ! is_array( $item['fields'] ) || count( $item['fields'] ) > 40 ) )
+                    return self::error( 'mad4b_growth_mapping_fields_invalid', 'Mapping fields exceed the bounded limit.' );
             } elseif ( 'pricing_rules' === $group ) {
                 if ( ! isset( $item['mode'] ) || ! in_array( $item['mode'], self::MODES, true ) ) return self::error( 'mad4b_growth_pricing_mode_invalid', 'Unsupported pricing strategy.' );
                 if ( empty( $item['currency'] ) || ! preg_match( '/^[A-Z]{3}$/', (string) $item['currency'] ) ) return self::error( 'mad4b_growth_currency_invalid', 'Currency must be exactly ISO-style three uppercase letters.' );
@@ -125,11 +147,11 @@ final class MAD4B_SCP_Market_Growth_Policies {
         $digest = strtolower( (string) $input['expected_sha256'] );
         if ( $expected < 0 || 1 !== preg_match( '/^[a-f0-9]{64}$/', $digest ) ) return self::error( 'mad4b_growth_revision_invalid', 'Exact revision and checksum are required.' );
         $draft = isset( $input['settings'] ) && is_array( $input['settings'] ) ? $input['settings'] : array();
-        if ( array_diff( array_keys( $draft ), array( 'suppliers', 'pricing_rules', 'media_rules', 'assistant_roles' ) ) )
+        if ( array_diff( array_keys( $draft ), array( 'suppliers', 'competitors', 'dmc_connections', 'feed_mappings', 'pricing_rules', 'media_rules', 'assistant_roles' ) ) )
             return self::error( 'mad4b_growth_fields_invalid', 'Unknown configuration field is not allowed.' );
         $encoded = wp_json_encode( $draft );
         if ( ! is_string( $encoded ) || strlen( $encoded ) > self::MAX_BYTES ) return self::error( 'mad4b_growth_settings_too_large', 'Market policy settings exceed bounded size.' );
-        foreach ( array( 'suppliers', 'pricing_rules', 'media_rules', 'assistant_roles' ) as $group ) {
+        foreach ( array( 'suppliers', 'competitors', 'dmc_connections', 'feed_mappings', 'pricing_rules', 'media_rules', 'assistant_roles' ) as $group ) {
             if ( array_key_exists( $group, $draft ) ) {
                 $validation = self::validate_collection( $group, $draft[ $group ] );
                 if ( is_wp_error( $validation ) ) return $validation;
