@@ -97,6 +97,13 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		elseif ( is_string( $message ) && '' !== $message ) echo '<div class="notice notice-success"><p>' . esc_html( $message ) . '</p></div>';
 
 		self::render_status( $status );
+		$certificate = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		if ( empty( $certificate['ready'] ) || empty( $certificate['build_identity_current'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Managed Skills need verification', 'mad4b-site-control-plane' ) . '</strong> — ';
+			echo esc_html__( 'A current certificate is missing or stale. Use the managed reconciliation step below, then inspect the renewed certificate; this page does not grant new Write authority.', 'mad4b-site-control-plane' );
+			echo '</p></div>';
+		}
 		self::render_reconcile_managed( $status );
 		self::render_snapshot_note();
 		self::render_skill_table( $skills );
