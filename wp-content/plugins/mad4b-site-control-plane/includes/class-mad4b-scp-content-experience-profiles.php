@@ -7,6 +7,7 @@ if ( ! class_exists( 'MAD4B_SCP_Activity_Source_Reconciliation' ) ) require_once
 if ( ! class_exists( 'MAD4B_SCP_Activity_Sync_Runtime' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-sync-runtime.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Google_Docs_Adapter' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-google-docs-adapter.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Review' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-review.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-modes.php';
 
 /**
  * Configuration-driven content experience registry.
@@ -582,6 +583,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-context-impact-plan',
             'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
             'mad4b/business-activity-import-capabilities',
+            'mad4b/business-activity-import-modes',
+            'mad4b/business-activity-import-mode-plan',
             'mad4b/business-activity-import-plan', 'mad4b/business-activity-import-review',
             'mad4b/business-activity-wp-all-import-plan',
             'mad4b/brand-core-acceptance-plan',
@@ -694,6 +697,25 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	public static function ability_definitions() {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$definitions = array(
+            array(
+                'name' => 'mad4b/business-activity-import-modes',
+                'label' => 'Discover Dynamic Alternative Spreadsheet Import Modes',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Modes', 'catalog' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array() ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-mode-plan',
+                'label' => 'Plan Exact Authorized Source and Destination Import Mode',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Modes', 'plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'mode_id' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 64 ),
+                ), array( 'profile_slug', 'mode_id' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
             array(
                 'name' => 'mad4b/business-activity-import-capabilities',
                 'label' => 'Discover Governed Spreadsheet Import Engines and Options',
