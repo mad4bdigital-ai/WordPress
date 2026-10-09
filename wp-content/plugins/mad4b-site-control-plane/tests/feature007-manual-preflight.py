@@ -60,6 +60,7 @@ FIXTURES = (
     "assistant-task-journal-bridge-runtime.php",
     "operation-journal-exact-cas-runtime.php",
     "staging-write-authority-postcondition-runtime.php",
+    "staging-convergence-coverage-runtime.php",
     "browser-acceptance-admin-setup-contract.php",
     "staging-browser-site-selection-contract.php",
     "assistant-read-work-runtime.php",
