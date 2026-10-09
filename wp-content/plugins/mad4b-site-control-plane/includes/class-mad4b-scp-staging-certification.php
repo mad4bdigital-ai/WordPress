@@ -557,7 +557,7 @@ final class MAD4B_SCP_Staging_Certification {
 		// have spoken. No missing gate, dangling dependency or unverified
 		// external executor may silently become an executable operation.
 		$coverage = self::complete_convergence_coverage( $plan_gates, $actions );
-		$actions = $coverage['actions'];
+		$actions = self::observe_convergence_ability_registration( $coverage['actions'] );
 		// Every action must be checked against *current* site, profile and
 		// package authority again by its own governed executor. This binding
 		// is evidence for planning, not an approval or time-independent grant.
@@ -588,6 +588,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'authoritative_context_detail_ability' => 'context/brand-core-convergence-plan',
 			'verification_ability' => 'mad4b/staging-convergence-verify',
 			'verification_requires_exact_source_and_plan' => true,
+			'unregistered_executor_writes_denied' => true,
 			'live_acceptance_overlay' => $live_overlay,
 			'coverage_contract' => $coverage['contract'],
 			'gate_action_coverage' => $coverage['gate_action_coverage'],
@@ -605,6 +606,33 @@ final class MAD4B_SCP_Staging_Certification {
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
 		return $basis;
+	}
+
+	/**
+	 * A declaration in the plan is not proof of an installed or executable
+	 * provider. Observe the WordPress Ability registry after boot, never
+	 * materialize/install a missing provider as a side effect of inspection.
+	 */
+	public static function observe_convergence_ability_registration( array $actions ) {
+		foreach ( $actions as &$action ) {
+			if ( ! is_array( $action ) ) continue;
+			$apply = is_string( $action['apply_ability'] ?? null ) ? $action['apply_ability'] : '';
+			$readback = is_string( $action['readback_ability'] ?? null ) ? $action['readback_ability'] : '';
+			$action['apply_ability_registered'] = '' !== $apply && function_exists( 'wp_has_ability' )
+				&& wp_has_ability( $apply );
+			$action['readback_ability_registered'] = '' !== $readback && function_exists( 'wp_has_ability' )
+				&& wp_has_ability( $readback );
+			$action['registration_is_not_execution_permission'] = true;
+			$action['automatic_execution_allowed'] = false;
+			if ( '' !== $apply && ! $action['apply_ability_registered'] ) {
+				$action['execution_provider_missing'] = true;
+				$action['remediation_requires_adapter_discovery'] = true;
+			}
+			if ( '' !== $readback && ! $action['readback_ability_registered'] )
+				$action['readback_provider_missing'] = true;
+		}
+		unset( $action );
+		return $actions;
 	}
 
 	/**
