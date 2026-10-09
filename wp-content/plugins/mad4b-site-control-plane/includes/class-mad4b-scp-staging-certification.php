@@ -315,7 +315,9 @@ final class MAD4B_SCP_Staging_Certification {
 				'readback_ability' => 'mad4b/staging-certification-status',
 				'production_policy' => 'deny',
 			) );
-			$recovery_dependencies[] = 'wordpress_environment_alignment';
+			// WordPress's implicit-production default can coexist with an explicitly attested
+			// enrolled Staging profile; host alignment is an independent review,
+			// not a reason to deadlock already-authorized native safe phases.
 		}
 		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
 			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
@@ -363,20 +365,66 @@ final class MAD4B_SCP_Staging_Certification {
 		}
 		$provider_matrix = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix', false )
 			? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
-		$provider_gated = isset( $provider_matrix['provider_gated_count'] ) ? max( 0, (int) $provider_matrix['provider_gated_count'] ) : 0;
-		if ( $provider_gated > 0 ) {
-			$append( $actions, $seen, 'provider_behavioral_recertification', array(
-				'kind' => 'provider_evidence_review',
+		if ( 'mad4b.provider-closure-matrix.v1' !== ( isset( $provider_matrix['contract'] ) ? $provider_matrix['contract'] : '' )
+			|| empty( $provider_matrix['read_only'] ) || ! empty( $provider_matrix['mutation_performed'] ) ) {
+			$append( $actions, $seen, 'provider_inventory_unavailable', array(
+				'kind' => 'read_only_blocker',
 				'executor' => 'governed_provider_certifier',
-				'human_decision_required' => true,
+				'human_decision_required' => false,
 				'automatic_execution_allowed' => false,
-				'depends_on' => $recovery_dependencies,
-				'provider_gated_count' => $provider_gated,
-				'plan_ability' => 'mad4b/provider-recertification-plan',
-				'readback_ability' => 'mad4b/provider-compatibility-inventory',
-				'instruction' => 'Certify each current capability against its own artifact, behavior, reversibility and exact site binding; keep unproved writes quarantined.',
-				'production_policy' => 'deny',
+				'readback_ability' => 'mad4b/provider-closure-matrix',
+				'instruction' => 'Provider closure matrix is unavailable or invalid. Do not infer that absent providers are certified.',
 			) );
+		} else {
+			$provider_items = isset( $provider_matrix['items'] ) && is_array( $provider_matrix['items'] ) ? $provider_matrix['items'] : array();
+			$provider_actions = 0;
+			$provider_pending = 0;
+			foreach ( $provider_items as $provider_item ) {
+				if ( ! is_array( $provider_item ) || empty( $provider_item['operational_action_required'] )
+					|| 'inactive' === ( isset( $provider_item['applicability_state'] ) ? $provider_item['applicability_state'] : '' ) ) continue;
+				++$provider_pending;
+				// Keep the complete plan under 64 nodes, reserving space for
+				// Host, Browser and write actions assembled further below.
+				if ( $provider_actions >= 40 ) continue;
+				$ability = isset( $provider_item['ability'] ) && is_string( $provider_item['ability'] ) ? $provider_item['ability'] : '';
+				$id = 'provider_' . substr( hash( 'sha256', $ability ), 0, 24 );
+				$provider_id = isset( $provider_item['catalog_provider_id'] ) ? sanitize_key( (string) $provider_item['catalog_provider_id'] ) : '';
+				$capability_id = isset( $provider_item['capability_id'] ) ? sanitize_key( (string) $provider_item['capability_id'] ) : '';
+				$resolved = 1 === preg_match( '/^[a-z0-9_-]{1,64}$/D', $provider_id )
+					&& '' !== $capability_id && empty( $provider_item['ambiguous_mapping'] );
+				$append( $actions, $seen, $id, array(
+					'kind' => $resolved ? 'provider_capability_review' : 'provider_mapping_review',
+					'executor' => 'governed_provider_certifier',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'depends_on' => $recovery_dependencies,
+					'provider_id' => $resolved ? $provider_id : '',
+					'capability_id' => $resolved ? $capability_id : '',
+					'ability' => $ability,
+					'plan_ability' => $resolved ? 'mad4b/provider-recertification-plan' : 'mad4b/provider-closure-matrix',
+					'plan_input' => $resolved ? array( 'provider_id' => $provider_id ) : array(),
+					'readback_ability' => $resolved ? 'mad4b/provider-behavioral-evidence-status' : 'mad4b/provider-closure-matrix',
+					'readback_input' => $resolved ? array( 'provider_id' => $provider_id, 'capability_id' => $capability_id ) : array( 'ability' => $ability ),
+					'classification' => isset( $provider_item['closure_class'] ) ? sanitize_key( (string) $provider_item['closure_class'] ) : 'unknown',
+					'next_action' => isset( $provider_item['next_action'] ) ? sanitize_key( (string) $provider_item['next_action'] ) : 'review',
+					'instruction' => $resolved ? 'Reassess exact capability and provider artifact then require independently verified behavioral and rollback receipts before any write is eligible.' : 'Resolve ambiguous or absent provider mapping before certification; never guess a provider ID.',
+					'production_policy' => 'deny',
+					'activation_allowed' => false,
+				) );
+				++$provider_actions;
+			}
+			if ( $provider_pending > $provider_actions ) {
+				$append( $actions, $seen, 'provider_actions_overflow_review', array(
+					'kind' => 'read_only_blocker',
+					'executor' => 'governed_provider_certifier',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'remaining_count' => $provider_pending - $provider_actions,
+					'plan_ability' => 'mad4b/provider-closure-matrix',
+					'readback_ability' => 'mad4b/provider-closure-matrix',
+					'instruction' => 'Provider actions exceed the bounded recovery projection. Continue through paged provider review; omitted actions are not certified.',
+				) );
+			}
 		}
 		if ( in_array( 'safe_boot', $blocking, true ) ) {
 			$append( $actions, $seen, 'external_mcp_handshake_refresh', array(
