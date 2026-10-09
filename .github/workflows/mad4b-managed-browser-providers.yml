@@ -88,6 +88,7 @@ jobs:
           node tools/browser-acceptance/test-evidence-assembler.mjs
           node tools/browser-acceptance/test-worker-environment.mjs
           node tools/browser-acceptance/test-receipt.mjs
+          node tools/browser-acceptance/test-plan-consumption-ledger.mjs
           node tools/browser-acceptance/test-evidence-envelope.mjs
           node tools/browser-acceptance/test-filter-selection.mjs
       - name: PHP 8.3 syntax check for bounded site discovery
@@ -110,6 +111,8 @@ jobs:
           node --check tools/browser-acceptance/run-etg-browser-acceptance.mjs
           node --check tools/browser-acceptance/run-live-etg-browser-acceptance.mjs
           node --check tools/browser-acceptance/receipt.mjs
+          node --check tools/browser-acceptance/plan-consumption-ledger.mjs
+          node --check tools/browser-acceptance/test-plan-consumption-ledger.mjs
           node --check tools/browser-acceptance/site-provider-configuration.mjs
           node --check tools/browser-acceptance/test-site-provider-configuration.mjs
           node --check tools/browser-acceptance/evidence-assembler.mjs
