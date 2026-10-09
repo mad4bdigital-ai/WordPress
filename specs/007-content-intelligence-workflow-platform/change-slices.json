@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 570,
+  "changed_file_count": 574,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1126,8 +1126,20 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-preview-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-source-contract.py"
       ]
+    },
+    {
+      "id": "feature007-imp02-dynamic-alternative-import-modes-20261010",
+      "semantic_unit": "Composable alternative spreadsheet transports: twenty-three manifest modes; profile-bound preferences and explicit fallbacks; WP Tools CSV reviewed intake and signed generic webhook client; modes MCP surfaces, native guard fixtures and IMP02 specification.",
+      "revert_boundary": "Revert IMP02 mode registry, generic webhook client, tests and spec while retaining existing guarded IMP01 and MSR02 data and no business record mutation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp02-alternative-import-modes.md",
+        "tools/feature007/import-modes/signed-generic-webhook-push.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-modes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp02-import-modes-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "9927a0823a002957e6ea2de183caa621eff958dc3f8ab0692f95691dd1e7b98f",
+  "changed_paths_sha256": "cc488324a1a67c2080a576f5bd5be08da6a4342ab415be9ff44d07738c2a1f4f",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
