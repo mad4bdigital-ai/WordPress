@@ -4,12 +4,19 @@
 Uses only temporary roots; never reads or writes a real WordPress site.
 """
 import importlib.util
+import base64
 import json
 import os
 import stat
 import tempfile
 import uuid
 from pathlib import Path
+
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+except ImportError as exc:
+    raise AssertionError("BLOCKED: Host Runner receipt signature acceptance needs audited cryptography package") from exc
 
 RUNNER_PATH = Path(__file__).resolve().parents[4] / "tools" / "mad4b_host_runner.py"
 spec = importlib.util.spec_from_file_location("mad4b_host_runner", RUNNER_PATH)
@@ -103,6 +110,20 @@ def test_flow():
         config.chmod(0o600)
         site_uuid = "11111111-2222-4333-8444-555555555555"
         profile = profile_for(site, private, site_uuid, config, content)
+        signer = Ed25519PrivateKey.generate()
+        private_file = tmp / "runner-env-signing.pem"
+        private_file.write_bytes(signer.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        ))
+        private_file.chmod(0o600)
+        public_raw = signer.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+        )
+        profile["host_environment_receipt_signing_key_file"] = str(private_file)
+        profile["host_environment_receipt_signing_public_key_b64"] = base64.b64encode(public_raw).decode("ascii")
+        runner._wp_environment_receipt_signing_key(profile)
         plan = exact_sync(profile)
         verified = wrapped("wordpress_environment_sync", plan)
         result = runner.execute_wp_environment_sync(profile, verified)
@@ -117,6 +138,44 @@ def test_flow():
         snapshot = private / f"{verified['job_id']}.bin"
         assert snapshot.read_bytes() == original
         assert stat.S_IMODE(snapshot.stat().st_mode) == 0o600
+
+
+        # Detached Host-private attestation is independently verifiable with a
+        # pinned public key. Neither unsigned nor tampered spool data qualifies.
+        signed_receipt = {
+            "job_id": verified["job_id"],
+            "site_uuid": site_uuid,
+            "environment": "staging",
+            "operation_id": "wordpress_environment_sync",
+            "plan_sha256": plan["plan_sha256"],
+            "authority_ref": "c"*64,
+            "runner_source_sha256": runner.sha256_file(RUNNER_PATH),
+            "completed_at": runner.utc_now(),
+            "readback_verdict": "PASS",
+            "mutation_performed": True,
+            "result": {
+                **{k: v for k, v in result.items() if not k.startswith("_")},
+            }
+        }
+        attestation = runner._wp_environment_sign_receipt(profile, signed_receipt)
+        signature = base64.b64decode(attestation["signature_b64"], validate=True)
+        assert attestation["pinned_public_key_sha256"] == runner.sha256_bytes(public_raw)
+        signed_bytes = runner.canonical_json(runner._wp_environment_receipt_payload(signed_receipt))
+        signer.public_key().verify(signature, signed_bytes)
+        signed_receipt["result"]["after_sha256"] = "0"*64
+        expect_rejection(
+            lambda: signer.public_key().verify(
+                signature, runner.canonical_json(runner._wp_environment_receipt_payload(signed_receipt))
+            ),
+            "tampered Host receipt incorrectly retained independent signature",
+        )
+        signed_receipt["result"]["after_sha256"] = result["after_sha256"]
+        profile["host_environment_receipt_signing_public_key_b64"] = base64.b64encode(b"x"*32).decode("ascii")
+        expect_rejection(
+            lambda: runner._wp_environment_sign_receipt(profile, signed_receipt),
+            "Host Runner accepted a signer different from its pinned public key",
+        )
+        profile["host_environment_receipt_signing_public_key_b64"] = base64.b64encode(public_raw).decode("ascii")
 
         # A replayed Staging plan must not add a second define after boot.
         updated = profile_for(site, private, site_uuid, config, content)
