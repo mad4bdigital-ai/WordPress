@@ -168,7 +168,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $import_raw = isset( $raw['import_modes'] ) ? $raw['import_modes'] : array();
         if ( ! is_array( $import_raw ) ||
             array_diff( array_keys( $import_raw ),
-                array( 'enabled_modes', 'preferred_mode', 'fallback_modes', 'manual_review_required' ) ) )
+                array( 'enabled_modes', 'preferred_mode', 'fallback_modes', 'manual_review_required', 'validation' ) ) )
             return self::err( 'mad4b_activity_import_modes_invalid',
                 'Only declared import mode IDs and review policy are allowed.' );
         $enabled_modes = isset( $import_raw['enabled_modes'] ) ? $import_raw['enabled_modes'] : array();
@@ -191,6 +191,15 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             true !== $import_raw['manual_review_required'] )
             return self::err( 'mad4b_activity_import_manual_review_required',
                 'Commercial imports cannot disable human review in this version.' );
+        $validation = array();
+        if ( isset( $import_raw['validation'] ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Authority' ) )
+                return self::err( 'mad4b_import_validation_runtime_missing',
+                    'Import governance normalization runtime is required.' );
+            $validation = MAD4B_SCP_Activity_Import_Authority::normalize(
+                $import_raw['validation'], $meta_keys );
+            if ( is_wp_error( $validation ) ) return $validation;
+        }
         $import_modes = array();
         if ( $import_raw ) $import_modes = array(
             'enabled_modes' => array_values( $enabled_modes ),
@@ -209,6 +218,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'field_owners' => $owners,
             'sync_identity_key' => $identity_key,
         );
+        if ( $import_modes && $validation ) $import_modes['validation'] = $validation;
         if ( $import_modes ) $result['import_modes'] = $import_modes;
         return $result;
     }
