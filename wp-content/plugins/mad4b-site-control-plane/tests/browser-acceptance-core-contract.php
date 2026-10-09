@@ -231,12 +231,21 @@ $result_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4
 $evidence_schema = $result_schema['properties']['evidence'];
 $case_schema = $evidence_schema['properties']['cases']['items'];
 browser_expect( 8 === (int) $evidence_schema['properties']['cases']['maxItems'], 'browser evidence case limit must match provider MAX_CASES' );
-browser_expect( 15 === (int) $case_schema['maxProperties'], 'browser case schema must include bounded performance evidence without opening arbitrary properties' );
+browser_expect( 21 === (int) $case_schema['maxProperties'], 'browser case schema must bound ETG and generic capability evidence' );
+browser_expect( isset( $case_schema['properties']['capability_id'], $case_schema['properties']['probe_type'], $case_schema['properties']['observed']['properties']['path'], $case_schema['properties']['matches_expected'] ), 'generic capability case fields must be accepted by Core' );
+browser_expect( false === $case_schema['properties']['observed']['additionalProperties'], 'generic observed evidence must be bounded' );
+browser_expect( isset( $evidence_schema['properties']['build_identity']['properties']['build_fingerprint'] ), 'generic build fingerprint must cross Ability schema' );
+browser_expect( isset( $evidence_schema['properties']['attestation']['properties']['key_id'] ), 'RSA evidence attestation must cross Ability schema' );
+browser_expect( false === $evidence_schema['properties']['attestation']['additionalProperties'], 'attestation must reject unknown fields' );
+browser_expect( in_array( 'mad4b.capability-browser-evidence.v1', $evidence_schema['properties']['contract']['enum'], true ), 'generic Evidence contract must be recognized' );
+browser_expect( '^[a-f0-9]{64}$' === $result_schema['properties']['plan_digest']['pattern'], 'plan digest schema must not be truncated' );
+browser_expect( '^[a-f0-9]{64}$' === $result_schema['properties']['plan_signature']['pattern'], 'plan signature schema must not be truncated' );
 $network_schema = $case_schema['properties']['network'];
 browser_expect( isset( $network_schema['properties']['latency_ms'] ), 'browser network schema must expose bounded AJAX latency' );
 $observer_schema = $evidence_schema['properties']['observer'];
 browser_expect( isset( $observer_schema['properties']['execution_mode'] ), 'browser observer schema must expose bounded execution mode' );
-browser_expect( 4 === (int) $observer_schema['maxProperties'], 'browser observer schema property budget drifted' );
+browser_expect( 7 === (int) $observer_schema['maxProperties'], 'browser observer schema must accommodate explicit page/runner JS and epoch' );
+browser_expect( isset( $observer_schema['properties']['plan_issued_at'], $observer_schema['properties']['page_javascript_enabled'], $observer_schema['properties']['runner_javascript_runtime'] ), 'generic signed observer fields missing' );
 $performance_schema = $case_schema['properties']['performance'];
 foreach ( array( 'ttfb_ms', 'ajax_endpoint_latency_ms', 'filter_to_presentation_ms' ) as $metric ) {
 	browser_expect( isset( $performance_schema['properties'][ $metric ] ), 'browser performance metric missing: ' . $metric );
