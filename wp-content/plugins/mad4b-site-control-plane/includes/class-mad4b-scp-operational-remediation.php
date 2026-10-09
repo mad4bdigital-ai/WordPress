@@ -355,3 +355,7 @@ final class MAD4B_SCP_Operational_Remediation {
 		);
 	}
 }
+
+// Definition-only admin navigation; no lifecycle work on frontend requests.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
+	MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-operational-remediation', 'manage_options' );
