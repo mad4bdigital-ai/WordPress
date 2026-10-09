@@ -83,6 +83,8 @@ for marker in (
     "public static function compile( $plan, $start_identity, $end_identity )",
     "'identity_changed_during_planning'",
     "'dependency_missing_or_cyclic'",
+    "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
+    "'provider_event_generation_sha256' => $provider_generation_sha256",
     "'plan_contract_invalid_or_oversized'",
     "'staging_identity_unverified'",
     "'identity_bound' => $admitted",
@@ -94,4 +96,9 @@ for marker in (
 for forbidden in ("update_option(", "delete_option(", "wp_schedule_", "wp_register_ability(", "proc_open(", "shell_exec(", "wp_remote_post(", "$_GET", "$_POST"):
     if forbidden in lifecycle:
         raise SystemExit("Recovery lifecycle admission cannot dispatch mutations: " + forbidden)
+if "MAD4B_SCP_Runtime_Convergence::current_identity() :" in lifecycle:
+    raise SystemExit("Recovery lifecycle cannot call a private Runtime Convergence method")
+for filename in ("recovery-lifecycle-runtime.php", "recovery-no-ci-preflight.py"):
+    if not (root / "tests" / filename).is_file():
+        raise SystemExit("Recovery native/offline test missing: " + filename)
 print("MAD4B WordPress recovery lifecycle static contract PASS")
