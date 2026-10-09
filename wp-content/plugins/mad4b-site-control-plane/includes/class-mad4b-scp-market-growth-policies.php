@@ -238,7 +238,8 @@ final class MAD4B_SCP_Market_Growth_Policies {
         if ( $media_id && ! $media ) $blockers[] = 'media_not_registered';
         elseif ( $media_id && ! $allow_reuse ) $blockers[] = 'media_provenance_license_or_expiry_unverified';
         $checks['media_candidate_discovery_allowed'] = true;
-        $checks['media_ingest_preflight_eligible'] = (bool) $allow_reuse;
+        $checks['media_registry_claim_and_evidence_present'] = (bool) $allow_reuse;
+        $checks['media_ingest_preflight_eligible'] = false; // Independent licensing adjudication has not occurred.
         $checks['independent_license_verification_required'] = true;
         // Price inputs are positive minor units only; never mix currencies or
         // invent a live supplier quote, tax basis, FX or actual inventory.
@@ -282,9 +283,15 @@ final class MAD4B_SCP_Market_Growth_Policies {
             'suggested_price' => $price,
             'checks' => $checks,
             'blockers' => array_values( array_unique( $blockers ) ),
-            'next_actions' => array( 'collect_competitor_facts_and_media_candidate_metadata', 'verify_original_media_license_and_source_provenance',
-                'prepare_original_brand_aligned_copy_from_approved_context', 'verify_supplier_resale_contract_and_own_inventory',
-                'obtain_independent_price_tax_currency_and_availability_readback', 'perform_exact_governed_draft_and_publication_acceptance' ),
+            'next_actions' => array_merge(
+                array( 'collect_competitor_facts_and_media_candidate_metadata',
+                    'verify_original_media_license_and_source_provenance',
+                    'prepare_original_brand_aligned_copy_from_approved_context' ),
+                $supplier_id ? array( 'verify_supplier_resale_contract_and_own_inventory' )
+                    : array( 'verify_own_offer_eligibility_not_competitor_partnership' ),
+                array( 'obtain_independent_price_tax_currency_and_availability_readback',
+                    'perform_exact_governed_draft_and_publication_acceptance' ) ),
+            'research_contract_required' => false,
             'publication_ready' => $publication_ready,
             'media_upload_performed' => false,
             'media_copied' => false,
