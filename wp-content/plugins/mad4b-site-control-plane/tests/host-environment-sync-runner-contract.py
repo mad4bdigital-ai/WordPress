@@ -198,6 +198,13 @@ def test_flow():
             "host_environment_attestation": attestation,
         }
         runner._wp_environment_verify_signed_receipt(updated, receipt)
+        malformed = dict(receipt, host_environment_attestation={
+            **receipt["host_environment_attestation"], "signature_b64": "@@@"
+        })
+        expect_rejection(
+            lambda: runner._wp_environment_verify_signed_receipt(updated, malformed),
+            "Malformed Host receipt signature crashed or passed without a bounded rejection",
+        )
         receipt_path = receipts / f"{verified['job_id']}.json"
         runner.atomic_json_write(receipt_path, receipt)
         rollback = {
