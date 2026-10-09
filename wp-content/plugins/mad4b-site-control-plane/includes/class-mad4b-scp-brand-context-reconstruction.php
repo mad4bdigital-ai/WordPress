@@ -147,6 +147,69 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
         );
     }
 
+    /** Ordered dispatch recipe; each write needs its own external authorization. */
+    public static function procedure_for_state( $state ) {
+        $state = strtoupper( trim( (string) $state ) );
+        $read = static function ( $ability, $condition = '' ) {
+            return array( 'ability' => $ability, 'lane' => 'read', 'approval_required' => false, 'when' => $condition );
+        };
+        $write = static function ( $ability, $condition = '' ) {
+            return array(
+                'ability' => $ability, 'lane' => 'write',
+                'approval_required' => true, 'exact_new_ticket_required' => true,
+                'fresh_context_and_site_binding_required' => true,
+                'independent_readback_required' => true, 'when' => $condition,
+            );
+        };
+        switch ( $state ) {
+            case 'READY':
+                return array( $read( 'context/brand-core-coverage', 'verify_exact_approved_content_before_use' ) );
+            case 'OWNER_AUTHORITY_REQUIRED':
+            case 'HUMAN_ARBITRATION':
+            case 'HUMAN_REVIEW':
+                return array( $read( 'context/review-queue', 'owner_or_independent_review_decision' ) );
+            case 'RIGHTS_REVIEW':
+                return array( $read( 'mad4b/external-source-rights-preflight', 'independent_signed_rights_evidence_needed' ) );
+            case 'SOURCE_RECOVERY':
+            case 'DESTINATION_RECOVERY':
+                return array(
+                    $read( 'context/provider-capabilities', 'reconnect_exact_managed_source_first' ),
+                    $read( 'context/source-scan-plan', 'only_after_provider_recovery' ),
+                );
+            case 'NORMALIZATION_REQUIRED':
+            case 'RESCAN_REQUIRED':
+                return array(
+                    $read( 'context/source-scan-plan', 'exact_authority_and_source_fingerprint' ),
+                    $write( 'context/source-scan-apply', 'only_after_exact_source_scan_approval' ),
+                    $read( 'context/brand-core-coverage', 'fresh_post_scan_readback' ),
+                );
+            case 'WAIT_DEPENDENCY':
+                return array( $read( 'context/brand-core-coverage', 'approved_upstream_category_required' ) );
+            case 'EVIDENCE_COLLECTION':
+                return array( $read( 'context/brand-gap-plan', 'primary_evidence_quality_and_researcher_review' ) );
+            case 'HUMAN_DRAFT_PREPARATION':
+            case 'DRAFT_PREPARATION':
+                return array(
+                    $read( 'context/brand-gap-plan', 'independent_evidence_review' ),
+                    $read( 'context/brand-draft-preflight', 'writer_critic_separation_and_source_hash' ),
+                    $write( 'context/brand-draft-create', 'approval_for_new_unapproved_draft_only' ),
+                    $write( 'context/materialize-brand-draft', 'fresh_exact_materialization_approval' ),
+                    $read( 'context/review-queue', 'different_reviewer_required' ),
+                    $read( 'context/brand-core-coverage', 'after_independent_review_and_rescan' ),
+                );
+            case 'MATERIALIZATION_RECONCILE':
+                return array(
+                    $read( 'context/source-scan-plan', 'inspect_prior_idempotency_and_provider_receipts' ),
+                    $write( 'context/reconcile-brand-materialization', 'only_when_prior_exact_checkpoint_proven' ),
+                    $read( 'context/brand-core-coverage', 'verify_exact_restored_state' ),
+                );
+            case 'CIRCUIT_OPEN':
+                return array( $read( 'context/review-queue', 'human_reset_and_fresh_evidence_only' ) );
+            default:
+                return array();
+        }
+    }
+
     public static function plan( $input = array() ) {
         $input = is_array( $input ) ? $input : array();
         $scenario = isset( $input['scenario'] ) ? sanitize_key( (string) $input['scenario'] ) : 'live';
@@ -187,6 +250,7 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             if ( is_wp_error( $result ) ) return $result;
             $result['label'] = $label;
             $result['live_ready'] = ! empty( $observed['ready'] );
+            $result['recovery_procedure'] = self::procedure_for_state( $result['state'] );
             $result['plan_blockers'] = isset( $action['blockers'] ) && is_array( $action['blockers'] ) ? array_values( $action['blockers'] ) : array();
             $matrix[] = $result;
         }
