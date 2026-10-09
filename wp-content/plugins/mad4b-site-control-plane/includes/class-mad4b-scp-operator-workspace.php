@@ -139,6 +139,7 @@ final class MAD4B_SCP_Operator_Workspace {
 			}
 			echo '<p>' . esc_html__( 'Verified automation rate: unavailable until the eligible workload and readback evidence are measured.', 'mad4b-site-control-plane' ) . '</p></details>';
 		}
+		if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) ) MAD4B_SCP_Runtime_Recovery_Workspace::render();
 		self::setup_path();
 		self::external_notices();
 		if ( class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) MAD4B_SCP_Automation_SLO::render_controls();
