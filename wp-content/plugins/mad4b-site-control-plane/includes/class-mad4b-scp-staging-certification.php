@@ -265,6 +265,59 @@ final class MAD4B_SCP_Staging_Certification {
 		);
 	}
 
+	/**
+	 * Read after planned repair. Never reuse prior authority/certificates
+	 * when the package, gate observations or plan digest have changed.
+	 */
+	public static function convergence_verify( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$sha = (string) ( $input['expected_plan_sha256'] ?? '' );
+		$source = (string) ( $input['expected_source_commit_sha'] ?? '' );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $source ) ) {
+			return array( 'contract' => 'mad4b.staging-convergence-verification.v1',
+				'state' => 'INVALID_EXPECTED_IDENTITY', 'ready' => false,
+				'authorizing' => false, 'mutation_performed' => false );
+		}
+		$live_required = ! empty( $input['include_live_acceptance'] );
+		$fresh = self::convergence_plan( array( 'include_live_acceptance' => $live_required,
+			'include_authoritative_content' => false, 'include_rendered_frontend' => false ) );
+		return self::compare_convergence_plan( $fresh, $sha, $source, $live_required );
+	}
+
+	/** Pure verification reducer; not a release certificate or mutation ticket. */
+	public static function compare_convergence_plan( array $plan, $sha, $source, $live_required = false ) {
+		$binding = is_array( $plan['plan_binding'] ?? null ) ? $plan['plan_binding'] : array();
+		$current_sha = (string) ( $plan['plan_sha256'] ?? '' );
+		$current_source = (string) ( $binding['source_commit_sha'] ?? '' );
+		$identity_ready = (bool) preg_match( '/^[a-f0-9]{64}$/D', $current_sha )
+			&& (bool) preg_match( '/^[a-f0-9]{40}$/D', $current_source );
+		$sha_match = $identity_ready && is_string( $sha ) && strlen( $sha ) === 64
+			&& hash_equals( $sha, $current_sha );
+		$source_match = $identity_ready && is_string( $source ) && strlen( $source ) === 40
+			&& hash_equals( $source, $current_source );
+		$overlay = is_array( $plan['live_acceptance_overlay'] ?? null ) ? $plan['live_acceptance_overlay'] : array();
+		$live_ready = ! $live_required || ( ! empty( $overlay['included'] ) && ! empty( $overlay['ready'] ) );
+		$clear = ! empty( $plan['current_ready'] ) && ! empty( $plan['gate_coverage_complete'] )
+			&& empty( $plan['blocking_gates'] ) && empty( $plan['plan_integrity_blockers'] ) && $live_ready;
+		$ready = $identity_ready && $sha_match && $source_match && $clear;
+		$state = ! $identity_ready ? 'CURRENT_BUILD_IDENTITY_UNAVAILABLE'
+			: ( ! $sha_match || ! $source_match ? 'REPLAN_REQUIRED'
+				: ( $ready ? 'CURRENT_STAGING_GATES_READY' : 'NEEDS_EVIDENCE' ) );
+		return array(
+			'contract' => 'mad4b.staging-convergence-verification.v1',
+			'state' => $state, 'ready' => $ready,
+			'plan_matches' => $sha_match, 'source_matches' => $source_match,
+			'current_plan_sha256' => $current_sha,
+			'current_source_commit_sha' => $current_source,
+			'live_acceptance_included' => ! empty( $overlay['included'] ),
+			'blocking_gates' => is_array( $plan['blocking_gates'] ?? null ) ? array_values( $plan['blocking_gates'] ) : array( 'plan_gates_unavailable' ),
+			'plan_integrity_blockers' => is_array( $plan['plan_integrity_blockers'] ?? null ) ? array_values( $plan['plan_integrity_blockers'] ) : array( 'plan_integrity_unknown' ),
+			'full_release_certified' => false, 'authorizing' => false,
+			'mutation_performed' => false, 'production_mutation_performed' => false,
+		);
+	}
+
 	public static function convergence_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$status = self::status( array( 'compact' => false ) );
