@@ -31,16 +31,17 @@ final class MAD4B_SCP_Site_Profile {
 	public static $mode='profile_only';
 	public static $bound=false;
 	public static $rev=3;
+	public static $booted=false;
 	public static function deployment_binding_digest(){ return self::$bound ? str_repeat('b',64) : ''; }
 	public static function status(){ return array(
 		'authority_ready'=>true,'origin_match'=>true,'environment_match'=>true,
 		'deployment_binding_configured'=>self::$bound,'deployment_binding_bound'=>self::$bound,
 		'deployment_binding_match'=>self::$bound,'same_origin_clone_protection'=>self::$bound,
 		'environment_sync_mode'=>self::$mode,
-		'environment_sync_state'=>self::$bound ? 'awaiting_host_bootstrap' : 'blocked_missing_deployment_binding',
+		'environment_sync_state'=>self::$booted ? 'host_aligned' : (self::$bound ? 'awaiting_host_bootstrap' : 'blocked_missing_deployment_binding'),
 		'configured_environment'=>'staging','environment'=>'staging',
-		'site_uuid'=>self::site_uuid(),'wordpress_environment'=>'production',
-		'wordpress_environment_explicit'=>false,'profile_digest'=>str_repeat('a',64),'revision'=>self::$rev
+		'site_uuid'=>self::site_uuid(),'wordpress_environment'=>self::$booted ? 'staging' : 'production',
+		'wordpress_environment_explicit'=>self::$booted,'profile_digest'=>str_repeat('a',64),'revision'=>self::$rev
 	); }
 }
 final class MAD4B_SCP_Policy {
@@ -406,6 +407,54 @@ $stale = MAD4B_SCP_Host_Bridge::apply(array(
 	'idempotency_key'=>'idem-stale',
 ));
 $check(is_wp_error($stale) && 'mad4b_host_plan_target_stale'===$stale->get_error_code(), 'stale target plan accepted');
+
+
+$verification_id='88888888-1111-4333-8aaa-999999999999';
+$missing_verification=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('job_id'=>$verification_id));
+$check(is_wp_error($missing_verification) && 'mad4b_host_environment_receipt_missing'===$missing_verification->get_error_code(),'Missing Host receipt was approved');
+
+$verified_config="<?php\\n/* fixture Staging Host bootstrap */\\ndefine( 'WP_ENVIRONMENT_TYPE', 'staging' );\\nrequire_once ABSPATH . 'wp-settings.php';\\n";
+file_put_contents($tmp.'/wp-config.php',$verified_config);
+$host_receipt=array(
+ 'contract'=>'mad4b.tool-execution-receipt.v1',
+ 'bridge_contract'=>'mad4b.host-bridge-execution.v1',
+ 'job_id'=>$verification_id, 'operation_id'=>'wordpress_environment_sync',
+ 'site_uuid'=>MAD4B_SCP_Site_Profile::site_uuid(), 'environment'=>'staging',
+ 'mutation_performed'=>true, 'readback_verdict'=>'PASS',
+ 'runner_source_sha256'=>str_repeat('1',64), 'plan_sha256'=>str_repeat('2',64),
+ 'authority_ref'=>str_repeat('3',64), 'approval_ref'=>'approved:fixture',
+ 'completed_at'=>gmdate('c',time()-60),
+ 'result'=>array(
+  'host_file_readback_verified'=>true,'fresh_wordpress_bootstrap_verified'=>false,
+  'expected_site_profile_digest'=>str_repeat('a',64),
+  'expected_site_profile_revision'=>MAD4B_SCP_Site_Profile::$rev,
+  'expected_deployment_binding_digest'=>str_repeat('b',64),
+  'after_sha256'=>hash_file('sha256',$tmp.'/wp-config.php'),
+ )
+);
+$receipts=WP_CONTENT_DIR.'/mad4b-runner/bridge/receipts';
+wp_mkdir_p($receipts);
+file_put_contents($receipts.'/'.$verification_id.'.json',json_encode($host_receipt));
+$_SERVER['REQUEST_TIME_FLOAT']=microtime(true);
+$not_booted=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('job_id'=>$verification_id));
+$check(is_array($not_booted) && false===$not_booted['ready'] && in_array('wordpress_explicit_staging_not_observed',$not_booted['blocking_reasons'],true),'Host file receipt alone passed without WordPress bootstrap');
+MAD4B_SCP_Site_Profile::$booted=true;
+$confirmed=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('job_id'=>$verification_id));
+$check(is_array($confirmed) && true===$confirmed['ready'] && 'VERIFIED_STAGING_HOST_ALIGNED'===$confirmed['state'],'Matching fresh WordPress Host receipt was not verified');
+$check(false===$confirmed['release_certified'] && false===$confirmed['mutation_performed'],'Read ability claimed release or Host mutation');
+MAD4B_SCP_Site_Profile::$rev++;
+$stale_profile=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('job_id'=>$verification_id));
+$check(false===$stale_profile['ready'] && in_array('current_profile_or_host_binding_not_equal_to_receipt',$stale_profile['blocking_reasons'],true),'Changed Site Profile reused stale Host certificate');
+MAD4B_SCP_Site_Profile::$rev--;
+$host_receipt['completed_at']=gmdate('c',time()+180);
+file_put_contents($receipts.'/'.$verification_id.'.json',json_encode($host_receipt));
+$future_receipt=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('job_id'=>$verification_id));
+$check(false===$future_receipt['ready'] && in_array('fresh_wordpress_request_after_host_receipt_required',$future_receipt['blocking_reasons'],true),'Same/future request incorrectly certified as fresh');
+$host_receipt['completed_at']=gmdate('c',time()-60);
+file_put_contents($receipts.'/'.$verification_id.'.json',json_encode($host_receipt));
+file_put_contents($tmp.'/wp-config.php',$verified_config.'// subsequent unapproved Host change');
+$changed_config=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('job_id'=>$verification_id));
+$check(false===$changed_config['ready'] && in_array('wp_config_changed_since_host_receipt',$changed_config['blocking_reasons'],true),'Drifted Host wp-config reused old signed hash');
 
 $source = file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-host-bridge.php');
 foreach(array('shell_exec(','exec(','proc_open(','passthru(','system(','eval(','WP_CLI::runcommand') as $forbidden){
