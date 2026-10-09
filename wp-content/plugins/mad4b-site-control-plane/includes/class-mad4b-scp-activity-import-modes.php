@@ -170,7 +170,7 @@ final class MAD4B_SCP_Activity_Import_Modes {
         foreach ( $catalog['modes'] as $mode ) {
             if ( $mode['id'] !== $id ) continue;
             $staging = method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
-                MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'activity-import' );
+                MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) );
             $fingerprint = array(
                 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
                 'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
