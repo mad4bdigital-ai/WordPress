@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {checkTarget, discoverFederated, toWordPressRouterInput,planRemediation} from "./federation.mjs";
 const H=c=>c.repeat(64);
+const EPOCH=Math.floor(Date.now()/1000);
+const auditedRead={risk:"low",effect:"read"};
 const site={site_id:"site-a",environment:"staging",origin_sha256:H("a"),runtime_generation:H("b")};
 const item=(id,kind="connector")=>({id,kind,...site,connected:true,read_authorized:true,lane:"read"});
 const inspect=async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
@@ -20,14 +22,21 @@ yes(r.sources.some(s=>s.status==="NOT_CONNECTED_OR_AUTHORIZED"),"offline not rea
 yes(r.candidates.every(c=>!c.execution_allowed&&!c.authorization_verified),"no grant");
 assert.throws(()=>toWordPressRouterInput(r,{desired:{}},["config"]));assertions++;
 const wpSite={...site,profile_digest:H("f")};
-const wpCatalog=[{...item("wp-reader"),profile_digest:wpSite.profile_digest}];
+const wpCatalog={contract:"mad4b.site-source-catalog.v1",binding:wpSite,read_only:true,authorizing:false,
+ complete:true,sources:[{...item("wp-reader"),profile_digest:wpSite.profile_digest}]};
 const wpResult=await discoverFederated({target:wpSite,query:"file",
- enumerate:async()=>wpCatalog,
+ enumerate:async()=>wpCatalog,verifyCatalog:async()=>true,
  inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
- observation_sha256:H("c"),capabilities:[{id:"file-support",label:"Site File Workspace"}]})});
+ observation_sha256:H("c"),observed_at:EPOCH-10,valid_until:EPOCH+300,
+ capabilities:[{id:"file-support",label:"Site File Workspace",...auditedRead}]})});
 const wpPlan={expected_profile_digest:wpSite.profile_digest,
  expected_runtime_generation:wpSite.runtime_generation,desired:{},observed:{}};
 yes(toWordPressRouterInput(wpResult,wpPlan,["config"]).external_hints.length===1,"exact WordPress profile bridge");
+yes(Object.isFrozen(wpResult)&&Object.isFrozen(wpResult.external_hints),"issued results immutable");
+const forged={...wpResult,external_hints:[{id:"forged",source:"connector",label:"File editor"}]};
+assert.throws(()=>toWordPressRouterInput(forged,wpPlan));assertions++;
+assert.throws(()=>planRemediation({target:wpSite,discovery:forged,operation_id:"config_update",
+ requested_effect:"write",desired_state:"staging"}));assertions++;
 assert.throws(()=>toWordPressRouterInput(wpResult,{...wpPlan,expected_profile_digest:H("e")}));assertions++;
 assert.throws(()=>toWordPressRouterInput({...wpResult,external_hints:[{id:"secret",source:"connector",label:"File helper",token:"secret"}]},wpPlan));assertions++;
 assert.throws(()=>checkTarget({...site,origin_sha256:"bad"}));assertions++;
@@ -63,22 +72,33 @@ yes(over.decision==="REGISTRY_OVER_BUDGET"&&!over.coverage_complete,"budget fail
 const envelope={contract:"mad4b.site-source-catalog.v1",binding:site,
  read_only:true,authorizing:false,complete:true,
  sources:[item("provider-aa"),item("provider-bb")]};
-const full=await discoverFederated({target:site,query:"file",enumerate:async()=>envelope,inspect,limit:1});
+const full=await discoverFederated({target:site,query:"file",enumerate:async()=>envelope,inspect,
+ verifyCatalog:async()=>true,limit:1});
 yes(full.coverage_complete&&full.registry_scope_verified,"site-scoped complete catalog");
+const unverified=await discoverFederated({target:site,query:"file",enumerate:async()=>envelope,inspect});
+yes(!unverified.coverage_complete&&!unverified.catalog_authority_verified,
+ "catalog cannot certify its own completeness");
+const emptyCatalog=await discoverFederated({target:site,query:"file",
+ enumerate:async()=>({...envelope,sources:[]}),inspect});
+yes(!emptyCatalog.coverage_complete&&emptyCatalog.decision==="DISCOVERY_PARTIAL",
+ "self-asserted empty source registry cannot prove no alternatives");
 yes(full.candidate_total===2&&full.next_offset===1,"first page");
-const page2=await discoverFederated({target:site,query:"file",enumerate:async()=>envelope,inspect,limit:1,offset:1,expectedSnapshot:full.snapshot_continuity_id});
+const page2=await discoverFederated({target:site,query:"file",enumerate:async()=>envelope,inspect,
+ verifyCatalog:async()=>true,limit:1,offset:1,expectedSnapshot:full.snapshot_continuity_id});
 yes(page2.candidates[0].id!==full.candidates[0].id&&page2.next_offset===null,"stable next page");
 await assert.rejects(()=>discoverFederated({target:site,query:"file",enumerate:async()=>({...envelope,sources:[item("provider-cc")]}),inspect,offset:1,expectedSnapshot:full.snapshot_continuity_id}),/STALE_DISCOVERY_SNAPSHOT/);assertions++;
 await assert.rejects(()=>discoverFederated({target:site,query:"file",enumerate:async()=>({...envelope,binding:{...site,site_id:"foreign"}}),inspect}),/REGISTRY_SHAPE_INVALID/);assertions++;
-const long=await discoverFederated({target:site,query:"file",
+const long=await discoverFederated({target:site,query:"file",verifyCatalog:async()=>true,
  enumerate:async()=>({...envelope,sources:[item("provider".repeat(9))]}),
  inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
- observation_sha256:H("e"),capabilities:[{id:"operation".repeat(8),label:"File manager"}]})});
+ observation_sha256:H("e"),observed_at:EPOCH-10,valid_until:EPOCH+300,
+ capabilities:[{id:"operation".repeat(8),label:"File manager",...auditedRead}]})});
 yes(long.candidate_total===1&&long.external_hints[0].id.length<=79,"long names do not disappear");
-const risky=await discoverFederated({target:site,query:"file",
+const risky=await discoverFederated({target:site,query:"file",verifyCatalog:async()=>true,
  enumerate:async()=>({...envelope,sources:[item("risky-plugin")]}),
  inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,authorizing:false,
- observation_sha256:H("c"),capabilities:[
+ observation_sha256:H("c"),observed_at:EPOCH-10,valid_until:EPOCH+300,
+ capabilities:[
  {id:"workspace",label:"File Manager",risk:"exceptional",effect:"execute"},
  {id:"safe-read",label:"File metadata viewer",risk:"low",effect:"read"}]})});
 yes(risky.candidate_total===2&&risky.restricted_candidate_count===1,
@@ -105,6 +125,21 @@ const prod=planRemediation({target:prodTarget,discovery:prodRegistry,
  desired_state:"production environment explicit"});
 
 const now=2000000000;
+
+const partial=await discoverFederated({target:site,query:"file",nowEpochSeconds:now,
+ enumerate:async()=>({...envelope,sources:[item("partial-clock")]}),
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,
+ authorizing:false,observation_sha256:H("b"),observed_at:now-999999,
+ capabilities:[{id:"files",label:"File Workspace"}]})});
+yes(partial.candidate_total===0&&partial.sources[0].status==="PARTIAL_OR_INVALID_TIMESTAMP",
+ "one-sided old timestamp must not be treated as undated source");
+const unknown=await discoverFederated({target:site,query:"file",nowEpochSeconds:now,
+ verifyCatalog:async()=>true,enumerate:async()=>({...envelope,sources:[item("unknown-tool")]}),
+ inspect:async ({site,source_id,kind})=>({...site,source_id,kind,read_only:true,
+ authorizing:false,observation_sha256:H("a"),observed_at:now-10,valid_until:now+120,
+ capabilities:[{id:"files",label:"File workspace"}]})});
+yes(unknown.candidate_total===1&&unknown.external_hints.length===0,
+ "unknown effects and risk stay visible but never automatically handed off");
 const stale=await discoverFederated({target:site,query:"files",
  nowEpochSeconds:now,enumerate:async()=>({...envelope,sources:[item("stale-source")]}),
  inspect:async ({site,source_id,kind})=>({...site,source_id,kind,

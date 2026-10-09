@@ -15,6 +15,19 @@ const EFFECTS = new Set(["read","write","execute","unknown"]);
 const MAX_SOURCES = 32;
 const MAX_CAPS = 24;
 const MAX_HINTS = 24;
+// In-process provenance only. Serializable output is NOT a signed/portable receipt.
+const ISSUED_DISCOVERIES = new WeakSet();
+const publish = result => {
+  for (const name of ["sources","candidates","external_hints"]) {
+    if(Array.isArray(result[name])) {
+      for(const value of result[name]) Object.freeze(value);
+      Object.freeze(result[name]);
+    }
+  }
+  Object.freeze(result);
+  ISSUED_DISCOVERIES.add(result);
+  return result;
+};
 
 const isObject = x => x !== null && typeof x === "object" && !Array.isArray(x);
 const plainText = (s, max) => typeof s === "string" &&
@@ -75,7 +88,7 @@ const continuity = input => {
  */
 export async function discoverFederated({target,query,enumerate,inspect,
   limit=24,offset=0,expectedSnapshot=null,maxSources=MAX_SOURCES,
-  nowEpochSeconds=Math.floor(Date.now()/1000)} = {}) {
+  nowEpochSeconds=Math.floor(Date.now()/1000), verifyCatalog} = {}) {
   const site = checkTarget(target);
   if (!plainText(query,180) || !Number.isInteger(limit) || limit<1 || limit>MAX_HINTS ||
       !Number.isInteger(offset) || offset<0 || offset>1024 ||
@@ -101,7 +114,19 @@ export async function discoverFederated({target,query,enumerate,inspect,
     envelope.authorizing===false && Array.isArray(envelope.sources);
   const registered=scoped?envelope.sources:Array.isArray(inventory)?inventory:null;
   if (!registered) throw new TypeError("REGISTRY_SHAPE_INVALID");
-  const registryComplete=Boolean(scoped && envelope.complete===true);
+  // A catalog cannot certify its own completeness. Only the separately
+  // supplied, host-controlled verifier may attest inventory coverage.
+  let catalogAuthorityVerified=false;
+  if(scoped && typeof verifyCatalog==="function") {
+    try {
+      catalogAuthorityVerified=(await verifyCatalog({
+        site, expected_source_ids:envelope.sources
+          .map(x=>x?.id).filter(x=>typeof x==="string").sort(),
+        claimed_complete:envelope.complete===true, contract:envelope.contract
+      }))===true;
+    } catch (_) { catalogAuthorityVerified=false; }
+  }
+  const registryComplete=Boolean(scoped && envelope.complete===true && catalogAuthorityVerified);
   if (registered.length>maxSources) return {
     contract:FEDERATION_CONTRACT, binding:site, decision:"REGISTRY_OVER_BUDGET",
     coverage_complete:false, sources:[], candidates:[], external_hints:[],
@@ -141,8 +166,14 @@ export async function discoverFederated({target,query,enumerate,inspect,
       complete=false; records.push(summary(source,"INSPECTION_INVALID_OR_STALE"));continue;
     }
     let accepted=0, invalid=false;
+    const hasObserved=Object.prototype.hasOwnProperty.call(observed,"observed_at");
+    const hasExpiry=Object.prototype.hasOwnProperty.call(observed,"valid_until");
     const clocked=Number.isSafeInteger(observed.observed_at) &&
       Number.isSafeInteger(observed.valid_until);
+    if(hasObserved!==hasExpiry || ((hasObserved || hasExpiry) && !clocked)) {
+      complete=false; freshnessComplete=false;
+      records.push(summary(source,"PARTIAL_OR_INVALID_TIMESTAMP"));continue;
+    }
     if (clocked && (observed.observed_at>nowEpochSeconds+60 ||
         observed.valid_until<nowEpochSeconds ||
         observed.valid_until<observed.observed_at ||
@@ -171,12 +202,18 @@ export async function discoverFederated({target,query,enumerate,inspect,
       const risk=item.risk??"unknown",effect=item.effect??"unknown";
       const exceptional=risk==="high"||risk==="exceptional" ||
         effect==="execute"||effect==="write";
+      const safeReadClaim=(risk==="low"||risk==="medium") && effect==="read";
+      // Unclassified metadata stays visible but is never eligible for
+      // automatic hints, even if lexical similarity is perfect.
+      const safeForHint=safeReadClaim && clocked && catalogAuthorityVerified;
       const text=[title,detail??"",item.id].join(" ");
       candidates.push({
         id:key, source_id:source.id, kind:source.kind, label:title,
         description:detail??"", lexical_score:overlap(query,text),
         observed_state:"source_claimed", evidence_state:"UNVERIFIED_METADATA",
         declared_risk:risk,declared_effect:effect,requires_separate_risk_review:exceptional,
+        hint_eligible:safeForHint,qualification_state:safeForHint?
+          "READ_METADATA_CANDIDATE":"SEPARATE_QUALIFICATION_REQUIRED",
         observation_sha256:observed.observation_sha256,
         site_id:site.site_id, environment:site.environment,
         execution_allowed:false, authorization_verified:false,
@@ -198,14 +235,15 @@ export async function discoverFederated({target,query,enumerate,inspect,
   const selected=candidates.slice(offset,offset+limit);
   // High/exceptional risks and declared mutating primitives are *visible*
   // in the review graph, but never auto-handoff as unqualified WP hints.
-  const hints=selected.filter(c=>!c.requires_separate_risk_review).map(c=>({
+  const hints=selected.filter(c=>c.hint_eligible).map(c=>({
     id:c.id, source:c.kind, label:c.label,
     description:c.description || c.label
   }));
-  return {
+  return publish({
     contract:FEDERATION_CONTRACT, binding:site, decision:
       !complete?"DISCOVERY_PARTIAL":candidates.length?"VERIFY_BEHAVIOR":"EXPAND_DISCOVERY",
     coverage_complete:complete, freshness_complete:freshnessComplete,
+    catalog_authority_verified:catalogAuthorityVerified,
     registry_scope_verified:Boolean(scoped),
     candidate_total:candidates.length, snapshot_continuity_id:snapshot, offset, limit,
     source_count:records.length, sources:records, candidates:selected,
@@ -215,11 +253,13 @@ export async function discoverFederated({target,query,enumerate,inspect,
     ranking:"LEXICAL_ONLY_NOT_FUNCTIONAL", no_runtime_authority:true,
     execution_allowed:false, authorizing:false, provider_executed:false,
     external_hints_are_untrusted:true
-  };
+  });
 }
 /** Public no-credential bridge to the existing WordPress assistant router. */
 export function toWordPressRouterInput(result,planning_input,related_terms=[]) {
-  if (!isObject(result) || result.contract!==FEDERATION_CONTRACT ||
+  if (!isObject(result) || !ISSUED_DISCOVERIES.has(result) ||
+      result.contract!==FEDERATION_CONTRACT ||
+      result.catalog_authority_verified!==true ||
       result.execution_allowed!==false || result.authorizing!==false ||
       !isObject(result.binding) || !SHA.test(result.binding.profile_digest??"") ||
       !Array.isArray(result.external_hints) || result.external_hints.length>MAX_HINTS ||
@@ -253,7 +293,8 @@ export function toWordPressRouterInput(result,planning_input,related_terms=[]) {
 export function planRemediation({target,discovery,operation_id,requested_effect,
   desired_state}={}) {
   const site=checkTarget(target);
-  if(!isObject(discovery) || discovery.contract!==FEDERATION_CONTRACT ||
+  if(!isObject(discovery) || !ISSUED_DISCOVERIES.has(discovery) ||
+     discovery.contract!==FEDERATION_CONTRACT ||
      !boundTo(discovery.binding,site) || discovery.execution_allowed!==false ||
      discovery.authorizing!==false || !Array.isArray(discovery.candidates) ||
      !ID.test(operation_id??"") || !EFFECTS.has(requested_effect) ||
