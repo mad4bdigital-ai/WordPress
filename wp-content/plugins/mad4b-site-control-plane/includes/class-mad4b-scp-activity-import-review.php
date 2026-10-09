@@ -188,6 +188,8 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! in_array( $price_policy, array( 'none', 'review_monotonic' ), true ) )
             return self::error( 'mad4b_import_price_policy_invalid', 'Only configured price review policy is permitted.' );
         $flag_expired = $policy['review_past_intervals'];
+        $currency_key = $policy['currency_field'];
+        $price_fields = $policy['price_fields'];
         $issues = array(); $issue_total = 0; $issue_counts = array();
         $block_count = 0; $review_count = 0;
         $ids = array(); $groups = array(); $group_languages = array(); $row_hashes = array();
@@ -216,7 +218,6 @@ final class MAD4B_SCP_Activity_Import_Review {
                 if ( ! isset( $row[ $relation ] ) || '' === trim( (string) $row[ $relation ] ) )
                     $errors[] = 'required_relationship_unresolved';
             }
-            $currency_key = $policy['currency_field'];
             if ( $currency_key && isset( $row[ $currency_key ] ) &&
                 ! in_array( (string) $row[ $currency_key ], $allowed_currencies, true ) )
                 $errors[] = 'currency_not_in_approved_allowlist';
@@ -229,7 +230,6 @@ final class MAD4B_SCP_Activity_Import_Review {
                 is_numeric( $row['tour_rate_end_date'] ) &&
                 (float) $row['tour_rate_start_date'] > (float) $row['tour_rate_end_date'] )
                 $errors[] = 'date_interval_reversed';
-            $price_fields = $policy['price_fields'];
             $decimal_scale = $policy['decimal_scale'];
             $number_pattern = 0 === $decimal_scale ? '/^\\d{1,14}$/D' :
                 '/^\\d{1,14}(?:\\.\\d{1,' . $decimal_scale . '})?$/D';
