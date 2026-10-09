@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 548,
+  "changed_file_count": 553,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1064,8 +1064,21 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/market-growth-competitor-dmc-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/market-growth-competitor-dmc-source-contract.py"
       ]
+    },
+    {
+      "id": "feature007-activity-facet-config-contract-20261010",
+      "semantic_unit": "Site-agnostic optional Business Activity facet of canonical Content Experience Profiles: configured user identity/CPT/meta/taxonomy relations, exact site identity, provider sync plans, generic external image ingestion and All Royal sample data only.",
+      "revert_boundary": "Revert optional identity facet, generic media-source helper, native fixture, site-only sample JSON and media adapter registration; preserve the existing Site Profile and Content Experience Profile authority and all existing WordPress posts/users.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/examples/all-royal-activity-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-business-activity-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-contract-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "c9f008a64d20b169691f9793edd0429b3eda3eb73e29121985e84c7cdeb42c85",
+  "changed_paths_sha256": "f96bde08fd874c755d5d6cc65f9696ce9e365c34d9882e67f94d9ba6fc9e17dd",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
