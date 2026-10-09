@@ -165,7 +165,12 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
         // inferred from WordPress post-type names or taxonomy presence.
         if ( ! class_exists( 'MAD4B_SCP_ACI01_Recipe_Gap', false ) )
             return self::denied( 'recipe_gap_provider_missing' );
-        $recipe_gap = MAD4B_SCP_ACI01_Recipe_Gap::evaluate( $semantic, null, array() );
+        $recipe_read = MAD4B_SCP_ACI01_Recipe_Gap::resolve_current( $semantic, $evidence['scope'] );
+        if ( ! is_array( $recipe_read ) || ( $recipe_read['status'] ?? null ) === 'DENIED'
+            || ! in_array( $recipe_read['status'] ?? null, array( 'MISSING', 'FOUND' ), true ) )
+            return self::denied( 'recipe_profile_scope_or_authority_invalid' );
+        $recipe_gap = MAD4B_SCP_ACI01_Recipe_Gap::evaluate(
+            $semantic, $recipe_read['recipe'], array() );
         if ( ! is_array( $recipe_gap ) || ( $recipe_gap['status'] ?? '' ) === 'DENIED' )
             return self::denied( 'recipe_gap_invalid' );
         foreach ( $recipe_gap['missing_requirement_keys'] as $missing_key ) $required[] = $missing_key;
@@ -189,6 +194,7 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
                 return self::denied( 'semantic_reason_invalid' );
             $reasons[] = $reason;
         }
+        foreach ( $recipe_read['reason_codes'] as $recipe_reason ) $reasons[] = $recipe_reason;
         foreach ( $recipe_gap['reason_codes'] as $gap_reason ) $reasons[] = $gap_reason;
         $reasons[] = 'independent_editorial_approval_required';
         $reasons[] = 'external_provider_and_rights_not_certified';
@@ -202,6 +208,7 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'required_sections' => $required, 'reason_codes' => $reasons,
             'semantic_sha256' => $semantic['semantic_fingerprint_sha256'],
             'recipe_gap_sha256' => hash( 'sha256', json_encode( $recipe_gap ) ),
+            'recipe_binding_status' => $recipe_read['status'],
             'blueprint_handoff' => $handoff );
         return array( 'contract' => self::CONTRACT, 'status' => 'NEEDS_EVIDENCE',
             'review_status' => 'NEEDS_REVIEW',
@@ -211,6 +218,7 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'evidence_fingerprints' => $material['source_previews'],
             'semantic_fingerprint_sha256' => $semantic['semantic_fingerprint_sha256'],
             'recipe_mapping' => $semantic['mapping'],
+            'recipe_binding_status' => $recipe_read['status'],
             'recipe_gap' => $recipe_gap,
             'required_blueprint_sections' => $required,
             'reason_codes' => $reasons,
