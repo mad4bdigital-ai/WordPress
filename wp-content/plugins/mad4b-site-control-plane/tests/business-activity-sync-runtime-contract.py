@@ -10,9 +10,10 @@ profile=get("includes/class-mad4b-scp-content-experience-profiles.php")
 tests=get("tests/business-activity-sync-runtime.php")
 def ck(ok,desc):
  if not ok:raise AssertionError(desc)
-for name in ("status","plan","begin","advance","recover","archive","cancel"):
+for name in ("status","plan","begin","advance","recover","archive","cancel","finalize_reconciled"):
+ ability = "finalize-reconciled" if name=="finalize_reconciled" else name
  ck("function "+name+"(" in runtime,"Runtime missing "+name)
- ck("mad4b/business-activity-sync-"+name in profile,"Ability missing "+name)
+ ck("mad4b/business-activity-sync-"+ability in profile,"Ability missing "+name)
 for k in ("site_uuid","profile_revision","authority_sha256","initial_checkpoint_sha256",
  "checkpoint_initialized","checkpoint_advanced","expected_destination_value_sha256",
  "needs_reconcile","step_inflight","readback_verified","source_snapshots",
@@ -20,6 +21,7 @@ for k in ("site_uuid","profile_revision","authority_sha256","initial_checkpoint_
  "mad4b_sync_postwrite_divergence","mad4b_sync_checkpoint_readback_failed",
  "mad4b_sync_recover_requires_review","mad4b_sync_cancel_write_may_exist",
  "bootstrap_arbitration","field_sources","mad4b_sync_initial_sources_invalid",
+ "mad4b_sync_reconcile_still_divergent","mad4b_sync_reconcile_checkpoint_failed",
  "mad4b_activity_sync_adapters","mad4b_sync_conditional_writer_missing",
  "mad4b_sync_wp_row_cas_failed"):
  ck(k in runtime,"Missing durable authority/cas/recovery guard "+k)
