@@ -28,3 +28,12 @@ x markers are source deliverables, NOT live runtime certification.
 
 - [x] N023 Register explicit WebSocket interception before generic page creation; deny if unsupported
 - [ ] N024 Remote-browser WebSocket/WebRTC/DNS-IP egress acceptance with provider-level packet-proof receipts
+
+## Site-neutral source-integrity expansion
+- [x] N025 Primary vs supplemental Provider policy implemented without website names; explicit preferences retained
+- [x] N026 Browser generic isolates static observation from WordPress JavaScript, XHR and arbitrary document navigation
+- [x] N027 WordPress registry validates selection_role with safe defaults
+- [x] N028 Native page oracle scans bounded public candidates and removes duplicate IDs and canonical paths
+- [x] N029 Native reducer rejects unknown envelope fields and invalid typed observations as infrastructure, not product defect
+- [ ] N030 Native exact-HEAD PHP and Playwright runtime evidence for script-disabled mode, dynamic-theme compatibility and browser egress
+- [ ] N031 Specialized JavaScript/AJAX/business-effect semantic drivers with independent oracles, transactional safety and site acceptance
