@@ -15,9 +15,21 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 		$valid = is_array( $plan )
 			&& isset( $plan['contract'] )
 			&& 'mad4b.staging-convergence-plan.v1' === $plan['contract']
-			&& ! empty( $plan['read_only'] )
-			&& empty( $plan['mutation_performed'] )
-			&& empty( $plan['production_mutation_performed'] );
+			&& true === ( $plan['read_only'] ?? null )
+			&& false === ( $plan['mutation_performed'] ?? null )
+			&& false === ( $plan['production_mutation_performed'] ?? null );
+		// This helper may render a partial plan for diagnostic review, but cannot
+		// declare acceptance unless the independent planner says all relevant
+		// gates were enumerated, no integrity errors exist and the exact plan
+		// fingerprint is present. A forged current_ready flag is insufficient.
+		$trusted_ready = $valid && true === ( $plan['current_ready'] ?? null )
+			&& true === ( $plan['gate_coverage_complete'] ?? null )
+			&& isset( $plan['plan_integrity_blockers'] ) && is_array( $plan['plan_integrity_blockers'] )
+			&& empty( $plan['plan_integrity_blockers'] )
+			&& isset( $plan['plan_sha256'] ) && is_string( $plan['plan_sha256'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $plan['plan_sha256'] )
+			&& isset( $plan['plan_binding'] ) && is_array( $plan['plan_binding'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', (string) ( $plan['plan_binding']['source_commit_sha'] ?? '' ) );
 		$rows = array();
 		$covered = array();
 		if ( $valid ) {
@@ -70,7 +82,8 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 		foreach ( $blocked as $gate ) if ( ! isset( $covered[ $gate ] ) ) $unmapped[] = $gate;
 		return array(
 			'contract' => self::CONTRACT,
-			'state' => ! $valid ? 'UNAVAILABLE' : ( ! empty( $plan['current_ready'] ) && empty( $blocked ) ? 'OBSERVED_READY' : 'REVIEW_REQUIRED' ),
+			'state' => ! $valid ? 'UNAVAILABLE' : ( $trusted_ready && empty( $blocked ) && empty( $unmapped ) ? 'OBSERVED_READY' : 'REVIEW_REQUIRED' ),
+			'exact_plan_acceptance_evidence_present' => $trusted_ready && empty( $blocked ) && empty( $unmapped ),
 			'blocking_gates' => $blocked,
 			'blocked_gate_count' => count( $blocked ),
 			'unmapped_blocking_gates' => $unmapped,
