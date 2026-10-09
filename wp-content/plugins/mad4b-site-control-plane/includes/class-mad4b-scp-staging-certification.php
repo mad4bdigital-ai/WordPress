@@ -52,7 +52,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'input_schema' => array(
 				'type' => 'object',
 				'properties' => array(
-					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ),
+					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => false ),
 					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
 					'include_live_acceptance' => array( 'type' => 'boolean', 'default' => false ),
 				),
@@ -400,7 +400,10 @@ final class MAD4B_SCP_Staging_Certification {
 				) );
 			}
 			$brand_plan = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) && method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'convergence_plan' )
-				? MAD4B_SCP_Brand_Context_Builder::convergence_plan( $input )
+				? MAD4B_SCP_Brand_Context_Builder::convergence_plan( array(
+					'include_authoritative_content' => false,
+					'include_rendered_frontend' => false,
+				) )
 				: new WP_Error( 'mad4b_brand_convergence_plan_unavailable', 'Brand Core convergence planner is unavailable.' );
 			$depends_on = array();
 			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) $depends_on[] = 'google_drive_reconnect';
@@ -581,6 +584,8 @@ final class MAD4B_SCP_Staging_Certification {
 			'covered_gate_count' => $coverage['covered_gate_count'],
 			'blocked_gate_count' => $coverage['blocked_gate_count'],
 			'dispatch_allowed' => false,
+			'authoritative_context_content_included' => false,
+			'authoritative_context_detail_ability' => 'context/brand-core-convergence-plan',
 			'verification_ability' => 'mad4b/staging-convergence-verify',
 			'verification_requires_exact_source_and_plan' => true,
 			'live_acceptance_overlay' => $live_overlay,
