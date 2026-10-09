@@ -174,6 +174,10 @@ final class MAD4B_SCP_Activity_Import_Review {
                 return self::error( 'mad4b_import_currency_code_invalid',
                     'Approved currency codes must use the exact three-letter uppercase contract.' );
         }
+        $price_policy = isset( $input['price_tier_policy'] ) ? (string) $input['price_tier_policy'] : 'none';
+        if ( ! in_array( $price_policy, array( 'none', 'review_monotonic' ), true ) )
+            return self::error( 'mad4b_import_price_policy_invalid', 'Only configured price review policy is permitted.' );
+        $flag_expired = ! empty( $input['review_past_intervals'] );
         $issues = array(); $ids = array(); $groups = array(); $row_hashes = array();
         foreach ( $rows as $i => $row ) {
             if ( ! is_array( $row ) || array_diff( array_keys( $row ), $headers ) ||
@@ -207,7 +211,18 @@ final class MAD4B_SCP_Activity_Import_Review {
                     if ( ! is_numeric( $row[ $price_key ] ) || (float) $row[ $price_key ] < 0 )
                         $errors[] = 'price_not_nonnegative_number';
                 }
+                if ( 'review_monotonic' === $price_policy &&
+                    is_numeric( $row['single_price'] ) &&
+                    is_numeric( $row['double_price'] ) &&
+                    is_numeric( $row['triple_price'] ) &&
+                    ( (float) $row['single_price'] < (float) $row['double_price'] ||
+                      (float) $row['double_price'] < (float) $row['triple_price'] ) )
+                    $errors[] = 'price_tier_order_requires_commercial_review';
             }
+            if ( $flag_expired && isset( $row['tour_rate_end_date'] ) &&
+                is_numeric( $row['tour_rate_end_date'] ) &&
+                (float) $row['tour_rate_end_date'] < time() )
+                $errors[] = 'historical_rate_period_requires_review';
             $group_col = '_wpml_import_translation_group';
             $lang_col = '_wpml_import_language_code';
             if ( isset( $row[ $group_col ], $row[ $lang_col ] ) ) {
@@ -219,7 +234,11 @@ final class MAD4B_SCP_Activity_Import_Review {
                 if ( count( $issues ) < self::MAX_ISSUES )
                     $issues[] = array( 'row' => (int) $i + 1,
                         'identity_sha256' => hash( 'sha256', $id ),
-                        'reason' => $reason, 'severity' => 'block' );
+                        'reason' => $reason, 'severity' =>
+                            in_array( $reason, array(
+                                'price_tier_order_requires_commercial_review',
+                                'historical_rate_period_requires_review'
+                            ), true ) ? 'review' : 'block' );
             }
         }
         $plan = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
@@ -227,7 +246,9 @@ final class MAD4B_SCP_Activity_Import_Review {
             'authority_sha256' => $profile['authority_sha256'],
             'identity_field' => $identity, 'field_mapping' => $mapping,
             'headers' => $headers, 'row_hashes' => $row_hashes,
-            'allowed_currencies' => $allowed_currencies );
+            'allowed_currencies' => $allowed_currencies,
+            'price_tier_policy' => $price_policy,
+            'review_past_intervals' => $flag_expired );
         return array( 'contract' => self::CONTRACT, 'plan_sha256' => self::digest( $plan ),
             'profile_slug' => $slug, 'row_count' => count( $rows ),
             'issue_count_observed' => array_sum( array_map( static function( $x ) { return 1; }, $issues ) ),
