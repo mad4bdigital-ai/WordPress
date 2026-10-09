@@ -209,6 +209,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'warnings' => $warnings,
 			'pass' => empty( $hard ),
 			'can_write' => empty( $hard ),
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'independent_review_certified' => false,
+			'publication_authorized' => false,
 		);
 		$result = self::append( $job_id, 'blueprint_qa', 'BLUEPRINT_QA', $payload, array(), 'evaluate Blueprint QA hard blockers' );
 		if ( is_wp_error( $result ) ) return $result;
@@ -254,6 +257,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'content' => $content,
 			'section_count' => isset( $input['section_count'] ) ? max( 0, (int) $input['section_count'] ) : 0,
 			'can_write' => true,
+			'draft_only' => true,
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'publication_authorized' => false,
 		);
 		$result = self::append( $job_id, 'draft', 'WRITING', $payload, array(), 'append ArticleDraft from approved blueprint' );
 		if ( is_wp_error( $result ) ) return $result;
@@ -293,6 +299,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 				'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 				'hard_blockers' => $component_hard,
 				'pass' => empty( $component_hard ),
+				'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+				'independent_review_certified' => false,
+				'publication_authorized' => false,
 			) );
 			$result = self::append( $job_id, $type, $def['stage'], $payload, array(), 'append typed QA evidence' );
 			if ( is_wp_error( $result ) ) return $result;
@@ -303,6 +312,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		}
 		$final = array(
 			'contract' => 'mad4b.final-qa.v1',
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'independent_review_certified' => false,
 			'draft_artifact_id' => $draft_id,
 			'writer_profile_id' => $writer['writer_profile_id'],
 			'writer_profile_version' => $writer['writer_profile_version'],
@@ -320,6 +331,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		if ( is_wp_error( $link ) ) return $link;
 		return array(
 			'contract' => self::CONTRACT,
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'independent_review_certified' => false,
 			'qa_artifact_ids' => $created,
 			'final_qa_artifact_id' => $final_id,
 			'pass' => empty( $hard_blockers ),
