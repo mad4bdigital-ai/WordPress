@@ -1,0 +1,99 @@
+{
+  "contract": "mad4b.business-activity-site-example.v1",
+  "site": "All Royal Egypt",
+  "source": "live CPT/taxonomy discovery, 10 Oct 2026",
+  "activation": "example_only_not_applied",
+  "proposed_meta_keys": true,
+  "proposed_roles": true,
+  "notes": "Meta link keys are proposed, not observed JetEngine field definitions. Existing roles and live mappings require operator review before creating an exact governed profile.",
+  "profiles": [
+    {
+      "slug": "allroyal-dmc",
+      "post_type": "dmcs",
+      "label": "All Royal DMC Profiles",
+      "enabled": true,
+      "meta_mode": "allowlist",
+      "meta_keys": [],
+      "taxonomy_mode": "allowlist",
+      "taxonomies": [
+        "location_jet"
+      ],
+      "creation_status": "draft",
+      "activity_contract": {
+        "enabled": true,
+        "user_role": "subscriber",
+        "post_user_meta_key": "_ar_dmc_identity_user",
+        "user_post_meta_key": "_ar_dmc_profile_post",
+        "attribute_meta_keys": [],
+        "taxonomy_slugs": [
+          "location_jet"
+        ],
+        "create_user": true,
+        "create_profile": true,
+        "sync_targets": {
+          "wordpress_products": {
+            "provider": "wordpress",
+            "direction": "bidirectional",
+            "field_keys": [],
+            "source_ref": "local_catalog",
+            "conflict_policy": "manual_review"
+          }
+        }
+      }
+    },
+    {
+      "slug": "allroyal-driver",
+      "post_type": "drivers",
+      "label": "All Royal Driver Profiles",
+      "enabled": true,
+      "meta_mode": "allowlist",
+      "meta_keys": [],
+      "taxonomy_mode": "allowlist",
+      "taxonomies": [
+        "location_jet"
+      ],
+      "creation_status": "draft",
+      "activity_contract": {
+        "enabled": true,
+        "user_role": "subscriber",
+        "post_user_meta_key": "_ar_driver_identity_user",
+        "user_post_meta_key": "_ar_driver_profile_post",
+        "attribute_meta_keys": [],
+        "taxonomy_slugs": [
+          "location_jet"
+        ],
+        "create_user": true,
+        "create_profile": true,
+        "sync_targets": {}
+      }
+    },
+    {
+      "slug": "allroyal-guide",
+      "post_type": "guides",
+      "label": "All Royal Tour Guide Profiles",
+      "enabled": true,
+      "meta_mode": "allowlist",
+      "meta_keys": [],
+      "taxonomy_mode": "allowlist",
+      "taxonomies": [
+        "location_jet",
+        "guide-languages_jet"
+      ],
+      "creation_status": "draft",
+      "activity_contract": {
+        "enabled": true,
+        "user_role": "subscriber",
+        "post_user_meta_key": "_ar_guide_identity_user",
+        "user_post_meta_key": "_ar_guide_profile_post",
+        "attribute_meta_keys": [],
+        "taxonomy_slugs": [
+          "location_jet",
+          "guide-languages_jet"
+        ],
+        "create_user": true,
+        "create_profile": true,
+        "sync_targets": {}
+      }
+    }
+  ]
+}
