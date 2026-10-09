@@ -556,6 +556,63 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             'provider_replayed' => false, 'mutation_performed' => true );
     }
 
+    /** Finalize a partial saga only after independent provider readbacks converge. */
+    public static function finalize_reconciled( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
+            return self::err( 'mad4b_sync_reconcile_denied', 'Exact administrator reconciliation confirmation required.' );
+        $binding = self::bind( $input );
+        if ( is_wp_error( $binding ) ) return $binding;
+        $key = self::key( $binding, 'operation' );
+        $op = get_option( $key, false );
+        $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
+        if ( ! is_array( $op ) || ! isset( $op['state'] ) || 'needs_reconcile' !== $op['state'] ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
+            ! hash_equals( self::digest( $op ), $expected ) )
+            return self::err( 'mad4b_sync_reconcile_journal_not_exact', 'Require unchanged partial saga journal digest.' );
+        $observed = self::observe( $binding );
+        if ( is_wp_error( $observed ) ) return $observed;
+        $hashes = self::hashes( $observed['observations'] );
+        foreach ( $op['steps'] as $step ) {
+            if ( ! isset( $hashes[ $step['source'] ]['field_hashes'][ $step['field'] ] ) ||
+                ! hash_equals( $step['value_sha256'],
+                    $hashes[ $step['source'] ]['field_hashes'][ $step['field'] ] ) )
+                return self::err( 'mad4b_sync_reconcile_owner_changed', 'Canonical owner no longer matches the approved step.' );
+        }
+        foreach ( $binding['contract']['attribute_meta_keys'] as $field ) {
+            $values = array();
+            foreach ( $binding['sources'] as $id => $source ) {
+                if ( in_array( $field, $source['field_keys'], true ) )
+                    $values[] = $hashes[ $id ]['field_hashes'][ $field ];
+            }
+            if ( count( array_unique( $values ) ) !== 1 )
+                return self::err( 'mad4b_sync_reconcile_still_divergent', 'Provider data still differ; preserve old checkpoint.' );
+        }
+        $old = get_option( self::key( $binding, 'checkpoint' ), false );
+        if ( ! empty( $op['bootstrap_arbitration'] ) ) {
+            if ( false !== $old )
+                return self::err( 'mad4b_sync_reconcile_checkpoint_raced', 'Unexpected checkpoint exists during bootstrap.' );
+        } elseif ( ! is_array( $old ) || ! isset( $op['initial_checkpoint_sha256'] ) ||
+            ! hash_equals( $op['initial_checkpoint_sha256'], self::digest( $old ) ) )
+            return self::err( 'mad4b_sync_reconcile_checkpoint_raced', 'Checkpoint changed while partially applying writes.' );
+        $new = array( 'site_uuid' => $binding['site_uuid'],
+            'profile_revision' => (int) $binding['profile']['revision'],
+            'authority_sha256' => $binding['profile']['authority_sha256'],
+            'sources' => $hashes );
+        $saved = ! empty( $op['bootstrap_arbitration'] )
+            ? add_option( self::key( $binding, 'checkpoint' ), $new, '', false )
+            : update_option( self::key( $binding, 'checkpoint' ), $new, false );
+        $back = get_option( self::key( $binding, 'checkpoint' ), false );
+        if ( ( !$saved && self::digest( $back ) !== self::digest( $new ) ) ||
+            ! is_array( $back ) || ! hash_equals( self::digest( $new ), self::digest( $back ) ) )
+            return self::err( 'mad4b_sync_reconcile_checkpoint_failed', 'Final checkpoint readback was not verified.' );
+        $op['state'] = 'complete'; $op['reconciled_at'] = gmdate( 'c' );
+        update_option( $key, $op, false );
+        delete_option( self::key( $binding, 'lease' ) );
+        return array( 'contract' => self::CONTRACT, 'state' => 'complete',
+            'checkpoint_sha256' => self::digest( $back ),
+            'provider_readbacks_verified' => true, 'mutation_performed' => true );
+    }
+
     /** Cancel only operations with a confirmed zero-write boundary. */
     public static function cancel( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
