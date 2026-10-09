@@ -43,6 +43,10 @@ export function consumeLocalBrowserPlanOnce({
   now = Math.floor(Date.now() / 1000)
 } = {}) {
   if (authorityMode !== "single-host-posix-v1") deny("authority_unavailable");
+  // No emulation of atomic POSIX claims on an unsupported filesystem/host.
+  if (process.platform === "win32" ||
+      !Number.isSafeInteger(fs.constants.O_EXCL) ||
+      !Number.isSafeInteger(fs.constants.O_NOFOLLOW)) deny("platform_atomicity_unsupported");
   if (!plan || !evidence || !result ||
       plan.provider_contract !== "mad4b.capability-browser-provider.v1" ||
       plan.state !== "ready" || plan.read_only !== true || plan.authorizing !== false ||
@@ -64,6 +68,8 @@ export function consumeLocalBrowserPlanOnce({
       result.verification?.browser_runtime_parity_verified !== true ||
       result.read_only !== true || result.authorizing !== false ||
       result.receipt_authorizing !== false ||
+      result.release_ready !== false ||
+      result.globally_unique_consumption_proven !== false ||
       !HEX64.test(plan.plan_digest || "") || !HEX64.test(plan.plan_signature || "") ||
       !NONCE.test(plan.challenge?.nonce || "") ||
       result.plan_digest !== plan.plan_digest ||
@@ -106,7 +112,18 @@ export function consumeLocalBrowserPlanOnce({
       globally_unique_consumption_proven: false,
       release_ready: false
     };
-    fs.writeSync(fd, JSON.stringify(record) + "\n");
+    // POSIX write() can return a short write without throwing. Treat a
+    // zero-byte write as failure, and never acknowledge a partial ledger
+    // record as durable. On any failure the exclusive file remains burned.
+    const bytes = Buffer.from(JSON.stringify(record) + "\n", "utf8");
+    let written = 0;
+    while (written < bytes.length) {
+      const n = fs.writeSync(fd, bytes, written, bytes.length - written, written);
+      if (!Number.isSafeInteger(n) || n <= 0) {
+        deny("persistence_short_write");
+      }
+      written += n;
+    }
     fs.fsyncSync(fd);
     fs.closeSync(fd);
     fd = undefined;

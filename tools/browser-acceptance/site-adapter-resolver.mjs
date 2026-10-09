@@ -252,6 +252,19 @@ export function assertSiteResultBound(plan, result) {
       result.provider_contract !== plan.provider_contract ||
       result.profile_id !== plan.profile_id || result.suite !== plan.suite ||
       result.plan_digest !== plan.plan_digest ||
-      result.read_only !== true || result.authorizing !== false) fail("result_binding_mismatch");
+      result.read_only !== true || result.authorizing !== false ||
+      result.release_ready !== false ||
+      result.globally_unique_consumption_proven !== false ||
+      result.receipt_authorizing === true) fail("result_binding_mismatch");
+  // The Core returns repeatable, non-authorizing observations. A PASS still
+  // needs an exact signed reducer receipt and live browser parity; the
+  // cryptographic release authority is a separate, presently external gate.
+  if (result.verdict === "PASS" &&
+      (!result.verification || result.verification.browser_runtime_parity_verified !== true ||
+       result.verification.verified_through !== "live_browser_runtime" ||
+       result.receipt_authorizing !== false ||
+       !valid(result.evidence_digest, SHA) || !valid(result.receipt_signature, SHA))) {
+    fail("pass_observation_receipt_invalid");
+  }
   return true;
 }

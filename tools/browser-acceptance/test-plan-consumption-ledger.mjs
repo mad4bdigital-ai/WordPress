@@ -28,7 +28,8 @@ const result = {
   verdict:"PASS",plan_digest:plan.plan_digest,
   evidence_digest:canonicalSha256(evidence),receipt_signature:"d".repeat(64),
   verification:{browser_runtime_parity_verified:true},
-  read_only:true,authorizing:false,receipt_authorizing:false
+  read_only:true,authorizing:false,receipt_authorizing:false,
+  release_ready:false,globally_unique_consumption_proven:false
 };
 const args = {plan,evidence,result,ledgerDir:base,authorityMode:"single-host-posix-v1",now:start};
 const passes = ()=>consumeLocalBrowserPlanOnce(args);
@@ -44,6 +45,11 @@ try {
     /invalid_or_stale_proof/);
   assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
     now:start+301}),/invalid_or_stale_proof/);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
+    result:{...result,release_ready:true}}),/invalid_or_stale_proof/);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
+    result:{...result,globally_unique_consumption_proven:true}}),
+    /invalid_or_stale_proof/);
   const claimed=passes();
   assert.equal(claimed.scope,"single_host_posix_filesystem");
   assert.equal(claimed.globally_unique_consumption_proven,false);
@@ -54,6 +60,26 @@ try {
   const entry=JSON.parse(fs.readFileSync(path.join(base,claimed.claim_key+".json"),"utf8"));
   assert.equal(entry.evidence_digest,result.evidence_digest);
   assert.equal(entry.globally_unique_consumption_proven,false);
+
+  // Simulate a short write that returns zero bytes but does not throw.
+  // The local claim must be burned rather than returning an alleged PASS.
+  const partialDir=fs.mkdtempSync(path.join(os.tmpdir(),"mad4b-ledger-shortwrite-"));
+  fs.chmodSync(partialDir,0o700);
+  const originalWrite=fs.writeSync;
+  let attempted=0;
+  try {
+    fs.writeSync=(fd,buffer,offset,length,position)=>{
+      attempted++;
+      if(attempted===1)return originalWrite(fd,buffer,offset,Math.min(length,7),position);
+      return 0;
+    };
+    assert.throws(()=>consumeLocalBrowserPlanOnce({...args,ledgerDir:partialDir}),
+      /persistence_not_confirmed/);
+  } finally {fs.writeSync=originalWrite;}
+  assert.equal(fs.readdirSync(partialDir).length,1);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,ledgerDir:partialDir}),
+    /replay_detected/);
+  fs.rmSync(partialDir,{recursive:true,force:true});
 
   const dir2=fs.mkdtempSync(path.join(os.tmpdir(),"mad4b-ledger-parallel-"));
   fs.chmodSync(dir2,0o700);
