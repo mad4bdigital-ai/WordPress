@@ -176,7 +176,7 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! is_array( $allowed_currencies ) || count( $allowed_currencies ) > 20 )
             return self::error( 'mad4b_import_currency_policy_invalid', 'Explicit bounded currency allowlist required.' );
         $allowed_currencies = array_values( array_unique( array_map( 'strval', $allowed_currencies ) ) );
-        if ( isset( $seen['base_currency'] ) && empty( $allowed_currencies ) )
+        if ( ! empty( $policy['currency_field'] ) && empty( $allowed_currencies ) )
             return self::error( 'mad4b_import_currency_allowlist_required',
                 'Commercial currency fields require an explicit site-approved currency list.' );
         foreach ( $allowed_currencies as $currency ) {
@@ -216,8 +216,9 @@ final class MAD4B_SCP_Activity_Import_Review {
                 if ( ! isset( $row[ $relation ] ) || '' === trim( (string) $row[ $relation ] ) )
                     $errors[] = 'required_relationship_unresolved';
             }
-            if ( isset( $row['base_currency'] ) && $allowed_currencies &&
-                ! in_array( (string) $row['base_currency'], $allowed_currencies, true ) )
+            $currency_key = $policy['currency_field'];
+            if ( $currency_key && isset( $row[ $currency_key ] ) &&
+                ! in_array( (string) $row[ $currency_key ], $allowed_currencies, true ) )
                 $errors[] = 'currency_not_in_approved_allowlist';
             if ( isset( $row['_wpml_import_after_process_post_status'] ) &&
                 ! in_array( (string) $row['_wpml_import_after_process_post_status'],
@@ -228,23 +229,28 @@ final class MAD4B_SCP_Activity_Import_Review {
                 is_numeric( $row['tour_rate_end_date'] ) &&
                 (float) $row['tour_rate_start_date'] > (float) $row['tour_rate_end_date'] )
                 $errors[] = 'date_interval_reversed';
-            $price_fields = array( 'single_price', 'double_price', 'triple_price' );
+            $price_fields = $policy['price_fields'];
+            $decimal_scale = $policy['decimal_scale'];
+            $number_pattern = 0 === $decimal_scale ? '/^\\d{1,14}$/D' :
+                '/^\\d{1,14}(?:\\.\\d{1,' . $decimal_scale . '})?$/D';
             foreach ( $price_fields as $price_key ) {
-                if ( array_key_exists( $price_key, $row ) &&
-                    ( ! is_numeric( $row[ $price_key ] ) ||
-                      (float) $row[ $price_key ] < 0 ) )
-                    $errors[] = 'price_not_nonnegative_number';
+                if ( ! array_key_exists( $price_key, $row ) ||
+                    ! preg_match( $number_pattern, (string) $row[ $price_key ] ) )
+                    $errors[] = 'price_not_approved_decimal';
             }
-            if ( 'review_monotonic' === $price_policy &&
-                ( ( isset( $row['single_price'], $row['double_price'] ) &&
-                    is_numeric( $row['single_price'] ) &&
-                    is_numeric( $row['double_price'] ) &&
-                    (float) $row['single_price'] < (float) $row['double_price'] ) ||
-                  ( isset( $row['double_price'], $row['triple_price'] ) &&
-                    is_numeric( $row['double_price'] ) &&
-                    is_numeric( $row['triple_price'] ) &&
-                    (float) $row['double_price'] < (float) $row['triple_price'] ) ) )
-                $errors[] = 'price_tier_order_requires_commercial_review';
+            if ( 'review_monotonic' === $price_policy ) {
+                for ( $tier = 0; $tier + 1 < count( $price_fields ); $tier++ ) {
+                    $left = $price_fields[ $tier ];
+                    $right = $price_fields[ $tier + 1 ];
+                    if ( isset( $row[ $left ], $row[ $right ] ) &&
+                        preg_match( $number_pattern, (string) $row[ $left ] ) &&
+                        preg_match( $number_pattern, (string) $row[ $right ] ) &&
+                        (float) $row[ $left ] < (float) $row[ $right ] ) {
+                        $errors[] = 'price_tier_order_requires_commercial_review';
+                        break;
+                    }
+                }
+            }
             if ( $flag_expired && isset( $row['tour_rate_end_date'] ) &&
                 is_numeric( $row['tour_rate_end_date'] ) &&
                 (float) $row['tour_rate_end_date'] < time() )
@@ -302,6 +308,9 @@ final class MAD4B_SCP_Activity_Import_Review {
             'identity_field' => $identity, 'field_mapping' => $mapping,
             'headers' => $headers, 'row_hashes' => $row_hashes,
             'allowed_currencies' => $allowed_currencies,
+            'currency_field' => $currency_key,
+            'price_fields' => $price_fields,
+            'decimal_scale' => $policy['decimal_scale'],
             'price_tier_policy' => $price_policy,
             'review_past_intervals' => $flag_expired,
             'policy_sha256' => $policy_result['policy_sha256'] );
