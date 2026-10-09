@@ -261,7 +261,7 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 			'continuation_executing' => 'executing' === $continuation_state,
 			'skills_pending' => ! empty( $context['skills_pending'] ),
 			'maintenance_busy' => ! empty( $maintenance['active'] ) && 'adaptive_runtime_observation' !== sanitize_key( isset( $maintenance['owner'] ) ? (string) $maintenance['owner'] : '' ),
-			'reconcile_needed' => $candidate_drift || $version_drift || $schema_drift || $build_changed || $continuation_pending,
+			'reconcile_needed' => $candidate_drift || $version_drift || $schema_drift || $build_changed || $continuation_pending || ! empty( $context['skills_pending'] ),
 			'source_wordpress_upgrader' => 'wordpress_upgrader' === $source,
 			'source_build_stamp_drift' => 'build_stamp_drift' === $source,
 			'source_candidate_binding_probe' => 'candidate_binding_probe' === $source,
