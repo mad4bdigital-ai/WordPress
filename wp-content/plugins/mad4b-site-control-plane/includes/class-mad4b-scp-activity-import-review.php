@@ -61,6 +61,68 @@ final class MAD4B_SCP_Activity_Import_Review {
             'staging_only' => true
         );
     }
+    /**
+     * Read-only WP All Import options handoff. The upstream plugin owns its
+     * wizard/run engine; no unverified internal PMXI_Import_Record mutation.
+     */
+    public static function wp_all_import_plan( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
+            return self::error( 'mad4b_wpai_plan_denied', 'Enrolled administrator required.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
+            empty( $profile['activity_contract']['enabled'] ) )
+            return self::error( 'mad4b_wpai_profile_not_enabled', 'Enabled Profile Activity facet required.' );
+        $import_id = isset( $input['import_id'] ) ? (int) $input['import_id'] : 0;
+        $unique = isset( $input['unique_identifier'] ) ? (string) $input['unique_identifier'] : '';
+        $mode = isset( $input['mode'] ) ? (string) $input['mode'] : '';
+        if ( $import_id < 1 || ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $unique ) ||
+            ! in_array( $mode, array( 'create_new', 'match_existing', 'update_existing' ), true ) )
+            return self::error( 'mad4b_wpai_handoff_invalid', 'Exact installed import ID, stable unique key and explicit import mode required.' );
+        $allowed_sections = array(
+            'source', 'sheet', 'mapping', 'match', 'records', 'post', 'custom_fields',
+            'taxonomies', 'relationships', 'media', 'wpml', 'pricing',
+            'scheduling', 'batch', 'errors', 'rollback', 'review'
+        );
+        $options = isset( $input['provider_options'] ) ? $input['provider_options'] : array();
+        if ( ! is_array( $options ) || count( $options ) > 18 ||
+            array_diff( array_keys( $options ), $allowed_sections ) )
+            return self::error( 'mad4b_wpai_option_section_invalid', 'Unsupported import option section; inspect installed plugin before adding keys.' );
+        foreach ( $options as $name => $value ) {
+            if ( ! is_array( $value ) || count( $value ) > 100 )
+                return self::error( 'mad4b_wpai_option_unbounded', 'Each option section requires bounded structured values.' );
+        }
+        $permitted_meta = array_fill_keys( (array) $profile['meta_keys'], true );
+        $update_fields = isset( $input['update_fields'] ) ? $input['update_fields'] : array();
+        if ( ! is_array( $update_fields ) || count( $update_fields ) > 80 )
+            return self::error( 'mad4b_wpai_update_fields_invalid', 'Explicit bounded updated-field allowlist required.' );
+        foreach ( $update_fields as $field ) {
+            if ( ! is_string( $field ) || ! isset( $permitted_meta[ $field ] ) )
+                return self::error( 'mad4b_wpai_update_not_allowed', 'Only parent Profile-allowlisted Meta fields may be updated.' );
+        }
+        $requested_delete = ! empty( $input['delete_missing'] );
+        $requested_publish = ! empty( $input['publish_immediately'] );
+        $contract = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
+            'profile_authority_sha256' => $profile['authority_sha256'],
+            'engine' => 'wp_all_import', 'import_id' => $import_id,
+            'unique_identifier' => $unique, 'mode' => $mode,
+            'update_fields' => $update_fields, 'provider_options' => $options,
+            'requested_delete' => $requested_delete,
+            'requested_publish' => $requested_publish );
+        return array( 'contract' => 'mad4b.wp-all-import-handoff-plan.v1',
+            'plan_sha256' => self::digest( $contract ),
+            'engine_detected' => class_exists( 'PMXI_Plugin' ) || defined( 'PMXI_VERSION' ),
+            'source_bound' => $contract, 'option_sections' => $allowed_sections,
+            'requires_site_job_readback' => true, 'requires_native_wpai_wizard_or_certified_adapter' => true,
+            'requires_governed_approval' => true,
+            'blocked_effects' => array_values( array_filter( array(
+                $requested_delete ? 'delete_missing_requires_separate_explicit_release_policy' : null,
+                $requested_publish ? 'publish_requires_separate_commercial_release' : null
+            ) ) ),
+            'ready_for_import_execution' => false, 'read_only' => true,
+            'mutation_performed' => false );
+    }
     private static function inspect( $input ) {
         if ( ! is_array( $input ) ) return self::error( 'mad4b_import_payload_invalid', 'Object required.' );
         $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
