@@ -2058,17 +2058,17 @@ final class MAD4B_SCP_Context_Authority {
 		// an operational document into mandatory Brand Authority automatically.
 		// An explicit human-classified asset is preserved by the caller and can
 		// still be reviewed via the separate Context review authority surface.
-		if ( 'brand_strategy' === $best ) {
+		if ( in_array( $best, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) {
 			$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
-			$named_strategy = false;
-			foreach ( $rules['brand_strategy'] as $needle ) {
-				if ( false !== strpos( $title_path, $needle ) ) { $named_strategy = true; break; }
+			$named_authority = false;
+			foreach ( $rules[ $best ] as $needle ) {
+				if ( false !== strpos( $title_path, $needle ) ) { $named_authority = true; break; }
 			}
 			$operational_title = 1 === preg_match(
 				'/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i',
 				(string) $name . ' ' . (string) $path
 			);
-			if ( ! $named_strategy && $operational_title ) {
+			if ( ! $named_authority && $operational_title ) {
 				$best = 'uncategorized';
 				$best_hits = 0;
 			}
