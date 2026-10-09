@@ -175,6 +175,7 @@ final class MAD4B_SCP_Operational_Remediation {
 			&& 'staging' === (string) ( $binding['environment'] ?? '' )
 			&& (bool) preg_match( '/^[a-f0-9]{40}$/D', $source_sha )
 			&& (bool) preg_match( '/^[a-f0-9]{64}$/D', $plan_sha )
+			&& is_string( $binding['site_origin'] ?? null ) && '' !== $binding['site_origin']
 			&& (bool) preg_match( '/^[a-f0-9]{64}$/D', (string) ( $binding['site_profile_digest'] ?? '' ) )
 			&& (bool) preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D', (string) ( $binding['site_uuid'] ?? '' ) );
 		$native_gates = is_array( $native['gates'] ?? null ) ? $native['gates'] : array();
@@ -186,6 +187,11 @@ final class MAD4B_SCP_Operational_Remediation {
 		if ( count( $native_gates ) > self::MAX_GATES || count( $blocking ) > self::MAX_GATES
 			|| count( $actions ) > self::MAX_ACTIONS ) $issues[] = 'remediation_inventory_limit_exceeded';
 		if ( ! $identity ) $issues[] = 'exact_staging_site_binding_unavailable';
+		if ( ! isset( $native['gates'], $native['ready'] ) || ! is_array( $native['gates'] )
+			|| ! isset( $plan['blocking_gates'], $plan['actions'], $plan['gate_action_coverage'] )
+			|| ! is_array( $plan['blocking_gates'] ) || ! is_array( $plan['actions'] )
+			|| ! is_array( $plan['gate_action_coverage'] ) )
+			$issues[] = 'canonical_gate_registry_unavailable';
 		if ( ! empty( $plan['dispatch_allowed'] ) || ! empty( $plan['autonomous_mutation_authorized'] ) )
 			$issues[] = 'remediation_plan_attempts_self_authorization';
 		$blocked = array();
@@ -262,7 +268,9 @@ final class MAD4B_SCP_Operational_Remediation {
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => ! $verified ? 'DIAGNOSTIC_INTEGRITY_BLOCKED'
-				: ( $items ? 'REMEDIATION_REQUIRED' : 'OBSERVED_STAGING_GATES_READY' ),
+				: ( $items ? 'REMEDIATION_REQUIRED'
+					: ( ! empty( $native['ready'] ) && ! empty( $plan['current_ready'] )
+						? 'OBSERVED_STAGING_GATES_READY' : 'NATIVE_STAGING_EVIDENCE_PENDING' ) ),
 			'diagnostic_integrity_ready' => $verified,
 			'native_staging_ready' => ! empty( $native['ready'] ),
 			'staging_release_gates_ready' => $verified && ! $items && ! empty( $plan['current_ready'] ),
@@ -301,6 +309,7 @@ final class MAD4B_SCP_Operational_Remediation {
 			|| strlen( $current_source ) !== 40 || ! hash_equals( $current_source, $source ) )
 			return self::denied( 'REPLAN_REQUIRED' );
 		if ( empty( $binding['nonproduction_site_ready'] ) || 'staging' !== (string) ( $binding['environment'] ?? '' )
+			|| ! is_string( $binding['site_origin'] ?? null ) || '' === $binding['site_origin']
 			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $binding['site_profile_digest'] ?? '' ) )
 			|| ! preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D', (string) ( $binding['site_uuid'] ?? '' ) )
 			|| empty( $plan['gate_coverage_complete'] ) || ! empty( $plan['plan_integrity_blockers'] )
@@ -312,6 +321,11 @@ final class MAD4B_SCP_Operational_Remediation {
 		}
 		if ( count( $matching ) !== 1 ) return self::denied( 'ACTION_NOT_UNIQUELY_AVAILABLE' );
 		$row = $matching[0];
+		$open_gates = is_array( $plan['blocking_gates'] ?? null ) ? $plan['blocking_gates'] : array();
+		$target_gates = is_array( $row['target_gates'] ?? null ) ? $row['target_gates'] : array();
+		if ( ! $target_gates || count( $target_gates ) > 32
+			|| array_diff( $target_gates, $open_gates ) )
+			return self::denied( 'ACTION_NOT_BOUND_TO_OPEN_GATE' );
 		if ( ! empty( $row['authorizing'] ) || ! empty( $row['mutation_performed'] )
 			|| ! empty( $row['automatic_execution_allowed'] ) )
 			return self::denied( 'ACTION_ATTEMPTS_SELF_AUTHORIZATION' );
