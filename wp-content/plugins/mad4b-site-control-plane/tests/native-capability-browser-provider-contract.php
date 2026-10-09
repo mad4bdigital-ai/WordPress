@@ -72,6 +72,11 @@ native_expect( isset( $registered[ $c::ID ] ) && $registered[ $c::ID ]['authoriz
 native_expect( $c::capabilities()['independent_reducer'] === true, 'reducer declared' );
 native_expect( $c::capabilities()['browser_attestation_key_id'] === $GLOBALS['native_test_key_id'],
     'native trusted public key fingerprint readback matches external signer' );
+native_expect( $c::capabilities()['browser_attestation_public_key_valid'] === true &&
+    $c::capabilities()['browser_attestation_ready'] === false &&
+    $c::capabilities()['release_ready'] === false &&
+    $c::capabilities()['replay_prevention_verified'] === false,
+    'public trust anchor never masquerades as live browser or anti-replay proof' );
 $plan = $c::plan( array( 'profile_id' => $c::PROFILE, 'suite' => 'browser_runtime' ) );
 native_expect( $plan['state'] === 'ready' && $plan['case_count'] === 1,
     'native read oracle generates signed plan' );
