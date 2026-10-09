@@ -1925,7 +1925,7 @@ def _rollback_wp_environment(result: dict[str, Any]) -> bool:
             return False
         _wp_environment_guarded_write(path, backup.read_bytes())
         return hmac.compare_digest(sha256_file(path), before)
-    except (OSError, ValueError):
+    except (OSError, ValueError, RuntimeError):
         return False
 
 
@@ -2013,6 +2013,12 @@ def _wp_environment_mutate(profile: dict[str, Any], verified: dict[str, Any],
         "relative_path": "wp-config.php",
         "before_sha256": before_sha, "after_sha256": after_sha,
         "source_job_id": (extra or {}).get("source_job_id", ""),
+        # These are non-secret policy identities, never the Host binding itself.
+        # An independent WordPress read ability must match them against its
+        # *new request* effective profile before claiming host_aligned.
+        "expected_site_profile_digest": (extra or {}).get("expected_site_profile_digest", ""),
+        "expected_site_profile_revision": (extra or {}).get("expected_site_profile_revision", 0),
+        "expected_deployment_binding_digest": (extra or {}).get("expected_deployment_binding_digest", ""),
         "rollback_available": True,
         "mutation_performed": True, "readback_verdict": "PENDING",
         "host_file_readback_verified": False,
@@ -2042,8 +2048,12 @@ def _wp_environment_mutate(profile: dict[str, Any], verified: dict[str, Any],
 
 
 def execute_wp_environment_sync(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
-    _, config, before, after = _wp_environment_operation_plan(profile, verified)
-    return _wp_environment_mutate(profile, verified, config, before, after)
+    plan, config, before, after = _wp_environment_operation_plan(profile, verified)
+    return _wp_environment_mutate(profile, verified, config, before, after, {
+        "expected_site_profile_digest": plan["expected_profile_digest"],
+        "expected_site_profile_revision": plan["expected_profile_revision"],
+        "expected_deployment_binding_digest": plan["deployment_binding_digest"],
+    })
 
 
 def execute_wp_environment_rollback(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
