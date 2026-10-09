@@ -716,6 +716,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'schema' => self::schema( array(
                 'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
                 'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+                'field_sources' => array( 'type' => 'object', 'maxProperties' => 40, 'additionalProperties' => array( 'type' => 'string' ) ),
             ), array( 'profile_slug', 'entity_id' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array( 'name' => 'mad4b/business-activity-sync-plan', 'label' => 'Plan Authoritative Multi-Source Sync', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'plan' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
@@ -731,6 +732,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'confirmed' => array( 'type' => 'boolean' ),
                 'plan_sha256' => self::sha_schema(),
                 'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+                'field_sources' => array( 'type' => 'object', 'maxProperties' => 40, 'additionalProperties' => array( 'type' => 'string' ) ),
             ), array( 'profile_slug', 'entity_id', 'confirmed', 'plan_sha256', 'operation_key' ) ),
 				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
 			array( 'name' => 'mad4b/business-activity-sync-advance', 'label' => 'Advance One Guarded Provider Sync Step', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'advance' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
