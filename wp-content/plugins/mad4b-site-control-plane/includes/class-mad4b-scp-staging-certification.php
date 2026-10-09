@@ -740,10 +740,12 @@ final class MAD4B_SCP_Staging_Certification {
 				'kind' => 'external_executor_job',
 				'executor' => 'external_browser_agent',
 				'human_decision_required' => false,
-				'automatic_execution_allowed' => true,
+				'automatic_execution_allowed' => false,
 				'operation_id' => 'browser_acceptance_execution',
-				'apply_ability' => 'mad4b/browser-acceptance-run',
-				'readback_ability' => 'mad4b/browser-acceptance-result',
+				'plan_ability' => 'mad4b/browser-acceptance-plan',
+				'readback_ability' => 'mad4b/browser-acceptance-capabilities',
+				'trusted_external_agent_required' => true,
+				'signed_receipt_required' => true,
 			) );
 		}
 		if ( in_array( 'performance_budget', $blocking, true ) ) {
@@ -751,10 +753,11 @@ final class MAD4B_SCP_Staging_Certification {
 				'kind' => 'external_executor_job',
 				'executor' => 'external_browser_agent',
 				'human_decision_required' => false,
-				'automatic_execution_allowed' => true,
+				'automatic_execution_allowed' => false,
 				'operation_id' => 'frontend_performance_sampling',
-				'apply_ability' => 'mad4b/frontend-performance-sample-run',
+				'plan_ability' => 'mad4b/frontend-performance-status',
 				'readback_ability' => 'mad4b/frontend-performance-status',
+				'external_frontend_observation_required' => true,
 				'minimum_samples' => 3,
 			) );
 		}
@@ -1095,6 +1098,10 @@ final class MAD4B_SCP_Staging_Certification {
 			'candidate_binding_only' => array( 'write_authority', 'write_runtime' ),
 			'browser_acceptance' => array( 'browser_runtime' ),
 			'frontend_performance_sampling' => array( 'performance_budget' ),
+			'context_owner_evidence_review' => array( 'context_authority', 'brand_core_context_coverage' ),
+			'browser_attestation_trust_review' => array( 'browser_runtime' ),
+			'frontend_sample_evidence_review' => array( 'performance_budget' ),
+			'import_export_disposable_acceptance' => array( 'wp_import_export_exact_artifact' ),
 		);
 		$readbacks = array(
 			'exact_build' => 'mad4b/staging-certification-status',
@@ -1113,7 +1120,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'query_monitor_db_attribution' => 'mad4b/staging-certification-status',
 			'oauth_live_authority_projection' => 'mad4b/staging-certification-status',
 			'rollback_candidate' => 'mad4b/staging-certification-status',
-			'wp_import_export_exact_artifact' => 'mad4b/provider-closure-matrix',
+			'wp_import_export_exact_artifact' => 'wp-import-export/execution-readiness',
 			'deployment_host_binding' => 'mad4b/site-profile-status',
 			'developer_host_execution' => 'mad4b/full-staging-authority-status',
 		);
