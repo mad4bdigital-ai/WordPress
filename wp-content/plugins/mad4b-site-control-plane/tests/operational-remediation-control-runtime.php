@@ -32,6 +32,7 @@ $binding = array(
 	'source_commit_sha' => $source,
 	'site_uuid' => '123e4567-e89b-42d3-a456-426614174000',
 	'site_profile_digest' => str_repeat( 'c', 64 ),
+	'site_origin' => 'https://staging.example.test',
 	'environment' => 'staging',
 	'nonproduction_site_ready' => true,
 );
@@ -121,6 +122,19 @@ $not_covered = $plan;
 $not_covered['gate_action_coverage']['browser_runtime'] = array( 'unknown_action' );
 $coverage = MAD4B_SCP_Operational_Remediation::reduce( $native, $not_covered );
 $ok( $coverage['diagnostic_integrity_ready'] === false, 'missing action does not disappear' );
+$unbound_action = $plan;
+$unbound_action['actions'][0]['target_gates'] = array();
+$ok( MAD4B_SCP_Operational_Remediation::prepare_from_plan( $unbound_action,
+	'browser_acceptance', $sha, $source )['state'] === 'DENIED',
+	'actions not bound to blocked native/Live gate never become work tickets' );
+$missing_canonical = MAD4B_SCP_Operational_Remediation::reduce( array(), $plan );
+$ok( in_array( 'canonical_gate_registry_unavailable',
+	$missing_canonical['plan_integrity_blockers'], true ),
+	'missing native gate inventory blocks readiness rather than assuming green' );
+$missing_origin = $plan;
+unset( $missing_origin['plan_binding']['site_origin'] );
+$ok( MAD4B_SCP_Operational_Remediation::reduce( $native, $missing_origin )['diagnostic_integrity_ready'] === false,
+	'missing enrolled origin blocks cross-tenant projection' );
 $bad_integrity = $plan;
 $bad_integrity['plan_integrity_blockers'] = array( 'unverified_snapshot' );
 $ok( MAD4B_SCP_Operational_Remediation::prepare_from_plan( $bad_integrity,
