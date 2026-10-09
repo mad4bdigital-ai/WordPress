@@ -406,6 +406,8 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'retry_limit_per_stage' => self::MAX_ATTEMPTS,
             'retry_counter_source' => 'untrusted_request_advisory',
             'retry_counter_persisted' => false,
+            'write_endpoints_use_persisted_retry_budget' => true,
+            'authoritative_retry_budget_ability' => 'context/recovery-attempt-status',
             'retry_budget_enforced_by_planner' => false,
             'execution_requires_authoritative_retry_journal' => true,
             'governed_source_scan_complete' => $source_scan_complete,
