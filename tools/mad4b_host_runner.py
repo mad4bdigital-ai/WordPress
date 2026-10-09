@@ -10,8 +10,11 @@ Repository slice:
 - Named filesystem zones with canonical path confinement.
 - Durable idempotent receipts.
 
-General host/site writes, scheduler/bootstrap enrollment, provider CLI/API adapters,
-and Production eligibility remain unavailable until separately implemented/certified.
+Only the explicitly enrolled, receipt-bound WordPress Staging environment
+bootstrap operation may touch wp-config.php. Its secret rollback backup must
+be in a host-enrolled private (0700) directory outside the WordPress root.
+General host/site writes, scheduler/bootstrap enrollment, provider CLI/API
+adapters, and Production eligibility remain unavailable.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ import hmac
 import json
 import os
 import re
+import stat
 import shutil
 import sys
 import uuid
@@ -91,6 +95,20 @@ OPERATIONS: dict[str, dict[str, Any]] = {
         "version": 1,
         "risk": "reversible_write",
         "zones": ["plugin_root"],
+        "requires_plan": True,
+        "requires_approval": True,
+    },
+    "wordpress_environment_sync": {
+        "version": 1,
+        "risk": "reversible_write",
+        "zones": ["wordpress_root"],
+        "requires_plan": True,
+        "requires_approval": True,
+    },
+    "wordpress_environment_rollback": {
+        "version": 1,
+        "risk": "reversible_write",
+        "zones": ["wordpress_root"],
         "requires_plan": True,
         "requires_approval": True,
     },
@@ -383,6 +401,8 @@ def load_profile(path: Path) -> dict[str, Any]:
         "bridge_root": str((expected_workspace / "bridge").resolve()),
         "bridge_job_root": str((expected_workspace / "bridge-jobs").resolve()),
         "package_staging_root": str((expected_workspace / "package-staging").resolve()),
+        # Independent private Host state outside WordPress: never spool secrets in wp-content.
+        "host_environment_backup_root": str(profile.get("host_environment_backup_root") or ""),
     }
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
@@ -393,6 +413,10 @@ def load_profile(path: Path) -> dict[str, Any]:
             raise ValueError(f"Host Runner {evidence_root_key} escaped dedicated runner workspace")
         if candidate.exists() and (_is_link_like(candidate) or not candidate.is_dir()):
             raise ValueError(f"Host Runner {evidence_root_key} must be a regular directory")
+    if any(op in allowed for op in ("wordpress_environment_sync", "wordpress_environment_rollback")):
+        if not normalized["host_environment_backup_root"]:
+            raise ValueError("Host environment operation requires a separately enrolled private backup root")
+        _wp_environment_private_backup_root(normalized)
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
         "site_uuid": site_uuid,
         "environment": environment,
@@ -1790,11 +1814,313 @@ def execute_wordpress_plugin_rollback(profile: dict[str, Any], verified: dict[st
             pass
         raise
 
+
+WP_ENVIRONMENT_SYNC_CONTRACT = "mad4b.host-runner-wordpress-environment-sync-plan.v1"
+WP_ENVIRONMENT_ROLLBACK_CONTRACT = "mad4b.host-runner-wordpress-environment-rollback-plan.v1"
+WP_ENVIRONMENT_INSERT = b"\n/* MAD4B approved Host-Managed WordPress Staging environment. */\ndefine( 'WP_ENVIRONMENT_TYPE', 'staging' );\n"
+WP_ENVIRONMENT_SETTINGS_RE = re.compile(rb"(?m)^[ \t]*require_once[ \t]+ABSPATH[ \t]*\.[ \t]*['\"]wp-settings\.php['\"][ \t]*;")
+
+
+def _wp_environment_config(profile: dict[str, Any]) -> Path:
+    if profile["environment"] != "staging":
+        raise ValueError("WordPress environment Host edit is Staging-only")
+    root = Path(profile["wordpress_root"])
+    config = root / "wp-config.php"
+    _reject_symlink_chain(config, root)
+    if _is_link_like(config) or not config.is_file() or config.parent.resolve() != root.resolve():
+        raise ValueError("WordPress Host config must be a regular file at the verified root")
+    if not hmac.compare_digest(sha256_file(config), profile["wp_config_sha256"]):
+        raise ValueError("WordPress Host config drifted from attested Host Runner profile")
+    return config
+
+
+def _wp_environment_expected_bytes(original: bytes) -> bytes:
+    if len(original) < 20 or len(original) > MAX_WRITE_BYTES - len(WP_ENVIRONMENT_INSERT):
+        raise HostRunnerResourceError("HOST_RESOURCE_WP_CONFIG_BYTES", "Host wp-config is outside bounded edit size")
+    if not original.startswith(b"<?php") or b"WP_ENVIRONMENT_TYPE" in original:
+        raise ValueError("Host wp-config bootstrap is ambiguous or already configures WordPress environment")
+    matches = list(WP_ENVIRONMENT_SETTINGS_RE.finditer(original))
+    if len(matches) != 1:
+        raise ValueError("Exactly one standard WordPress settings bootstrap is required")
+    pos = matches[0].start()
+    return original[:pos] + WP_ENVIRONMENT_INSERT + original[pos:]
+
+
+def _wp_environment_guarded_write(config: Path, raw: bytes) -> None:
+    # Unlike generic workspace files, wp-config includes credentials. Its mode
+    # and ownership must not become more permissive after an atomic replace.
+    if _is_link_like(config) or not config.is_file():
+        raise ValueError("Host wp-config changed type before atomic write")
+    existing = config.stat()
+    expected_current_sha = sha256_file(config)
+    if hasattr(os, "geteuid") and os.geteuid() != existing.st_uid:
+        raise ValueError("Host Runner must own wp-config to preserve its owner")
+    if len(raw) > MAX_WRITE_BYTES:
+        raise HostRunnerResourceError("HOST_RESOURCE_WP_CONFIG_BYTES", "Host wp-config exceeds maximum write bytes")
+    _ensure_storage_budget(config, len(raw))
+    temp = config.with_name(config.name + ".mad4b-tmp-" + uuid.uuid4().hex)
+    try:
+        with temp.open("xb") as out:
+            if hasattr(os, "fchmod"):
+                os.fchmod(out.fileno(), stat.S_IMODE(existing.st_mode))
+            out.write(raw)
+            out.flush()
+            os.fsync(out.fileno())
+        if not hasattr(os, "fchmod"):
+            os.chmod(temp, stat.S_IMODE(existing.st_mode))
+        if (_is_link_like(config) or not config.is_file()
+            or not hmac.compare_digest(sha256_file(config), expected_current_sha)
+            or config.stat().st_ino != existing.st_ino):
+            raise ValueError("Host wp-config pre-commit object changed")
+        os.replace(temp, config)
+        if stat.S_IMODE(config.stat().st_mode) != stat.S_IMODE(existing.st_mode):
+            raise RuntimeError("Host wp-config owner permissions changed during replace")
+        try:
+            fd = os.open(str(config.parent), os.O_RDONLY)
+            os.fsync(fd)
+            os.close(fd)
+        except OSError:
+            pass
+    finally:
+        if temp.exists():
+            temp.unlink()
+
+
+def _wp_environment_private_backup_root(profile: dict[str, Any]) -> Path:
+    # wp-config holds DB/auth secrets. Never place an unencrypted snapshot in
+    # WordPress content, its runner spool or an implicit public directory.
+    name = str(profile.get("host_environment_backup_root") or "")
+    if not name:
+        raise ValueError("Host environment sync requires an enrolled host-private backup root")
+    root = Path(name).expanduser()
+    if not root.is_absolute():
+        raise ValueError("Host environment backup root must be absolute")
+    _reject_link_ancestors(root)
+    if _is_link_like(root) or not root.is_dir():
+        raise ValueError("Host environment backup root is missing or a link")
+    root = root.resolve()
+    wordpress = Path(profile["wordpress_root"]).resolve()
+    if root == wordpress or _is_within(root, wordpress):
+        raise ValueError("Host environment config snapshot must remain outside WordPress public root")
+    mode = stat.S_IMODE(root.stat().st_mode)
+    if mode & 0o077:
+        raise ValueError("Host environment private snapshot directory must have mode 0700 or stricter")
+    if hasattr(os, "geteuid") and os.geteuid() != root.stat().st_uid:
+        raise ValueError("Host Runner must own the private snapshot directory")
+    return root
+
+
+def _rollback_wp_environment(result: dict[str, Any]) -> bool:
+    try:
+        path = Path(str(result.get("_target_path") or ""))
+        backup = Path(str(result.get("_rollback_path") or ""))
+        before = str(result.get("before_sha256") or "")
+        after = str(result.get("after_sha256") or "")
+        if not backup.is_file() or _is_link_like(backup) or _is_link_like(path):
+            return False
+        if not hmac.compare_digest(sha256_file(backup), before):
+            return False
+        current = sha256_file(path)
+        if current not in (after, before):
+            return False
+        _wp_environment_guarded_write(path, backup.read_bytes())
+        return hmac.compare_digest(sha256_file(path), before)
+    except (OSError, ValueError):
+        return False
+
+
+def _wp_environment_operation_plan(profile: dict[str, Any], verified: dict[str, Any]) -> tuple[dict[str, Any], Path, bytes, bytes]:
+    if verified["operation_id"] != "wordpress_environment_sync":
+        raise ValueError("Host environment sync operation identity invalid")
+    args = verified["input"]
+    if set(args) != {"plan"} or not isinstance(args["plan"], dict):
+        raise ValueError("Host environment sync must carry one exact nested plan")
+    plan = args["plan"]
+    if plan.get("contract") != WP_ENVIRONMENT_SYNC_CONTRACT or plan.get("operation_id") != verified["operation_id"]:
+        raise ValueError("WordPress environment sync plan contract mismatch")
+    if plan.get("operation_version") != OPERATIONS[verified["operation_id"]]["version"] or plan.get("runner_profile_id") != profile["profile_id"]:
+        raise ValueError("WordPress environment sync plan operation/runner mismatch")
+    if not hmac.compare_digest(str(plan.get("plan_sha256") or ""), plan_digest(plan)) or not hmac.compare_digest(verified["plan_sha256"], str(plan.get("plan_sha256") or "")):
+        raise ValueError("WordPress environment sync exact plan digest mismatch")
+    required = {
+        "contract","operation_id","operation_version","runner_profile_id","site_uuid",
+        "environment","target_fingerprint","expected_wp_config_sha256",
+        "expected_wordpress_environment","desired_wordpress_environment",
+        "expected_profile_digest","expected_profile_revision","deployment_binding_digest",
+        "change_strategy","backup_before_replace","rollback_on_failed_readback",
+        "require_new_bootstrap_verification","caller_supplied_path_allowed",
+        "caller_supplied_php_allowed","production_authorized","reason","plan_sha256",
+    }
+    if set(plan) != required:
+        raise ValueError("WordPress environment sync plan contains missing/extra fields")
+    if plan.get("environment") != "staging" or plan.get("site_uuid") != profile["site_uuid"] or plan.get("target_fingerprint") != profile["target_fingerprint"]:
+        raise ValueError("WordPress environment sync site/Host binding mismatch")
+    if plan.get("expected_wp_config_sha256") != profile["wp_config_sha256"]:
+        raise ValueError("WordPress environment sync wp-config changed since planning")
+    if plan.get("expected_wordpress_environment") != "production" or plan.get("desired_wordpress_environment") != "staging":
+        raise ValueError("Host environment sync must be implicit Production to explicit Staging")
+    if plan.get("change_strategy") != "guarded_wp_config_insert_before_settings":
+        raise ValueError("Host environment sync strategy is not supported")
+    if (plan.get("backup_before_replace") is not True or plan.get("rollback_on_failed_readback") is not True
+        or plan.get("require_new_bootstrap_verification") is not True
+        or plan.get("caller_supplied_path_allowed") is not False or plan.get("caller_supplied_php_allowed") is not False
+        or plan.get("production_authorized") is not False):
+        raise ValueError("Host environment sync safety invariant missing")
+    for digest in ("expected_profile_digest", "deployment_binding_digest"):
+        if not re.fullmatch(r"[a-f0-9]{64}", str(plan.get(digest) or "")):
+            raise ValueError("Host environment sync required authority digest absent")
+    if not isinstance(plan.get("expected_profile_revision"), int) or plan["expected_profile_revision"] < 1:
+        raise ValueError("Host environment sync profile revision invalid")
+    if not isinstance(plan.get("reason"), str) or not 3 <= len(plan["reason"]) <= 500:
+        raise ValueError("Host environment sync reason invalid")
+    config = _wp_environment_config(profile)
+    before = config.read_bytes()
+    after = _wp_environment_expected_bytes(before)
+    return plan, config, before, after
+
+
+def _wp_environment_mutate(profile: dict[str, Any], verified: dict[str, Any],
+                           config: Path, before: bytes, after: bytes,
+                           extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    journal_root = Path(profile["journal_root"])
+    journal_root.mkdir(parents=True, exist_ok=True)
+    if _is_link_like(journal_root):
+        raise ValueError("Host Runner environment journal directory is a symlink")
+    rollback_root = _wp_environment_private_backup_root(profile)
+    job_id = verified["job_id"]
+    journal_path = journal_root / f"{job_id}.json"
+    backup = rollback_root / f"{job_id}.bin"
+    if journal_path.exists() or backup.exists():
+        raise ValueError("Host environment sync job evidence already exists")
+    before_sha = sha256_bytes(before)
+    after_sha = sha256_bytes(after)
+    atomic_bytes_write(backup, before)
+    os.chmod(backup, 0o600)
+    if stat.S_IMODE(backup.stat().st_mode) != 0o600:
+        raise RuntimeError("Host environment secret backup permissions are too broad")
+    if not hmac.compare_digest(sha256_file(backup), before_sha):
+        raise RuntimeError("Host environment sync backup verification failed")
+    journal = {
+        "contract": "mad4b.host-runner-mutation-journal.v1",
+        "job_id": job_id,"operation_id": verified["operation_id"],
+        "plan_sha256": verified["plan_sha256"],"approval_ref": verified["approval_ref"],
+        "relative_path": "wp-config.php", "before_sha256": before_sha,
+        "expected_after_sha256": after_sha, "state": "MUTATION_STARTED",
+        "terminal": False, "blind_retry_allowed": False, "created_at": utc_now(),
+    }
+    atomic_json_write(journal_path, journal)
+    result = {
+        "relative_path": "wp-config.php",
+        "before_sha256": before_sha, "after_sha256": after_sha,
+        "source_job_id": (extra or {}).get("source_job_id", ""),
+        "rollback_available": True,
+        "mutation_performed": True, "readback_verdict": "PENDING",
+        "host_file_readback_verified": False,
+        "fresh_wordpress_bootstrap_verified": False,
+        "release_certified": False,
+        "_target_path": str(config), "_rollback_path": str(backup),
+        "_journal_path": str(journal_path),
+    }
+    try:
+        _reject_symlink_chain(config, Path(profile["wordpress_root"]))
+        if not hmac.compare_digest(sha256_file(config), before_sha):
+            raise ValueError("Host wp-config changed at commit boundary")
+        _wp_environment_guarded_write(config, after)
+        if not hmac.compare_digest(sha256_file(config), after_sha):
+            raise RuntimeError("Host environment file readback failed")
+        result["readback_verdict"] = "PASS"
+        result["host_file_readback_verified"] = True
+        return result
+    except Exception:
+        recovered = _rollback_wp_environment(result)
+        failed = dict(journal)
+        failed.update({"terminal": True, "state": "ROLLED_BACK_AFTER_FAILURE" if recovered else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+                       "rollback_verified": recovered, "completed_at": utc_now()})
+        try: atomic_json_write(journal_path, failed)
+        except (OSError, ValueError): pass
+        raise
+
+
+def execute_wp_environment_sync(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
+    _, config, before, after = _wp_environment_operation_plan(profile, verified)
+    return _wp_environment_mutate(profile, verified, config, before, after)
+
+
+def execute_wp_environment_rollback(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
+    if verified["operation_id"] != "wordpress_environment_rollback":
+        raise ValueError("Host environment rollback operation identity mismatch")
+    args = verified["input"]
+    if set(args) != {"plan"} or not isinstance(args["plan"], dict):
+        raise ValueError("Host environment rollback requires one exact plan")
+    plan = args["plan"]
+    if plan.get("contract") != WP_ENVIRONMENT_ROLLBACK_CONTRACT or plan.get("operation_id") != "wordpress_environment_rollback":
+        raise ValueError("Host environment rollback plan contract invalid")
+    if plan.get("operation_version") != OPERATIONS["wordpress_environment_rollback"]["version"]:
+        raise ValueError("Host environment rollback operation version invalid")
+    if not hmac.compare_digest(str(plan.get("plan_sha256") or ""), plan_digest(plan)) or not hmac.compare_digest(verified["plan_sha256"], str(plan.get("plan_sha256") or "")):
+        raise ValueError("Host environment rollback exact plan digest invalid")
+    fields = {
+        "contract","operation_id","operation_version","runner_profile_id","site_uuid",
+        "environment","target_fingerprint","source_job_id","source_receipt_sha256",
+        "expected_wp_config_sha256","restore_wp_config_sha256","backup_before_replace",
+        "rollback_on_failed_readback","require_new_bootstrap_verification",
+        "caller_supplied_path_allowed","caller_supplied_php_allowed",
+        "production_authorized","reason","plan_sha256",
+    }
+    if set(plan) != fields or plan["runner_profile_id"] != profile["profile_id"]:
+        raise ValueError("Host environment rollback fields/profile invalid")
+    if plan["environment"] != "staging" or plan["site_uuid"] != profile["site_uuid"] or plan["target_fingerprint"] != profile["target_fingerprint"]:
+        raise ValueError("Host environment rollback wrong Staging target")
+    if (plan["backup_before_replace"] is not True or plan["rollback_on_failed_readback"] is not True
+        or plan["require_new_bootstrap_verification"] is not True
+        or plan["caller_supplied_path_allowed"] is not False or plan["caller_supplied_php_allowed"] is not False
+        or plan["production_authorized"] is not False):
+        raise ValueError("Host environment rollback safety invariant missing")
+    reason = plan["reason"]
+    if not isinstance(reason, str) or not 3 <= len(reason) <= 500:
+        raise ValueError("Host environment rollback reason invalid")
+    source = str(plan["source_job_id"])
+    if not re.fullmatch(r"[a-f0-9-]{36}", source) or source == verified["job_id"]:
+        raise ValueError("Host environment rollback source job invalid")
+    receipt_file = Path(profile["bridge_root"]) / "receipts" / f"{source}.json"
+    if _is_link_like(receipt_file) or not receipt_file.is_file():
+        raise ValueError("Host environment rollback source receipt missing")
+    if not hmac.compare_digest(sha256_file(receipt_file), str(plan["source_receipt_sha256"])):
+        raise ValueError("Host environment rollback source receipt drift")
+    receipt = load_json_bounded(receipt_file, MAX_RECEIPT_BYTES)
+    if (receipt.get("contract") != RECEIPT_CONTRACT
+        or receipt.get("operation_id") != "wordpress_environment_sync"
+        or receipt.get("mutation_performed") is not True
+        or receipt.get("readback_verdict") != "PASS"
+        or receipt.get("site_uuid") != profile["site_uuid"]
+        or receipt.get("environment") != "staging"):
+        raise ValueError("Host environment rollback source is not a verified successful Staging sync")
+    source_result = receipt.get("result")
+    if not isinstance(source_result, dict):
+        raise ValueError("Host environment rollback missing source result")
+    before_sha = str(source_result.get("before_sha256") or "")
+    after_sha = str(source_result.get("after_sha256") or "")
+    if (not re.fullmatch(r"[a-f0-9]{64}", before_sha) or not re.fullmatch(r"[a-f0-9]{64}", after_sha)
+        or before_sha != plan["restore_wp_config_sha256"] or after_sha != plan["expected_wp_config_sha256"]
+        or after_sha != profile["wp_config_sha256"]):
+        raise ValueError("Host environment rollback source/current digest drift")
+    backup = _wp_environment_private_backup_root(profile) / f"{source}.bin"
+    if _is_link_like(backup) or not backup.is_file() or not hmac.compare_digest(sha256_file(backup), before_sha):
+        raise ValueError("Host environment rollback source snapshot missing or corrupt")
+    config = _wp_environment_config(profile)
+    raw = config.read_bytes()
+    if not hmac.compare_digest(sha256_bytes(raw), after_sha):
+        raise ValueError("Host environment rollback target was edited after source sync")
+    return _wp_environment_mutate(profile, verified, config, raw, backup.read_bytes(), {"source_job_id": source})
+
+
 def _rollback_write_result(operation_id: str, result: dict[str, Any]) -> bool:
     if operation_id in {"workspace.file.replace", "workspace.file.rollback"}:
         return _rollback_workspace_replace(result)
     if operation_id in {"wordpress_plugin_deploy", "wordpress_plugin_rollback"}:
         return _rollback_plugin_deploy(result)
+    if operation_id in {"wordpress_environment_sync", "wordpress_environment_rollback"}:
+        return _rollback_wp_environment(result)
     return False
 
 
@@ -1862,6 +2188,12 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
     if operation_id == "wordpress_plugin_rollback":
         return execute_wordpress_plugin_rollback(profile, verified)
 
+    if operation_id == "wordpress_environment_sync":
+        return execute_wp_environment_sync(profile, verified)
+
+    if operation_id == "wordpress_environment_rollback":
+        return execute_wp_environment_rollback(profile, verified)
+
     raise ValueError("Host Runner operation has no implementation")
 
 
@@ -1906,6 +2238,8 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             if verified["operation_id"] in {"wordpress_plugin_deploy", "wordpress_plugin_rollback"}:
                 plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
                 current = _control_plane_identity_digest(_installed_control_plane_identity(plugin_root))
+            elif verified["operation_id"] in {"wordpress_environment_sync", "wordpress_environment_rollback"}:
+                current = sha256_file(Path(profile["wordpress_root"]) / "wp-config.php")
             else:
                 relative = _workspace_relative(str(result.get("relative_path") or ""))
                 target = Path(profile["runner_workspace"]) / relative
@@ -2188,6 +2522,11 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                 plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
                 try:
                     current_identity = _control_plane_identity_digest(_installed_control_plane_identity(plugin_root))
+                except (OSError, ValueError):
+                    current_identity = "INVALID"
+            elif operation_id in {"wordpress_environment_sync", "wordpress_environment_rollback"}:
+                try:
+                    current_identity = sha256_file(Path(profile["wordpress_root"]) / "wp-config.php")
                 except (OSError, ValueError):
                     current_identity = "INVALID"
 

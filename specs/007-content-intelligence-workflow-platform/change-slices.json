@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 487,
+  "changed_file_count": 493,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -947,8 +947,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-staging-candidate-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-governed-mcp-host-wordpress-environment-sync-20261009",
+      "semantic_unit": "Exact governed MCP Host Bridge plus Staging-only reversible wp-config environment sync Runner with host-private secrets, code-level denial scenarios and operator runbook.",
+      "revert_boundary": "Revert Host environment MCP and Runner operations along with their tests/runbook as one independently governed source-only unit; no Production capability.",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/mcp-host-wordpress-environment-sync.md",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-environment-sync-runner-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "1a7ccd9fb20a8e5b566e894db987b8427798b42c545c864ccf2d4958fd5be170",
+  "changed_paths_sha256": "ad90780aa1ef0ad84befc7078802fab8cf8e8317e2f22de1f3ce3a73f062d2ac",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

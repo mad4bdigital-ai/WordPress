@@ -37,16 +37,19 @@ if set(runner.OPERATIONS) != {
     "workspace.file.rollback",
     "wordpress_plugin_deploy",
     "wordpress_plugin_rollback",
+    "wordpress_environment_sync",
+    "wordpress_environment_rollback",
 }:
     raise SystemExit("Host Runner kernel operation registry widened unexpectedly")
 writes = {op for op, row in runner.OPERATIONS.items() if row.get("risk") != "read_only"}
-if writes != {"workspace.file.replace", "workspace.file.rollback", "wordpress_plugin_deploy", "wordpress_plugin_rollback"}:
+if writes != {"workspace.file.replace", "workspace.file.rollback", "wordpress_plugin_deploy", "wordpress_plugin_rollback", "wordpress_environment_sync", "wordpress_environment_rollback"}:
     raise SystemExit("Host Runner kernel widened write operations unexpectedly")
 for write_operation in sorted(writes):
     expected_zones = (
         ["plugin_root", "package_staging"]
         if write_operation == "wordpress_plugin_deploy"
-        else (["plugin_root"] if write_operation == "wordpress_plugin_rollback" else ["runner_workspace"])
+        else (["plugin_root"] if write_operation == "wordpress_plugin_rollback"
+            else (["wordpress_root"] if write_operation in {"wordpress_environment_sync", "wordpress_environment_rollback"} else ["runner_workspace"]))
     )
     if runner.OPERATIONS[write_operation].get("zones") != expected_zones:
         raise SystemExit(f"Host Runner write escaped its named zones: {write_operation}")
