@@ -24,7 +24,10 @@ class MAD4B_SCP_Content_Experience_Profiles {
       'brand_drive'=>array('provider'=>'google_drive','source_ref'=>'drive_doc_01',
        'direction'=>'bidirectional','field_keys'=>array('region_code','biography')),
       'archive_drive'=>array('provider'=>'google_drive','source_ref'=>'drive_doc_02',
-       'direction'=>'export','field_keys'=>array('biography'))
+       'direction'=>'export','field_keys'=>array('biography')),
+      'editorial_drive'=>array('provider'=>'google_drive','source_ref'=>'editorial_doc_01',
+       'direction'=>'import','field_keys'=>array(),'purpose'=>'editorial_policy',
+       'resource_kind'=>'drive_document')
     )));
  }
 }
@@ -84,4 +87,25 @@ check(!is_wp_error($r)&&$r['has_conflicts'],'Client-provided verification flag w
 $notlinked=$input;$notlinked['entity_id']='102';
 $r=MAD4B_SCP_Activity_Source_Reconciliation::plan($notlinked);
 check(is_wp_error($r)&&$r->get_error_code()==='mad4b_activity_reconcile_cpt_identity_mismatch','Cross-CPT ID accepted');
-echo "PASS 12 N-way source reconciliation and conflict/authority negative cases\n";
+$context=MAD4B_SCP_Activity_Source_Reconciliation::context_impact_plan(array(
+ 'profile_slug'=>'vendor',
+ 'current_revisions'=>array('editorial_drive'=>array('resource_id'=>'editorial_doc_01',
+    'revision'=>'new_rev','observed_at'=>gmdate('Y-m-d\TH:i:s\Z'))),
+ 'used_revisions'=>array('editorial_drive'=>array('resource_id'=>'editorial_doc_01','revision'=>'old_rev'))));
+check(!is_wp_error($context)&&$context['review_required']&&
+ $context['impact'][0]['status']==='source_revision_changed'&&
+ !$context['update_authorized']&&!$context['publication_authorized'],
+ 'Changed editorial guidelines caused auto-publication');
+$contextMismatch=MAD4B_SCP_Activity_Source_Reconciliation::context_impact_plan(array(
+ 'profile_slug'=>'vendor',
+ 'current_revisions'=>array('editorial_drive'=>array('resource_id'=>'different_file',
+    'revision'=>'new_rev','observed_at'=>gmdate('Y-m-d\TH:i:s\Z'))),
+ 'used_revisions'=>array('editorial_drive'=>array('resource_id'=>'editorial_doc_01','revision'=>'old_rev'))));
+check(!is_wp_error($contextMismatch)&&$contextMismatch['review_required']&&
+ $contextMismatch['impact'][0]['status']==='source_unverified_or_stale',
+ 'Editorial policy silently followed swapped file');
+$ob=MAD4B_SCP_Activity_Source_Reconciliation::plan($input);
+check(!is_wp_error($ob)&&isset($ob['separate_context_sources']['editorial_drive'])&&
+ !in_array('editorial_drive',$ob['sources_expected'],true),
+ 'Editorial policy was treated as a business field value source');
+echo "PASS N-way business field and editorial context revisions, source rights, staleness and anti-autorun cases\n";
