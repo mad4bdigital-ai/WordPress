@@ -91,6 +91,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
                 $value_type = isset( $binding['value_type'] ) ? $binding['value_type'] : 'string';
                 $null_policy = isset( $binding['null_policy'] ) ? $binding['null_policy'] : 'manual_review';
                 if ( ! is_string( $selector ) || ! preg_match( '/^[A-Za-z0-9._!:$-]{1,140}$/D', $selector ) ||
+                    ( 'wordpress' === $provider && ! preg_match( '/^[A-Za-z][A-Za-z0-9_-]{0,120}$/D', $selector ) ) ||
                     ! in_array( $value_type, array( 'string', 'integer', 'decimal', 'boolean', 'date', 'json' ), true ) ||
                     ! in_array( $null_policy, array( 'manual_review', 'skip', 'explicit_null' ), true ) )
                     return self::err( 'mad4b_activity_source_binding_value_invalid', 'Unsupported source selector, field value type or null handling.' );
