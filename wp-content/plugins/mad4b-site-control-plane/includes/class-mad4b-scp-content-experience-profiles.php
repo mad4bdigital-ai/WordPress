@@ -3,6 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-content-experience-recipe-scope.php';
 if ( ! class_exists( 'MAD4B_SCP_Business_Activity_Contracts' ) ) require_once __DIR__ . '/class-mad4b-scp-business-activity-contracts.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Source_Reconciliation' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-source-reconciliation.php';
 
 /**
  * Configuration-driven content experience registry.
@@ -701,6 +702,15 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array( 'name' => 'mad4b/business-activity-link-plan', 'label' => 'Plan User and Business Profile Link', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'plan' ), 'permission' => $read,
 				'schema' => self::business_activity_link_schema( false ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-reconcile-plan', 'label' => 'Compare Multi-Source Profile Field Revisions and Conflicts', 'callback' => array( 'MAD4B_SCP_Activity_Source_Reconciliation', 'plan' ), 'permission' => $read,
+				'schema' => self::schema( array(
+					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+					'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+					'observations' => array( 'type' => 'object', 'maxProperties' => 13, 'additionalProperties' => true ),
+					'baseline' => array( 'type' => 'object', 'maxProperties' => 13, 'additionalProperties' => true ),
+					'max_snapshot_age_seconds' => array( 'type' => 'integer', 'minimum' => 60, 'maximum' => 86400 ),
+				), array( 'profile_slug', 'entity_id', 'observations', 'baseline' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array( 'name' => 'mad4b/business-activity-sync-plan', 'label' => 'Plan Configured Business Activity Source Synchronization', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'sync_plan' ), 'permission' => $read,
 				'schema' => self::schema( array(
