@@ -366,7 +366,7 @@ final class MAD4B_SCP_Activity_Import_Review {
         $slug = isset( $_POST['profile_slug'] ) ?
             sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
         $identity = isset( $_POST['identity_field'] ) ?
-            sanitize_key( wp_unslash( $_POST['identity_field'] ) ) : '';
+            sanitize_text_field( wp_unslash( $_POST['identity_field'] ) ) : '';
         $allowed = isset( $_POST['allowed_currencies'] ) ?
             strtoupper( (string) wp_unslash( $_POST['allowed_currencies'] ) ) : '';
         $currencies = array_values( array_filter( array_map( 'trim', explode( ',', $allowed ) ) ) );
@@ -434,12 +434,37 @@ final class MAD4B_SCP_Activity_Import_Review {
     public static function admin_page() {
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Permission denied.' );
         echo '<div class="wrap"><h1>MAD4B Activity Import Review</h1>';
-        echo '<p>Read-only review. No WP All Import job or Google Sheets write is executed here.</p>';
+        echo '<p>Review-only transports: signed Apps Script/Make/n8n/Zapier/BitFlows push, or Staging administrator CSV upload. No import job is executed here.</p>';
+        echo '<h2>Alternative import modes</h2>';
+        $catalog = class_exists( 'MAD4B_SCP_Activity_Import_Modes' )
+            ? MAD4B_SCP_Activity_Import_Modes::catalog() : new WP_Error( 'modes_unavailable', 'Mode registry not loaded.' );
+        if ( ! is_wp_error( $catalog ) ) {
+            echo '<table class="widefat striped"><thead><tr><th>Mode</th><th>Family</th><th>State</th><th>Transport</th><th>Destination</th></tr></thead><tbody>';
+            foreach ( $catalog['modes'] as $m ) {
+                echo '<tr><td>' . esc_html( $m['id'] ) . '</td><td>' . esc_html( $m['family'] ) .
+                    '</td><td>' . esc_html( $m['state'] ) . '</td><td>' . esc_html( $m['transport'] ) .
+                    '</td><td>' . esc_html( $m['destination'] ) . '</td></tr>';
+            }
+            echo '</tbody></table>';
+        }
         $slug = isset( $_GET['profile_slug'] ) ? sanitize_key( wp_unslash( $_GET['profile_slug'] ) ) : '';
         echo '<form method="get"><input type="hidden" name="page" value="mad4b-import-review" />';
         echo '<label>Content Experience Profile <input name="profile_slug" value="' . esc_attr( $slug ) . '" /></label>';
         submit_button( 'Inspect staged conflicts', 'secondary', '', false );
         echo '</form>';
+        if ( method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
+            MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) ) {
+            echo '<h2>Staging CSV source review</h2>';
+            echo '<form enctype="multipart/form-data" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="mad4b_activity_import_csv" />';
+            wp_nonce_field( 'mad4b_activity_csv_intake', 'mad4b_import_nonce' );
+            echo '<p><label>Profile Slug <input required name="profile_slug" value="' . esc_attr( $slug ) . '" /></label></p>';
+            echo '<p><label>Unique identity column (case-sensitive) <input required name="identity_field" value="ID" /></label></p>';
+            echo '<p><label>Approved currencies <input required name="allowed_currencies" value="USD,EUR" /></label></p>';
+            echo '<p><label>CSV file (max 1 MiB / 500 rows) <input required type="file" name="import_csv" accept=".csv,text/csv" /></label></p>';
+            submit_button( 'Stage CSV for conflict review', 'secondary' );
+            echo '</form>';
+        }
         if ( $slug ) {
             $review = self::review( array( 'profile_slug' => $slug ) );
             if ( is_wp_error( $review ) ) echo '<p>' . esc_html( $review->get_error_message() ) . '</p>';
