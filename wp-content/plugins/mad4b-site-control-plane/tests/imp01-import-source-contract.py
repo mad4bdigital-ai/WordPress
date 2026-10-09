@@ -14,10 +14,10 @@ def check(value, reason):
 for name in ("capabilities","plan","review","brand_core_plan","receive_signed",
              "authorize_signed","register_rest","admin_page","expire_nonce","wp_all_import_plan"):
     check("function "+name+"(" in code,"Missing bounded import ability: "+name)
-for marker in ("MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET","hash_hmac( 'sha256'",
-    "hash_equals( $expected, $provided )","abs( time() - $data['issued_at'] ) > 300",
+for marker in ("MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS","hash_hmac( 'sha256'",
+    "hash_equals( $expected, $received )","abs( time() - $data['issued_at'] ) > 300",
     "mad4b_import_nonce_","! add_option( $nonce_key","MAD4B_SCP_Site_Profile::site_uuid()",
-    "count( $rows ) > self::MAX_ROWS","count( $headers ) > self::MAX_COLUMNS",
+    "count( $rows ) > min( self::MAX_ROWS, $policy['max_rows'] )","count( $headers ) > self::MAX_COLUMNS",
     "mad4b_import_field_not_allowed","$profile['meta_keys']",
     "source_values_persisted","ready_for_import_execution' => false",
     "add_management_page","MAD4B_SCP_Context_Authority::brand_core_coverage()",
