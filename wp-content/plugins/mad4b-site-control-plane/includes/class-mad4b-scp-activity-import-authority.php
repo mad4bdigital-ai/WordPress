@@ -123,6 +123,8 @@ final class MAD4B_SCP_Activity_Import_Authority {
     public static function profile_contract( $profile ) {
         if ( ! empty( $profile['import_contract']['enabled'] ) )
             return $profile['import_contract'];
+        if ( ! empty( $profile['import_contract']['configured_explicitly'] ) )
+            return array(); // Explicitly disabled: never resurrect legacy authority.
         if ( ! empty( $profile['activity_contract']['enabled'] ) &&
             ! empty( $profile['activity_contract']['import_modes']['validation'] ) )
             return $profile['activity_contract']['import_modes'];
