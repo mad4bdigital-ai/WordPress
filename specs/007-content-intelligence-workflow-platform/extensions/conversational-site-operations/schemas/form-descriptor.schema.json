@@ -1,0 +1,135 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "form_id",
+    "site_uuid",
+    "environment",
+    "source_sha",
+    "adapter_digest",
+    "schema_digest",
+    "expires_at",
+    "fields"
+  ],
+  "properties": {
+    "contract": {
+      "type": "string",
+      "enum": [
+        "mad4b.cso01.form-descriptor.v1"
+      ]
+    },
+    "form_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "site_uuid": {
+      "type": "string",
+      "minLength": 8
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "development",
+        "staging",
+        "production"
+      ]
+    },
+    "source_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "schema_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "adapter_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "expires_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "fields": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field_id",
+          "label",
+          "field_type",
+          "sensitivity",
+          "required",
+          "writable_by_adapter"
+        ],
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]{0,127}$"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "field_type": {
+            "type": "string",
+            "enum": [
+              "string",
+              "integer",
+              "number",
+              "boolean",
+              "date",
+              "url",
+              "enum",
+              "multi_enum",
+              "media_reference",
+              "relation",
+              "repeater",
+              "rich_text",
+              "secret_handoff"
+            ]
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "SITE_INTERNAL",
+              "PERSONAL",
+              "SECRET",
+              "REGULATED"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "writable_by_adapter": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "maxItems": 512,
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "string"
+            }
+          },
+          "help": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        }
+      }
+    }
+  },
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "CSO01 form-descriptor design schema; NOT an automatically registered WordPress Ability"
+}

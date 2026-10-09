@@ -988,3 +988,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ### 38O — Composed adversarial acceptance
 - [x] T3880 P0 GATE Execute composed cross-fault matrix covering profile/provider/language/surface drift, shared-budget races, lease loss, quota reset, partial capture, cache equivalence, uncertain provider effects and adaptive UI state; exact-head executable evidence required.
+
+## Optional CSO01 task ledger (81 OPEN; excluded from parent denominator)
+
+The authoritative machine-readable CSO01 backlog is [tasks.json](extensions/conversational-site-operations/tasks.json) with corresponding [tasks.md](extensions/conversational-site-operations/tasks.md). Each of 27 requirement families has design, implementation and independent acceptance tasks. All remain OPEN; the parent Feature 007 task-ledger.generated.json and frozen implementation closure are unchanged. Do not mark CSO01 complete until exact-head native and external adversarial proofs, owner review and independent readbacks.

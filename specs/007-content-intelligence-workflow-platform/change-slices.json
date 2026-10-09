@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 502,
+  "changed_file_count": 536,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -994,8 +994,50 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-tour-publication-handoff-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-context-preflight-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-cso01-conversational-site-operations-speckit-20261009",
+      "semantic_unit": "CSO01 documentation-only specification: 27 requirements, 81 OPEN tasks, 11 OPEN gates, 27 proposed unregistered abilities, 26 journeys, guarded secrets, forms, bulk, workflows, multisite, context and security tests.",
+      "revert_boundary": "Revert 33 CSO01 standalone design files and five optional Feature007 documentation references only; preserve all parent runtime implementation, current approvals and release gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/README.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/abilities.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/architecture.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/constitution.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/contracts/adapter-certification.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/contracts/multisite-and-promotion.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/contracts/receipts-and-privacy.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/contracts/secret-handoff.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/contracts/universal-form.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/contracts/workflow-and-bulk.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/data-model.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/gates.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/manifest.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/operations.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/plan.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/quickstart.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/requirements.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/research.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/schemas/form-descriptor.schema.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/schemas/operation-envelope.schema.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/schemas/operation-receipt.schema.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/schemas/secret-handoff.schema.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/spec.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/tasks.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/tasks.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/test_validate.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/threat-model.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/traceability.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/ui.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/use-cases.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/use-cases.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py",
+        "specs/007-content-intelligence-workflow-platform/spec.md"
+      ]
     }
   ],
-  "changed_paths_sha256": "e4fab306141f7ba78b8093b03eaf7c448d6c97bb493e1ab1c7f6e96b7078bfd0",
+  "changed_paths_sha256": "c8f47e75f92682f94b307d9c364381b7bccee81fa73398359364d75046665fd0",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
