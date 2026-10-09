@@ -36,7 +36,8 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		$provider_blocked = isset( $provider['action_required_count'] ) && (int) $provider['action_required_count'] > 0;
 		$uncertain = count( array_intersect( $reasons, array( 'mutation_state_uncertain', 'recovery_required' ) ) ) > 0;
 		$host_blocked = count( array_intersect( $reasons, array( 'developer_lane_not_ready', 'developer_breakglass_lane_not_ready' ) ) ) > 0;
-		$needs_authority = $write_blocked || count( array_intersect( $reasons, array( 'write_authority_not_current', 'runtime_authority_candidate_not_reconciled' ) ) ) > 0;
+		// Write readiness is not evidence of an actual pending approval ticket.
+		// The approval inbox remains an unverified independent human decision lane.
 		$steps = array(
 			self::step( 'site', __( 'Identify this WordPress site', 'mad4b-site-control-plane' ),
 				__( 'Confirm the exact origin, environment and deployment identity.', 'mad4b-site-control-plane' ),
@@ -60,7 +61,7 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 				$browser_invalid ? 'NEEDS_ACTION' : 'NOT_CHECKED', 'mad4b-browser-acceptance', array(), 'browser_operator', 'mad4b/browser-acceptance-result', 50 ),
 			self::step( 'approvals', __( 'Review pending change approvals', 'mad4b-site-control-plane' ),
 				__( 'Inspect the exact affected scope and existing ticket before approving or rejecting.', 'mad4b-site-control-plane' ),
-				$needs_authority ? 'NEEDS_ACTION' : 'NOT_CHECKED',
+				'NOT_CHECKED',
 				'mad4b-approval-decisions', array( 'view' => 'actionable' ), 'authorized_approver', 'mad4b/approval-ticket-status', 40 ),
 		);
 		if ( $write_blocked ) $steps[] = self::step( 'write', __( 'Review exact write readiness', 'mad4b-site-control-plane' ),
@@ -69,6 +70,12 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		if ( $uncertain ) array_unshift( $steps, self::step( 'recovery', __( 'Resolve an uncertain previous change', 'mad4b-site-control-plane' ),
 			__( 'Review the last receipt and independently read back the affected object before any retry.', 'mad4b-site-control-plane' ),
 			'NEEDS_ACTION', 'mad4b-control-plane', array( 'tab' => 'mutations' ), 'governed_operator', 'mad4b/mutation-status', 0 ) );
+		if ( $site_ready && isset( $profile['deployment_binding_configured'] )
+			&& false === $profile['deployment_binding_configured'] ) {
+			$steps[] = self::step( 'deployment', __( 'Review independent deployment identity', 'mad4b-site-control-plane' ),
+				__( 'Site enrollment is valid, but independent same-origin clone protection is not configured. Host setup is separate from current Read and Write grants.', 'mad4b-site-control-plane' ),
+				'EXTERNAL_ACTION', 'mad4b-control-plane-site-profile', array(), 'host_operator', 'mad4b/site-profile-status', 65 );
+		}
 		if ( $host_blocked ) $steps[] = self::step( 'host', __( 'Review isolated developer execution', 'mad4b-site-control-plane' ),
 			__( 'Host sandbox prerequisites require an authorized external operator. Existing safe lanes remain usable.', 'mad4b-site-control-plane' ),
 			'EXTERNAL_ACTION', 'mad4b-control-plane-connection', array( 'tab' => 'isolation' ), 'host_operator', 'mad4b/developer-host-capabilities', 60 );
